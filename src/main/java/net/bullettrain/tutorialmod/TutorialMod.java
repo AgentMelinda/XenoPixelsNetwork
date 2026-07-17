@@ -1,6 +1,7 @@
 package net.bullettrain.tutorialmod;
 
 import com.mojang.logging.LogUtils;
+import net.bullettrain.tutorialmod.block.ModBlocks;
 import net.bullettrain.tutorialmod.item.ModCreativeModTabs;
 import net.bullettrain.tutorialmod.item.ModsItems;
 import net.minecraft.world.item.CreativeModeTab;
@@ -27,6 +28,7 @@ public class TutorialMod {
         IEventBus modEventBus = FMLJavaModLoadingContext.get().getModEventBus();
 
         ModsItems.register(modEventBus); // -- mods item register
+        ModBlocks.register(modEventBus);
 
         ModCreativeModTabs.register(modEventBus); // -- creative tab register
 

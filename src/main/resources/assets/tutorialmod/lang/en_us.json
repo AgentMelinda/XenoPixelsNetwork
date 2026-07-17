@@ -1,6 +1,8 @@
 {
   "item.tutorialmod.sapphire": "Sapphire",
-  "item.tutorialmod.raw_sapphire": "Raw_Sapphire",
+  "item.tutorialmod.raw_sapphire": "Raw Sapphire",
+
+  "block.tutorialmod.jackietonite_ore_block": "Jackietonite Ore",
 
   "creativetab.tutorial_tab": "CreativeTab ByBulletTrain"
 }

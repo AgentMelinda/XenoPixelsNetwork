@@ -1,6 +1,7 @@
 package net.bullettrain.tutorialmod.item;
 
 import net.bullettrain.tutorialmod.TutorialMod;
+import net.bullettrain.tutorialmod.block.ModBlocks;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.item.CreativeModeTab;
@@ -22,6 +23,9 @@ public class ModCreativeModTabs {
                     .displayItems((pParameters, pOutput) -> {
                         pOutput.accept(ModsItems.SAPPHIRE.get());
                         pOutput.accept(ModsItems.RAW_SAPPHIRE.get());
+
+                        pOutput.accept(ModBlocks.JACKIETONITE_ORE_BLOCK.get());
+
                     })
                     .build());
 
