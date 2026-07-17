@@ -1,0 +1,13 @@
+{
+  "type": "crafting_shapeless",
+  "category": "misc",
+  "ingredients": [
+    {
+      "item": "tutorialmod:raw_jackietonite_ore_block"
+    }
+  ],
+  "result": {
+    "item": "tutorialmod:raw_sapphire",
+    "count": 9
+  }
+}

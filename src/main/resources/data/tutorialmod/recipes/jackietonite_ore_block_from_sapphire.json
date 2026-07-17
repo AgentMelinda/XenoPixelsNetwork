@@ -1,0 +1,17 @@
+{
+  "type": "crafting_shaped",
+  "category": "misc",
+  "pattern": [
+    "###",
+    "###",
+    "###"
+  ],
+  "key": {
+    "#": {
+      "item": "tutorialmod:sapphire"
+    }
+  },
+  "result": {
+    "item": "tutorialmod:jackietonite_ore_block"
+  }
+}
