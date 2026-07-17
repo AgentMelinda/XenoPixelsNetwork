@@ -25,6 +25,7 @@ public class ModCreativeModTabs {
                         pOutput.accept(ModsItems.RAW_SAPPHIRE.get());
 
                         pOutput.accept(ModBlocks.JACKIETONITE_ORE_BLOCK.get());
+                        pOutput.accept(ModBlocks.RAW_JACKIETONITE_ORE_BLOCK.get());
 
                     })
                     .build());
