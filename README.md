@@ -10,6 +10,7 @@
 |---|---|---|
 | Sapphire | `tutorialmod:sapphire` | ספיר — פריט רגיל |
 | Raw Sapphire | `tutorialmod:raw_sapphire` | ספיר גולמי — פריט רגיל |
+| Metal Detector | `tutorialmod:metal_detector` | גלאי מתכות — כלי עם 100 עמידות, מאתר עפרות מתחת לרגליים |
 
 ---
 
@@ -31,6 +32,7 @@
 טאב מותאם אישית בשם **Tutorial Tab** המכיל את כל הפריטים והבלוקים של המוד:
 - Sapphire
 - Raw Sapphire
+- **Metal Detector** ← חדש!
 - Jackietonite Ore Block
 - Raw Jackietonite Ore Block
 - Jackietonite Ore
@@ -49,7 +51,9 @@ src/main/java/net/bullettrain/tutorialmod/
 ├── TutorialMod.java              # נקודת הכניסה הראשית של המוד
 ├── item/
 │   ├── ModsItems.java            # רישום פריטים
-│   └── ModCreativeModTabs.java   # רישום טאב קריאייטיב
+│   ├── ModCreativeModTabs.java   # רישום טאב קריאייטיב
+│   └── custom/
+│       └── MetalDetectorItem.java  # לוגיקת גלאי המתכות
 └── block/
     └── ModBlocks.java            # רישום בלוקים
 ```
@@ -73,6 +77,11 @@ public class ModsItems {
     // רישום ספיר גולמי
     public static final RegistryObject<Item> RAW_SAPPHIRE =
         ITEMS.register("raw_sapphire", () -> new Item(new Item.Properties()));
+
+    // רישום גלאי מתכות — פריט מותאם עם 100 נקודות עמידות
+    public static final RegistryObject<Item> METAL_DETECTOR =
+        ITEMS.register("metal_detector",
+            () -> new MetalDetectorItem(new Item.Properties().durability(100)));
 
     // חיבור לאוטובוס האירועים של Forge
     public static void register(IEventBus eventBus) {
@@ -141,6 +150,68 @@ public class ModBlocks {
 }
 ```
 
+### MetalDetectorItem.java — גלאי מתכות
+
+קלאס מותאם שיורש מ-`Item` ומממש התנהגות מיוחדת בלחיצה על בלוק.
+
+```java
+public class MetalDetectorItem extends Item {
+    public MetalDetectorItem(Properties pProperties) {
+        super(pProperties);
+    }
+
+    @Override
+    public InteractionResult useOn(UseOnContext pContext) {
+        if (!pContext.getLevel().isClientSide()) {          // רץ רק בצד השרת
+            BlockPos positionClicked = pContext.getClickedPos();
+            Player player = pContext.getPlayer();
+            boolean foundBlock = false;
+
+            // לולאה שיורדת עד 64 בלוקים מתחת לנקודת הלחיצה
+            for (int i = 0; i <= positionClicked.getY() + 64; i++) {
+                BlockState state = pContext.getLevel().getBlockState(positionClicked.below(i));
+
+                if (isValueableBlock(state)) {
+                    outputValuableCoordinates(positionClicked.below(i), player, state.getBlock());
+                    foundBlock = true;
+                    break;
+                }
+            }
+
+            if (!foundBlock) {
+                player.sendSystemMessage(Component.literal("No valuables found"));
+            }
+
+            // מוריד 1 נקודת עמידות בכל שימוש
+            pContext.getItemInHand().hurtAndBreak(1, pContext.getPlayer(),
+                Player -> player.broadcastBreakEvent(player.getUsedItemHand()));
+        }
+        return InteractionResult.SUCCESS;
+    }
+
+    // שולח הודעה עם שם הבלוק והקואורדינטות שלו
+    private void outputValuableCoordinates(BlockPos blockPos, Player player, Block block) {
+        player.sendSystemMessage(Component.literal(
+            "Found " + I18n.get(block.getDescriptionId()) +
+            "(" + blockPos.getX() + ", " + blockPos.getY() + "," + blockPos.getZ() + ")"));
+    }
+
+    // בודק אם הבלוק הוא עפרה בעלת ערך
+    private boolean isValueableBlock(BlockState state) {
+        return state.is(Blocks.IRON_ORE) || state.is(Blocks.DIAMOND_ORE);
+    }
+}
+```
+
+**הסבר:**
+- `useOn()` — נקרא כשמשתמשים בפריט על בלוק (קליק ימני)
+- `isClientSide()` — בודק שהקוד רץ בצד השרת בלבד (מניעת כפילות)
+- `positionClicked.below(i)` — יורד בלוק אחד בכל איטרציה
+- `hurtAndBreak(1, ...)` — מוריד 1 עמידות; כשמגיע ל-0 הפריט נשבר
+- `I18n.get(block.getDescriptionId())` — מחזיר את שם הבלוק בשפת המשתמש
+
+---
+
 ### ModCreativeModTabs.java — טאב קריאייטיב
 
 ```java
@@ -152,6 +223,7 @@ public static final RegistryObject<CreativeModeTab> TUTORIAL_TAB =
             .displayItems((pParameters, pOutput) -> {
                 pOutput.accept(ModsItems.SAPPHIRE.get());
                 pOutput.accept(ModsItems.RAW_SAPPHIRE.get());
+                pOutput.accept(ModsItems.METAL_DETECTOR.get()); // גלאי מתכות
                 pOutput.accept(ModBlocks.JACKIETONITE_ORE_BLOCK.get());
                 pOutput.accept(ModBlocks.RAW_JACKIETONITE_ORE_BLOCK.get());
                 pOutput.accept(ModBlocks.JACKIETONITE_ORE.get());
@@ -176,6 +248,120 @@ public static final RegistryObject<CreativeModeTab> TUTORIAL_TAB =
 | `DropExperienceBlock` | בלוק שמפיל XP כשנשבר — מחליף את `Block` הרגיל |
 | `UniformInt.of(min, max)` | מגדיר כמות XP אקראית בין min ל-max בכל שבירה |
 | `BlockBehaviour.Properties.copy(...)` | מעתיק מאפיינים מבלוק קיים (כמו `Blocks.STONE`) במקום להגדיר הכל מחדש |
+| `Item extends` / `useOn()` | יצירת פריט מותאם עם התנהגות מיוחדת בלחיצה על בלוק |
+| `.durability(n)` | מגדיר עמידות לפריט — נשבר אחרי n שימושים |
+| `hurtAndBreak(1, ...)` | מוריד 1 נקודת עמידות מהפריט בכל שימוש |
+| `I18n.get(...)` | מחזיר שם מתורגם של בלוק/פריט לפי שפת המשתמש |
+| `isClientSide()` | בודק אם הקוד רץ בצד הלקוח — משמש למניעת כפילות לוגיקה |
+
+---
+
+## Tags — כלי שבירה
+
+Tags הם קבצי JSON שמגדירים **אילו כלים יכולים לשבור כל בלוק** ובאיזה רמה.
+
+### מה זה Tag?
+Tag = רשימה של בלוקים שחולקים תכונה משותפת. Minecraft בודק את הרשימות האלה כדי לדעת אם הכלי שבידך מתאים לשבירת הבלוק.
+
+### קבצי Tags שנוצרו
+
+| קובץ | בלוקים שנכללו | משמעות |
+|---|---|---|
+| `needs_stone_tool.json` | `jackietonite_ore` | ניתן לשבירה עם כלי אבן ומעלה |
+| `needs_iron_tool.json` | `jackietonite_ore_block`, `raw_jackietonite_ore_block` | ניתן לשבירה עם כלי ברזל ומעלה |
+| `needs_diamond_tool.json` | `deepslate_jackietonite_ore`, `end_stone_jackietonite_ore` | ניתן לשבירה עם כלי יהלום ומעלה |
+| `needs_netherite_tool.json` (Forge) | `nether_jackietonite_ore` | ניתן לשבירה עם כלי נת'ריט בלבד |
+| `mineable/pickaxe.json` | כל 6 הבלוקים | כולם נשברים עם **מכוש** בלבד |
+
+### דוגמה לקובץ Tag
+
+```json
+{
+  "values": [
+    "tutorialmod:jackietonite_ore_block",
+    "tutorialmod:raw_jackietonite_ore_block"
+  ]
+}
+```
+
+**הסבר:** הקובץ `needs_iron_tool.json` אומר ל-Minecraft שהבלוקים האלה דורשים לפחות כלי ברזל כדי להפיל פריטים. שבירה עם כלי חלש יותר לא תפיל כלום.
+
+---
+
+## Loot Tables — מה נופל מהבלוקים
+
+Loot Table = קובץ JSON שמגדיר **מה נופל** כשבלוק נשבר.
+
+### טבלת Loot Tables
+
+| בלוק | מה נופל | הערות |
+|---|---|---|
+| `jackietonite_ore_block` | את עצמו | רק אם שורד פיצוץ |
+| `raw_jackietonite_ore_block` | את עצמו | רק אם שורד פיצוץ |
+| `jackietonite_ore` | 2–5 `raw_sapphire` | עם Fortune מוסיף עוד, עם Silk Touch נופל הבלוק עצמו |
+
+### דוגמה — `jackietonite_ore.json`
+
+```json
+{
+  "type": "minecraft:block",
+  "pools": [{
+    "entries": [{
+      "type": "minecraft:alternatives",
+      "children": [
+        {
+          "type": "minecraft:item",
+          "conditions": [{ "condition": "minecraft:match_tool",
+            "predicate": { "enchantments": [{ "enchantment": "minecraft:silk_touch", "levels": { "min": 1 } }] }
+          }],
+          "name": "tutorialmod:jackietonite_ore"
+        },
+        {
+          "type": "minecraft:item",
+          "functions": [
+            { "function": "minecraft:set_count", "count": { "type": "minecraft:uniform", "min": 2.0, "max": 5.0 } },
+            { "function": "minecraft:apply_bonus", "enchantment": "minecraft:fortune", "formula": "minecraft:ore_drops" },
+            { "function": "minecraft:explosion_decay" }
+          ],
+          "name": "tutorialmod:raw_sapphire"
+        }
+      ]
+    }]
+  }]
+}
+```
+
+**הסבר שורה אחר שורה:**
+- `minecraft:alternatives` — בודק תנאים לפי סדר, לוקח את הראשון שמתאים
+- `match_tool` + `silk_touch` — אם יש Silk Touch → נופל הבלוק עצמו
+- `set_count` — קובע כמות: 2 עד 5 raw_sapphire
+- `apply_bonus` + `fortune` — Fortune מגדיל את הכמות
+- `explosion_decay` — פיצוץ עלול להשמיד חלק מהפריטים
+
+---
+
+## Recipes — מתכונים
+
+### מתכון: jackietonite_ore_block → 9 sapphire
+
+```json
+{
+  "type": "crafting_shapeless",
+  "category": "misc",
+  "ingredients": [
+    { "item": "tutorialmod:jackietonite_ore_block" }
+  ],
+  "result": {
+    "item": "tutorialmod:sapphire",
+    "count": 9
+  }
+}
+```
+
+**הסבר:**
+- `crafting_shapeless` — מתכון **ללא צורה** (אפשר לשים בכל מקום בשולחן הנגרות)
+- **קלט:** בלוק עפרה אחד (`jackietonite_ore_block`)
+- **פלט:** 9 ספירים (`sapphire`)
 
 ---
 
@@ -214,3 +400,276 @@ src/main/resources/assets/tutorialmod/
 ```bash
 ./gradlew runClient
 ```
+
+---
+
+## פתרון בעיות — קריסת Mixin מ־Valkyrien Skies (MixinTransformerError)
+
+### התופעה
+
+בהרצת `runClient` המשחק קורס עם שגיאה כזו ב־`run/logs/debug.log`:
+
+```
+org.spongepowered.asm.mixin.transformer.throwables.MixinTransformerError: An unexpected critical error was encountered
+...
+Caused by: org.spongepowered.asm.mixin.injection.throwables.InvalidInjectionException:
+Critical injection failure: @WrapOperation annotation on useOriginalCrosshairForBlockPlacement
+could not find any targets matching 'Lnet/minecraft/client/Minecraft;m_91277_()V'
+in net.minecraft.client.Minecraft. Using refmap valkyrienskies-120-common-refmap.json
+[... valkyrienskies-common.mixins.json:client.MixinMinecraft ...]
+```
+
+### מה באמת קורה כאן (חקירה)
+
+חשוב להבין: **זו לא קריסה שקשורה למוד שלנו (`tutorialmod`)**. לפרויקט הזה אין אף Mixin משלנו כלל — לא הוגדר קובץ `*.mixins.json`, ולא נכתבה שום מחלקת Mixin ב־`src`.
+
+הבאג נמצא בתוך ה־Mixin **הפנימי** של מוד **Valkyrien Skies** (VS) עצמו — `valkyrienskies-common.mixins.json:client.MixinMinecraft`. זהו מוד תלות שנוסף ל־`build.gradle` (`org.valkyrienskies:valkyrienskies-120-forge`). ה־Mixin הזה מנסה "לעטוף" (`@WrapOperation`) קריאה למתודה `Minecraft.startUseItem()` (בשם SRG הפנימי — `m_91277_`), אבל בזמן טעינת המשחק Mixin לא מצליח לאתר את המתודה הזו לפי אותו שם SRG בתוך הקובץ המקומפל (למרות שהמתודה `startUseItem()` בהחלט קיימת ב־`Minecraft.class` — זה נבדק ואומת ידנית עם `javap`).
+
+**סדר הבדיקה שבוצע:**
+
+1. אישרנו שאין קבצי לוג ישנים ואין Mixins בפרויקט שלנו — הריצה הראשונה של `runClient` יצרה את `run/logs/debug.log` מחדש.
+2. חיפשנו בלוג את שרשרת ה־`Caused by` המלאה ומצאנו ש־FATAL מגיע מ־Mixin של VS, לא מהמוד שלנו.
+3. פיענחנו את שם ה־SRG: `m_91277_` = `startUseItem` (לפי `methods.csv` של מיפוי MCP לגרסת 1.20.1).
+4. בדקנו עם `javap` שהמתודה `startUseItem()` אכן קיימת ב־`Minecraft.class` בסביבת הפיתוח (`forge-1.20.1-47.4.10_mapped_official_1.20.1.jar`).
+5. חילצנו את קובץ ה־refmap של VS (`valkyrienskies-120-common-refmap.json`) ווידאנו שהמיפוי `startUseItem → m_91277_` קיים שם כראוי.
+6. בדקנו את תבנית ה־Forge Java הרשמית של VS ואת מדריך ה־Addon של DragonMineZ. התבנית של VS משתמשת ב־ModDev, אך מדריך DMZ מחייב ForgeGradle 6 עם ParchmentMC ו־`fg.deobf(...)`.
+
+**מסקנה:** הכשל לא היה Mixin שצריך לכתוב במוד שלנו ולא פגם במתודה `startUseItem()`. הוא נבע מכך שה־refmap של VS לא קיבל את אותו תהליך מיפוי כמו קוד Minecraft בסביבת הפיתוח. הפתרון הסופי הוא ForgeGradle 6 עם ParchmentMC, שבו גם VS וגם DragonMineZ נטענים דרך `fg.deobf(...)` ונמפים באותה שרשרת.
+
+### הפתרון שיושם ואומת
+
+| רכיב | הגדרה סופית |
+|---|---|
+| מערכת build | ForgeGradle 6 + ParchmentMC Librarian + Sponge Mixin Gradle |
+| Gradle Wrapper | 8.8 |
+| Minecraft / Forge | 1.20.1 / 47.4.10 |
+| מיפויים | Parchment `2023.09.03-1.20.1` |
+| Valkyrien Skies | `2.4.13+c2e82178c0` |
+| VS Core | `1.1.0+ea6dc8576e` |
+| Mixin של המוד | `tutorialmod.mixins.json` עם refmap ו־Java 17 |
+
+נוסף קובץ `tutorialmod.mixins.json` ריק ומוכן לשימוש עתידי. הוא אינו משנה שום התנהגות כרגע; כאשר יתווספו Mixins בעתיד, יש להוסיף את שם המחלקה לרשימת `mixins` או `client` וליצור את המחלקה תחת `net.bullettrain.tutorialmod.mixin`.
+
+האימות בוצע עם `./gradlew runClient`: גם ה־refmap של VS וגם ה־refmap של DMZ עברו remap, VS Core אותחל, DragonMineZ נטען והמשחק נשאר פעיל ללא `MixinTransformerError` וללא הכשל ב־`startUseItem`.
+
+---
+
+## תמיכת Addon ל־DragonMineZ
+
+התמיכה ממומשת לפי [Creating a DMZ Addon](https://github.com/DragonMineZ/dragonminez/wiki/Creating-a-DMZ-Addon).
+
+### מה נוסף
+
+- `ParchmentMC` מופעל ב־`gradle.properties` וב־`build.gradle` עם מיפוי `2023.09.03-1.20.1`.
+- `META-INF/mods.toml` מגדיר את `dragonminez` כתלות **חובה** בגרסה `[2.1.2]`, בסדר טעינה `AFTER` ובשני הצדדים.
+- `build.gradle` מוסיף את DMZ ואת תלויות הריצה שלו: GeckoLib, TerraBlender ו־Curios.
+- `DmzHooks.java` נרשם לאוטובוס האירועים של Forge ומאזין ל־`DMZEvent.TPGainEvent`. כרגע הוא רק כותב הודעת `debug`; הוא אינו משנה את כמות ה־TP, ולכן מוסיף נקודת הרחבה בטוחה ללא שינוי בהתנהגות המשחק.
+
+### התקנת JAR הפיתוח של DMZ
+
+ל־DragonMineZ אין artifact של API ב־Maven. לכן צריך להוריד את JAR הפיתוח המדויק ולשים אותו מקומית:
+
+1. הורד `dragonminez-2.1.2.jar` מ־[Modrinth](https://modrinth.com/mod/dragonminez/version/t1Qn8aCi).
+2. צור תיקייה `libs` בשורש הפרויקט אם אינה קיימת.
+3. העתק אליה את הקובץ כך שהנתיב יהיה `libs/dragonminez-2.1.2.jar`.
+4. הרץ `./gradlew runClient`.
+
+התיקייה `libs/` נמצאת ב־`.gitignore`; אין להעלות את ה־JAR של DMZ למאגר. הבנייה נכשלת במפורש עם הודעה ברורה אם הקובץ החסר, במקום להפיק JAR שנראה תקין אך אינו תומך ב־DMZ.
+
+### הרחבת ה־Hook
+
+המאזין הקיים נמצא ב־`src/main/java/net/bullettrain/tutorialmod/event/DmzHooks.java`. לדוגמה, כדי לשנות TP יש להשתמש ב־`event.setTpGain(...)` בתוך `onTrainingPointGain`. יש לבצע שינוי כזה רק כאשר רוצים שינוי מכניקת משחק מכוון, משום שה־Hook הנוכחי נבחר במכוון להיות תצפיתי בלבד.
+
+---
+
+## הסבר שינויי Build — gradle.properties ו־build.gradle
+
+סעיף זה מסביר **שלב אחר שלב** את כל השינויים שנעשו בקובצי ה-build של הפרויקט, מה שינינו, למה ובאיזה סדר.
+
+---
+
+### שלב 1 — שינוי המיפויים מ-parchment ל-official
+
+**קובץ:** `gradle.properties`
+
+**לפני:**
+```properties
+mapping_channel=parchment
+mapping_version=2023.06.26-1.20.1
+```
+
+**אחרי:**
+```properties
+mapping_channel=official
+mapping_version=1.20.1
+```
+
+**הסבר:**
+- **parchment** = מיפויים לא-רשמיים של ParchmentMC עם שמות פרמטרים נוחים יותר לקריאה
+- **official** = המיפויים הרשמיים של Mojang, שמות ה-SRG עם שמות פרמטרים מ-Mojang ישירות
+- הסיבה לשינוי: Valkyrien Skies בנה את ה-refmap שלו עם `official` mappings — כאשר הפרויקט שלנו השתמש ב-parchment, שמות המתודות (SRG) לא התאימו ו-Mixin של VS קרס
+
+**בנוסף ב-build.gradle:**
+```groovy
+// הפלאגין של ParchmentMC הוסר/הושבת כי אינו נדרש יותר
+// id 'org.parchmentmc.librarian.forgegradle' version '1.+'
+```
+
+---
+
+### שלב 2 — עדכון גרסת Forge
+
+**קובץ:** `gradle.properties`
+
+**לפני:**
+```properties
+forge_version=47.4.0
+```
+
+**אחרי:**
+```properties
+forge_version=47.4.10
+```
+
+**הסבר:**
+- 47.4.10 היא גרסה חדשה יותר ויציבה יותר של Forge לגרסת Minecraft 1.20.1
+- גרסת Forge חייבת להתאים לגרסת VS2 שנוסיף — יש לבדוק תאימות בין הגרסאות
+
+---
+
+### שלב 3 — הוספת גרסאות Valkyrien Skies ל-gradle.properties
+
+**קובץ:** `gradle.properties`
+
+```properties
+vs2_mc_version=120        # גרסת Minecraft ב-format מקוצר (1.20.X → 120)
+vs2_version=2.4.10        # גרסת VS2 עבור Minecraft 1.20
+vs_core_version=1.1.0+1d4a7373e9  # גרסת VS Core (ספרייה הפנימית של VS)
+```
+
+**הסבר:**
+- `vs2_mc_version` — VS משתמש ב-artifact שמותאם לגרסת MC ספציפית (`valkyrienskies-120-forge`)
+- `vs2_version` — גרסת ה-jar הראשי של VS2
+- `vs_core_version` — VS מחולק ל-`vs-core` (לוגיקה) ו-`valkyrienskies-forge` (אינטגרציה עם Forge) — שניהם נדרשים
+
+---
+
+### שלב 4 — הוספת Maven Repository של Valkyrien Skies
+
+**קובץ:** `build.gradle` — בלוק `repositories`
+
+```groovy
+maven {
+    name = 'Valkyrien Skies Internal'
+    url = project.vs_maven_url ?: 'https://maven.valkyrienskies.org'
+    // תמיכה אופציונלית ב-authentication למרות שב-build רגיל אינה נדרשת
+    if (project.vs_maven_username && project.vs_maven_password) {
+        credentials {
+            username = project.vs_maven_username
+            password = project.vs_maven_password
+        }
+    }
+}
+```
+
+**הסבר:**
+- Valkyrien Skies **אינו** ב-Maven Central — יש לו maven משלו בכתובת `https://maven.valkyrienskies.org`
+- ה-`?: 'https://...'` = אם `vs_maven_url` ריק ב-`gradle.properties`, יש fallback לכתובת הברירת מחדל
+- ה-`if (credentials...)` = אפשרות לחבר maven פרטי (לא נדרש בפיתוח רגיל)
+
+---
+
+### שלב 5 — הוספת Dependencies של Valkyrien Skies
+
+**קובץ:** `build.gradle` — בלוק `dependencies`
+
+```groovy
+// region Valkyrien Skies
+
+// VS Core — ספרייה פנימית מחולקת ל-4 מודולים
+implementation("org.valkyrienskies.core:api:${vs_core_version}") { transitive = false
+    exclude group: 'org.joml', module: ''
+}
+implementation("org.valkyrienskies.core:internal:${vs_core_version}") { transitive = false
+    exclude group: 'org.joml', module: ''
+}
+implementation("org.valkyrienskies.core:util:${vs_core_version}") { transitive = false
+    exclude group: 'org.joml', module: ''
+}
+implementation("org.valkyrienskies.core:impl:${vs_core_version}") { transitive = false
+    exclude group: 'org.joml', module: ''
+}
+
+// VS2 עצמו — נטען דרך fg.deobf() כדי ש-ForgeGradle ימפה אותו
+implementation fg.deobf("org.valkyrienskies:valkyrienskies-120-forge:${vs2_version}") {
+    transitive = false
+    exclude group: 'org.valkyrienskies.core', module: ''
+}
+// endregion
+
+// region VS deps — ספריות תלות של VS
+implementation "com.fasterxml.jackson.core:jackson-annotations:2.13.3"  // JSON serialization
+compileOnly("org.joml:joml:1.10.4")           // מתמטיקה וקטורית/מטריציות
+compileOnly("org.joml:joml-primitives:1.10.0") // סוגי נתונים גיאומטריים של joml
+// endregion
+```
+
+**הסבר שורה אחר שורה:**
+
+| שורה | הסבר |
+|---|---|
+| `implementation(...)` | מוסיף את ה-jar לקלאספת' של הקומפילציה וריצה |
+| `transitive = false` | מונע מ-Gradle להוריד **אוטומטית** את כל התלויות הנסתרות של VS Core — אנחנו מצהירים עליהן ידנית |
+| `exclude group: 'org.joml'` | מונע קונפליקט גרסאות — joml מוגדר נפרד בהמשך |
+| `fg.deobf(...)` | **ForgeGradle deobfuscate** — מעביר את ה-jar של VS2 דרך אותו תהליך remapping כמו קוד Minecraft, כך ש-Mixin יכול למצוא שמות מתודות נכון |
+| `exclude group: 'org.valkyrienskies.core'` | מונע טעינה כפולה — VS Core כבר הוגדר ידנית למעלה |
+| `compileOnly(joml)` | joml נדרש בזמן קומפילציה בלבד; בזמן ריצה VS מספק אותו בעצמו |
+
+---
+
+### שלב 6 — הוספת Kotlin for Forge
+
+**קובץ:** `build.gradle`
+
+```groovy
+implementation 'thedarkcolour:kotlinforforge:4.11.0'
+```
+
+**הסבר:**
+- DragonMineZ כתוב חלקית ב-Kotlin — נדרש `kotlinforforge` כדי שקוד Kotlin יעבוד בסביבת Forge
+- גרסה 4.x תואמת ל-Minecraft 1.20.x ול-Forge 47.x
+- ה-maven repository של KotlinForForge כבר מוגדר בבלוק `repositories`:
+  ```groovy
+  maven {
+      name = 'Kotlin for Forge'
+      url = 'https://thedarkcolour.github.io/KotlinForForge/'
+      content { includeGroup 'thedarkcolour' }
+  }
+  ```
+
+---
+
+### סדר הפעולות הנכון — סיכום
+
+| שלב | קובץ | מה עשינו | למה |
+|---|---|---|---|
+| 1 | `gradle.properties` | `mapping_channel=official` | תאימות VS Mixin refmap |
+| 2 | `build.gradle` | הסרת פלאגין parchment | לא נדרש יותר |
+| 3 | `gradle.properties` | `forge_version=47.4.10` | גרסה עדכנית ותואמת VS |
+| 4 | `gradle.properties` | הוספת `vs2_version`, `vs_core_version` | הגדרת גרסאות VS |
+| 5 | `build.gradle` → `repositories` | הוספת maven של VS | VS לא ב-Maven Central |
+| 6 | `build.gradle` → `dependencies` | הוספת VS Core (4 מודולים) | ספרייה הפנימית של VS |
+| 7 | `build.gradle` → `dependencies` | `fg.deobf(valkyrienskies-120-forge)` | remapping נכון של VS |
+| 8 | `build.gradle` → `dependencies` | jackson, joml, joml-primitives | תלויות של VS |
+| 9 | `build.gradle` → `dependencies` | `kotlinforforge:4.11.0` | תמיכת Kotlin עבור DMZ |
+
+### מושגי מפתח נוספים
+
+| מושג | הסבר |
+|---|---|
+| `mapping_channel` | קובע את **מערכת שמות** המתודות והפרמטרים — `official` = מ-Mojang, `parchment` = שמות ידידותיים נוספים |
+| `fg.deobf(...)` | **ForgeGradle deobfuscate** — מאפשר ל-Forge לקרוא jar חיצוני ולמפות את השמות שלו לאותה מערכת שמות כמו Minecraft |
+| `transitive = false` | מונע מ-Gradle להוריד אוטומטית תלויות נסתרות — מאפשר שליטה ידנית מלאה |
+| `exclude group:` | מסיר dependency ספציפי מ-jar שנוסף, מונע קונפליקטי גרסאות |
+| `compileOnly` | ה-jar קיים בקומפילציה בלבד — לא נארז ב-output jar הסופי |
+| `Mixin refmap` | קובץ JSON שממפה שמות מתודות של Mixin לשמות ה-SRG — חייב להיות באותה שיטת מיפוי כמו הפרויקט |

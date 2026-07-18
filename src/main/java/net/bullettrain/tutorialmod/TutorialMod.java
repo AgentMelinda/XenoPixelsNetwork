@@ -4,7 +4,6 @@ import com.mojang.logging.LogUtils;
 import net.bullettrain.tutorialmod.block.ModBlocks;
 import net.bullettrain.tutorialmod.item.ModCreativeModTabs;
 import net.bullettrain.tutorialmod.item.ModsItems;
-import net.minecraft.world.item.CreativeModeTab;
 import net.minecraft.world.item.CreativeModeTabs;
 import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.common.MinecraftForge;
