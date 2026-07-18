@@ -1,6 +1,10 @@
 {
   "values": [
   "tutorialmod:jackietonite_ore_block",
-  "tutorialmod:raw_jackietonite_ore_block"
+  "tutorialmod:raw_jackietonite_ore_block",
+  "tutorialmod:jackietonite_ore",
+  "tutorialmod:nether_jackietonite_ore",
+  "tutorialmod:deepslate_jackietonite_ore",
+  "tutorialmod:end_stone_jackietonite_ore"
   ]
 }

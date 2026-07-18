@@ -7,6 +7,7 @@ import net.minecraft.world.item.BlockItem;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.level.block.DropExperienceBlock;
 import net.minecraft.world.level.block.SoundType;
 import net.minecraft.world.level.block.state.BlockBehaviour;
 import net.minecraft.world.level.block.state.properties.NoteBlockInstrument;
@@ -38,10 +39,14 @@ public class ModBlocks {
         () -> new Block(BlockBehaviour.Properties.of()
                 .mapColor(MapColor.STONE)
                 .instrument(NoteBlockInstrument.BASEDRUM)
-                .requiresCorrectToolForDrops()
                 .strength(3.0F, 3.0F)
         )
  );
+
+ public static final RegistryObject<Block> JACKIETONITE_ORE = registerBlock("jackietonite_ore", () -> new DropExperienceBlock(BlockBehaviour.Properties.copy(Blocks.STONE).strength(3f).requiresCorrectToolForDrops(), UniformInt.of(3, 6)));
+ public static final RegistryObject<Block> DEEPSLATE_JACKIETONITE_ORE = registerBlock("deepslate_jackietonite_ore", () -> new DropExperienceBlock(BlockBehaviour.Properties.copy(Blocks.STONE).strength(3f).requiresCorrectToolForDrops(), UniformInt.of(3, 6)));
+ public static final RegistryObject<Block> NETHER_JACKIETONITE_ORE = registerBlock("nether_jackietonite_ore", () -> new DropExperienceBlock(BlockBehaviour.Properties.copy(Blocks.STONE).strength(1f).requiresCorrectToolForDrops(), UniformInt.of(3, 6)));
+ public static final RegistryObject<Block> END_STONE_JACKIETONITE_ORE = registerBlock("end_stone_jackietonite_ore", () -> new DropExperienceBlock(BlockBehaviour.Properties.copy(Blocks.STONE).strength(5f).requiresCorrectToolForDrops(), UniformInt.of(3, 6)));
 
     /*
     public static final RegistryObject<Block> JACKIETONITE_ORE_BLOCK = registerBlock("jackietonite_ore_block",

@@ -26,6 +26,10 @@ public class ModCreativeModTabs {
 
                         pOutput.accept(ModBlocks.JACKIETONITE_ORE_BLOCK.get());
                         pOutput.accept(ModBlocks.RAW_JACKIETONITE_ORE_BLOCK.get());
+                        pOutput.accept(ModBlocks.JACKIETONITE_ORE.get());
+                        pOutput.accept(ModBlocks.DEEPSLATE_JACKIETONITE_ORE.get());
+                        pOutput.accept(ModBlocks.NETHER_JACKIETONITE_ORE.get());
+                        pOutput.accept(ModBlocks.END_STONE_JACKIETONITE_ORE.get());
 
                     })
                     .build());

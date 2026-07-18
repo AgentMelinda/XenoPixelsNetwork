@@ -2,8 +2,12 @@
   "item.tutorialmod.sapphire": "Sapphire",
   "item.tutorialmod.raw_sapphire": "Raw Sapphire",
 
-  "block.tutorialmod.jackietonite_ore_block": "Jackietonite Ore",
+  "block.tutorialmod.jackietonite_ore_block": "Jackietonite Block",
   "block.tutorialmod.raw_jackietonite_ore_block": "Raw Jackietonite Ore",
+  "block.tutorialmod.jackietonite_ore": "Jackietonite Ore",
+  "block.tutorialmod.deepslate_jackietonite_ore": "Deepslate Jackietonite Ore",
+  "block.tutorialmod.nether_jackietonite_ore": "Nether Jackietonite Ore",
+  "block.tutorialmod.end_stone_jackietonite_ore": "End Stone Jackietonite Ore",
 
   "creativetab.tutorial_tab": "CreativeTab ByBulletTrain"
 }
