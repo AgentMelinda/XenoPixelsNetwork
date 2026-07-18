@@ -179,6 +179,115 @@ public static final RegistryObject<CreativeModeTab> TUTORIAL_TAB =
 
 ---
 
+## Tags — כלי שבירה
+
+Tags הם קבצי JSON שמגדירים **אילו כלים יכולים לשבור כל בלוק** ובאיזה רמה.
+
+### מה זה Tag?
+Tag = רשימה של בלוקים שחולקים תכונה משותפת. Minecraft בודק את הרשימות האלה כדי לדעת אם הכלי שבידך מתאים לשבירת הבלוק.
+
+### קבצי Tags שנוצרו
+
+| קובץ | בלוקים שנכללו | משמעות |
+|---|---|---|
+| `needs_stone_tool.json` | `jackietonite_ore` | ניתן לשבירה עם כלי אבן ומעלה |
+| `needs_iron_tool.json` | `jackietonite_ore_block`, `raw_jackietonite_ore_block` | ניתן לשבירה עם כלי ברזל ומעלה |
+| `needs_diamond_tool.json` | `deepslate_jackietonite_ore`, `end_stone_jackietonite_ore` | ניתן לשבירה עם כלי יהלום ומעלה |
+| `needs_netherite_tool.json` (Forge) | `nether_jackietonite_ore` | ניתן לשבירה עם כלי נת'ריט בלבד |
+| `mineable/pickaxe.json` | כל 6 הבלוקים | כולם נשברים עם **מכוש** בלבד |
+
+### דוגמה לקובץ Tag
+
+```json
+{
+  "values": [
+    "tutorialmod:jackietonite_ore_block",
+    "tutorialmod:raw_jackietonite_ore_block"
+  ]
+}
+```
+
+**הסבר:** הקובץ `needs_iron_tool.json` אומר ל-Minecraft שהבלוקים האלה דורשים לפחות כלי ברזל כדי להפיל פריטים. שבירה עם כלי חלש יותר לא תפיל כלום.
+
+---
+
+## Loot Tables — מה נופל מהבלוקים
+
+Loot Table = קובץ JSON שמגדיר **מה נופל** כשבלוק נשבר.
+
+### טבלת Loot Tables
+
+| בלוק | מה נופל | הערות |
+|---|---|---|
+| `jackietonite_ore_block` | את עצמו | רק אם שורד פיצוץ |
+| `raw_jackietonite_ore_block` | את עצמו | רק אם שורד פיצוץ |
+| `jackietonite_ore` | 2–5 `raw_sapphire` | עם Fortune מוסיף עוד, עם Silk Touch נופל הבלוק עצמו |
+
+### דוגמה — `jackietonite_ore.json`
+
+```json
+{
+  "type": "minecraft:block",
+  "pools": [{
+    "entries": [{
+      "type": "minecraft:alternatives",
+      "children": [
+        {
+          "type": "minecraft:item",
+          "conditions": [{ "condition": "minecraft:match_tool",
+            "predicate": { "enchantments": [{ "enchantment": "minecraft:silk_touch", "levels": { "min": 1 } }] }
+          }],
+          "name": "tutorialmod:jackietonite_ore"
+        },
+        {
+          "type": "minecraft:item",
+          "functions": [
+            { "function": "minecraft:set_count", "count": { "type": "minecraft:uniform", "min": 2.0, "max": 5.0 } },
+            { "function": "minecraft:apply_bonus", "enchantment": "minecraft:fortune", "formula": "minecraft:ore_drops" },
+            { "function": "minecraft:explosion_decay" }
+          ],
+          "name": "tutorialmod:raw_sapphire"
+        }
+      ]
+    }]
+  }]
+}
+```
+
+**הסבר שורה אחר שורה:**
+- `minecraft:alternatives` — בודק תנאים לפי סדר, לוקח את הראשון שמתאים
+- `match_tool` + `silk_touch` — אם יש Silk Touch → נופל הבלוק עצמו
+- `set_count` — קובע כמות: 2 עד 5 raw_sapphire
+- `apply_bonus` + `fortune` — Fortune מגדיל את הכמות
+- `explosion_decay` — פיצוץ עלול להשמיד חלק מהפריטים
+
+---
+
+## Recipes — מתכונים
+
+### מתכון: jackietonite_ore_block → 9 sapphire
+
+```json
+{
+  "type": "crafting_shapeless",
+  "category": "misc",
+  "ingredients": [
+    { "item": "tutorialmod:jackietonite_ore_block" }
+  ],
+  "result": {
+    "item": "tutorialmod:sapphire",
+    "count": 9
+  }
+}
+```
+
+**הסבר:**
+- `crafting_shapeless` — מתכון **ללא צורה** (אפשר לשים בכל מקום בשולחן הנגרות)
+- **קלט:** בלוק עפרה אחד (`jackietonite_ore_block`)
+- **פלט:** 9 ספירים (`sapphire`)
+
+---
+
 ## Assets
 
 ```
