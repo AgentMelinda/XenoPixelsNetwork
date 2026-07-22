@@ -1,9 +1,4 @@
-# This workflow uses actions that are not certified by GitHub.
-# They are provided by a third-party and are governed by
-# separate terms of service, privacy policy, and support
-# documentation.
-# This workflow will build a package using Gradle and then publish it to GitHub packages when a release is created
-# For more information see: https://github.com/actions/setup-java/blob/main/docs/advanced-usage.md#Publishing-using-gradle
+# Build XenoPixels and publish artifacts to GitHub Releases on version tags.
 
 name: Build And Release
 
@@ -11,45 +6,58 @@ on:
   push:
     tags:
       - 'v*.*.*'
+  workflow_dispatch:
 
 jobs:
   build:
-
     runs-on: ubuntu-latest
     permissions:
       contents: write
       packages: write
 
     steps:
-    - uses: actions/checkout@v4
-    - name: Set up JDK 17
-      uses: actions/setup-java@v4
-      with:
-        java-version: '17'
-        distribution: 'temurin'
-        server-id: github # Value of the distributionManagement/repository/id field of the pom.xml
-        settings-path: ${{ github.workspace }} # location for the settings.xml file
+      - uses: actions/checkout@v4
 
-    - name: Setup Gradle
-      uses: gradle/actions/setup-gradle@af1da67850ed9a4cedd57bfd976089dd991e2582 # v4.0.0
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+          cache: 'gradle'
 
-    - name: Grant execute permission for gradlew
-      run: chmod +x gradlew
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
 
-    - name: Build with Gradle
-      run: ./gradlew build
+      - name: Grant execute permission for gradlew
+        run: chmod +x gradlew
 
-    # The USERNAME and TOKEN need to correspond to the credentials environment variables used in
-    # the publishing section of your build.gradle
-    - name: Publish to GitHub Releases
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      run: |
-        if gh release view "${{ github.ref_name }}" >/dev/null 2>&1; then
-          echo "Release ${{ github.ref_name }} already exists; uploading artifacts"
-          gh release upload "${{ github.ref_name }}" build/libs/tutorialmod-*.jar --clobber
-        else
-          gh release create "${{ github.ref_name }}" build/libs/tutorialmod-*.jar \
-           --title "Release ${{ github.ref_name }}" \
-           --generate-notes
-        fi
+      - name: Build with Gradle
+        run: ./gradlew build --no-daemon
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: xenopixelsmod-jars
+          path: build/libs/xenopixelsmod-*.jar
+          if-no-files-found: error
+
+      - name: Publish to GitHub Releases
+        if: startsWith(github.ref, 'refs/tags/')
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          shopt -s nullglob
+          jars=(build/libs/xenopixelsmod-*.jar)
+          if [ ${#jars[@]} -eq 0 ]; then
+            echo "No xenopixelsmod jars found under build/libs"
+            ls -la build/libs || true
+            exit 1
+          fi
+          if gh release view "${{ github.ref_name }}" >/dev/null 2>&1; then
+            echo "Release ${{ github.ref_name }} already exists; uploading artifacts"
+            gh release upload "${{ github.ref_name }}" "${jars[@]}" --clobber
+          else
+            gh release create "${{ github.ref_name }}" "${jars[@]}" \
+              --title "XenoPixels ${{ github.ref_name }}" \
+              --generate-notes
+          fi

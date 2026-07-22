@@ -1,0 +1,17 @@
+{
+  "type": "crafting_shaped",
+  "category": "misc",
+  "pattern": [
+    "###",
+    "###",
+    "###"
+  ],
+  "key": {
+    "#": {
+      "item": "xenopixelsmod:sapphire"
+    }
+  },
+  "result": {
+    "item": "xenopixelsmod:jackietonite_ore_block"
+  }
+}

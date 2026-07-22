@@ -1,6 +1,6 @@
-# TutorialMod — Minecraft Forge Mod (1.20.X)
+# XenoPixels — Minecraft Forge Mod (1.20.1)
 
-מוד לימודי ל-Minecraft שנכתב ב-Java עם Forge כ-modding framework.
+XenoPixels (`xenopixelsmod`) — custom DragonMineZ server content, Xenoverse-style HUD, and combat for Forge 1.20.1.
 
 ---
 
@@ -8,9 +8,9 @@
 
 | שם | ID | תיאור |
 |---|---|---|
-| Sapphire | `tutorialmod:sapphire` | ספיר — פריט רגיל |
-| Raw Sapphire | `tutorialmod:raw_sapphire` | ספיר גולמי — פריט רגיל |
-| Metal Detector | `tutorialmod:metal_detector` | גלאי מתכות — כלי עם 100 עמידות, מאתר עפרות מתחת לרגליים |
+| Sapphire | `xenopixelsmod:sapphire` | ספיר — פריט רגיל |
+| Raw Sapphire | `xenopixelsmod:raw_sapphire` | ספיר גולמי — פריט רגיל |
+| Metal Detector | `xenopixelsmod:metal_detector` | גלאי מתכות — כלי עם 100 עמידות, מאתר עפרות מתחת לרגליים |
 
 ---
 
@@ -18,18 +18,18 @@
 
 | שם | ID | תיאור |
 |---|---|---|
-| Jackietonite Ore Block | `tutorialmod:jackietonite_ore_block` | בלוק עפרה מותאם אישית, חוזק 3.0, דורש כלי נכון לשבירה, מפיל 3–7 XP |
-| Raw Jackietonite Ore Block | `tutorialmod:raw_jackietonite_ore_block` | בלוק עפרה גולמית, חוזק 3.0 |
-| Jackietonite Ore | `tutorialmod:jackietonite_ore` | עפרה בסלע רגיל, חוזק 2.0, מפיל 3–6 XP |
-| Deepslate Jackietonite Ore | `tutorialmod:deepslate_jackietonite_ore` | עפרה בדיפסלייט, חוזק 3.0, מפיל 3–6 XP |
-| Nether Jackietonite Ore | `tutorialmod:nether_jackietonite_ore` | עפרה בנת'ר, חוזק 1.0, מפיל 3–6 XP |
-| End Stone Jackietonite Ore | `tutorialmod:end_stone_jackietonite_ore` | עפרה באבן האנד, חוזק 5.0, מפיל 3–6 XP |
+| Jackietonite Ore Block | `xenopixelsmod:jackietonite_ore_block` | בלוק עפרה מותאם אישית, חוזק 3.0, דורש כלי נכון לשבירה, מפיל 3–7 XP |
+| Raw Jackietonite Ore Block | `xenopixelsmod:raw_jackietonite_ore_block` | בלוק עפרה גולמית, חוזק 3.0 |
+| Jackietonite Ore | `xenopixelsmod:jackietonite_ore` | עפרה בסלע רגיל, חוזק 2.0, מפיל 3–6 XP |
+| Deepslate Jackietonite Ore | `xenopixelsmod:deepslate_jackietonite_ore` | עפרה בדיפסלייט, חוזק 3.0, מפיל 3–6 XP |
+| Nether Jackietonite Ore | `xenopixelsmod:nether_jackietonite_ore` | עפרה בנת'ר, חוזק 1.0, מפיל 3–6 XP |
+| End Stone Jackietonite Ore | `xenopixelsmod:end_stone_jackietonite_ore` | עפרה באבן האנד, חוזק 5.0, מפיל 3–6 XP |
 
 ---
 
 ## טאב קריאייטיב
 
-טאב מותאם אישית בשם **Tutorial Tab** המכיל את כל הפריטים והבלוקים של המוד:
+טאב מותאם אישית בשם **XenoPixels** המכיל את כל הפריטים והבלוקים של המוד:
 - Sapphire
 - Raw Sapphire
 - **Metal Detector** ← חדש!
@@ -47,8 +47,8 @@
 ## מבנה הקוד
 
 ```
-src/main/java/net/bullettrain/tutorialmod/
-├── TutorialMod.java              # נקודת הכניסה הראשית של המוד
+src/main/java/net/bullettrain/xenopixelsmod/
+├── XenoPixelsMod.java              # נקודת הכניסה הראשית של המוד
 ├── item/
 │   ├── ModsItems.java            # רישום פריטים
 │   ├── ModCreativeModTabs.java   # רישום טאב קריאייטיב
@@ -68,7 +68,7 @@ src/main/java/net/bullettrain/tutorialmod/
 public class ModsItems {
     // יצירת רשימת רישום לפריטים — DeferredRegister דוחה את הרישום עד שהמשחק מוכן
     public static final DeferredRegister<Item> ITEMS =
-        DeferredRegister.create(ForgeRegistries.ITEMS, TutorialMod.MOD_ID);
+        DeferredRegister.create(ForgeRegistries.ITEMS, XenoPixelsMod.MOD_ID);
 
     // רישום ספיר
     public static final RegistryObject<Item> SAPPHIRE =
@@ -95,7 +95,7 @@ public class ModsItems {
 ```java
 public class ModBlocks {
     public static final DeferredRegister<Block> BLOCKS =
-        DeferredRegister.create(ForgeRegistries.BLOCKS, TutorialMod.MOD_ID);
+        DeferredRegister.create(ForgeRegistries.BLOCKS, XenoPixelsMod.MOD_ID);
 
     // בלוק עפרה מותאם — עם DropExperienceBlock שמפיל 3–7 XP בשבירה
     public static final RegistryObject<Block> JACKIETONITE_ORE_BLOCK =
@@ -216,10 +216,10 @@ public class MetalDetectorItem extends Item {
 
 ```java
 public static final RegistryObject<CreativeModeTab> TUTORIAL_TAB =
-    CREATIVE_MODE_TABS.register("tutorial_tab",
+    CREATIVE_MODE_TABS.register("xenopixels_tab",
         () -> CreativeModeTab.builder()
             .icon(() -> new ItemStack(ModsItems.SAPPHIRE.get())) // אייקון הטאב
-            .title(Component.translatable("creativetab.tutorial_tab"))
+            .title(Component.translatable("creativetab.xenopixels_tab"))
             .displayItems((pParameters, pOutput) -> {
                 pOutput.accept(ModsItems.SAPPHIRE.get());
                 pOutput.accept(ModsItems.RAW_SAPPHIRE.get());
@@ -278,8 +278,8 @@ Tag = רשימה של בלוקים שחולקים תכונה משותפת. Minec
 ```json
 {
   "values": [
-    "tutorialmod:jackietonite_ore_block",
-    "tutorialmod:raw_jackietonite_ore_block"
+    "xenopixelsmod:jackietonite_ore_block",
+    "xenopixelsmod:raw_jackietonite_ore_block"
   ]
 }
 ```
@@ -314,7 +314,7 @@ Loot Table = קובץ JSON שמגדיר **מה נופל** כשבלוק נשבר.
           "conditions": [{ "condition": "minecraft:match_tool",
             "predicate": { "enchantments": [{ "enchantment": "minecraft:silk_touch", "levels": { "min": 1 } }] }
           }],
-          "name": "tutorialmod:jackietonite_ore"
+          "name": "xenopixelsmod:jackietonite_ore"
         },
         {
           "type": "minecraft:item",
@@ -323,7 +323,7 @@ Loot Table = קובץ JSON שמגדיר **מה נופל** כשבלוק נשבר.
             { "function": "minecraft:apply_bonus", "enchantment": "minecraft:fortune", "formula": "minecraft:ore_drops" },
             { "function": "minecraft:explosion_decay" }
           ],
-          "name": "tutorialmod:raw_sapphire"
+          "name": "xenopixelsmod:raw_sapphire"
         }
       ]
     }]
@@ -349,10 +349,10 @@ Loot Table = קובץ JSON שמגדיר **מה נופל** כשבלוק נשבר.
   "type": "crafting_shapeless",
   "category": "misc",
   "ingredients": [
-    { "item": "tutorialmod:jackietonite_ore_block" }
+    { "item": "xenopixelsmod:jackietonite_ore_block" }
   ],
   "result": {
-    "item": "tutorialmod:sapphire",
+    "item": "xenopixelsmod:sapphire",
     "count": 9
   }
 }
@@ -368,7 +368,7 @@ Loot Table = קובץ JSON שמגדיר **מה נופל** כשבלוק נשבר.
 ## Assets
 
 ```
-src/main/resources/assets/tutorialmod/
+src/main/resources/assets/xenopixelsmod/
 ├── textures/
 │   ├── item/sapphire.png
 │   ├── item/raw_sapphire.png
@@ -421,7 +421,7 @@ in net.minecraft.client.Minecraft. Using refmap valkyrienskies-120-common-refmap
 
 ### מה באמת קורה כאן (חקירה)
 
-חשוב להבין: **זו לא קריסה שקשורה למוד שלנו (`tutorialmod`)**. לפרויקט הזה אין אף Mixin משלנו כלל — לא הוגדר קובץ `*.mixins.json`, ולא נכתבה שום מחלקת Mixin ב־`src`.
+חשוב להבין: **זו לא קריסה שקשורה למוד שלנו (`xenopixelsmod`)**. לפרויקט הזה אין אף Mixin משלנו כלל — לא הוגדר קובץ `*.mixins.json`, ולא נכתבה שום מחלקת Mixin ב־`src`.
 
 הבאג נמצא בתוך ה־Mixin **הפנימי** של מוד **Valkyrien Skies** (VS) עצמו — `valkyrienskies-common.mixins.json:client.MixinMinecraft`. זהו מוד תלות שנוסף ל־`build.gradle` (`org.valkyrienskies:valkyrienskies-120-forge`). ה־Mixin הזה מנסה "לעטוף" (`@WrapOperation`) קריאה למתודה `Minecraft.startUseItem()` (בשם SRG הפנימי — `m_91277_`), אבל בזמן טעינת המשחק Mixin לא מצליח לאתר את המתודה הזו לפי אותו שם SRG בתוך הקובץ המקומפל (למרות שהמתודה `startUseItem()` בהחלט קיימת ב־`Minecraft.class` — זה נבדק ואומת ידנית עם `javap`).
 
@@ -446,9 +446,9 @@ in net.minecraft.client.Minecraft. Using refmap valkyrienskies-120-common-refmap
 | מיפויים | Parchment `2023.09.03-1.20.1` |
 | Valkyrien Skies | `2.4.13+c2e82178c0` |
 | VS Core | `1.1.0+ea6dc8576e` |
-| Mixin של המוד | `tutorialmod.mixins.json` עם refmap ו־Java 17 |
+| Mixin של המוד | `xenopixelsmod.mixins.json` עם refmap ו־Java 17 |
 
-נוסף קובץ `tutorialmod.mixins.json` ריק ומוכן לשימוש עתידי. הוא אינו משנה שום התנהגות כרגע; כאשר יתווספו Mixins בעתיד, יש להוסיף את שם המחלקה לרשימת `mixins` או `client` וליצור את המחלקה תחת `net.bullettrain.tutorialmod.mixin`.
+נוסף קובץ `xenopixelsmod.mixins.json` ריק ומוכן לשימוש עתידי. הוא אינו משנה שום התנהגות כרגע; כאשר יתווספו Mixins בעתיד, יש להוסיף את שם המחלקה לרשימת `mixins` או `client` וליצור את המחלקה תחת `net.bullettrain.xenopixelsmod.mixin`.
 
 האימות בוצע עם `./gradlew runClient`: גם ה־refmap של VS וגם ה־refmap של DMZ עברו remap, VS Core אותחל, DragonMineZ נטען והמשחק נשאר פעיל ללא `MixinTransformerError` וללא הכשל ב־`startUseItem`.
 
@@ -478,7 +478,7 @@ in net.minecraft.client.Minecraft. Using refmap valkyrienskies-120-common-refmap
 
 ### הרחבת ה־Hook
 
-המאזין הקיים נמצא ב־`src/main/java/net/bullettrain/tutorialmod/event/DmzHooks.java`. לדוגמה, כדי לשנות TP יש להשתמש ב־`event.setTpGain(...)` בתוך `onTrainingPointGain`. יש לבצע שינוי כזה רק כאשר רוצים שינוי מכניקת משחק מכוון, משום שה־Hook הנוכחי נבחר במכוון להיות תצפיתי בלבד.
+המאזין הקיים נמצא ב־`src/main/java/net/bullettrain/xenopixelsmod/event/DmzHooks.java`. לדוגמה, כדי לשנות TP יש להשתמש ב־`event.setTpGain(...)` בתוך `onTrainingPointGain`. יש לבצע שינוי כזה רק כאשר רוצים שינוי מכניקת משחק מכוון, משום שה־Hook הנוכחי נבחר במכוון להיות תצפיתי בלבד.
 
 ---
 
@@ -740,8 +740,8 @@ Forge טוען את כל המודים לאותו classpath. אם שני מודי
 `relocation` משנה את ה־package שמאוחסן בתוך JAR המוד שלנו, לדוגמה:
 
 ```text
-gg.essential.elementa       -> net.bullettrain.tutorialmod.shadow.elementa
-gg.essential.universalcraft -> net.bullettrain.tutorialmod.shadow.universalcraft
+gg.essential.elementa       -> net.bullettrain.xenopixelsmod.shadow.elementa
+gg.essential.universalcraft -> net.bullettrain.xenopixelsmod.shadow.universalcraft
 ```
 
 כך המוד שלנו מחזיק עותק פרטי של Elementa ושל UniversalCraft, שאינו מתנגש עם מודים אחרים.
@@ -798,13 +798,13 @@ tasks.named('jar') {
 צור את הקובץ:
 
 ```text
-src/main/java/net/bullettrain/tutorialmod/client/ElementaExampleScreen.java
+src/main/java/net/bullettrain/xenopixelsmod/client/ElementaExampleScreen.java
 ```
 
 דוגמת בסיס ב־Java:
 
 ```java
-package net.bullettrain.tutorialmod.client;
+package net.bullettrain.xenopixelsmod.client;
 
 import gg.essential.elementa.ElementaVersion;
 import gg.essential.elementa.WindowScreen;
@@ -827,7 +827,7 @@ public final class ElementaExampleScreen extends WindowScreen {
         panel.setHeight(new PixelConstraint(120.0F));
         panel.setChildOf(getWindow());
 
-        UIText title = new UIText("TutorialMod + Elementa");
+        UIText title = new UIText("XenoPixelsMod + Elementa");
         title.setX(new CenterConstraint());
         title.setY(new PixelConstraint(18.0F));
         title.setChildOf(panel);
@@ -835,7 +835,7 @@ public final class ElementaExampleScreen extends WindowScreen {
 
     @Override
     public Component getTitle() {
-        return Component.literal("TutorialMod");
+        return Component.literal("XenoPixelsMod");
     }
 }
 ```
@@ -901,7 +901,7 @@ panel.onMouseEnterRunnable(() -> {
 ### 12. רשימת בדיקה לפני הפצה
 
 1. `./gradlew build` יוצר JAR ללא classifier ו־`-slim.jar`.
-2. בדוק שה־JAR ללא classifier מכיל packages relocated תחת `net/bullettrain/tutorialmod/shadow/`.
+2. בדוק שה־JAR ללא classifier מכיל packages relocated תחת `net/bullettrain/xenopixelsmod/shadow/`.
 3. הפעל את המשחק עם מוד נוסף שמשתמש ב־Elementa, כדי לוודא שאין התנגשות classpath.
 4. בדוק client רגיל וגם dedicated server: השרת חייב להתחיל בלי לטעון מחלקת GUI.
 5. ודא ש־`ElementaVersion.V2` והגרסאות ב־`gradle.properties` תואמות לגרסה שנבדקה.

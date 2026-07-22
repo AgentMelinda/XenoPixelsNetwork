@@ -1,0 +1,62 @@
+{
+  "superforms": {
+    "buyFromMaster": true,
+    "prices": [
+      13000,
+      21000,
+      31000,
+      42000,
+      52000,
+      65000,
+      78000,
+      104000,
+      120000,
+      145000,
+      175000,
+      210000,
+      250000,
+      300000
+    ]
+  },
+  "supersaiyan_legend": {
+    "buyFromMaster": true,
+    "prices": [
+      120000,
+      145000,
+      175000,
+      210000,
+      250000,
+      300000
+    ]
+  },
+  "godforms": {
+    "buyFromMaster": true,
+    "prices": [
+      150000,
+      175000,
+      200000,
+      190000,
+      240000,
+      260000,
+      320000,
+      300000
+    ]
+  },
+  "legendaryforms": {
+    "buyFromMaster": true,
+    "prices": [
+      -1,
+      -1,
+      -1,
+      95000
+    ]
+  },
+  "xenopixels_godforms": {
+    "buyFromMaster": false,
+    "prices": []
+  },
+  "xenopixels_legendary": {
+    "buyFromMaster": false,
+    "prices": []
+  }
+}

@@ -1,0 +1,136 @@
+package net.bullettrain.xenopixelsmod.client.config;
+
+import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
+import net.bullettrain.xenopixelsmod.XenoPixelsMod;
+import net.minecraftforge.api.distmarker.Dist;
+import net.minecraftforge.api.distmarker.OnlyIn;
+import net.minecraftforge.fml.loading.FMLPaths;
+
+import java.io.IOException;
+import java.io.Reader;
+import java.io.Writer;
+import java.nio.file.Files;
+import java.nio.file.Path;
+
+/**
+ * Local client preferences for UI and combat feel.
+ * Written to {@code config/xenopixelsmod-client.json}.
+ * Combat still requires matching server flags.
+ */
+@OnlyIn(Dist.CLIENT)
+public final class XenoClientConfig {
+    private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
+    private static final Path PATH = FMLPaths.CONFIGDIR.get().resolve("xenopixelsmod-client.json");
+
+    // --- UI ---
+    public static boolean xenoHudEnabled = true;
+    public static boolean titleScreenButton = true;
+    public static boolean pauseScreenButton = true;
+    public static boolean xenoMenuEnabled = true;
+    public static boolean contentScreensEnabled = true;
+    public static boolean joinServerButton = true;
+    public static boolean hudEditEnabled = true;
+    public static boolean senzuCooldownMessages = true;
+
+    // --- Combat client (prediction / input) ---
+    public static boolean bt3CombatClient = true;
+    public static boolean bt3ComboClient = true;
+    public static boolean bt3VanishClient = true;
+    public static boolean bt3ChaseDashClient = true;
+    public static boolean bt3BackstepClient = true;
+    public static boolean bt3ChargeAttackClient = true;
+    public static boolean bt3DragonDashClient = true;
+    public static boolean bt3CombatSfx = true;
+    public static boolean bt3ChargeGlow = true;
+
+    private XenoClientConfig() {}
+
+    public static void load() {
+        if (!Files.exists(PATH)) {
+            save();
+            return;
+        }
+        try (Reader reader = Files.newBufferedReader(PATH)) {
+            Data data = GSON.fromJson(reader, Data.class);
+            if (data == null) return;
+            apply(data);
+        } catch (IOException e) {
+            XenoPixelsMod.LOGGER.warn("Failed to load client config", e);
+        }
+    }
+
+    public static void save() {
+        try {
+            Files.createDirectories(PATH.getParent());
+            try (Writer writer = Files.newBufferedWriter(PATH)) {
+                GSON.toJson(snapshot(), writer);
+            }
+        } catch (IOException e) {
+            XenoPixelsMod.LOGGER.warn("Failed to save client config", e);
+        }
+    }
+
+    public static Data snapshot() {
+        Data d = new Data();
+        d.xenoHudEnabled = xenoHudEnabled;
+        d.titleScreenButton = titleScreenButton;
+        d.pauseScreenButton = pauseScreenButton;
+        d.xenoMenuEnabled = xenoMenuEnabled;
+        d.contentScreensEnabled = contentScreensEnabled;
+        d.joinServerButton = joinServerButton;
+        d.hudEditEnabled = hudEditEnabled;
+        d.senzuCooldownMessages = senzuCooldownMessages;
+        d.bt3CombatClient = bt3CombatClient;
+        d.bt3ComboClient = bt3ComboClient;
+        d.bt3VanishClient = bt3VanishClient;
+        d.bt3ChaseDashClient = bt3ChaseDashClient;
+        d.bt3BackstepClient = bt3BackstepClient;
+        d.bt3ChargeAttackClient = bt3ChargeAttackClient;
+        d.bt3DragonDashClient = bt3DragonDashClient;
+        d.bt3CombatSfx = bt3CombatSfx;
+        d.bt3ChargeGlow = bt3ChargeGlow;
+        return d;
+    }
+
+    public static void apply(Data d) {
+        if (d == null) return;
+        xenoHudEnabled = d.xenoHudEnabled;
+        titleScreenButton = d.titleScreenButton;
+        pauseScreenButton = d.pauseScreenButton;
+        xenoMenuEnabled = d.xenoMenuEnabled;
+        contentScreensEnabled = d.contentScreensEnabled;
+        joinServerButton = d.joinServerButton;
+        hudEditEnabled = d.hudEditEnabled;
+        senzuCooldownMessages = d.senzuCooldownMessages;
+        bt3CombatClient = d.bt3CombatClient;
+        bt3ComboClient = d.bt3ComboClient;
+        bt3VanishClient = d.bt3VanishClient;
+        bt3ChaseDashClient = d.bt3ChaseDashClient;
+        bt3BackstepClient = d.bt3BackstepClient;
+        bt3ChargeAttackClient = d.bt3ChargeAttackClient;
+        bt3DragonDashClient = d.bt3DragonDashClient;
+        bt3CombatSfx = d.bt3CombatSfx;
+        bt3ChargeGlow = d.bt3ChargeGlow;
+    }
+
+    public static class Data {
+        public boolean xenoHudEnabled = true;
+        public boolean titleScreenButton = true;
+        public boolean pauseScreenButton = true;
+        public boolean xenoMenuEnabled = true;
+        public boolean contentScreensEnabled = true;
+        public boolean joinServerButton = true;
+        public boolean hudEditEnabled = true;
+        public boolean senzuCooldownMessages = true;
+        public boolean bt3CombatClient = true;
+        public boolean bt3ComboClient = true;
+        public boolean bt3VanishClient = true;
+        public boolean bt3ChaseDashClient = true;
+        public boolean bt3BackstepClient = true;
+        public boolean bt3ChargeAttackClient = true;
+        public boolean bt3DragonDashClient = true;
+        public boolean bt3CombatSfx = true;
+        public boolean bt3ChargeGlow = true;
+    }
+}

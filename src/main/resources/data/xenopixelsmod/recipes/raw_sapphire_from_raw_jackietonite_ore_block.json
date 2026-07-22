@@ -1,0 +1,13 @@
+{
+  "type": "crafting_shapeless",
+  "category": "misc",
+  "ingredients": [
+    {
+      "item": "xenopixelsmod:raw_jackietonite_ore_block"
+    }
+  ],
+  "result": {
+    "item": "xenopixelsmod:raw_sapphire",
+    "count": 9
+  }
+}

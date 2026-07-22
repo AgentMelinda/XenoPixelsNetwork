@@ -1,0 +1,21 @@
+{
+  "formSkillsAdd": [
+    "godforms",
+    "legendaryforms"
+  ],
+  "skillOfferings": {
+    "beerus": [
+      "godforms"
+    ],
+    "whis": [
+      "godforms"
+    ],
+    "trunks": [
+      "legendaryforms"
+    ]
+  },
+  "exclusiveFormSkills": {
+    "godforms": ["beerus", "whis"],
+    "legendaryforms": ["trunks"]
+  }
+}

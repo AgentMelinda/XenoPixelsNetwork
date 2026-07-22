@@ -28,6 +28,9 @@ minecraft {
             workingDirectory project.file('run')
             property 'forge.logging.markers', 'REGISTRIES'
             property 'forge.logging.console.level', 'debug'
+            // ModernUI / MixinGradle refmap remapping
+            property 'mixin.env.remapRefMap', 'true'
+            property 'mixin.env.refMapRemappingFile', "${projectDir}/build/createSrgToMcp/output.srg"
             mods {
                 "${mod_id}" {
                     source sourceSets.main
@@ -101,6 +104,23 @@ repositories {
         name = 'Illusive Soulworks'
         url = 'https://maven.theillusivec4.top/'
     }
+    // ModernUI-MC (https://github.com/BloCamLimb/ModernUI-MC)
+    maven {
+        name = 'IzzelAliz Maven'
+        url = 'https://maven.izzel.io/releases/'
+    }
+}
+
+// ModernUI core jars must be on the run classpath (ForgeGradle 5 library config)
+configurations {
+    library
+    implementation.extendsFrom library
+}
+
+minecraft.runs.configureEach {
+    lazyToken('minecraft_classpath') {
+        configurations.library.copyRecursive().resolve().collect { it.absolutePath }.join(File.pathSeparator)
+    }
 }
 
 dependencies {
@@ -117,12 +137,35 @@ dependencies {
         exclude group: 'org.valkyrienskies.core', module: ''
     }
 
-    implementation fg.deobf("curse.maven:dragonminez-1136088:8422108")
+    implementation fg.deobf("curse.maven:dragonminez-1136088:8469416")
     implementation fg.deobf('software.bernie.geckolib:geckolib-forge-1.20.1:4.8.3')
     implementation 'com.eliotlash.mclib:mclib:20'
     implementation fg.deobf('com.github.glitchfiend:TerraBlender-forge:1.20.1-3.0.1.10')
     implementation fg.deobf('top.theillusivec4.curios:curios-forge:5.14.1+1.20.1')
     implementation 'thedarkcolour:kotlinforforge:4.11.0'
+
+    // Modern UI Core (<= 3.12.0 uses icyllis.modernui:ModernUI-Core)
+    library("icyllis.modernui:ModernUI-Core:${modernui_core_version}") {
+        exclude group: 'org.slf4j', module: 'slf4j-api'
+        exclude group: 'org.apache.logging.log4j', module: 'log4j-core'
+        exclude group: 'org.apache.logging.log4j', module: 'log4j-api'
+        exclude group: 'com.google.code.findbugs', module: 'jsr305'
+        exclude group: 'org.jetbrains', module: 'annotations'
+        exclude group: 'com.ibm.icu', module: 'icu4j'
+        exclude group: 'it.unimi.dsi', module: 'fastutil'
+    }
+    // Markflow required for 3.12.x
+    library("icyllis.modernui:ModernUI-Markflow:${modernui_core_version}") {
+        exclude group: 'org.slf4j', module: 'slf4j-api'
+        exclude group: 'org.apache.logging.log4j', module: 'log4j-core'
+        exclude group: 'org.apache.logging.log4j', module: 'log4j-api'
+        exclude group: 'com.google.code.findbugs', module: 'jsr305'
+        exclude group: 'org.jetbrains', module: 'annotations'
+        exclude group: 'com.ibm.icu', module: 'icu4j'
+        exclude group: 'it.unimi.dsi', module: 'fastutil'
+    }
+    // Modern UI for Minecraft Forge 1.20.1
+    implementation fg.deobf("icyllis.modernui:ModernUI-Forge:${minecraft_version}-${modernui_version}")
 }
 
 def resourceTargets = ['META-INF/mods.toml', 'pack.mcmeta']

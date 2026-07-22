@@ -1,0 +1,120 @@
+{
+  "character": [
+    {
+      "id": "saiyan_legend_path",
+      "title": "Saiyan Legend Path",
+      "subtitle": "Server-unique Super Saiyan 5–10 chain",
+      "detail": "Unlocks beyond Super Saiyan 4. Requires high Super skill level and prior form mastery. Tuned for competitive DMZ servers.",
+      "accent": 4280391411
+    },
+    {
+      "id": "battle_power_focus",
+      "title": "Battle Power Focus",
+      "subtitle": "STR / PWR scaling emphasis",
+      "detail": "Legend forms push STR and PWR hardest, with rising energy drain. Master lower stages to unlock free / instant transform thresholds.",
+      "accent": 4293212469
+    },
+    {
+      "id": "release_display",
+      "title": "Release Display",
+      "subtitle": "XenoPixels HUD",
+      "detail": "Your custom HUD shows DMZ ki release % next to your name, HP/KI values, and transform charge around the portrait.",
+      "accent": 4280391411
+    }
+  ],
+  "transforms": [
+    {
+      "id": "ssj5",
+      "title": "Super Saiyan 5",
+      "subtitle": "Pale Silver Legend · 120,000 TP",
+      "detail": "Fan-legend stage past SSJ4. Silver-white hair, soft violet aura. Req: supersaiyan.supersaiyan4 · Superforms skill Lv.9 · TP 120000 · x4.5 STR/PWR",
+      "accent": 4292927487
+    },
+    {
+      "id": "ssj6",
+      "title": "Super Saiyan 6",
+      "subtitle": "Crimson Eclipse · 145,000 TP",
+      "detail": "Dark / black-hair fan form with blood-red aura. Req: ssj5 · Superforms skill Lv.10 · TP 145000 · x5.25 STR",
+      "accent": 4290772992
+    },
+    {
+      "id": "ssj7",
+      "title": "Super Saiyan 7",
+      "subtitle": "Void Violet · 175,000 TP",
+      "detail": "Purple void-legend stage. Req: ssj6 · Superforms skill Lv.11 · TP 175000 · x6.0 STR/PWR",
+      "accent": 4286856165
+    },
+    {
+      "id": "ssj8",
+      "title": "Super Saiyan 8",
+      "subtitle": "Crystal White · 210,000 TP",
+      "detail": "Ice-white / cyan crystal legend. Req: ssj7 · Superforms skill Lv.12 · TP 210000 · x6.9 STR",
+      "accent": 4289373692
+    },
+    {
+      "id": "ssj9",
+      "title": "Super Saiyan 9",
+      "subtitle": "Prismatic Radiance · 250,000 TP",
+      "detail": "Gold-white prismatic fan form. Req: ssj8 · Superforms skill Lv.13 · TP 250000 · x7.8 STR",
+      "accent": 4294961877
+    },
+    {
+      "id": "ssj10",
+      "title": "Super Saiyan 10",
+      "subtitle": "Limit Break Void · 300,000 TP",
+      "detail": "Server pinnacle form. Black hair, scarlet void aura. Req: ssj9 · Superforms skill Lv.14 · TP 300000 · x9.0 STR/PWR",
+      "accent": 4294901828
+    },
+    {
+      "id": "ssrose",
+      "title": "Super Saiyan Rose",
+      "subtitle": "XenoPixels God Forms · 180,000 TP",
+      "detail": "DBS Super Saiyan Rosé variant. Pink hair/aura, divine ki feel. Buy skill from Beerus or Whis only · Lv.1 · TP 180000 · x5.5 STR/PWR",
+      "accent": 4294952372
+    },
+    {
+      "id": "ssrose_evolution",
+      "title": "Super Saiyan Rose Evolution",
+      "subtitle": "XenoPixels God Forms · 240,000 TP",
+      "detail": "Rosé Evolution — denser pink aura, higher drain. Req: ssrose · Beerus/Whis skill Lv.2 · TP 240000 · x7.0 STR/PWR",
+      "accent": 4294905971
+    }
+  ],
+  "skills": [
+    {
+      "id": "xpgod_masters",
+      "title": "XenoPixels God Forms",
+      "subtitle": "Beerus & Whis only",
+      "detail": "Super Saiyan Rose and Rose Evolution can only be purchased from Master Beerus or Master Whis (FORMS tab).",
+      "accent": 4294952372
+    },
+    {
+      "id": "legend_chain",
+      "title": "Legend Form Chain",
+      "subtitle": "Hold G to transform",
+      "detail": "DMZ action charge fills the red portrait border. Climb SSJ5→10 only after unlocking Super skill levels and meeting form requisites.",
+      "accent": 4293212469
+    },
+    {
+      "id": "mastery_share",
+      "title": "Mastery Sharing",
+      "subtitle": "Neighbor form mastery bleed",
+      "detail": "Each legend form shares a portion of mastery with adjacent stages so the climb stays usable in long fights.",
+      "accent": 4280391411
+    },
+    {
+      "id": "stack_friendly",
+      "title": "Stack Compatible",
+      "subtitle": "Works with Kaioken / Ultimate",
+      "detail": "formStackable is enabled. Pair carefully — stack drain multipliers still apply on top of legend drains.",
+      "accent": 4293212469
+    },
+    {
+      "id": "reload_hint",
+      "title": "Reload Content",
+      "subtitle": "/dmzreload config",
+      "detail": "Forms ship from the mod jar into config/dragonminez/races/saiyan/forms/ on first boot. Edit JSON then /dmzreload config.",
+      "accent": 4288256409
+    }
+  ]
+}

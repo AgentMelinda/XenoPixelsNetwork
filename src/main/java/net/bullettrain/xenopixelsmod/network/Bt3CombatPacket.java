@@ -1,0 +1,671 @@
+package net.bullettrain.xenopixelsmod.network;
+
+import com.dragonminez.common.stats.StatsCapability;
+import com.dragonminez.common.stats.StatsData;
+import com.dragonminez.common.stats.StatsProvider;
+import com.dragonminez.common.stats.character.Resources;
+import net.bullettrain.xenopixelsmod.combat.DmzAnimHelper;
+import net.bullettrain.xenopixelsmod.config.XenoServerConfig;
+import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.network.FriendlyByteBuf;
+import net.minecraft.resources.ResourceLocation;
+import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.sounds.SoundEvent;
+import net.minecraft.sounds.SoundEvents;
+import net.minecraft.sounds.SoundSource;
+import net.minecraft.util.Mth;
+import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.world.phys.Vec3;
+import net.minecraftforge.common.util.LazyOptional;
+import net.minecraftforge.network.NetworkEvent;
+
+import java.util.function.Supplier;
+
+/**
+ * Budokai Tenkaichi / Sparking Zero inspired combat (server-authoritative).
+ */
+public class Bt3CombatPacket {
+    public enum Action {
+        COMBO_HIT,
+        /** Vanish behind lock-on target (close range). */
+        VANISH,
+        /** High-speed chase into the target from mid range. */
+        CHASE_DASH,
+        /** Step back off the target while facing them. */
+        BACKSTEP,
+        /** Hold-charge fist smash (stamina). */
+        CHARGE_FIST,
+        /** Hold-charge kick (stamina). */
+        CHARGE_KICK,
+        /** Dragon dash: smash target away then chase. */
+        DRAGON_DASH
+    }
+
+    public static final double VANISH_GAP = 1.15;
+    public static final double CHASE_GAP = 1.35;
+    public static final double BACKSTEP_DIST = 3.2;
+    public static final double DRAGON_LAUNCH = 6.5;
+
+    private final Action action;
+    private final int targetId;
+    private final int comboStep;
+    /** 0..100 charge percent for charge attacks / dragon dash. */
+    private final int chargePercent;
+    /** Kick vertical bias: +1 hold W (up), -1 hold S (down), 0 neutral. */
+    private final int verticalBias;
+
+    public Bt3CombatPacket(Action action, int targetId, int comboStep) {
+        this(action, targetId, comboStep, 0, 0);
+    }
+
+    public Bt3CombatPacket(Action action, int targetId, int comboStep, int chargePercent) {
+        this(action, targetId, comboStep, chargePercent, 0);
+    }
+
+    public Bt3CombatPacket(Action action, int targetId, int comboStep, int chargePercent, int verticalBias) {
+        this.action = action;
+        this.targetId = targetId;
+        this.comboStep = comboStep;
+        this.chargePercent = Math.max(0, Math.min(100, chargePercent));
+        this.verticalBias = verticalBias < 0 ? -1 : (verticalBias > 0 ? 1 : 0);
+    }
+
+    public static void encode(Bt3CombatPacket msg, FriendlyByteBuf buf) {
+        buf.writeEnum(msg.action);
+        buf.writeVarInt(msg.targetId);
+        buf.writeVarInt(msg.comboStep);
+        buf.writeVarInt(msg.chargePercent);
+        buf.writeByte(msg.verticalBias);
+    }
+
+    public static Bt3CombatPacket decode(FriendlyByteBuf buf) {
+        return new Bt3CombatPacket(
+                buf.readEnum(Action.class),
+                buf.readVarInt(),
+                buf.readVarInt(),
+                buf.readVarInt(),
+                buf.readByte());
+    }
+
+    public static void handle(Bt3CombatPacket msg, Supplier<NetworkEvent.Context> ctx) {
+        ctx.get().enqueueWork(() -> {
+            ServerPlayer player = ctx.get().getSender();
+            if (player == null) return;
+            if (!XenoServerConfig.bt3CombatEnabled) return;
+
+            LivingEntity target = null;
+            if (msg.targetId > 0) {
+                Entity raw = player.level().getEntity(msg.targetId);
+                if (raw instanceof LivingEntity living && living.isAlive()) {
+                    target = living;
+                }
+            }
+
+            // Kick can fire with no target (air kick); everything else needs one
+            if (target == null && msg.action != Action.CHARGE_KICK) return;
+
+            LazyOptional<StatsData> opt = StatsProvider.get(StatsCapability.INSTANCE, player);
+            StatsData data = opt.orElse(null);
+            Resources res = data != null ? data.getResources() : null;
+
+            switch (msg.action) {
+                case VANISH -> {
+                    if (!XenoServerConfig.bt3VanishEnabled || target == null) return;
+                    handleVanish(player, target, res);
+                }
+                case CHASE_DASH -> {
+                    if (!XenoServerConfig.bt3ChaseDashEnabled || target == null) return;
+                    handleChase(player, target, res);
+                }
+                case BACKSTEP -> {
+                    if (!XenoServerConfig.bt3BackstepEnabled || target == null) return;
+                    handleBackstep(player, target, res);
+                }
+                case COMBO_HIT -> {
+                    if (!XenoServerConfig.bt3ComboEnabled || target == null) return;
+                    if (player.distanceTo(target) > 48.0) return;
+                    handleCombo(player, target, msg.comboStep, res, data);
+                }
+                case CHARGE_FIST -> {
+                    if (!XenoServerConfig.bt3ChargeAttackEnabled || target == null) return;
+                    handleChargeAttack(player, target, res, data, false, msg.chargePercent, 0);
+                }
+                case CHARGE_KICK -> {
+                    if (!XenoServerConfig.bt3ChargeAttackEnabled) return;
+                    if (target != null) {
+                        handleChargeAttack(player, target, res, data, true, msg.chargePercent, msg.verticalBias);
+                    } else {
+                        handleAerialKick(player, res, data, msg.chargePercent, msg.verticalBias);
+                    }
+                }
+                case DRAGON_DASH -> {
+                    if (!XenoServerConfig.bt3DragonDashEnabled || target == null) return;
+                    handleDragonDash(player, target, res, data, msg.chargePercent);
+                }
+            }
+        });
+        ctx.get().setPacketHandled(true);
+    }
+
+    private static void handleVanish(ServerPlayer player, LivingEntity target, Resources res) {
+        if (player.distanceTo(target) > XenoServerConfig.vanishMaxRange) return;
+        if (!trySpendKi(res, XenoServerConfig.vanishKiCost)) return;
+
+        Vec3 from = player.position();
+        playItSound(player, from.x, from.y, from.z, true);
+
+        Vec3 dest = vanishBehind(player, target);
+        dest = findOpenSpot(player, target, dest);
+
+        teleport(player, dest);
+        faceTarget(player, target);
+        playItSound(player, dest.x, dest.y, dest.z, false);
+    }
+
+    private static void handleChase(ServerPlayer player, LivingEntity target, Resources res) {
+        double dist = player.distanceTo(target);
+        if (dist > XenoServerConfig.chaseMaxRange || dist < 2.5) return;
+        if (!trySpendKi(res, XenoServerConfig.chaseKiCost)) return;
+
+        // Probabilistic chase (default 50%)
+        if (!rollChaseSuccess(player)) {
+            // Small lunge only — failed chase
+            Vec3 toTarget = new Vec3(target.getX() - player.getX(), 0, target.getZ() - player.getZ());
+            if (toTarget.lengthSqr() > 1.0e-4) {
+                player.setDeltaMovement(toTarget.normalize().scale(0.35).add(0, 0.04, 0));
+                player.hurtMarked = true;
+                player.hasImpulse = true;
+            }
+            faceTarget(player, target);
+            player.displayClientMessage(
+                    net.minecraft.network.chat.Component.literal("§7Chase failed"), true);
+            return;
+        }
+
+        Vec3 from = player.position();
+        playItSound(player, from.x, from.y, from.z, true);
+
+        // Land just short of the target on the approach line (Sparking Zero rush-in)
+        Vec3 toTarget = new Vec3(target.getX() - player.getX(), 0, target.getZ() - player.getZ());
+        if (toTarget.lengthSqr() < 1.0e-4) {
+            toTarget = player.getLookAngle().multiply(1, 0, 1);
+        }
+        Vec3 toward = toTarget.normalize();
+        Vec3 dest = new Vec3(
+                target.getX() - toward.x * CHASE_GAP,
+                target.getY(),
+                target.getZ() - toward.z * CHASE_GAP);
+        dest = findOpenSpot(player, target, dest);
+
+        teleport(player, dest);
+        // Carry residual rush momentum into melee
+        player.setDeltaMovement(toward.scale(0.55).add(0, 0.05, 0));
+        player.hurtMarked = true;
+        player.hasImpulse = true;
+        faceTarget(player, target);
+        playItSound(player, dest.x, dest.y, dest.z, false);
+        player.level().playSound(null, dest.x, dest.y, dest.z,
+                SoundEvents.PLAYER_ATTACK_SWEEP, SoundSource.PLAYERS, 0.7f, 1.4f);
+    }
+
+    private static void handleBackstep(ServerPlayer player, LivingEntity target, Resources res) {
+        if (player.distanceTo(target) > XenoServerConfig.backstepMaxRange) return;
+        if (!trySpendKi(res, XenoServerConfig.backstepKiCost)) return;
+
+        Vec3 from = player.position();
+        playItSound(player, from.x, from.y, from.z, true);
+
+        Vec3 away = new Vec3(player.getX() - target.getX(), 0, player.getZ() - target.getZ());
+        if (away.lengthSqr() < 1.0e-4) {
+            float yaw = player.getYRot() * ((float) Math.PI / 180F);
+            away = new Vec3(Mth.sin(yaw), 0, -Mth.cos(yaw));
+        }
+        away = away.normalize();
+        Vec3 dest = new Vec3(
+                player.getX() + away.x * BACKSTEP_DIST,
+                player.getY(),
+                player.getZ() + away.z * BACKSTEP_DIST);
+        if (!isSpotOpen(player, dest)) {
+            dest = new Vec3(player.getX() + away.x * 2.0, player.getY(), player.getZ() + away.z * 2.0);
+        }
+
+        teleport(player, dest);
+        player.setDeltaMovement(away.scale(0.35).add(0, 0.08, 0));
+        player.hurtMarked = true;
+        player.hasImpulse = true;
+        faceTarget(player, target);
+        playItSound(player, dest.x, dest.y, dest.z, false);
+    }
+
+    /**
+     * Free-form aerial / no-target kick: animation + look-direction boost.
+     * Still hits anything in a short cone in front.
+     */
+    private static void handleAerialKick(ServerPlayer player, Resources res, StatsData data,
+                                         int chargePercent, int verticalBias) {
+        float charge = Math.max(0.25f, Math.min(1f, chargePercent / 100f));
+        float stamCost = XenoServerConfig.kickReleaseStamina(charge, verticalBias);
+        if (!trySpendStamina(res, stamCost)) return;
+
+        boolean full = charge >= 0.95f;
+        DmzAnimHelper.playChargeRelease(player, DmzAnimHelper.ChargeStyle.KICK, full);
+
+        Vec3 look = player.getLookAngle();
+        Vec3 flat = new Vec3(look.x, 0, look.z);
+        if (flat.lengthSqr() < 1.0e-4) {
+            flat = new Vec3(0, 0, 1);
+        }
+        flat = flat.normalize();
+
+        double forward = 0.45 + charge * 0.55;
+        double up = kickVerticalImpulse(player, charge, verticalBias, true);
+        player.setDeltaMovement(flat.scale(forward).add(0, up, 0));
+        player.hurtMarked = true;
+        player.hasImpulse = true;
+        player.fallDistance = 0f;
+
+        double range = XenoServerConfig.chargeAttackRange;
+        float base = (float) Math.max(2.0, player.getAttackStrengthScale(0.5f) * 5.0f);
+        if (data != null) {
+            base = (float) Math.max(base, data.getMeleeDamage() * 0.45);
+        }
+        float mult = XenoServerConfig.chargeDamageScale * XenoServerConfig.kickDamageScale * (0.55f + 0.7f * charge);
+
+        boolean anyHit = false;
+        var box = player.getBoundingBox().expandTowards(flat.scale(range)).inflate(1.35);
+        for (LivingEntity living : player.level().getEntitiesOfClass(LivingEntity.class, box,
+                e -> e != player && e.isAlive())) {
+            Vec3 to = living.position().add(0, living.getBbHeight() * 0.4, 0).subtract(player.getEyePosition());
+            double distSq = to.lengthSqr();
+            if (distSq > range * range) continue;
+            Vec3 flatTo = new Vec3(to.x, 0, to.z);
+            if (flatTo.lengthSqr() < 1.0e-4) continue;
+            if (flat.dot(flatTo.normalize()) < 0.25) continue;
+
+            living.hurt(player.damageSources().playerAttack(player), base * mult);
+            living.setDeltaMovement(kickTargetLaunch(flat, charge, verticalBias));
+            living.hurtMarked = true;
+            living.hasImpulse = true;
+            playKickHitSound(player, living, full);
+            anyHit = true;
+        }
+
+        // Swing whoosh always; impact already played per hit
+        player.level().playSound(null, player.getX(), player.getY(), player.getZ(),
+                anyHit
+                        ? (full ? SoundEvents.PLAYER_ATTACK_CRIT : SoundEvents.PLAYER_ATTACK_STRONG)
+                        : SoundEvents.PLAYER_ATTACK_SWEEP,
+                SoundSource.PLAYERS, anyHit ? 1.0f : 0.7f, full ? 0.8f : 1.05f);
+    }
+
+    private static void handleChargeAttack(ServerPlayer player, LivingEntity target, Resources res, StatsData data,
+                                           boolean kick, int chargePercent, int verticalBias) {
+        if (player.distanceTo(target) > XenoServerConfig.chargeAttackRange) return;
+        float charge = Math.max(0.25f, Math.min(1f, chargePercent / 100f));
+        float stamCost = kick
+                ? XenoServerConfig.kickReleaseStamina(charge, verticalBias)
+                : XenoServerConfig.fistReleaseStamina(charge);
+        if (!trySpendStamina(res, stamCost)) return;
+
+        boolean full = charge >= 0.95f;
+        DmzAnimHelper.ChargeStyle style = kick
+                ? DmzAnimHelper.ChargeStyle.KICK
+                : (full ? DmzAnimHelper.ChargeStyle.FIST_HEAVY : DmzAnimHelper.ChargeStyle.FIST_LIGHT);
+        DmzAnimHelper.playChargeRelease(player, style, full);
+
+        // Step into target
+        Vec3 to = target.position().subtract(player.position());
+        Vec3 flat = new Vec3(to.x, 0, to.z);
+        if (flat.lengthSqr() > 1.0e-4) {
+            double stepUp = kick ? kickVerticalImpulse(player, charge, verticalBias, false) * 0.35 : 0.06;
+            player.setDeltaMovement(flat.normalize().scale(0.55 + charge * 0.45).add(0, stepUp, 0));
+            player.hurtMarked = true;
+            player.hasImpulse = true;
+        }
+        faceTarget(player, target);
+
+        // Allow slightly longer reach after lunge so kick contact still registers
+        double hitRange = kick ? Math.max(5.5, XenoServerConfig.chargeAttackRange + 0.75) : 5.0;
+        if (player.distanceTo(target) > hitRange) return;
+
+        float base = (float) Math.max(2.0, player.getAttackStrengthScale(0.5f) * 5.0f);
+        if (data != null) {
+            base = (float) Math.max(base, data.getMeleeDamage() * 0.45);
+        }
+        float mult = XenoServerConfig.chargeDamageScale * (0.55f + 0.7f * charge);
+        if (kick) mult *= XenoServerConfig.kickDamageScale;
+        target.hurt(player.damageSources().playerAttack(player), base * mult);
+
+        Vec3 kbDir = target.position().subtract(player.position());
+        Vec3 kbFlat = new Vec3(kbDir.x, 0, kbDir.z);
+        if (kbFlat.lengthSqr() > 1.0e-4) {
+            kbFlat = kbFlat.normalize();
+            if (kick) {
+                target.setDeltaMovement(kickTargetLaunch(kbFlat, charge, verticalBias));
+            } else {
+                double kb = 0.85 * (0.6 + charge);
+                double up = 0.18 + charge * 0.15;
+                target.setDeltaMovement(target.getDeltaMovement().add(kbFlat.scale(kb).add(0, up, 0)));
+            }
+            target.hurtMarked = true;
+            target.hasImpulse = true;
+        }
+
+        // Kick always plays a clear impact sound on contact
+        if (kick) {
+            playKickHitSound(player, target, full);
+        } else {
+            playHitSound(player, target, full);
+            if (full) {
+                player.level().playSound(null, target.getX(), target.getY(), target.getZ(),
+                        SoundEvents.PLAYER_ATTACK_CRIT, SoundSource.PLAYERS, 1.0f, 0.9f);
+            }
+        }
+    }
+
+    /**
+     * +1 W = launch target upward, -1 S = smash downward, 0 = default arc.
+     */
+    private static Vec3 kickTargetLaunch(Vec3 awayFlat, float charge, int verticalBias) {
+        double horiz = (0.9 + charge) * (verticalBias == 0 ? 1.0 : 0.55);
+        double up;
+        if (verticalBias > 0) {
+            up = XenoServerConfig.kickUpLaunch * (0.85 + charge * 0.9);
+            horiz *= 0.45;
+        } else if (verticalBias < 0) {
+            up = -XenoServerConfig.kickDownLaunch * (0.7 + charge * 0.8);
+            horiz *= 0.65;
+        } else {
+            up = 0.35 + charge * 0.25;
+        }
+        return awayFlat.normalize().scale(horiz).add(0, up, 0);
+    }
+
+    private static double kickVerticalImpulse(ServerPlayer player, float charge, int verticalBias, boolean aerialSelf) {
+        if (verticalBias > 0) {
+            return (aerialSelf ? 0.55 : 0.35) + charge * XenoServerConfig.kickUpLaunch * 0.45;
+        }
+        if (verticalBias < 0) {
+            return aerialSelf ? -0.15 - charge * 0.25 : -0.05;
+        }
+        if (aerialSelf) {
+            return player.onGround() ? 0.18 + charge * 0.12 : 0.28 + charge * 0.35;
+        }
+        return 0.12;
+    }
+
+    /**
+     * Dragon dash: heavy hit launches the target, then the attacker teleports/chases after them.
+     */
+    private static void handleDragonDash(ServerPlayer player, LivingEntity target, Resources res, StatsData data,
+                                         int chargePercent) {
+        if (player.distanceTo(target) > XenoServerConfig.dragonDashRange) return;
+        float charge = Math.max(0.35f, Math.min(1f, chargePercent / 100f));
+        if (!trySpendStamina(res, XenoServerConfig.dragonDashStaminaCost * (0.5f + 0.5f * charge))) return;
+        if (!trySpendKi(res, XenoServerConfig.dragonDashKiCost * (0.5f + 0.5f * charge))) return;
+
+        DmzAnimHelper.playChargeRelease(player, DmzAnimHelper.ChargeStyle.DRAGON, charge >= 0.95f);
+
+        Vec3 from = player.position();
+        playItSound(player, from.x, from.y, from.z, true);
+
+        // Snap in front of target first
+        Vec3 land = chaseLanding(player, target);
+        land = findOpenSpot(player, target, land);
+        teleport(player, land);
+        faceTarget(player, target);
+
+        float base = (float) Math.max(3.0, player.getAttackStrengthScale(0.5f) * 6.0f);
+        if (data != null) {
+            base = (float) Math.max(base, data.getMeleeDamage() * 0.55);
+        }
+        float mult = XenoServerConfig.chargeDamageScale * 1.25f * (0.7f + 0.5f * charge);
+        target.hurt(player.damageSources().playerAttack(player), base * mult);
+
+        // Launch target away / upward (Sparking Zero style)
+        Vec3 away = new Vec3(target.getX() - player.getX(), 0, target.getZ() - player.getZ());
+        if (away.lengthSqr() < 1.0e-4) {
+            away = player.getLookAngle().multiply(1, 0, 1);
+        }
+        away = away.normalize();
+        double launch = DRAGON_LAUNCH * (0.75 + 0.5 * charge);
+        double up = 0.85 + charge * 0.55;
+        target.setDeltaMovement(away.scale(launch * 0.22).add(0, up, 0));
+        target.hurtMarked = true;
+        target.hasImpulse = true;
+        playHitSound(player, target, true);
+
+        // Chase phase is probabilistic (default 50%)
+        if (!rollChaseSuccess(player)) {
+            faceTarget(player, target);
+            player.displayClientMessage(
+                    net.minecraft.network.chat.Component.literal("§7Dragon chase failed"), true);
+            playItSound(player, player.getX(), player.getY(), player.getZ(), false);
+            return;
+        }
+
+        // Chase: appear near where they were launched
+        Vec3 chasePos = new Vec3(
+                target.getX() + away.x * (launch * 0.55),
+                target.getY() + Math.min(2.8, up * 1.6),
+                target.getZ() + away.z * (launch * 0.55));
+        if (!isSpotOpen(player, chasePos)) {
+            chasePos = new Vec3(target.getX() + away.x * 2.2, target.getY() + 0.5, target.getZ() + away.z * 2.2);
+        }
+        teleport(player, chasePos);
+        player.setDeltaMovement(away.scale(0.65).add(0, 0.12, 0));
+        player.hurtMarked = true;
+        player.hasImpulse = true;
+        faceTarget(player, target);
+        playItSound(player, chasePos.x, chasePos.y, chasePos.z, false);
+        player.level().playSound(null, chasePos.x, chasePos.y, chasePos.z,
+                SoundEvents.PLAYER_ATTACK_SWEEP, SoundSource.PLAYERS, 1.0f, 0.7f);
+    }
+
+    /** Returns true if chase succeeds based on {@link XenoServerConfig#chaseSuccessChance}. */
+    private static boolean rollChaseSuccess(ServerPlayer player) {
+        float chance = XenoServerConfig.chaseSuccessChance;
+        if (chance >= 1f) return true;
+        if (chance <= 0f) return false;
+        return player.getRandom().nextFloat() < chance;
+    }
+
+    private static void handleCombo(ServerPlayer player, LivingEntity target, int step, Resources res, StatsData data) {
+        int max = XenoServerConfig.maxComboSteps;
+        step = Math.max(1, Math.min(max, step));
+        boolean finisher = XenoServerConfig.bt3FinisherEnabled && step >= max;
+
+        float cost = finisher ? XenoServerConfig.finisherKiCost : XenoServerConfig.comboKiCost;
+        if (res != null && res.getCurrentEnergy() >= cost) {
+            res.removeEnergy(cost);
+        }
+
+        Vec3 to = target.position().add(0, target.getBbHeight() * 0.35, 0).subtract(player.position());
+        Vec3 flat = new Vec3(to.x, 0, to.z);
+        double len = Math.sqrt(flat.lengthSqr());
+        if (len > 0.01) {
+            double lunge = finisher ? 1.25 : 0.55 + step * 0.08;
+            if (len > 3.5) {
+                player.setDeltaMovement(flat.normalize().scale(Math.min(1.5, lunge)).add(0, finisher ? 0.12 : 0.05, 0));
+            } else {
+                player.setDeltaMovement(flat.normalize().scale(finisher ? 0.4 : 0.25).add(0, finisher ? 0.1 : 0.02, 0));
+            }
+            player.hurtMarked = true;
+            player.hasImpulse = true;
+        }
+
+        faceTarget(player, target);
+
+        if (player.distanceTo(target) <= 4.5) {
+            float base = (float) Math.max(1.0, player.getAttackStrengthScale(0.5f) * 4.0f);
+            float mult = (1.0f + step * 0.12f) * XenoServerConfig.comboDamageScale;
+            if (finisher) mult *= XenoServerConfig.finisherDamageScale;
+            if (data != null) {
+                base = (float) Math.max(base, data.getMeleeDamage() * 0.35);
+            }
+            target.hurt(player.damageSources().playerAttack(player), base * mult);
+
+            Vec3 kbDir = target.position().subtract(player.position());
+            Vec3 kbFlat = new Vec3(kbDir.x, 0, kbDir.z);
+            if (kbFlat.lengthSqr() > 1.0e-4) {
+                kbFlat = kbFlat.normalize();
+                double kb = finisher ? 1.65 : 0.25 + step * 0.08;
+                double up = finisher ? 0.55 : 0.12;
+                target.setDeltaMovement(target.getDeltaMovement().add(kbFlat.scale(kb).add(0, up, 0)));
+                target.hurtMarked = true;
+                target.hasImpulse = true;
+            }
+
+            playHitSound(player, target, finisher);
+        }
+    }
+
+    private static boolean trySpendKi(Resources res, float cost) {
+        if (res == null) return true;
+        if (res.getCurrentEnergy() < cost) return false;
+        res.removeEnergy(cost);
+        return true;
+    }
+
+    private static boolean trySpendStamina(Resources res, float cost) {
+        if (res == null) return true;
+        if (res.getCurrentStamina() < cost) return false;
+        res.removeStamina(cost);
+        return true;
+    }
+
+    private static void teleport(ServerPlayer player, Vec3 dest) {
+        player.teleportTo(dest.x, dest.y, dest.z);
+        player.fallDistance = 0f;
+        player.setDeltaMovement(Vec3.ZERO);
+        player.hurtMarked = true;
+        player.hasImpulse = true;
+        player.connection.resetPosition();
+    }
+
+    /** Behind lock-on target relative to player approach. */
+    public static Vec3 vanishBehind(Entity player, LivingEntity target) {
+        Vec3 toTarget = new Vec3(target.getX() - player.getX(), 0, target.getZ() - player.getZ());
+        if (toTarget.lengthSqr() < 1.0e-4) {
+            float yawRad = target.getYRot() * ((float) Math.PI / 180F);
+            toTarget = new Vec3(-Mth.sin(yawRad), 0, Mth.cos(yawRad));
+        }
+        Vec3 toward = toTarget.normalize();
+        return new Vec3(
+                target.getX() + toward.x * VANISH_GAP,
+                target.getY(),
+                target.getZ() + toward.z * VANISH_GAP);
+    }
+
+    public static Vec3 chaseLanding(Entity player, LivingEntity target) {
+        Vec3 toTarget = new Vec3(target.getX() - player.getX(), 0, target.getZ() - player.getZ());
+        if (toTarget.lengthSqr() < 1.0e-4) {
+            toTarget = new Vec3(0, 0, 1);
+        }
+        Vec3 toward = toTarget.normalize();
+        return new Vec3(
+                target.getX() - toward.x * CHASE_GAP,
+                target.getY(),
+                target.getZ() - toward.z * CHASE_GAP);
+    }
+
+    public static Vec3 backstepDest(Entity player, LivingEntity target) {
+        Vec3 away = new Vec3(player.getX() - target.getX(), 0, player.getZ() - target.getZ());
+        if (away.lengthSqr() < 1.0e-4) {
+            away = new Vec3(0, 0, -1);
+        }
+        away = away.normalize();
+        return new Vec3(
+                player.getX() + away.x * BACKSTEP_DIST,
+                player.getY(),
+                player.getZ() + away.z * BACKSTEP_DIST);
+    }
+
+    private static Vec3 findOpenSpot(ServerPlayer player, LivingEntity target, Vec3 preferred) {
+        if (isSpotOpen(player, preferred)) return preferred;
+        Vec3 alt = vanishBehind(player, target);
+        if (isSpotOpen(player, alt)) return alt;
+        Vec3 toTarget = new Vec3(target.getX() - player.getX(), 0, target.getZ() - player.getZ());
+        if (toTarget.lengthSqr() < 1.0e-4) toTarget = new Vec3(0, 0, 1);
+        Vec3 toward = toTarget.normalize();
+        Vec3 right = new Vec3(-toward.z, 0, toward.x);
+        for (double s : new double[]{0.6, -0.6, 1.0, -1.0}) {
+            Vec3 tryPos = preferred.add(right.scale(s));
+            if (isSpotOpen(player, tryPos)) return tryPos;
+        }
+        return preferred;
+    }
+
+    private static boolean isSpotOpen(ServerPlayer player, Vec3 pos) {
+        var box = player.getBoundingBox().move(
+                pos.x - player.getX(),
+                pos.y - player.getY(),
+                pos.z - player.getZ());
+        return player.level().noCollision(player, box);
+    }
+
+    private static void playItSound(ServerPlayer player, double x, double y, double z, boolean leave) {
+        SoundEvent dmz = BuiltInRegistries.SOUND_EVENT.get(
+                new ResourceLocation("dragonminez", leave ? "evasion1" : "evasion2"));
+        if (dmz != null) {
+            player.level().playSound(null, x, y, z, dmz, SoundSource.PLAYERS, 0.95f, leave ? 1.05f : 1.15f);
+        } else {
+            player.level().playSound(null, x, y, z, SoundEvents.ENDERMAN_TELEPORT, SoundSource.PLAYERS,
+                    0.7f, leave ? 1.35f : 1.55f);
+        }
+    }
+
+    private static void playHitSound(ServerPlayer player, LivingEntity target, boolean finisher) {
+        SoundEvent punch = BuiltInRegistries.SOUND_EVENT.get(new ResourceLocation("dragonminez", "fist_punch"));
+        SoundEvent knock = BuiltInRegistries.SOUND_EVENT.get(new ResourceLocation("dragonminez", "knockback_character"));
+        if (finisher) {
+            if (knock != null) {
+                player.level().playSound(null, target.getX(), target.getY(), target.getZ(),
+                        knock, SoundSource.PLAYERS, 1.0f, 0.95f);
+            }
+            player.level().playSound(null, target.getX(), target.getY(), target.getZ(),
+                    SoundEvents.PLAYER_ATTACK_CRIT, SoundSource.PLAYERS, 1.0f, 0.85f);
+        } else if (punch != null) {
+            player.level().playSound(null, target.getX(), target.getY(), target.getZ(),
+                    punch, SoundSource.PLAYERS, 0.85f, 1.05f);
+        } else {
+            player.level().playSound(null, target.getX(), target.getY(), target.getZ(),
+                    SoundEvents.PLAYER_ATTACK_STRONG, SoundSource.PLAYERS, 0.9f, 1.1f);
+        }
+    }
+
+    /** Always plays a clear impact at the target when a kick connects. */
+    private static void playKickHitSound(ServerPlayer player, LivingEntity target, boolean fullCharge) {
+        double x = target.getX();
+        double y = target.getY() + target.getBbHeight() * 0.4;
+        double z = target.getZ();
+
+        SoundEvent punch = BuiltInRegistries.SOUND_EVENT.get(new ResourceLocation("dragonminez", "fist_punch"));
+        SoundEvent knock = BuiltInRegistries.SOUND_EVENT.get(new ResourceLocation("dragonminez", "knockback_character"));
+
+        // DMZ impact if available
+        if (punch != null) {
+            player.level().playSound(null, x, y, z, punch, SoundSource.PLAYERS, 1.15f, fullCharge ? 0.85f : 1.0f);
+        }
+        if (fullCharge && knock != null) {
+            player.level().playSound(null, x, y, z, knock, SoundSource.PLAYERS, 1.0f, 0.9f);
+        }
+
+        // Always play vanilla impact so hit is never silent
+        player.level().playSound(null, x, y, z,
+                fullCharge ? SoundEvents.PLAYER_ATTACK_CRIT : SoundEvents.PLAYER_ATTACK_STRONG,
+                SoundSource.PLAYERS, 1.15f, fullCharge ? 0.75f : 0.95f);
+        player.level().playSound(null, x, y, z,
+                SoundEvents.PLAYER_ATTACK_KNOCKBACK, SoundSource.PLAYERS, 0.85f, 1.1f);
+    }
+
+    private static void faceTarget(ServerPlayer player, LivingEntity target) {
+        double dx = target.getX() - player.getX();
+        double dz = target.getZ() - player.getZ();
+        float yaw = (float) (Mth.atan2(dz, dx) * (180F / Math.PI)) - 90F;
+        player.setYRot(yaw);
+        player.setYHeadRot(yaw);
+        player.yBodyRot = yaw;
+    }
+}
