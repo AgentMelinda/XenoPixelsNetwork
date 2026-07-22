@@ -84,6 +84,7 @@ public final class XenoHudCommands {
                         .executes(ctx -> {
                             ctx.getSource().sendSuccess(() -> Component.literal(
                                     "hud=" + XenoClientConfig.xenoHudEnabled
+                                            + " techbar=" + XenoClientConfig.techniqueHotbarEnabled
                                             + " titleBtn=" + XenoClientConfig.titleScreenButton
                                             + " pauseBtn=" + XenoClientConfig.pauseScreenButton
                                             + " menu=" + XenoClientConfig.xenoMenuEnabled
@@ -106,7 +107,7 @@ public final class XenoHudCommands {
                 .executes(ctx -> {
                     ctx.getSource().sendSuccess(() -> Component.literal(
                             "Usage: /xenoclient <reload|status|set <key> <true|false>>\n"
-                                    + "keys: hud, title, pause, menu, content, join, edit, senzu, combat, combo, vanish, chase, backstep, charge, dragon, glow, sfx"),
+                                    + "keys: hud, techbar, title, pause, menu, content, join, edit, senzu, combat, combo, vanish, chase, backstep, charge, dragon, glow, sfx"),
                             false);
                     return 1;
                 }));
@@ -116,6 +117,7 @@ public final class XenoHudCommands {
         String k = key.toLowerCase();
         switch (k) {
             case "hud" -> XenoClientConfig.xenoHudEnabled = value;
+            case "techbar", "technique", "kihotbar" -> XenoClientConfig.techniqueHotbarEnabled = value;
             case "title" -> XenoClientConfig.titleScreenButton = value;
             case "pause" -> XenoClientConfig.pauseScreenButton = value;
             case "menu" -> XenoClientConfig.xenoMenuEnabled = value;

@@ -25,6 +25,8 @@ public final class XenoClientConfig {
 
     // --- UI ---
     public static boolean xenoHudEnabled = true;
+    /** Custom Alt/Ctrl KI technique slot bar + charge meter (replaces DMZ techniquehud). */
+    public static boolean techniqueHotbarEnabled = true;
     public static boolean titleScreenButton = true;
     public static boolean pauseScreenButton = true;
     public static boolean xenoMenuEnabled = true;
@@ -74,6 +76,7 @@ public final class XenoClientConfig {
     public static Data snapshot() {
         Data d = new Data();
         d.xenoHudEnabled = xenoHudEnabled;
+        d.techniqueHotbarEnabled = techniqueHotbarEnabled;
         d.titleScreenButton = titleScreenButton;
         d.pauseScreenButton = pauseScreenButton;
         d.xenoMenuEnabled = xenoMenuEnabled;
@@ -96,6 +99,7 @@ public final class XenoClientConfig {
     public static void apply(Data d) {
         if (d == null) return;
         xenoHudEnabled = d.xenoHudEnabled;
+        techniqueHotbarEnabled = d.techniqueHotbarEnabled;
         titleScreenButton = d.titleScreenButton;
         pauseScreenButton = d.pauseScreenButton;
         xenoMenuEnabled = d.xenoMenuEnabled;
@@ -116,6 +120,7 @@ public final class XenoClientConfig {
 
     public static class Data {
         public boolean xenoHudEnabled = true;
+        public boolean techniqueHotbarEnabled = true;
         public boolean titleScreenButton = true;
         public boolean pauseScreenButton = true;
         public boolean xenoMenuEnabled = true;

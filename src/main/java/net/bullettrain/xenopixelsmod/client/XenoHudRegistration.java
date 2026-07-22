@@ -20,8 +20,10 @@ public final class XenoHudRegistration {
     public static void onRegisterOverlays(RegisterGuiOverlaysEvent event) {
         try {
             event.registerAbove(DMZ_TOP, "xeno_hud", new XenoHudOverlay());
+            event.registerAbove(DMZ_TOP, "xeno_technique_hotbar", new XenoTechniqueHotbarOverlay());
         } catch (Exception e) {
             event.registerAbove(VanillaGuiOverlay.HOTBAR.id(), "xeno_hud", new XenoHudOverlay());
+            event.registerAbove(VanillaGuiOverlay.HOTBAR.id(), "xeno_technique_hotbar", new XenoTechniqueHotbarOverlay());
         }
     }
 }

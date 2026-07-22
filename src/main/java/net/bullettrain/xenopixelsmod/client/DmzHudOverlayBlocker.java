@@ -1,6 +1,7 @@
 package net.bullettrain.xenopixelsmod.client;
 
 import net.bullettrain.xenopixelsmod.XenoPixelsMod;
+import net.bullettrain.xenopixelsmod.client.config.XenoClientConfig;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.client.event.RenderGuiOverlayEvent;
@@ -11,18 +12,23 @@ import net.minecraftforge.fml.common.Mod;
 import java.util.Set;
 
 /**
- * Cancels DragonMineZ Forge GUI overlays when the server-wide DMZ HUD flag is off.
+ * Cancels DragonMineZ HUD overlays according to XenoPixels settings.
+ * When our technique hotbar is enabled, DMZ technique/charge HUDs are blocked too.
  */
 @Mod.EventBusSubscriber(modid = XenoPixelsMod.MOD_ID, value = Dist.CLIENT)
 public final class DmzHudOverlayBlocker {
-    private static final Set<ResourceLocation> DMZ_OVERLAYS = Set.of(
+    private static final Set<ResourceLocation> DMZ_MAIN_HUD = Set.of(
             id("xenoversehud"),
             id("alternativehud"),
-            id("technique_charge_hud"),
             id("scouterhud"),
             id("tracked_quest_hud"),
-            id("techniquehud"),
             id("beam_clash_hud")
+    );
+
+    /** Replaced by {@link XenoTechniqueHotbarOverlay}. */
+    private static final Set<ResourceLocation> DMZ_TECHNIQUE_UI = Set.of(
+            id("techniquehud"),
+            id("technique_charge_hud")
     );
 
     private DmzHudOverlayBlocker() {}
@@ -33,8 +39,16 @@ public final class DmzHudOverlayBlocker {
 
     @SubscribeEvent(priority = EventPriority.HIGHEST)
     public static void onRenderOverlay(RenderGuiOverlayEvent.Pre event) {
+        ResourceLocation id = event.getOverlay().id();
+
+        // Always replace DMZ technique bars with ours when enabled
+        if (XenoClientConfig.techniqueHotbarEnabled && DMZ_TECHNIQUE_UI.contains(id)) {
+            event.setCanceled(true);
+            return;
+        }
+
         if (DmzHudClientState.isDmzHudEnabled()) return;
-        if (DMZ_OVERLAYS.contains(event.getOverlay().id())) {
+        if (DMZ_MAIN_HUD.contains(id)) {
             event.setCanceled(true);
         }
     }
