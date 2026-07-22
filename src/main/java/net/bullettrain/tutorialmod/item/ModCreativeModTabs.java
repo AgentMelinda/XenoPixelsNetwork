@@ -24,6 +24,7 @@ public class ModCreativeModTabs {
                     .displayItems((pParameters, pOutput) -> {
                         pOutput.accept(ModsItems.SAPPHIRE.get());
                         pOutput.accept(ModsItems.RAW_SAPPHIRE.get());
+                        pOutput.accept(ModsItems.STRAWBERRY_SENZU.get());
 
                         pOutput.accept(ModsItems.METAL_DETECTOR.get());
 

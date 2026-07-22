@@ -3,6 +3,7 @@
   "item.tutorialmod.raw_sapphire": "Raw Sapphire",
 
   "item.tutorialmod.metal_detector": "Metal Detector",
+  "item.tutorialmod.strawberry_senzu": "Strawberry Senzu",
 
   "block.tutorialmod.sound_block": "Sound Block",
   "block.tutorialmod.jackietonite_ore_block": "Jackietonite Block",
@@ -12,5 +13,7 @@
   "block.tutorialmod.nether_jackietonite_ore": "Nether Jackietonite Ore",
   "block.tutorialmod.end_stone_jackietonite_ore": "End Stone Jackietonite Ore",
 
-  "creativetab.tutorial_tab": "CreativeTab ByBulletTrain"
+  "creativetab.tutorial_tab": "CreativeTab ByBulletTrain",
+
+  "message.tutorialmod.senzu_cooldown": "You must wait before eating another Senzu Bean!"
 }

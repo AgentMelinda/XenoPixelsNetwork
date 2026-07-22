@@ -2,6 +2,7 @@ package net.bullettrain.tutorialmod.item;
 
 import net.bullettrain.tutorialmod.TutorialMod;
 import net.bullettrain.tutorialmod.item.custom.MetalDetectorItem;
+import net.bullettrain.tutorialmod.item.custom.StrawBerrySenzuItem;
 import net.minecraft.world.item.Item;
 import net.minecraftforge.eventbus.api.IEventBus;
 import net.minecraftforge.registries.DeferredRegister;
@@ -20,6 +21,9 @@ public class ModsItems {
 
     public static final RegistryObject<Item> METAL_DETECTOR = ITEMS.register("metal_detector",
             () -> new MetalDetectorItem(new Item.Properties().durability(100)));
+
+    public static final RegistryObject<Item> STRAWBERRY_SENZU = ITEMS.register("strawberry_senzu",
+            () -> new StrawBerrySenzuItem(new Item.Properties().food(ModFoods.STRAWBERRY_SENZU)));
 
     public static void register(IEventBus eventBus) {
         ITEMS.register(eventBus);
