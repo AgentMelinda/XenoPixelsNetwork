@@ -14,7 +14,7 @@
 **לפני:**
 ```properties
 mapping_channel=parchment
-mapping_version=2023.06.26-1.20.1
+mapping_version=2023.09.03-1.20.1
 ```
 
 **אחרי:**

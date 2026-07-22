@@ -66,5 +66,6 @@
 - [DragonMineZ](Advanced-02-DragonMineZ)
 - [Elementa GUI](Advanced-03-Elementa-GUI)
 - [פתרון Mixin](Advanced-04-Mixin-Fix)
+- [Registrate (פחות JSON)](Advanced-05-Registrate)
 
 </div>

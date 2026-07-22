@@ -21,7 +21,8 @@ Java היא שפת תכנות. Minecraft (הגרסה של המחשב, "Java Edit
 | **`final`** | ערך שלא משתנה אחרי שהוגדר (קבוע). |
 | **`public` / `private`** | מי יכול לגשת: `public` = כולם, `private` = רק המחלקה עצמה. |
 | **`import`** | מביא מחלקה מחבילה אחרת כדי שנוכל להשתמש בה. |
-| **`package`** | "תיקייה לוגית" של מחלקות, למשל `net.kaupenjoe.tutorialmod.item`. |
+| **`package`** | "תיקייה לוגית" של מחלקות, למשל `net.bullettrain.tutorialmod.item`. |
+| **`ModsItems`** | במוד שלנו מחלקת הפריטים נקראת **`ModsItems`** (עם s) — לא `ModItems`. |
 | **`@Annotation`** | הערה מיוחדת שמתחילה ב-`@`, נותנת הוראות למערכת (למשל `@Override`). |
 
 > 💡 לא צריך להיות מומחי Java כדי להתחיל. תלמדו תוך כדי — כל שלב מסביר את הקוד שלו.
@@ -49,13 +50,13 @@ Java היא שפת תכנות. Minecraft (הגרסה של המחשב, "Java Edit
 ## 📁 מבנה פרויקט מוד טיפוסי
 
 ```
-Forge-Tutorial-1.20.X/
+forge-1.20.1-tutorial/
 ├── build.gradle            # הגדרות בנייה + תלויות (dependencies)
 ├── gradle.properties       # גרסאות (Minecraft, Forge, המוד)
 ├── settings.gradle
 ├── gradlew / gradlew.bat   # ה"מריץ" של Gradle (לא צריך להתקין Gradle ידנית)
 └── src/main/
-    ├── java/net/<שמכם>/tutorialmod/   # קוד ה-Java של המוד
+    ├── java/net/bullettrain/tutorialmod/   # קוד ה-Java של המוד
     │   ├── TutorialMod.java            # נקודת הכניסה (@Mod)
     │   ├── item/                       # פריטים
     │   └── block/                      # בלוקים

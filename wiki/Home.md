@@ -8,7 +8,11 @@
 שחדש ל-**Java** ול-**Minecraft modding**. כל שלב מוסבר **שורה אחר שורה**, בעברית,
 עם הקוד המלא, טבלאות מושגים והסברים על *למה* עושים כל דבר — ולא רק *איך*.
 
-> 💡 המדריך מבוסס על [Forge Tutorial 1.20.X של Kaupenjoe](https://github.com/Tutorials-By-Kaupenjoe/Forge-Tutorial-1.20.X),
+> 💡 הקוד בדוגמאות תואם את המוד שלנו:
+> [AgentMelinda/forge-1.20.1-tutorial](https://github.com/AgentMelinda/forge-1.20.1-tutorial)
+> — package: `net.bullettrain.tutorialmod`, מחלקת פריטים: **`ModsItems`**, MOD_ID: `tutorialmod`.
+>
+> המבנה מבוסס על [Forge Tutorial 1.20.X של Kaupenjoe](https://github.com/Tutorials-By-Kaupenjoe/Forge-Tutorial-1.20.X),
 > שבו **כל branch הוא שלב** נפרד. כל עמוד כאן מתאר בדיוק **מה נוסף בשלב הזה** לעומת הקודם.
 
 ---
@@ -107,6 +111,7 @@
 | [תמיכת Addon ל-DragonMineZ](Advanced-02-DragonMineZ) | חיבור למוד DMZ |
 | [Elementa GUI](Advanced-03-Elementa-GUI) | ספריית ממשק דקלרטיבית |
 | [פתרון קריסת Mixin](Advanced-04-Mixin-Fix) | `MixinTransformerError` של VS |
+| [מעבר ל-Registrate](Advanced-05-Registrate) | רישום fluent + פחות JSON ידני |
 
 ---
 
@@ -121,7 +126,7 @@
 
 <div dir="ltr">
 
-Based on [Forge-Tutorial-1.20.X by Kaupenjoe](https://github.com/Tutorials-By-Kaupenjoe/Forge-Tutorial-1.20.X)
+Based on our mod [AgentMelinda/forge-1.20.1-tutorial](https://github.com/AgentMelinda/forge-1.20.1-tutorial) · structure from [Forge-Tutorial-1.20.X by Kaupenjoe](https://github.com/Tutorials-By-Kaupenjoe/Forge-Tutorial-1.20.X)
 
 </div>
 
