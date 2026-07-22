@@ -28,7 +28,6 @@ minecraft {
             workingDirectory project.file('run')
             property 'forge.logging.markers', 'REGISTRIES'
             property 'forge.logging.console.level', 'debug'
-            // ModernUI / MixinGradle refmap remapping
             property 'mixin.env.remapRefMap', 'true'
             property 'mixin.env.refMapRemappingFile', "${projectDir}/build/createSrgToMcp/output.srg"
             mods {
@@ -104,14 +103,13 @@ repositories {
         name = 'Illusive Soulworks'
         url = 'https://maven.theillusivec4.top/'
     }
-    // ModernUI-MC (https://github.com/BloCamLimb/ModernUI-MC)
     maven {
         name = 'IzzelAliz Maven'
         url = 'https://maven.izzel.io/releases/'
     }
 }
 
-// ModernUI core jars must be on the run classpath (ForgeGradle 5 library config)
+// library = extra run classpath; jarJar = embedded into the output mod jar (JiJ)
 configurations {
     library
     implementation.extendsFrom library
@@ -122,6 +120,9 @@ minecraft.runs.configureEach {
         configurations.library.copyRecursive().resolve().collect { it.absolutePath }.join(File.pathSeparator)
     }
 }
+
+// Enable Forge Jar-in-Jar embedding
+jarJar.enable()
 
 dependencies {
     minecraft "net.minecraftforge:forge:${minecraft_version}-${forge_version}"
@@ -144,28 +145,46 @@ dependencies {
     implementation fg.deobf('top.theillusivec4.curios:curios-forge:5.14.1+1.20.1')
     implementation 'thedarkcolour:kotlinforforge:4.11.0'
 
-    // Modern UI Core (<= 3.12.0 uses icyllis.modernui:ModernUI-Core)
+    // ---- Modern UI (run classpath) ----
+    def muiExcludes = {
+        exclude group: 'org.slf4j', module: 'slf4j-api'
+        exclude group: 'org.apache.logging.log4j', module: 'log4j-core'
+        exclude group: 'org.apache.logging.log4j', module: 'log4j-api'
+        exclude group: 'com.google.code.findbugs', module: 'jsr305'
+        exclude group: 'org.jetbrains', module: 'annotations'
+        exclude group: 'com.ibm.icu', module: 'icu4j'
+        exclude group: 'it.unimi.dsi', module: 'fastutil'
+    }
+
     library("icyllis.modernui:ModernUI-Core:${modernui_core_version}") {
-        exclude group: 'org.slf4j', module: 'slf4j-api'
-        exclude group: 'org.apache.logging.log4j', module: 'log4j-core'
-        exclude group: 'org.apache.logging.log4j', module: 'log4j-api'
-        exclude group: 'com.google.code.findbugs', module: 'jsr305'
-        exclude group: 'org.jetbrains', module: 'annotations'
-        exclude group: 'com.ibm.icu', module: 'icu4j'
-        exclude group: 'it.unimi.dsi', module: 'fastutil'
+        muiExcludes.delegate = delegate
+        muiExcludes()
     }
-    // Markflow required for 3.12.x
     library("icyllis.modernui:ModernUI-Markflow:${modernui_core_version}") {
-        exclude group: 'org.slf4j', module: 'slf4j-api'
-        exclude group: 'org.apache.logging.log4j', module: 'log4j-core'
-        exclude group: 'org.apache.logging.log4j', module: 'log4j-api'
-        exclude group: 'com.google.code.findbugs', module: 'jsr305'
-        exclude group: 'org.jetbrains', module: 'annotations'
-        exclude group: 'com.ibm.icu', module: 'icu4j'
-        exclude group: 'it.unimi.dsi', module: 'fastutil'
+        muiExcludes.delegate = delegate
+        muiExcludes()
     }
-    // Modern UI for Minecraft Forge 1.20.1
+    // Deobf forge mod for compile/run
     implementation fg.deobf("icyllis.modernui:ModernUI-Forge:${minecraft_version}-${modernui_version}")
+
+    // ---- Modern UI embedded via Jar-in-Jar (ships inside our mod jar) ----
+    // Pin exact versions so FML can resolve a single nested artifact.
+    jarJar(group: 'icyllis.modernui', name: 'ModernUI-Forge', version: "[${minecraft_version}-${modernui_version}]") {
+        jarJar.pin(it, "${minecraft_version}-${modernui_version}")
+        jarJar.ranged(it, "[${minecraft_version}-${modernui_version},${minecraft_version}-${modernui_version}]")
+    }
+    jarJar(group: 'icyllis.modernui', name: 'ModernUI-Core', version: "[${modernui_core_version}]") {
+        jarJar.pin(it, modernui_core_version)
+        jarJar.ranged(it, "[${modernui_core_version},${modernui_core_version}]")
+        muiExcludes.delegate = delegate
+        muiExcludes()
+    }
+    jarJar(group: 'icyllis.modernui', name: 'ModernUI-Markflow', version: "[${modernui_core_version}]") {
+        jarJar.pin(it, modernui_core_version)
+        jarJar.ranged(it, "[${modernui_core_version},${modernui_core_version}]")
+        muiExcludes.delegate = delegate
+        muiExcludes()
+    }
 }
 
 def resourceTargets = ['META-INF/mods.toml', 'pack.mcmeta']
@@ -210,12 +229,23 @@ jar {
     }
 }
 
-jar.finalizedBy('reobfJar')
+// Jar-in-Jar fat artifact: build/libs/xenopixelsmod-<ver>-all.jar
+// (META-INF/jarjar embeds ModernUI-Forge + Core + Markflow)
+// FG auto-creates reobfJarJar when jarJar is enabled.
+tasks.named('jar').configure {
+    finalizedBy 'jarJar'
+}
+tasks.named('build').configure {
+    dependsOn 'jarJar'
+    // Prefer reobfuscated JiJ jar when available
+    dependsOn tasks.matching { it.name == 'reobfJarJar' }
+}
 
 publishing {
     publications {
         mavenJava(MavenPublication) {
-            artifact jar
+            // Prefer the JiJ-bundled archive when present
+            artifact(tasks.named('jarJar'))
         }
     }
     repositories {

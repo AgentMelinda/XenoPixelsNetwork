@@ -30,5 +30,21 @@ jobs:
       - name: Compile
         run: ./gradlew compileJava --no-daemon
 
-      - name: Build
-        run: ./gradlew build --no-daemon
+      - name: Build (includes Jar-in-Jar ModernUI)
+        run: ./gradlew build jarJar --no-daemon
+
+      - name: Verify ModernUI is nested
+        run: |
+          shopt -s nullglob
+          all=(build/libs/*-all.jar)
+          if [ ${#all[@]} -eq 0 ]; then
+            echo "Missing -all.jar JiJ artifact"
+            ls -la build/libs || true
+            exit 1
+          fi
+          jar tf "${all[0]}" | grep -E 'META-INF/jarjar/ModernUI' || {
+            echo "ModernUI not found inside ${all[0]}"
+            jar tf "${all[0]}" | grep jarjar || true
+            exit 1
+          }
+          echo "OK: ModernUI nested in ${all[0]}"

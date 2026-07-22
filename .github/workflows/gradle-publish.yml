@@ -32,13 +32,16 @@ jobs:
         run: chmod +x gradlew
 
       - name: Build with Gradle
-        run: ./gradlew build --no-daemon
+        run: ./gradlew build jarJar --no-daemon
 
       - name: Upload build artifacts
         uses: actions/upload-artifact@v4
         with:
           name: xenopixelsmod-jars
-          path: build/libs/xenopixelsmod-*.jar
+          # Prefer the Jar-in-Jar "all" artifact (bundles ModernUI)
+          path: |
+            build/libs/*-all.jar
+            build/libs/xenopixelsmod-*.jar
           if-no-files-found: error
 
       - name: Publish to GitHub Releases
@@ -47,12 +50,17 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           shopt -s nullglob
-          jars=(build/libs/xenopixelsmod-*.jar)
+          # Ship the JiJ-bundled jar first (ModernUI nested)
+          jars=(build/libs/*-all.jar)
+          if [ ${#jars[@]} -eq 0 ]; then
+            jars=(build/libs/xenopixelsmod-*.jar)
+          fi
           if [ ${#jars[@]} -eq 0 ]; then
             echo "No xenopixelsmod jars found under build/libs"
             ls -la build/libs || true
             exit 1
           fi
+          echo "Publishing: ${jars[*]}"
           if gh release view "${{ github.ref_name }}" >/dev/null 2>&1; then
             echo "Release ${{ github.ref_name }} already exists; uploading artifacts"
             gh release upload "${{ github.ref_name }}" "${jars[@]}" --clobber

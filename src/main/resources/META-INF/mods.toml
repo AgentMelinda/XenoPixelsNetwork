@@ -68,9 +68,11 @@ description='''${mod_description}'''
     versionRange="[2.1.3,)"
     ordering="AFTER"
     side="BOTH"
+# ModernUI is Jar-in-Jar bundled with this mod (see build.gradle jarJar).
+# Keep as a soft dependency so an external install still works if present.
 [[dependencies.${mod_id}]]
     modId="modernui"
-    mandatory=true
-    versionRange="[3.12.0,)"
+    mandatory=false
+    versionRange="[3.12.0,3.13)"
     ordering="AFTER"
     side="BOTH"
