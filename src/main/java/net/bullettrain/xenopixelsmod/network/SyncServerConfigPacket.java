@@ -29,6 +29,13 @@ public class SyncServerConfigPacket {
         buf.writeBoolean(d.bt3ChargeAttackEnabled);
         buf.writeBoolean(d.bt3DragonDashEnabled);
         buf.writeFloat(d.chaseSuccessChance);
+        buf.writeBoolean(d.kiOverchargeEnabled);
+        buf.writeVarInt(d.kiOverchargeThreshold);
+        buf.writeFloat(d.kiOverchargeSizePerPercent);
+        buf.writeFloat(d.kiOverchargeDamagePerPercent);
+        buf.writeFloat(d.kiOverchargeExplosionPerPercent);
+        buf.writeFloat(d.kiOverchargeMultiplier);
+        buf.writeFloat(d.kiOverchargeMaxScale);
         buf.writeDouble(d.vanishMaxRange);
         buf.writeDouble(d.chaseMaxRange);
         buf.writeDouble(d.backstepMaxRange);
@@ -52,6 +59,7 @@ public class SyncServerConfigPacket {
         buf.writeFloat(d.kickDamageScale);
         buf.writeFloat(d.kickUpLaunch);
         buf.writeFloat(d.kickDownLaunch);
+        buf.writeFloat(d.kickDownRangeBonus);
         buf.writeVarInt(d.maxComboSteps);
         buf.writeVarInt(d.chargeMaxTicks);
     }
@@ -69,6 +77,13 @@ public class SyncServerConfigPacket {
         d.bt3ChargeAttackEnabled = buf.readBoolean();
         d.bt3DragonDashEnabled = buf.readBoolean();
         d.chaseSuccessChance = buf.readFloat();
+        d.kiOverchargeEnabled = buf.readBoolean();
+        d.kiOverchargeThreshold = buf.readVarInt();
+        d.kiOverchargeSizePerPercent = buf.readFloat();
+        d.kiOverchargeDamagePerPercent = buf.readFloat();
+        d.kiOverchargeExplosionPerPercent = buf.readFloat();
+        d.kiOverchargeMultiplier = buf.readFloat();
+        d.kiOverchargeMaxScale = buf.readFloat();
         d.vanishMaxRange = buf.readDouble();
         d.chaseMaxRange = buf.readDouble();
         d.backstepMaxRange = buf.readDouble();
@@ -92,6 +107,7 @@ public class SyncServerConfigPacket {
         d.kickDamageScale = buf.readFloat();
         d.kickUpLaunch = buf.readFloat();
         d.kickDownLaunch = buf.readFloat();
+        d.kickDownRangeBonus = buf.readFloat();
         d.maxComboSteps = buf.readVarInt();
         d.chargeMaxTicks = buf.readVarInt();
         return new SyncServerConfigPacket(d);

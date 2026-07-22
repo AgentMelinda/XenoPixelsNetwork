@@ -1,45 +1,159 @@
 package net.bullettrain.xenopixelsmod.client.content;
 
 import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
 import com.google.gson.annotations.SerializedName;
 import net.bullettrain.xenopixelsmod.XenoPixelsMod;
+import net.minecraft.client.Minecraft;
+import net.minecraft.resources.ResourceLocation;
+import net.minecraft.server.packs.resources.Resource;
 import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.api.distmarker.OnlyIn;
 
+import java.io.BufferedReader;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Optional;
 
 @OnlyIn(Dist.CLIENT)
 public final class XenoContentCatalog {
-    private static final Gson GSON = new Gson();
+    private static final Gson GSON = new GsonBuilder().create();
+    private static final String[] CLASSPATH_PATHS = {
+            "/data/xenopixelsmod/dmz/content_catalog.json",
+            "/assets/xenopixelsmod/dmz/content_catalog.json",
+            "data/xenopixelsmod/dmz/content_catalog.json",
+            "assets/xenopixelsmod/dmz/content_catalog.json"
+    };
+    private static final ResourceLocation PACK_ID =
+            new ResourceLocation(XenoPixelsMod.MOD_ID, "dmz/content_catalog.json");
+
     private static Catalog DATA;
 
     private XenoContentCatalog() {}
 
     public static synchronized Catalog get() {
-        if (DATA == null) {
+        if (DATA == null || DATA.isEmpty()) {
             DATA = load();
         }
         return DATA;
     }
 
+    /** Force reload (e.g. after resource reload). */
+    public static synchronized void reload() {
+        DATA = load();
+    }
+
     private static Catalog load() {
-        String path = "/data/xenopixelsmod/dmz/content_catalog.json";
-        try (InputStream in = XenoContentCatalog.class.getResourceAsStream(path)) {
-            if (in == null) {
-                XenoPixelsMod.LOGGER.warn("Missing content catalog {}", path);
-                return Catalog.empty();
+        // 1) Minecraft resource manager (preferred in-game)
+        try {
+            Minecraft mc = Minecraft.getInstance();
+            if (mc != null && mc.getResourceManager() != null) {
+                Optional<Resource> res = mc.getResourceManager().getResource(PACK_ID);
+                if (res.isPresent()) {
+                    try (BufferedReader reader = new BufferedReader(
+                            new InputStreamReader(res.get().open(), StandardCharsets.UTF_8))) {
+                        Catalog c = GSON.fromJson(reader, Catalog.class);
+                        if (c != null && !c.isEmpty()) {
+                            XenoPixelsMod.LOGGER.info("Loaded XenoPixels content catalog from pack ({}+{}+{} entries)",
+                                    size(c.character), size(c.transforms), size(c.skills));
+                            return normalize(c);
+                        }
+                    }
+                }
             }
-            Catalog c = GSON.fromJson(new InputStreamReader(in, StandardCharsets.UTF_8), Catalog.class);
-            return c != null ? c : Catalog.empty();
         } catch (Exception e) {
-            XenoPixelsMod.LOGGER.error("Failed loading content catalog", e);
-            return Catalog.empty();
+            XenoPixelsMod.LOGGER.warn("Pack catalog load failed: {}", e.toString());
         }
+
+        // 2) Classpath fallbacks
+        ClassLoader cl = XenoContentCatalog.class.getClassLoader();
+        for (String path : CLASSPATH_PATHS) {
+            try (InputStream in = open(path, cl)) {
+                if (in == null) continue;
+                Catalog c = GSON.fromJson(new InputStreamReader(in, StandardCharsets.UTF_8), Catalog.class);
+                if (c != null && !c.isEmpty()) {
+                    XenoPixelsMod.LOGGER.info("Loaded XenoPixels content catalog from {} ({}+{}+{} entries)",
+                            path, size(c.character), size(c.transforms), size(c.skills));
+                    return normalize(c);
+                }
+            } catch (Exception e) {
+                XenoPixelsMod.LOGGER.warn("Catalog load failed for {}: {}", path, e.toString());
+            }
+        }
+
+        XenoPixelsMod.LOGGER.error("XenoPixels content catalog missing/empty — using built-in fallback");
+        return builtInFallback();
+    }
+
+    private static InputStream open(String path, ClassLoader cl) {
+        InputStream in = XenoContentCatalog.class.getResourceAsStream(path.startsWith("/") ? path : "/" + path);
+        if (in != null) return in;
+        return cl != null ? cl.getResourceAsStream(path.startsWith("/") ? path.substring(1) : path) : null;
+    }
+
+    private static Catalog normalize(Catalog c) {
+        if (c.character == null) c.character = new ArrayList<>();
+        if (c.transforms == null) c.transforms = new ArrayList<>();
+        if (c.skills == null) c.skills = new ArrayList<>();
+        return c;
+    }
+
+    private static int size(List<?> list) {
+        return list == null ? 0 : list.size();
+    }
+
+    private static Catalog builtInFallback() {
+        Catalog c = new Catalog();
+        c.character = new ArrayList<>();
+        c.transforms = new ArrayList<>();
+        c.skills = new ArrayList<>();
+
+        c.character.add(entry("overview", "XenoPixels Overview", "What this mod adds",
+                "Custom DMZ forms, XV2 HUD, BT3/Sparking combat, KI overcharge, and configs. Server: xpn.co.il",
+                0xFF1E88E5));
+        c.character.add(entry("hud", "XenoPixels HUD", "XV2-style combat UI",
+                "Portrait, HP/KI/STM, release %, transform border. /xenohud edit · default scale 0.50x",
+                0xFF42A5F5));
+        c.character.add(entry("config", "Configs", "Client + server flags",
+                "xenopixelsmod-client.json / xenopixelsmod-server.json. /xenoclient and /xenoserver commands.",
+                0xFF78909C));
+
+        c.transforms.add(entry("ssj5_10", "SSJ 5–10 Legend", "Superforms · TP priced",
+                "Custom Saiyan legend chain past SSJ4. Prices 120k–300k TP. /dmzreload config after edits.",
+                0xFFE1BEE7));
+        c.transforms.add(entry("godforms", "God Forms", "Beerus / Whis only",
+                "SSG, SSB, SSBE, Rose, Rose Evolution, UI Sign, MUI, Ultra Ego.",
+                0xFFFF69B4));
+        c.transforms.add(entry("ikari", "Trunks Ikari", "Trunks master · 95k TP",
+                "Legendary forms skill from Master Trunks. Buffed silver-hair style.",
+                0xFF90CAF9));
+
+        c.skills.add(entry("vanish", "Vanish", "Double-tap A/D",
+                "Snap behind lock-on. Costs KI. DMZ evasion SFX.", 0xFF1E88E5));
+        c.skills.add(entry("chase", "Chase Dash", "Double-tap W · 50%",
+                "Mid-range rush-in. Probabilistic success.", 0xFFFF7043));
+        c.skills.add(entry("kick", "Charge Kick", "Hold Middle Mouse",
+                "Air kick OK. Hold W=up launch, S=down stomp (longer reach).", 0xFFFF69B4));
+        c.skills.add(entry("dragon", "Dragon Dash", "Hold N",
+                "Launch target then chase. Stamina + KI.", 0xFFFFD54F));
+        c.skills.add(entry("overcharge", "KI Overcharge", "Release > 175%",
+                "Bigger size/damage/explosion per excess % release.", 0xFFFFEE58));
+
+        return c;
+    }
+
+    private static Entry entry(String id, String title, String subtitle, String detail, int accent) {
+        Entry e = new Entry();
+        e.id = id;
+        e.title = title;
+        e.subtitle = subtitle;
+        e.detail = detail;
+        e.accent = accent;
+        return e;
     }
 
     public static final class Catalog {
@@ -49,6 +163,10 @@ public final class XenoContentCatalog {
         public List<Entry> transforms = new ArrayList<>();
         @SerializedName("skills")
         public List<Entry> skills = new ArrayList<>();
+
+        boolean isEmpty() {
+            return size(character) == 0 && size(transforms) == 0 && size(skills) == 0;
+        }
 
         static Catalog empty() {
             Catalog c = new Catalog();

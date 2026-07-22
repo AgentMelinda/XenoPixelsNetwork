@@ -258,14 +258,18 @@ public class Bt3CombatPacket {
         }
         flat = flat.normalize();
 
+        double range = kickHitRange(charge, verticalBias);
         double forward = 0.45 + charge * 0.55;
+        if (verticalBias < 0) {
+            // S-hold stomp kick: dive farther forward
+            forward += 0.55 + charge * 0.75 + XenoServerConfig.kickDownRangeBonus * 0.12;
+        }
         double up = kickVerticalImpulse(player, charge, verticalBias, true);
         player.setDeltaMovement(flat.scale(forward).add(0, up, 0));
         player.hurtMarked = true;
         player.hasImpulse = true;
         player.fallDistance = 0f;
 
-        double range = XenoServerConfig.chargeAttackRange;
         float base = (float) Math.max(2.0, player.getAttackStrengthScale(0.5f) * 5.0f);
         if (data != null) {
             base = (float) Math.max(base, data.getMeleeDamage() * 0.45);
@@ -273,7 +277,8 @@ public class Bt3CombatPacket {
         float mult = XenoServerConfig.chargeDamageScale * XenoServerConfig.kickDamageScale * (0.55f + 0.7f * charge);
 
         boolean anyHit = false;
-        var box = player.getBoundingBox().expandTowards(flat.scale(range)).inflate(1.35);
+        double inflate = verticalBias < 0 ? 1.85 : 1.35;
+        var box = player.getBoundingBox().expandTowards(flat.scale(range)).inflate(inflate);
         for (LivingEntity living : player.level().getEntitiesOfClass(LivingEntity.class, box,
                 e -> e != player && e.isAlive())) {
             Vec3 to = living.position().add(0, living.getBbHeight() * 0.4, 0).subtract(player.getEyePosition());
@@ -301,8 +306,9 @@ public class Bt3CombatPacket {
 
     private static void handleChargeAttack(ServerPlayer player, LivingEntity target, Resources res, StatsData data,
                                            boolean kick, int chargePercent, int verticalBias) {
-        if (player.distanceTo(target) > XenoServerConfig.chargeAttackRange) return;
         float charge = Math.max(0.25f, Math.min(1f, chargePercent / 100f));
+        double engageRange = kick ? kickHitRange(charge, verticalBias) : XenoServerConfig.chargeAttackRange;
+        if (player.distanceTo(target) > engageRange + 1.5) return;
         float stamCost = kick
                 ? XenoServerConfig.kickReleaseStamina(charge, verticalBias)
                 : XenoServerConfig.fistReleaseStamina(charge);
@@ -314,19 +320,22 @@ public class Bt3CombatPacket {
                 : (full ? DmzAnimHelper.ChargeStyle.FIST_HEAVY : DmzAnimHelper.ChargeStyle.FIST_LIGHT);
         DmzAnimHelper.playChargeRelease(player, style, full);
 
-        // Step into target
+        // Step into target (S-kick lunges farther)
         Vec3 to = target.position().subtract(player.position());
         Vec3 flat = new Vec3(to.x, 0, to.z);
         if (flat.lengthSqr() > 1.0e-4) {
             double stepUp = kick ? kickVerticalImpulse(player, charge, verticalBias, false) * 0.35 : 0.06;
-            player.setDeltaMovement(flat.normalize().scale(0.55 + charge * 0.45).add(0, stepUp, 0));
+            double lunge = 0.55 + charge * 0.45;
+            if (kick && verticalBias < 0) {
+                lunge += 0.65 + charge * 0.55 + XenoServerConfig.kickDownRangeBonus * 0.08;
+            }
+            player.setDeltaMovement(flat.normalize().scale(lunge).add(0, stepUp, 0));
             player.hurtMarked = true;
             player.hasImpulse = true;
         }
         faceTarget(player, target);
 
-        // Allow slightly longer reach after lunge so kick contact still registers
-        double hitRange = kick ? Math.max(5.5, XenoServerConfig.chargeAttackRange + 0.75) : 5.0;
+        double hitRange = kick ? engageRange : 5.0;
         if (player.distanceTo(target) > hitRange) return;
 
         float base = (float) Math.max(2.0, player.getAttackStrengthScale(0.5f) * 5.0f);
@@ -362,6 +371,15 @@ public class Bt3CombatPacket {
                         SoundEvents.PLAYER_ATTACK_CRIT, SoundSource.PLAYERS, 1.0f, 0.9f);
             }
         }
+    }
+
+    /** Hit reach for charged kicks; S-hold extends range. */
+    private static double kickHitRange(float charge, int verticalBias) {
+        double base = Math.max(5.5, XenoServerConfig.chargeAttackRange + 0.75);
+        if (verticalBias < 0) {
+            base += XenoServerConfig.kickDownRangeBonus * (0.75 + 0.35 * charge);
+        }
+        return base;
     }
 
     /**

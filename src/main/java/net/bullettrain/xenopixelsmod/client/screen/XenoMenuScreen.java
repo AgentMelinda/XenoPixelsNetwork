@@ -80,7 +80,7 @@ public class XenoMenuScreen extends Screen {
         graphics.fill(0, 0, 8, this.height, 0xFF1E88E5);
         graphics.fill(this.width - 8, 0, this.width, this.height, 0xFFE53935);
         graphics.drawCenteredString(this.font, "§lXenoPixels", this.width / 2, 30, 0xFF42A5F5);
-        graphics.drawCenteredString(this.font, "§7Custom DMZ server content", this.width / 2, 48, 0xFFAAAAAA);
+        graphics.drawCenteredString(this.font, "§7Forms · Combat · HUD · Config — browse each category", this.width / 2, 48, 0xFFAAAAAA);
         super.render(graphics, mouseX, mouseY, partialTick);
     }
 

@@ -40,6 +40,22 @@ public final class XenoServerConfig {
      */
     public static float chaseSuccessChance = 0.50f;
 
+    // --- KI overcharge (power release %) ---
+    /** Enable bigger/harder KI attacks when release is above the threshold. */
+    public static boolean kiOverchargeEnabled = true;
+    /** Power-release % where overcharge scaling starts (default 175). */
+    public static int kiOverchargeThreshold = 175;
+    /** Size growth per 1% release above threshold (default 0.012 = +1.2%/pt). */
+    public static float kiOverchargeSizePerPercent = 0.012f;
+    /** Damage growth per 1% release above threshold. */
+    public static float kiOverchargeDamagePerPercent = 0.015f;
+    /** Explosion radius growth per 1% release above threshold. */
+    public static float kiOverchargeExplosionPerPercent = 0.014f;
+    /** Master multiplier applied to all overcharge growth. */
+    public static float kiOverchargeMultiplier = 1.0f;
+    /** Cap on overcharge scale factor (1 + growth), e.g. 3.0 = triple max. */
+    public static float kiOverchargeMaxScale = 3.0f;
+
     // --- Balance ---
     public static double vanishMaxRange = 7.0;
     public static double chaseMaxRange = 14.0;
@@ -77,6 +93,8 @@ public final class XenoServerConfig {
     public static float kickUpLaunch = 1.35f;
     /** Downward launch multiplier when holding S during charged kick. */
     public static float kickDownLaunch = 1.15f;
+    /** Extra reach (blocks) for charged kick while holding S. */
+    public static float kickDownRangeBonus = 4.0f;
     public static int maxComboSteps = 5;
     /** Ticks to reach full charge (20 = 1s). */
     public static int chargeMaxTicks = 28;
@@ -121,6 +139,13 @@ public final class XenoServerConfig {
         d.bt3ChargeAttackEnabled = bt3ChargeAttackEnabled;
         d.bt3DragonDashEnabled = bt3DragonDashEnabled;
         d.chaseSuccessChance = chaseSuccessChance;
+        d.kiOverchargeEnabled = kiOverchargeEnabled;
+        d.kiOverchargeThreshold = kiOverchargeThreshold;
+        d.kiOverchargeSizePerPercent = kiOverchargeSizePerPercent;
+        d.kiOverchargeDamagePerPercent = kiOverchargeDamagePerPercent;
+        d.kiOverchargeExplosionPerPercent = kiOverchargeExplosionPerPercent;
+        d.kiOverchargeMultiplier = kiOverchargeMultiplier;
+        d.kiOverchargeMaxScale = kiOverchargeMaxScale;
         d.vanishMaxRange = vanishMaxRange;
         d.chaseMaxRange = chaseMaxRange;
         d.backstepMaxRange = backstepMaxRange;
@@ -144,6 +169,7 @@ public final class XenoServerConfig {
         d.kickDamageScale = kickDamageScale;
         d.kickUpLaunch = kickUpLaunch;
         d.kickDownLaunch = kickDownLaunch;
+        d.kickDownRangeBonus = kickDownRangeBonus;
         d.maxComboSteps = maxComboSteps;
         d.chargeMaxTicks = chargeMaxTicks;
         return d;
@@ -162,6 +188,13 @@ public final class XenoServerConfig {
         bt3ChargeAttackEnabled = d.bt3ChargeAttackEnabled;
         bt3DragonDashEnabled = d.bt3DragonDashEnabled;
         chaseSuccessChance = d.chaseSuccessChance < 0f ? 0.50f : Math.max(0f, Math.min(1f, d.chaseSuccessChance));
+        kiOverchargeEnabled = d.kiOverchargeEnabled;
+        kiOverchargeThreshold = Math.max(100, Math.min(500, d.kiOverchargeThreshold <= 0 ? 175 : d.kiOverchargeThreshold));
+        kiOverchargeSizePerPercent = Math.max(0f, d.kiOverchargeSizePerPercent);
+        kiOverchargeDamagePerPercent = Math.max(0f, d.kiOverchargeDamagePerPercent);
+        kiOverchargeExplosionPerPercent = Math.max(0f, d.kiOverchargeExplosionPerPercent);
+        kiOverchargeMultiplier = d.kiOverchargeMultiplier > 0f ? d.kiOverchargeMultiplier : 1f;
+        kiOverchargeMaxScale = d.kiOverchargeMaxScale > 1f ? d.kiOverchargeMaxScale : 3f;
         vanishMaxRange = d.vanishMaxRange > 0 ? d.vanishMaxRange : 7.0;
         chaseMaxRange = d.chaseMaxRange > 0 ? d.chaseMaxRange : 14.0;
         backstepMaxRange = d.backstepMaxRange > 0 ? d.backstepMaxRange : 10.0;
@@ -189,6 +222,7 @@ public final class XenoServerConfig {
         kickDamageScale = d.kickDamageScale > 0 ? d.kickDamageScale : 1.15f;
         kickUpLaunch = d.kickUpLaunch > 0 ? d.kickUpLaunch : 1.35f;
         kickDownLaunch = d.kickDownLaunch > 0 ? d.kickDownLaunch : 1.15f;
+        kickDownRangeBonus = Math.max(0f, d.kickDownRangeBonus);
         maxComboSteps = Math.max(1, Math.min(8, d.maxComboSteps <= 0 ? 5 : d.maxComboSteps));
         chargeMaxTicks = Math.max(10, Math.min(80, d.chargeMaxTicks <= 0 ? 28 : d.chargeMaxTicks));
     }
@@ -203,6 +237,37 @@ public final class XenoServerConfig {
         float base = kickChargeStaminaCost * (0.45f + 0.55f * c);
         if (vertical != 0) base += kickVerticalExtraStamina * (0.5f + 0.5f * c);
         return base;
+    }
+
+    /**
+     * Overcharge scale for a given power-release %. Returns 1.0 at/below threshold.
+     * Uses {@code size} growth curve as the base excess factor; callers apply their own per-% rates.
+     */
+    public static float kiOverchargeExcessPercent(int powerRelease) {
+        if (!kiOverchargeEnabled) return 0f;
+        int excess = powerRelease - kiOverchargeThreshold;
+        return Math.max(0f, excess);
+    }
+
+    public static float kiOverchargeSizeScale(int powerRelease) {
+        float excess = kiOverchargeExcessPercent(powerRelease);
+        if (excess <= 0f) return 1f;
+        float scale = 1f + excess * kiOverchargeSizePerPercent * kiOverchargeMultiplier;
+        return Math.min(kiOverchargeMaxScale, scale);
+    }
+
+    public static float kiOverchargeDamageScale(int powerRelease) {
+        float excess = kiOverchargeExcessPercent(powerRelease);
+        if (excess <= 0f) return 1f;
+        float scale = 1f + excess * kiOverchargeDamagePerPercent * kiOverchargeMultiplier;
+        return Math.min(kiOverchargeMaxScale, scale);
+    }
+
+    public static float kiOverchargeExplosionScale(int powerRelease) {
+        float excess = kiOverchargeExcessPercent(powerRelease);
+        if (excess <= 0f) return 1f;
+        float scale = 1f + excess * kiOverchargeExplosionPerPercent * kiOverchargeMultiplier;
+        return Math.min(kiOverchargeMaxScale, scale);
     }
 
     /** Wire legacy DMZ HUD config field for older code paths. */
@@ -227,6 +292,13 @@ public final class XenoServerConfig {
         public boolean bt3ChargeAttackEnabled = true;
         public boolean bt3DragonDashEnabled = true;
         public float chaseSuccessChance = 0.50f;
+        public boolean kiOverchargeEnabled = true;
+        public int kiOverchargeThreshold = 175;
+        public float kiOverchargeSizePerPercent = 0.012f;
+        public float kiOverchargeDamagePerPercent = 0.015f;
+        public float kiOverchargeExplosionPerPercent = 0.014f;
+        public float kiOverchargeMultiplier = 1.0f;
+        public float kiOverchargeMaxScale = 3.0f;
         public double vanishMaxRange = 7.0;
         public double chaseMaxRange = 14.0;
         public double backstepMaxRange = 10.0;
@@ -250,6 +322,7 @@ public final class XenoServerConfig {
         public float kickDamageScale = 1.15f;
         public float kickUpLaunch = 1.35f;
         public float kickDownLaunch = 1.15f;
+        public float kickDownRangeBonus = 4.0f;
         public int maxComboSteps = 5;
         public int chargeMaxTicks = 28;
     }

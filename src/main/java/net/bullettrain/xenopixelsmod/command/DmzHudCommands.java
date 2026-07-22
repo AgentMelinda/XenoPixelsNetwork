@@ -108,7 +108,7 @@ public final class DmzHudCommands {
                 .executes(ctx -> {
                     ctx.getSource().sendSuccess(() -> Component.literal(
                             "Usage: /xenoserver <reload|status|set <key> <true|false>>\n"
-                                    + "keys: combat, combo, vanish, chase, backstep, finisher, charge, dragon, dmzhud, bootstrap"),
+                                    + "keys: combat, combo, vanish, chase, backstep, finisher, charge, dragon, overcharge, dmzhud, bootstrap"),
                             false);
                     return 1;
                 }));
@@ -134,6 +134,7 @@ public final class DmzHudCommands {
             case "finisher" -> XenoServerConfig.bt3FinisherEnabled = value;
             case "charge" -> XenoServerConfig.bt3ChargeAttackEnabled = value;
             case "dragon" -> XenoServerConfig.bt3DragonDashEnabled = value;
+            case "kiovercharge", "overcharge" -> XenoServerConfig.kiOverchargeEnabled = value;
             case "dmzhud" -> XenoServerConfig.dmzHudEnabled = value;
             case "bootstrap" -> XenoServerConfig.dmzContentBootstrap = value;
             default -> {
