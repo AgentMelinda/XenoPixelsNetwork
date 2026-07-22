@@ -1,6 +1,3 @@
 {
-  "parent": "minecraft:block/cube_all",
-  "textures": {
-    "all": "tutorialmod:block/sound_block"
-  }
+  "parent": "tutorialmod:block/sound_block"
 }
