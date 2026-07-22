@@ -16,6 +16,7 @@ import net.minecraftforge.eventbus.api.IEventBus;
 import net.minecraftforge.registries.DeferredRegister;
 import net.minecraftforge.registries.ForgeRegistries;
 import net.minecraftforge.registries.RegistryObject;
+import net.bullettrain.tutorialmod.block.custom.SoundBlock;
 
 import java.util.function.Supplier;
 
@@ -25,6 +26,8 @@ public class ModBlocks {
             DeferredRegister.create(ForgeRegistries.BLOCKS, TutorialMod.MOD_ID);
 
 
+public static final RegistryObject<Block> SOUND_BLOCK = registerBlock("sound_block",
+        () -> new SoundBlock(BlockBehaviour.Properties.copy(Blocks.IRON_BLOCK)));
 
  public static final RegistryObject<Block> JACKIETONITE_ORE_BLOCK = registerBlock("jackietonite_ore_block",
         () -> new Block(BlockBehaviour.Properties.of()
