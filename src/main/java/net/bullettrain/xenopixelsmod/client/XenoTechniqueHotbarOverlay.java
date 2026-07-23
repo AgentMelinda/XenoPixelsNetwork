@@ -77,7 +77,7 @@ public class XenoTechniqueHotbarOverlay implements IGuiOverlay {
         boolean charging = techniques.isTechniqueCharging() || techniques.isTechniqueChargeActive();
 
         if (charging) {
-            // DMZ stores techniqueChargePercent as 0..200 (percent points), NOT 0..1
+            // DMZ stores techniqueChargePercent as 0..1000 (percent points), NOT 0..1
             drawChargeMeter(g, mc.font, screenWidth, screenHeight, chargePct, resolveName(unlocked, chargingId));
         }
 
@@ -217,20 +217,20 @@ public class XenoTechniqueHotbarOverlay implements IGuiOverlay {
     }
 
     /**
-     * @param rawPercent DMZ {@code getTechniqueChargePercent()} — range 0..200 (already in %).
+     * @param rawPercent DMZ {@code getTechniqueChargePercent()} — range 0..1000 (already in %).
      */
     private static void drawChargeMeter(GuiGraphics g, Font font, int sw, int sh, float rawPercent, String techName) {
-        // Normalize: DMZ uses 0-200 percent points (see Techniques.setTechniqueChargePercent)
-        float pct = Math.max(0f, Math.min(200f, rawPercent));
+        // Normalize: DMZ uses 0-1000 percent points (see Techniques.setTechniqueChargePercent)
+        float pct = Math.max(0f, Math.min(1000f, rawPercent));
         // If a build ever sends 0-1, scale up
         if (pct > 0f && pct <= 1.0001f) {
             pct *= 100f;
         }
 
-        boolean over = pct > 100f;
-        // 0-100% fills the main bar; overcharge sits on top as a pulse strip
-        float fill01 = Math.min(1f, pct / 100f);
-        float over01 = over ? Math.min(1f, (pct - 100f) / 100f) : 0f;
+        boolean over = pct > 175f;
+        // 0-175% fills the main bar; overcharge sits on top as a pulse strip
+        float fill01 = Math.min(1f, pct / 175f);
+        float over01 = over ? Math.min(1f, (pct - 175f) / 825f) : 0f;
 
         int barW = 182;
         int barH = 12;
@@ -255,7 +255,7 @@ public class XenoTechniqueHotbarOverlay implements IGuiOverlay {
             }
         }
 
-        // Overcharge layer: left→right fill of a bright strip proportional to 100→200
+        // Overcharge layer: left→right fill of a bright strip proportional to 175→1000
         if (over01 > 0f) {
             int overW = Math.max(2, Math.round(barW * over01));
             g.fill(x, y + barH - 3, x + overW, y + barH, 0xFFFF1744);
