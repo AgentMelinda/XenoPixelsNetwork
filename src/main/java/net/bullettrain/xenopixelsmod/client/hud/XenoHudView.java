@@ -133,13 +133,10 @@ public final class XenoHudView {
         fillParallelogram(graphics, panelX - 1, panelY - 1, panelW + 2, panelH + 2, PANEL_SKEW, PANEL_BORDER_DIM);
         fillParallelogram(graphics, panelX, panelY, panelW, panelH, PANEL_SKEW, PANEL_BG);
 
-        // Layered octagon portrait frame — XV2-style plate, not a plain rounded square.
-        // Non-rectangular shapes require per-row fills (LDLib's rect-only texture primitives can't do
-        // this), so this chrome is drawn with vanilla GuiGraphics fills, same technique the legacy
-        // renderer already uses for its own non-rectangular shapes (diamonds/circles/borders).
-        fillOctagon(graphics, -3, -3, PORTRAIT + 6, PORTRAIT + 6, PORTRAIT_OUTER);
-        fillOctagon(graphics, -2, -2, PORTRAIT + 4, PORTRAIT + 4, PORTRAIT_GOLD);
-        fillOctagon(graphics, 0, 0, PORTRAIT, PORTRAIT, PORTRAIT_INNER);
+        // Layered square portrait frame.
+        graphics.fill(-3, -3, PORTRAIT + 6, PORTRAIT + 6, PORTRAIT_OUTER);
+        graphics.fill(-2, -2, PORTRAIT + 4, PORTRAIT + 4, PORTRAIT_GOLD);
+        graphics.fill(0, 0, PORTRAIT, PORTRAIT, PORTRAIT_INNER);
         drawPortraitBust(graphics, mc);
         // Thin gold corner accents re-drawn on top so the bust doesn't cover the frame edge.
         drawOctagonBorder(graphics, 0, 0, PORTRAIT, PORTRAIT, PORTRAIT_GOLD, 2);
@@ -253,59 +250,22 @@ public final class XenoHudView {
         return Math.round(skew * (1f - row / (float) (h - 1)));
     }
 
-    /**
-     * Filled octagon: a rectangle with all four corners diagonally cut off
-     * evenly — the pentagon's pointed roof clipped the player's head/face
-     * bust at the apex, so this gives the portrait plate an XV2-style
-     * angular silhouette with full rectangular headroom for the bust.
-     */
     private static void fillOctagon(GuiGraphics g, int x, int y, int w, int h, int color) {
         if (w <= 0 || h <= 0) return;
-        int c = octagonCut(w, h);
-        for (int row = 0; row < h; row++) {
-            int left = x;
-            int right = x + w;
-            if (row < c) {
-                int inset = c - row;
-                left = x + inset;
-                right = x + w - inset;
-            } else {
-                int distFromBottom = h - 1 - row;
-                if (distFromBottom < c) {
-                    int inset = c - distFromBottom;
-                    left = x + inset;
-                    right = x + w - inset;
-                }
-            }
-            if (right > left) g.fill(left, y + row, right, y + row + 1, color);
-        }
+        // Deprecated: this method is kept for compatibility but now just fills a plain rectangle.
+        g.fill(x, y, x + w, y + h, color);
     }
 
-    /** Thin border outline of {@link #fillOctagon}'s silhouette. */
     private static void drawOctagonBorder(GuiGraphics g, int x, int y, int w, int h, int color, int t) {
         if (w <= 0 || h <= 0 || t <= 0) return;
-        int c = octagonCut(w, h);
-        for (int row = 0; row < h; row++) {
-            int left = x;
-            int right = x + w;
-            if (row < c) {
-                int inset = c - row;
-                left = x + inset;
-                right = x + w - inset;
-            } else {
-                int distFromBottom = h - 1 - row;
-                if (distFromBottom < c) {
-                    int inset = c - distFromBottom;
-                    left = x + inset;
-                    right = x + w - inset;
-                }
-            }
-            if (right <= left) continue;
-            g.fill(left, y + row, Math.min(left + t, right), y + row + 1, color);
-            g.fill(Math.max(right - t, left), y + row, right, y + row + 1, color);
-        }
+        // Deprecated: now draws a simple rectangle border.
+        g.fill(x + t, y, x + w - t, t, color);
+        g.fill(x + t, y + h - t, x + w, h, color);
+        g.fill(x, y + t, t, y + h, color);
+        g.fill(w - t, y + t, w, y + h, color);
     }
 
+    /** Deprecated: no longer used since the portrait frame is now a square. */
     private static int octagonCut(int w, int h) {
         return Math.max(1, Math.round(Math.min(w, h) * 0.22f));
     }
@@ -325,9 +285,8 @@ public final class XenoHudView {
         int iw = PORTRAIT - pad * 2;
         int ih = PORTRAIT - pad * 2;
 
-        // Sky/ground backdrop behind the bust, clipped to the same octagon silhouette as the frame.
+        // Sky/ground backdrop for the square portrait frame.
         fillOctagon(g, ix, iy, iw, ih, 0xFF6BB7E8);
-        g.fill(ix, iy, ix + iw, iy + ih / 2, 0xFF8FD0F5);
         g.fill(ix, iy + ih * 2 / 3, ix + iw, iy + ih, 0xFF4A8A45);
         g.fill(ix, iy + ih / 2, ix + iw, iy + ih * 2 / 3, 0xFF5FA35A);
 
@@ -336,8 +295,7 @@ public final class XenoHudView {
         RenderSystem.setShaderColor(1f, 1f, 1f, 1f);
         RenderSystem.setShaderTexture(0, skin);
 
-        // Note: No scissor clipping needed here — the octagon backdrop (drawn via fillOctagon) already
-        // provides visual containment. Removing this clip prevents asymmetric cutting of body/arms.
+        // Note: The square backdrop (drawn via g.fill) provides full rectangular area for the bust.
 
         int head = Math.max(16, Math.round(iw * 0.70f));
         int headX = ix + (iw - head) / 2;
