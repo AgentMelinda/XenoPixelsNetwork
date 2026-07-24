@@ -6,7 +6,7 @@ import com.dragonminez.common.stats.StatsProvider;
 import com.dragonminez.common.stats.character.Resources;
 import com.dragonminez.common.stats.character.Status;
 import com.dragonminez.common.stats.extras.ActionMode;
-import net.minecraft.client.player.LocalPlayer;
+import net.minecraft.world.entity.player.Player;
 import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.api.distmarker.OnlyIn;
 import net.minecraftforge.common.util.LazyOptional;
@@ -83,7 +83,18 @@ public final class DmzClientStats {
         }
     }
 
-    public static Snapshot read(LocalPlayer player) {
+    /**
+     * Widened from the original {@code LocalPlayer}-only signature so party
+     * HUD code ({@link XenoPartyOverlay}) can read any nearby tracked
+     * {@link Player}'s DMZ resources. DMZ's capability system is registered
+     * per-{@code Entity} ({@code StatsProvider.get(Capability, Entity)}) and
+     * syncs per-player-id resource packets to observing clients (used for
+     * DMZ's own above-head HP display), so this is expected to also resolve
+     * for remote players, not just the local one — if a given remote
+     * player's data hasn't synced yet, this safely falls back to
+     * {@link Snapshot#empty()} like it always has for the local player.
+     */
+    public static Snapshot read(Player player) {
         if (player == null) return Snapshot.empty();
         try {
             LazyOptional<StatsData> opt = StatsProvider.get(StatsCapability.INSTANCE, player);

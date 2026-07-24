@@ -107,6 +107,20 @@ repositories {
         name = 'IzzelAliz Maven'
         url = 'https://maven.izzel.io/releases/'
     }
+    // LDLib migration target (Phase 1) — Modrinth-hosted, must stay exclusive to
+    // maven.modrinth so it can't shadow/override other repos' coordinates.
+    exclusiveContent {
+        forRepository {
+            maven {
+                name = 'Modrinth'
+                url = 'https://api.modrinth.com/maven'
+            }
+        }
+        forRepositories(fg.repository)
+        filter {
+            includeGroup 'maven.modrinth'
+        }
+    }
 }
 
 // library = extra run classpath; jarJar = embedded into the output mod jar (JiJ)
@@ -144,6 +158,11 @@ dependencies {
     implementation fg.deobf('com.github.glitchfiend:TerraBlender-forge:1.20.1-3.0.1.10')
     implementation fg.deobf('top.theillusivec4.curios:curios-forge:5.14.1+1.20.1')
     implementation 'thedarkcolour:kotlinforforge:4.11.0'
+
+    // ---- LDLib (Phase 1 of the ModernUI -> LDLib HUD migration, see plan.md) ----
+    // Resolved only for now; not yet used to render anything, and not Jar-in-Jar'd
+    // (external required dependency per plan.md §4.5 — no bundling until license review).
+    implementation fg.deobf("maven.modrinth:${ldlib_modrinth_project}:${ldlib_modrinth_version}")
 
     // ---- Modern UI (run classpath) ----
     def muiExcludes = {

@@ -21,9 +21,11 @@ public final class XenoHudRegistration {
         try {
             event.registerAbove(DMZ_TOP, "xeno_hud", new XenoHudOverlay());
             event.registerAbove(DMZ_TOP, "xeno_technique_hotbar", new XenoTechniqueHotbarOverlay());
+            event.registerAbove(DMZ_TOP, "xeno_party_hud", new XenoPartyOverlay());
         } catch (Exception e) {
             event.registerAbove(VanillaGuiOverlay.HOTBAR.id(), "xeno_hud", new XenoHudOverlay());
             event.registerAbove(VanillaGuiOverlay.HOTBAR.id(), "xeno_technique_hotbar", new XenoTechniqueHotbarOverlay());
+            event.registerAbove(VanillaGuiOverlay.HOTBAR.id(), "xeno_party_hud", new XenoPartyOverlay());
         }
     }
 }

@@ -70,6 +70,7 @@ public class XenoPixelsMod {
             event.enqueueWork(() -> {
                 net.bullettrain.xenopixelsmod.client.config.XenoClientConfig.load();
                 net.bullettrain.xenopixelsmod.client.config.XenoHudConfig.load();
+                net.bullettrain.xenopixelsmod.client.config.XenoHotbarConfig.load();
             });
         }
     }

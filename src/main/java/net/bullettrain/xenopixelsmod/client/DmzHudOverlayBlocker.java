@@ -17,12 +17,12 @@ import java.util.Set;
  */
 @Mod.EventBusSubscriber(modid = XenoPixelsMod.MOD_ID, value = Dist.CLIENT)
 public final class DmzHudOverlayBlocker {
+    // Note: scouterhud, tracked_quest_hud, and beam_clash_hud are intentionally NOT blocked here —
+    // they're separate HUD elements (scouter readout, quest tracker, beam clash minigame) that should
+    // keep rendering alongside our custom HUD, not be replaced by it.
     private static final Set<ResourceLocation> DMZ_MAIN_HUD = Set.of(
             id("xenoversehud"),
-            id("alternativehud"),
-            id("scouterhud"),
-            id("tracked_quest_hud"),
-            id("beam_clash_hud")
+            id("alternativehud")
     );
 
     /** Replaced by {@link XenoTechniqueHotbarOverlay}. */

@@ -38,6 +38,9 @@ public class XenoHudOverlay implements IGuiOverlay {
     private static final int STM_SEGMENTS = 16;
     private static final int DIAMOND = 10;
 
+    private static final net.bullettrain.xenopixelsmod.client.hud.XenoHudView LDLIB_VIEW =
+            new net.bullettrain.xenopixelsmod.client.hud.XenoHudView();
+
     @Override
     public void render(ForgeGui gui, GuiGraphics graphics, float partialTick, int screenWidth, int screenHeight) {
         Minecraft mc = Minecraft.getInstance();
@@ -49,6 +52,18 @@ public class XenoHudOverlay implements IGuiOverlay {
         Minecraft mc = Minecraft.getInstance();
         if (mc.font == null) return;
 
+        XenoHudSnapshot snap = XenoHudSnapshotFactory.capture(mc);
+
+        if (!XenoHudConfig.legacyHudRenderer) {
+            // Phase 4 LDLib-backed renderer (migration-testing toggle).
+            LDLIB_VIEW.setSnapshot(snap);
+            LDLIB_VIEW.setBounds(XenoHudConfig.x, XenoHudConfig.y,
+                    XenoHudConfig.BASE_WIDTH, XenoHudConfig.BASE_HEIGHT, XenoHudConfig.scale);
+            LDLIB_VIEW.setEditorMode(editing);
+            LDLIB_VIEW.render(graphics, 1f);
+            return;
+        }
+
         graphics.pose().pushPose();
         graphics.pose().translate(XenoHudConfig.x, XenoHudConfig.y, 0);
         graphics.pose().scale(XenoHudConfig.scale, XenoHudConfig.scale, 1f);
@@ -57,11 +72,9 @@ public class XenoHudOverlay implements IGuiOverlay {
         RenderSystem.defaultBlendFunc();
         RenderSystem.setShaderColor(1f, 1f, 1f, 1f);
 
-        DmzClientStats.Snapshot dmz = DmzClientStats.read(mc.player);
-
         drawPortraitDropShadow(graphics);
-        drawPortrait(graphics, mc, dmz);
-        drawBarsCluster(graphics, mc, dmz);
+        drawPortrait(graphics, mc, snap);
+        drawBarsCluster(graphics, mc, snap);
         drawP1Badge(graphics, mc.font);
         drawSkillOrb(graphics);
 
@@ -83,7 +96,7 @@ public class XenoHudOverlay implements IGuiOverlay {
         }
     }
 
-    private static void drawPortrait(GuiGraphics g, Minecraft mc, DmzClientStats.Snapshot dmz) {
+    private static void drawPortrait(GuiGraphics g, Minecraft mc, XenoHudSnapshot snap) {
         int s = PORTRAIT;
         int r = PORTRAIT_R;
 
@@ -120,8 +133,8 @@ public class XenoHudOverlay implements IGuiOverlay {
         // Soft top highlight strip (alpha)
         g.fill(r, 0, s - r, 2, 0x55FFFFFF);
 
-        if (dmz != null && dmz.present && dmz.isTransforming()) {
-            drawTransformChargeBorder(g, -4, -4, s + 8, s + 8, r + 3, dmz.transformChargePercent());
+        if (snap.transforming) {
+            drawTransformChargeBorder(g, -4, -4, s + 8, s + 8, r + 3, snap.transformChargePercent);
         }
     }
 
@@ -201,29 +214,29 @@ public class XenoHudOverlay implements IGuiOverlay {
         RenderSystem.setShaderColor(1f, 1f, 1f, 1f);
     }
 
-    private static void drawBarsCluster(GuiGraphics g, Minecraft mc, DmzClientStats.Snapshot dmz) {
+    private static void drawBarsCluster(GuiGraphics g, Minecraft mc, XenoHudSnapshot snap) {
         Font font = mc.font;
-        String name = resolveName(mc);
+        String name = snap.name;
 
         // Name + release % only (XV2 style)
         g.drawString(font, name, CONTENT_LEFT + 1, NAME_Y + 1, 0x88000000, false);
         g.drawString(font, name, CONTENT_LEFT, NAME_Y, 0xFFF5F5F5, false);
-        if (dmz.present) {
-            String releaseText = dmz.powerRelease + "%";
+        if (snap.dmzPresent) {
+            String releaseText = snap.releaseText;
             int rx = CONTENT_LEFT + font.width(name) + 8;
             // Always cyan for release % (XenoPixels style)
             g.drawString(font, releaseText, rx + 1, NAME_Y + 1, 0x88000000, false);
             g.drawString(font, releaseText, rx, NAME_Y, 0xFF00E5FF, false);
         }
 
-        float hp = resolveHp(mc, dmz);
-        float ki = dmz.present ? dmz.energyPercent() : resolveKiFallback();
-        float stm = dmz.present ? dmz.staminaPercent() : resolveStmFallback();
+        float hp = snap.hpPercent;
+        float ki = snap.kiPercent;
+        float stm = snap.stmPercent;
 
-        float curHp = resolveCurrentHp(mc);
-        float maxHp = resolveMaxHp(mc, dmz);
-        float curKi = dmz.present ? dmz.energy : XenoClientData.ki;
-        float maxKi = dmz.present ? dmz.maxEnergy : XenoClientData.maxKi;
+        float curHp = snap.curHp;
+        float maxHp = snap.maxHp;
+        float curKi = snap.curKi;
+        float maxKi = snap.maxKi;
 
         // Rounded HP / KI pills — numbers only on these two
         drawRoundedBar(g, CONTENT_LEFT, HP_Y, BAR_W, HP_H, hp,
@@ -253,32 +266,14 @@ public class XenoHudOverlay implements IGuiOverlay {
     }
 
     private static void drawBarValue(GuiGraphics g, Font font, int x, int y, int w, int h, String text, int color) {
-        float scale = h <= 10 ? 0.62f : 0.70f;
-        int cx = x + w / 2;
-        int cy = y + Math.max(0, (h - Math.round(9 * scale)) / 2);
-        drawScaledCentered(g, font, text, cx, cy, scale, color);
-    }
-
-    private static void drawScaledCentered(GuiGraphics g, Font font, String text, int cx, int y, float scale, int color) {
+        // Draw at native text scale (no extra nested pushPose scale) — an earlier version applied a
+        // second ~0.6x scale on top of the HUD's own overall scale, which at small HUD scales (e.g. the
+        // 0.55x default) compounded into blurry, near-illegible glyphs.
         if (text == null || text.isEmpty()) return;
-        g.pose().pushPose();
-        g.pose().translate(cx, y, 0);
-        g.pose().scale(scale, scale, 1f);
         int tw = font.width(text);
-        g.drawString(font, text, -tw / 2 + 1, 1, 0xAA000000, false);
-        g.drawString(font, text, -tw / 2, 0, color, false);
-        g.pose().popPose();
-    }
-
-    private static float resolveCurrentHp(Minecraft mc) {
-        if (mc.player != null) return mc.player.getHealth();
-        return XenoClientData.health;
-    }
-
-    private static float resolveMaxHp(Minecraft mc, DmzClientStats.Snapshot dmz) {
-        float max = mc.player != null ? mc.player.getMaxHealth() : XenoClientData.maxHealth;
-        if (dmz.present && dmz.maxHealth > 0f) max = Math.max(max, dmz.maxHealth);
-        return max;
+        int cx = x + (w - tw) / 2;
+        int cy = y + Math.max(0, (h - 8) / 2);
+        g.drawString(font, text, cx, cy, color, true);
     }
 
     /** Soft pill bar (rounded ends) like XV2 HP/KI. */
@@ -373,43 +368,6 @@ public class XenoHudOverlay implements IGuiOverlay {
         fillCircle(g, cx, cy, 6, 0xFF42A5F5);
         fillCircle(g, cx - 1, cy - 2, 2, 0xCCFFFFFF);
         g.blit(TEX, cx - 8, cy - 8, 16, 16, 70f, 80f, 16, 16, 256, 128);
-    }
-
-    private static float resolveHp(Minecraft mc, DmzClientStats.Snapshot dmz) {
-        if (mc.player != null) {
-            float max = mc.player.getMaxHealth();
-            if (dmz.present && dmz.maxHealth > 0f) max = Math.max(max, dmz.maxHealth);
-            return safePercent(mc.player.getHealth(), max);
-        }
-        if (XenoClientData.maxHealth > 0f) {
-            return safePercent(XenoClientData.health, XenoClientData.maxHealth);
-        }
-        return 1f;
-    }
-
-    private static float resolveKiFallback() {
-        if (XenoClientData.maxKi > 0f) return safePercent(XenoClientData.ki, XenoClientData.maxKi);
-        return 1f;
-    }
-
-    private static float resolveStmFallback() {
-        if (XenoClientData.maxStamina > 0f) return safePercent(XenoClientData.stamina, XenoClientData.maxStamina);
-        return 1f;
-    }
-
-    private static String resolveName(Minecraft mc) {
-        LocalPlayer player = mc.player;
-        if (player != null) {
-            String n = player.getGameProfile().getName();
-            if (n != null && !n.isEmpty()) return n;
-            return player.getName().getString();
-        }
-        return "Player";
-    }
-
-    private static float safePercent(float value, float max) {
-        if (max <= 0f) return 0f;
-        return value / max;
     }
 
     private static float clamp01(float v) {

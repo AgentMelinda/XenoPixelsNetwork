@@ -24,10 +24,23 @@ public final class XenoHudConfig {
     private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
     private static final Path PATH = FMLPaths.CONFIGDIR.get().resolve("xenopixelsmod-hud.json");
 
-    public static int x = 10;
-    public static int y = 10;
-    public static float scale = 0.5f;
+    public static int x = 3;
+    public static int y = 3;
+    public static float scale = 0.55f;
     public static boolean visible = true;
+    /**
+     * Phase 4 migration-testing toggle: true = legacy procedural renderer
+     * (default, unchanged behavior), false = LDLib-backed {@code XenoHudView}.
+     * Temporary; remove once the LDLib renderer is signed off (repo plan.md Phase 4).
+     */
+    public static boolean legacyHudRenderer = true;
+    /**
+     * Phase 6 migration-testing toggle: true = legacy procedural technique
+     * hotbar chrome (default, unchanged behavior), false = LDLib-tinted-texture
+     * chrome for the same slots (all data/selection/cooldown logic unchanged).
+     * Temporary; remove once signed off (repo plan.md Phase 6).
+     */
+    public static boolean legacyTechniqueRenderer = true;
 
     private XenoHudConfig() {}
 
@@ -41,8 +54,10 @@ public final class XenoHudConfig {
             if (data == null) return;
             x = data.x;
             y = data.y;
-            scale = clampScale(data.scale <= 0f ? 0.5f : data.scale);
+            scale = clampScale(data.scale <= 0f ? 0.55f : data.scale);
             visible = data.visible;
+            legacyHudRenderer = data.legacyHudRenderer;
+            legacyTechniqueRenderer = data.legacyTechniqueRenderer;
         } catch (IOException e) {
             XenoPixelsMod.LOGGER.warn("Failed to load HUD config", e);
         }
@@ -54,6 +69,8 @@ public final class XenoHudConfig {
         data.y = y;
         data.scale = scale;
         data.visible = visible;
+        data.legacyHudRenderer = legacyHudRenderer;
+        data.legacyTechniqueRenderer = legacyTechniqueRenderer;
         try {
             Files.createDirectories(PATH.getParent());
             try (Writer writer = Files.newBufferedWriter(PATH)) {
@@ -65,9 +82,9 @@ public final class XenoHudConfig {
     }
 
     public static void reset() {
-        x = 10;
-        y = 10;
-        scale = 0.5f;
+        x = 3;
+        y = 3;
+        scale = 0.55f;
         visible = true;
         save();
     }
@@ -97,9 +114,11 @@ public final class XenoHudConfig {
     }
 
     private static class Data {
-        int x = 10;
-        int y = 10;
-        float scale = 0.5f;
+        int x = 3;
+        int y = 3;
+        float scale = 0.55f;
         boolean visible = true;
+        boolean legacyHudRenderer = true;
+        boolean legacyTechniqueRenderer = true;
     }
 }

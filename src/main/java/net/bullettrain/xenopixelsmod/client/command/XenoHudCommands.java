@@ -5,7 +5,9 @@ import com.mojang.brigadier.arguments.BoolArgumentType;
 import com.mojang.brigadier.arguments.StringArgumentType;
 import net.bullettrain.xenopixelsmod.XenoPixelsMod;
 import net.bullettrain.xenopixelsmod.client.config.XenoClientConfig;
+import net.bullettrain.xenopixelsmod.client.config.XenoHotbarConfig;
 import net.bullettrain.xenopixelsmod.client.config.XenoHudConfig;
+import net.bullettrain.xenopixelsmod.client.screen.XenoHotbarEditScreen;
 import net.bullettrain.xenopixelsmod.client.screen.XenoHudEditScreen;
 import net.minecraft.client.Minecraft;
 import net.minecraft.commands.CommandSourceStack;
@@ -65,9 +67,94 @@ public final class XenoHudCommands {
                             ctx.getSource().sendSuccess(() -> Component.literal("Xeno HUD reset"), false);
                             return 1;
                         }))
+                .then(Commands.literal("renderer")
+                        .then(Commands.literal("legacy")
+                                .executes(ctx -> {
+                                    XenoHudConfig.legacyHudRenderer = true;
+                                    XenoHudConfig.save();
+                                    ctx.getSource().sendSuccess(() -> Component.literal("Xeno HUD renderer: legacy"), false);
+                                    return 1;
+                                }))
+                        .then(Commands.literal("ldlib")
+                                .executes(ctx -> {
+                                    XenoHudConfig.legacyHudRenderer = false;
+                                    XenoHudConfig.save();
+                                    ctx.getSource().sendSuccess(() -> Component.literal("Xeno HUD renderer: ldlib (Phase 4 spike, WIP)"), false);
+                                    return 1;
+                                }))
+                        .executes(ctx -> {
+                            ctx.getSource().sendSuccess(() -> Component.literal(
+                                    "Xeno HUD renderer: " + (XenoHudConfig.legacyHudRenderer ? "legacy" : "ldlib")
+                                            + " (usage: /xenohud renderer <legacy|ldlib>)"), false);
+                            return 1;
+                        }))
+                .then(Commands.literal("techrenderer")
+                        .then(Commands.literal("legacy")
+                                .executes(ctx -> {
+                                    XenoHudConfig.legacyTechniqueRenderer = true;
+                                    XenoHudConfig.save();
+                                    ctx.getSource().sendSuccess(() -> Component.literal("Xeno technique hotbar renderer: legacy"), false);
+                                    return 1;
+                                }))
+                        .then(Commands.literal("ldlib")
+                                .executes(ctx -> {
+                                    XenoHudConfig.legacyTechniqueRenderer = false;
+                                    XenoHudConfig.save();
+                                    ctx.getSource().sendSuccess(() -> Component.literal("Xeno technique hotbar renderer: ldlib (Phase 6 spike, WIP)"), false);
+                                    return 1;
+                                }))
+                        .executes(ctx -> {
+                            ctx.getSource().sendSuccess(() -> Component.literal(
+                                    "Xeno technique hotbar renderer: " + (XenoHudConfig.legacyTechniqueRenderer ? "legacy" : "ldlib")
+                                            + " (usage: /xenohud techrenderer <legacy|ldlib>)"), false);
+                            return 1;
+                        }))
+                .then(Commands.literal("party")
+                        .then(Commands.literal("show")
+                                .executes(ctx -> {
+                                    XenoClientConfig.partyHudEnabled = true;
+                                    XenoClientConfig.save();
+                                    ctx.getSource().sendSuccess(() -> Component.literal("Xeno party HUD shown"), false);
+                                    return 1;
+                                }))
+                        .then(Commands.literal("hide")
+                                .executes(ctx -> {
+                                    XenoClientConfig.partyHudEnabled = false;
+                                    XenoClientConfig.save();
+                                    ctx.getSource().sendSuccess(() -> Component.literal("Xeno party HUD hidden"), false);
+                                    return 1;
+                                }))
+                        .executes(ctx -> {
+                            ctx.getSource().sendSuccess(() -> Component.literal(
+                                    "Xeno party HUD: " + (XenoClientConfig.partyHudEnabled ? "shown" : "hidden")
+                                            + " (usage: /xenohud party <show|hide>)"), false);
+                            return 1;
+                        }))
+                .then(Commands.literal("techhud")
+                        .then(Commands.literal("edit")
+                                .executes(ctx -> {
+                                    if (!XenoClientConfig.hudEditEnabled) {
+                                        ctx.getSource().sendFailure(Component.literal("HUD edit disabled in client config"));
+                                        return 0;
+                                    }
+                                    Minecraft mc = Minecraft.getInstance();
+                                    mc.execute(() -> mc.setScreen(new XenoHotbarEditScreen(mc.screen)));
+                                    return 1;
+                                }))
+                        .then(Commands.literal("reset")
+                                .executes(ctx -> {
+                                    XenoHotbarConfig.reset();
+                                    ctx.getSource().sendSuccess(() -> Component.literal("Xeno technique HUD layout reset"), false);
+                                    return 1;
+                                }))
+                        .executes(ctx -> {
+                            ctx.getSource().sendSuccess(() -> Component.literal(
+                                    "Usage: /xenohud techhud <edit|reset>"), false);
+                            return 1;
+                        }))
                 .executes(ctx -> {
                     ctx.getSource().sendSuccess(
-                            () -> Component.literal("Usage: /xenohud <toggle|show|hide|edit|reset>"),
+                            () -> Component.literal("Usage: /xenohud <toggle|show|hide|edit|reset|renderer|techrenderer|party|techhud>"),
                             false);
                     return 1;
                 }));
@@ -77,6 +164,7 @@ public final class XenoHudCommands {
                         .executes(ctx -> {
                             XenoClientConfig.load();
                             XenoHudConfig.load();
+                            XenoHotbarConfig.load();
                             ctx.getSource().sendSuccess(() -> Component.literal("XenoPixels client config reloaded"), false);
                             return 1;
                         }))

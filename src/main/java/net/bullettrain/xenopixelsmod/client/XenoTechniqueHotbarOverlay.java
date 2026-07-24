@@ -9,6 +9,10 @@ import com.dragonminez.common.stats.character.Status;
 import com.dragonminez.common.stats.techniques.TechniqueData;
 import com.dragonminez.common.stats.techniques.Techniques;
 import net.bullettrain.xenopixelsmod.client.config.XenoClientConfig;
+import net.bullettrain.xenopixelsmod.client.config.XenoHotbarConfig;
+import net.bullettrain.xenopixelsmod.client.config.XenoHudConfig;
+import net.bullettrain.xenopixelsmod.client.hud.AnimUtil;
+import net.bullettrain.xenopixelsmod.client.hud.TechniqueSlotWidget;
 import net.minecraft.client.KeyMapping;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
@@ -47,11 +51,39 @@ public class XenoTechniqueHotbarOverlay implements IGuiOverlay {
     private static final long[] CD_LAST_MS = new long[TOTAL_SLOTS];
     private static final String[] CD_LAST_ID = new String[TOTAL_SLOTS];
 
+    /** Phase 6: LDLib-tinted-texture chrome, used only when {@code !XenoHudConfig.legacyTechniqueRenderer}. */
+    private static final TechniqueSlotWidget LD_WIDGET = new TechniqueSlotWidget();
+
+    /** Screen-space bounds of the last drawn panel/charge-meter — captured each frame so the
+     *  editor screen can hit-test them without re-deriving the (data-dependent) panel size. */
+    private static int lastHotbarX, lastHotbarY, lastHotbarW, lastHotbarH;
+    private static int lastChargeX, lastChargeY, lastChargeW, lastChargeH;
+    private static boolean lastChargeVisible;
+
     @Override
     public void render(ForgeGui gui, GuiGraphics g, float partialTick, int screenWidth, int screenHeight) {
         if (!XenoClientConfig.techniqueHotbarEnabled) return;
         Minecraft mc = Minecraft.getInstance();
         if (mc.player == null || mc.options.hideGui || mc.options.renderDebug) return;
+        draw(g, screenWidth, screenHeight, false);
+    }
+
+    /** Renders a preview (forced-visible bar + a fake charging meter) for the editor screen. */
+    public static void renderEditorPreview(GuiGraphics g, int screenWidth, int screenHeight) {
+        draw(g, screenWidth, screenHeight, true);
+    }
+
+    public static int[] hotbarBounds() {
+        return new int[]{lastHotbarX, lastHotbarY, lastHotbarW, lastHotbarH};
+    }
+
+    public static int[] chargeBounds() {
+        return new int[]{lastChargeX, lastChargeY, lastChargeW, lastChargeH};
+    }
+
+    private static void draw(GuiGraphics g, int screenWidth, int screenHeight, boolean editing) {
+        Minecraft mc = Minecraft.getInstance();
+        if (mc.player == null) return;
 
         LocalPlayer player = mc.player;
         LazyOptional<StatsData> opt = StatsProvider.get(StatsCapability.INSTANCE, player);
@@ -76,9 +108,15 @@ public class XenoTechniqueHotbarOverlay implements IGuiOverlay {
         float chargePct = techniques.getTechniqueChargePercent();
         boolean charging = techniques.isTechniqueCharging() || techniques.isTechniqueChargeActive();
 
-        if (charging) {
-            // DMZ stores techniqueChargePercent as 0..1000 (percent points), NOT 0..1
-            drawChargeMeter(g, mc.font, screenWidth, screenHeight, chargePct, resolveName(unlocked, chargingId));
+        lastChargeVisible = charging || editing;
+        if (lastChargeVisible) {
+            // DMZ stores techniqueChargePercent as 0..1000 (percent points), NOT 0..1.
+            // In editor preview mode, fake a mid-charge value so the bar is visible to position.
+            float previewPct = charging ? chargePct : 450f;
+            String previewName = charging ? resolveName(unlocked, chargingId) : "Preview Technique";
+            drawChargeMeter(g, mc.font, screenWidth, screenHeight, previewPct, previewName, editing);
+        } else {
+            lastChargeX = lastChargeY = lastChargeW = lastChargeH = 0;
         }
 
         KeyMapping[] keys = KeyBinds.TECHNIQUE_SLOTS;
@@ -91,13 +129,18 @@ public class XenoTechniqueHotbarOverlay implements IGuiOverlay {
         boolean ctrlDown = KeyBinds.isBarModifierActive(modCtrl);
 
         int offset;
-        if (ctrlDown && modCtrl != modAlt) {
+        if (editing) {
+            // Editor screens don't reliably see held modifier keys — always show the ALT bar
+            // (or CTRL if actually held) so the panel can be positioned/resized.
+            offset = ctrlDown ? 4 : 0;
+        } else if (ctrlDown && modCtrl != modAlt) {
             offset = 4;
         } else if (altDown) {
             offset = 0;
         } else if (ctrlDown) {
             offset = 4;
         } else {
+            lastHotbarX = lastHotbarY = lastHotbarW = lastHotbarH = 0;
             return;
         }
 
@@ -114,12 +157,24 @@ public class XenoTechniqueHotbarOverlay implements IGuiOverlay {
         int innerW = BADGE_W + 6 + maxNameW + 44;
         int panelW = PANEL_PAD * 2 + innerW;
         int panelH = PANEL_PAD * 2 + BAR_SLOTS * SLOT_H + (BAR_SLOTS - 1) * SLOT_GAP;
-        int panelX = MARGIN;
-        int panelY = screenHeight - MARGIN - panelH - 22;
+
+        int baseX = MARGIN + XenoHotbarConfig.hotbarOffsetX;
+        int baseY = screenHeight - MARGIN - panelH - 22 + XenoHotbarConfig.hotbarOffsetY;
+        float hScale = XenoHotbarConfig.hotbarScale;
+        lastHotbarX = baseX;
+        lastHotbarY = baseY;
+        lastHotbarW = Math.round(panelW * hScale);
+        lastHotbarH = Math.round(panelH * hScale);
+
+        g.pose().pushPose();
+        g.pose().translate(baseX, baseY, 0);
+        g.pose().scale(hScale, hScale, 1f);
+        int panelX = 0;
+        int panelY = 0;
 
         fillRounded(g, panelX - 2, panelY - 2, panelW + 4, panelH + 4, 0xCC050510);
         fillRounded(g, panelX, panelY, panelW, panelH, 0xEE0A1428);
-        g.fill(panelX, panelY, panelX + 3, panelY + panelH, offset == 0 ? 0xFF42A5F5 : 0xFFFF7043);
+        drawBox(g, panelX, panelY, 3, panelH, offset == 0 ? 0xFF42A5F5 : 0xFFFF7043);
 
         String barLabel = offset == 0 ? "KI · ALT" : "KI · CTRL";
         g.drawString(font, barLabel, panelX + PANEL_PAD + 4, panelY - 11, 0xFF90CAF9, true);
@@ -174,15 +229,21 @@ public class XenoTechniqueHotbarOverlay implements IGuiOverlay {
 
             int outline = isChargingThis ? 0xFFFFB74D : (isSel ? 0xFF42A5F5 : 0);
             if (outline != 0) {
-                g.renderOutline(rowX, rowY, innerW, SLOT_H, outline);
+                if (isSel || isChargingThis) {
+                    // Animated pulse for selected/charging slots — visual polish.
+                    float pulse = AnimUtil.pulse01(isChargingThis ? 450L : 900L);
+                    int glow = isChargingThis ? 0xFFFFE0B2 : 0xFF90CAF9;
+                    outline = AnimUtil.lerpColor(outline, glow, pulse * 0.6f);
+                }
+                drawOutlineBox(g, rowX, rowY, innerW, SLOT_H, outline, 1);
             }
 
             // Key badge from DMZ KeyBinds.TECHNIQUE_SLOTS[idx]
             String keyLabel = keyLabel(keys, idx);
             int bx = rowX + 2;
             int by = rowY + (SLOT_H - 12) / 2;
-            g.fill(bx, by, bx + BADGE_W, by + 12, 0xEE000000);
-            g.renderOutline(bx, by, BADGE_W, 12, isSel ? 0xFF64B5F6 : 0x88666688);
+            drawBadgeBox(g, bx, by, BADGE_W, 12);
+            drawOutlineBox(g, bx, by, BADGE_W, 12, isSel ? 0xFF64B5F6 : 0x88666688, 1);
             int kw = font.width(keyLabel);
             g.drawString(font, keyLabel, bx + Math.max(0, (BADGE_W - kw) / 2), by + 2, 0xFFFFFFFF, false);
 
@@ -214,12 +275,19 @@ public class XenoTechniqueHotbarOverlay implements IGuiOverlay {
                         rowX + innerW - 4, rowY + SLOT_H / 2 + 2, 0xFF66BB6A);
             }
         }
+
+        if (editing) {
+            g.renderOutline(panelX - 4, panelY - 16, panelW + 8, panelH + 20, 0xFF42A5F5);
+            g.fill(panelX + panelW - 10, panelY + panelH - 10, panelX + panelW, panelY + panelH, 0xFF42A5F5);
+        }
+
+        g.pose().popPose();
     }
 
     /**
      * @param rawPercent DMZ {@code getTechniqueChargePercent()} — range 0..1000 (already in %).
      */
-    private static void drawChargeMeter(GuiGraphics g, Font font, int sw, int sh, float rawPercent, String techName) {
+    private static void drawChargeMeter(GuiGraphics g, Font font, int sw, int sh, float rawPercent, String techName, boolean editing) {
         // Normalize: DMZ uses 0-1000 percent points (see Techniques.setTechniqueChargePercent)
         float pct = Math.max(0f, Math.min(1000f, rawPercent));
         // If a build ever sends 0-1, scale up
@@ -234,9 +302,21 @@ public class XenoTechniqueHotbarOverlay implements IGuiOverlay {
 
         int barW = 182;
         int barH = 12;
-        int x = (sw - barW) / 2;
+        int baseX = (sw - barW) / 2 + XenoHotbarConfig.chargeOffsetX;
         // Just above the vanilla hotbar / item slots
-        int y = sh - 66;
+        int baseY = sh - 66 + XenoHotbarConfig.chargeOffsetY;
+        float cScale = XenoHotbarConfig.chargeScale;
+
+        lastChargeX = baseX - Math.round(3 * cScale);
+        lastChargeY = baseY - Math.round(15 * cScale);
+        lastChargeW = Math.round((barW + 6) * cScale);
+        lastChargeH = Math.round((barH + 18) * cScale);
+
+        g.pose().pushPose();
+        g.pose().translate(baseX, baseY, 0);
+        g.pose().scale(cScale, cScale, 1f);
+        int x = 0;
+        int y = 0;
 
         int filled = Math.round(barW * fill01);
 
@@ -277,6 +357,13 @@ public class XenoTechniqueHotbarOverlay implements IGuiOverlay {
         }
         int tw = font.width(label);
         g.drawString(font, label, x + (barW - tw) / 2, y - 12, over ? 0xFFFF8A80 : 0xFFB3E5FC, true);
+
+        if (editing) {
+            g.renderOutline(x - 3, y - 15, barW + 6, barH + 18, 0xFFFFB74D);
+            g.fill(x + barW - 7, y + barH - 4, x + barW + 3, y + barH + 6, 0xFFFFB74D);
+        }
+
+        g.pose().popPose();
     }
 
     /** DMZ equippedSlots[i] — empty string means vacant. */
@@ -395,5 +482,32 @@ public class XenoTechniqueHotbarOverlay implements IGuiOverlay {
         g.fill(x + 2, y, x + w - 2, y + h, color);
         g.fill(x, y + 2, x + w, y + h - 2, color);
         g.fill(x + 1, y + 1, x + w - 1, y + h - 1, color);
+    }
+
+    /** Flat filled rect — vanilla by default, LDLib-tinted-texture when Phase 6 toggle is off. */
+    private static void drawBox(GuiGraphics g, int x, int y, int w, int h, int color) {
+        if (XenoHudConfig.legacyTechniqueRenderer) {
+            g.fill(x, y, x + w, y + h, color);
+        } else {
+            LD_WIDGET.drawBackground(g, x, y, w, h, color);
+        }
+    }
+
+    /** Thin border — vanilla {@code renderOutline} by default, LDLib-composed strips when toggled. */
+    private static void drawOutlineBox(GuiGraphics g, int x, int y, int w, int h, int color, int thickness) {
+        if (XenoHudConfig.legacyTechniqueRenderer) {
+            g.renderOutline(x, y, w, h, color);
+        } else {
+            LD_WIDGET.drawOutline(g, x, y, w, h, color, thickness);
+        }
+    }
+
+    /** Opaque key-badge backdrop. */
+    private static void drawBadgeBox(GuiGraphics g, int x, int y, int w, int h) {
+        if (XenoHudConfig.legacyTechniqueRenderer) {
+            g.fill(x, y, x + w, y + h, 0xEE000000);
+        } else {
+            LD_WIDGET.drawBadgeBackground(g, x, y, w, h);
+        }
     }
 }

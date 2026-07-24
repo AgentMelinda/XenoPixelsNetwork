@@ -34,6 +34,8 @@ public final class XenoClientConfig {
     public static boolean joinServerButton = true;
     public static boolean hudEditEnabled = true;
     public static boolean senzuCooldownMessages = true;
+    /** XV2-style party/team HP+KI mini bars for nearby scoreboard-team allies. */
+    public static boolean partyHudEnabled = true;
 
     // --- Combat client (prediction / input) ---
     public static boolean bt3CombatClient = true;
@@ -84,6 +86,7 @@ public final class XenoClientConfig {
         d.joinServerButton = joinServerButton;
         d.hudEditEnabled = hudEditEnabled;
         d.senzuCooldownMessages = senzuCooldownMessages;
+        d.partyHudEnabled = partyHudEnabled;
         d.bt3CombatClient = bt3CombatClient;
         d.bt3ComboClient = bt3ComboClient;
         d.bt3VanishClient = bt3VanishClient;
@@ -107,6 +110,7 @@ public final class XenoClientConfig {
         joinServerButton = d.joinServerButton;
         hudEditEnabled = d.hudEditEnabled;
         senzuCooldownMessages = d.senzuCooldownMessages;
+        partyHudEnabled = d.partyHudEnabled;
         bt3CombatClient = d.bt3CombatClient;
         bt3ComboClient = d.bt3ComboClient;
         bt3VanishClient = d.bt3VanishClient;
@@ -128,6 +132,7 @@ public final class XenoClientConfig {
         public boolean joinServerButton = true;
         public boolean hudEditEnabled = true;
         public boolean senzuCooldownMessages = true;
+        public boolean partyHudEnabled = true;
         public boolean bt3CombatClient = true;
         public boolean bt3ComboClient = true;
         public boolean bt3VanishClient = true;

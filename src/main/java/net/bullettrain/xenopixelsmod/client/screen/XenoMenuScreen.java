@@ -55,6 +55,10 @@ public class XenoMenuScreen extends Screen {
                             this.minecraft.setScreen(new XenoHudEditScreen(this)))
                     .bounds(cx - 100, y, 200, 24).build());
             y += 30;
+            this.addRenderableWidget(Button.builder(Component.literal("§9TECH HUD LAYOUT"), b ->
+                            this.minecraft.setScreen(new XenoHotbarEditScreen(this)))
+                    .bounds(cx - 100, y, 200, 24).build());
+            y += 30;
         }
 
         if (XenoClientConfig.joinServerButton) {
