@@ -1,7 +1,7 @@
 {
   "configVersion": "2.1.3",
-  "groupName": "xenopixels_godforms",
-  "formType": "godforms",
+  "groupName": "xenopixels_gods_forms",
+  "formType": "xenopixels_divinity",
   "forms": {
     "ssg": {
       "name": "ssg",
@@ -30,7 +30,11 @@
       "lightningColor": "",
       "tintColor": "#C62828",
       "tintIntensity": 0.06,
-      "modelScaling": [1.0, 1.0, 1.0],
+      "modelScaling": [
+        1.0,
+        1.0,
+        1.0
+      ],
       "strMultiplier": 4.8,
       "skpMultiplier": 4.8,
       "stmMultiplier": 1.08,
@@ -55,11 +59,16 @@
       "unlockOnMastery": 0.0,
       "stackOnMastery": 25.0,
       "instantTransformOnMastery": 40.0,
-      "allowFreeTransformOnMastery": 50.0,
+      "allowFreeTransformOnMastery": 0.0,
       "formStackable": true,
       "stackDrainMultiplier": 2.0,
-      "incompatibleWith": [""],
-      "shareMasteryWith": ["xenopixels_godforms.ssb", "xenopixels_godforms.ssrose"],
+      "incompatibleWith": [
+        ""
+      ],
+      "shareMasteryWith": [
+        "xenopixels_gods_forms.ssb",
+        "xenopixels_gods_forms.ssrose"
+      ],
       "shareMasteryMultiplier": 0.15,
       "outlineShader": {
         "enabled": true,
@@ -98,7 +107,11 @@
       "lightningColor": "",
       "tintColor": "#0288D1",
       "tintIntensity": 0.07,
-      "modelScaling": [1.0, 1.0, 1.0],
+      "modelScaling": [
+        1.0,
+        1.0,
+        1.0
+      ],
       "strMultiplier": 5.6,
       "skpMultiplier": 5.6,
       "stmMultiplier": 1.1,
@@ -118,16 +131,21 @@
       "passiveMasteryEveryFiveSeconds": 0.0038,
       "maxCostMultiplier": 0.64,
       "maxStatsMultiplier": 1.7,
-      "formRequisite": "xenopixels_godforms.ssg",
+      "formRequisite": "xenopixels_gods_forms.ssg",
       "formRequisiteType": "all",
       "unlockOnMastery": 20.0,
       "stackOnMastery": 25.0,
       "instantTransformOnMastery": 40.0,
-      "allowFreeTransformOnMastery": 50.0,
+      "allowFreeTransformOnMastery": 0.0,
       "formStackable": true,
       "stackDrainMultiplier": 2.15,
-      "incompatibleWith": [""],
-      "shareMasteryWith": ["xenopixels_godforms.ssg", "xenopixels_godforms.ssbe"],
+      "incompatibleWith": [
+        ""
+      ],
+      "shareMasteryWith": [
+        "xenopixels_gods_forms.ssg",
+        "xenopixels_gods_forms.ssbe"
+      ],
       "shareMasteryMultiplier": 0.18,
       "outlineShader": {
         "enabled": true,
@@ -166,7 +184,11 @@
       "lightningColor": "#B3E5FC",
       "tintColor": "#0D47A1",
       "tintIntensity": 0.1,
-      "modelScaling": [1.12, 1.12, 1.12],
+      "modelScaling": [
+        1.12,
+        1.12,
+        1.12
+      ],
       "strMultiplier": 6.5,
       "skpMultiplier": 6.2,
       "stmMultiplier": 1.14,
@@ -186,16 +208,20 @@
       "passiveMasteryEveryFiveSeconds": 0.0035,
       "maxCostMultiplier": 0.6,
       "maxStatsMultiplier": 1.75,
-      "formRequisite": "xenopixels_godforms.ssb",
+      "formRequisite": "xenopixels_gods_forms.ssb",
       "formRequisiteType": "all",
       "unlockOnMastery": 25.0,
       "stackOnMastery": 25.0,
       "instantTransformOnMastery": 40.0,
-      "allowFreeTransformOnMastery": 55.0,
+      "allowFreeTransformOnMastery": 0.0,
       "formStackable": true,
       "stackDrainMultiplier": 2.3,
-      "incompatibleWith": [""],
-      "shareMasteryWith": ["xenopixels_godforms.ssb"],
+      "incompatibleWith": [
+        ""
+      ],
+      "shareMasteryWith": [
+        "xenopixels_gods_forms.ssb"
+      ],
       "shareMasteryMultiplier": 0.18,
       "outlineShader": {
         "enabled": true,
@@ -234,7 +260,11 @@
       "lightningColor": "#FFB6C1",
       "tintColor": "#FF1493",
       "tintIntensity": 0.08,
-      "modelScaling": [1.0, 1.0, 1.0],
+      "modelScaling": [
+        1.0,
+        1.0,
+        1.0
+      ],
       "strMultiplier": 5.8,
       "skpMultiplier": 5.8,
       "stmMultiplier": 1.1,
@@ -254,16 +284,21 @@
       "passiveMasteryEveryFiveSeconds": 0.0038,
       "maxCostMultiplier": 0.64,
       "maxStatsMultiplier": 1.72,
-      "formRequisite": "xenopixels_godforms.ssg",
+      "formRequisite": "xenopixels_gods_forms.ssg",
       "formRequisiteType": "all",
       "unlockOnMastery": 20.0,
       "stackOnMastery": 25.0,
       "instantTransformOnMastery": 40.0,
-      "allowFreeTransformOnMastery": 50.0,
+      "allowFreeTransformOnMastery": 0.0,
       "formStackable": true,
       "stackDrainMultiplier": 2.2,
-      "incompatibleWith": [""],
-      "shareMasteryWith": ["xenopixels_godforms.ssrose_evolution", "xenopixels_godforms.ssg"],
+      "incompatibleWith": [
+        ""
+      ],
+      "shareMasteryWith": [
+        "xenopixels_gods_forms.ssrose_evolution",
+        "xenopixels_gods_forms.ssg"
+      ],
       "shareMasteryMultiplier": 0.2,
       "outlineShader": {
         "enabled": true,
@@ -302,7 +337,11 @@
       "lightningColor": "#FF80AB",
       "tintColor": "#C2185B",
       "tintIntensity": 0.16,
-      "modelScaling": [1.35, 1.35, 1.35],
+      "modelScaling": [
+        1.35,
+        1.35,
+        1.35
+      ],
       "strMultiplier": 7.2,
       "skpMultiplier": 6.9,
       "stmMultiplier": 1.16,
@@ -322,16 +361,20 @@
       "passiveMasteryEveryFiveSeconds": 0.0032,
       "maxCostMultiplier": 0.58,
       "maxStatsMultiplier": 1.82,
-      "formRequisite": "xenopixels_godforms.ssrose",
+      "formRequisite": "xenopixels_gods_forms.ssrose",
       "formRequisiteType": "all",
       "unlockOnMastery": 25.0,
       "stackOnMastery": 25.0,
       "instantTransformOnMastery": 40.0,
-      "allowFreeTransformOnMastery": 55.0,
+      "allowFreeTransformOnMastery": 0.0,
       "formStackable": true,
       "stackDrainMultiplier": 2.55,
-      "incompatibleWith": [""],
-      "shareMasteryWith": ["xenopixels_godforms.ssrose"],
+      "incompatibleWith": [
+        ""
+      ],
+      "shareMasteryWith": [
+        "xenopixels_gods_forms.ssrose"
+      ],
       "shareMasteryMultiplier": 0.2,
       "outlineShader": {
         "enabled": true,
@@ -370,7 +413,11 @@
       "lightningColor": "",
       "tintColor": "#78909C",
       "tintIntensity": 0.05,
-      "modelScaling": [1.0, 1.0, 1.0],
+      "modelScaling": [
+        1.0,
+        1.0,
+        1.0
+      ],
       "strMultiplier": 6.8,
       "skpMultiplier": 7.0,
       "stmMultiplier": 1.12,
@@ -390,16 +437,21 @@
       "passiveMasteryEveryFiveSeconds": 0.003,
       "maxCostMultiplier": 0.6,
       "maxStatsMultiplier": 1.78,
-      "formRequisite": "xenopixels_godforms.ssb",
+      "formRequisite": "xenopixels_gods_forms.ssb",
       "formRequisiteType": "all",
       "unlockOnMastery": 25.0,
       "stackOnMastery": 25.0,
       "instantTransformOnMastery": 45.0,
-      "allowFreeTransformOnMastery": 55.0,
+      "allowFreeTransformOnMastery": 0.0,
       "formStackable": false,
       "stackDrainMultiplier": 2.4,
-      "incompatibleWith": ["kaioken.kaioken", "ultimate.ultimate"],
-      "shareMasteryWith": ["xenopixels_godforms.ui"],
+      "incompatibleWith": [
+        "kaioken.kaioken",
+        "ultimate.ultimate"
+      ],
+      "shareMasteryWith": [
+        "xenopixels_gods_forms.ui"
+      ],
       "shareMasteryMultiplier": 0.22,
       "outlineShader": {
         "enabled": true,
@@ -438,7 +490,11 @@
       "lightningColor": "",
       "tintColor": "#B2EBF2",
       "tintIntensity": 0.08,
-      "modelScaling": [1.02, 1.02, 1.02],
+      "modelScaling": [
+        1.02,
+        1.02,
+        1.02
+      ],
       "strMultiplier": 8.0,
       "skpMultiplier": 8.2,
       "stmMultiplier": 1.18,
@@ -458,16 +514,21 @@
       "passiveMasteryEveryFiveSeconds": 0.0028,
       "maxCostMultiplier": 0.55,
       "maxStatsMultiplier": 1.9,
-      "formRequisite": "xenopixels_godforms.ui_sign",
+      "formRequisite": "xenopixels_gods_forms.ui_sign",
       "formRequisiteType": "all",
       "unlockOnMastery": 30.0,
       "stackOnMastery": 25.0,
       "instantTransformOnMastery": 50.0,
-      "allowFreeTransformOnMastery": 60.0,
+      "allowFreeTransformOnMastery": 0.0,
       "formStackable": false,
       "stackDrainMultiplier": 2.7,
-      "incompatibleWith": ["kaioken.kaioken", "ultimate.ultimate"],
-      "shareMasteryWith": ["xenopixels_godforms.ui_sign"],
+      "incompatibleWith": [
+        "kaioken.kaioken",
+        "ultimate.ultimate"
+      ],
+      "shareMasteryWith": [
+        "xenopixels_gods_forms.ui_sign"
+      ],
       "shareMasteryMultiplier": 0.2,
       "outlineShader": {
         "enabled": true,
@@ -506,7 +567,11 @@
       "lightningColor": "#EA80FC",
       "tintColor": "#4A148C",
       "tintIntensity": 0.12,
-      "modelScaling": [1.18, 1.18, 1.18],
+      "modelScaling": [
+        1.18,
+        1.18,
+        1.18
+      ],
       "strMultiplier": 8.4,
       "skpMultiplier": 7.6,
       "stmMultiplier": 1.2,
@@ -526,16 +591,20 @@
       "passiveMasteryEveryFiveSeconds": 0.003,
       "maxCostMultiplier": 0.56,
       "maxStatsMultiplier": 1.88,
-      "formRequisite": "xenopixels_godforms.ssbe",
+      "formRequisite": "xenopixels_gods_forms.ssbe",
       "formRequisiteType": "all",
       "unlockOnMastery": 30.0,
       "stackOnMastery": 25.0,
       "instantTransformOnMastery": 45.0,
-      "allowFreeTransformOnMastery": 55.0,
+      "allowFreeTransformOnMastery": 0.0,
       "formStackable": true,
       "stackDrainMultiplier": 2.6,
-      "incompatibleWith": [""],
-      "shareMasteryWith": ["xenopixels_godforms.ssbe"],
+      "incompatibleWith": [
+        ""
+      ],
+      "shareMasteryWith": [
+        "xenopixels_gods_forms.ssbe"
+      ],
       "shareMasteryMultiplier": 0.15,
       "outlineShader": {
         "enabled": true,

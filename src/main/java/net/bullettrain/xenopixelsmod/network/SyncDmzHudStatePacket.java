@@ -1,6 +1,6 @@
 package net.bullettrain.xenopixelsmod.network;
 
-import net.bullettrain.xenopixelsmod.client.DmzHudClientState;
+import net.bullettrain.xenopixelsmod.client.ClientPacketHandlers;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.fml.DistExecutor;
@@ -25,7 +25,7 @@ public class SyncDmzHudStatePacket {
 
     public static void handle(SyncDmzHudStatePacket msg, Supplier<NetworkEvent.Context> ctx) {
         ctx.get().enqueueWork(() -> DistExecutor.unsafeRunWhenOn(Dist.CLIENT, () -> () ->
-                DmzHudClientState.setDmzHudEnabled(msg.dmzHudEnabled)));
+                ClientPacketHandlers.handleDmzHudState(msg.dmzHudEnabled)));
         ctx.get().setPacketHandled(true);
     }
 }

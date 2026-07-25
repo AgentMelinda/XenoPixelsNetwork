@@ -1,9 +1,9 @@
 package net.bullettrain.xenopixelsmod.client;
 
-import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.api.distmarker.OnlyIn;
-
-@OnlyIn(Dist.CLIENT)
+/**
+ * Client mirror of server DMZ HUD toggle.
+ * Not {@code @OnlyIn}: referenced from common network packets; stripping it crashes dedicated servers.
+ */
 public final class DmzHudClientState {
     /** Mirrors server-wide default; false = hide DMZ HUD for this client. */
     private static boolean dmzHudEnabled = false;

@@ -1,6 +1,6 @@
 package net.bullettrain.xenopixelsmod.network;
 
-import net.bullettrain.xenopixelsmod.client.XenoServerClientState;
+import net.bullettrain.xenopixelsmod.client.ClientPacketHandlers;
 import net.bullettrain.xenopixelsmod.config.XenoServerConfig;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraftforge.api.distmarker.Dist;
@@ -115,7 +115,7 @@ public class SyncServerConfigPacket {
 
     public static void handle(SyncServerConfigPacket msg, Supplier<NetworkEvent.Context> ctx) {
         ctx.get().enqueueWork(() -> DistExecutor.unsafeRunWhenOn(Dist.CLIENT, () -> () ->
-                XenoServerClientState.apply(msg.data)));
+                ClientPacketHandlers.handleServerConfig(msg.data)));
         ctx.get().setPacketHandled(true);
     }
 }

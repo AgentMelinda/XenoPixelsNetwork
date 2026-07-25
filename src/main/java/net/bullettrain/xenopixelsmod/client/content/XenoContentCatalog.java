@@ -4,6 +4,7 @@ import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.gson.annotations.SerializedName;
 import net.bullettrain.xenopixelsmod.XenoPixelsMod;
+import net.bullettrain.xenopixelsmod.features.transformation.XenoFormRegistry;
 import net.minecraft.client.Minecraft;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.packs.resources.Resource;
@@ -99,7 +100,35 @@ public final class XenoContentCatalog {
         if (c.character == null) c.character = new ArrayList<>();
         if (c.transforms == null) c.transforms = new ArrayList<>();
         if (c.skills == null) c.skills = new ArrayList<>();
+        // Merge live form-registry groups so menu always lists every registered group
+        mergeFormRegistry(c);
         return c;
+    }
+
+    /** Append missing form-group / form rows from {@link XenoFormRegistry}. */
+    private static void mergeFormRegistry(Catalog c) {
+        try {
+            // Ensure registry is populated (client menu may open before FeatureManager)
+            if (XenoFormRegistry.getGroups().isEmpty()) {
+                XenoFormRegistry.registerAll();
+            }
+            java.util.HashSet<String> have = new java.util.HashSet<>();
+            for (Entry e : c.transforms) {
+                if (e != null && e.id != null) have.add(e.id);
+            }
+            for (XenoFormRegistry.MenuFormEntry fe : XenoFormRegistry.buildMenuEntries()) {
+                if (fe == null || fe.id() == null || have.contains(fe.id())) continue;
+                c.transforms.add(entry(
+                        fe.id(),
+                        fe.title(),
+                        fe.subtitle() != null ? fe.subtitle() : "",
+                        fe.detail() != null ? fe.detail() : "",
+                        fe.accent()));
+                have.add(fe.id());
+            }
+        } catch (Throwable t) {
+            XenoPixelsMod.LOGGER.warn("Could not merge form registry into catalog: {}", t.toString());
+        }
     }
 
     private static int size(List<?> list) {
@@ -122,28 +151,43 @@ public final class XenoContentCatalog {
                 "xenopixelsmod-client.json / xenopixelsmod-server.json. /xenoclient and /xenoserver commands.",
                 0xFF78909C));
 
-        c.transforms.add(entry("ssj5_10", "SSJ 5–10 Legend", "Superforms · TP priced",
-                "Custom Saiyan legend chain past SSJ4. Prices 120k–300k TP. /dmzreload config after edits.",
+        c.transforms.add(entry("group_legend", "Super Saiyan Legend (SSJ5–10)", "superforms skill · TP priced",
+                "Custom Saiyan legend chain past SSJ4. Superforms levels 9–14. Prices 120k–300k TP.",
                 0xFFE1BEE7));
-        c.transforms.add(entry("godforms", "God Forms", "Beerus / Whis only",
+        c.transforms.add(entry("group_fan", "Fan Super Saiyan (SSJ5–10)", "xenopixels_fan_ss · Goku/Vegeta",
+                "Separate fan skill group. Buy from Goku or Vegeta masters.",
+                0xFFFFD54F));
+        c.transforms.add(entry("group_god", "XenoPixels God Forms", "Beerus / Whis only",
                 "SSG, SSB, SSBE, Rose, Rose Evolution, UI Sign, MUI, Ultra Ego.",
                 0xFFFF69B4));
-        c.transforms.add(entry("ikari", "Trunks Ikari", "Trunks master · 95k TP",
-                "Legendary forms skill from Master Trunks. Buffed silver-hair style.",
+        c.transforms.add(entry("group_legendary", "XenoPixels Legendary", "Trunks master",
+                "Trunks Ikari and legendaryforms skill path.",
+                0xFF90CAF9));
+        c.transforms.add(entry("trunks_ikari", "Trunks Ikari", "Legendary · 95k TP",
+                "Silver hair, blue aura, buffed model. Master Trunks only.",
                 0xFF90CAF9));
 
-        c.skills.add(entry("vanish", "Vanish", "Double-tap A/D",
-                "Snap behind lock-on. Costs KI. DMZ evasion SFX.", 0xFF1E88E5));
-        c.skills.add(entry("chase", "Chase Dash", "Double-tap W · 50%",
+        c.skills.add(entry("vanish", "Vanish", "Double-tap A/D · lock-on",
+                "Snap behind lock-on (A left / D right). Costs KI.", 0xFF1E88E5));
+        c.skills.add(entry("chase", "Chase Dash", "Double-tap W · lock-on",
                 "Mid-range rush-in. Probabilistic success.", 0xFFFF7043));
+        c.skills.add(entry("backstep", "Backstep", "Double-tap S · lock-on",
+                "Step away from lock-on target.", 0xFF90A4AE));
+        c.skills.add(entry("combo", "Combo", "Attack mash · freelook or lock",
+                "Free-running counter; finisher every maxComboSteps. No auto pull.", 0xFFEF5350));
         c.skills.add(entry("kick", "Charge Kick", "Hold Middle Mouse",
-                "Air kick OK. Hold W=up launch, S=down stomp (longer reach).", 0xFFFF69B4));
-        c.skills.add(entry("dragon", "Dragon Dash", "Hold N",
+                "Chain kicks + particles. W=up / S=down bias. No self lunge.", 0xFFFF69B4));
+        c.skills.add(entry("fist", "Charge Fist", "Hold R",
+                "Charge punch chain + particles. No self lunge.", 0xFFFFB74D));
+        c.skills.add(entry("dragon", "Dragon Dash", "Hold N · lock-on",
                 "Launch target then chase. Stamina + KI.", 0xFFFFD54F));
         c.skills.add(entry("overcharge", "KI Overcharge", "Release > 175%",
                 "Bigger size/damage/explosion per excess % release.", 0xFFFFEE58));
+        c.skills.add(entry("config", "Client Config", "xenopixelsmod-client.json",
+                "Toggles: bt3CombatAnims, bt3KickChainAnims, bt3CombatParticles, bt3ChargeGlow, techniqueHotbarHideInChat, …",
+                0xFF78909C));
 
-        return c;
+        return normalize(c);
     }
 
     private static Entry entry(String id, String title, String subtitle, String detail, int accent) {

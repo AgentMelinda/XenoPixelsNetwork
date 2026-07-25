@@ -42,7 +42,10 @@ public class Bt3CombatPacket {
         DRAGON_DASH
     }
 
-    public static final double VANISH_GAP = 1.15;
+    /** Distance past the target (behind them on approach line). */
+    public static final double VANISH_GAP = 1.35;
+    /** Left/right offset for A vs D vanish. */
+    public static final double VANISH_SIDE = 1.05;
     public static final double CHASE_GAP = 1.35;
     public static final double BACKSTEP_DIST = 3.2;
     public static final double DRAGON_LAUNCH = 6.5;
@@ -102,8 +105,13 @@ public class Bt3CombatPacket {
                 }
             }
 
-            // Kick can fire with no target (air kick); everything else needs one
-            if (target == null && msg.action != Action.CHARGE_KICK) return;
+            // Combo / kick may run without a target (air). Fist needs a target.
+            // Vanish / chase / backstep / dragon always need a target (client enforces lock-on).
+            if (target == null
+                    && msg.action != Action.CHARGE_KICK
+                    && msg.action != Action.COMBO_HIT) {
+                return;
+            }
 
             LazyOptional<StatsData> opt = StatsProvider.get(StatsCapability.INSTANCE, player);
             StatsData data = opt.orElse(null);
@@ -111,8 +119,10 @@ public class Bt3CombatPacket {
 
             switch (msg.action) {
                 case VANISH -> {
+                    // Lock-on only (client); comboStep encodes side: -1 left (A), +1 right (D)
                     if (!XenoServerConfig.bt3VanishEnabled || target == null) return;
-                    handleVanish(player, target, res);
+                    int side = msg.comboStep < 0 ? -1 : (msg.comboStep > 0 ? 1 : 0);
+                    handleVanish(player, target, res, side);
                 }
                 case CHASE_DASH -> {
                     if (!XenoServerConfig.bt3ChaseDashEnabled || target == null) return;
@@ -123,15 +133,18 @@ public class Bt3CombatPacket {
                     handleBackstep(player, target, res);
                 }
                 case COMBO_HIT -> {
-                    if (!XenoServerConfig.bt3ComboEnabled || target == null) return;
-                    if (player.distanceTo(target) > 48.0) return;
+                    // Freelook or lock-on — target optional for counter advance
+                    if (!XenoServerConfig.bt3ComboEnabled) return;
+                    if (target != null && player.distanceTo(target) > 48.0) return;
                     handleCombo(player, target, msg.comboStep, res, data);
                 }
                 case CHARGE_FIST -> {
+                    // Punch: freelook or lock-on, needs a target
                     if (!XenoServerConfig.bt3ChargeAttackEnabled || target == null) return;
                     handleChargeAttack(player, target, res, data, false, msg.chargePercent, 0);
                 }
                 case CHARGE_KICK -> {
+                    // Kick: freelook or air
                     if (!XenoServerConfig.bt3ChargeAttackEnabled) return;
                     if (target != null) {
                         handleChargeAttack(player, target, res, data, true, msg.chargePercent, msg.verticalBias);
@@ -140,6 +153,7 @@ public class Bt3CombatPacket {
                     }
                 }
                 case DRAGON_DASH -> {
+                    // Lock-on only (client); server requires target
                     if (!XenoServerConfig.bt3DragonDashEnabled || target == null) return;
                     handleDragonDash(player, target, res, data, msg.chargePercent);
                 }
@@ -148,18 +162,19 @@ public class Bt3CombatPacket {
         ctx.get().setPacketHandled(true);
     }
 
-    private static void handleVanish(ServerPlayer player, LivingEntity target, Resources res) {
+    /**
+     * @param side -1 = double-tap A (left of behind), +1 = double-tap D (right of behind)
+     */
+    private static void handleVanish(ServerPlayer player, LivingEntity target, Resources res, int side) {
         if (player.distanceTo(target) > XenoServerConfig.vanishMaxRange) return;
         if (!trySpendKi(res, XenoServerConfig.vanishKiCost)) return;
 
         Vec3 from = player.position();
         playItSound(player, from.x, from.y, from.z, true);
 
-        Vec3 dest = vanishBehind(player, target);
-        dest = findOpenSpot(player, target, dest);
-
-        teleport(player, dest);
-        faceTarget(player, target);
+        Vec3 dest = vanishBehind(player, target, side);
+        // Face-on teleport: syncs camera + kills residual flight (teleportTo alone desyncs DMZ flight)
+        teleportFacing(player, dest, target);
         playItSound(player, dest.x, dest.y, dest.z, false);
     }
 
@@ -168,12 +183,10 @@ public class Bt3CombatPacket {
         if (dist > XenoServerConfig.chaseMaxRange || dist < 2.5) return;
         if (!trySpendKi(res, XenoServerConfig.chaseKiCost)) return;
 
-        // Probabilistic chase (default 50%)
         if (!rollChaseSuccess(player)) {
-            // Small lunge only — failed chase
             Vec3 toTarget = new Vec3(target.getX() - player.getX(), 0, target.getZ() - player.getZ());
             if (toTarget.lengthSqr() > 1.0e-4) {
-                player.setDeltaMovement(toTarget.normalize().scale(0.35).add(0, 0.04, 0));
+                player.setDeltaMovement(toTarget.normalize().scale(0.2).add(0, 0.02, 0));
                 player.hurtMarked = true;
                 player.hasImpulse = true;
             }
@@ -186,24 +199,8 @@ public class Bt3CombatPacket {
         Vec3 from = player.position();
         playItSound(player, from.x, from.y, from.z, true);
 
-        // Land just short of the target on the approach line (Sparking Zero rush-in)
-        Vec3 toTarget = new Vec3(target.getX() - player.getX(), 0, target.getZ() - player.getZ());
-        if (toTarget.lengthSqr() < 1.0e-4) {
-            toTarget = player.getLookAngle().multiply(1, 0, 1);
-        }
-        Vec3 toward = toTarget.normalize();
-        Vec3 dest = new Vec3(
-                target.getX() - toward.x * CHASE_GAP,
-                target.getY(),
-                target.getZ() - toward.z * CHASE_GAP);
-        dest = findOpenSpot(player, target, dest);
-
-        teleport(player, dest);
-        // Carry residual rush momentum into melee
-        player.setDeltaMovement(toward.scale(0.55).add(0, 0.05, 0));
-        player.hurtMarked = true;
-        player.hasImpulse = true;
-        faceTarget(player, target);
+        Vec3 dest = chaseLanding(player, target);
+        teleportFacing(player, dest, target);
         playItSound(player, dest.x, dest.y, dest.z, false);
         player.level().playSound(null, dest.x, dest.y, dest.z,
                 SoundEvents.PLAYER_ATTACK_SWEEP, SoundSource.PLAYERS, 0.7f, 1.4f);
@@ -216,25 +213,8 @@ public class Bt3CombatPacket {
         Vec3 from = player.position();
         playItSound(player, from.x, from.y, from.z, true);
 
-        Vec3 away = new Vec3(player.getX() - target.getX(), 0, player.getZ() - target.getZ());
-        if (away.lengthSqr() < 1.0e-4) {
-            float yaw = player.getYRot() * ((float) Math.PI / 180F);
-            away = new Vec3(Mth.sin(yaw), 0, -Mth.cos(yaw));
-        }
-        away = away.normalize();
-        Vec3 dest = new Vec3(
-                player.getX() + away.x * BACKSTEP_DIST,
-                player.getY(),
-                player.getZ() + away.z * BACKSTEP_DIST);
-        if (!isSpotOpen(player, dest)) {
-            dest = new Vec3(player.getX() + away.x * 2.0, player.getY(), player.getZ() + away.z * 2.0);
-        }
-
-        teleport(player, dest);
-        player.setDeltaMovement(away.scale(0.35).add(0, 0.08, 0));
-        player.hurtMarked = true;
-        player.hasImpulse = true;
-        faceTarget(player, target);
+        Vec3 dest = backstepDest(player, target);
+        teleportFacing(player, dest, target);
         playItSound(player, dest.x, dest.y, dest.z, false);
     }
 
@@ -259,16 +239,7 @@ public class Bt3CombatPacket {
         flat = flat.normalize();
 
         double range = kickHitRange(charge, verticalBias);
-        double forward = 0.45 + charge * 0.55;
-        if (verticalBias < 0) {
-            // S-hold stomp kick: dive farther forward
-            forward += 0.55 + charge * 0.75 + XenoServerConfig.kickDownRangeBonus * 0.12;
-        }
-        double up = kickVerticalImpulse(player, charge, verticalBias, true);
-        player.setDeltaMovement(flat.scale(forward).add(0, up, 0));
-        player.hurtMarked = true;
-        player.hasImpulse = true;
-        player.fallDistance = 0f;
+        // No self-boost on air kick either — stay put; only targets get launch
 
         float base = (float) Math.max(2.0, player.getAttackStrengthScale(0.5f) * 5.0f);
         if (data != null) {
@@ -318,21 +289,10 @@ public class Bt3CombatPacket {
         DmzAnimHelper.ChargeStyle style = kick
                 ? DmzAnimHelper.ChargeStyle.KICK
                 : (full ? DmzAnimHelper.ChargeStyle.FIST_HEAVY : DmzAnimHelper.ChargeStyle.FIST_LIGHT);
-        DmzAnimHelper.playChargeRelease(player, style, full);
+        // Fancy chain anims for kick/punch (tracking clients; attacker predicts locally)
+        DmzAnimHelper.playChargeRelease(player, style, full, verticalBias, true);
 
-        // Step into target (S-kick lunges farther)
-        Vec3 to = target.position().subtract(player.position());
-        Vec3 flat = new Vec3(to.x, 0, to.z);
-        if (flat.lengthSqr() > 1.0e-4) {
-            double stepUp = kick ? kickVerticalImpulse(player, charge, verticalBias, false) * 0.35 : 0.06;
-            double lunge = 0.55 + charge * 0.45;
-            if (kick && verticalBias < 0) {
-                lunge += 0.65 + charge * 0.55 + XenoServerConfig.kickDownRangeBonus * 0.08;
-            }
-            player.setDeltaMovement(flat.normalize().scale(lunge).add(0, stepUp, 0));
-            player.hurtMarked = true;
-            player.hasImpulse = true;
-        }
+        // No player lunge — stay put; only target takes KB
         faceTarget(player, target);
 
         double hitRange = kick ? engageRange : 5.0;
@@ -361,7 +321,7 @@ public class Bt3CombatPacket {
             target.hasImpulse = true;
         }
 
-        // Kick always plays a clear impact sound on contact
+        // Impact SFX + particles at target
         if (kick) {
             playKickHitSound(player, target, full);
         } else {
@@ -369,6 +329,21 @@ public class Bt3CombatPacket {
             if (full) {
                 player.level().playSound(null, target.getX(), target.getY(), target.getZ(),
                         SoundEvents.PLAYER_ATTACK_CRIT, SoundSource.PLAYERS, 1.0f, 0.9f);
+            }
+        }
+        if (player.level() instanceof net.minecraft.server.level.ServerLevel sl) {
+            double hx = target.getX();
+            double hy = target.getY() + target.getBbHeight() * 0.5;
+            double hz = target.getZ();
+            sl.sendParticles(net.minecraft.core.particles.ParticleTypes.CRIT,
+                    hx, hy, hz, full ? 14 : 8, 0.25, 0.35, 0.25, 0.08);
+            if (full) {
+                sl.sendParticles(net.minecraft.core.particles.ParticleTypes.SWEEP_ATTACK,
+                        hx, hy, hz, 2, 0.1, 0.1, 0.1, 0.0);
+            }
+            if (kick && full) {
+                sl.sendParticles(net.minecraft.core.particles.ParticleTypes.ELECTRIC_SPARK,
+                        hx, hy, hz, 6, 0.2, 0.25, 0.2, 0.02);
             }
         }
     }
@@ -490,34 +465,27 @@ public class Bt3CombatPacket {
     }
 
     private static void handleCombo(ServerPlayer player, LivingEntity target, int step, Resources res, StatsData data) {
-        int max = XenoServerConfig.maxComboSteps;
-        step = Math.max(1, Math.min(max, step));
-        boolean finisher = XenoServerConfig.bt3FinisherEnabled && step >= max;
+        // maxComboSteps = finisher every N hits; counter itself free-runs up to 99
+        int finisherEvery = Math.max(1, XenoServerConfig.maxComboSteps);
+        int countCap = 99;
+        step = Math.max(1, Math.min(countCap, step));
+        boolean finisher = XenoServerConfig.bt3FinisherEnabled && step % finisherEvery == 0;
+        int scaleStep = Math.min(step, finisherEvery * 4);
 
         float cost = finisher ? XenoServerConfig.finisherKiCost : XenoServerConfig.comboKiCost;
         if (res != null && res.getCurrentEnergy() >= cost) {
             res.removeEnergy(cost);
         }
 
-        Vec3 to = target.position().add(0, target.getBbHeight() * 0.35, 0).subtract(player.position());
-        Vec3 flat = new Vec3(to.x, 0, to.z);
-        double len = Math.sqrt(flat.lengthSqr());
-        if (len > 0.01) {
-            double lunge = finisher ? 1.25 : 0.55 + step * 0.08;
-            if (len > 3.5) {
-                player.setDeltaMovement(flat.normalize().scale(Math.min(1.5, lunge)).add(0, finisher ? 0.12 : 0.05, 0));
-            } else {
-                player.setDeltaMovement(flat.normalize().scale(finisher ? 0.4 : 0.25).add(0, finisher ? 0.1 : 0.02, 0));
-            }
-            player.hurtMarked = true;
-            player.hasImpulse = true;
+        // Air string / freelook miss: counter still advances, no hit
+        if (target == null || !target.isAlive()) {
+            return;
         }
 
-        faceTarget(player, target);
-
+        // No player lunge, step-in, or forced face — lock-on or freelook, stay put
         if (player.distanceTo(target) <= 4.5) {
             float base = (float) Math.max(1.0, player.getAttackStrengthScale(0.5f) * 4.0f);
-            float mult = (1.0f + step * 0.12f) * XenoServerConfig.comboDamageScale;
+            float mult = (1.0f + scaleStep * 0.12f) * XenoServerConfig.comboDamageScale;
             if (finisher) mult *= XenoServerConfig.finisherDamageScale;
             if (data != null) {
                 base = (float) Math.max(base, data.getMeleeDamage() * 0.35);
@@ -528,7 +496,7 @@ public class Bt3CombatPacket {
             Vec3 kbFlat = new Vec3(kbDir.x, 0, kbDir.z);
             if (kbFlat.lengthSqr() > 1.0e-4) {
                 kbFlat = kbFlat.normalize();
-                double kb = finisher ? 1.65 : 0.25 + step * 0.08;
+                double kb = finisher ? 1.65 : 0.25 + Math.min(scaleStep, 8) * 0.08;
                 double up = finisher ? 0.55 : 0.12;
                 target.setDeltaMovement(target.getDeltaMovement().add(kbFlat.scale(kb).add(0, up, 0)));
                 target.hurtMarked = true;
@@ -562,36 +530,76 @@ public class Bt3CombatPacket {
         player.connection.resetPosition();
     }
 
-    /** Behind lock-on target relative to player approach. */
+    /**
+     * Teleport and face the target in one packet — zeros velocity so DMZ flight
+     * cannot carry residual speed after the warp.
+     */
+    private static void teleportFacing(ServerPlayer player, Vec3 dest, LivingEntity target) {
+        double dx = target.getX() - dest.x;
+        double dz = target.getZ() - dest.z;
+        float yaw = (float) (Math.toDegrees(Math.atan2(dz, dx)) - 90.0);
+        float pitch = player.getXRot();
+        player.connection.teleport(dest.x, dest.y, dest.z, yaw, pitch);
+        player.setYRot(yaw);
+        player.setYHeadRot(yaw);
+        player.yBodyRot = yaw;
+        player.setDeltaMovement(Vec3.ZERO);
+        player.hurtMarked = true;
+        player.hasImpulse = true;
+        player.fallDistance = 0f;
+    }
+
+    /**
+     * BT3 vanish: land just past the target (their back relative to you),
+     * offset left (A) or right (D). Always at the target's height so you don't
+     * stay sky-high and "fly away".
+     *
+     * @param side -1 left, +1 right, 0 center-behind
+     */
     public static Vec3 vanishBehind(Entity player, LivingEntity target) {
-        Vec3 toTarget = new Vec3(target.getX() - player.getX(), 0, target.getZ() - player.getZ());
-        if (toTarget.lengthSqr() < 1.0e-4) {
-            float yawRad = target.getYRot() * ((float) Math.PI / 180F);
-            toTarget = new Vec3(-Mth.sin(yawRad), 0, Mth.cos(yawRad));
-        }
-        Vec3 toward = toTarget.normalize();
-        return new Vec3(
-                target.getX() + toward.x * VANISH_GAP,
-                target.getY(),
-                target.getZ() + toward.z * VANISH_GAP);
+        return vanishBehind(player, target, 0);
     }
 
+    public static Vec3 vanishBehind(Entity player, LivingEntity target, int side) {
+        Vec3 toEnemy = new Vec3(target.getX() - player.getX(), 0, target.getZ() - player.getZ());
+        if (toEnemy.lengthSqr() < 1.0e-4) {
+            // Fallback: opposite of target look (stand at their back)
+            Vec3 look = target.getLookAngle();
+            toEnemy = new Vec3(-look.x, 0, -look.z);
+            if (toEnemy.lengthSqr() < 1.0e-4) {
+                toEnemy = new Vec3(0, 0, 1);
+            }
+        }
+        Vec3 toward = toEnemy.normalize(); // player → enemy; +toward past enemy = behind them
+        Vec3 right = new Vec3(-toward.z, 0, toward.x);
+        double s = side < 0 ? -VANISH_SIDE : (side > 0 ? VANISH_SIDE : 0.0);
+        // Behind + side; Y locked to target so aerial combat lands next to them
+        return new Vec3(
+                target.getX() + toward.x * VANISH_GAP + right.x * s,
+                target.getY(),
+                target.getZ() + toward.z * VANISH_GAP + right.z * s);
+    }
+
+    /** Land short of target on the approach line (in front of them), at their height. */
     public static Vec3 chaseLanding(Entity player, LivingEntity target) {
-        Vec3 toTarget = new Vec3(target.getX() - player.getX(), 0, target.getZ() - player.getZ());
-        if (toTarget.lengthSqr() < 1.0e-4) {
-            toTarget = new Vec3(0, 0, 1);
+        Vec3 flat = new Vec3(target.getX() - player.getX(), 0, target.getZ() - player.getZ());
+        if (flat.lengthSqr() < 1.0e-4) {
+            flat = new Vec3(0, 0, 1);
+        } else {
+            flat = flat.normalize();
         }
-        Vec3 toward = toTarget.normalize();
         return new Vec3(
-                target.getX() - toward.x * CHASE_GAP,
+                target.getX() - flat.x * CHASE_GAP,
                 target.getY(),
-                target.getZ() - toward.z * CHASE_GAP);
+                target.getZ() - flat.z * CHASE_GAP);
     }
 
+    /** Step away from target horizontally; keep player Y for air combat. */
     public static Vec3 backstepDest(Entity player, LivingEntity target) {
         Vec3 away = new Vec3(player.getX() - target.getX(), 0, player.getZ() - target.getZ());
         if (away.lengthSqr() < 1.0e-4) {
-            away = new Vec3(0, 0, -1);
+            float yaw = player.getYRot() * ((float) Math.PI / 180F);
+            away = new Vec3(Mth.sin(yaw), 0, -Mth.cos(yaw));
         }
         away = away.normalize();
         return new Vec3(
@@ -600,10 +608,9 @@ public class Bt3CombatPacket {
                 player.getZ() + away.z * BACKSTEP_DIST);
     }
 
+    /** Used by dragon dash only — small lateral nudge if blocked. */
     private static Vec3 findOpenSpot(ServerPlayer player, LivingEntity target, Vec3 preferred) {
         if (isSpotOpen(player, preferred)) return preferred;
-        Vec3 alt = vanishBehind(player, target);
-        if (isSpotOpen(player, alt)) return alt;
         Vec3 toTarget = new Vec3(target.getX() - player.getX(), 0, target.getZ() - player.getZ());
         if (toTarget.lengthSqr() < 1.0e-4) toTarget = new Vec3(0, 0, 1);
         Vec3 toward = toTarget.normalize();
@@ -615,7 +622,10 @@ public class Bt3CombatPacket {
         return preferred;
     }
 
-    private static boolean isSpotOpen(ServerPlayer player, Vec3 pos) {
+    public static boolean isSpotOpen(Entity player, Vec3 pos) {
+        if (player == null || pos == null || player.level() == null) {
+            return false;
+        }
         var box = player.getBoundingBox().move(
                 pos.x - player.getX(),
                 pos.y - player.getY(),

@@ -16,27 +16,44 @@ import net.minecraftforge.client.gui.overlay.ForgeGui;
 import net.minecraftforge.client.gui.overlay.IGuiOverlay;
 
 /**
- * Xenoverse 2 style floating combat HUD (rounded chrome):
- * portrait + name + HP/KI pills + STM diamonds. No STM/release numbers.
+ * Xeno combat HUD — tech-HUD palette (navy glass + cyan rails) with parallelogram
+ * plate/bars. Portrait + name + HP/KI gauges + STM segments.
  */
 @OnlyIn(Dist.CLIENT)
 public class XenoHudOverlay implements IGuiOverlay {
     private static final ResourceLocation TEX = new ResourceLocation(XenoPixelsMod.MOD_ID, "textures/gui/xeno_hud.png");
 
     private static final int PORTRAIT = 68;
-    private static final int PORTRAIT_R = 10;
     private static final int PORTRAIT_PAD = 4;
     private static final int CONTENT_LEFT = 80;
     private static final int BAR_W = 300;
-    private static final int HP_H = 9;
+    private static final int HP_H = 10;
     private static final int KI_H = 12;
-    private static final int BAR_R = 5;
     private static final int NAME_Y = 6;
     private static final int HP_Y = 24;
     private static final int KI_Y = 38;
     private static final int STM_Y = 56;
     private static final int STM_SEGMENTS = 16;
-    private static final int DIAMOND = 10;
+    private static final int STM_SEG_W = 14;
+    private static final int STM_SEG_H = 10;
+    private static final int BAR_SKEW = 8;
+    private static final int PANEL_SKEW = 10;
+    private static final int STM_SKEW = 3;
+
+    // Tech-HUD palette (shared with technique bar)
+    private static final int TECH_BG = 0xEE0A1428;
+    private static final int TECH_BG_OUTER = 0xCC050510;
+    private static final int TECH_ACCENT = 0xFF42A5F5;
+    private static final int TECH_ACCENT_SOFT = 0xFF90CAF9;
+    private static final int TECH_SLOT = 0xAA122038;
+    private static final int HP_EMPTY = 0xFF3A0808;
+    private static final int HP_FILL = 0xFFE53935;
+    private static final int HP_SHINE = 0xFFFF8A80;
+    private static final int KI_EMPTY = 0xFF0A2038;
+    private static final int KI_FILL = 0xFF1E88E5;
+    private static final int KI_SHINE = 0xFF64B5F6;
+    private static final int STM_ON = 0xFFFFC107;
+    private static final int STM_OFF = 0xFF2A2415;
 
     private static final net.bullettrain.xenopixelsmod.client.hud.XenoHudView LDLIB_VIEW =
             new net.bullettrain.xenopixelsmod.client.hud.XenoHudView();
@@ -72,6 +89,8 @@ public class XenoHudOverlay implements IGuiOverlay {
         RenderSystem.defaultBlendFunc();
         RenderSystem.setShaderColor(1f, 1f, 1f, 1f);
 
+        // Plate first so it reaches under the portrait; skin/frame drawn on top
+        drawBackingPlate(graphics);
         drawPortraitDropShadow(graphics);
         drawPortrait(graphics, mc, snap);
         drawBarsCluster(graphics, mc, snap);
@@ -90,35 +109,31 @@ public class XenoHudOverlay implements IGuiOverlay {
 
     private static void drawPortraitDropShadow(GuiGraphics g) {
         int s = PORTRAIT;
-        for (int i = 5; i >= 1; i--) {
-            int a = 8 + i * 10;
-            fillRoundedRect(g, 1 - i, 3 + i, s + 2 + i * 2, s + 4 + i, PORTRAIT_R + i, (a << 24));
+        for (int i = 4; i >= 1; i--) {
+            int a = 10 + i * 12;
+            g.fill(2 + i, 4 + i, s + 2 + i, s + 6 + i, a << 24);
         }
     }
 
     private static void drawPortrait(GuiGraphics g, Minecraft mc, XenoHudSnapshot snap) {
         int s = PORTRAIT;
-        int r = PORTRAIT_R;
 
-        // Soft rounded blue frame
-        fillRoundedRect(g, -2, -2, s + 4, s + 4, r + 2, 0xFF0A2F5C);
-        fillRoundedRect(g, -1, -1, s + 2, s + 2, r + 1, 0xFF1E6BB8);
-        fillRoundedRect(g, 0, 0, s, s, r, 0xFF2F8FE0);
-        fillRoundedRect(g, 2, 2, s - 4, s - 4, r - 2, 0xFF163A68);
+        // Tech-style square frame (navy + cyan, same as technique panel)
+        g.fill(-3, -3, s + 3, s + 3, TECH_BG_OUTER);
+        g.fill(-2, -2, s + 2, s + 2, 0xFF1E4A7A);
+        g.fill(-1, -1, s + 1, s + 1, TECH_ACCENT);
+        g.fill(0, 0, s, s, 0xFF0A2038);
+        // left cyan accent strip
+        g.fill(0, 0, 3, s, TECH_ACCENT);
 
         int ix = PORTRAIT_PAD;
         int iy = PORTRAIT_PAD;
         int iw = s - PORTRAIT_PAD * 2;
         int ih = s - PORTRAIT_PAD * 2;
-        int ir = Math.max(4, r - 3);
 
-        // Sky / ground backdrop (rounded clip approx)
-        fillRoundedRect(g, ix, iy, iw, ih, ir, 0xFF6BB7E8);
-        // top sky half
-        g.fill(ix, iy, ix + iw, iy + ih / 2, 0xFF8FD0F5);
-        // ground
-        g.fill(ix, iy + ih * 2 / 3, ix + iw, iy + ih, 0xFF4A8A45);
-        g.fill(ix, iy + ih / 2, ix + iw, iy + ih * 2 / 3, 0xFF5FA35A);
+        // Dark tech backdrop instead of cartoon sky
+        g.fill(ix, iy, ix + iw, iy + ih, 0xFF0D1B2A);
+        g.fill(ix, iy, ix + iw, iy + ih / 3, 0xFF12253A);
 
         LocalPlayer player = mc.player;
         if (player != null) {
@@ -128,13 +143,12 @@ public class XenoHudOverlay implements IGuiOverlay {
             }
         }
 
-        // Thin dark rim only (must NOT fill over the bust)
-        drawRoundedBorder(g, 0, 0, s, s, r, 0xFF0A2A55, 2);
-        // Soft top highlight strip (alpha)
-        g.fill(r, 0, s - r, 2, 0x55FFFFFF);
+        // Outer cyan rim
+        g.fill(0, 0, s, 2, 0x6642A5F5);
+        g.fill(0, s - 2, s, s, 0x442A2A3A);
 
         if (snap.transforming) {
-            drawTransformChargeBorder(g, -4, -4, s + 8, s + 8, r + 3, snap.transformChargePercent);
+            drawTransformChargeBorder(g, -4, -4, s + 8, s + 8, 0, snap.transformChargePercent);
         }
     }
 
@@ -214,42 +228,55 @@ public class XenoHudOverlay implements IGuiOverlay {
         RenderSystem.setShaderColor(1f, 1f, 1f, 1f);
     }
 
+    /**
+     * Full-width tech parallelogram plate: starts left of the portrait so the
+     * skin sits on top of the same navy glass as the HP/KI/STM cluster.
+     */
+    private static void drawBackingPlate(GuiGraphics g) {
+        // Left edge behind portrait frame (portrait is ~-3..PORTRAIT+3 with rim)
+        int panelX = -8;
+        int panelY = -6;
+        // Right edge still covers name + bars (CONTENT_LEFT + BAR_W + padding)
+        int panelRight = CONTENT_LEFT + BAR_W + 14;
+        int panelW = panelRight - panelX;
+        // Tall enough to cover portrait (68) and STM row
+        int panelBottom = Math.max(PORTRAIT + 6, STM_Y + STM_SEG_H + 8);
+        int panelH = panelBottom - panelY;
+
+        fillParallelogram(g, panelX - 2, panelY - 2, panelW + 4, panelH + 4, PANEL_SKEW + 1, TECH_BG_OUTER);
+        fillParallelogram(g, panelX, panelY, panelW, panelH, PANEL_SKEW, TECH_BG);
+        // Cyan rail along the left slant of the plate (under portrait left edge)
+        fillParallelogram(g, panelX, panelY + 2, 3, panelH - 4, 0, TECH_ACCENT);
+        drawParallelogramBorder(g, panelX, panelY, panelW, panelH, PANEL_SKEW, 0x5542A5F5, 1);
+    }
+
     private static void drawBarsCluster(GuiGraphics g, Minecraft mc, XenoHudSnapshot snap) {
         Font font = mc.font;
         String name = snap.name;
 
-        // Name + release % only (XV2 style)
-        g.drawString(font, name, CONTENT_LEFT + 1, NAME_Y + 1, 0x88000000, false);
-        g.drawString(font, name, CONTENT_LEFT, NAME_Y, 0xFFF5F5F5, false);
-        if (snap.dmzPresent) {
-            String releaseText = snap.releaseText;
-            int rx = CONTENT_LEFT + font.width(name) + 8;
-            // Always cyan for release % (XenoPixels style)
-            g.drawString(font, releaseText, rx + 1, NAME_Y + 1, 0x88000000, false);
-            g.drawString(font, releaseText, rx, NAME_Y, 0xFF00E5FF, false);
+        // Name sits inside the plate (past top skew so it doesn't poke left)
+        int nameX = CONTENT_LEFT + PANEL_SKEW / 2 + 2;
+        g.drawString(font, name, nameX, NAME_Y, 0xFFE3F2FD, true);
+        if (snap.dmzPresent && snap.releaseText != null) {
+            int rx = nameX + font.width(name) + 8;
+            g.drawString(font, snap.releaseText, rx, NAME_Y, TECH_ACCENT_SOFT, true);
         }
 
         float hp = snap.hpPercent;
         float ki = snap.kiPercent;
         float stm = snap.stmPercent;
 
-        float curHp = snap.curHp;
-        float maxHp = snap.maxHp;
-        float curKi = snap.curKi;
-        float maxKi = snap.maxKi;
-
-        // Rounded HP / KI pills — numbers only on these two
-        drawRoundedBar(g, CONTENT_LEFT, HP_Y, BAR_W, HP_H, hp,
-                0xFF4A0808, 0xFFFF6E6E, 0xFFE53935, 0xFFB71C1C);
+        // HP — tech-style parallelogram gauge (red)
+        drawParaBar(g, CONTENT_LEFT, HP_Y, BAR_W, HP_H, hp, HP_EMPTY, HP_FILL, HP_SHINE);
         drawBarValue(g, font, CONTENT_LEFT, HP_Y, BAR_W, HP_H,
-                formatPair(curHp, maxHp), 0xFF00E5FF);
+                formatPair(snap.curHp, snap.maxHp), 0xFFE3F2FD);
 
-        drawRoundedBar(g, CONTENT_LEFT, KI_Y, BAR_W, KI_H, ki,
-                0xFF3A3008, 0xFFFFF59D, 0xFFFDD835, 0xFFF9A825);
+        // KI — cyan/blue like technique charge bar
+        drawParaBar(g, CONTENT_LEFT, KI_Y, BAR_W, KI_H, ki, KI_EMPTY, KI_FILL, KI_SHINE);
         drawBarValue(g, font, CONTENT_LEFT, KI_Y, BAR_W, KI_H,
-                formatPair(curKi, maxKi), 0xFF00E5FF);
+                formatPair(snap.curKi, snap.maxKi), 0xFFB3E5FC);
 
-        // STM diamonds only — no numbers
+        // STM — segmented parallelogram pips (tech slot language)
         drawStmRow(g, font, CONTENT_LEFT, STM_Y, BAR_W, stm);
     }
 
@@ -276,36 +303,19 @@ public class XenoHudOverlay implements IGuiOverlay {
         g.drawString(font, text, cx, cy, color, true);
     }
 
-    /** Soft pill bar (rounded ends) like XV2 HP/KI. */
-    private static void drawRoundedBar(GuiGraphics g, int x, int y, int w, int h, float percent,
-                                       int empty, int shine, int mid, int deep) {
+    /** Tech-style parallelogram HP/KI gauge. */
+    private static void drawParaBar(GuiGraphics g, int x, int y, int w, int h, float percent,
+                                    int empty, int fill, int shine) {
         percent = clamp01(percent);
         int filled = Math.max(0, Math.round(w * percent));
-        int r = Math.min(BAR_R, h / 2);
-
-        // Black outline shell + empty trough
-        fillRoundedRect(g, x - 2, y - 2, w + 4, h + 4, r + 2, 0xFF000000);
-        fillRoundedRect(g, x - 1, y - 1, w + 2, h + 2, r + 1, 0xFF000000);
-        fillRoundedRect(g, x, y, w, h, r, empty);
-
-        if (filled <= 0) return;
-
-        // Draw fill as a rounded pill clipped to [x, x+filled]
-        int fw = Math.max(r * 2, filled);
-        if (fw > w) fw = w;
-        fillRoundedRect(g, x, y, fw, h, r, mid);
-
-        // If not full, square the right edge of the fill so it doesn't over-round past fill %
-        if (filled < w && filled > r) {
-            g.fill(x + filled - r, y, x + filled, y + h, mid);
-        }
-
-        int shineH = Math.max(2, h / 3);
-        int fillRight = x + Math.min(filled, w);
-        g.fill(x + 2, y + 1, fillRight, y + shineH, shine);
-        g.fill(x + 2, y + h - 2, fillRight, y + h - 1, deep);
-        if (filled < w && filled > 2) {
-            g.fill(fillRight - 2, y + 1, fillRight, y + h - 1, shine);
+        drawParallelogramBorder(g, x - 2, y - 2, w + 4, h + 4, BAR_SKEW, 0xFF050510, 1);
+        fillParallelogram(g, x, y, w, h, BAR_SKEW, empty);
+        if (filled > 0) {
+            fillParallelogram(g, x, y, filled, h, BAR_SKEW, fill);
+            fillParallelogram(g, x, y, filled, Math.max(2, h / 3), BAR_SKEW, shine);
+            if (filled > 3 && filled < w) {
+                fillParallelogram(g, x + filled - 2, y, 2, h, 0, shine);
+            }
         }
     }
 
@@ -313,61 +323,69 @@ public class XenoHudOverlay implements IGuiOverlay {
         percent = clamp01(percent);
 
         int labelW = 28;
-        int labelH = DIAMOND + 2;
-        fillRoundedRect(g, x - 1, y - 1, labelW, labelH, 4, 0xEE061018);
-        fillRoundedRect(g, x, y, labelW - 2, labelH - 2, 3, 0xFF132A4A);
-        g.drawString(font, "STM", x + 3, y + 1, 0xFF90CAF9, false);
+        // STM label chip (tech badge style)
+        g.fill(x, y, x + labelW, y + STM_SEG_H, TECH_SLOT);
+        g.fill(x, y, x + 2, y + STM_SEG_H, TECH_ACCENT);
+        g.drawString(font, "STM", x + 5, y + 1, TECH_ACCENT_SOFT, false);
 
         int start = x + labelW + 4;
         int gap = 2;
-        int available = w - labelW - 4;
-        int segW = Math.max(DIAMOND, (available - (STM_SEGMENTS - 1) * gap) / STM_SEGMENTS);
         int lit = Math.round(STM_SEGMENTS * percent);
 
         for (int i = 0; i < STM_SEGMENTS; i++) {
-            int sx = start + i * (segW + gap);
-            drawDiamond(g, sx, y, segW, DIAMOND, i < lit);
-        }
-    }
-
-    private static void drawDiamond(GuiGraphics g, int x, int y, int w, int h, boolean on) {
-        int cx = x + w / 2;
-        int cy = y + h / 2;
-        int hw = w / 2;
-        int hh = h / 2;
-
-        int mid = on ? 0xFF1E88E5 : 0xFF2C2C3A;
-        int inner = on ? 0xFF64B5F6 : 0xFF3A3A4A;
-        int core = on ? 0xCCFFFFFF : 0x33888899;
-
-        for (int dy = -hh; dy <= hh; dy++) {
-            float t = 1f - (Math.abs(dy) / (float) Math.max(1, hh));
-            int span = Math.max(1, Math.round(hw * t));
-            int color = Math.abs(dy) <= 1 ? core : (Math.abs(dy) < hh / 2 ? inner : mid);
-            if (!on && Math.abs(dy) <= 1) color = mid;
-            g.fill(cx - span, cy + dy, cx + span + 1, cy + dy + 1, color);
+            int sx = start + i * (STM_SEG_W + gap);
+            fillParallelogram(g, sx, y, STM_SEG_W, STM_SEG_H, STM_SKEW, i < lit ? STM_ON : STM_OFF);
+            if (i < lit) {
+                fillParallelogram(g, sx, y, STM_SEG_W, 2, STM_SKEW, 0xAAFFE082);
+            }
         }
     }
 
     private static void drawP1Badge(GuiGraphics g, Font font) {
-        int bx = -2;
-        int by = PORTRAIT - 16;
-        int bw = 34;
-        int bh = 16;
-        fillRoundedRect(g, bx, by, bw, bh, 6, 0xFF0D47A1);
-        fillRoundedRect(g, bx + 1, by + 1, bw - 2, bh - 2, 5, 0xFF1E88E5);
-        fillRoundedRect(g, bx + 2, by + 2, bw - 4, 4, 3, 0xFF64B5F6);
-        g.drawCenteredString(font, "P1", bx + bw / 2, by + 4, 0xFFFFFFFF);
+        int bx = 0;
+        int by = PORTRAIT - 14;
+        int bw = 32;
+        int bh = 14;
+        g.fill(bx, by, bx + bw, by + bh, TECH_BG_OUTER);
+        g.fill(bx + 1, by + 1, bx + bw - 1, by + bh - 1, 0xFF1E4A7A);
+        g.fill(bx, by, bx + 2, by + bh, TECH_ACCENT);
+        g.drawCenteredString(font, "P1", bx + bw / 2, by + 3, 0xFFE3F2FD);
     }
 
     private static void drawSkillOrb(GuiGraphics g) {
         int cx = 16;
         int cy = PORTRAIT + 12;
-        fillCircle(g, cx, cy, 9, 0xFF0A1A30);
-        fillCircle(g, cx, cy, 8, 0xFF1565C0);
-        fillCircle(g, cx, cy, 6, 0xFF42A5F5);
-        fillCircle(g, cx - 1, cy - 2, 2, 0xCCFFFFFF);
+        // Tech square pip instead of soft orb
+        g.fill(cx - 9, cy - 9, cx + 9, cy + 9, TECH_BG_OUTER);
+        g.fill(cx - 7, cy - 7, cx + 7, cy + 7, 0xFF1E4A7A);
+        g.fill(cx - 5, cy - 5, cx + 5, cy + 5, TECH_ACCENT);
+        g.fill(cx - 2, cy - 3, cx + 1, cy, 0x88FFFFFF);
         g.blit(TEX, cx - 8, cy - 8, 16, 16, 70f, 80f, 16, 16, 256, 128);
+    }
+
+    private static void fillParallelogram(GuiGraphics g, int x, int y, int w, int h, int skew, int color) {
+        if (w <= 0 || h <= 0) return;
+        int s = Math.max(0, skew);
+        for (int row = 0; row < h; row++) {
+            int offset = s == 0 || h <= 1 ? s : Math.round(s * (1f - row / (float) (h - 1)));
+            g.fill(x + offset, y + row, x + offset + w, y + row + 1, color);
+        }
+    }
+
+    private static void drawParallelogramBorder(GuiGraphics g, int x, int y, int w, int h, int skew, int color, int t) {
+        if (w <= 0 || h <= 0 || t <= 0) return;
+        int s = Math.max(0, skew);
+        for (int row = 0; row < h; row++) {
+            int offset = s == 0 || h <= 1 ? s : Math.round(s * (1f - row / (float) (h - 1)));
+            int left = x + offset;
+            int right = left + w;
+            if (row < t || row >= h - t) {
+                g.fill(left, y + row, right, y + row + 1, color);
+            } else {
+                g.fill(left, y + row, Math.min(left + t, right), y + row + 1, color);
+                g.fill(Math.max(right - t, left), y + row, right, y + row + 1, color);
+            }
+        }
     }
 
     private static float clamp01(float v) {

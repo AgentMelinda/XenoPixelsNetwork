@@ -47,57 +47,64 @@
     {
       "id": "group_legend",
       "title": "Super Saiyan Legend (SSJ5–10)",
-      "subtitle": "Saiyan superforms chain · TP priced",
-      "detail": "Custom group supersaiyan_legend installed into config/dragonminez/races/saiyan/forms/. Chain past SSJ4 with rising STR/PWR, drains, and mastery share. Skill levels 9–14 on superforms. Prices 120k→300k TP. After install run /dmzreload config.",
+      "subtitle": "formType superforms · Goku / Vegeta",
+      "detail": "Shares superforms skill. /dmzform set superforms <1-6>. SSJ5–10 chain. Prices 120k→300k TP. Masters Goku/Vegeta.",
       "accent": 4292927487
     },
     {
       "id": "ssj5",
       "title": "Super Saiyan 5",
-      "subtitle": "Pale Silver Legend · 120,000 TP",
-      "detail": "Past SSJ4. Silver-white hair, soft violet aura. Req: supersaiyan.supersaiyan4 · Superforms Lv.9 · ~x4.5 STR/PWR.",
+      "subtitle": "Pale Silver Legend · Lv.1 · 120,000 TP",
+      "detail": "Silver-white hair, soft violet aura. /dmzform set superforms 1 · ~x4.5 STR/PWR.",
       "accent": 4292927487
     },
     {
       "id": "ssj6",
       "title": "Super Saiyan 6",
-      "subtitle": "Crimson Eclipse · 145,000 TP",
-      "detail": "Dark hair, blood-red aura. Req: ssj5 · Superforms Lv.10 · ~x5.25 STR.",
+      "subtitle": "Crimson Eclipse · Lv.2 · 145,000 TP",
+      "detail": "Dark hair, blood-red aura. Req: ssj5 · superforms Lv.2 · ~x5.25 STR.",
       "accent": 4290772992
     },
     {
       "id": "ssj7",
       "title": "Super Saiyan 7",
-      "subtitle": "Void Violet · 175,000 TP",
-      "detail": "Purple void-legend. Req: ssj6 · Superforms Lv.11 · ~x6.0 STR/PWR.",
+      "subtitle": "Void Violet · Lv.3 · 175,000 TP",
+      "detail": "Purple void-legend. Req: ssj6 · superforms Lv.3 · ~x6.0 STR/PWR.",
       "accent": 4286856165
     },
     {
       "id": "ssj8",
       "title": "Super Saiyan 8",
-      "subtitle": "Crystal White · 210,000 TP",
-      "detail": "Ice-white / cyan crystal. Req: ssj7 · Superforms Lv.12 · ~x6.9 STR.",
+      "subtitle": "Crystal White · Lv.4 · 210,000 TP",
+      "detail": "Ice-white / cyan crystal. Req: ssj7 · superforms Lv.4 · ~x6.9 STR.",
       "accent": 4289373692
     },
     {
       "id": "ssj9",
       "title": "Super Saiyan 9",
-      "subtitle": "Prismatic Radiance · 250,000 TP",
-      "detail": "Gold-white prismatic. Req: ssj8 · Superforms Lv.13 · ~x7.8 STR.",
+      "subtitle": "Prismatic Radiance · Lv.5 · 250,000 TP",
+      "detail": "Gold-white prismatic. Req: ssj8 · superforms Lv.5 · ~x7.8 STR.",
       "accent": 4294961877
     },
     {
       "id": "ssj10",
       "title": "Super Saiyan 10",
-      "subtitle": "Limit Break Void · 300,000 TP",
-      "detail": "Pinnacle legend. Black hair, scarlet void aura. Req: ssj9 · Superforms Lv.14 · ~x9.0 STR/PWR.",
+      "subtitle": "Limit Break Void · Lv.6 · 300,000 TP",
+      "detail": "Pinnacle legend. Black hair, scarlet void aura. Req: ssj9 · superforms Lv.6 · ~x9.0 STR/PWR.",
       "accent": 4294901828
     },
     {
+      "id": "group_fan",
+      "title": "XenoPixels Fan Super Saiyan (SSJ5–10)",
+      "subtitle": "formType xenopixels_fan_ss · Goku / Vegeta",
+      "detail": "Separate fan skill group (not superforms). Buy xenopixels_fan_ss from Master Goku or Vegeta. SSJ5–10 chain with its own TP prices. File: xenopixels_fan_ss.json.",
+      "accent": 4294956800
+    },
+    {
       "id": "group_god",
-      "title": "XenoPixels God Forms",
-      "subtitle": "Beerus / Whis only · formType godforms",
-      "detail": "8-stage DBS god kit: SSG → SSB → SSBE → Rose → Rose Evolution → UI Sign → Mastered UI → Ultra Ego. Bought only from Master Beerus or Whis. Uses standard DMZ godforms skill icons. Rose Evolution uses buffed model at 1.35 scale.",
+      "title": "XenoPixels Gods Forms",
+      "subtitle": "Beerus / Whis only · formType xenopixels_divinity",
+      "detail": "Own form skill (not shared godforms). /dmzform set xenopixels_divinity <1-8>. SSG → SSB → SSBE → Rose → Rose Evo → UI Sign → MUI → Ultra Ego. Beerus/Whis masters. Icons: gui/icons/xenopixels_divinity.png.",
       "accent": 4294952372
     },
     {
@@ -157,11 +164,18 @@
       "accent": 4286856165
     },
     {
+      "id": "group_legendary",
+      "title": "XenoPixels Saga Forms",
+      "subtitle": "formType xenopixels_saga_forms · Trunks master",
+      "detail": "Own form skill. /dmzform set xenopixels_saga_forms 1. Trunks Ikari. Master Trunks only. Icons: gui/icons/xenopixels_saga_forms.png.",
+      "accent": 4289373692
+    },
+    {
       "id": "trunks_ikari",
       "title": "Trunks Ikari",
-      "subtitle": "Legendary forms · Trunks master · 95,000 TP",
-      "detail": "XenoPixels legendary entry (formType legendaryforms). Silver hair, blue aura, buffed model. Skill level 4 after DMZ base legendary 1–3. Buy from Master Trunks only. File: xenopixels_legendary.json.",
-      "accent": 4289373692
+      "subtitle": "legendaryforms Lv.1 · 95,000 TP",
+      "detail": "Super Saiyan Rage look: gold SSJ hair/aura + blue outer glow & lightning, cyan eyes, buffed model. /dmzform set xenopixels_saga_forms 1. Master Trunks only.",
+      "accent": 4294962243
     },
     {
       "id": "transform_howto",
@@ -246,7 +260,7 @@
       "id": "masters",
       "title": "Master Shops",
       "subtitle": "Where to buy form skills",
-      "detail": "God forms skill → Beerus & Whis only. Legendary (Trunks Ikari) → Master Trunks only. Superforms legend prices extended on Saiyan character.json. Bootstrap installs JSON on server start if dmzContentBootstrap is true.",
+      "detail": "DMZ-native: legend=superforms 9-14 (Super Forms menu); god=godforms 1-8 (Extra Forms); ikari=legendaryforms 4; fan=xenopixels_fan_ss own skill. Bootstrap installs JSON + reloads DMZ on server start if dmzContentBootstrap is true.",
       "accent": 4294952372
     },
     {

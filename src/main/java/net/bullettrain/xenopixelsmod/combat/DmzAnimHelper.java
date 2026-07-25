@@ -1,21 +1,16 @@
 package net.bullettrain.xenopixelsmod.combat;
 
-import com.dragonminez.client.animation.IPlayerAnimatable;
 import com.dragonminez.common.network.NetworkHandler;
 import com.dragonminez.common.network.S2C.MeleeAnimationS2C;
 import com.dragonminez.common.network.S2C.TriggerAnimationS2C;
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.world.entity.player.Player;
-import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.api.distmarker.OnlyIn;
-import net.minecraftforge.fml.loading.FMLEnvironment;
+import net.minecraft.server.TickTask;
 
 /**
- * Plays DragonMineZ player animations the same way DMZ combat does
- * (MeleeAnimationS2C / TriggerAnimationS2C + local IPlayerAnimatable).
+ * Server-side DragonMineZ animation helpers (common-safe: no client-only imports).
+ * Client prediction lives in {@link net.bullettrain.xenopixelsmod.client.combat.DmzAnimHelperClient}.
  */
 public final class DmzAnimHelper {
-    // DMZ movement.animation.json / combat.animation.json keys
     public static final String CHARGE_LIGHT = "base.charge_light_punch";
     public static final String CHARGE_LIGHT_FIRE = "base.charge_light_punch_fire";
     public static final String CHARGE_HEAVY = "base.charge_heavy_punch";
@@ -40,7 +35,6 @@ public final class DmzAnimHelper {
         DRAGON
     }
 
-    /** Server: start looping charge pose for nearby clients (DMZ KI_ANIMATION). */
     public static void broadcastChargeStart(ServerPlayer player, ChargeStyle style) {
         String anim = switch (style) {
             case FIST_LIGHT -> CHARGE_LIGHT;
@@ -54,13 +48,12 @@ public final class DmzAnimHelper {
                     0,
                     player.getId(),
                     anim);
-            NetworkHandler.sendToTrackingEntityAndSelf(pkt, player);
+            // Tracking only — local client already predicts (avoids double anim)
+            NetworkHandler.sendToTrackingEntity(pkt, player);
         } catch (Throwable ignored) {
-            // DMZ missing / API change — silent
         }
     }
 
-    /** Server: stop charge pose. */
     public static void broadcastChargeStop(ServerPlayer player) {
         try {
             TriggerAnimationS2C pkt = new TriggerAnimationS2C(
@@ -69,21 +62,19 @@ public final class DmzAnimHelper {
                     0,
                     player.getId(),
                     "");
-            NetworkHandler.sendToTrackingEntityAndSelf(pkt, player);
+            NetworkHandler.sendToTrackingEntity(pkt, player);
         } catch (Throwable ignored) {
         }
     }
 
-    /** Server: play a one-shot melee / fire animation. */
     public static void broadcastMelee(ServerPlayer player, String animationName, boolean offhand, float speed) {
         try {
             MeleeAnimationS2C pkt = new MeleeAnimationS2C(player.getId(), animationName, offhand, speed);
-            NetworkHandler.sendToTrackingEntityAndSelf(pkt, player);
+            NetworkHandler.sendToTrackingEntity(pkt, player);
         } catch (Throwable ignored) {
         }
     }
 
-    /** Server: dash / evasion trigger. variant: 0 front, 1 back, 2 left, 3 right (DMZ convention). */
     public static void broadcastDash(ServerPlayer player, int variant) {
         try {
             TriggerAnimationS2C pkt = new TriggerAnimationS2C(
@@ -91,99 +82,68 @@ public final class DmzAnimHelper {
                     TriggerAnimationS2C.AnimationType.DASH,
                     variant,
                     player.getId());
-            NetworkHandler.sendToTrackingEntityAndSelf(pkt, player);
+            NetworkHandler.sendToTrackingEntity(pkt, player);
         } catch (Throwable ignored) {
         }
     }
 
+    /** Full release: charge fire + follow-up chain (kick/punch). */
     public static void playChargeRelease(ServerPlayer player, ChargeStyle style, boolean fullyCharged) {
+        playChargeRelease(player, style, fullyCharged, 0, true);
+    }
+
+    /**
+     * @param verticalBias kick only: +1 up, -1 down
+     * @param chainAnims when false, only the primary fire anim
+     */
+    public static void playChargeRelease(ServerPlayer player, ChargeStyle style, boolean fullyCharged,
+                                         int verticalBias, boolean chainAnims) {
         broadcastChargeStop(player);
-        String fire = switch (style) {
-            case FIST_LIGHT -> fullyCharged ? CHARGE_HEAVY_FIRE : CHARGE_LIGHT_FIRE;
-            case FIST_HEAVY -> CHARGE_HEAVY_FIRE;
-            case KICK -> fullyCharged ? KICK_GUT_R : KICK_LOW_R;
-            case DRAGON -> CHARGE_HEAVY_FIRE;
-        };
-        float speed = fullyCharged ? 1.15f : 1.0f;
-        broadcastMelee(player, fire, false, speed);
-        if (style == ChargeStyle.DRAGON) {
-            broadcastDash(player, 0);
-        }
-        // Follow-up punch/kick for clarity
+        float speed = fullyCharged ? 1.2f : 1.05f;
+
         if (style == ChargeStyle.KICK) {
-            broadcastMelee(player, fullyCharged ? KICK_GUT_R : KICK_LOW_R, false, speed);
-        } else if (style == ChargeStyle.FIST_LIGHT || style == ChargeStyle.FIST_HEAVY) {
-            broadcastMelee(player, fullyCharged ? PUNCH_RIGHT : ATTACK1, false, speed);
-        }
-    }
-
-    /** Client-local prediction while charging (instant feedback). */
-    @OnlyIn(Dist.CLIENT)
-    public static void playLocalChargeStart(Player player, ChargeStyle style) {
-        if (!FMLEnvironment.dist.isClient()) return;
-        String anim = switch (style) {
-            case FIST_LIGHT -> CHARGE_LIGHT;
-            case FIST_HEAVY, KICK -> CHARGE_HEAVY;
-            case DRAGON -> KI_CHARGE;
-        };
-        tryPlayKi(player, anim, true);
-    }
-
-    @OnlyIn(Dist.CLIENT)
-    public static void playLocalChargeStop(Player player) {
-        if (!FMLEnvironment.dist.isClient()) return;
-        try {
-            if (player instanceof IPlayerAnimatable anim) {
-                anim.dragonminez$stopKiAnimation();
-            }
-        } catch (Throwable ignored) {
-        }
-    }
-
-    @OnlyIn(Dist.CLIENT)
-    public static void playLocalMelee(Player player, String animationName, boolean offhand, float speed) {
-        if (!FMLEnvironment.dist.isClient()) return;
-        try {
-            if (player instanceof IPlayerAnimatable anim) {
-                anim.dragonminez$playMeleeAnimation(animationName, offhand, speed);
-            }
-        } catch (Throwable ignored) {
-        }
-    }
-
-    @OnlyIn(Dist.CLIENT)
-    public static void playLocalChargeRelease(Player player, ChargeStyle style, boolean fullyCharged) {
-        playLocalChargeStop(player);
-        String fire = switch (style) {
-            case FIST_LIGHT -> fullyCharged ? CHARGE_HEAVY_FIRE : CHARGE_LIGHT_FIRE;
-            case FIST_HEAVY -> CHARGE_HEAVY_FIRE;
-            case KICK -> fullyCharged ? KICK_GUT_R : KICK_LOW_R;
-            case DRAGON -> CHARGE_HEAVY_FIRE;
-        };
-        float speed = fullyCharged ? 1.15f : 1.0f;
-        playLocalMelee(player, fire, false, speed);
-        if (style == ChargeStyle.DRAGON) {
-            try {
-                if (player instanceof IPlayerAnimatable anim) {
-                    anim.dragonminez$triggerDash(0);
+            // Primary gut kick (sexy mid hit)
+            String primary = fullyCharged ? KICK_GUT_R : KICK_GUT_L;
+            if (verticalBias < 0) primary = KICK_LOW_R;
+            broadcastMelee(player, primary, false, speed);
+            if (chainAnims) {
+                // Delayed follow-up: low kick or opposite side gut for a 2-hit chain
+                String follow = verticalBias > 0 ? KICK_GUT_R : (verticalBias < 0 ? KICK_LOW_L : KICK_LOW_R);
+                scheduleMelee(player, follow, false, speed * 1.05f, 4);
+                if (fullyCharged) {
+                    scheduleMelee(player, KICK_GUT_R, false, 1.25f, 8);
                 }
-            } catch (Throwable ignored) {
             }
+            return;
         }
-        if (style == ChargeStyle.KICK) {
-            playLocalMelee(player, fullyCharged ? KICK_GUT_R : KICK_LOW_R, false, speed);
-        } else if (style != ChargeStyle.DRAGON) {
-            playLocalMelee(player, fullyCharged ? PUNCH_RIGHT : ATTACK1, false, speed);
+
+        if (style == ChargeStyle.DRAGON) {
+            broadcastMelee(player, CHARGE_HEAVY_FIRE, false, speed);
+            broadcastDash(player, 0);
+            if (chainAnims) {
+                scheduleMelee(player, PUNCH_RIGHT, false, 1.15f, 5);
+            }
+            return;
+        }
+
+        // Fist punch
+        String fire = fullyCharged ? CHARGE_HEAVY_FIRE : CHARGE_LIGHT_FIRE;
+        broadcastMelee(player, fire, false, speed);
+        if (chainAnims) {
+            // Second punch hand for a snappy combo finish
+            scheduleMelee(player, fullyCharged ? PUNCH_LEFT : ATTACK2, false, speed * 1.1f, 3);
+            if (fullyCharged) {
+                scheduleMelee(player, PUNCH_RIGHT, false, 1.2f, 7);
+            }
         }
     }
 
-    @OnlyIn(Dist.CLIENT)
-    private static void tryPlayKi(Player player, String anim, boolean loop) {
-        try {
-            if (player instanceof IPlayerAnimatable a) {
-                a.dragonminez$playKiAnimation(anim, loop);
-            }
-        } catch (Throwable ignored) {
-        }
+    private static void scheduleMelee(ServerPlayer player, String anim, boolean offhand, float speed, int delayTicks) {
+        if (player.getServer() == null) return;
+        int when = player.getServer().getTickCount() + Math.max(1, delayTicks);
+        player.getServer().tell(new TickTask(when, () -> {
+            if (!player.isAlive()) return;
+            broadcastMelee(player, anim, offhand, speed);
+        }));
     }
 }

@@ -1,6 +1,5 @@
 package net.bullettrain.xenopixelsmod.item.custom;
 
-import net.minecraft.client.resources.language.I18n;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.InteractionResult;
@@ -45,7 +44,9 @@ public class MetalDetectorItem extends Item {
     }
 
     private void outputValuableCoordinates(BlockPos blockPos, Player player, Block block) {
-        player.sendSystemMessage(Component.literal("Found " + I18n.get(block.getDescriptionId()) + "(" + blockPos.getX() + ", " + blockPos.getY() + "," + blockPos.getZ() + ")"));
+        player.sendSystemMessage(Component.literal("Found ")
+                .append(Component.translatable(block.getDescriptionId()))
+                .append(Component.literal(" (" + blockPos.getX() + ", " + blockPos.getY() + ", " + blockPos.getZ() + ")")));
     }
 
     private boolean isValueableBlock(BlockState state) {

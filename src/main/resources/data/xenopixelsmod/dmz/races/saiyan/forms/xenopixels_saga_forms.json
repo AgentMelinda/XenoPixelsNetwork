@@ -1,11 +1,11 @@
 {
   "configVersion": "2.1.3",
-  "groupName": "xenopixels_legendary",
-  "formType": "legendaryforms",
+  "groupName": "xenopixels_saga_forms",
+  "formType": "xenopixels_saga_forms",
   "forms": {
     "trunks_ikari": {
       "name": "trunks_ikari",
-      "unlockOnSkillLevel": 4,
+      "unlockOnSkillLevel": 1,
       "formCombo": "",
       "customModel": "buffed",
       "keepBaseFormHeadBones": false,
@@ -17,20 +17,24 @@
       "extraFormColor": "",
       "hairType": "ssj",
       "forcedHairCode": "",
-      "hairColor": "#F5F5F5",
-      "eye1Color": "#81D4FA",
-      "eye2Color": "#81D4FA",
+      "hairColor": "#FFE55C",
+      "eye1Color": "#4FC3F7",
+      "eye2Color": "#29B6F6",
       "auraType": "kakarot",
       "auraLayer": 0,
-      "auraColor": "#90CAF9",
+      "auraColor": "#FFD700",
       "extraAuraLayer": 1,
-      "extraAuraColor": "#E3F2FD",
+      "extraAuraColor": "#1E88E5",
       "extraAuraType": "kakarot",
       "hasLightnings": true,
-      "lightningColor": "#BBDEFB",
+      "lightningColor": "#40C4FF",
       "tintColor": "#1565C0",
-      "tintIntensity": 0.06,
-      "modelScaling": [1.18, 1.18, 1.18],
+      "tintIntensity": 0.04,
+      "modelScaling": [
+        1.18,
+        1.18,
+        1.18
+      ],
       "strMultiplier": 4.2,
       "skpMultiplier": 4.0,
       "stmMultiplier": 1.08,
@@ -58,14 +62,16 @@
       "allowFreeTransformOnMastery": 0.0,
       "formStackable": true,
       "stackDrainMultiplier": 2.0,
-      "incompatibleWith": ["ultimate.ultimate"],
+      "incompatibleWith": [
+        "ultimate.ultimate"
+      ],
       "shareMasteryWith": [],
       "shareMasteryMultiplier": 1.0,
       "outlineShader": {
         "enabled": true,
-        "primaryColor": "#90CAF9",
-        "secondaryColor": "#E3F2FD",
-        "outlineThickness": 3.2
+        "primaryColor": "#FFD700",
+        "secondaryColor": "#29B6F6",
+        "outlineThickness": 3.4
       },
       "triggerItemCosts": [],
       "durationItemCosts": [],

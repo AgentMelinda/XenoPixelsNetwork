@@ -44,8 +44,8 @@ public class XenoTechniqueHotbarOverlay implements IGuiOverlay {
     private static final int BADGE_W = 14;
     private static final int MARGIN = 10;
 
-    /** Same cooldown key prefix DMZ TechniqueHotbarHUD uses: {@code TechniqueData_} + id */
-    private static final String CD_PREFIX = "TechniqueData_";
+    /** Same cooldown key prefix DMZ TechniqueHotbarHUD / ClientStatsEvents use: {@code TechniqueCooldown_} + id */
+    private static final String CD_PREFIX = "TechniqueCooldown_";
 
     private static final int[] CD_LAST_TICKS = new int[TOTAL_SLOTS];
     private static final long[] CD_LAST_MS = new long[TOTAL_SLOTS];
@@ -65,6 +65,8 @@ public class XenoTechniqueHotbarOverlay implements IGuiOverlay {
         if (!XenoClientConfig.techniqueHotbarEnabled) return;
         Minecraft mc = Minecraft.getInstance();
         if (mc.player == null || mc.options.hideGui || mc.options.renderDebug) return;
+        // Chat / command prompt / any screen open: never show Alt/Ctrl tech bar
+        if (XenoClientConfig.techniqueHotbarHideInChat && mc.screen != null) return;
         draw(g, screenWidth, screenHeight, false);
     }
 
@@ -186,6 +188,12 @@ public class XenoTechniqueHotbarOverlay implements IGuiOverlay {
         }
         String countLabel = filled + "/" + TOTAL_SLOTS;
         g.drawString(font, countLabel, panelX + panelW - font.width(countLabel) - 4, panelY - 11, 0xFF78909C, false);
+
+        // DMZ refuses KI casts while holding an item — surface that while the bar is open
+        if (!editing && !player.getMainHandItem().isEmpty()) {
+            String warn = "Empty hand to cast";
+            g.drawString(font, warn, panelX + PANEL_PAD + 4, panelY + panelH + 2, 0xFFFFB74D, true);
+        }
 
         for (int i = 0; i < BAR_SLOTS; i++) {
             int idx = offset + i;

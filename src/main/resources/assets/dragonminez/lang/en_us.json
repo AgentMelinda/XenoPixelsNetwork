@@ -1,0 +1,36 @@
+{
+  "race.dragonminez.saiyan.group.supersaiyan_legend": "Super Saiyan Legend",
+  "race.dragonminez.saiyan.form.supersaiyan_legend.ssj5": "Super Saiyan 5",
+  "race.dragonminez.saiyan.form.supersaiyan_legend.ssj6": "Super Saiyan 6",
+  "race.dragonminez.saiyan.form.supersaiyan_legend.ssj7": "Super Saiyan 7",
+  "race.dragonminez.saiyan.form.supersaiyan_legend.ssj8": "Super Saiyan 8",
+  "race.dragonminez.saiyan.form.supersaiyan_legend.ssj9": "Super Saiyan 9",
+  "race.dragonminez.saiyan.form.supersaiyan_legend.ssj10": "Super Saiyan 10",
+
+  "race.dragonminez.saiyan.group.xenopixels_fan_ss": "XenoPixels Fan Super Saiyan",
+  "race.dragonminez.saiyan.form.xenopixels_fan_ss.ssj5": "Super Saiyan 5",
+  "race.dragonminez.saiyan.form.xenopixels_fan_ss.ssj6": "Super Saiyan 6",
+  "race.dragonminez.saiyan.form.xenopixels_fan_ss.ssj7": "Super Saiyan 7",
+  "race.dragonminez.saiyan.form.xenopixels_fan_ss.ssj8": "Super Saiyan 8",
+  "race.dragonminez.saiyan.form.xenopixels_fan_ss.ssj9": "Super Saiyan 9",
+  "race.dragonminez.saiyan.form.xenopixels_fan_ss.ssj10": "Super Saiyan 10",
+  "skill.dragonminez.xenopixels_fan_ss": "Fan Super Saiyan Forms",
+  "skill.dragonminez.xenopixels_fan_ss.desc": "Unlock fan Super Saiyan 5–10 (XenoPixels). Extra Forms. Goku / Vegeta.",
+
+  "race.dragonminez.saiyan.group.xenopixels_gods_forms": "XenoPixels Gods Forms",
+  "race.dragonminez.saiyan.form.xenopixels_gods_forms.ssg": "Super Saiyan God",
+  "race.dragonminez.saiyan.form.xenopixels_gods_forms.ssb": "Super Saiyan Blue",
+  "race.dragonminez.saiyan.form.xenopixels_gods_forms.ssbe": "Super Saiyan Blue Evolution",
+  "race.dragonminez.saiyan.form.xenopixels_gods_forms.ssrose": "Super Saiyan Rose",
+  "race.dragonminez.saiyan.form.xenopixels_gods_forms.ssrose_evolution": "Super Saiyan Rose Evolution",
+  "race.dragonminez.saiyan.form.xenopixels_gods_forms.ui_sign": "Ultra Instinct Sign",
+  "race.dragonminez.saiyan.form.xenopixels_gods_forms.ui": "Mastered Ultra Instinct",
+  "race.dragonminez.saiyan.form.xenopixels_gods_forms.ue": "Ultra Ego",
+  "skill.dragonminez.xenopixels_divinity": "XenoPixels Gods Forms",
+  "skill.dragonminez.xenopixels_divinity.desc": "SSG, SSB, SSBE, Rose, UI, Ultra Ego. Beerus / Whis. Extra Forms. Skill id xenopixels_divinity (DMZ cannot use 'god' in formType).",
+
+  "race.dragonminez.saiyan.group.xenopixels_saga_forms": "XenoPixels Saga Forms",
+  "race.dragonminez.saiyan.form.xenopixels_saga_forms.trunks_ikari": "Trunks Ikari",
+  "skill.dragonminez.xenopixels_saga_forms": "XenoPixels Saga Forms",
+  "skill.dragonminez.xenopixels_saga_forms.desc": "Trunks Super Saiyan Rage / Ikari. Master Trunks. Extra Forms."
+}

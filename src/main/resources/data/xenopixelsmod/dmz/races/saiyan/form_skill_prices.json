@@ -18,7 +18,7 @@
       300000
     ]
   },
-  "supersaiyan_legend": {
+  "xenopixels_fan_ss": {
     "buyFromMaster": true,
     "prices": [
       120000,
@@ -29,7 +29,7 @@
       300000
     ]
   },
-  "godforms": {
+  "xenopixels_divinity": {
     "buyFromMaster": true,
     "prices": [
       150000,
@@ -42,21 +42,10 @@
       300000
     ]
   },
-  "legendaryforms": {
+  "xenopixels_saga_forms": {
     "buyFromMaster": true,
     "prices": [
-      -1,
-      -1,
-      -1,
       95000
     ]
-  },
-  "xenopixels_godforms": {
-    "buyFromMaster": false,
-    "prices": []
-  },
-  "xenopixels_legendary": {
-    "buyFromMaster": false,
-    "prices": []
   }
 }

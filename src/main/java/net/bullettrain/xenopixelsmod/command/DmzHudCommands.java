@@ -45,8 +45,8 @@ public final class DmzHudCommands {
 
     private static void register(CommandDispatcher<CommandSourceStack> dispatcher) {
         dispatcher.register(Commands.literal("dmzhud")
-                .requires(src -> src.hasPermission(2))
                 .then(Commands.literal("toggle")
+                        .requires(XenoPermissions.require(XenoPermissions.DMZHUD_TOGGLE))
                         .executes(ctx -> {
                             boolean on = !XenoServerConfig.dmzHudEnabled;
                             XenoServerConfig.setDmzHudEnabled(on);
@@ -56,9 +56,14 @@ public final class DmzHudCommands {
                                     true);
                             return 1;
                         }))
-                .then(Commands.literal("on").executes(ctx -> setDmzHud(ctx.getSource(), true)))
-                .then(Commands.literal("off").executes(ctx -> setDmzHud(ctx.getSource(), false)))
+                .then(Commands.literal("on")
+                        .requires(XenoPermissions.require(XenoPermissions.DMZHUD_ON))
+                        .executes(ctx -> setDmzHud(ctx.getSource(), true)))
+                .then(Commands.literal("off")
+                        .requires(XenoPermissions.require(XenoPermissions.DMZHUD_OFF))
+                        .executes(ctx -> setDmzHud(ctx.getSource(), false)))
                 .then(Commands.literal("status")
+                        .requires(XenoPermissions.require(XenoPermissions.DMZHUD_STATUS))
                         .executes(ctx -> {
                             boolean on = XenoServerConfig.dmzHudEnabled;
                             ctx.getSource().sendSuccess(
@@ -74,15 +79,17 @@ public final class DmzHudCommands {
                 }));
 
         dispatcher.register(Commands.literal("xenoserver")
-                .requires(src -> src.hasPermission(2))
                 .then(Commands.literal("reload")
+                        .requires(XenoPermissions.require(XenoPermissions.XENOSERVER_RELOAD))
                         .executes(ctx -> {
                             XenoServerConfig.load();
                             broadcast();
-                            ctx.getSource().sendSuccess(() -> Component.literal("XenoPixels server config reloaded + synced"), true);
+                            ctx.getSource().sendSuccess(
+                                    () -> Component.literal("XenoPixels server config reloaded + synced"), true);
                             return 1;
                         }))
                 .then(Commands.literal("status")
+                        .requires(XenoPermissions.require(XenoPermissions.XENOSERVER_STATUS))
                         .executes(ctx -> {
                             XenoServerConfig.Data d = XenoServerConfig.snapshot();
                             ctx.getSource().sendSuccess(() -> Component.literal(
@@ -99,6 +106,7 @@ public final class DmzHudCommands {
                             return 1;
                         }))
                 .then(Commands.literal("set")
+                        .requires(XenoPermissions.require(XenoPermissions.XENOSERVER_SET))
                         .then(Commands.argument("key", StringArgumentType.word())
                                 .then(Commands.argument("value", BoolArgumentType.bool())
                                         .executes(ctx -> setFlag(

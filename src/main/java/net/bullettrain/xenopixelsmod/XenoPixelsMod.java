@@ -42,6 +42,7 @@ public class XenoPixelsMod {
     private void commonSetup(final FMLCommonSetupEvent event) {
         event.enqueueWork(() -> {
             net.bullettrain.xenopixelsmod.config.XenoServerConfig.load();
+            net.bullettrain.xenopixelsmod.features.FeatureManager.bootstrap();
             if (net.bullettrain.xenopixelsmod.config.XenoServerConfig.dmzContentBootstrap) {
                 net.bullettrain.xenopixelsmod.dmz.DmzContentBootstrap.installBundledContent();
             }
@@ -71,6 +72,7 @@ public class XenoPixelsMod {
                 net.bullettrain.xenopixelsmod.client.config.XenoClientConfig.load();
                 net.bullettrain.xenopixelsmod.client.config.XenoHudConfig.load();
                 net.bullettrain.xenopixelsmod.client.config.XenoHotbarConfig.load();
+                net.bullettrain.xenopixelsmod.client.config.XenoCooldownHudConfig.load();
             });
         }
     }

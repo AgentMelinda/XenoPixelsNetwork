@@ -3,8 +3,6 @@ package net.bullettrain.xenopixelsmod.client.config;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import net.bullettrain.xenopixelsmod.XenoPixelsMod;
-import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.api.distmarker.OnlyIn;
 import net.minecraftforge.fml.loading.FMLPaths;
 
 import java.io.IOException;
@@ -17,8 +15,11 @@ import java.nio.file.Path;
  * Local client preferences for UI and combat feel.
  * Written to {@code config/xenopixelsmod-client.json}.
  * Combat still requires matching server flags.
+ *
+ * <p>Not {@code @OnlyIn(CLIENT)}: client mixins reference this class, and Forge would
+ * strip it on dedicated servers causing {@code ClassMetadataNotFoundException}.
+ * File I/O still only runs from client setup.
  */
-@OnlyIn(Dist.CLIENT)
 public final class XenoClientConfig {
     private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
     private static final Path PATH = FMLPaths.CONFIGDIR.get().resolve("xenopixelsmod-client.json");
@@ -36,6 +37,8 @@ public final class XenoClientConfig {
     public static boolean senzuCooldownMessages = true;
     /** XV2-style party/team HP+KI mini bars for nearby scoreboard-team allies. */
     public static boolean partyHudEnabled = true;
+    /** Compact BT3 cooldown chip strip (vanish / chase / combo / charge). */
+    public static boolean cooldownHudEnabled = true;
 
     // --- Combat client (prediction / input) ---
     public static boolean bt3CombatClient = true;
@@ -47,6 +50,16 @@ public final class XenoClientConfig {
     public static boolean bt3DragonDashClient = true;
     public static boolean bt3CombatSfx = true;
     public static boolean bt3ChargeGlow = true;
+    /** Client afterimage trails for vanish-style moves. */
+    public static boolean bt3Afterimage = true;
+    /** Local DMZ charge/punch/kick animations. */
+    public static boolean bt3CombatAnims = true;
+    /** Delayed 2nd/3rd punch-kick chain anims. */
+    public static boolean bt3KickChainAnims = true;
+    /** Crit/spark particles on charge release and impacts. */
+    public static boolean bt3CombatParticles = true;
+    /** Hide Alt/Ctrl technique hotbar while chat/command screen is open. */
+    public static boolean techniqueHotbarHideInChat = true;
 
     private XenoClientConfig() {}
 
@@ -87,6 +100,7 @@ public final class XenoClientConfig {
         d.hudEditEnabled = hudEditEnabled;
         d.senzuCooldownMessages = senzuCooldownMessages;
         d.partyHudEnabled = partyHudEnabled;
+        d.cooldownHudEnabled = cooldownHudEnabled;
         d.bt3CombatClient = bt3CombatClient;
         d.bt3ComboClient = bt3ComboClient;
         d.bt3VanishClient = bt3VanishClient;
@@ -96,6 +110,11 @@ public final class XenoClientConfig {
         d.bt3DragonDashClient = bt3DragonDashClient;
         d.bt3CombatSfx = bt3CombatSfx;
         d.bt3ChargeGlow = bt3ChargeGlow;
+        d.bt3Afterimage = bt3Afterimage;
+        d.bt3CombatAnims = bt3CombatAnims;
+        d.bt3KickChainAnims = bt3KickChainAnims;
+        d.bt3CombatParticles = bt3CombatParticles;
+        d.techniqueHotbarHideInChat = techniqueHotbarHideInChat;
         return d;
     }
 
@@ -111,6 +130,7 @@ public final class XenoClientConfig {
         hudEditEnabled = d.hudEditEnabled;
         senzuCooldownMessages = d.senzuCooldownMessages;
         partyHudEnabled = d.partyHudEnabled;
+        cooldownHudEnabled = d.cooldownHudEnabled;
         bt3CombatClient = d.bt3CombatClient;
         bt3ComboClient = d.bt3ComboClient;
         bt3VanishClient = d.bt3VanishClient;
@@ -120,6 +140,11 @@ public final class XenoClientConfig {
         bt3DragonDashClient = d.bt3DragonDashClient;
         bt3CombatSfx = d.bt3CombatSfx;
         bt3ChargeGlow = d.bt3ChargeGlow;
+        bt3Afterimage = d.bt3Afterimage;
+        bt3CombatAnims = d.bt3CombatAnims;
+        bt3KickChainAnims = d.bt3KickChainAnims;
+        bt3CombatParticles = d.bt3CombatParticles;
+        techniqueHotbarHideInChat = d.techniqueHotbarHideInChat;
     }
 
     public static class Data {
@@ -133,6 +158,7 @@ public final class XenoClientConfig {
         public boolean hudEditEnabled = true;
         public boolean senzuCooldownMessages = true;
         public boolean partyHudEnabled = true;
+        public boolean cooldownHudEnabled = true;
         public boolean bt3CombatClient = true;
         public boolean bt3ComboClient = true;
         public boolean bt3VanishClient = true;
@@ -142,5 +168,10 @@ public final class XenoClientConfig {
         public boolean bt3DragonDashClient = true;
         public boolean bt3CombatSfx = true;
         public boolean bt3ChargeGlow = true;
+        public boolean bt3Afterimage = true;
+        public boolean bt3CombatAnims = true;
+        public boolean bt3KickChainAnims = true;
+        public boolean bt3CombatParticles = true;
+        public boolean techniqueHotbarHideInChat = true;
     }
 }

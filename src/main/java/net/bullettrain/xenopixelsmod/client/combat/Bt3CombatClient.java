@@ -8,6 +8,7 @@ import net.bullettrain.xenopixelsmod.client.DmzClientStats;
 import net.bullettrain.xenopixelsmod.client.XenoServerClientState;
 import net.bullettrain.xenopixelsmod.client.config.XenoClientConfig;
 import net.bullettrain.xenopixelsmod.combat.DmzAnimHelper;
+import net.bullettrain.xenopixelsmod.client.combat.DmzAnimHelperClient;
 import net.bullettrain.xenopixelsmod.config.XenoServerConfig;
 import net.bullettrain.xenopixelsmod.network.Bt3CombatPacket;
 import net.bullettrain.xenopixelsmod.network.ChargeAnimPacket;
@@ -35,30 +36,27 @@ import org.lwjgl.glfw.GLFW;
 /**
  * BT3 / Sparking Zero combat (client input + prediction).
  *
- * Lock-on required for movement techs.
- * Hold charge keys anywhere (stamina); best with lock-on for targeting.
+ * <pre>
+ * Lock-on ONLY:  vanish (A/D), chase (W), backstep (S), dragon dash (N)
+ * Anywhere:      combo (attack), charge fist (R), charge kick (MMB / air OK)
+ * </pre>
  *
- * - Attack → combo / finisher
- * - Double-tap A/D → vanish behind
- * - Double-tap W → chase dash
- * - Double-tap S → backstep
- * - Hold R → charge fist (DMZ charge anim + glow) → release
- * - Hold F → charge kick (DMZ heavy charge + kick anim) → release
- * - Hold N → dragon dash charge (DMZ ki_charge) → release (launch + chase)
+ * Double-tap uses vanilla move keys only — no second WASD KeyMapping.
  */
 public final class Bt3CombatClient {
+    // Unbound optional alts — never dual-map WASD (breaks flight / launch)
     public static final KeyMapping DASH_LEFT = new KeyMapping(
             "key.xenopixelsmod.bt3_dash_left", KeyConflictContext.IN_GAME,
-            InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_A, "key.categories.xenopixelsmod");
+            InputConstants.Type.KEYSYM, -1, "key.categories.xenopixelsmod");
     public static final KeyMapping DASH_RIGHT = new KeyMapping(
             "key.xenopixelsmod.bt3_dash_right", KeyConflictContext.IN_GAME,
-            InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_D, "key.categories.xenopixelsmod");
+            InputConstants.Type.KEYSYM, -1, "key.categories.xenopixelsmod");
     public static final KeyMapping CHASE = new KeyMapping(
             "key.xenopixelsmod.bt3_chase", KeyConflictContext.IN_GAME,
-            InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_W, "key.categories.xenopixelsmod");
+            InputConstants.Type.KEYSYM, -1, "key.categories.xenopixelsmod");
     public static final KeyMapping BACKSTEP = new KeyMapping(
             "key.xenopixelsmod.bt3_backstep", KeyConflictContext.IN_GAME,
-            InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_S, "key.categories.xenopixelsmod");
+            InputConstants.Type.KEYSYM, -1, "key.categories.xenopixelsmod");
     public static final KeyMapping CHARGE_FIST = new KeyMapping(
             "key.xenopixelsmod.bt3_charge_fist", KeyConflictContext.IN_GAME,
             InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_R, "key.categories.xenopixelsmod");
@@ -76,6 +74,8 @@ public final class Bt3CombatClient {
     private static int comboStep;
     private static int comboTicksLeft;
     private static int moveCooldown;
+    private static int moveCooldownMax = MOVE_COOLDOWN_TICKS;
+    private static Bt3CombatPacket.Action lastMoveAction = Bt3CombatPacket.Action.VANISH;
 
     private static boolean leftWasDown, rightWasDown, forwardWasDown, backWasDown;
     private static long lastLeftTapMs, lastRightTapMs, lastForwardTapMs, lastBackTapMs;
@@ -112,6 +112,54 @@ public final class Bt3CombatClient {
         return chargeMode == ChargeMode.DRAGON;
     }
 
+    // --- Cooldown HUD accessors ---
+
+    public static int getMoveCooldownTicks() {
+        return Math.max(0, moveCooldown);
+    }
+
+    public static int getMoveCooldownMaxTicks() {
+        return Math.max(1, moveCooldownMax);
+    }
+
+    public static float getMoveCooldownFraction() {
+        if (moveCooldownMax <= 0 || moveCooldown <= 0) return 0f;
+        return Math.min(1f, moveCooldown / (float) moveCooldownMax);
+    }
+
+    public static boolean isMoveOnCooldown() {
+        return moveCooldown > 0;
+    }
+
+    public static Bt3CombatPacket.Action getLastMoveAction() {
+        return lastMoveAction != null ? lastMoveAction : Bt3CombatPacket.Action.VANISH;
+    }
+
+    public static int getComboStep() {
+        return comboStep;
+    }
+
+    public static int getComboTicksLeft() {
+        return Math.max(0, comboTicksLeft);
+    }
+
+    public static int getComboWindowMaxTicks() {
+        return COMBO_WINDOW_TICKS;
+    }
+
+    public static float getComboWindowFraction() {
+        if (comboTicksLeft <= 0) return 0f;
+        return Math.min(1f, comboTicksLeft / (float) COMBO_WINDOW_TICKS);
+    }
+
+    private static void startMoveCooldown(Bt3CombatPacket.Action action) {
+        lastMoveAction = action;
+        moveCooldownMax = MOVE_COOLDOWN_TICKS;
+        moveCooldown = moveCooldownMax;
+    }
+
+    private static boolean scrubbedDualWasdBinds;
+
     @Mod.EventBusSubscriber(modid = XenoPixelsMod.MOD_ID, bus = Mod.EventBusSubscriber.Bus.MOD, value = Dist.CLIENT)
     public static class ModBus {
         @SubscribeEvent
@@ -132,6 +180,14 @@ public final class Bt3CombatClient {
         public static void onClientTick(TickEvent.ClientTickEvent event) {
             if (event.phase != TickEvent.Phase.END) return;
             Minecraft mc = Minecraft.getInstance();
+
+            // One-shot: old options.txt often dual-mapped WASD onto these optional alts,
+            // which steals key edges from movement / flight and confuses combat input.
+            if (!scrubbedDualWasdBinds && mc.player != null) {
+                scrubbedDualWasdBinds = true;
+                scrubDualWasdBinds(mc);
+            }
+
             if (mc.player == null || mc.level == null || mc.screen != null) {
                 resetCharge();
                 return;
@@ -147,59 +203,137 @@ public final class Bt3CombatClient {
                 if (comboTicksLeft == 0) comboStep = 0;
             }
 
+            DmzAnimHelperClient.ClientStrikeChain.tick(mc.player);
+
+            // Charge fist/kick always; dragon only while locked (see tickCharge)
             tickCharge(mc);
 
             LivingEntity locked = LockOnEvent.getLockedTarget();
-            if (locked == null || !locked.isAlive()) {
-                comboStep = 0;
-                captureKeys(mc);
-                return;
-            }
+            if (locked != null && !locked.isAlive()) locked = null;
 
             long now = System.currentTimeMillis();
-            boolean leftDown = isLeftDown(mc);
-            boolean rightDown = isRightDown(mc);
-            boolean forwardDown = isForwardDown(mc);
-            boolean backDown = isBackDown(mc);
+            // Vanilla move keys only — never dual combat KeyMappings on WASD
+            boolean leftDown = mc.options.keyLeft.isDown();
+            boolean rightDown = mc.options.keyRight.isDown();
+            boolean forwardDown = mc.options.keyUp.isDown();
+            boolean backDown = mc.options.keyDown.isDown();
 
-            if (leftDown && !leftWasDown && now - lastLeftTapMs <= DOUBLE_TAP_MS) {
-                tryMove(mc, locked, Bt3CombatPacket.Action.VANISH);
-            }
-            if (rightDown && !rightWasDown && now - lastRightTapMs <= DOUBLE_TAP_MS) {
-                tryMove(mc, locked, Bt3CombatPacket.Action.VANISH);
-            }
-            if (forwardDown && !forwardWasDown && now - lastForwardTapMs <= DOUBLE_TAP_MS) {
-                tryMove(mc, locked, Bt3CombatPacket.Action.CHASE_DASH);
-            }
-            if (backDown && !backWasDown && now - lastBackTapMs <= DOUBLE_TAP_MS) {
-                tryMove(mc, locked, Bt3CombatPacket.Action.BACKSTEP);
+            // Vanish / chase / backstep: LOCK-ON ONLY
+            if (locked != null) {
+                if (leftDown && !leftWasDown) {
+                    if (lastLeftTapMs > 0 && now - lastLeftTapMs <= DOUBLE_TAP_MS) {
+                        tryMove(mc, locked, Bt3CombatPacket.Action.VANISH, -1); // A = left vanish
+                        lastLeftTapMs = 0;
+                    } else {
+                        lastLeftTapMs = now;
+                    }
+                }
+                if (rightDown && !rightWasDown) {
+                    if (lastRightTapMs > 0 && now - lastRightTapMs <= DOUBLE_TAP_MS) {
+                        tryMove(mc, locked, Bt3CombatPacket.Action.VANISH, 1); // D = right vanish
+                        lastRightTapMs = 0;
+                    } else {
+                        lastRightTapMs = now;
+                    }
+                }
+                if (forwardDown && !forwardWasDown) {
+                    if (lastForwardTapMs > 0 && now - lastForwardTapMs <= DOUBLE_TAP_MS) {
+                        tryMove(mc, locked, Bt3CombatPacket.Action.CHASE_DASH, 0);
+                        lastForwardTapMs = 0;
+                    } else {
+                        lastForwardTapMs = now;
+                    }
+                }
+                if (backDown && !backWasDown) {
+                    if (lastBackTapMs > 0 && now - lastBackTapMs <= DOUBLE_TAP_MS) {
+                        tryMove(mc, locked, Bt3CombatPacket.Action.BACKSTEP, 0);
+                        lastBackTapMs = 0;
+                    } else {
+                        lastBackTapMs = now;
+                    }
+                }
+            } else {
+                // Not locked: clear pending double-taps so freelook walk never arms vanish
+                lastLeftTapMs = lastRightTapMs = lastForwardTapMs = lastBackTapMs = 0;
             }
 
-            if (leftDown && !leftWasDown) lastLeftTapMs = now;
-            if (rightDown && !rightWasDown) lastRightTapMs = now;
-            if (forwardDown && !forwardWasDown) lastForwardTapMs = now;
-            if (backDown && !backWasDown) lastBackTapMs = now;
-            captureKeys(mc);
+            leftWasDown = leftDown;
+            rightWasDown = rightDown;
+            forwardWasDown = forwardDown;
+            backWasDown = backDown;
+
+            // Swallow optional alt bind clicks so old options.txt dual-maps never single-fire
+            while (DASH_LEFT.consumeClick()) {}
+            while (DASH_RIGHT.consumeClick()) {}
+            while (CHASE.consumeClick()) {}
+            while (BACKSTEP.consumeClick()) {}
+        }
+
+        /**
+         * Unbind optional vanish/chase alts if they still share WASD with movement
+         * (legacy options.txt dual-maps). Double-tap uses vanilla move keys only.
+         */
+        private static void scrubDualWasdBinds(Minecraft mc) {
+            boolean changed = false;
+            changed |= unbindIfSamePhysicalKey(DASH_LEFT, mc.options.keyLeft);
+            changed |= unbindIfSamePhysicalKey(DASH_RIGHT, mc.options.keyRight);
+            changed |= unbindIfSamePhysicalKey(CHASE, mc.options.keyUp);
+            changed |= unbindIfSamePhysicalKey(BACKSTEP, mc.options.keyDown);
+            if (changed) {
+                mc.options.save();
+                XenoPixelsMod.LOGGER.info(
+                        "Unbound dual-mapped BT3 WASD combat alts (use double-tap move keys for vanish/chase/backstep)");
+            }
+        }
+
+        private static boolean unbindIfSamePhysicalKey(KeyMapping combat, KeyMapping move) {
+            if (combat == null || move == null) return false;
+            try {
+                if (combat.isUnbound()) return false;
+                if (combat.getKey().getValue() != move.getKey().getValue()) return false;
+                if (combat.getKey().getType() != move.getKey().getType()) return false;
+                combat.setKey(InputConstants.UNKNOWN);
+                KeyMapping.resetMapping();
+                return true;
+            } catch (Throwable t) {
+                return false;
+            }
         }
 
         @SubscribeEvent
         public static void onAttackStart(DMZClientEvent.PlayerAttackStart event) {
+            // Combo: lock-on OR freelook (not lock-only)
             if (chargeMode != ChargeMode.NONE) return;
             if (!XenoClientConfig.bt3CombatClient || !XenoClientConfig.bt3ComboClient) return;
             if (!XenoServerClientState.combo()) return;
 
-            LivingEntity locked = LockOnEvent.getLockedTarget();
-            if (locked == null || !locked.isAlive()) return;
             LocalPlayer player = event.getPlayer();
             if (player == null) return;
 
-            int max = Math.max(1, XenoServerClientState.get().maxComboSteps);
-            comboStep = comboStep <= 0 || comboTicksLeft <= 0 ? 1 : Math.min(max, comboStep + 1);
+            LivingEntity target = LockOnEvent.getLockedTarget();
+            if (target != null && !target.isAlive()) target = null;
+            if (target == null) {
+                double range = Math.max(6.0, XenoServerClientState.get().chargeAttackRange);
+                target = findLookTarget(Minecraft.getInstance(), range);
+            }
+
+            // Free-running counter (display can go past 5). maxComboSteps = finisher interval only.
+            int finisherEvery = Math.max(1, XenoServerClientState.get().maxComboSteps);
+            int countCap = 99;
+            if (comboStep <= 0 || comboTicksLeft <= 0) {
+                comboStep = 1;
+            } else {
+                comboStep = Math.min(countCap, comboStep + 1);
+            }
             comboTicksLeft = COMBO_WINDOW_TICKS;
 
-            applyClientComboLunge(player, locked, comboStep, comboStep >= max && XenoServerClientState.finisher());
+            boolean finisher = XenoServerClientState.finisher()
+                    && comboStep > 0
+                    && comboStep % finisherEvery == 0;
+            // No combo lunge — stay planted while mashing
+            int tid = target != null ? target.getId() : -1;
             ModNetwork.CHANNEL.sendToServer(new Bt3CombatPacket(
-                    Bt3CombatPacket.Action.COMBO_HIT, locked.getId(), comboStep));
+                    Bt3CombatPacket.Action.COMBO_HIT, tid, comboStep));
         }
 
         @SubscribeEvent
@@ -223,10 +357,32 @@ public final class Bt3CombatClient {
         boolean canCharge = XenoClientConfig.bt3ChargeAttackClient && XenoServerClientState.chargeAttack();
         boolean canDragon = XenoClientConfig.bt3DragonDashClient && XenoServerClientState.dragonDash();
 
+        // Never steal input while the player is on the KI technique bar (Alt/Ctrl+1-4)
+        // or already charging a DMZ technique — R is also DMZ dash and fist-charge.
+        boolean techBarOpen = TechniqueSlotAssist.isTechniqueBarModifierHeld();
+        boolean dmzKiCharging = TechniqueSlotAssist.isDmzTechniqueCharging(player);
+        if (techBarOpen || dmzKiCharging) {
+            if (chargeMode != ChargeMode.NONE) {
+                // Abort our charge cleanly so DMZ technique release owns the moment
+                resetCharge();
+            }
+            fistWasDown = fistDown;
+            kickWasDown = kickDown;
+            dragonWasDown = dragonDown;
+            return;
+        }
+
         // Start charge on press
+        // Dragon = lock-on only. Fist/kick = freelook OK (kick also air).
         if (chargeMode == ChargeMode.NONE) {
+            LivingEntity locked = LockOnEvent.getLockedTarget();
+            boolean hasLock = locked != null && locked.isAlive();
             if (canDragon && dragonDown && !dragonWasDown) {
-                beginCharge(ChargeMode.DRAGON);
+                if (hasLock) {
+                    beginCharge(ChargeMode.DRAGON);
+                } else if (mc.player != null) {
+                    mc.player.displayClientMessage(Component.literal("§7Dragon dash: lock on first"), true);
+                }
             } else if (canCharge && fistDown && !fistWasDown) {
                 beginCharge(ChargeMode.FIST);
             } else if (canCharge && kickDown && !kickWasDown) {
@@ -283,7 +439,7 @@ public final class Bt3CombatClient {
         DmzAnimHelper.ChargeStyle style = toStyle(mode, false);
         Minecraft mc = Minecraft.getInstance();
         if (mc.player != null) {
-            DmzAnimHelper.playLocalChargeStart(mc.player, style);
+            DmzAnimHelperClient.playLocalChargeStart(mc.player, style);
         }
         ModNetwork.CHANNEL.sendToServer(new ChargeAnimPacket(ChargeAnimPacket.Phase.START, style));
     }
@@ -312,7 +468,7 @@ public final class Bt3CombatClient {
         DmzAnimHelper.ChargeStyle style = toStyle(mode, full);
 
         // Stop hold pose for everyone
-        DmzAnimHelper.playLocalChargeStop(player);
+        DmzAnimHelperClient.playLocalChargeStop(player);
         ModNetwork.CHANNEL.sendToServer(new ChargeAnimPacket(ChargeAnimPacket.Phase.CANCEL, style));
         resetCharge();
 
@@ -321,23 +477,35 @@ public final class Bt3CombatClient {
         }
 
         LivingEntity target = LockOnEvent.getLockedTarget();
-        if (target == null || !target.isAlive()) {
-            target = findLookTarget(mc, mode == ChargeMode.DRAGON
-                    ? XenoServerClientState.get().dragonDashRange
-                    : XenoServerClientState.get().chargeAttackRange);
-        }
+        if (target != null && !target.isAlive()) target = null;
 
-        // Kick works without a target (air kick); fist/dragon still need one
-        if (target == null && mode != ChargeMode.KICK) {
-            player.displayClientMessage(Component.literal("§bNo target"), true);
-            return;
+        // Dragon: lock-on only (no freelook fallback)
+        if (mode == ChargeMode.DRAGON) {
+            if (target == null) {
+                player.displayClientMessage(Component.literal("§7Dragon dash: lock on first"), true);
+                return;
+            }
+        } else if (mode == ChargeMode.FIST) {
+            // Punch: lock-on preferred, else freelook target
+            if (target == null) {
+                target = findLookTarget(mc, XenoServerClientState.get().chargeAttackRange);
+            }
+            if (target == null) {
+                player.displayClientMessage(Component.literal("§bNo target"), true);
+                return;
+            }
+        } else if (mode == ChargeMode.KICK) {
+            // Kick: freelook optional (air kick OK)
+            if (target == null) {
+                target = findLookTarget(mc, XenoServerClientState.get().chargeAttackRange);
+            }
         }
 
         // W/S while charging kick → vertical launch bias (+1 up / -1 down)
         int verticalBias = 0;
         if (mode == ChargeMode.KICK) {
-            if (isForwardDown(mc)) verticalBias = 1;
-            else if (isBackDown(mc)) verticalBias = -1;
+            if (mc.options.keyUp.isDown()) verticalBias = 1;
+            else if (mc.options.keyDown.isDown()) verticalBias = -1;
         }
 
         DmzClientStats.Snapshot snap = DmzClientStats.read(player);
@@ -368,10 +536,10 @@ public final class Bt3CombatClient {
         };
         if (action == null) return;
 
-        // Local DMZ fire / kick / punch animation (server also broadcasts)
-        DmzAnimHelper.playLocalChargeRelease(player, style, full);
+        // Local DMZ fire / kick / punch chain + particles (server also broadcasts)
+        DmzAnimHelperClient.playLocalChargeRelease(player, style, full, verticalBias);
 
-        // Client movement prediction
+        // Client movement prediction — fist/kick stay planted (no step-in toward target)
         if (mode == ChargeMode.DRAGON && target != null) {
             if (XenoClientConfig.bt3CombatSfx) playLocalIt(mc, true);
             Vec3 land = Bt3CombatPacket.chaseLanding(player, target);
@@ -379,33 +547,12 @@ public final class Bt3CombatClient {
             player.setDeltaMovement(Vec3.ZERO);
             face(player, target);
             if (XenoClientConfig.bt3CombatSfx) playLocalIt(mc, false);
-        } else if (mode == ChargeMode.KICK) {
-            Vec3 look = player.getLookAngle();
-            Vec3 flat = new Vec3(look.x, 0, look.z);
-            if (flat.lengthSqr() < 1.0e-4) flat = new Vec3(0, 0, 1);
-            flat = flat.normalize();
-            double forward = 0.45 + progress * 0.55;
-            double up;
-            if (verticalBias > 0) {
-                up = (player.onGround() ? 0.45 : 0.65) + progress * Math.max(0.5, srv.kickUpLaunch) * 0.4;
-                forward *= 0.5;
-            } else if (verticalBias < 0) {
-                up = -0.2 - progress * Math.max(0.4, srv.kickDownLaunch) * 0.35;
-                forward *= 0.7;
-            } else {
-                up = player.onGround() ? 0.18 + progress * 0.12 : 0.28 + progress * 0.35;
-            }
-            player.setDeltaMovement(flat.scale(forward).add(0, up, 0));
-            player.hasImpulse = true;
-            player.fallDistance = 0f;
-            if (target != null) face(player, target);
-        } else if (target != null) {
-            applyClientComboLunge(player, target, 3, full);
         }
+        // KICK / FIST: intentionally no setDeltaMovement toward target
 
         int tid = target != null ? target.getId() : -1;
         ModNetwork.CHANNEL.sendToServer(new Bt3CombatPacket(action, tid, 0, percent, verticalBias));
-        moveCooldown = MOVE_COOLDOWN_TICKS;
+        startMoveCooldown(action);
     }
 
     private static LivingEntity findLookTarget(Minecraft mc, double range) {
@@ -436,7 +583,7 @@ public final class Bt3CombatClient {
         if (chargeMode != ChargeMode.NONE) {
             Minecraft mc = Minecraft.getInstance();
             if (mc.player != null) {
-                DmzAnimHelper.playLocalChargeStop(mc.player);
+                DmzAnimHelperClient.playLocalChargeStop(mc.player);
             }
         }
         chargeMode = ChargeMode.NONE;
@@ -445,13 +592,16 @@ public final class Bt3CombatClient {
     }
 
     private static void captureKeys(Minecraft mc) {
-        leftWasDown = isLeftDown(mc);
-        rightWasDown = isRightDown(mc);
-        forwardWasDown = isForwardDown(mc);
-        backWasDown = isBackDown(mc);
+        leftWasDown = mc.options.keyLeft.isDown();
+        rightWasDown = mc.options.keyRight.isDown();
+        forwardWasDown = mc.options.keyUp.isDown();
+        backWasDown = mc.options.keyDown.isDown();
     }
 
-    private static void tryMove(Minecraft mc, LivingEntity locked, Bt3CombatPacket.Action action) {
+    /**
+     * @param side for VANISH only: -1 left (A), +1 right (D); ignored otherwise
+     */
+    private static void tryMove(Minecraft mc, LivingEntity locked, Bt3CombatPacket.Action action, int side) {
         if (moveCooldown > 0 || chargeMode != ChargeMode.NONE) return;
         LocalPlayer player = mc.player;
         if (player == null) return;
@@ -495,39 +645,26 @@ public final class Bt3CombatClient {
         }
 
         if (XenoClientConfig.bt3CombatSfx) playLocalIt(mc, true);
-        applyClientMove(player, locked, action);
+        applyClientMove(player, locked, action, side);
         if (XenoClientConfig.bt3CombatSfx) playLocalIt(mc, false);
 
-        ModNetwork.CHANNEL.sendToServer(new Bt3CombatPacket(action, locked.getId(), 0));
-        moveCooldown = MOVE_COOLDOWN_TICKS;
+        // comboStep carries vanish side for the server
+        int payload = action == Bt3CombatPacket.Action.VANISH ? side : 0;
+        ModNetwork.CHANNEL.sendToServer(new Bt3CombatPacket(action, locked.getId(), payload));
+        startMoveCooldown(action);
     }
 
-    private static void applyClientMove(LocalPlayer player, LivingEntity target, Bt3CombatPacket.Action action) {
+    private static void applyClientMove(LocalPlayer player, LivingEntity target,
+                                        Bt3CombatPacket.Action action, int side) {
+        // Match server dest exactly; hard-stop velocity
         Vec3 dest = switch (action) {
-            case VANISH -> Bt3CombatPacket.vanishBehind(player, target);
+            case VANISH -> Bt3CombatPacket.vanishBehind(player, target, side);
             case CHASE_DASH -> Bt3CombatPacket.chaseLanding(player, target);
             case BACKSTEP -> Bt3CombatPacket.backstepDest(player, target);
             default -> player.position();
         };
         player.setPos(dest.x, dest.y, dest.z);
-        if (action == Bt3CombatPacket.Action.CHASE_DASH) {
-            Vec3 to = target.position().subtract(player.position());
-            Vec3 flat = new Vec3(to.x, 0, to.z);
-            if (flat.lengthSqr() > 1.0e-4) {
-                player.setDeltaMovement(flat.normalize().scale(0.5).add(0, 0.04, 0));
-            } else {
-                player.setDeltaMovement(Vec3.ZERO);
-            }
-        } else if (action == Bt3CombatPacket.Action.BACKSTEP) {
-            Vec3 away = new Vec3(player.getX() - target.getX(), 0, player.getZ() - target.getZ());
-            if (away.lengthSqr() > 1.0e-4) {
-                player.setDeltaMovement(away.normalize().scale(0.3).add(0, 0.06, 0));
-            } else {
-                player.setDeltaMovement(Vec3.ZERO);
-            }
-        } else {
-            player.setDeltaMovement(Vec3.ZERO);
-        }
+        player.setDeltaMovement(Vec3.ZERO);
         player.hasImpulse = true;
         player.fallDistance = 0f;
         face(player, target);
@@ -538,33 +675,6 @@ public final class Bt3CombatClient {
                 new ResourceLocation("dragonminez", leave ? "evasion1" : "evasion2"));
         SoundEvent sfx = dmz != null ? dmz : SoundEvents.ENDERMAN_TELEPORT;
         mc.getSoundManager().play(SimpleSoundInstance.forUI(sfx, leave ? 1.05f : 1.2f, 0.9f));
-    }
-
-    private static boolean isLeftDown(Minecraft mc) {
-        return DASH_LEFT.isDown() || mc.options.keyLeft.isDown();
-    }
-
-    private static boolean isRightDown(Minecraft mc) {
-        return DASH_RIGHT.isDown() || mc.options.keyRight.isDown();
-    }
-
-    private static boolean isForwardDown(Minecraft mc) {
-        return CHASE.isDown() || mc.options.keyUp.isDown();
-    }
-
-    private static boolean isBackDown(Minecraft mc) {
-        return BACKSTEP.isDown() || mc.options.keyDown.isDown();
-    }
-
-    private static void applyClientComboLunge(LocalPlayer player, LivingEntity target, int step, boolean finisher) {
-        Vec3 to = target.position().subtract(player.position());
-        Vec3 flat = new Vec3(to.x, 0, to.z);
-        if (flat.lengthSqr() < 1.0e-4) return;
-        flat = flat.normalize();
-        double power = finisher ? 1.05 : 0.4 + step * 0.06;
-        player.setDeltaMovement(flat.scale(power).add(0, finisher ? 0.08 : 0.04, 0));
-        player.hasImpulse = true;
-        face(player, target);
     }
 
     private static void face(LocalPlayer player, LivingEntity target) {

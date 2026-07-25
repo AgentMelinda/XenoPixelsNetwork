@@ -1,4 +1,4 @@
-package net.bullettrain.xenopixelsmod.event;
+package net.bullettrain.xenopixelsmod.client;
 
 import net.bullettrain.xenopixelsmod.XenoPixelsMod;
 import net.bullettrain.xenopixelsmod.client.config.XenoClientConfig;
@@ -13,10 +13,12 @@ import net.minecraftforge.client.event.InputEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
 
+/** Client-only senzu cooldown feedback (must not live in common packages). */
 @Mod.EventBusSubscriber(modid = XenoPixelsMod.MOD_ID, value = Dist.CLIENT)
-public class SenzuCooldownHandler {
-
+public final class SenzuCooldownHandler {
     private static final int COOLDOWN_TICKS = 1800;
+
+    private SenzuCooldownHandler() {}
 
     @SubscribeEvent
     public static void onInteractKey(InputEvent.InteractionKeyMappingTriggered event) {
@@ -37,13 +39,12 @@ public class SenzuCooldownHandler {
 
             if (XenoClientConfig.senzuCooldownMessages) {
                 player.displayClientMessage(
-                        Component.literal("You must wait " + secondsLeft + " seconds before eating another Strawberry Senzu Bean!"),
-                        false
-                );
+                        Component.literal("You must wait " + secondsLeft
+                                + " seconds before eating another Strawberry Senzu Bean!"),
+                        false);
                 player.displayClientMessage(
                         Component.literal("§cCooldown: " + secondsLeft + "s§r"),
-                        true
-                );
+                        true);
             }
 
             event.setCanceled(true);

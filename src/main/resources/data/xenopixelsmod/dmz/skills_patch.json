@@ -1,21 +1,42 @@
 {
   "formSkillsAdd": [
-    "godforms",
-    "legendaryforms"
+    "xenopixels_fan_ss",
+    "xenopixels_divinity",
+    "xenopixels_saga_forms"
+  ],
+  "formSkillsRemove": [
+    "ssj_legend",
+    "xeno_divine",
+    "xeno_ikari",
+    "supersaiyan_legend",
+    "xenopixels_godforms",
+    "xenopixels_legendary",
+    "xenopixels_gods_forms"
   ],
   "skillOfferings": {
-    "beerus": [
-      "godforms"
-    ],
-    "whis": [
-      "godforms"
-    ],
-    "trunks": [
-      "legendaryforms"
-    ]
+    "beerus": ["xenopixels_divinity"],
+    "whis": ["xenopixels_divinity"],
+    "trunks": ["xenopixels_saga_forms"],
+    "goku": ["xenopixels_fan_ss"],
+    "vegeta": ["xenopixels_fan_ss"]
   },
   "exclusiveFormSkills": {
-    "godforms": ["beerus", "whis"],
-    "legendaryforms": ["trunks"]
+    "xenopixels_divinity": ["beerus", "whis"],
+    "xenopixels_saga_forms": ["trunks"],
+    "xenopixels_fan_ss": ["goku", "vegeta"]
+  },
+  "skillCosts": {
+    "xenopixels_divinity": {
+      "costs": [1, 1, 1, 1, 1, 1, 1, 1],
+      "allowedRaces": []
+    },
+    "xenopixels_fan_ss": {
+      "costs": [1, 1, 1, 1, 1, 1],
+      "allowedRaces": []
+    },
+    "xenopixels_saga_forms": {
+      "costs": [1],
+      "allowedRaces": []
+    }
   }
 }

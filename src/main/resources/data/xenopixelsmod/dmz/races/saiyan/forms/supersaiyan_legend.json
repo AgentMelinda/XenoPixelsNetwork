@@ -30,7 +30,11 @@
       "lightningColor": "#D0B8FF",
       "tintColor": "#C8A0FF",
       "tintIntensity": 0.05,
-      "modelScaling": [1.0, 1.0, 1.0],
+      "modelScaling": [
+        1.0,
+        1.0,
+        1.0
+      ],
       "strMultiplier": 4.5,
       "skpMultiplier": 4.5,
       "stmMultiplier": 1.05,
@@ -52,14 +56,18 @@
       "maxStatsMultiplier": 1.55,
       "formRequisite": "supersaiyan.supersaiyan4",
       "formRequisiteType": "all",
-      "unlockOnMastery": 25.0,
+      "unlockOnMastery": 0.0,
       "stackOnMastery": 25.0,
       "instantTransformOnMastery": 40.0,
       "allowFreeTransformOnMastery": 50.0,
       "formStackable": true,
       "stackDrainMultiplier": 2.1,
-      "incompatibleWith": [""],
-      "shareMasteryWith": ["supersaiyan_legend.ssj6"],
+      "incompatibleWith": [
+        ""
+      ],
+      "shareMasteryWith": [
+        "supersaiyan_legend.ssj6"
+      ],
       "shareMasteryMultiplier": 0.2,
       "outlineShader": {
         "enabled": true,
@@ -98,7 +106,11 @@
       "lightningColor": "#FF5555",
       "tintColor": "#4A0000",
       "tintIntensity": 0.08,
-      "modelScaling": [1.05, 1.05, 1.05],
+      "modelScaling": [
+        1.05,
+        1.05,
+        1.05
+      ],
       "strMultiplier": 5.25,
       "skpMultiplier": 5.0,
       "stmMultiplier": 1.08,
@@ -126,8 +138,13 @@
       "allowFreeTransformOnMastery": 50.0,
       "formStackable": true,
       "stackDrainMultiplier": 2.2,
-      "incompatibleWith": [""],
-      "shareMasteryWith": ["supersaiyan_legend.ssj5", "supersaiyan_legend.ssj7"],
+      "incompatibleWith": [
+        ""
+      ],
+      "shareMasteryWith": [
+        "supersaiyan_legend.ssj5",
+        "supersaiyan_legend.ssj7"
+      ],
       "shareMasteryMultiplier": 0.2,
       "outlineShader": {
         "enabled": true,
@@ -166,7 +183,11 @@
       "lightningColor": "#D0A0FF",
       "tintColor": "#5A2A8A",
       "tintIntensity": 0.1,
-      "modelScaling": [1.08, 1.08, 1.08],
+      "modelScaling": [
+        1.08,
+        1.08,
+        1.08
+      ],
       "strMultiplier": 6.0,
       "skpMultiplier": 5.75,
       "stmMultiplier": 1.1,
@@ -194,8 +215,13 @@
       "allowFreeTransformOnMastery": 50.0,
       "formStackable": true,
       "stackDrainMultiplier": 2.3,
-      "incompatibleWith": [""],
-      "shareMasteryWith": ["supersaiyan_legend.ssj6", "supersaiyan_legend.ssj8"],
+      "incompatibleWith": [
+        ""
+      ],
+      "shareMasteryWith": [
+        "supersaiyan_legend.ssj6",
+        "supersaiyan_legend.ssj8"
+      ],
       "shareMasteryMultiplier": 0.18,
       "outlineShader": {
         "enabled": true,
@@ -234,7 +260,11 @@
       "lightningColor": "#81D4FA",
       "tintColor": "#90CAF9",
       "tintIntensity": 0.07,
-      "modelScaling": [1.1, 1.1, 1.1],
+      "modelScaling": [
+        1.1,
+        1.1,
+        1.1
+      ],
       "strMultiplier": 6.9,
       "skpMultiplier": 6.6,
       "stmMultiplier": 1.12,
@@ -262,8 +292,13 @@
       "allowFreeTransformOnMastery": 50.0,
       "formStackable": true,
       "stackDrainMultiplier": 2.4,
-      "incompatibleWith": [""],
-      "shareMasteryWith": ["supersaiyan_legend.ssj7", "supersaiyan_legend.ssj9"],
+      "incompatibleWith": [
+        ""
+      ],
+      "shareMasteryWith": [
+        "supersaiyan_legend.ssj7",
+        "supersaiyan_legend.ssj9"
+      ],
       "shareMasteryMultiplier": 0.18,
       "outlineShader": {
         "enabled": true,
@@ -302,7 +337,11 @@
       "lightningColor": "#FFF59D",
       "tintColor": "#FFE082",
       "tintIntensity": 0.09,
-      "modelScaling": [1.12, 1.12, 1.12],
+      "modelScaling": [
+        1.12,
+        1.12,
+        1.12
+      ],
       "strMultiplier": 7.8,
       "skpMultiplier": 7.5,
       "stmMultiplier": 1.15,
@@ -330,8 +369,13 @@
       "allowFreeTransformOnMastery": 50.0,
       "formStackable": true,
       "stackDrainMultiplier": 2.5,
-      "incompatibleWith": [""],
-      "shareMasteryWith": ["supersaiyan_legend.ssj8", "supersaiyan_legend.ssj10"],
+      "incompatibleWith": [
+        ""
+      ],
+      "shareMasteryWith": [
+        "supersaiyan_legend.ssj8",
+        "supersaiyan_legend.ssj10"
+      ],
       "shareMasteryMultiplier": 0.15,
       "outlineShader": {
         "enabled": true,
@@ -370,7 +414,11 @@
       "lightningColor": "#FF5252",
       "tintColor": "#1A0000",
       "tintIntensity": 0.12,
-      "modelScaling": [1.15, 1.15, 1.15],
+      "modelScaling": [
+        1.15,
+        1.15,
+        1.15
+      ],
       "strMultiplier": 9.0,
       "skpMultiplier": 8.5,
       "stmMultiplier": 1.2,
@@ -398,8 +446,12 @@
       "allowFreeTransformOnMastery": 55.0,
       "formStackable": true,
       "stackDrainMultiplier": 2.8,
-      "incompatibleWith": [""],
-      "shareMasteryWith": ["supersaiyan_legend.ssj9"],
+      "incompatibleWith": [
+        ""
+      ],
+      "shareMasteryWith": [
+        "supersaiyan_legend.ssj9"
+      ],
       "shareMasteryMultiplier": 0.15,
       "outlineShader": {
         "enabled": true,

@@ -56,13 +56,13 @@ public final class XenoHudView {
     private static final int STM_LIT_BASE = 0xFFFFC107;
     private static final int STM_LIT_SHIMMER = 0xFFFFE082;
 
-    /** XV2-style plate palette: dark navy body, gold trim, angular (diagonal-cut) corners. */
-    private static final int PANEL_BG = 0xD00B1220;
-    private static final int PANEL_BORDER = 0xFFC9A227;
-    private static final int PANEL_BORDER_DIM = 0xFF6B5416;
-    private static final int PORTRAIT_OUTER = 0xFF0B0F16;
-    private static final int PORTRAIT_GOLD = 0xFFC9A227;
-    private static final int PORTRAIT_INNER = 0xFF163A5C;
+    /** Tech-HUD plate palette (matches technique hotbar navy + cyan). */
+    private static final int PANEL_BG = 0xEE0A1428;
+    private static final int PANEL_BORDER = 0xFF42A5F5;
+    private static final int PANEL_BORDER_DIM = 0xCC050510;
+    private static final int PORTRAIT_OUTER = 0xCC050510;
+    private static final int PORTRAIT_GOLD = 0xFF42A5F5;
+    private static final int PORTRAIT_INNER = 0xFF0A2038;
     /** Slant (px) of the outer backing plate — matches the bars' parallelogram look. */
     private static final int PANEL_SKEW = 14;
 
@@ -124,16 +124,20 @@ public final class XenoHudView {
         graphics.pose().translate(boundsX, boundsY, 0);
         graphics.pose().scale(scale, scale, 1f);
 
-        // XV2-style slanted backing plate behind the name/bars cluster — parallelogram to match
-        // the HP/KI/Stamina bars, instead of the old angular cut-rect shape.
-        int panelX = CONTENT_LEFT - 10;
-        int panelY = NAME_Y - 4;
-        int panelW = BAR_W + 20;
-        int panelH = (STM_Y + STM_SEG_H) - panelY + 6;
+        // Full-width slanted plate: starts left of the portrait so the skin sits on
+        // the same navy glass as the name/HP/KI/STM cluster (drawn before portrait).
+        int panelX = -8;
+        int panelY = -6;
+        int panelRight = CONTENT_LEFT + BAR_W + 14;
+        int panelW = panelRight - panelX;
+        int panelBottom = Math.max(PORTRAIT + 6, STM_Y + STM_SEG_H + 6);
+        int panelH = panelBottom - panelY;
         fillParallelogram(graphics, panelX - 1, panelY - 1, panelW + 2, panelH + 2, PANEL_SKEW, PANEL_BORDER_DIM);
         fillParallelogram(graphics, panelX, panelY, panelW, panelH, PANEL_SKEW, PANEL_BG);
+        fillParallelogram(graphics, panelX, panelY + 2, 3, panelH - 4, 0, PANEL_BORDER);
+        drawParallelogramBorder(graphics, panelX, panelY, panelW, panelH, PANEL_SKEW, 0x5542A5F5, 1);
 
-        // Layered square portrait frame.
+        // Layered square portrait frame (on top of the plate).
         graphics.fill(-3, -3, PORTRAIT + 6, PORTRAIT + 6, PORTRAIT_OUTER);
         graphics.fill(-2, -2, PORTRAIT + 4, PORTRAIT + 4, PORTRAIT_GOLD);
         graphics.fill(0, 0, PORTRAIT, PORTRAIT, PORTRAIT_INNER);

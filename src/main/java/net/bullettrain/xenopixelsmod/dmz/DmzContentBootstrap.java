@@ -1,5 +1,6 @@
 package net.bullettrain.xenopixelsmod.dmz;
 
+import com.dragonminez.common.config.ConfigManager;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.gson.JsonArray;
@@ -7,6 +8,7 @@ import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import net.bullettrain.xenopixelsmod.XenoPixelsMod;
 import net.minecraftforge.event.server.ServerStartingEvent;
+import net.minecraftforge.eventbus.api.EventPriority;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
 import net.minecraftforge.fml.loading.FMLPaths;
@@ -23,35 +25,81 @@ import java.nio.file.StandardCopyOption;
 import java.util.Map;
 
 /**
- * Installs XenoPixels DMZ custom forms/prices and restricts god-form acquisition
- * to Beerus / Whis masters.
+ * Installs XenoPixels DMZ form groups the same way DMZ itself structures them.
  *
- * @see <a href="https://github.com/DragonMineZ/dragonminez/wiki/Custom-Forms">Custom Forms</a>
+ * <h2>DMZ form group rules (from FormConfig / RadialForms / TransformationsHelper)</h2>
+ * <ul>
+ *   <li>{@code groupName} — unique id for the group file / lang / form requisites
+ *       ({@code groupName.formId}).</li>
+ *   <li>{@code formType} — skill id. Vanilla skills: {@code superforms}, {@code godforms},
+ *       {@code legendaryforms}, {@code androidforms}. Multiple groups may share one type
+ *       (e.g. ssgrades + supersaiyan + oozaru all use {@code superforms}).</li>
+ *   <li>{@code /dmzform set} and X-menu unlocks check the skill named by
+ *       {@code TransformationsHelper.getSkillNameForType(formType)}, which remaps any
+ *       formType containing super/legendary/god/android to those vanilla skills.</li>
+ *   <li>Radial: types containing super|legendary|android → Super Forms; else → Extra Forms.</li>
+ *   <li>{@code formSkillsCosts} keys are formType skill ids, not group names.</li>
+ * </ul>
+ *
+ * <h2>Our groups</h2>
+ * <ul>
+ *   <li>{@code supersaiyan_legend} → formType {@code superforms} levels 9–14</li>
+ *   <li>{@code xenopixels_gods_forms} → formType {@code xenopixels_divinity}
+ *       (cannot put {@code god} in formType — DMZ remaps it to vanilla godforms)</li>
+ *   <li>{@code xenopixels_saga_forms} → formType {@code xenopixels_saga_forms} (Trunks Ikari)</li>
+ *   <li>{@code xenopixels_fan_ss} → formType {@code xenopixels_fan_ss}</li>
+ * </ul>
  */
 @Mod.EventBusSubscriber(modid = XenoPixelsMod.MOD_ID)
 public final class DmzContentBootstrap {
     private static final Gson GSON = new GsonBuilder().setPrettyPrinting().disableHtmlEscaping().create();
 
+    /**
+     * Custom formTypes (skill ids). Must not contain super/legendary/god/android
+     * or {@code TransformationsHelper.getSkillNameForType} remaps them to vanilla skills.
+     */
+    private static final String[] XENO_FORM_SKILLS = {
+            "xenopixels_fan_ss",
+            "xenopixels_divinity",
+            "xenopixels_saga_forms"
+    };
+
+    /** Broken / obsolete formType skill ids from earlier patches (never remove vanilla formTypes). */
+    private static final String[] LEGACY_FORM_SKILLS = {
+            "ssj_legend",
+            "xeno_divine",
+            "xeno_ikari",
+            "supersaiyan_legend",
+            "xenopixels_godforms",
+            "xenopixels_legendary",
+            "xenopixels_gods_forms"
+    };
+
     private static final String[] BUNDLED_FORMS = {
             "races/saiyan/forms/supersaiyan_legend.json",
+            "races/saiyan/forms/xenopixels_fan_ss.json",
+            "races/saiyan/forms/xenopixels_gods_forms.json",
+            "races/saiyan/forms/xenopixels_saga_forms.json"
+    };
+
+    /** Old form JSON filenames to delete from config so DMZ does not keep loading them. */
+    private static final String[] OBSOLETE_FORM_FILES = {
             "races/saiyan/forms/xenopixels_godforms.json",
             "races/saiyan/forms/xenopixels_legendary.json"
     };
 
     private DmzContentBootstrap() {}
 
-    @SubscribeEvent
-    public static void onServerStarting(ServerStartingEvent event) {
-        installBundledContent();
+    public static void installBundledContent() {
+        installBundledContent(false);
     }
 
-    public static void installBundledContent() {
+    public static void installBundledContent(boolean reloadDmz) {
         Path root = FMLPaths.CONFIGDIR.get().resolve("dragonminez");
         for (String relative : BUNDLED_FORMS) {
             Path target = root.resolve(relative);
             try {
                 Files.createDirectories(target.getParent());
-                // Always refresh bundled XenoPixels forms so balance updates ship
                 if (relative.contains("xenopixels_") || relative.contains("supersaiyan_legend")
                         || !Files.exists(target)) {
                     copyResource("/data/xenopixelsmod/dmz/" + relative, target);
@@ -60,8 +108,40 @@ public final class DmzContentBootstrap {
                 XenoPixelsMod.LOGGER.error("Failed installing DMZ content {}", relative, e);
             }
         }
+        // Remove renamed groups so DMZ does not load both old + new files
+        for (String obsolete : OBSOLETE_FORM_FILES) {
+            try {
+                Path old = root.resolve(obsolete);
+                if (Files.deleteIfExists(old)) {
+                    XenoPixelsMod.LOGGER.info("Removed obsolete DMZ form file: {}", old);
+                }
+            } catch (IOException e) {
+                XenoPixelsMod.LOGGER.warn("Could not remove obsolete form file {}", obsolete, e);
+            }
+        }
         patchSaiyanFormPrices(root.resolve("races/saiyan/character.json"));
         patchSkillsConfig(root.resolve("skills.json"));
+
+        if (reloadDmz) {
+            reloadDmzConfigs();
+        }
+    }
+
+    @SubscribeEvent(priority = EventPriority.HIGH)
+    public static void onServerStarting(ServerStartingEvent event) {
+        installBundledContent(true);
+    }
+
+    private static void reloadDmzConfigs() {
+        try {
+            ConfigManager.reload();
+            XenoPixelsMod.LOGGER.info(
+                    "Reloaded DMZ configs after XenoPixels form install (fan skill={}, others use vanilla formTypes)",
+                    String.join(", ", XENO_FORM_SKILLS));
+        } catch (Throwable t) {
+            XenoPixelsMod.LOGGER.error(
+                    "Failed to reload DMZ configs — run /dmzreload config so form skills apply", t);
+        }
     }
 
     private static void copyResource(String resource, Path target) throws IOException {
@@ -93,9 +173,16 @@ public final class DmzContentBootstrap {
                     ? character.getAsJsonObject("formSkillsCosts")
                     : new JsonObject();
 
+            // Only merge keys from our price bundle (superforms + custom formTypes).
+            // Never invent/overwrite vanilla godforms / legendaryforms here.
             for (Map.Entry<String, JsonElement> entry : priceBundle.entrySet()) {
                 costs.add(entry.getKey(), entry.getValue());
             }
+            for (String legacy : LEGACY_FORM_SKILLS) {
+                costs.remove(legacy);
+            }
+            // Undo an earlier bad patch that put Trunks Ikari price on vanilla legendaryforms
+            repairLegendaryFormsPrices(costs);
             character.add("formSkillsCosts", costs);
 
             try (Writer writer = Files.newBufferedWriter(characterJson, StandardCharsets.UTF_8)) {
@@ -107,9 +194,6 @@ public final class DmzContentBootstrap {
         }
     }
 
-    /**
-     * Ensures {@code xenopixels_godforms} is a form skill and only Beerus/Whis offer it.
-     */
     private static void patchSkillsConfig(Path skillsJson) {
         if (!Files.exists(skillsJson)) {
             XenoPixelsMod.LOGGER.warn("skills.json missing; skip master offerings patch: {}", skillsJson);
@@ -123,10 +207,26 @@ public final class DmzContentBootstrap {
             JsonObject skills = GSON.fromJson(reader, JsonObject.class);
             if (skills == null) return;
 
-            // formSkills list
             JsonArray formSkills = skills.has("formSkills") && skills.get("formSkills").isJsonArray()
                     ? skills.getAsJsonArray("formSkills")
                     : new JsonArray();
+
+            if (patch.has("formSkillsRemove") && patch.get("formSkillsRemove").isJsonArray()) {
+                for (JsonElement el : patch.getAsJsonArray("formSkillsRemove")) {
+                    removeFromJsonArray(formSkills, el.getAsString());
+                }
+            }
+            for (String legacy : LEGACY_FORM_SKILLS) {
+                removeFromJsonArray(formSkills, legacy);
+            }
+
+            // Ensure vanilla form skill types exist
+            for (String vanilla : new String[]{"superforms", "godforms", "legendaryforms", "androidforms"}) {
+                if (!jsonArrayContains(formSkills, vanilla)) {
+                    formSkills.add(vanilla);
+                }
+            }
+
             if (patch.has("formSkillsAdd") && patch.get("formSkillsAdd").isJsonArray()) {
                 for (JsonElement el : patch.getAsJsonArray("formSkillsAdd")) {
                     String id = el.getAsString();
@@ -135,9 +235,17 @@ public final class DmzContentBootstrap {
                     }
                 }
             }
+            for (String id : XENO_FORM_SKILLS) {
+                if (!jsonArrayContains(formSkills, id)) {
+                    formSkills.add(id);
+                }
+            }
             skills.add("formSkills", formSkills);
 
-            // skillOfferings — beerus / whis only for our god forms
+            // DMZ Skills.calculateMaxLevel() reads skills.json → skills.<id>.costs.size().
+            // Without this, /dmzform set clamps level to maxLevel=0 and forms never unlock.
+            ensureFormSkillCostEntries(skills, patch);
+
             JsonObject offerings = skills.has("skillOfferings") && skills.get("skillOfferings").isJsonObject()
                     ? skills.getAsJsonObject("skillOfferings")
                     : new JsonObject();
@@ -159,11 +267,12 @@ public final class DmzContentBootstrap {
                 }
             }
 
-            // Restrict exclusive form skills (godforms / legendaryforms) to intended masters
             JsonObject exclusive = patch.has("exclusiveFormSkills") && patch.get("exclusiveFormSkills").isJsonObject()
                     ? patch.getAsJsonObject("exclusiveFormSkills")
                     : new JsonObject();
 
+            // Only enforce exclusivity for OUR form skills — never strip vanilla
+            // superforms / godforms / legendaryforms from masters.
             for (Map.Entry<String, JsonElement> entry : offerings.entrySet()) {
                 String master = entry.getKey().toLowerCase();
                 if (!entry.getValue().isJsonArray()) continue;
@@ -171,19 +280,34 @@ public final class DmzContentBootstrap {
                 JsonArray cleaned = new JsonArray();
                 for (JsonElement el : arr) {
                     String skill = el.getAsString();
+                    boolean legacy = false;
+                    for (String leg : LEGACY_FORM_SKILLS) {
+                        if (leg.equals(skill)) {
+                            legacy = true;
+                            break;
+                        }
+                    }
+                    if (legacy) continue;
+
+                    // Only gate skills that are exclusively ours
                     if (exclusive.has(skill) && exclusive.get(skill).isJsonArray()) {
-                        boolean allowed = false;
-                        for (JsonElement m : exclusive.getAsJsonArray(skill)) {
-                            if (master.equalsIgnoreCase(m.getAsString())) {
-                                allowed = true;
+                        boolean ours = false;
+                        for (String x : XENO_FORM_SKILLS) {
+                            if (x.equals(skill)) {
+                                ours = true;
                                 break;
                             }
                         }
-                        if (!allowed) continue;
-                    }
-                    // Drop obsolete custom skill ids
-                    if ("xenopixels_godforms".equals(skill) || "xenopixels_legendary".equals(skill)) {
-                        continue;
+                        if (ours) {
+                            boolean allowed = false;
+                            for (JsonElement m : exclusive.getAsJsonArray(skill)) {
+                                if (master.equalsIgnoreCase(m.getAsString())) {
+                                    allowed = true;
+                                    break;
+                                }
+                            }
+                            if (!allowed) continue;
+                        }
                     }
                     if (!jsonArrayContains(cleaned, skill)) {
                         cleaned.add(el);
@@ -192,21 +316,18 @@ public final class DmzContentBootstrap {
                 offerings.add(entry.getKey(), cleaned);
             }
 
-            // Ensure exclusive masters still have their skills
-            if (exclusive != null) {
-                for (Map.Entry<String, JsonElement> ex : exclusive.entrySet()) {
-                    String skill = ex.getKey();
-                    if (!ex.getValue().isJsonArray()) continue;
-                    for (JsonElement mEl : ex.getValue().getAsJsonArray()) {
-                        String master = mEl.getAsString();
-                        JsonArray existing = offerings.has(master) && offerings.get(master).isJsonArray()
-                                ? offerings.getAsJsonArray(master)
-                                : new JsonArray();
-                        if (!jsonArrayContains(existing, skill)) {
-                            existing.add(skill);
-                        }
-                        offerings.add(master, existing);
+            for (Map.Entry<String, JsonElement> ex : exclusive.entrySet()) {
+                String skill = ex.getKey();
+                if (!ex.getValue().isJsonArray()) continue;
+                for (JsonElement mEl : ex.getValue().getAsJsonArray()) {
+                    String master = mEl.getAsString();
+                    JsonArray existing = offerings.has(master) && offerings.get(master).isJsonArray()
+                            ? offerings.getAsJsonArray(master)
+                            : new JsonArray();
+                    if (!jsonArrayContains(existing, skill)) {
+                        existing.add(skill);
                     }
+                    offerings.add(master, existing);
                 }
             }
 
@@ -215,10 +336,78 @@ public final class DmzContentBootstrap {
             try (Writer writer = Files.newBufferedWriter(skillsJson, StandardCharsets.UTF_8)) {
                 GSON.toJson(skills, writer);
             }
-            XenoPixelsMod.LOGGER.info("Patched DMZ skills.json (godforms→Beerus/Whis, legendaryforms→Trunks)");
+            XenoPixelsMod.LOGGER.info(
+                    "Patched DMZ skills.json formSkills={} (DMZ-native types + fan)",
+                    formSkills);
         } catch (Exception e) {
             XenoPixelsMod.LOGGER.error("Failed patching skills.json", e);
         }
+    }
+
+    /**
+     * If an earlier XenoPixels patch left legendaryforms as {@code [-1,-1,-1,95000]},
+     * restore the stock 3-level DMZ shape (Ikari now lives on xenopixels_saga_forms).
+     */
+    private static void repairLegendaryFormsPrices(JsonObject costs) {
+        if (!costs.has("legendaryforms") || !costs.get("legendaryforms").isJsonObject()) return;
+        JsonObject leg = costs.getAsJsonObject("legendaryforms");
+        if (!leg.has("prices") || !leg.get("prices").isJsonArray()) return;
+        JsonArray prices = leg.getAsJsonArray("prices");
+        if (prices.size() == 4
+                && prices.get(0).getAsInt() == -1
+                && prices.get(1).getAsInt() == -1
+                && prices.get(2).getAsInt() == -1
+                && prices.get(3).getAsInt() == 95000) {
+            JsonArray fixed = new JsonArray();
+            fixed.add(-1);
+            fixed.add(-1);
+            fixed.add(-1);
+            leg.add("prices", fixed);
+            leg.addProperty("buyFromMaster", false);
+            XenoPixelsMod.LOGGER.info("Restored vanilla legendaryforms price ladder (removed stale Ikari slot)");
+        }
+    }
+
+    /**
+     * Ensures each custom form skill has a {@code skills.&lt;id&gt;.costs} array so
+     * {@code Skills.setSkillLevel} can create the skill with a non-zero maxLevel.
+     * Real TP prices still live in race character {@code formSkillsCosts}.
+     */
+    private static void ensureFormSkillCostEntries(JsonObject skillsRoot, JsonObject patch) {
+        JsonObject skillsMap = skillsRoot.has("skills") && skillsRoot.get("skills").isJsonObject()
+                ? skillsRoot.getAsJsonObject("skills")
+                : new JsonObject();
+
+        if (patch.has("skillCosts") && patch.get("skillCosts").isJsonObject()) {
+            for (Map.Entry<String, JsonElement> e : patch.getAsJsonObject("skillCosts").entrySet()) {
+                skillsMap.add(e.getKey(), e.getValue());
+            }
+        }
+
+        // Fallback lengths if patch section missing
+        ensureSkillCostsLength(skillsMap, "xenopixels_divinity", 8);
+        ensureSkillCostsLength(skillsMap, "xenopixels_fan_ss", 6);
+        ensureSkillCostsLength(skillsMap, "xenopixels_saga_forms", 1);
+
+        skillsRoot.add("skills", skillsMap);
+    }
+
+    private static void ensureSkillCostsLength(JsonObject skillsMap, String skillId, int levels) {
+        if (skillsMap.has(skillId) && skillsMap.get(skillId).isJsonObject()) {
+            JsonObject entry = skillsMap.getAsJsonObject(skillId);
+            if (entry.has("costs") && entry.get("costs").isJsonArray()
+                    && entry.getAsJsonArray("costs").size() >= levels) {
+                return;
+            }
+        }
+        JsonObject entry = new JsonObject();
+        JsonArray costs = new JsonArray();
+        for (int i = 0; i < levels; i++) {
+            costs.add(1);
+        }
+        entry.add("costs", costs);
+        entry.add("allowedRaces", new JsonArray());
+        skillsMap.add(skillId, entry);
     }
 
     private static boolean jsonArrayContains(JsonArray arr, String value) {
@@ -226,6 +415,14 @@ public final class DmzContentBootstrap {
             if (value.equals(el.getAsString())) return true;
         }
         return false;
+    }
+
+    private static void removeFromJsonArray(JsonArray arr, String value) {
+        for (int i = arr.size() - 1; i >= 0; i--) {
+            if (value.equals(arr.get(i).getAsString())) {
+                arr.remove(i);
+            }
+        }
     }
 
     private static JsonObject readResourceJson(String resource) {

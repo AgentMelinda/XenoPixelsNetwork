@@ -1,13 +1,11 @@
 package net.bullettrain.xenopixelsmod.client;
 
 import net.bullettrain.xenopixelsmod.config.XenoServerConfig;
-import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.api.distmarker.OnlyIn;
 
 /**
  * Client-side mirror of server combat / feature flags (synced on login + reload).
+ * Not {@code @OnlyIn}: common network packets reference this class.
  */
-@OnlyIn(Dist.CLIENT)
 public final class XenoServerClientState {
     private static XenoServerConfig.Data data = new XenoServerConfig.Data();
 
