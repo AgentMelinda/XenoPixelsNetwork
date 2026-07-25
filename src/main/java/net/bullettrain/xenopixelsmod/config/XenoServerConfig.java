@@ -10,6 +10,11 @@ import java.io.Reader;
 import java.io.Writer;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.Collections;
+import java.util.LinkedHashMap;
+import java.util.Locale;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * Server-authoritative feature flags and combat balance.
@@ -39,6 +44,42 @@ public final class XenoServerConfig {
      * Default 0.50 (50%). Set 0.45 for 45%.
      */
     public static float chaseSuccessChance = 0.50f;
+
+    // --- Form multipliers (public server balance: scales DMZ form / stack-form stat mults) ---
+    /**
+     * Global form power scale for this server. Affects form bonuses only (base form stays 1.0).
+     * Formula: {@code 1 + (formMult - 1) * formStatMultiplier}.
+     * <ul>
+     *   <li>{@code 1.0} — stock DMZ form power</li>
+     *   <li>{@code 2.0} — double form bonuses</li>
+     *   <li>{@code 0.0} — forms give no stat bonus</li>
+     * </ul>
+     * Tunable live with {@code /xenoform set} or {@code config/xenopixelsmod-server.json}.
+     */
+    public static float formStatMultiplier = 1.0f;
+    /**
+     * Per-form overall power scales. Keys: {@code group.form} (e.g. {@code xenopixels_gods_forms.ssb})
+     * or short form id ({@code ssb}). When missing, {@link #formStatMultiplier} is used.
+     */
+    public static final Map<String, Float> formPerFormMultipliers = new ConcurrentHashMap<>();
+    /**
+     * Global per-stat scales (all forms). Keys: {@code str}, {@code pwr}, {@code def}, {@code skp},
+     * {@code stm}, {@code vit}, {@code ene}, {@code speed}. Default when missing: 1.0.
+     */
+    public static final Map<String, Float> formPerStatMultipliers = new ConcurrentHashMap<>();
+    /**
+     * Per-form per-stat scales. Outer key = form id, inner key = stat (str/pwr/…).
+     * Example: {@code ssb.str = 5} multiplies only Super Saiyan Blue strength bonus.
+     */
+    public static final Map<String, Map<String, Float>> formPerFormStatMultipliers = new ConcurrentHashMap<>();
+    /** DMZ form combat stats you can scale. */
+    public static final String[] FORM_STAT_KEYS = {
+            "str", "skp", "stm", "def", "vit", "pwr", "ene", "speed"
+    };
+    /** Minimum allowed form scale (global, per-form, or per-stat). */
+    public static final float FORM_STAT_MULT_MIN = 0.0f;
+    /** Maximum allowed form scale (global, per-form, or per-stat). */
+    public static final float FORM_STAT_MULT_MAX = 1_000_000.0f;
 
     // --- KI overcharge (power release %) ---
     /** Enable bigger/harder KI attacks when release is above the threshold. */
@@ -139,6 +180,13 @@ public final class XenoServerConfig {
         d.bt3ChargeAttackEnabled = bt3ChargeAttackEnabled;
         d.bt3DragonDashEnabled = bt3DragonDashEnabled;
         d.chaseSuccessChance = chaseSuccessChance;
+        d.formStatMultiplier = formStatMultiplier; // boxed Float in Data
+        d.formPerFormMultipliers = new LinkedHashMap<>(formPerFormMultipliers);
+        d.formPerStatMultipliers = new LinkedHashMap<>(formPerStatMultipliers);
+        d.formPerFormStatMultipliers = new LinkedHashMap<>();
+        for (Map.Entry<String, Map<String, Float>> e : formPerFormStatMultipliers.entrySet()) {
+            d.formPerFormStatMultipliers.put(e.getKey(), new LinkedHashMap<>(e.getValue()));
+        }
         d.kiOverchargeEnabled = kiOverchargeEnabled;
         d.kiOverchargeThreshold = kiOverchargeThreshold;
         d.kiOverchargeSizePerPercent = kiOverchargeSizePerPercent;
@@ -188,6 +236,11 @@ public final class XenoServerConfig {
         bt3ChargeAttackEnabled = d.bt3ChargeAttackEnabled;
         bt3DragonDashEnabled = d.bt3DragonDashEnabled;
         chaseSuccessChance = d.chaseSuccessChance < 0f ? 0.50f : Math.max(0f, Math.min(1f, d.chaseSuccessChance));
+        // Boxed Float: null when key missing from older configs → keep default 1.0
+        if (d.formStatMultiplier != null) {
+            formStatMultiplier = clampFormStatMultiplier(d.formStatMultiplier);
+        }
+        applyFormScaleMaps(d);
         kiOverchargeEnabled = d.kiOverchargeEnabled;
         kiOverchargeThreshold = Math.max(100, Math.min(500, d.kiOverchargeThreshold <= 0 ? 175 : d.kiOverchargeThreshold));
         kiOverchargeSizePerPercent = Math.max(0f, d.kiOverchargeSizePerPercent);
@@ -280,6 +333,258 @@ public final class XenoServerConfig {
         save();
     }
 
+    public static float clampFormStatMultiplier(float value) {
+        if (Float.isNaN(value) || Float.isInfinite(value)) return 1.0f;
+        return Math.max(FORM_STAT_MULT_MIN, Math.min(FORM_STAT_MULT_MAX, value));
+    }
+
+    /** Applies global + per-form + per-stat scale maps from a config/sync payload. */
+    public static void applyFormScaleMaps(Data d) {
+        if (d == null) return;
+        if (d.formStatMultiplier != null) {
+            formStatMultiplier = clampFormStatMultiplier(d.formStatMultiplier);
+        }
+        formPerFormMultipliers.clear();
+        if (d.formPerFormMultipliers != null) {
+            for (Map.Entry<String, Float> e : d.formPerFormMultipliers.entrySet()) {
+                if (e.getKey() == null || e.getKey().isBlank() || e.getValue() == null) continue;
+                formPerFormMultipliers.put(normalizeFormKey(e.getKey()), clampFormStatMultiplier(e.getValue()));
+            }
+        }
+        formPerStatMultipliers.clear();
+        if (d.formPerStatMultipliers != null) {
+            for (Map.Entry<String, Float> e : d.formPerStatMultipliers.entrySet()) {
+                String stat = normalizeStatKey(e.getKey());
+                if (stat.isEmpty() || e.getValue() == null) continue;
+                formPerStatMultipliers.put(stat, clampFormStatMultiplier(e.getValue()));
+            }
+        }
+        formPerFormStatMultipliers.clear();
+        if (d.formPerFormStatMultipliers != null) {
+            for (Map.Entry<String, Map<String, Float>> e : d.formPerFormStatMultipliers.entrySet()) {
+                if (e.getKey() == null || e.getKey().isBlank() || e.getValue() == null) continue;
+                String form = normalizeFormKey(e.getKey());
+                Map<String, Float> inner = new ConcurrentHashMap<>();
+                for (Map.Entry<String, Float> s : e.getValue().entrySet()) {
+                    String stat = normalizeStatKey(s.getKey());
+                    if (stat.isEmpty() || s.getValue() == null) continue;
+                    inner.put(stat, clampFormStatMultiplier(s.getValue()));
+                }
+                if (!inner.isEmpty()) {
+                    formPerFormStatMultipliers.put(form, inner);
+                }
+            }
+        }
+    }
+
+    public static String normalizeFormKey(String key) {
+        return key == null ? "" : key.trim().toLowerCase(Locale.ROOT);
+    }
+
+    /** Normalizes DMZ stat tokens: STR/pwr/power/strength → str, pwr, def, … */
+    public static String normalizeStatKey(String stat) {
+        if (stat == null) return "";
+        String s = stat.trim().toLowerCase(Locale.ROOT);
+        return switch (s) {
+            case "strength", "melee" -> "str";
+            case "power", "ki", "energy_pwr" -> "pwr";
+            case "defense", "defence" -> "def";
+            case "stamina", "stam" -> "stm";
+            case "vitality", "hp", "health" -> "vit";
+            case "energy", "ki_pool" -> "ene";
+            case "strike", "skill" -> "skp";
+            case "spd", "move", "flight" -> "speed";
+            default -> s;
+        };
+    }
+
+    public static boolean isKnownFormStat(String stat) {
+        String s = normalizeStatKey(stat);
+        for (String k : FORM_STAT_KEYS) {
+            if (k.equals(s)) return true;
+        }
+        return false;
+    }
+
+    public static void setFormStatMultiplier(float value) {
+        formStatMultiplier = clampFormStatMultiplier(value);
+        save();
+    }
+
+    /** Set or replace per-form overall scale. Key should be {@code group.form} or short form id. */
+    public static void setPerFormMultiplier(String formKey, float value) {
+        String k = normalizeFormKey(formKey);
+        if (k.isEmpty() || "global".equals(k) || "*".equals(k)) {
+            setFormStatMultiplier(value);
+            return;
+        }
+        formPerFormMultipliers.put(k, clampFormStatMultiplier(value));
+        save();
+    }
+
+    /** Global scale for one combat stat (all forms). */
+    public static void setPerStatMultiplier(String stat, float value) {
+        String s = normalizeStatKey(stat);
+        if (!isKnownFormStat(s)) return;
+        formPerStatMultipliers.put(s, clampFormStatMultiplier(value));
+        save();
+    }
+
+    /** Scale one stat for one form only. */
+    public static void setPerFormStatMultiplier(String formKey, String stat, float value) {
+        String f = normalizeFormKey(formKey);
+        String s = normalizeStatKey(stat);
+        if (f.isEmpty() || !isKnownFormStat(s)) return;
+        if ("global".equals(f) || "*".equals(f)) {
+            setPerStatMultiplier(s, value);
+            return;
+        }
+        formPerFormStatMultipliers
+                .computeIfAbsent(f, k -> new ConcurrentHashMap<>())
+                .put(s, clampFormStatMultiplier(value));
+        save();
+    }
+
+    /** Remove a per-form overall override (falls back to global). */
+    public static boolean clearPerFormMultiplier(String formKey) {
+        String k = normalizeFormKey(formKey);
+        if (k.isEmpty()) return false;
+        boolean removed = formPerFormMultipliers.remove(k) != null;
+        if (removed) save();
+        return removed;
+    }
+
+    public static boolean clearPerStatMultiplier(String stat) {
+        String s = normalizeStatKey(stat);
+        boolean removed = formPerStatMultipliers.remove(s) != null;
+        if (removed) save();
+        return removed;
+    }
+
+    public static boolean clearPerFormStatMultiplier(String formKey, String stat) {
+        String f = normalizeFormKey(formKey);
+        String s = normalizeStatKey(stat);
+        if ("global".equals(f) || "*".equals(f)) {
+            return clearPerStatMultiplier(s);
+        }
+        Map<String, Float> inner = formPerFormStatMultipliers.get(f);
+        if (inner == null) return false;
+        boolean removed = inner.remove(s) != null;
+        if (inner.isEmpty()) formPerFormStatMultipliers.remove(f);
+        if (removed) save();
+        return removed;
+    }
+
+    public static void clearAllPerFormMultipliers() {
+        boolean any = !formPerFormMultipliers.isEmpty()
+                || !formPerStatMultipliers.isEmpty()
+                || !formPerFormStatMultipliers.isEmpty();
+        formPerFormMultipliers.clear();
+        formPerStatMultipliers.clear();
+        formPerFormStatMultipliers.clear();
+        if (any) save();
+    }
+
+    private static Float lookupPerFormMap(Map<String, Float> map, String formKey) {
+        if (map == null || map.isEmpty() || formKey == null || formKey.isBlank()) return null;
+        String k = normalizeFormKey(formKey);
+        Float exact = map.get(k);
+        if (exact != null) return exact;
+        int dot = k.lastIndexOf('.');
+        if (dot >= 0 && dot + 1 < k.length()) {
+            Float shortMatch = map.get(k.substring(dot + 1));
+            if (shortMatch != null) return shortMatch;
+        }
+        for (Map.Entry<String, Float> e : map.entrySet()) {
+            String stored = e.getKey();
+            if (stored.equals(k) || stored.endsWith("." + k)) return e.getValue();
+        }
+        return null;
+    }
+
+    private static Map<String, Float> lookupPerFormStatMap(String formKey) {
+        if (formKey == null || formKey.isBlank() || formPerFormStatMultipliers.isEmpty()) return null;
+        String k = normalizeFormKey(formKey);
+        Map<String, Float> exact = formPerFormStatMultipliers.get(k);
+        if (exact != null) return exact;
+        int dot = k.lastIndexOf('.');
+        if (dot >= 0 && dot + 1 < k.length()) {
+            Map<String, Float> shortMatch = formPerFormStatMultipliers.get(k.substring(dot + 1));
+            if (shortMatch != null) return shortMatch;
+        }
+        for (Map.Entry<String, Map<String, Float>> e : formPerFormStatMultipliers.entrySet()) {
+            String stored = e.getKey();
+            if (stored.equals(k) || stored.endsWith("." + k)) return e.getValue();
+        }
+        return null;
+    }
+
+    /**
+     * Overall form scale (no per-stat): exact per-form → short-id → global.
+     */
+    public static float formScaleFor(String formKey) {
+        if (formKey == null || formKey.isBlank()) {
+            return formStatMultiplier;
+        }
+        Float override = lookupPerFormMap(formPerFormMultipliers, formKey);
+        return override != null ? override : formStatMultiplier;
+    }
+
+    /**
+     * Combined scale for form + combat stat.
+     * {@code overall × globalStat × formStat} (missing pieces default to 1.0 for the last two;
+     * overall falls back to {@link #formStatMultiplier}).
+     */
+    public static float formScaleFor(String formKey, String stat) {
+        float overall = formScaleFor(formKey);
+        float statScale = 1.0f;
+        String s = normalizeStatKey(stat);
+        if (!s.isEmpty()) {
+            Float globalStat = formPerStatMultipliers.get(s);
+            if (globalStat != null) statScale *= globalStat;
+            Map<String, Float> formStats = lookupPerFormStatMap(formKey);
+            if (formStats != null) {
+                Float formStat = formStats.get(s);
+                if (formStat != null) statScale *= formStat;
+            }
+        }
+        return overall * statScale;
+    }
+
+    public static Map<String, Float> perFormMultipliersView() {
+        return Collections.unmodifiableMap(formPerFormMultipliers);
+    }
+
+    public static Map<String, Float> perStatMultipliersView() {
+        return Collections.unmodifiableMap(formPerStatMultipliers);
+    }
+
+    public static Map<String, Map<String, Float>> perFormStatMultipliersView() {
+        return Collections.unmodifiableMap(formPerFormStatMultipliers);
+    }
+
+    /**
+     * Applies server form scale to a DMZ form (or stack-form) stat mult.
+     * Base form ({@code 1.0}) is unchanged; only the bonus above 1 is scaled.
+     */
+    public static double scaleFormMultiplier(double formMult) {
+        return scaleFormMultiplier(formMult, null, null);
+    }
+
+    public static double scaleFormMultiplier(double formMult, String formKey) {
+        return scaleFormMultiplier(formMult, formKey, null);
+    }
+
+    /**
+     * @param formKey active form id ({@code group.form}) or null
+     * @param stat    DMZ stat token (STR/PWR/…) or null for overall form scale only
+     */
+    public static double scaleFormMultiplier(double formMult, String formKey, String stat) {
+        float m = formScaleFor(formKey, stat);
+        if (Math.abs(m - 1.0f) < 1.0e-6f) return formMult;
+        return 1.0 + (formMult - 1.0) * (double) m;
+    }
+
     public static class Data {
         public boolean dmzHudEnabled = false;
         public boolean dmzContentBootstrap = true;
@@ -292,6 +597,17 @@ public final class XenoServerConfig {
         public boolean bt3ChargeAttackEnabled = true;
         public boolean bt3DragonDashEnabled = true;
         public float chaseSuccessChance = 0.50f;
+        /**
+         * Global form bonus scale (see {@link XenoServerConfig#formStatMultiplier}).
+         * Boxed so older JSON without the key stays {@code null} (use default 1.0).
+         */
+        public Float formStatMultiplier = 1.0f;
+        /** Per-form overall overrides (key → scale). Null/empty = none. */
+        public Map<String, Float> formPerFormMultipliers = new LinkedHashMap<>();
+        /** Global per-stat overrides (str/pwr/def/…). */
+        public Map<String, Float> formPerStatMultipliers = new LinkedHashMap<>();
+        /** Per-form per-stat overrides. */
+        public Map<String, Map<String, Float>> formPerFormStatMultipliers = new LinkedHashMap<>();
         public boolean kiOverchargeEnabled = true;
         public int kiOverchargeThreshold = 175;
         public float kiOverchargeSizePerPercent = 0.012f;

@@ -61,6 +61,14 @@ public final class XenoPermissions {
             op("xenoserver.set", "Use /xenoserver set <key> <true|false>");
 
     // -------------------------------------------------------------------------
+    // /xenoform  (server — OP default)
+    // -------------------------------------------------------------------------
+    public static final PermissionNode<Boolean> XENOFORM_STATUS =
+            op("xenoform.status", "Use /xenoform status — view server form power scale");
+    public static final PermissionNode<Boolean> XENOFORM_SET =
+            op("xenoform.set", "Use /xenoform set <multiplier> — change server form power scale");
+
+    // -------------------------------------------------------------------------
     // /xenohud  (client — everyone default)
     // -------------------------------------------------------------------------
     public static final PermissionNode<Boolean> XENOHUD_TOGGLE =

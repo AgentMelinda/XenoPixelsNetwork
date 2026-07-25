@@ -102,7 +102,8 @@ public final class DmzHudCommands {
                                             + " charge=" + d.bt3ChargeAttackEnabled
                                             + " dragon=" + d.bt3DragonDashEnabled
                                             + " dmzHud=" + d.dmzHudEnabled
-                                            + " bootstrap=" + d.dmzContentBootstrap), false);
+                                            + " bootstrap=" + d.dmzContentBootstrap
+                                            + " formMult=" + d.formStatMultiplier), false);
                             return 1;
                         }))
                 .then(Commands.literal("set")

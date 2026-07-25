@@ -7,6 +7,8 @@ import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.fml.DistExecutor;
 import net.minecraftforge.network.NetworkEvent;
 
+import java.util.LinkedHashMap;
+import java.util.Map;
 import java.util.function.Supplier;
 
 public class SyncServerConfigPacket {
@@ -29,6 +31,10 @@ public class SyncServerConfigPacket {
         buf.writeBoolean(d.bt3ChargeAttackEnabled);
         buf.writeBoolean(d.bt3DragonDashEnabled);
         buf.writeFloat(d.chaseSuccessChance);
+        buf.writeFloat(d.formStatMultiplier != null ? d.formStatMultiplier : 1.0f);
+        writeFormMap(buf, d.formPerFormMultipliers);
+        writeFormMap(buf, d.formPerStatMultipliers);
+        writeNestedFormMap(buf, d.formPerFormStatMultipliers);
         buf.writeBoolean(d.kiOverchargeEnabled);
         buf.writeVarInt(d.kiOverchargeThreshold);
         buf.writeFloat(d.kiOverchargeSizePerPercent);
@@ -77,6 +83,10 @@ public class SyncServerConfigPacket {
         d.bt3ChargeAttackEnabled = buf.readBoolean();
         d.bt3DragonDashEnabled = buf.readBoolean();
         d.chaseSuccessChance = buf.readFloat();
+        d.formStatMultiplier = buf.readFloat();
+        d.formPerFormMultipliers = readFormMap(buf);
+        d.formPerStatMultipliers = readFormMap(buf);
+        d.formPerFormStatMultipliers = readNestedFormMap(buf);
         d.kiOverchargeEnabled = buf.readBoolean();
         d.kiOverchargeThreshold = buf.readVarInt();
         d.kiOverchargeSizePerPercent = buf.readFloat();
@@ -117,5 +127,55 @@ public class SyncServerConfigPacket {
         ctx.get().enqueueWork(() -> DistExecutor.unsafeRunWhenOn(Dist.CLIENT, () -> () ->
                 ClientPacketHandlers.handleServerConfig(msg.data)));
         ctx.get().setPacketHandled(true);
+    }
+
+    private static void writeFormMap(FriendlyByteBuf buf, Map<String, Float> map) {
+        if (map == null || map.isEmpty()) {
+            buf.writeVarInt(0);
+            return;
+        }
+        buf.writeVarInt(map.size());
+        for (Map.Entry<String, Float> e : map.entrySet()) {
+            buf.writeUtf(e.getKey() != null ? e.getKey() : "", 256);
+            buf.writeFloat(e.getValue() != null ? e.getValue() : 1.0f);
+        }
+    }
+
+    private static Map<String, Float> readFormMap(FriendlyByteBuf buf) {
+        int n = buf.readVarInt();
+        Map<String, Float> map = new LinkedHashMap<>();
+        for (int i = 0; i < n; i++) {
+            String k = buf.readUtf(256);
+            float v = buf.readFloat();
+            if (k != null && !k.isBlank()) {
+                map.put(k, v);
+            }
+        }
+        return map;
+    }
+
+    private static void writeNestedFormMap(FriendlyByteBuf buf, Map<String, Map<String, Float>> map) {
+        if (map == null || map.isEmpty()) {
+            buf.writeVarInt(0);
+            return;
+        }
+        buf.writeVarInt(map.size());
+        for (Map.Entry<String, Map<String, Float>> e : map.entrySet()) {
+            buf.writeUtf(e.getKey() != null ? e.getKey() : "", 256);
+            writeFormMap(buf, e.getValue());
+        }
+    }
+
+    private static Map<String, Map<String, Float>> readNestedFormMap(FriendlyByteBuf buf) {
+        int n = buf.readVarInt();
+        Map<String, Map<String, Float>> map = new LinkedHashMap<>();
+        for (int i = 0; i < n; i++) {
+            String k = buf.readUtf(256);
+            Map<String, Float> inner = readFormMap(buf);
+            if (k != null && !k.isBlank()) {
+                map.put(k, inner);
+            }
+        }
+        return map;
     }
 }

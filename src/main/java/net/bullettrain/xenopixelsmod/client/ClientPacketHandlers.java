@@ -16,6 +16,11 @@ public final class ClientPacketHandlers {
 
     public static void handleServerConfig(XenoServerConfig.Data data) {
         XenoServerClientState.apply(data);
+        // Keep form scales available for the common StatsData mixin (client-side prediction)
+        if (data != null) {
+            // Re-apply full form scale maps (apply() on server Data may not run on client)
+            XenoServerConfig.applyFormScaleMaps(data);
+        }
     }
 
     public static void handleXenoStats(float health, float maxHealth, float ki, float maxKi,

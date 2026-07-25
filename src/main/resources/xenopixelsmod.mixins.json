@@ -4,7 +4,8 @@
   "refmap": "mixins.xenopixelsmod.refmap.json",
   "compatibilityLevel": "JAVA_17",
   "mixins": [
-    "common.PlayerTickMixin"
+    "common.PlayerTickMixin",
+    "common.StatsDataFormMultiplierMixin"
   ],
   "client": [
     "client.PauseScreenMixin",

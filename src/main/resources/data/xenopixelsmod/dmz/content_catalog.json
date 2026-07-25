@@ -104,78 +104,92 @@
       "id": "group_god",
       "title": "XenoPixels Gods Forms",
       "subtitle": "Beerus / Whis only · formType xenopixels_divinity",
-      "detail": "Own form skill (not shared godforms). /dmzform set xenopixels_divinity <1-8>. SSG → SSB → SSBE → Rose → Rose Evo → UI Sign → MUI → Ultra Ego. Beerus/Whis masters. Icons: gui/icons/xenopixels_divinity.png.",
+      "detail": "Super story mult ladder: SSG → SSB=SSR → SSBE=SSRE → UI Sign → MUI≈UE. /dmzform set xenopixels_divinity <1-8>. Beerus/Whis. Icons: gui/icons/xenopixels_divinity.png.",
       "accent": 4294952372
     },
     {
       "id": "ssg",
       "title": "Super Saiyan God",
-      "subtitle": "God Forms Lv.1 · 150,000 TP",
-      "detail": "Red divine base. Beerus/Whis godforms skill level 1.",
+      "subtitle": "God Forms Lv.1 · STR 4.8",
+      "detail": "Red divine base. Beerus/Whis divinity skill level 1.",
       "accent": 4293212469
     },
     {
       "id": "ssb",
       "title": "Super Saiyan Blue",
-      "subtitle": "God Forms Lv.2 · 175,000 TP",
-      "detail": "Cyan god ki. Req: SSG. Beerus/Whis Lv.2.",
+      "subtitle": "God Forms Lv.2 · STR 5.7 (= Rose)",
+      "detail": "Cyan god ki. Same mult as Super Saiyan Rose. Req: SSG.",
       "accent": 4280391411
     },
     {
       "id": "ssbe",
       "title": "Super Saiyan Blue Evolution",
-      "subtitle": "God Forms Lv.3 · 200,000 TP",
-      "detail": "Buffed deep-blue evolution. Req: SSB. Beerus/Whis Lv.3.",
+      "subtitle": "God Forms Lv.3 · STR 6.6 (= Rose Evo)",
+      "detail": "Buffed deep-blue evolution. Same mult as Rose Evolution. Req: SSB.",
       "accent": 4279900698
     },
     {
       "id": "ssrose",
       "title": "Super Saiyan Rose",
-      "subtitle": "God Forms Lv.4 · 190,000 TP",
-      "detail": "Pink Rosé variant. Req: SSG path. Beerus/Whis Lv.4.",
+      "subtitle": "God Forms Lv.4 · STR 5.7 (= Blue)",
+      "detail": "Pink Rosé. Same mult as SSB. Req: SSG path.",
       "accent": 4294952372
     },
     {
       "id": "ssrose_evolution",
       "title": "Super Saiyan Rose Evolution",
-      "subtitle": "God Forms Lv.5 · 240,000 TP",
-      "detail": "Buffed denser Rosé (modelScaling 1.35). Req: Rose. Beerus/Whis Lv.5.",
+      "subtitle": "God Forms Lv.5 · STR 6.6 (= Blue Evo)",
+      "detail": "Buffed denser Rosé. Same mult as SSBE. Req: Rose.",
       "accent": 4294905971
     },
     {
       "id": "ui_sign",
       "title": "Ultra Instinct Sign",
-      "subtitle": "God Forms Lv.6 · 260,000 TP",
-      "detail": "Silver UI omen. Req: SSB path. Beerus/Whis Lv.6.",
+      "subtitle": "God Forms Lv.6 · STR 7.3",
+      "detail": "Silver UI omen — above Evolution forms. Req: SSB path.",
       "accent": 4292927712
     },
     {
       "id": "ui",
       "title": "Mastered Ultra Instinct",
-      "subtitle": "God Forms Lv.7 · 320,000 TP",
-      "detail": "Full silver UI. Req: UI Sign. Beerus/Whis Lv.7.",
+      "subtitle": "God Forms Lv.7 · STR 8.1 (= UE)",
+      "detail": "Full silver UI — Super peak. Matched Ultra Ego offense. Req: UI Sign.",
       "accent": 4294967295
     },
     {
       "id": "ue",
       "title": "Ultra Ego",
-      "subtitle": "God Forms Lv.8 · 300,000 TP",
-      "detail": "Purple destruction ego, buffed body. Req: SSBE path. Beerus/Whis Lv.8.",
+      "subtitle": "God Forms Lv.8 · STR 8.1 (= MUI)",
+      "detail": "Purple destruction ego. Same peak STR as MUI (rival forms). Req: SSBE path.",
       "accent": 4286856165
     },
     {
       "id": "group_legendary",
       "title": "XenoPixels Saga Forms",
       "subtitle": "formType xenopixels_saga_forms · Trunks master",
-      "detail": "Own form skill. /dmzform set xenopixels_saga_forms 1. Trunks Ikari. Master Trunks only. Icons: gui/icons/xenopixels_saga_forms.png.",
+      "detail": "Own form skill. /dmzform set xenopixels_saga_forms 1. Trunks Ikari (STR 6.3 — just under Blue/Rose Evolution). Master Trunks only.",
       "accent": 4289373692
     },
     {
       "id": "trunks_ikari",
       "title": "Trunks Ikari",
-      "subtitle": "legendaryforms Lv.1 · 95,000 TP",
-      "detail": "Super Saiyan Rage look: gold SSJ hair/aura + blue outer glow & lightning, cyan eyes, buffed model. /dmzform set xenopixels_saga_forms 1. Master Trunks only.",
+      "subtitle": "Saga Forms Lv.1 · STR 6.3",
+      "detail": "Super Saiyan Rage: gold hair + blue glow. Mult just under SSBE/Rose Evolution (6.6). /dmzform set xenopixels_saga_forms 1. Master Trunks only.",
       "accent": 4294962243
+    },
+    {
+      "id": "group_dark_frieza",
+      "title": "Dark Frieza",
+      "subtitle": "Frost Demon · formType xenopixels_dark_frieza",
+      "detail": "Super Hero Frieza form for frostdemon race. STR 7.55 — above Blue Evolution, below full UI. Master Frieza. /dmzform set xenopixels_dark_frieza 1.",
+      "accent": 4286856165
+    },
+    {
+      "id": "dark_frieza",
+      "title": "Dark Frieza",
+      "subtitle": "Frost Demon · STR 7.55 · 280,000 TP",
+      "detail": "Black/purple final-form Frieza (Super Hero). frostdemon only. Buy from Master Frieza or /dmzform set xenopixels_dark_frieza 1.",
+      "accent": 4286856165
     },
     {
       "id": "transform_howto",

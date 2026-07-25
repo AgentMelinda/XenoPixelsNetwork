@@ -48,6 +48,8 @@ import java.util.Map;
  *       (cannot put {@code god} in formType — DMZ remaps it to vanilla godforms)</li>
  *   <li>{@code xenopixels_saga_forms} → formType {@code xenopixels_saga_forms} (Trunks Ikari)</li>
  *   <li>{@code xenopixels_fan_ss} → formType {@code xenopixels_fan_ss}</li>
+ *   <li>{@code xenopixels_dark_frieza} → formType {@code xenopixels_dark_frieza}
+ *       (Frost Demon / Frieza race — Super Hero Dark Frieza)</li>
  * </ul>
  */
 @Mod.EventBusSubscriber(modid = XenoPixelsMod.MOD_ID)
@@ -61,7 +63,8 @@ public final class DmzContentBootstrap {
     private static final String[] XENO_FORM_SKILLS = {
             "xenopixels_fan_ss",
             "xenopixels_divinity",
-            "xenopixels_saga_forms"
+            "xenopixels_saga_forms",
+            "xenopixels_dark_frieza"
     };
 
     /** Broken / obsolete formType skill ids from earlier patches (never remove vanilla formTypes). */
@@ -79,7 +82,8 @@ public final class DmzContentBootstrap {
             "races/saiyan/forms/supersaiyan_legend.json",
             "races/saiyan/forms/xenopixels_fan_ss.json",
             "races/saiyan/forms/xenopixels_gods_forms.json",
-            "races/saiyan/forms/xenopixels_saga_forms.json"
+            "races/saiyan/forms/xenopixels_saga_forms.json",
+            "races/frostdemon/forms/xenopixels_dark_frieza.json"
     };
 
     /** Old form JSON filenames to delete from config so DMZ does not keep loading them. */
@@ -119,7 +123,10 @@ public final class DmzContentBootstrap {
                 XenoPixelsMod.LOGGER.warn("Could not remove obsolete form file {}", obsolete, e);
             }
         }
-        patchSaiyanFormPrices(root.resolve("races/saiyan/character.json"));
+        patchRaceFormPrices(root.resolve("races/saiyan/character.json"),
+                "/data/xenopixelsmod/dmz/races/saiyan/form_skill_prices.json");
+        patchRaceFormPrices(root.resolve("races/frostdemon/character.json"),
+                "/data/xenopixelsmod/dmz/races/frostdemon/form_skill_prices.json");
         patchSkillsConfig(root.resolve("skills.json"));
 
         if (reloadDmz) {
@@ -156,13 +163,17 @@ public final class DmzContentBootstrap {
         }
     }
 
-    private static void patchSaiyanFormPrices(Path characterJson) {
+    /**
+     * Merges our form skill TP prices into a race {@code character.json}.
+     * Only keys present in the bundled price file are written (vanilla keys left alone).
+     */
+    private static void patchRaceFormPrices(Path characterJson, String priceResource) {
         if (!Files.exists(characterJson)) {
-            XenoPixelsMod.LOGGER.warn("Saiyan character.json missing; skip form price patch: {}", characterJson);
+            XenoPixelsMod.LOGGER.warn("Race character.json missing; skip form price patch: {}", characterJson);
             return;
         }
 
-        JsonObject priceBundle = readResourceJson("/data/xenopixelsmod/dmz/races/saiyan/form_skill_prices.json");
+        JsonObject priceBundle = readResourceJson(priceResource);
         if (priceBundle == null) return;
 
         try (Reader reader = Files.newBufferedReader(characterJson, StandardCharsets.UTF_8)) {
@@ -173,24 +184,24 @@ public final class DmzContentBootstrap {
                     ? character.getAsJsonObject("formSkillsCosts")
                     : new JsonObject();
 
-            // Only merge keys from our price bundle (superforms + custom formTypes).
-            // Never invent/overwrite vanilla godforms / legendaryforms here.
             for (Map.Entry<String, JsonElement> entry : priceBundle.entrySet()) {
                 costs.add(entry.getKey(), entry.getValue());
             }
             for (String legacy : LEGACY_FORM_SKILLS) {
                 costs.remove(legacy);
             }
-            // Undo an earlier bad patch that put Trunks Ikari price on vanilla legendaryforms
-            repairLegendaryFormsPrices(costs);
+            // Saiyan-only repair: older bad patch left Ikari on legendaryforms
+            if (characterJson.toString().replace('\\', '/').contains("/saiyan/")) {
+                repairLegendaryFormsPrices(costs);
+            }
             character.add("formSkillsCosts", costs);
 
             try (Writer writer = Files.newBufferedWriter(characterJson, StandardCharsets.UTF_8)) {
                 GSON.toJson(character, writer);
             }
-            XenoPixelsMod.LOGGER.info("Patched Saiyan form skill TP prices in {}", characterJson);
+            XenoPixelsMod.LOGGER.info("Patched form skill TP prices in {}", characterJson);
         } catch (Exception e) {
-            XenoPixelsMod.LOGGER.error("Failed patching Saiyan form prices", e);
+            XenoPixelsMod.LOGGER.error("Failed patching form prices for {}", characterJson, e);
         }
     }
 
@@ -388,6 +399,7 @@ public final class DmzContentBootstrap {
         ensureSkillCostsLength(skillsMap, "xenopixels_divinity", 8);
         ensureSkillCostsLength(skillsMap, "xenopixels_fan_ss", 6);
         ensureSkillCostsLength(skillsMap, "xenopixels_saga_forms", 1);
+        ensureSkillCostsLength(skillsMap, "xenopixels_dark_frieza", 1);
 
         skillsRoot.add("skills", skillsMap);
     }

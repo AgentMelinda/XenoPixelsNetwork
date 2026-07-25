@@ -2,7 +2,8 @@
   "formSkillsAdd": [
     "xenopixels_fan_ss",
     "xenopixels_divinity",
-    "xenopixels_saga_forms"
+    "xenopixels_saga_forms",
+    "xenopixels_dark_frieza"
   ],
   "formSkillsRemove": [
     "ssj_legend",
@@ -18,12 +19,14 @@
     "whis": ["xenopixels_divinity"],
     "trunks": ["xenopixels_saga_forms"],
     "goku": ["xenopixels_fan_ss"],
-    "vegeta": ["xenopixels_fan_ss"]
+    "vegeta": ["xenopixels_fan_ss"],
+    "frieza": ["xenopixels_dark_frieza"]
   },
   "exclusiveFormSkills": {
     "xenopixels_divinity": ["beerus", "whis"],
     "xenopixels_saga_forms": ["trunks"],
-    "xenopixels_fan_ss": ["goku", "vegeta"]
+    "xenopixels_fan_ss": ["goku", "vegeta"],
+    "xenopixels_dark_frieza": ["frieza"]
   },
   "skillCosts": {
     "xenopixels_divinity": {
@@ -37,6 +40,10 @@
     "xenopixels_saga_forms": {
       "costs": [1],
       "allowedRaces": []
+    },
+    "xenopixels_dark_frieza": {
+      "costs": [1],
+      "allowedRaces": ["frostdemon"]
     }
   }
 }
