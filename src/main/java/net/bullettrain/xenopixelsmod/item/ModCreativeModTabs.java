@@ -28,6 +28,15 @@ public class ModCreativeModTabs {
 
                         pOutput.accept(ModsItems.METAL_DETECTOR.get());
 
+                        pOutput.accept(ModsItems.SUPER_SOUL_WARRIOR.get());
+                        pOutput.accept(ModsItems.SUPER_SOUL_IRON.get());
+                        pOutput.accept(ModsItems.SUPER_SOUL_SPARK.get());
+                        pOutput.accept(ModsItems.SUPER_SOUL_FINISHER.get());
+                        pOutput.accept(ModsItems.SUPER_SOUL_BALANCED.get());
+
+                        //pOutput.accept(ModBlocks.MISSILE_CHUNK_LOADER.get());
+                        //pOutput.accept(ModBlocks.SHIP_VLS_GUIDANCE.get());
+
                         pOutput.accept(ModBlocks.JACKIETONITE_ORE_BLOCK.get());
                         pOutput.accept(ModBlocks.RAW_JACKIETONITE_ORE_BLOCK.get());
                         pOutput.accept(ModBlocks.JACKIETONITE_ORE.get());

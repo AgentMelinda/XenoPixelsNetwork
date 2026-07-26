@@ -56,6 +56,28 @@ public final class DmzAnimHelperClient {
         tryPlayKi(player, anim, true);
     }
 
+    /** Local DMZ block / guard hold pose ({@code base.block}). */
+    public static void playLocalBlockStart(Player player) {
+        if (!XenoClientConfig.bt3CombatAnims) return;
+        tryPlayKi(player, DmzAnimHelper.BLOCK, true);
+    }
+
+    public static void playLocalBlockStop(Player player) {
+        playLocalChargeStop(player);
+    }
+
+    /** Punch-only combo flash (overrides mixed DMZ kick strings when enabled). */
+    public static void playLocalComboPunch(Player player, int step, boolean finisher) {
+        if (!XenoClientConfig.bt3CombatAnims || player == null) return;
+        String anim;
+        if (finisher) {
+            anim = step % 2 == 0 ? DmzAnimHelper.UPPERCUT_LEFT : DmzAnimHelper.UPPERCUT_RIGHT;
+        } else {
+            anim = step % 2 == 0 ? DmzAnimHelper.PUNCH_LEFT : DmzAnimHelper.PUNCH_RIGHT;
+        }
+        playLocalMelee(player, anim, false, finisher ? 1.2f : 1.08f);
+    }
+
     public static void playLocalChargeStop(Player player) {
         if (!XenoClientConfig.bt3CombatAnims) return;
         try {

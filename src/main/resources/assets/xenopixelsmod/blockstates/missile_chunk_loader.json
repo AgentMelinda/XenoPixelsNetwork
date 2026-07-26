@@ -1,0 +1,5 @@
+{
+  "variants": {
+    "": { "model": "xenopixelsmod:block/missile_chunk_loader" }
+  }
+}

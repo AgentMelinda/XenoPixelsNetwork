@@ -16,8 +16,14 @@ public final class DmzAnimHelper {
     public static final String CHARGE_HEAVY = "base.charge_heavy_punch";
     public static final String CHARGE_HEAVY_FIRE = "base.charge_heavy_punch_fire";
     public static final String KI_CHARGE = "base.ki_charge";
+    /** DMZ hold pose for blocking (movement.animation.json). */
+    public static final String BLOCK = "base.block";
+    public static final String SHIELD_RIGHT = "base.shield_right";
+    public static final String SHIELD_LEFT = "base.shield_left";
     public static final String PUNCH_RIGHT = "combat.one_handed_punch_right";
     public static final String PUNCH_LEFT = "combat.one_handed_punch_left";
+    public static final String UPPERCUT_RIGHT = "combat.one_handed_uppercut_right";
+    public static final String UPPERCUT_LEFT = "combat.one_handed_uppercut_left";
     public static final String KICK_LOW_R = "combat.lowkick_right";
     public static final String KICK_LOW_L = "combat.lowkick_left";
     public static final String KICK_GUT_R = "combat.gutkick_right";
@@ -65,6 +71,39 @@ public final class DmzAnimHelper {
             NetworkHandler.sendToTrackingEntity(pkt, player);
         } catch (Throwable ignored) {
         }
+    }
+
+    /** Start DMZ block hold pose for nearby clients (local client predicts separately). */
+    public static void broadcastBlockStart(ServerPlayer player) {
+        try {
+            TriggerAnimationS2C pkt = new TriggerAnimationS2C(
+                    player.getUUID(),
+                    TriggerAnimationS2C.AnimationType.KI_ANIMATION,
+                    0,
+                    player.getId(),
+                    BLOCK);
+            NetworkHandler.sendToTrackingEntity(pkt, player);
+        } catch (Throwable ignored) {
+        }
+    }
+
+    public static void broadcastBlockStop(ServerPlayer player) {
+        broadcastChargeStop(player);
+    }
+
+    /**
+     * Punch-only combo step anim (left/right, uppercut every finisher beat).
+     * @param step 1-based combo step
+     */
+    public static void broadcastComboPunch(ServerPlayer player, int step, boolean finisher) {
+        if (player == null) return;
+        String anim;
+        if (finisher) {
+            anim = step % 2 == 0 ? UPPERCUT_LEFT : UPPERCUT_RIGHT;
+        } else {
+            anim = step % 2 == 0 ? PUNCH_LEFT : PUNCH_RIGHT;
+        }
+        broadcastMelee(player, anim, false, finisher ? 1.2f : 1.08f);
     }
 
     public static void broadcastMelee(ServerPlayer player, String animationName, boolean offhand, float speed) {

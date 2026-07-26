@@ -1,0 +1,139 @@
+package net.bullettrain.xenopixelsmod.combat;
+
+import net.bullettrain.xenopixelsmod.XenoPixelsMod;
+import net.bullettrain.xenopixelsmod.config.XenoServerConfig;
+import net.minecraft.network.chat.Component;
+import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.entity.player.Player;
+import net.minecraftforge.event.TickEvent;
+import net.minecraftforge.event.entity.living.LivingHurtEvent;
+import net.minecraftforge.event.entity.player.PlayerEvent;
+import net.minecraftforge.eventbus.api.SubscribeEvent;
+import net.minecraftforge.fml.common.Mod;
+
+import java.util.Map;
+import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
+
+/**
+ * BT3 Sparking-style meter: build on hits, activate for temporary damage buff + i-frame frames on dash.
+ */
+@Mod.EventBusSubscriber(modid = XenoPixelsMod.MOD_ID)
+public final class Bt3SparkingSystem {
+    private static final Map<UUID, Float> METER = new ConcurrentHashMap<>();
+    private static final Map<UUID, Integer> ACTIVE_UNTIL = new ConcurrentHashMap<>();
+    private static final Map<UUID, Integer> IFRAMES_UNTIL = new ConcurrentHashMap<>();
+
+    private Bt3SparkingSystem() {}
+
+    public static float getMeter(UUID id) {
+        return METER.getOrDefault(id, 0f);
+    }
+
+    public static boolean isSparking(ServerPlayer player) {
+        if (player == null) return false;
+        Integer until = ACTIVE_UNTIL.get(player.getUUID());
+        return until != null && player.tickCount < until;
+    }
+
+    /** Ticks left on active Sparking, or 0 if inactive. */
+    public static int remainingSparkingTicks(ServerPlayer player) {
+        if (player == null) return 0;
+        Integer until = ACTIVE_UNTIL.get(player.getUUID());
+        if (until == null) return 0;
+        return Math.max(0, until - player.tickCount);
+    }
+
+    public static boolean hasIFrames(ServerPlayer player) {
+        if (player == null) return false;
+        Integer until = IFRAMES_UNTIL.get(player.getUUID());
+        return until != null && player.tickCount < until;
+    }
+
+    public static void grantIFrames(ServerPlayer player, int ticks) {
+        if (player == null) return;
+        IFRAMES_UNTIL.put(player.getUUID(), player.tickCount + Math.max(1, ticks));
+    }
+
+    public static void addMeter(ServerPlayer player, float amount) {
+        if (player == null || !XenoServerConfig.bt3SparkingEnabled) return;
+        if (amount <= 0f) return;
+        float cur = getMeter(player.getUUID());
+        METER.put(player.getUUID(), Math.min(100f, cur + amount));
+    }
+
+    /** @return true if activated */
+    public static boolean tryActivate(ServerPlayer player) {
+        if (player == null || !XenoServerConfig.bt3SparkingEnabled) return false;
+        if (isSparking(player)) return false;
+        float m = getMeter(player.getUUID());
+        if (m < 100f) {
+            player.displayClientMessage(Component.literal(
+                    "§7Sparking: " + Math.round(m) + "% — need full meter"), true);
+            return false;
+        }
+        METER.put(player.getUUID(), 0f);
+        int dur = Math.max(20, XenoServerConfig.sparkingDurationTicks);
+        ACTIVE_UNTIL.put(player.getUUID(), player.tickCount + dur);
+        player.displayClientMessage(Component.literal("§6§lSPARKING!"), true);
+        // Inventory (E) + HUD status icon
+        try {
+            net.bullettrain.xenopixelsmod.effect.XenoStatusEffectSync.ensure(
+                    player,
+                    net.bullettrain.xenopixelsmod.effect.ModEffects.SPARKING.get(),
+                    0,
+                    dur);
+            net.bullettrain.xenopixelsmod.effect.XenoStatusEffectSync.remove(
+                    player,
+                    net.bullettrain.xenopixelsmod.effect.ModEffects.SPARKING_READY.get());
+        } catch (Throwable ignored) {
+        }
+        return true;
+    }
+
+    public static float damageMult(ServerPlayer player) {
+        return isSparking(player) ? Math.max(1f, XenoServerConfig.sparkingDamageMult) : 1f;
+    }
+
+    @SubscribeEvent
+    public static void onHurt(LivingHurtEvent event) {
+        if (!XenoServerConfig.bt3CombatEnabled || !XenoServerConfig.bt3SparkingEnabled) return;
+
+        // i-frames during sonic sway / sparking dash
+        if (event.getEntity() instanceof ServerPlayer def && hasIFrames(def)) {
+            event.setCanceled(true);
+            event.setAmount(0f);
+            return;
+        }
+
+        if (event.getSource().getEntity() instanceof ServerPlayer atk) {
+            addMeter(atk, XenoServerConfig.sparkingBuildPerHit);
+            // Apply sparking damage mult
+            float mult = damageMult(atk);
+            if (mult > 1.001f) {
+                event.setAmount(event.getAmount() * mult);
+            }
+        }
+        if (event.getEntity() instanceof ServerPlayer def && event.getAmount() > 0.05f) {
+            addMeter(def, XenoServerConfig.sparkingBuildOnHurt);
+        }
+    }
+
+    @SubscribeEvent
+    public static void onTick(TickEvent.ServerTickEvent event) {
+        if (event.phase != TickEvent.Phase.END) return;
+        int t = event.getServer().getTickCount();
+        ACTIVE_UNTIL.entrySet().removeIf(e -> e.getValue() < t - 5);
+        IFRAMES_UNTIL.entrySet().removeIf(e -> e.getValue() < t - 5);
+    }
+
+    @SubscribeEvent
+    public static void onLogout(PlayerEvent.PlayerLoggedOutEvent event) {
+        Player p = event.getEntity();
+        if (p == null) return;
+        UUID id = p.getUUID();
+        METER.remove(id);
+        ACTIVE_UNTIL.remove(id);
+        IFRAMES_UNTIL.remove(id);
+    }
+}

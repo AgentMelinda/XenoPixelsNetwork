@@ -363,6 +363,37 @@ public class XenoCooldownHudOverlay implements IGuiOverlay {
                     XenoClientConfig.bt3ComboClient && XenoServerClientState.combo(),
                     step > 0));
         }
+        // Guard chip
+        {
+            boolean guarding = editing || Bt3CombatClient.isGuarding();
+            boolean counter = !editing && Bt3CombatClient.isCounterWindowFlash();
+            list.add(chip(counter ? "Counter!" : "Guard", counter ? "Ctr" : "Grd", "B",
+                    counter ? 0xFF80DEEA : 0xFFB0BEC5,
+                    guarding || counter, guarding ? 1f : (counter ? 0.85f : 0f), "",
+                    MeterMode.CHARGE, 0,
+                    XenoClientConfig.bt3GuardClient && XenoServerClientState.guard(),
+                    guarding || counter));
+        }
+        // Z-Burst / Ki cancel chips (mid-combo tools)
+        {
+            int zb = editing ? 0 : Bt3CombatClient.getZBurstCd();
+            float zf = editing ? 0f : (zb > 0 ? zb / 12f : 0f);
+            list.add(chip("Z-Burst", "ZB", "V", 0xFFCE93D8,
+                    zb > 0 || (moveCd && last == Bt3CombatPacket.Action.Z_BURST),
+                    zf > 0 ? zf : moveFrac, "",
+                    MeterMode.COOLDOWN, 0,
+                    XenoClientConfig.bt3ZBurstClient && XenoServerClientState.zBurst(),
+                    last == Bt3CombatPacket.Action.Z_BURST && moveCd));
+            int kb = editing ? 0 : Bt3CombatClient.getKiBlastCd();
+            float kf = editing ? 0f : (kb > 0 ? kb / 10f : 0f);
+            list.add(chip("Ki Cancel", "KiC", "C", 0xFF4FC3F7,
+                    kb > 0 || (moveCd && last == Bt3CombatPacket.Action.KI_BLAST_CANCEL),
+                    kf > 0 ? kf : moveFrac, "",
+                    MeterMode.COOLDOWN, 0,
+                    XenoClientConfig.bt3KiBlastCancelClient && XenoServerClientState.kiBlastCancel(),
+                    last == Bt3CombatPacket.Action.KI_BLAST_CANCEL && moveCd));
+        }
+
         if (XenoCooldownHudConfig.showCharge) {
             boolean charging = editing || Bt3CombatClient.isCharging();
             float charge = editing ? 0.7f : Bt3CombatClient.getChargeProgress();

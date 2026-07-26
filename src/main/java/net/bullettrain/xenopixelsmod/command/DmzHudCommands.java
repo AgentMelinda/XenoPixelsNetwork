@@ -103,7 +103,10 @@ public final class DmzHudCommands {
                                             + " dragon=" + d.bt3DragonDashEnabled
                                             + " dmzHud=" + d.dmzHudEnabled
                                             + " bootstrap=" + d.dmzContentBootstrap
-                                            + " formMult=" + d.formStatMultiplier), false);
+                                            + " formMult=" + d.formStatMultiplier
+                                            + " dummy=" + d.trainingDummyEnabled
+                                            + " quest=" + d.parallelQuestEnabled
+                                            + " mentor=" + d.mentorEnabled), false);
                             return 1;
                         }))
                 .then(Commands.literal("set")
@@ -117,7 +120,10 @@ public final class DmzHudCommands {
                 .executes(ctx -> {
                     ctx.getSource().sendSuccess(() -> Component.literal(
                             "Usage: /xenoserver <reload|status|set <key> <true|false>>\n"
-                                    + "keys: combat, combo, vanish, chase, backstep, finisher, charge, dragon, overcharge, dmzhud, bootstrap"),
+                                    + "keys: combat, combo, vanish, chase, backstep, finisher, charge, dragon, "
+                                    + "guard, counter, kiblast, zburst, lockcycle, punchcombo, protectmasters,\n"
+                                    + "rush, sonic, ultimate, sparking, impact, overcharge, dmzhud, bootstrap,\n"
+                                    + "dummy, quest, mentor"),
                             false);
                     return 1;
                 }));
@@ -143,9 +149,24 @@ public final class DmzHudCommands {
             case "finisher" -> XenoServerConfig.bt3FinisherEnabled = value;
             case "charge" -> XenoServerConfig.bt3ChargeAttackEnabled = value;
             case "dragon" -> XenoServerConfig.bt3DragonDashEnabled = value;
+            case "guard", "block" -> XenoServerConfig.bt3GuardEnabled = value;
+            case "counter", "supercounter" -> XenoServerConfig.bt3SuperCounterEnabled = value;
+            case "kiblast", "kicancel" -> XenoServerConfig.bt3KiBlastCancelEnabled = value;
+            case "zburst" -> XenoServerConfig.bt3ZBurstEnabled = value;
+            case "lockcycle", "lock" -> XenoServerConfig.bt3LockCycleEnabled = value;
+            case "punchcombo", "punchesonly", "combopunch" -> XenoServerConfig.bt3ComboPunchesOnly = value;
+            case "protectmasters", "masters" -> XenoServerConfig.protectDmzMasters = value;
+            case "rush", "rushchain" -> XenoServerConfig.bt3RushChainEnabled = value;
+            case "sonic", "sway" -> XenoServerConfig.bt3SonicSwayEnabled = value;
+            case "ultimate" -> XenoServerConfig.bt3UltimateEnabled = value;
+            case "sparking" -> XenoServerConfig.bt3SparkingEnabled = value;
+            case "transformimpact", "impact" -> XenoServerConfig.bt3TransformImpactEnabled = value;
             case "kiovercharge", "overcharge" -> XenoServerConfig.kiOverchargeEnabled = value;
             case "dmzhud" -> XenoServerConfig.dmzHudEnabled = value;
             case "bootstrap" -> XenoServerConfig.dmzContentBootstrap = value;
+            case "dummy", "trainingdummy" -> XenoServerConfig.trainingDummyEnabled = value;
+            case "quest", "quests", "parallelquest" -> XenoServerConfig.parallelQuestEnabled = value;
+            case "mentor", "mentors" -> XenoServerConfig.mentorEnabled = value;
             default -> {
                 source.sendFailure(Component.literal("Unknown key: " + key));
                 return 0;

@@ -29,9 +29,9 @@ public final class XenoCooldownHudConfig {
     public static boolean visible = true;
 
     /** Top-left anchor (screen pixels). */
-    public static int x = 0;
-    public static int y = 44;
-    public static float scale = 0.75f;
+    public static int x = 2;
+    public static int y = 84;
+    public static float scale = 0.87f;
 
     /** When true, hide the whole strip while nothing is on cooldown / charging. */
     public static boolean showOnlyWhenActive = false;

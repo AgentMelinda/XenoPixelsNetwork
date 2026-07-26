@@ -1,6 +1,5 @@
 package net.bullettrain.xenopixelsmod.client.hud;
 
-import com.lowdragmc.lowdraglib.gui.texture.ResourceTexture;
 import com.mojang.blaze3d.systems.RenderSystem;
 import net.bullettrain.xenopixelsmod.client.XenoHudSnapshot;
 import net.minecraft.client.Minecraft;
@@ -11,21 +10,8 @@ import net.minecraft.client.player.AbstractClientPlayer;
 import net.minecraft.resources.ResourceLocation;
 
 /**
- * LDLib-backed HUD view (Phase 4 of the LDLib HUD migration plan).
- *
- * <p>Per the Phase 2 spike decision ({@code docs/ldlib-api-notes.md}), LDLib's
- * full {@code Widget}/{@code WidgetGroup} tree requires a {@code ModularUI}
- * container to be safe, so this view does NOT build a widget tree. Instead it
- * drives LDLib's verified, container-free texture primitives
- * ({@link ResourceTexture}) directly from a Forge overlay, per the plan's own
- * fallback guidance.</p>
- *
- * <p>The HP/KI/Stamina bars and the portrait frame use custom angular
- * silhouettes (slanted parallelogram bars, an octagon portrait plate) rather
- * than plain rectangles — LDLib's texture primitives are rectangle-only, so
- * these non-rectangular shapes are drawn as per-row vanilla
- * {@code GuiGraphics.fill} spans, the same technique the legacy renderer
- * already uses for its own non-rectangular shapes (diamonds/circles/borders).</p>
+ * Alternate HUD view (no LDLib dependency). Uses vanilla {@link GuiGraphics}
+ * for parallelogram bars / portrait plate so the mod boots without LDLib installed.
  */
 public final class XenoHudView {
 

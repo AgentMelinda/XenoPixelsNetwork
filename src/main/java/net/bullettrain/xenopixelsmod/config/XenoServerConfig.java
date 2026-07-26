@@ -39,11 +39,76 @@ public final class XenoServerConfig {
     public static boolean bt3FinisherEnabled = true;
     public static boolean bt3ChargeAttackEnabled = true;
     public static boolean bt3DragonDashEnabled = true;
+    /** Hold-to-block; drains STM and reduces damage (BT3 / XV2 guard). */
+    public static boolean bt3GuardEnabled = true;
+    /** After taking a hit, vanish becomes a super-counter for a short window. */
+    public static boolean bt3SuperCounterEnabled = true;
+    /** Mid-combo ki blast that cancels the string. */
+    public static boolean bt3KiBlastCancelEnabled = true;
+    /** Mid-combo Z-Burst step-in toward lock-on target. */
+    public static boolean bt3ZBurstEnabled = true;
+    /** Client lock-on cycle next/prev (server flag allows the feature). */
+    public static boolean bt3LockCycleEnabled = true;
+    /**
+     * Combo string uses punch/uppercut anims only (no mixed DMZ kicks).
+     * Still triggered by normal attack mash.
+     */
+    public static boolean bt3ComboPunchesOnly = true;
+    /** Prevent players from damaging / knocking DMZ master NPCs. */
+    public static boolean protectDmzMasters = true;
+    /** Air chase / rush chain after knockup. */
+    public static boolean bt3RushChainEnabled = true;
+    /** Sonic sway side-step with brief i-frames. */
+    public static boolean bt3SonicSwayEnabled = true;
+    /** Ultimate skill slot (big KI smash). */
+    public static boolean bt3UltimateEnabled = true;
+    /** Sparking / limit-style meter. */
+    public static boolean bt3SparkingEnabled = true;
+    /** Transform impact ring when form changes. */
+    public static boolean bt3TransformImpactEnabled = true;
+
+    // --- Phase 3 progression ---
+    /** Spawnable training dummy + damage meter ({@code /xenotrain}). */
+    public static boolean trainingDummyEnabled = true;
+    /** Parallel quest lite ({@code /xenoquest}). */
+    public static boolean parallelQuestEnabled = true;
+    /** Mentor pairing assist ({@code /xenomentor}). */
+    public static boolean mentorEnabled = true;
+
+    public static float rushChainKiCost = 10.0f;
+    public static float rushChainDamageScale = 0.9f;
+    public static double rushChainRange = 16.0;
+    public static float sonicSwayStaminaCost = 6.0f;
+    public static int sonicSwayIFramesTicks = 8;
+    public static int sonicSwayCooldownTicks = 18;
+    public static float ultimateKiCost = 35.0f;
+    public static float ultimateDamageScale = 2.4f;
+    public static int ultimateCooldownTicks = 200;
+    public static float sparkingBuildPerHit = 6.0f;
+    public static float sparkingBuildOnHurt = 3.0f;
+    public static int sparkingDurationTicks = 100;
+    public static float sparkingDamageMult = 1.35f;
+    public static float transformImpactRadius = 3.5f;
+    public static float transformImpactKnock = 0.45f;
     /**
      * Chance (0..1) that chase dash / dragon-dash chase phase succeeds.
      * Default 0.50 (50%). Set 0.45 for 45%.
      */
     public static float chaseSuccessChance = 0.50f;
+
+    // --- Phase-1 combat balance ---
+    public static float guardDamageReduction = 0.55f;
+    public static float guardStaminaPerHit = 8.0f;
+    public static float guardStaminaPerSec = 3.0f;
+    public static int guardBreakStunTicks = 25;
+    public static int superCounterWindowTicks = 12;
+    public static float superCounterKiCost = 10.0f;
+    public static float superCounterDamageScale = 1.35f;
+    public static float kiBlastCancelKiCost = 6.0f;
+    public static float kiBlastCancelDamageScale = 0.85f;
+    public static float zBurstKiCost = 8.0f;
+    public static float zBurstDamageScale = 0.75f;
+    public static double zBurstRange = 8.0;
 
     // --- Form multipliers (public server balance: scales DMZ form / stack-form stat mults) ---
     /**
@@ -179,7 +244,49 @@ public final class XenoServerConfig {
         d.bt3FinisherEnabled = bt3FinisherEnabled;
         d.bt3ChargeAttackEnabled = bt3ChargeAttackEnabled;
         d.bt3DragonDashEnabled = bt3DragonDashEnabled;
+        d.bt3GuardEnabled = bt3GuardEnabled;
+        d.bt3SuperCounterEnabled = bt3SuperCounterEnabled;
+        d.bt3KiBlastCancelEnabled = bt3KiBlastCancelEnabled;
+        d.bt3ZBurstEnabled = bt3ZBurstEnabled;
+        d.bt3LockCycleEnabled = bt3LockCycleEnabled;
+        d.bt3ComboPunchesOnly = bt3ComboPunchesOnly;
+        d.protectDmzMasters = protectDmzMasters;
+        d.bt3RushChainEnabled = bt3RushChainEnabled;
+        d.bt3SonicSwayEnabled = bt3SonicSwayEnabled;
+        d.bt3UltimateEnabled = bt3UltimateEnabled;
+        d.bt3SparkingEnabled = bt3SparkingEnabled;
+        d.bt3TransformImpactEnabled = bt3TransformImpactEnabled;
+        d.trainingDummyEnabled = trainingDummyEnabled;
+        d.parallelQuestEnabled = parallelQuestEnabled;
+        d.mentorEnabled = mentorEnabled;
+        d.rushChainKiCost = rushChainKiCost;
+        d.rushChainDamageScale = rushChainDamageScale;
+        d.rushChainRange = rushChainRange;
+        d.sonicSwayStaminaCost = sonicSwayStaminaCost;
+        d.sonicSwayIFramesTicks = sonicSwayIFramesTicks;
+        d.sonicSwayCooldownTicks = sonicSwayCooldownTicks;
+        d.ultimateKiCost = ultimateKiCost;
+        d.ultimateDamageScale = ultimateDamageScale;
+        d.ultimateCooldownTicks = ultimateCooldownTicks;
+        d.sparkingBuildPerHit = sparkingBuildPerHit;
+        d.sparkingBuildOnHurt = sparkingBuildOnHurt;
+        d.sparkingDurationTicks = sparkingDurationTicks;
+        d.sparkingDamageMult = sparkingDamageMult;
+        d.transformImpactRadius = transformImpactRadius;
+        d.transformImpactKnock = transformImpactKnock;
         d.chaseSuccessChance = chaseSuccessChance;
+        d.guardDamageReduction = guardDamageReduction;
+        d.guardStaminaPerHit = guardStaminaPerHit;
+        d.guardStaminaPerSec = guardStaminaPerSec;
+        d.guardBreakStunTicks = guardBreakStunTicks;
+        d.superCounterWindowTicks = superCounterWindowTicks;
+        d.superCounterKiCost = superCounterKiCost;
+        d.superCounterDamageScale = superCounterDamageScale;
+        d.kiBlastCancelKiCost = kiBlastCancelKiCost;
+        d.kiBlastCancelDamageScale = kiBlastCancelDamageScale;
+        d.zBurstKiCost = zBurstKiCost;
+        d.zBurstDamageScale = zBurstDamageScale;
+        d.zBurstRange = zBurstRange;
         d.formStatMultiplier = formStatMultiplier; // boxed Float in Data
         d.formPerFormMultipliers = new LinkedHashMap<>(formPerFormMultipliers);
         d.formPerStatMultipliers = new LinkedHashMap<>(formPerStatMultipliers);
@@ -235,7 +342,49 @@ public final class XenoServerConfig {
         bt3FinisherEnabled = d.bt3FinisherEnabled;
         bt3ChargeAttackEnabled = d.bt3ChargeAttackEnabled;
         bt3DragonDashEnabled = d.bt3DragonDashEnabled;
+        bt3GuardEnabled = d.bt3GuardEnabled;
+        bt3SuperCounterEnabled = d.bt3SuperCounterEnabled;
+        bt3KiBlastCancelEnabled = d.bt3KiBlastCancelEnabled;
+        bt3ZBurstEnabled = d.bt3ZBurstEnabled;
+        bt3LockCycleEnabled = d.bt3LockCycleEnabled;
+        bt3ComboPunchesOnly = d.bt3ComboPunchesOnly;
+        protectDmzMasters = d.protectDmzMasters;
+        bt3RushChainEnabled = d.bt3RushChainEnabled;
+        bt3SonicSwayEnabled = d.bt3SonicSwayEnabled;
+        bt3UltimateEnabled = d.bt3UltimateEnabled;
+        bt3SparkingEnabled = d.bt3SparkingEnabled;
+        bt3TransformImpactEnabled = d.bt3TransformImpactEnabled;
+        trainingDummyEnabled = d.trainingDummyEnabled;
+        parallelQuestEnabled = d.parallelQuestEnabled;
+        mentorEnabled = d.mentorEnabled;
+        rushChainKiCost = Math.max(0f, d.rushChainKiCost);
+        rushChainDamageScale = d.rushChainDamageScale > 0f ? d.rushChainDamageScale : 0.9f;
+        rushChainRange = d.rushChainRange > 0 ? d.rushChainRange : 16.0;
+        sonicSwayStaminaCost = Math.max(0f, d.sonicSwayStaminaCost);
+        sonicSwayIFramesTicks = Math.max(2, Math.min(40, d.sonicSwayIFramesTicks <= 0 ? 8 : d.sonicSwayIFramesTicks));
+        sonicSwayCooldownTicks = Math.max(5, Math.min(80, d.sonicSwayCooldownTicks <= 0 ? 18 : d.sonicSwayCooldownTicks));
+        ultimateKiCost = Math.max(0f, d.ultimateKiCost);
+        ultimateDamageScale = d.ultimateDamageScale > 0f ? d.ultimateDamageScale : 2.4f;
+        ultimateCooldownTicks = Math.max(40, Math.min(600, d.ultimateCooldownTicks <= 0 ? 200 : d.ultimateCooldownTicks));
+        sparkingBuildPerHit = Math.max(0f, d.sparkingBuildPerHit);
+        sparkingBuildOnHurt = Math.max(0f, d.sparkingBuildOnHurt);
+        sparkingDurationTicks = Math.max(20, Math.min(400, d.sparkingDurationTicks <= 0 ? 100 : d.sparkingDurationTicks));
+        sparkingDamageMult = d.sparkingDamageMult > 1f ? d.sparkingDamageMult : 1.35f;
+        transformImpactRadius = d.transformImpactRadius > 0f ? d.transformImpactRadius : 3.5f;
+        transformImpactKnock = Math.max(0f, d.transformImpactKnock);
         chaseSuccessChance = d.chaseSuccessChance < 0f ? 0.50f : Math.max(0f, Math.min(1f, d.chaseSuccessChance));
+        guardDamageReduction = d.guardDamageReduction > 0f ? Math.min(0.95f, d.guardDamageReduction) : 0.55f;
+        guardStaminaPerHit = Math.max(0f, d.guardStaminaPerHit);
+        guardStaminaPerSec = Math.max(0f, d.guardStaminaPerSec);
+        guardBreakStunTicks = Math.max(5, Math.min(80, d.guardBreakStunTicks <= 0 ? 25 : d.guardBreakStunTicks));
+        superCounterWindowTicks = Math.max(4, Math.min(40, d.superCounterWindowTicks <= 0 ? 12 : d.superCounterWindowTicks));
+        superCounterKiCost = Math.max(0f, d.superCounterKiCost);
+        superCounterDamageScale = d.superCounterDamageScale > 0f ? d.superCounterDamageScale : 1.35f;
+        kiBlastCancelKiCost = Math.max(0f, d.kiBlastCancelKiCost);
+        kiBlastCancelDamageScale = d.kiBlastCancelDamageScale > 0f ? d.kiBlastCancelDamageScale : 0.85f;
+        zBurstKiCost = Math.max(0f, d.zBurstKiCost);
+        zBurstDamageScale = d.zBurstDamageScale > 0f ? d.zBurstDamageScale : 0.75f;
+        zBurstRange = d.zBurstRange > 0 ? d.zBurstRange : 8.0;
         // Boxed Float: null when key missing from older configs → keep default 1.0
         if (d.formStatMultiplier != null) {
             formStatMultiplier = clampFormStatMultiplier(d.formStatMultiplier);
@@ -596,7 +745,49 @@ public final class XenoServerConfig {
         public boolean bt3FinisherEnabled = true;
         public boolean bt3ChargeAttackEnabled = true;
         public boolean bt3DragonDashEnabled = true;
+        public boolean bt3GuardEnabled = true;
+        public boolean bt3SuperCounterEnabled = true;
+        public boolean bt3KiBlastCancelEnabled = true;
+        public boolean bt3ZBurstEnabled = true;
+        public boolean bt3LockCycleEnabled = true;
+        public boolean bt3ComboPunchesOnly = true;
+        public boolean protectDmzMasters = true;
+        public boolean bt3RushChainEnabled = true;
+        public boolean bt3SonicSwayEnabled = true;
+        public boolean bt3UltimateEnabled = true;
+        public boolean bt3SparkingEnabled = true;
+        public boolean bt3TransformImpactEnabled = true;
+        public boolean trainingDummyEnabled = true;
+        public boolean parallelQuestEnabled = true;
+        public boolean mentorEnabled = true;
+        public float rushChainKiCost = 10.0f;
+        public float rushChainDamageScale = 0.9f;
+        public double rushChainRange = 16.0;
+        public float sonicSwayStaminaCost = 6.0f;
+        public int sonicSwayIFramesTicks = 8;
+        public int sonicSwayCooldownTicks = 18;
+        public float ultimateKiCost = 35.0f;
+        public float ultimateDamageScale = 2.4f;
+        public int ultimateCooldownTicks = 200;
+        public float sparkingBuildPerHit = 6.0f;
+        public float sparkingBuildOnHurt = 3.0f;
+        public int sparkingDurationTicks = 100;
+        public float sparkingDamageMult = 1.35f;
+        public float transformImpactRadius = 3.5f;
+        public float transformImpactKnock = 0.45f;
         public float chaseSuccessChance = 0.50f;
+        public float guardDamageReduction = 0.55f;
+        public float guardStaminaPerHit = 8.0f;
+        public float guardStaminaPerSec = 3.0f;
+        public int guardBreakStunTicks = 25;
+        public int superCounterWindowTicks = 12;
+        public float superCounterKiCost = 10.0f;
+        public float superCounterDamageScale = 1.35f;
+        public float kiBlastCancelKiCost = 6.0f;
+        public float kiBlastCancelDamageScale = 0.85f;
+        public float zBurstKiCost = 8.0f;
+        public float zBurstDamageScale = 0.75f;
+        public double zBurstRange = 8.0;
         /**
          * Global form bonus scale (see {@link XenoServerConfig#formStatMultiplier}).
          * Boxed so older JSON without the key stays {@code null} (use default 1.0).

@@ -51,6 +51,8 @@ minecraft {
 mixin {
     add sourceSets.main, "mixins.${mod_id}.refmap.json"
     config "${mod_id}.mixins.json"
+    // Optional Ballistix / Voltaic / VS2-targeted mixins (gated by ConditionalMixinPlugin)
+    config "${mod_id}.compat.mixins.json"
 }
 
 sourceSets.main.resources {
@@ -152,6 +154,16 @@ dependencies {
         exclude group: 'org.valkyrienskies.core', module: ''
     }
 
+    // ---- Ballistix + Voltaic (optional at runtime; compileOnly + fg.deobf for mixins) ----
+    // flatDir jars: libs/voltaic-1.0.11.jar , libs/ballistix-1.0.9.jar
+    // Mixins gated by ConditionalMixinPlugin. Run: ./gradlew runClient -PxenoWithBallistix
+    compileOnly fg.deobf("blank:voltaic:1.0.11")
+    compileOnly fg.deobf("blank:ballistix:1.0.9")
+    if (project.hasProperty('xenoWithBallistix')) {
+        library fg.deobf("blank:voltaic:1.0.11")
+        library fg.deobf("blank:ballistix:1.0.9")
+    }
+
     implementation fg.deobf("curse.maven:dragonminez-1136088:8469416")
     implementation fg.deobf('software.bernie.geckolib:geckolib-forge-1.20.1:4.8.3')
     implementation 'com.eliotlash.mclib:mclib:20'
@@ -243,7 +255,7 @@ jar {
                 'Implementation-Version'  : project.version,
                 'Implementation-Vendor'   : mod_authors,
                 'Implementation-Timestamp': new Date().format("yyyy-MM-dd'T'HH:mm:ssZ"),
-                'MixinConfigs'            : "${mod_id}.mixins.json"
+                'MixinConfigs'            : "${mod_id}.mixins.json,${mod_id}.compat.mixins.json"
         ])
     }
 }

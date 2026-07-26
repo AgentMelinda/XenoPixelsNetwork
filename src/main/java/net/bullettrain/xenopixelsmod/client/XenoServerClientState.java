@@ -52,4 +52,28 @@ public final class XenoServerClientState {
     public static boolean dragonDash() {
         return data.bt3CombatEnabled && data.bt3DragonDashEnabled;
     }
+
+    public static boolean guard() {
+        return data.bt3CombatEnabled && data.bt3GuardEnabled;
+    }
+
+    public static boolean superCounter() {
+        return data.bt3CombatEnabled && data.bt3SuperCounterEnabled;
+    }
+
+    public static boolean kiBlastCancel() {
+        return data.bt3CombatEnabled && data.bt3KiBlastCancelEnabled;
+    }
+
+    public static boolean zBurst() {
+        return data.bt3CombatEnabled && data.bt3ZBurstEnabled;
+    }
+
+    public static boolean lockCycle() {
+        return data.bt3CombatEnabled && data.bt3LockCycleEnabled;
+    }
+
+    public static boolean comboPunchesOnly() {
+        return data.bt3CombatEnabled && data.bt3ComboEnabled && data.bt3ComboPunchesOnly;
+    }
 }

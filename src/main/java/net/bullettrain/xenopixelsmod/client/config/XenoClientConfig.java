@@ -48,6 +48,11 @@ public final class XenoClientConfig {
     public static boolean bt3BackstepClient = true;
     public static boolean bt3ChargeAttackClient = true;
     public static boolean bt3DragonDashClient = true;
+    public static boolean bt3GuardClient = true;
+    public static boolean bt3SuperCounterClient = true;
+    public static boolean bt3KiBlastCancelClient = true;
+    public static boolean bt3ZBurstClient = true;
+    public static boolean bt3LockCycleClient = true;
     public static boolean bt3CombatSfx = true;
     public static boolean bt3ChargeGlow = true;
     /** Client afterimage trails for vanish-style moves. */
@@ -108,6 +113,11 @@ public final class XenoClientConfig {
         d.bt3BackstepClient = bt3BackstepClient;
         d.bt3ChargeAttackClient = bt3ChargeAttackClient;
         d.bt3DragonDashClient = bt3DragonDashClient;
+        d.bt3GuardClient = bt3GuardClient;
+        d.bt3SuperCounterClient = bt3SuperCounterClient;
+        d.bt3KiBlastCancelClient = bt3KiBlastCancelClient;
+        d.bt3ZBurstClient = bt3ZBurstClient;
+        d.bt3LockCycleClient = bt3LockCycleClient;
         d.bt3CombatSfx = bt3CombatSfx;
         d.bt3ChargeGlow = bt3ChargeGlow;
         d.bt3Afterimage = bt3Afterimage;
@@ -138,6 +148,11 @@ public final class XenoClientConfig {
         bt3BackstepClient = d.bt3BackstepClient;
         bt3ChargeAttackClient = d.bt3ChargeAttackClient;
         bt3DragonDashClient = d.bt3DragonDashClient;
+        bt3GuardClient = d.bt3GuardClient;
+        bt3SuperCounterClient = d.bt3SuperCounterClient;
+        bt3KiBlastCancelClient = d.bt3KiBlastCancelClient;
+        bt3ZBurstClient = d.bt3ZBurstClient;
+        bt3LockCycleClient = d.bt3LockCycleClient;
         bt3CombatSfx = d.bt3CombatSfx;
         bt3ChargeGlow = d.bt3ChargeGlow;
         bt3Afterimage = d.bt3Afterimage;
@@ -166,6 +181,11 @@ public final class XenoClientConfig {
         public boolean bt3BackstepClient = true;
         public boolean bt3ChargeAttackClient = true;
         public boolean bt3DragonDashClient = true;
+        public boolean bt3GuardClient = true;
+        public boolean bt3SuperCounterClient = true;
+        public boolean bt3KiBlastCancelClient = true;
+        public boolean bt3ZBurstClient = true;
+        public boolean bt3LockCycleClient = true;
         public boolean bt3CombatSfx = true;
         public boolean bt3ChargeGlow = true;
         public boolean bt3Afterimage = true;

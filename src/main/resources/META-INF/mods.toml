@@ -76,3 +76,30 @@ description='''${mod_description}'''
     versionRange="[3.12.0,3.13)"
     ordering="AFTER"
     side="BOTH"
+# VS2 — already on our compile/runtime classpath; optional soft dep for pack docs
+[[dependencies.${mod_id}]]
+    modId="valkyrienskies"
+    mandatory=false
+    versionRange="[2.3,)"
+    ordering="AFTER"
+    side="BOTH"
+# Ballistix + Voltaic — optional; mixins load only when both present (ConditionalMixinPlugin)
+[[dependencies.${mod_id}]]
+    modId="voltaic"
+    mandatory=false
+    versionRange="[1.0,)"
+    ordering="AFTER"
+    side="BOTH"
+[[dependencies.${mod_id}]]
+    modId="ballistix"
+    mandatory=false
+    versionRange="[1.0,)"
+    ordering="AFTER"
+    side="BOTH"
+# Create — optional soft budget hooks when present
+[[dependencies.${mod_id}]]
+    modId="create"
+    mandatory=false
+    versionRange="[0.5,)"
+    ordering="AFTER"
+    side="BOTH"

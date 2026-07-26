@@ -2,6 +2,7 @@ package net.bullettrain.xenopixelsmod.client.combat;
 
 import com.dragonminez.client.events.DMZClientEvent;
 import com.dragonminez.client.events.LockOnEvent;
+import com.dragonminez.client.util.KeyBinds;
 import com.mojang.blaze3d.platform.InputConstants;
 import net.bullettrain.xenopixelsmod.XenoPixelsMod;
 import net.bullettrain.xenopixelsmod.client.DmzClientStats;
@@ -66,6 +67,46 @@ public final class Bt3CombatClient {
     public static final KeyMapping DRAGON_DASH = new KeyMapping(
             "key.xenopixelsmod.bt3_dragon_dash", KeyConflictContext.IN_GAME,
             InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_N, "key.categories.xenopixelsmod");
+    /**
+     * Hold to guard / block (STM drain).
+     * Default matches DMZ {@code block_key} (right-click); we claim that binding at runtime
+     * and unbind DMZ's Block so only XenoPixels guard runs.
+     */
+    public static final KeyMapping GUARD = new KeyMapping(
+            "key.xenopixelsmod.bt3_guard", KeyConflictContext.IN_GAME,
+            InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_B, "key.categories.xenopixelsmod");
+    /** Mid-combo Z-Burst step-in. */
+    public static final KeyMapping Z_BURST = new KeyMapping(
+            "key.xenopixelsmod.bt3_zburst", KeyConflictContext.IN_GAME,
+            InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_V, "key.categories.xenopixelsmod");
+    /** Mid-combo ki blast cancel. */
+    public static final KeyMapping KI_BLAST_CANCEL = new KeyMapping(
+            "key.xenopixelsmod.bt3_ki_blast_cancel", KeyConflictContext.IN_GAME,
+            InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_C, "key.categories.xenopixelsmod");
+    /** Cycle lock-on to next target. */
+    public static final KeyMapping LOCK_NEXT = new KeyMapping(
+            "key.xenopixelsmod.bt3_lock_next", KeyConflictContext.IN_GAME,
+            InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_RIGHT_BRACKET, "key.categories.xenopixelsmod");
+    /** Cycle lock-on to previous target. */
+    public static final KeyMapping LOCK_PREV = new KeyMapping(
+            "key.xenopixelsmod.bt3_lock_prev", KeyConflictContext.IN_GAME,
+            InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_LEFT_BRACKET, "key.categories.xenopixelsmod");
+    /** Sonic sway left (side-step + i-frames). */
+    public static final KeyMapping SONIC_SWAY_LEFT = new KeyMapping(
+            "key.xenopixelsmod.bt3_sonic_left", KeyConflictContext.IN_GAME,
+            InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_COMMA, "key.categories.xenopixelsmod");
+    /** Sonic sway right. */
+    public static final KeyMapping SONIC_SWAY_RIGHT = new KeyMapping(
+            "key.xenopixelsmod.bt3_sonic_right", KeyConflictContext.IN_GAME,
+            InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_PERIOD, "key.categories.xenopixelsmod");
+    /** Ultimate skill smash. */
+    public static final KeyMapping ULTIMATE = new KeyMapping(
+            "key.xenopixelsmod.bt3_ultimate", KeyConflictContext.IN_GAME,
+            InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_U, "key.categories.xenopixelsmod");
+    /** Activate sparking when meter full. */
+    public static final KeyMapping SPARKING = new KeyMapping(
+            "key.xenopixelsmod.bt3_sparking", KeyConflictContext.IN_GAME,
+            InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_Y, "key.categories.xenopixelsmod");
 
     private static final int COMBO_WINDOW_TICKS = 18;
     private static final int MOVE_COOLDOWN_TICKS = 8;
@@ -86,8 +127,44 @@ public final class Bt3CombatClient {
     private static int chargeTicks;
     private static boolean chargeFullyGlowed;
     private static boolean fistWasDown, kickWasDown, dragonWasDown;
+    private static boolean guardWasDown;
+    private static boolean clientGuarding;
+    private static int zBurstCd;
+    private static int kiBlastCd;
+    private static int counterFlashTicks;
+    private static int sonicCd;
+    private static int ultimateCd;
+    private static float clientSparkingMeter;
 
     private Bt3CombatClient() {}
+
+    public static boolean isGuarding() {
+        return clientGuarding;
+    }
+
+    public static boolean isCounterWindowFlash() {
+        return counterFlashTicks > 0;
+    }
+
+    public static int getZBurstCd() {
+        return Math.max(0, zBurstCd);
+    }
+
+    public static int getKiBlastCd() {
+        return Math.max(0, kiBlastCd);
+    }
+
+    public static int getSonicCd() {
+        return Math.max(0, sonicCd);
+    }
+
+    public static int getUltimateCd() {
+        return Math.max(0, ultimateCd);
+    }
+
+    public static float getSparkingMeter() {
+        return Math.max(0f, Math.min(1f, clientSparkingMeter / 100f));
+    }
 
     /** 0..1 current charge progress for glow renderer. */
     public static float getChargeProgress() {
@@ -159,6 +236,8 @@ public final class Bt3CombatClient {
     }
 
     private static boolean scrubbedDualWasdBinds;
+    /** One-shot per session: take DMZ Block key for our Guard. */
+    private static boolean claimedDmzBlockKey;
 
     @Mod.EventBusSubscriber(modid = XenoPixelsMod.MOD_ID, bus = Mod.EventBusSubscriber.Bus.MOD, value = Dist.CLIENT)
     public static class ModBus {
@@ -171,6 +250,15 @@ public final class Bt3CombatClient {
             event.register(CHARGE_FIST);
             event.register(CHARGE_KICK);
             event.register(DRAGON_DASH);
+            event.register(GUARD);
+            event.register(Z_BURST);
+            event.register(KI_BLAST_CANCEL);
+            event.register(LOCK_NEXT);
+            event.register(LOCK_PREV);
+            event.register(SONIC_SWAY_LEFT);
+            event.register(SONIC_SWAY_RIGHT);
+            event.register(ULTIMATE);
+            event.register(SPARKING);
         }
     }
 
@@ -188,16 +276,37 @@ public final class Bt3CombatClient {
                 scrubDualWasdBinds(mc);
             }
 
+            // Claim DMZ Block binding for XenoPixels Guard (unbind DMZ block_key).
+            if (!claimedDmzBlockKey && mc.player != null) {
+                claimedDmzBlockKey = true;
+                claimDmzBlockKey(mc);
+            }
+
             if (mc.player == null || mc.level == null || mc.screen != null) {
+                if (clientGuarding) {
+                    clientGuarding = false;
+                    ModNetwork.CHANNEL.sendToServer(new Bt3CombatPacket(
+                            Bt3CombatPacket.Action.GUARD, -1, 0));
+                }
                 resetCharge();
                 return;
             }
             if (!XenoClientConfig.bt3CombatClient || !XenoServerClientState.combat()) {
+                if (clientGuarding) {
+                    clientGuarding = false;
+                    ModNetwork.CHANNEL.sendToServer(new Bt3CombatPacket(
+                            Bt3CombatPacket.Action.GUARD, -1, 0));
+                }
                 resetCharge();
                 return;
             }
 
             if (moveCooldown > 0) moveCooldown--;
+            if (zBurstCd > 0) zBurstCd--;
+            if (kiBlastCd > 0) kiBlastCd--;
+            if (sonicCd > 0) sonicCd--;
+            if (ultimateCd > 0) ultimateCd--;
+            if (counterFlashTicks > 0) counterFlashTicks--;
             if (comboTicksLeft > 0) {
                 comboTicksLeft--;
                 if (comboTicksLeft == 0) comboStep = 0;
@@ -207,6 +316,8 @@ public final class Bt3CombatClient {
 
             // Charge fist/kick always; dragon only while locked (see tickCharge)
             tickCharge(mc);
+            tickGuard(mc);
+            tickPhase1Keys(mc);
 
             LivingEntity locked = LockOnEvent.getLockedTarget();
             if (locked != null && !locked.isAlive()) locked = null;
@@ -238,7 +349,17 @@ public final class Bt3CombatClient {
                 }
                 if (forwardDown && !forwardWasDown) {
                     if (lastForwardTapMs > 0 && now - lastForwardTapMs <= DOUBLE_TAP_MS) {
-                        tryMove(mc, locked, Bt3CombatPacket.Action.CHASE_DASH, 0);
+                        // Air rush chain when target is airborne; else normal chase
+                        boolean air = locked != null && (!locked.onGround()
+                                || locked.getDeltaMovement().y > 0.08
+                                || locked.getY() - mc.player.getY() > 1.2);
+                        if (air && XenoClientConfig.bt3CombatClient
+                                && XenoServerClientState.get().bt3RushChainEnabled
+                                && comboStep > 0) {
+                            tryRushChain(mc, locked);
+                        } else {
+                            tryMove(mc, locked, Bt3CombatPacket.Action.CHASE_DASH, 0);
+                        }
                         lastForwardTapMs = 0;
                     } else {
                         lastForwardTapMs = now;
@@ -300,6 +421,50 @@ public final class Bt3CombatClient {
             }
         }
 
+        /**
+         * Steal DMZ's Block key for XenoPixels Guard and leave DMZ {@code block_key} unbound.
+         * Default DMZ binding is right-click (mouse 1); if the player rebound Block, we take that key instead.
+         */
+        private static void claimDmzBlockKey(Minecraft mc) {
+            try {
+                KeyMapping dmzBlock = KeyBinds.BLOCK_KEY;
+                if (dmzBlock == null) {
+                    XenoPixelsMod.LOGGER.debug("DMZ BLOCK_KEY missing; skip claim");
+                    return;
+                }
+                if (dmzBlock.isUnbound()) {
+                    // Already free — ensure our Guard has a usable default (RMB)
+                    if (GUARD.isUnbound()) {
+                        GUARD.setKey(InputConstants.Type.MOUSE.getOrCreate(GLFW.GLFW_MOUSE_BUTTON_RIGHT));
+                        KeyMapping.resetMapping();
+                        mc.options.save();
+                        XenoPixelsMod.LOGGER.info(
+                                "DMZ Block already unbound; set XenoPixels Guard to right-click");
+                    }
+                    return;
+                }
+
+                InputConstants.Key dmzKey = dmzBlock.getKey();
+                boolean guardAlreadySame = !GUARD.isUnbound()
+                        && GUARD.getKey().getType() == dmzKey.getType()
+                        && GUARD.getKey().getValue() == dmzKey.getValue();
+
+                if (!guardAlreadySame) {
+                    GUARD.setKey(dmzKey);
+                }
+                dmzBlock.setKey(InputConstants.UNKNOWN);
+                KeyMapping.resetMapping();
+                mc.options.save();
+
+                String keyName = dmzKey.getDisplayName().getString();
+                XenoPixelsMod.LOGGER.info(
+                        "Claimed DMZ Block key [{}] for XenoPixels Guard; unbound key.dragonminez.block_key",
+                        keyName);
+            } catch (Throwable t) {
+                XenoPixelsMod.LOGGER.warn("Failed to claim DMZ Block key for Guard: {}", t.toString());
+            }
+        }
+
         @SubscribeEvent
         public static void onAttackStart(DMZClientEvent.PlayerAttackStart event) {
             // Combo: lock-on OR freelook (not lock-only)
@@ -330,10 +495,16 @@ public final class Bt3CombatClient {
             boolean finisher = XenoServerClientState.finisher()
                     && comboStep > 0
                     && comboStep % finisherEvery == 0;
+            // Punch-only string: force punch/uppercut poses over mixed DMZ kicks
+            if (XenoServerClientState.comboPunchesOnly() && XenoClientConfig.bt3CombatAnims) {
+                DmzAnimHelperClient.playLocalComboPunch(player, comboStep, finisher);
+            }
             // No combo lunge — stay planted while mashing
             int tid = target != null ? target.getId() : -1;
             ModNetwork.CHANNEL.sendToServer(new Bt3CombatPacket(
                     Bt3CombatPacket.Action.COMBO_HIT, tid, comboStep));
+            clientSparkingMeter = Math.min(100f, clientSparkingMeter
+                    + Math.max(1f, XenoServerClientState.get().sparkingBuildPerHit * 0.5f));
         }
 
         @SubscribeEvent
@@ -343,6 +514,198 @@ public final class Bt3CombatClient {
                 event.setCanceled(true);
                 event.setSwingHand(false);
             }
+            // Guard: no vanilla attack / use (RMB place) while holding block
+            if (clientGuarding && (event.isAttack() || event.isUseItem())) {
+                event.setCanceled(true);
+                event.setSwingHand(false);
+            }
+            // If Guard is bound to use-item key (default RMB), cancel use while Guard is held
+            // even before clientGuarding flips on the same tick edge
+            if (XenoClientConfig.bt3GuardClient && XenoServerClientState.guard()
+                    && GUARD.isDown() && chargeMode == ChargeMode.NONE
+                    && event.isUseItem()) {
+                event.setCanceled(true);
+                event.setSwingHand(false);
+            }
+        }
+
+        @SubscribeEvent
+        public static void onClientHurt(net.minecraftforge.event.entity.living.LivingHurtEvent event) {
+            Minecraft mc = Minecraft.getInstance();
+            if (mc.player == null || event.getEntity() != mc.player) return;
+            if (!XenoClientConfig.bt3SuperCounterClient || !XenoServerClientState.superCounter()) return;
+            if (event.getAmount() <= 0.05f) return;
+            // Visual only — server owns the real counter window
+            counterFlashTicks = Math.max(counterFlashTicks,
+                    Math.max(4, XenoServerClientState.get().superCounterWindowTicks));
+            mc.player.displayClientMessage(Component.literal("§bCounter window — vanish!"), true);
+        }
+    }
+
+    private static void tickGuard(Minecraft mc) {
+        boolean want = XenoClientConfig.bt3GuardClient && XenoServerClientState.guard()
+                && GUARD.isDown() && chargeMode == ChargeMode.NONE;
+        LocalPlayer local = mc.player;
+        if (want && !guardWasDown) {
+            clientGuarding = true;
+            ModNetwork.CHANNEL.sendToServer(new Bt3CombatPacket(Bt3CombatPacket.Action.GUARD, -1, 1));
+            // Local DMZ block pose (base.block) — same family as DMZ hold animations
+            if (local != null) {
+                DmzAnimHelperClient.playLocalBlockStart(local);
+            }
+        } else if (!want && guardWasDown && clientGuarding) {
+            clientGuarding = false;
+            ModNetwork.CHANNEL.sendToServer(new Bt3CombatPacket(Bt3CombatPacket.Action.GUARD, -1, 0));
+            if (local != null) {
+                DmzAnimHelperClient.playLocalBlockStop(local);
+            }
+        } else if (!want) {
+            if (clientGuarding && local != null) {
+                DmzAnimHelperClient.playLocalBlockStop(local);
+            }
+            clientGuarding = false;
+        } else if (want && local != null && XenoClientConfig.bt3CombatAnims) {
+            // Re-assert hold pose periodically so other anims don't leave us idle
+            if (local.tickCount % 20 == 0) {
+                DmzAnimHelperClient.playLocalBlockStart(local);
+            }
+        }
+        guardWasDown = want;
+    }
+
+    private static void tickPhase1Keys(Minecraft mc) {
+        LivingEntity locked = LockOnEvent.getLockedTarget();
+        if (locked != null && !locked.isAlive()) locked = null;
+
+        // Lock-on cycle
+        if (XenoClientConfig.bt3LockCycleClient && XenoServerClientState.lockCycle()) {
+            while (LOCK_NEXT.consumeClick()) {
+                LockOnCycle.cycle(1);
+            }
+            while (LOCK_PREV.consumeClick()) {
+                LockOnCycle.cycle(-1);
+            }
+        } else {
+            while (LOCK_NEXT.consumeClick()) {}
+            while (LOCK_PREV.consumeClick()) {}
+        }
+
+        // Z-Burst mid-combo
+        while (Z_BURST.consumeClick()) {
+            if (!XenoClientConfig.bt3ZBurstClient || !XenoServerClientState.zBurst()) continue;
+            if (clientGuarding || chargeMode != ChargeMode.NONE) continue;
+            if (comboStep <= 0 || comboTicksLeft <= 0) {
+                if (mc.player != null) {
+                    mc.player.displayClientMessage(Component.literal("§7Z-Burst: mid-combo only"), true);
+                }
+                continue;
+            }
+            if (locked == null) {
+                if (mc.player != null) {
+                    mc.player.displayClientMessage(Component.literal("§7Z-Burst: lock on first"), true);
+                }
+                continue;
+            }
+            if (zBurstCd > 0 || moveCooldown > 0) continue;
+            ModNetwork.CHANNEL.sendToServer(new Bt3CombatPacket(
+                    Bt3CombatPacket.Action.Z_BURST, locked.getId(), comboStep));
+            zBurstCd = 12;
+            startMoveCooldown(Bt3CombatPacket.Action.Z_BURST);
+            comboTicksLeft = COMBO_WINDOW_TICKS;
+        }
+
+        // Ki blast cancel mid-combo
+        while (KI_BLAST_CANCEL.consumeClick()) {
+            if (!XenoClientConfig.bt3KiBlastCancelClient || !XenoServerClientState.kiBlastCancel()) continue;
+            if (clientGuarding || chargeMode != ChargeMode.NONE) continue;
+            if (comboStep <= 0 || comboTicksLeft <= 0) {
+                if (mc.player != null) {
+                    mc.player.displayClientMessage(Component.literal("§7Ki cancel: mid-combo only"), true);
+                }
+                continue;
+            }
+            if (kiBlastCd > 0) continue;
+            int tid = locked != null ? locked.getId() : -1;
+            ModNetwork.CHANNEL.sendToServer(new Bt3CombatPacket(
+                    Bt3CombatPacket.Action.KI_BLAST_CANCEL, tid, comboStep));
+            kiBlastCd = 10;
+            // Cancel string
+            comboStep = 0;
+            comboTicksLeft = 0;
+            startMoveCooldown(Bt3CombatPacket.Action.KI_BLAST_CANCEL);
+            clientSparkingMeter = Math.min(100f, clientSparkingMeter + 4f);
+        }
+
+        // Sonic sway
+        while (SONIC_SWAY_LEFT.consumeClick()) {
+            trySonic(mc, -1);
+        }
+        while (SONIC_SWAY_RIGHT.consumeClick()) {
+            trySonic(mc, 1);
+        }
+
+        // Ultimate
+        while (ULTIMATE.consumeClick()) {
+            if (!XenoServerClientState.get().bt3UltimateEnabled) continue;
+            if (clientGuarding || chargeMode != ChargeMode.NONE || ultimateCd > 0) continue;
+            int tid = locked != null ? locked.getId() : -1;
+            if (tid < 0) {
+                LivingEntity look = findLookTarget(mc, 10.0);
+                tid = look != null ? look.getId() : -1;
+            }
+            ModNetwork.CHANNEL.sendToServer(new Bt3CombatPacket(
+                    Bt3CombatPacket.Action.ULTIMATE, tid, 0));
+            ultimateCd = Math.max(40, XenoServerClientState.get().ultimateCooldownTicks);
+            startMoveCooldown(Bt3CombatPacket.Action.ULTIMATE);
+            clientSparkingMeter = Math.min(100f, clientSparkingMeter + 12f);
+        }
+
+        // Sparking activate
+        while (SPARKING.consumeClick()) {
+            if (!XenoServerClientState.get().bt3SparkingEnabled) continue;
+            ModNetwork.CHANNEL.sendToServer(new Bt3CombatPacket(
+                    Bt3CombatPacket.Action.SPARKING, -1, 0));
+            // Optimistic full-meter clear for HUD; server is authority
+            if (clientSparkingMeter >= 99f) clientSparkingMeter = 0f;
+        }
+    }
+
+    private static void trySonic(Minecraft mc, int side) {
+        if (!XenoServerClientState.get().bt3SonicSwayEnabled) return;
+        if (clientGuarding || chargeMode != ChargeMode.NONE) return;
+        if (sonicCd > 0 || moveCooldown > 0) return;
+        LocalPlayer p = mc.player;
+        if (p == null) return;
+        Vec3 from = p.position();
+        ModNetwork.CHANNEL.sendToServer(new Bt3CombatPacket(
+                Bt3CombatPacket.Action.SONIC_SWAY, -1, side));
+        sonicCd = Math.max(8, XenoServerClientState.get().sonicSwayCooldownTicks);
+        startMoveCooldown(Bt3CombatPacket.Action.SONIC_SWAY);
+        // Local afterimage prediction
+        try {
+            float yaw = p.getYRot() * ((float) Math.PI / 180F);
+            Vec3 right = new Vec3(-Math.sin(yaw + Math.PI / 2), 0, Math.cos(yaw + Math.PI / 2));
+            if (side < 0) right = right.scale(-1);
+            Vec3 to = from.add(right.scale(2.4));
+            net.bullettrain.xenopixelsmod.combat.AfterimageFx.spawnTrailClient(p, from, to, 5);
+        } catch (Throwable ignored) {
+        }
+    }
+
+    private static void tryRushChain(Minecraft mc, LivingEntity locked) {
+        if (locked == null || mc.player == null) return;
+        if (moveCooldown > 0) return;
+        ModNetwork.CHANNEL.sendToServer(new Bt3CombatPacket(
+                Bt3CombatPacket.Action.RUSH_CHAIN, locked.getId(), comboStep));
+        startMoveCooldown(Bt3CombatPacket.Action.RUSH_CHAIN);
+        comboTicksLeft = COMBO_WINDOW_TICKS;
+        clientSparkingMeter = Math.min(100f, clientSparkingMeter + 8f);
+        // Local snap prediction
+        try {
+            Vec3 land = Bt3CombatPacket.chaseLanding(mc.player, locked);
+            mc.player.setPos(land.x, locked.getY(), land.z);
+            mc.player.setDeltaMovement(Vec3.ZERO);
+        } catch (Throwable ignored) {
         }
     }
 
@@ -565,6 +928,11 @@ public final class Bt3CombatClient {
         for (var e : mc.level.getEntities(player, player.getBoundingBox().inflate(range),
                 ent -> ent instanceof LivingEntity le && le.isAlive() && le != player)) {
             if (!(e instanceof LivingEntity living)) continue;
+            // Never freelook-target DMZ masters
+            try {
+                if (net.bullettrain.xenopixelsmod.event.DmzMasterProtection.isDmzMaster(living)) continue;
+            } catch (Throwable ignored) {
+            }
             Vec3 to = living.getEyePosition(1f).subtract(eye);
             double dist = to.length();
             if (dist > range || dist < 0.5) continue;

@@ -2,6 +2,7 @@ package net.bullettrain.xenopixelsmod;
 
 import com.mojang.logging.LogUtils;
 import net.bullettrain.xenopixelsmod.block.ModBlocks;
+import net.bullettrain.xenopixelsmod.effect.ModEffects;
 import net.bullettrain.xenopixelsmod.item.ModCreativeModTabs;
 import net.bullettrain.xenopixelsmod.item.ModsItems;
 import net.bullettrain.xenopixelsmod.network.ModNetwork;
@@ -29,6 +30,8 @@ public class XenoPixelsMod {
 
         ModsItems.register(modEventBus); // -- mods item register
         ModBlocks.register(modEventBus);
+        net.bullettrain.xenopixelsmod.block.entity.ModBlockEntities.register(modEventBus);
+        ModEffects.register(modEventBus);
         ModNetwork.register();
 
         ModCreativeModTabs.register(modEventBus); // -- creative tab register
@@ -42,10 +45,12 @@ public class XenoPixelsMod {
     private void commonSetup(final FMLCommonSetupEvent event) {
         event.enqueueWork(() -> {
             net.bullettrain.xenopixelsmod.config.XenoServerConfig.load();
+            net.bullettrain.xenopixelsmod.config.XenoPerfConfig.load();
             net.bullettrain.xenopixelsmod.features.FeatureManager.bootstrap();
             if (net.bullettrain.xenopixelsmod.config.XenoServerConfig.dmzContentBootstrap) {
                 net.bullettrain.xenopixelsmod.dmz.DmzContentBootstrap.installBundledContent();
             }
+            LOGGER.info("Perf: {}", net.bullettrain.xenopixelsmod.config.XenoPerfConfig.statusLine());
         });
     }
 

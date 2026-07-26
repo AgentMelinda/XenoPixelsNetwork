@@ -81,14 +81,44 @@ public final class FeatureStatus {
                 Tier.LIVE,
                 "event.DmzHooks",
                 "Listens to DMZ TP/health events (safe no-op / extension points). LIVE wiring."));
+        list.add(new Entry(
+                "training_dummy",
+                "Training Dummy + Damage Meter",
+                Tier.LIVE,
+                "features.progression + /xenotrain",
+                "Armor-stand dummy, session/total damage meter, skill-point milestones. LIVE."));
+        list.add(new Entry(
+                "super_souls",
+                "Super Souls",
+                Tier.LIVE,
+                "features.progression.SuperSoulCatalog + SuperSoulItem",
+                "Equipable passives (damage, guard, sparking, ultimate). /xenosoul + items. LIVE."));
+        list.add(new Entry(
+                "combat_skills",
+                "Combat Skill Tree (slim)",
+                Tier.LIVE,
+                "features.progression.CombatSkills + /xenoskill",
+                "4 skills max Lv.3 (power/guard/sparking/ultimate) via skill points. LIVE."));
+        list.add(new Entry(
+                "parallel_quests",
+                "Parallel Quest Lite",
+                Tier.LIVE,
+                "features.progression.ParallelQuests + /xenoquest",
+                "kill_mobs / kill_players / dummy_session objectives + skill-point rewards. LIVE."));
+        list.add(new Entry(
+                "mentor",
+                "Mentor Pairing",
+                Tier.LIVE,
+                "features.progression + /xenomentor",
+                "Student–mentor link; nearby mentor gains sparking meter from student damage. LIVE."));
 
         // --- STUBS (Qwen scaffold — not gameplay) ---
         list.add(new Entry(
                 "skill_tree",
-                "Skill Tree System",
+                "Skill Tree System (full UI)",
                 Tier.STUB,
                 "features.skilltree",
-                "In-memory node lists only. No skill menu, no DMZ TP spend, no unlock effects. STUB."));
+                "Old in-memory node lists. Replaced in-play by slim CombatSkills; this package still STUB."));
         list.add(new Entry(
                 "customization",
                 "Character Customization",
@@ -97,10 +127,10 @@ public final class FeatureStatus {
                 "Cosmetic registry + equip maps in memory. Does not change DMZ character creator / skins. STUB."));
         list.add(new Entry(
                 "combo_training",
-                "Combo Training Dummies",
+                "Combo Training Challenges",
                 Tier.STUB,
                 "features.combo.ComboTrainingSystem",
-                "Not the live BT3 combo counter. Separate dummy/session data never spawned in world. STUB."));
+                "Star-rank timing challenges still stub. Live dummy is /xenotrain, not this class. STUB."));
         list.add(new Entry(
                 "time",
                 "Time Manipulation",
@@ -109,10 +139,10 @@ public final class FeatureStatus {
                 "Does not call ServerLevel setDayTime / weather. Data bag only. STUB."));
         list.add(new Entry(
                 "teaching",
-                "Teaching System",
+                "Teaching System (NPC)",
                 Tier.STUB,
                 "features.teaching",
-                "No NPC teachers, no XP share into DMZ stats. STUB."));
+                "No NPC teachers. Live mentor is player-to-player /xenomentor. STUB."));
         list.add(new Entry(
                 "boss",
                 "Boss Challenge Mode",

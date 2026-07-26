@@ -1,6 +1,9 @@
 package net.bullettrain.xenopixelsmod.block;
 
 import net.bullettrain.xenopixelsmod.XenoPixelsMod;
+import net.bullettrain.xenopixelsmod.block.custom.MissileChunkLoaderBlock;
+import net.bullettrain.xenopixelsmod.block.custom.ShipVlsGuidanceBlock;
+import net.bullettrain.xenopixelsmod.block.custom.SoundBlock;
 import net.bullettrain.xenopixelsmod.item.ModsItems;
 import net.minecraft.util.valueproviders.UniformInt;
 import net.minecraft.world.item.BlockItem;
@@ -8,7 +11,6 @@ import net.minecraft.world.item.Item;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.DropExperienceBlock;
-import net.minecraft.world.level.block.SoundType;
 import net.minecraft.world.level.block.state.BlockBehaviour;
 import net.minecraft.world.level.block.state.properties.NoteBlockInstrument;
 import net.minecraft.world.level.material.MapColor;
@@ -16,7 +18,6 @@ import net.minecraftforge.eventbus.api.IEventBus;
 import net.minecraftforge.registries.DeferredRegister;
 import net.minecraftforge.registries.ForgeRegistries;
 import net.minecraftforge.registries.RegistryObject;
-import net.bullettrain.xenopixelsmod.block.custom.SoundBlock;
 
 import java.util.function.Supplier;
 
@@ -28,6 +29,16 @@ public class ModBlocks {
 
 public static final RegistryObject<Block> SOUND_BLOCK = registerBlock("sound_block",
         () -> new SoundBlock(BlockBehaviour.Properties.copy(Blocks.IRON_BLOCK)));
+
+    /** Ship VLS: force-loads chunks for guided missiles. */
+    public static final RegistryObject<Block> MISSILE_CHUNK_LOADER = registerBlock("missile_chunk_loader",
+            () -> new MissileChunkLoaderBlock(BlockBehaviour.Properties.copy(Blocks.IRON_BLOCK)
+                    .strength(4.0F, 8.0F).requiresCorrectToolForDrops()));
+
+    /** Ship VLS guidance computer — aim + pulse-launch nearby Ballistix VLS. */
+    public static final RegistryObject<Block> SHIP_VLS_GUIDANCE = registerBlock("ship_vls_guidance",
+            () -> new ShipVlsGuidanceBlock(BlockBehaviour.Properties.copy(Blocks.IRON_BLOCK)
+                    .strength(3.5F, 8.0F).requiresCorrectToolForDrops()));
 
  public static final RegistryObject<Block> JACKIETONITE_ORE_BLOCK = registerBlock("jackietonite_ore_block",
         () -> new Block(BlockBehaviour.Properties.of()

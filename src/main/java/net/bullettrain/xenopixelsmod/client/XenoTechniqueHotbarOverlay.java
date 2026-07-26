@@ -51,8 +51,8 @@ public class XenoTechniqueHotbarOverlay implements IGuiOverlay {
     private static final long[] CD_LAST_MS = new long[TOTAL_SLOTS];
     private static final String[] CD_LAST_ID = new String[TOTAL_SLOTS];
 
-    /** Phase 6: LDLib-tinted-texture chrome, used only when {@code !XenoHudConfig.legacyTechniqueRenderer}. */
-    private static final TechniqueSlotWidget LD_WIDGET = new TechniqueSlotWidget();
+    /** Slot chrome helper (vanilla fills only — safe without LDLib). */
+    private static final TechniqueSlotWidget SLOT_WIDGET = new TechniqueSlotWidget();
 
     /** Screen-space bounds of the last drawn panel/charge-meter — captured each frame so the
      *  editor screen can hit-test them without re-deriving the (data-dependent) panel size. */
@@ -492,21 +492,21 @@ public class XenoTechniqueHotbarOverlay implements IGuiOverlay {
         g.fill(x + 1, y + 1, x + w - 1, y + h - 1, color);
     }
 
-    /** Flat filled rect — vanilla by default, LDLib-tinted-texture when Phase 6 toggle is off. */
+    /** Flat filled rect. */
     private static void drawBox(GuiGraphics g, int x, int y, int w, int h, int color) {
         if (XenoHudConfig.legacyTechniqueRenderer) {
             g.fill(x, y, x + w, y + h, color);
         } else {
-            LD_WIDGET.drawBackground(g, x, y, w, h, color);
+            SLOT_WIDGET.drawBackground(g, x, y, w, h, color);
         }
     }
 
-    /** Thin border — vanilla {@code renderOutline} by default, LDLib-composed strips when toggled. */
+    /** Thin border. */
     private static void drawOutlineBox(GuiGraphics g, int x, int y, int w, int h, int color, int thickness) {
         if (XenoHudConfig.legacyTechniqueRenderer) {
             g.renderOutline(x, y, w, h, color);
         } else {
-            LD_WIDGET.drawOutline(g, x, y, w, h, color, thickness);
+            SLOT_WIDGET.drawOutline(g, x, y, w, h, color, thickness);
         }
     }
 
@@ -515,7 +515,7 @@ public class XenoTechniqueHotbarOverlay implements IGuiOverlay {
         if (XenoHudConfig.legacyTechniqueRenderer) {
             g.fill(x, y, x + w, y + h, 0xEE000000);
         } else {
-            LD_WIDGET.drawBadgeBackground(g, x, y, w, h);
+            SLOT_WIDGET.drawBadgeBackground(g, x, y, w, h);
         }
     }
 }

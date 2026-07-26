@@ -1,0 +1,20 @@
+{
+  "required": false,
+  "package": "net.bullettrain.xenopixelsmod.mixin",
+  "plugin": "net.bullettrain.xenopixelsmod.mixin.ConditionalMixinPlugin",
+  "refmap": "mixins.xenopixelsmod.refmap.json",
+  "compatibilityLevel": "JAVA_17",
+  "mixins": [
+    "compat.ballistix.EntityMissileMixin",
+    "compat.ballistix.VirtualMissileMixin",
+    "compat.ballistix.TileLauncherPlatformMixin",
+    "compat.ballistix.TileVerticalLaunchSiloMixin",
+    "compat.voltaic.GenericTileOnLoadMixin",
+    "compat.vs2.ServerShipStaticMixin"
+  ],
+  "client": [],
+  "injectors": {
+    "defaultRequire": 0
+  },
+  "minVersion": "0.8"
+}
