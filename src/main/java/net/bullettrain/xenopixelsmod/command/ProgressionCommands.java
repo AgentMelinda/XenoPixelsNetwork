@@ -41,6 +41,7 @@ public final class ProgressionCommands {
     @SubscribeEvent
     public static void onRegister(RegisterCommandsEvent event) {
         register(event.getDispatcher());
+        PartyCommands.register(event.getDispatcher());
     }
 
     private static final SuggestionProvider<CommandSourceStack> SOUL_IDS = (ctx, b) ->

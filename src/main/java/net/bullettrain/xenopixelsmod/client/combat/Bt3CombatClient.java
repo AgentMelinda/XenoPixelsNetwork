@@ -514,18 +514,36 @@ public final class Bt3CombatClient {
                 event.setCanceled(true);
                 event.setSwingHand(false);
             }
-            // Guard: no vanilla attack / use (RMB place) while holding block
-            if (clientGuarding && (event.isAttack() || event.isUseItem())) {
+            // Guard: no vanilla attack while holding block
+            if (clientGuarding && event.isAttack()) {
                 event.setCanceled(true);
                 event.setSwingHand(false);
+            }
+            // Guard: cancel block placement ONLY if Guard key is actually bound to use-item key
+            // Fix: Allow block placement when guard is active but not using guard key for placement
+            if (clientGuarding && event.isUseItem()) {
+                // Check if guard key is the same as use-item key (right-click)
+                boolean guardIsUseKey = !GUARD.isUnbound() 
+                    && GUARD.getKey().getType() == net.minecraft.client.KeyMapping.KEY_MAPPING_LINK_TYPE.MOUSE
+                    && GUARD.getKey().getValue() == GLFW.GLFW_MOUSE_BUTTON_RIGHT;
+                // Only cancel if guard is bound to right-click AND guard is currently active
+                if (guardIsUseKey) {
+                    event.setCanceled(true);
+                    event.setSwingHand(false);
+                }
             }
             // If Guard is bound to use-item key (default RMB), cancel use while Guard is held
             // even before clientGuarding flips on the same tick edge
             if (XenoClientConfig.bt3GuardClient && XenoServerClientState.guard()
                     && GUARD.isDown() && chargeMode == ChargeMode.NONE
                     && event.isUseItem()) {
-                event.setCanceled(true);
-                event.setSwingHand(false);
+                boolean guardIsUseKey = !GUARD.isUnbound() 
+                    && GUARD.getKey().getType() == net.minecraft.client.KeyMapping.KEY_MAPPING_LINK_TYPE.MOUSE
+                    && GUARD.getKey().getValue() == GLFW.GLFW_MOUSE_BUTTON_RIGHT;
+                if (guardIsUseKey) {
+                    event.setCanceled(true);
+                    event.setSwingHand(false);
+                }
             }
         }
 

@@ -37,5 +37,9 @@ public class ModNetwork {
                 ChargeAnimPacket::encode,
                 ChargeAnimPacket::decode,
                 ChargeAnimPacket::handle);
+        CHANNEL.registerMessage(id++, SyncPartyDataPacket.class,
+                SyncPartyDataPacket::encode,
+                SyncPartyDataPacket::decode,
+                SyncPartyDataPacket::handle);
     }
 }
