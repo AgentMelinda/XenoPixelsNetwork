@@ -1,6 +1,9 @@
 {
-  "parent": "minecraft:block/cube_all",
+  "parent": "minecraft:block/orientable",
   "textures": {
-    "all": "minecraft:block/lodestone"
+    "particle": "xenopixelsmod:block/missile_chunk_loader_side",
+    "top": "xenopixelsmod:block/missile_chunk_loader_top",
+    "front": "xenopixelsmod:block/missile_chunk_loader_front",
+    "side": "xenopixelsmod:block/missile_chunk_loader_side"
   }
 }

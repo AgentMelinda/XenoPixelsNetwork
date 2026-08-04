@@ -11,18 +11,18 @@ import net.minecraftforge.event.entity.player.PlayerEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
 
+import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
-import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * BT3 Sparking-style meter: build on hits, activate for temporary damage buff + i-frame frames on dash.
  */
 @Mod.EventBusSubscriber(modid = XenoPixelsMod.MOD_ID)
 public final class Bt3SparkingSystem {
-    private static final Map<UUID, Float> METER = new ConcurrentHashMap<>();
-    private static final Map<UUID, Integer> ACTIVE_UNTIL = new ConcurrentHashMap<>();
-    private static final Map<UUID, Integer> IFRAMES_UNTIL = new ConcurrentHashMap<>();
+    private static final Map<UUID, Float> METER = new HashMap<>();
+    private static final Map<UUID, Integer> ACTIVE_UNTIL = new HashMap<>();
+    private static final Map<UUID, Integer> IFRAMES_UNTIL = new HashMap<>();
 
     private Bt3SparkingSystem() {}
 
@@ -123,6 +123,7 @@ public final class Bt3SparkingSystem {
     public static void onTick(TickEvent.ServerTickEvent event) {
         if (event.phase != TickEvent.Phase.END) return;
         int t = event.getServer().getTickCount();
+        if (t % 20 != 0) return;
         ACTIVE_UNTIL.entrySet().removeIf(e -> e.getValue() < t - 5);
         IFRAMES_UNTIL.entrySet().removeIf(e -> e.getValue() < t - 5);
     }

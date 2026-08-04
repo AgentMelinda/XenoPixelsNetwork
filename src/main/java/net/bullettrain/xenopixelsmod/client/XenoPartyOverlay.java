@@ -17,8 +17,10 @@ import net.minecraftforge.client.gui.overlay.IGuiOverlay;
 
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 
 /**
  * Xenoverse-2-style "party" strip: compact HP/KI chips for nearby teammates
@@ -43,7 +45,10 @@ public class XenoPartyOverlay implements IGuiOverlay {
     private static final int MARGIN_TOP = 10;
 
     /** Per-player fade progress (0..1), keyed by UUID string, so chips ease in/out of range/team. */
-    private static final Map<String, Float> FADE = new HashMap<>();
+    private static final Map<UUID, Float> FADE = new HashMap<>();
+    private static final List<Player> CACHED_MEMBERS = new ArrayList<>(MAX_MEMBERS);
+    private static long lastMemberScan = Long.MIN_VALUE;
+    private static Object cachedLevel;
 
     @Override
     public void render(ForgeGui gui, GuiGraphics graphics, float partialTick, int screenWidth, int screenHeight) {
@@ -54,30 +59,45 @@ public class XenoPartyOverlay implements IGuiOverlay {
         Player self = mc.player;
         PlayerTeam team = self.getTeam() instanceof PlayerTeam pt ? pt : null;
 
-        List<Player> members = new ArrayList<>();
-        if (team != null) {
-            for (Player p : mc.level.players()) {
-                if (p == self) continue;
-                if (p.getTeam() == team) members.add(p);
+        long gameTime = mc.level.getGameTime();
+        if (cachedLevel != mc.level || gameTime - lastMemberScan >= 10 || gameTime < lastMemberScan) {
+            cachedLevel = mc.level;
+            lastMemberScan = gameTime;
+            CACHED_MEMBERS.clear();
+            if (team != null) {
+                for (Player p : mc.level.players()) {
+                    if (p != self && p.getTeam() == team) CACHED_MEMBERS.add(p);
+                }
+                // Refresh twice per second; positions do not need an FPS-rate full sort.
+                CACHED_MEMBERS.sort((a, b) -> Double.compare(self.distanceToSqr(a), self.distanceToSqr(b)));
+                if (CACHED_MEMBERS.size() > MAX_MEMBERS) {
+                    CACHED_MEMBERS.subList(MAX_MEMBERS, CACHED_MEMBERS.size()).clear();
+                }
             }
-            members.sort((a, b) -> Float.compare(self.distanceTo(a), self.distanceTo(b)));
-            if (members.size() > MAX_MEMBERS) members = members.subList(0, MAX_MEMBERS);
         }
+        List<Player> members = CACHED_MEMBERS;
 
         // Advance fade for currently visible members and anything still easing out.
-        List<String> keep = new ArrayList<>();
         for (Player p : members) {
-            String id = p.getStringUUID();
-            keep.add(id);
+            UUID id = p.getUUID();
             float cur = FADE.getOrDefault(id, 0f);
             FADE.put(id, AnimUtil.ease(cur, 1f, 0.15f));
         }
-        FADE.keySet().removeIf(id -> {
-            if (keep.contains(id)) return false;
-            float cur = AnimUtil.ease(FADE.get(id), 0f, 0.15f);
-            FADE.put(id, cur);
-            return cur < 0.02f;
-        });
+        Iterator<Map.Entry<UUID, Float>> fades = FADE.entrySet().iterator();
+        while (fades.hasNext()) {
+            Map.Entry<UUID, Float> entry = fades.next();
+            boolean visible = false;
+            for (Player p : members) {
+                if (p.getUUID().equals(entry.getKey())) {
+                    visible = true;
+                    break;
+                }
+            }
+            if (visible) continue;
+            float cur = AnimUtil.ease(entry.getValue(), 0f, 0.15f);
+            if (cur < 0.02f) fades.remove();
+            else entry.setValue(cur);
+        }
 
         if (members.isEmpty() && FADE.isEmpty()) return;
 
@@ -87,7 +107,8 @@ public class XenoPartyOverlay implements IGuiOverlay {
 
         int y = MARGIN_TOP;
         for (Player p : members) {
-            float fade = FADE.getOrDefault(p.getStringUUID(), 1f);
+            if (p.isRemoved()) continue;
+            float fade = FADE.getOrDefault(p.getUUID(), 1f);
             drawChip(graphics, font, p, MARGIN_X, y, fade);
             y += CHIP_H + CHIP_GAP;
         }
@@ -118,15 +139,7 @@ public class XenoPartyOverlay implements IGuiOverlay {
 
         String name = p.getName().getString();
         if (font.width(name) > contentW) {
-            StringBuilder sb = new StringBuilder();
-            for (int i = 0; i < name.length(); i++) {
-                sb.append(name.charAt(i));
-                if (font.width(sb.toString() + "..") > contentW) {
-                    sb.setLength(Math.max(0, sb.length() - 1));
-                    break;
-                }
-            }
-            name = sb + "..";
+            name = font.plainSubstrByWidth(name, Math.max(0, contentW - font.width(".."))) + "..";
         }
         g.drawString(font, name, contentX, y + 3, a8 | 0xFFFFFF, false);
 

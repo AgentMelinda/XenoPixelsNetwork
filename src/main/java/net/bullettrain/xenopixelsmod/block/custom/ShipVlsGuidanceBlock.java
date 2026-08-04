@@ -1,28 +1,44 @@
 package net.bullettrain.xenopixelsmod.block.custom;
 
 import net.bullettrain.xenopixelsmod.block.entity.ShipVlsGuidanceBlockEntity;
+import net.bullettrain.xenopixelsmod.network.ModNetwork;
+import net.bullettrain.xenopixelsmod.network.packet.OpenGuidancePacket;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
 import net.minecraft.world.entity.player.Player;
+import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.item.context.BlockPlaceContext;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.BaseEntityBlock;
+import net.minecraft.world.level.block.Block;
+import net.minecraft.world.level.block.Mirror;
 import net.minecraft.world.level.block.RenderShape;
+import net.minecraft.world.level.block.Rotation;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.entity.BlockEntityTicker;
 import net.minecraft.world.level.block.entity.BlockEntityType;
 import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.level.block.state.StateDefinition;
+import net.minecraft.world.level.block.state.properties.BlockStateProperties;
+import net.minecraft.world.level.block.state.properties.DirectionProperty;
 import net.minecraft.world.phys.BlockHitResult;
 import org.jetbrains.annotations.Nullable;
 
 /**
- * VS2 ship module: sets world-space target for nearby Ballistix VLS / platforms
- * and can pulse-launch when redstone-powered.
+ * Ballistic Guidance Computer — native XenoPixels ship missile aim point.
+ * <p>
+ * Right-click opens an XYZ GUI (set target / launch / abort). Shift-click aborts
+ * flight or clears aim. Redstone / CC also fires. <b>Not Ballistix.</b>
  */
 public class ShipVlsGuidanceBlock extends BaseEntityBlock {
+    public static final DirectionProperty FACING = BlockStateProperties.FACING;
+
     public ShipVlsGuidanceBlock(Properties props) {
         super(props);
+        this.registerDefaultState(this.stateDefinition.any().setValue(FACING, Direction.NORTH));
     }
 
     @Override
@@ -47,20 +63,75 @@ public class ShipVlsGuidanceBlock extends BaseEntityBlock {
         };
     }
 
+    @Nullable
+    @Override
+    public BlockState getStateForPlacement(BlockPlaceContext ctx) {
+        return defaultBlockState().setValue(FACING, ctx.getNearestLookingDirection().getOpposite());
+    }
+
+    @Override
+    public void neighborChanged(BlockState state, Level level, BlockPos pos, Block block,
+                                BlockPos fromPos, boolean isMoving) {
+        if (level.isClientSide) return;
+        if (level.getBlockEntity(pos) instanceof ShipVlsGuidanceBlockEntity be) {
+            be.onRedstoneChanged(level.hasNeighborSignal(pos));
+        }
+    }
+
     @Override
     public InteractionResult use(BlockState state, Level level, BlockPos pos, Player player,
                                  InteractionHand hand, BlockHitResult hit) {
-        if (!level.isClientSide && level.getBlockEntity(pos) instanceof ShipVlsGuidanceBlockEntity be) {
+        if (level.getBlockEntity(pos) instanceof ShipVlsGuidanceBlockEntity be) {
+            // Shift: server-side abort / clear (no GUI)
             if (player.isShiftKeyDown()) {
-                be.clearTarget();
-                player.displayClientMessage(Component.literal("§7VLS guidance target cleared"), true);
-            } else {
-                be.setTargetFromLook(player);
+                if (!level.isClientSide) {
+                    if (be.abortShipFlight()) {
+                        player.displayClientMessage(Component.literal("§cShip ballistic flight aborted"), true);
+                    } else {
+                        be.clearTarget();
+                        player.displayClientMessage(Component.literal("§7Ballistic aim cleared"), true);
+                    }
+                }
+                return InteractionResult.sidedSuccess(level.isClientSide);
+            }
+
+            // Normal right-click: the server owns the persisted configuration and sends
+            // the complete snapshot. Client-side BE data is often stale on moving ships.
+            if (!level.isClientSide && player instanceof ServerPlayer serverPlayer) {
                 BlockPos t = be.getTarget();
-                player.displayClientMessage(Component.literal(
-                        t == null ? "§cNo target" : "§bVLS target §f" + t.getX() + " " + t.getY() + " " + t.getZ()), true);
+                int ix = t != null ? t.getX() : (int) Math.floor(player.getX());
+                int iy = t != null ? t.getY() : 64;
+                int iz = t != null ? t.getZ() : (int) Math.floor(player.getZ());
+                String status = be.getLastStatus();
+                // Client hint — server does real detection; show thruster count at least
+                if (be.getPairedThrusterCount() > 0) {
+                    status = status + " | paired=" + be.getPairedThrusterCount();
+                }
+                ModNetwork.sendToPlayer(serverPlayer, new OpenGuidancePacket(
+                        pos.immutable(), ix, iy, iz, status,
+                        be.getPairedThrusterCount(), be.getSpeedLevel(),
+                        be.getDesiredApexY(), be.getDesiredCruiseY(),
+                        be.getFleetChannel(), be.getSalvoIntervalTicks(),
+                        be.getGravitySi(), be.getDragCoefficient(),
+                        be.getMissileBaseBlock(), be.getMissileCenterBlock(), be.getMissileNoseBlock(),
+                        be.getGuidanceStopDistance()));
             }
         }
         return InteractionResult.sidedSuccess(level.isClientSide);
+    }
+
+    @Override
+    public BlockState rotate(BlockState state, Rotation rotation) {
+        return state.setValue(FACING, rotation.rotate(state.getValue(FACING)));
+    }
+
+    @Override
+    public BlockState mirror(BlockState state, Mirror mirror) {
+        return state.rotate(mirror.getRotation(state.getValue(FACING)));
+    }
+
+    @Override
+    protected void createBlockStateDefinition(StateDefinition.Builder<Block, BlockState> builder) {
+        builder.add(FACING);
     }
 }

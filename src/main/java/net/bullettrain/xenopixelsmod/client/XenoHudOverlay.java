@@ -36,9 +36,9 @@ public class XenoHudOverlay implements IGuiOverlay {
     private static final int STM_SEGMENTS = 16;
     private static final int STM_SEG_W = 14;
     private static final int STM_SEG_H = 10;
-    private static final int BAR_SKEW = 8;
-    private static final int PANEL_SKEW = 10;
-    private static final int STM_SKEW = 3;
+    private static final int BAR_SKEW = 4;
+    private static final int PANEL_SKEW = 6;
+    private static final int STM_SKEW = 0;
 
     // Tech-HUD palette (shared with technique bar)
     private static final int TECH_BG = 0xEE0A1428;
@@ -54,6 +54,17 @@ public class XenoHudOverlay implements IGuiOverlay {
     private static final int KI_SHINE = 0xFF64B5F6;
     private static final int STM_ON = 0xFFFFC107;
     private static final int STM_OFF = 0xFF2A2415;
+
+    /** Frame-rate independent display state for the default renderer. */
+    private static float displayedHp = 1f;
+    private static float displayedKi = 1f;
+    private static float displayedStm = 1f;
+    private static long lastAnimationNanos;
+    private static int animatedPlayerId = Integer.MIN_VALUE;
+    /** Numeric strings only change with the tick-cached snapshot, not every rendered frame. */
+    private static XenoHudSnapshot formattedSnapshot;
+    private static String formattedHp = "";
+    private static String formattedKi = "";
 
     private static final net.bullettrain.xenopixelsmod.client.hud.XenoHudView LDLIB_VIEW =
             new net.bullettrain.xenopixelsmod.client.hud.XenoHudView();
@@ -80,6 +91,8 @@ public class XenoHudOverlay implements IGuiOverlay {
             LDLIB_VIEW.render(graphics, 1f);
             return;
         }
+
+        updateVisualState(mc, snap, editing);
 
         graphics.pose().pushPose();
         graphics.pose().translate(XenoHudConfig.x, XenoHudConfig.y, 0);
@@ -108,11 +121,9 @@ public class XenoHudOverlay implements IGuiOverlay {
     }
 
     private static void drawPortraitDropShadow(GuiGraphics g) {
+        // Single soft shadow (was 4 layered fills every frame)
         int s = PORTRAIT;
-        for (int i = 4; i >= 1; i--) {
-            int a = 10 + i * 12;
-            g.fill(2 + i, 4 + i, s + 2 + i, s + 6 + i, a << 24);
-        }
+        g.fill(4, 6, s + 4, s + 8, 0x40000000);
     }
 
     private static void drawPortrait(GuiGraphics g, Minecraft mc, XenoHudSnapshot snap) {
@@ -161,7 +172,8 @@ public class XenoHudOverlay implements IGuiOverlay {
         if (percent <= 0f) return;
 
         int t = 4;
-        drawRoundedBorder(g, x, y, w, h, radius, 0xAA3A0A12, t);
+        net.bullettrain.xenopixelsmod.client.hud.HudDraw.borderRect(
+                g, x, y, w, h, 0xAA3A0A12, t);
 
         // Approximate progressive fill with rounded outline segments via perimeter walk
         int top = w;
@@ -248,6 +260,10 @@ public class XenoHudOverlay implements IGuiOverlay {
         // Cyan rail along the left slant of the plate (under portrait left edge)
         fillParallelogram(g, panelX, panelY + 2, 3, panelH - 4, 0, TECH_ACCENT);
         drawParallelogramBorder(g, panelX, panelY, panelW, panelH, PANEL_SKEW, 0x5542A5F5, 1);
+        // Two cheap rails give the plate depth and keep the information cluster
+        // visually anchored without another translucent full-panel layer.
+        g.fill(CONTENT_LEFT, panelY + 4, panelRight - 8, panelY + 5, 0x3342A5F5);
+        g.fill(CONTENT_LEFT, panelBottom - 4, panelRight - 14, panelBottom - 3, 0x222A80B9);
     }
 
     private static void drawBarsCluster(GuiGraphics g, Minecraft mc, XenoHudSnapshot snap) {
@@ -262,19 +278,19 @@ public class XenoHudOverlay implements IGuiOverlay {
             g.drawString(font, snap.releaseText, rx, NAME_Y, TECH_ACCENT_SOFT, true);
         }
 
-        float hp = snap.hpPercent;
-        float ki = snap.kiPercent;
-        float stm = snap.stmPercent;
+        float hp = displayedHp;
+        float ki = displayedKi;
+        float stm = displayedStm;
 
         // HP — tech-style parallelogram gauge (red)
         drawParaBar(g, CONTENT_LEFT, HP_Y, BAR_W, HP_H, hp, HP_EMPTY, HP_FILL, HP_SHINE);
-        drawBarValue(g, font, CONTENT_LEFT, HP_Y, BAR_W, HP_H,
-                formatPair(snap.curHp, snap.maxHp), 0xFFE3F2FD);
+        drawBarLabel(g, font, CONTENT_LEFT, HP_Y, HP_H, "HP", 0xFFFFCDD2);
+        drawBarValue(g, font, CONTENT_LEFT, HP_Y, BAR_W, HP_H, formattedHp, 0xFFE3F2FD);
 
         // KI — cyan/blue like technique charge bar
         drawParaBar(g, CONTENT_LEFT, KI_Y, BAR_W, KI_H, ki, KI_EMPTY, KI_FILL, KI_SHINE);
-        drawBarValue(g, font, CONTENT_LEFT, KI_Y, BAR_W, KI_H,
-                formatPair(snap.curKi, snap.maxKi), 0xFFB3E5FC);
+        drawBarLabel(g, font, CONTENT_LEFT, KI_Y, KI_H, "KI", 0xFFB3E5FC);
+        drawBarValue(g, font, CONTENT_LEFT, KI_Y, BAR_W, KI_H, formattedKi, 0xFFB3E5FC);
 
         // STM — segmented parallelogram pips (tech slot language)
         drawStmRow(g, font, CONTENT_LEFT, STM_Y, BAR_W, stm);
@@ -286,10 +302,46 @@ public class XenoHudOverlay implements IGuiOverlay {
     }
 
     private static String formatNum(float value) {
-        if (value >= 1_000_000f) return String.format("%.1fM", value / 1_000_000f);
-        if (value >= 10_000f) return String.format("%.1fK", value / 1000f);
+        if (value >= 1_000_000f) return oneDecimal(value / 1_000_000f) + "M";
+        if (value >= 10_000f) return oneDecimal(value / 1000f) + "K";
         if (Math.abs(value - Math.round(value)) < 0.05f) return String.valueOf(Math.round(value));
-        return String.format("%.0f", value);
+        return String.valueOf(Math.round(value));
+    }
+
+    private static String oneDecimal(float value) {
+        return Float.toString(Math.round(value * 10f) / 10f);
+    }
+
+    private static void updateVisualState(Minecraft mc, XenoHudSnapshot snap, boolean editing) {
+        long now = System.nanoTime();
+        int playerId = mc.player == null ? -1 : mc.player.getId();
+        boolean reset = lastAnimationNanos == 0L || animatedPlayerId != playerId || editing;
+        if (reset) {
+            displayedHp = clamp01(snap.hpPercent);
+            displayedKi = clamp01(snap.kiPercent);
+            displayedStm = clamp01(snap.stmPercent);
+        } else {
+            double dt = Math.min(0.1, Math.max(0.0, (now - lastAnimationNanos) / 1_000_000_000.0));
+            float blend = (float) (1.0 - Math.exp(-12.0 * dt));
+            displayedHp += (clamp01(snap.hpPercent) - displayedHp) * blend;
+            displayedKi += (clamp01(snap.kiPercent) - displayedKi) * blend;
+            displayedStm += (clamp01(snap.stmPercent) - displayedStm) * blend;
+        }
+        lastAnimationNanos = now;
+        animatedPlayerId = playerId;
+
+        if (formattedSnapshot != snap) {
+            formattedSnapshot = snap;
+            formattedHp = formatPair(snap.curHp, snap.maxHp);
+            formattedKi = formatPair(snap.curKi, snap.maxKi);
+        }
+    }
+
+    private static void drawBarLabel(GuiGraphics g, Font font, int x, int y, int h,
+                                     String label, int color) {
+        g.fill(x + 3, y + 1, x + 22, y + h - 1, 0x99050A14);
+        g.fill(x + 3, y + 1, x + 5, y + h - 1, color);
+        g.drawString(font, label, x + 8, y + Math.max(0, (h - 8) / 2), color, false);
     }
 
     private static void drawBarValue(GuiGraphics g, Font font, int x, int y, int w, int h, String text, int color) {
@@ -334,10 +386,8 @@ public class XenoHudOverlay implements IGuiOverlay {
 
         for (int i = 0; i < STM_SEGMENTS; i++) {
             int sx = start + i * (STM_SEG_W + gap);
-            fillParallelogram(g, sx, y, STM_SEG_W, STM_SEG_H, STM_SKEW, i < lit ? STM_ON : STM_OFF);
-            if (i < lit) {
-                fillParallelogram(g, sx, y, STM_SEG_W, 2, STM_SKEW, 0xAAFFE082);
-            }
+            // Axis-aligned segments (skew=0) — 1 fill each instead of per-row
+            fillParallelogram(g, sx, y, STM_SEG_W, STM_SEG_H, 0, i < lit ? STM_ON : STM_OFF);
         }
     }
 
@@ -364,28 +414,11 @@ public class XenoHudOverlay implements IGuiOverlay {
     }
 
     private static void fillParallelogram(GuiGraphics g, int x, int y, int w, int h, int skew, int color) {
-        if (w <= 0 || h <= 0) return;
-        int s = Math.max(0, skew);
-        for (int row = 0; row < h; row++) {
-            int offset = s == 0 || h <= 1 ? s : Math.round(s * (1f - row / (float) (h - 1)));
-            g.fill(x + offset, y + row, x + offset + w, y + row + 1, color);
-        }
+        net.bullettrain.xenopixelsmod.client.hud.HudDraw.fillPara(g, x, y, w, h, skew, color);
     }
 
     private static void drawParallelogramBorder(GuiGraphics g, int x, int y, int w, int h, int skew, int color, int t) {
-        if (w <= 0 || h <= 0 || t <= 0) return;
-        int s = Math.max(0, skew);
-        for (int row = 0; row < h; row++) {
-            int offset = s == 0 || h <= 1 ? s : Math.round(s * (1f - row / (float) (h - 1)));
-            int left = x + offset;
-            int right = left + w;
-            if (row < t || row >= h - t) {
-                g.fill(left, y + row, right, y + row + 1, color);
-            } else {
-                g.fill(left, y + row, Math.min(left + t, right), y + row + 1, color);
-                g.fill(Math.max(right - t, left), y + row, right, y + row + 1, color);
-            }
-        }
+        net.bullettrain.xenopixelsmod.client.hud.HudDraw.borderPara(g, x, y, w, h, skew, color, t);
     }
 
     private static float clamp01(float v) {

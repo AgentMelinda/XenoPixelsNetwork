@@ -47,8 +47,8 @@
     {
       "id": "group_legend",
       "title": "Super Saiyan Legend (SSJ5–10)",
-      "subtitle": "formType superforms · Goku / Vegeta",
-      "detail": "Shares superforms skill. /dmzform set superforms <1-6>. SSJ5–10 chain. Prices 120k→300k TP. Masters Goku/Vegeta.",
+      "subtitle": "formType xenopixels_fan_ss · Beerus / Whis only",
+      "detail": "Own form skill (not superforms). Buy xenopixels_fan_ss from Master Beerus or Whis. SSJ5–10 chain. Prices 120k→300k TP.",
       "accent": 4292927487
     },
     {
@@ -96,8 +96,8 @@
     {
       "id": "group_fan",
       "title": "XenoPixels Fan Super Saiyan (SSJ5–10)",
-      "subtitle": "formType xenopixels_fan_ss · Goku / Vegeta",
-      "detail": "Separate fan skill group (not superforms). Buy xenopixels_fan_ss from Master Goku or Vegeta. SSJ5–10 chain with its own TP prices. File: xenopixels_fan_ss.json.",
+      "subtitle": "formType xenopixels_fan_ss · Beerus / Whis only",
+      "detail": "Separate fan skill group (not superforms). Buy xenopixels_fan_ss from Master Beerus or Whis only. SSJ5–10 chain with its own TP prices. File: xenopixels_fan_ss.json.",
       "accent": 4294956800
     },
     {
@@ -166,15 +166,15 @@
     {
       "id": "group_legendary",
       "title": "XenoPixels Saga Forms",
-      "subtitle": "formType xenopixels_saga_forms · Trunks master",
-      "detail": "Own form skill. /dmzform set xenopixels_saga_forms 1. Trunks Ikari. Master Trunks only. Icons: gui/icons/xenopixels_saga_forms.png.",
+      "subtitle": "formType xenopixels_saga_forms · Beerus / Whis only",
+      "detail": "Own form skill. /dmzform set xenopixels_saga_forms 1. Trunks Ikari look. Masters Beerus/Whis only. Icons: gui/icons/xenopixels_saga_forms.png.",
       "accent": 4289373692
     },
     {
       "id": "trunks_ikari",
       "title": "Trunks Ikari",
       "subtitle": "legendaryforms Lv.1 · 95,000 TP",
-      "detail": "Super Saiyan Rage look: gold SSJ hair/aura + blue outer glow & lightning, cyan eyes, buffed model. /dmzform set xenopixels_saga_forms 1. Master Trunks only.",
+      "detail": "Super Saiyan Rage look: gold SSJ hair/aura + blue outer glow & lightning, cyan eyes, buffed model. /dmzform set xenopixels_saga_forms 1. Masters Beerus/Whis only.",
       "accent": 4294962243
     },
     {
@@ -260,7 +260,7 @@
       "id": "masters",
       "title": "Master Shops",
       "subtitle": "Where to buy form skills",
-      "detail": "DMZ-native: legend=superforms 9-14 (Super Forms menu); god=godforms 1-8 (Extra Forms); ikari=legendaryforms 4; fan=xenopixels_fan_ss own skill. Bootstrap installs JSON + reloads DMZ on server start if dmzContentBootstrap is true.",
+      "detail": "All XenoPixels form skills (fan SS, divinity, saga, dark frieza) are skillOfferings on Beerus and Whis only. Vanilla superforms/godforms unchanged. Bootstrap installs form JSON + patches skills.json on server start.",
       "accent": 4294952372
     },
     {

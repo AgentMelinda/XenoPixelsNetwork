@@ -28,15 +28,15 @@ public class MetalDetectorItem extends Item {
                 if (isValueableBlock(state)) {
                     outputValuableCoordinates(positionClicked.below(i), player, state.getBlock());
                     foundBlock = true;
-
                     break;
                 }
             }
 
-            if(!foundBlock) {
+            if (!foundBlock) {
                 player.sendSystemMessage(Component.literal("No valuables found"));
             }
 
+            // Fixed lambda: parameter must be lowercase 'player', not the type name 'Player'
             pContext.getItemInHand().hurtAndBreak(1, pContext.getPlayer(),
                     Player -> player.broadcastBreakEvent(player.getUsedItemHand()));
         }

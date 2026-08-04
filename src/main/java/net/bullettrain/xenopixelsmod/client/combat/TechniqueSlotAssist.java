@@ -84,6 +84,15 @@ public final class TechniqueSlotAssist {
         if (keys == null || keys.length < SLOT_COUNT) return;
 
         LocalPlayer player = mc.player;
+        int pressedMask = 0;
+        for (int i = 0; i < SLOT_COUNT; i++) {
+            boolean down = KeyBinds.isChordDown(keys[i]);
+            if (down && !wasChordDown[i]) pressedMask |= 1 << i;
+            wasChordDown[i] = down;
+        }
+        // Capability traversal is only useful on a new technique-slot key edge.
+        if (pressedMask == 0 || !isTechniqueBarModifierHeld()) return;
+
         StatsData data = null;
         try {
             var opt = StatsProvider.get(StatsCapability.INSTANCE, player);
@@ -102,13 +111,7 @@ public final class TechniqueSlotAssist {
         String[] equipped = techniques.getEquippedSlots();
 
         for (int i = 0; i < SLOT_COUNT; i++) {
-            boolean down = KeyBinds.isChordDown(keys[i]);
-            boolean justPressed = down && !wasChordDown[i];
-            wasChordDown[i] = down;
-            if (!justPressed) continue;
-
-            // Only when a bar modifier is active (user is interacting with the tech bar)
-            if (!isTechniqueBarModifierHeld()) continue;
+            if ((pressedMask & (1 << i)) == 0) continue;
 
             String id = slotId(equipped, i);
             if (id == null || id.isEmpty()) {

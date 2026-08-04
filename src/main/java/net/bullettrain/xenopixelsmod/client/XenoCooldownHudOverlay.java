@@ -3,6 +3,7 @@ package net.bullettrain.xenopixelsmod.client;
 import net.bullettrain.xenopixelsmod.client.combat.Bt3CombatClient;
 import net.bullettrain.xenopixelsmod.client.config.XenoClientConfig;
 import net.bullettrain.xenopixelsmod.client.config.XenoCooldownHudConfig;
+import net.bullettrain.xenopixelsmod.client.hud.HudDraw;
 import net.bullettrain.xenopixelsmod.network.Bt3CombatPacket;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
@@ -144,16 +145,13 @@ public class XenoCooldownHudOverlay implements IGuiOverlay {
     }
 
     private static void drawChip(GuiGraphics g, Font font, int x, int y, Chip chip) {
-        long t = System.currentTimeMillis();
         int cSkew = chipSkew();
         int mSkew = meterSkew();
 
-        // busy outer glow (accent-colored, soft)
+        // Static busy halo (no per-frame sin pulse — that alone cost a lot of fills)
         if (chip.busy && chip.enabled) {
-            float pulse = (float) (0.55 + 0.45 * Math.sin(t / 180.0));
-            int ga = Math.round(pulse * 70f) & 0xFF;
-            fillPara(g, x - 2, y - 2, CHIP_W + 4, CHIP_H + 4, cSkew > 0 ? cSkew + 1 : 0,
-                    (chip.accent & 0x00FFFFFF) | (ga << 24));
+            fillPara(g, x - 1, y - 1, CHIP_W + 2, CHIP_H + 2, cSkew > 0 ? cSkew : 0,
+                    (chip.accent & 0x00FFFFFF) | 0x40000000);
         }
 
         // chip body — tech slot colors (same family as technique rows)
@@ -174,16 +172,11 @@ public class XenoCooldownHudOverlay implements IGuiOverlay {
         drawParaBorder(g, x, y, CHIP_W, CHIP_H, cSkew, border, 1);
 
         // glass top sheen strip
-        fillPara(g, x + 2, y + 1, CHIP_W - 6, 1, Math.max(0, cSkew - 1), 0x28FFFFFF);
+        fillPara(g, x + 2, y + 1, CHIP_W - 6, 1, 0, 0x28FFFFFF);
 
         // left accent rail (always square — no drift)
         int rail = chip.enabled ? (chip.accent | 0xFF000000) : 0xFF3A4550;
         fillPara(g, x + 2, y + 3, 2, CHIP_H - 6, 0, rail);
-        if (chip.busy && chip.enabled) {
-            float pulse = (float) (0.5 + 0.5 * Math.sin(t / 120.0));
-            int ba = Math.round(40 + pulse * 180f) & 0xFF;
-            fillPara(g, x + 2, y + 3, 2, CHIP_H - 6, 0, (rail & 0x00FFFFFF) | (ba << 24));
-        }
 
         // Layout (top → bottom, all centered):
         //   [ A/D ]   key badge
@@ -245,85 +238,31 @@ public class XenoCooldownHudOverlay implements IGuiOverlay {
             } else if (chip.meterMode == MeterMode.CHARGE && chip.fraction > 0.001f) {
                 int fill = Math.max(1, Math.round(mw * chip.fraction));
                 int c1 = chip.accent | 0xFF000000;
-                int c2 = lighten(c1, 50);
-                drawGradientMeter(g, mx, my, fill, METER_H, mSkew, c1, c2);
+                // Solid charge fill (gradient optional strip count is already cheap)
+                fillPara(g, mx, my, fill, METER_H, mSkew, c1);
                 if (fill > 3) {
                     fillPara(g, mx + fill - 2, my, 2, METER_H, 0, 0xAAFFFFFF);
                 }
             } else if (chip.enabled && !chip.busy) {
-                float wave = (float) (0.35 + 0.45 * Math.sin(t / 320.0));
-                int alpha = Math.round(wave * 200f) & 0xFF;
-                int ready = (chip.accent & 0x00FFFFFF) | (alpha << 24);
-                fillPara(g, mx, my, mw, METER_H, mSkew, ready);
+                // Ready tick — solid, no sin wave
+                fillPara(g, mx, my, mw, METER_H, mSkew, (chip.accent & 0x00FFFFFF) | 0x88000000);
             } else if (!chip.enabled) {
                 fillPara(g, mx, my, mw, METER_H, mSkew, 0x443A4550);
             }
         }
     }
 
-    /** Horizontal gradient fill inside a parallelogram meter. */
+    /** Horizontal gradient with few strips (was per-pixel — FPS killer). */
     private static void drawGradientMeter(GuiGraphics g, int x, int y, int w, int h, int skew, int c1, int c2) {
-        if (w <= 0 || h <= 0) return;
-        for (int col = 0; col < w; col++) {
-            float t = w <= 1 ? 1f : col / (float) (w - 1);
-            int color = lerpColor(c1, c2, t);
-            // draw this column as a thin vertical strip with para offset per row
-            for (int row = 0; row < h; row++) {
-                int offset = rowOffset(row, h, skew);
-                g.fill(x + offset + col, y + row, x + offset + col + 1, y + row + 1, color);
-            }
-        }
-        // lighter top edge
-        fillPara(g, x, y, w, 1, skew, lighten(c2, 20) & 0x99FFFFFF | 0x66000000);
+        HudDraw.fillGradientH(g, x, y, w, h, skew, c1, c2);
     }
 
     private static void fillPara(GuiGraphics g, int x, int y, int w, int h, int skew, int color) {
-        if (w <= 0 || h <= 0) return;
-        int s = Math.max(0, skew);
-        for (int row = 0; row < h; row++) {
-            int offset = rowOffset(row, h, s);
-            g.fill(x + offset, y + row, x + offset + w, y + row + 1, color);
-        }
+        HudDraw.fillPara(g, x, y, w, h, skew, color);
     }
 
     private static void drawParaBorder(GuiGraphics g, int x, int y, int w, int h, int skew, int color, int t) {
-        if (w <= 0 || h <= 0 || t <= 0) return;
-        int s = Math.max(0, skew);
-        for (int row = 0; row < h; row++) {
-            int offset = rowOffset(row, h, s);
-            int left = x + offset;
-            int right = left + w;
-            if (row < t || row >= h - t) {
-                g.fill(left, y + row, right, y + row + 1, color);
-            } else {
-                g.fill(left, y + row, Math.min(left + t, right), y + row + 1, color);
-                g.fill(Math.max(right - t, left), y + row, right, y + row + 1, color);
-            }
-        }
-    }
-
-    private static int rowOffset(int row, int h, int skew) {
-        if (h <= 1 || skew == 0) return skew;
-        return Math.round(skew * (1f - row / (float) (h - 1)));
-    }
-
-    private static int lighten(int argb, int amount) {
-        int a = (argb >>> 24) & 0xFF;
-        int r = Math.min(255, ((argb >>> 16) & 0xFF) + amount);
-        int g = Math.min(255, ((argb >>> 8) & 0xFF) + amount);
-        int b = Math.min(255, (argb & 0xFF) + amount);
-        return (a << 24) | (r << 16) | (g << 8) | b;
-    }
-
-    private static int lerpColor(int c1, int c2, float t) {
-        t = Math.max(0f, Math.min(1f, t));
-        int a1 = (c1 >>> 24) & 0xFF, r1 = (c1 >>> 16) & 0xFF, g1 = (c1 >>> 8) & 0xFF, b1 = c1 & 0xFF;
-        int a2 = (c2 >>> 24) & 0xFF, r2 = (c2 >>> 16) & 0xFF, g2 = (c2 >>> 8) & 0xFF, b2 = c2 & 0xFF;
-        int a = Math.round(a1 + (a2 - a1) * t);
-        int r = Math.round(r1 + (r2 - r1) * t);
-        int g = Math.round(g1 + (g2 - g1) * t);
-        int b = Math.round(b1 + (b2 - b1) * t);
-        return (a << 24) | (r << 16) | (g << 8) | b;
+        HudDraw.borderPara(g, x, y, w, h, skew, color, t);
     }
 
     private static List<Chip> buildChips(boolean editing) {

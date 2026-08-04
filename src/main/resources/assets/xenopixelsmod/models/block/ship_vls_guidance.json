@@ -1,6 +1,9 @@
 {
-  "parent": "minecraft:block/cube_all",
+  "parent": "minecraft:block/orientable",
   "textures": {
-    "all": "minecraft:block/command_block"
+    "particle": "xenopixelsmod:block/ship_vls_guidance_side",
+    "top": "xenopixelsmod:block/ship_vls_guidance_top",
+    "front": "xenopixelsmod:block/ship_vls_guidance_front",
+    "side": "xenopixelsmod:block/ship_vls_guidance_side"
   }
 }

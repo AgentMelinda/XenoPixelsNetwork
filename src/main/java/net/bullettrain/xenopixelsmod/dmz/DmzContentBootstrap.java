@@ -41,20 +41,27 @@ import java.util.Map;
  *   <li>{@code formSkillsCosts} keys are formType skill ids, not group names.</li>
  * </ul>
  *
- * <h2>Our groups</h2>
+ * <h2>Our groups (all learnable only from Beerus / Whis)</h2>
+ * <p>DMZ {@code MastersSkillsScreen} only lists form skills that appear in
+ * {@code skills.json → skillOfferings.&lt;masterName&gt;} <b>and</b>
+ * {@code formSkills}, with race {@code formSkillsCosts} present.
+ * Vanilla {@code skillOfferings} has no beerus/whis entries, so we create them.
+ * </p>
  * <ul>
- *   <li>{@code supersaiyan_legend} → formType {@code superforms} levels 9–14</li>
+ *   <li>{@code xenopixels_fan_ss} → formType {@code xenopixels_fan_ss} (SSJ5–10)</li>
  *   <li>{@code xenopixels_gods_forms} → formType {@code xenopixels_divinity}
- *       (cannot put {@code god} in formType — DMZ remaps it to vanilla godforms)</li>
- *   <li>{@code xenopixels_saga_forms} → formType {@code xenopixels_saga_forms} (Trunks Ikari)</li>
- *   <li>{@code xenopixels_fan_ss} → formType {@code xenopixels_fan_ss}</li>
- *   <li>{@code xenopixels_dark_frieza} → formType {@code xenopixels_dark_frieza}
- *       (Frost Demon / Frieza race — Super Hero Dark Frieza)</li>
+ *       (no {@code god} substring — DMZ would remap to vanilla godforms)</li>
+ *   <li>{@code xenopixels_saga_forms} → formType {@code xenopixels_saga_forms}</li>
+ *   <li>{@code xenopixels_dark_frieza} → formType {@code xenopixels_dark_frieza}</li>
  * </ul>
+ * Masters: <b>Beerus</b> and <b>Whis</b> only for every Xeno form skill.
  */
 @Mod.EventBusSubscriber(modid = XenoPixelsMod.MOD_ID)
 public final class DmzContentBootstrap {
     private static final Gson GSON = new GsonBuilder().setPrettyPrinting().disableHtmlEscaping().create();
+
+    /** Masters allowed to sell every XenoPixels form skill. */
+    private static final String[] XENO_FORM_MASTERS = {"beerus", "whis"};
 
     /**
      * Custom formTypes (skill ids). Must not contain super/legendary/god/android
@@ -79,7 +86,7 @@ public final class DmzContentBootstrap {
     };
 
     private static final String[] BUNDLED_FORMS = {
-            "races/saiyan/forms/supersaiyan_legend.json",
+            // supersaiyan_legend (superforms 9–14) removed — extended vanilla superforms, not Beerus-gated
             "races/saiyan/forms/xenopixels_fan_ss.json",
             "races/saiyan/forms/xenopixels_gods_forms.json",
             "races/saiyan/forms/xenopixels_saga_forms.json",
@@ -89,7 +96,8 @@ public final class DmzContentBootstrap {
     /** Old form JSON filenames to delete from config so DMZ does not keep loading them. */
     private static final String[] OBSOLETE_FORM_FILES = {
             "races/saiyan/forms/xenopixels_godforms.json",
-            "races/saiyan/forms/xenopixels_legendary.json"
+            "races/saiyan/forms/xenopixels_legendary.json",
+            "races/saiyan/forms/supersaiyan_legend.json"
     };
 
     private DmzContentBootstrap() {}
@@ -193,6 +201,14 @@ public final class DmzContentBootstrap {
             // Saiyan-only repair: older bad patch left Ikari on legendaryforms
             if (characterJson.toString().replace('\\', '/').contains("/saiyan/")) {
                 repairLegendaryFormsPrices(costs);
+                // Do not extend vanilla superforms ladder for Xeno legend forms
+                stripSupersaiyanLegendSuperformsPrices(costs);
+            }
+            // Never leave buyFromMaster false for our skills
+            for (String skill : XENO_FORM_SKILLS) {
+                if (costs.has(skill) && costs.get(skill).isJsonObject()) {
+                    costs.getAsJsonObject(skill).addProperty("buyFromMaster", true);
+                }
             }
             character.add("formSkillsCosts", costs);
 
@@ -261,64 +277,15 @@ public final class DmzContentBootstrap {
                     ? skills.getAsJsonObject("skillOfferings")
                     : new JsonObject();
 
-            if (patch.has("skillOfferings") && patch.get("skillOfferings").isJsonObject()) {
-                for (Map.Entry<String, JsonElement> entry : patch.getAsJsonObject("skillOfferings").entrySet()) {
-                    String master = entry.getKey();
-                    JsonArray want = entry.getValue().getAsJsonArray();
-                    JsonArray existing = offerings.has(master) && offerings.get(master).isJsonArray()
-                            ? offerings.getAsJsonArray(master)
-                            : new JsonArray();
-                    for (JsonElement el : want) {
-                        String skill = el.getAsString();
-                        if (!jsonArrayContains(existing, skill)) {
-                            existing.add(skill);
-                        }
-                    }
-                    offerings.add(master, existing);
-                }
-            }
-
-            JsonObject exclusive = patch.has("exclusiveFormSkills") && patch.get("exclusiveFormSkills").isJsonObject()
-                    ? patch.getAsJsonObject("exclusiveFormSkills")
-                    : new JsonObject();
-
-            // Only enforce exclusivity for OUR form skills — never strip vanilla
-            // superforms / godforms / legendaryforms from masters.
+            // 1) Strip ALL Xeno form skills + legacy ids from every master first
             for (Map.Entry<String, JsonElement> entry : offerings.entrySet()) {
-                String master = entry.getKey().toLowerCase();
                 if (!entry.getValue().isJsonArray()) continue;
                 JsonArray arr = entry.getValue().getAsJsonArray();
                 JsonArray cleaned = new JsonArray();
                 for (JsonElement el : arr) {
                     String skill = el.getAsString();
-                    boolean legacy = false;
-                    for (String leg : LEGACY_FORM_SKILLS) {
-                        if (leg.equals(skill)) {
-                            legacy = true;
-                            break;
-                        }
-                    }
-                    if (legacy) continue;
-
-                    // Only gate skills that are exclusively ours
-                    if (exclusive.has(skill) && exclusive.get(skill).isJsonArray()) {
-                        boolean ours = false;
-                        for (String x : XENO_FORM_SKILLS) {
-                            if (x.equals(skill)) {
-                                ours = true;
-                                break;
-                            }
-                        }
-                        if (ours) {
-                            boolean allowed = false;
-                            for (JsonElement m : exclusive.getAsJsonArray(skill)) {
-                                if (master.equalsIgnoreCase(m.getAsString())) {
-                                    allowed = true;
-                                    break;
-                                }
-                            }
-                            if (!allowed) continue;
-                        }
+                    if (isXenoFormSkill(skill) || isLegacyFormSkill(skill)) {
+                        continue;
                     }
                     if (!jsonArrayContains(cleaned, skill)) {
                         cleaned.add(el);
@@ -327,11 +294,50 @@ public final class DmzContentBootstrap {
                 offerings.add(entry.getKey(), cleaned);
             }
 
+            // 2) Re-add only on Beerus / Whis (from patch + hard-coded masters)
+            JsonObject exclusive = patch.has("exclusiveFormSkills") && patch.get("exclusiveFormSkills").isJsonObject()
+                    ? patch.getAsJsonObject("exclusiveFormSkills")
+                    : new JsonObject();
+
+            // Ensure every xeno skill has exclusive masters = beerus/whis
+            for (String skill : XENO_FORM_SKILLS) {
+                if (!exclusive.has(skill) || !exclusive.get(skill).isJsonArray()) {
+                    JsonArray masters = new JsonArray();
+                    for (String m : XENO_FORM_MASTERS) {
+                        masters.add(m);
+                    }
+                    exclusive.add(skill, masters);
+                }
+            }
+
+            if (patch.has("skillOfferings") && patch.get("skillOfferings").isJsonObject()) {
+                for (Map.Entry<String, JsonElement> entry : patch.getAsJsonObject("skillOfferings").entrySet()) {
+                    String master = entry.getKey().toLowerCase();
+                    if (!isXenoFormMaster(master)) {
+                        // Never add our form skills to non-Beerus/Whis from a stale patch
+                        continue;
+                    }
+                    JsonArray want = entry.getValue().getAsJsonArray();
+                    JsonArray existing = offerings.has(master) && offerings.get(master).isJsonArray()
+                            ? offerings.getAsJsonArray(master)
+                            : new JsonArray();
+                    for (JsonElement el : want) {
+                        String skill = el.getAsString();
+                        if (isXenoFormSkill(skill) && !jsonArrayContains(existing, skill)) {
+                            existing.add(skill);
+                        }
+                    }
+                    offerings.add(master, existing);
+                }
+            }
+
+            // 3) Force every exclusive master list entry onto beerus/whis only
             for (Map.Entry<String, JsonElement> ex : exclusive.entrySet()) {
                 String skill = ex.getKey();
-                if (!ex.getValue().isJsonArray()) continue;
+                if (!isXenoFormSkill(skill) || !ex.getValue().isJsonArray()) continue;
                 for (JsonElement mEl : ex.getValue().getAsJsonArray()) {
-                    String master = mEl.getAsString();
+                    String master = mEl.getAsString().toLowerCase();
+                    if (!isXenoFormMaster(master)) continue;
                     JsonArray existing = offerings.has(master) && offerings.get(master).isJsonArray()
                             ? offerings.getAsJsonArray(master)
                             : new JsonArray();
@@ -342,14 +348,40 @@ public final class DmzContentBootstrap {
                 }
             }
 
+            // 4) Final pass: any master that is not beerus/whis must not retain xeno form skills
+            for (Map.Entry<String, JsonElement> entry : offerings.entrySet()) {
+                String master = entry.getKey().toLowerCase();
+                if (!entry.getValue().isJsonArray()) continue;
+                if (isXenoFormMaster(master)) {
+                    // Ensure all xeno skills present on beerus/whis
+                    JsonArray arr = entry.getValue().getAsJsonArray();
+                    for (String skill : XENO_FORM_SKILLS) {
+                        if (!jsonArrayContains(arr, skill)) {
+                            arr.add(skill);
+                        }
+                    }
+                    offerings.add(entry.getKey(), arr);
+                    continue;
+                }
+                JsonArray arr = entry.getValue().getAsJsonArray();
+                JsonArray cleaned = new JsonArray();
+                for (JsonElement el : arr) {
+                    String skill = el.getAsString();
+                    if (isXenoFormSkill(skill) || isLegacyFormSkill(skill)) continue;
+                    if (!jsonArrayContains(cleaned, skill)) cleaned.add(el);
+                }
+                offerings.add(entry.getKey(), cleaned);
+            }
+
             skills.add("skillOfferings", offerings);
 
             try (Writer writer = Files.newBufferedWriter(skillsJson, StandardCharsets.UTF_8)) {
                 GSON.toJson(skills, writer);
             }
             XenoPixelsMod.LOGGER.info(
-                    "Patched DMZ skills.json formSkills={} (DMZ-native types + fan)",
-                    formSkills);
+                    "Patched DMZ skills.json: formSkills={} learnable only from {}",
+                    java.util.Arrays.toString(XENO_FORM_SKILLS),
+                    java.util.Arrays.toString(XENO_FORM_MASTERS));
         } catch (Exception e) {
             XenoPixelsMod.LOGGER.error("Failed patching skills.json", e);
         }
@@ -376,6 +408,26 @@ public final class DmzContentBootstrap {
             leg.add("prices", fixed);
             leg.addProperty("buyFromMaster", false);
             XenoPixelsMod.LOGGER.info("Restored vanilla legendaryforms price ladder (removed stale Ikari slot)");
+        }
+    }
+
+    /**
+     * Older installs padded superforms with 14 TP slots for supersaiyan_legend.
+     * Legend forms now live on xenopixels_fan_ss (Beerus/Whis only) — trim back if needed.
+     */
+    private static void stripSupersaiyanLegendSuperformsPrices(JsonObject costs) {
+        if (!costs.has("superforms") || !costs.get("superforms").isJsonObject()) return;
+        JsonObject sf = costs.getAsJsonObject("superforms");
+        if (!sf.has("prices") || !sf.get("prices").isJsonArray()) return;
+        JsonArray prices = sf.getAsJsonArray("prices");
+        // Vanilla superforms is 8 levels; we only strip if we clearly over-extended to 14
+        if (prices.size() >= 14) {
+            JsonArray trimmed = new JsonArray();
+            for (int i = 0; i < 8 && i < prices.size(); i++) {
+                trimmed.add(prices.get(i));
+            }
+            sf.add("prices", trimmed);
+            XenoPixelsMod.LOGGER.info("Trimmed superforms prices back to 8 levels (legend moved to xenopixels_fan_ss)");
         }
     }
 
@@ -420,6 +472,30 @@ public final class DmzContentBootstrap {
         entry.add("costs", costs);
         entry.add("allowedRaces", new JsonArray());
         skillsMap.add(skillId, entry);
+    }
+
+    private static boolean isXenoFormSkill(String skill) {
+        if (skill == null) return false;
+        for (String x : XENO_FORM_SKILLS) {
+            if (x.equals(skill)) return true;
+        }
+        return false;
+    }
+
+    private static boolean isLegacyFormSkill(String skill) {
+        if (skill == null) return false;
+        for (String leg : LEGACY_FORM_SKILLS) {
+            if (leg.equals(skill)) return true;
+        }
+        return false;
+    }
+
+    private static boolean isXenoFormMaster(String master) {
+        if (master == null) return false;
+        for (String m : XENO_FORM_MASTERS) {
+            if (m.equalsIgnoreCase(master)) return true;
+        }
+        return false;
     }
 
     private static boolean jsonArrayContains(JsonArray arr, String value) {

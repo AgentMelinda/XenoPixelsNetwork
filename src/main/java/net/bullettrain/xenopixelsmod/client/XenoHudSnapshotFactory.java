@@ -10,11 +10,19 @@ import net.minecraft.client.player.LocalPlayer;
  * behavior, so the overlay's draw code only consumes already-resolved values.
  */
 public final class XenoHudSnapshotFactory {
+    private static long cachedGameTime = Long.MIN_VALUE;
+    private static int cachedPlayerId = Integer.MIN_VALUE;
+    private static XenoHudSnapshot cachedSnapshot;
 
     private XenoHudSnapshotFactory() {
     }
 
     public static XenoHudSnapshot capture(Minecraft mc) {
+        long gameTime = mc.level != null ? mc.level.getGameTime() : Long.MIN_VALUE;
+        int playerId = mc.player != null ? mc.player.getId() : -1;
+        if (cachedSnapshot != null && cachedGameTime == gameTime && cachedPlayerId == playerId) {
+            return cachedSnapshot;
+        }
         DmzClientStats.Snapshot dmz = DmzClientStats.read(mc.player);
 
         String name = resolveName(mc);
@@ -34,9 +42,13 @@ public final class XenoHudSnapshotFactory {
         boolean transforming = dmz.present && dmz.isTransforming();
         float chargePercent = transforming ? dmz.transformChargePercent() : 0f;
 
-        return new XenoHudSnapshot(name, dmz.present, releaseText,
+        XenoHudSnapshot snapshot = new XenoHudSnapshot(name, dmz.present, releaseText,
                 hp, ki, stm, curHp, maxHp, curKi, maxKi, curStm, maxStm,
                 transforming, chargePercent);
+        cachedGameTime = gameTime;
+        cachedPlayerId = playerId;
+        cachedSnapshot = snapshot;
+        return snapshot;
     }
 
     private static float resolveCurrentHp(Minecraft mc) {

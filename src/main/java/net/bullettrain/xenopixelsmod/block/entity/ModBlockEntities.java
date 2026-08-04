@@ -22,6 +22,16 @@ public final class ModBlockEntities {
                     BlockEntityType.Builder.of(ShipVlsGuidanceBlockEntity::new,
                             ModBlocks.SHIP_VLS_GUIDANCE.get()).build(null));
 
+    public static final RegistryObject<BlockEntityType<ShipThrusterBlockEntity>> SHIP_THRUSTER =
+            BLOCK_ENTITIES.register("ship_thruster", () ->
+                    BlockEntityType.Builder.of(ShipThrusterBlockEntity::new,
+                            ModBlocks.SHIP_THRUSTER.get()).build(null));
+
+    public static final RegistryObject<BlockEntityType<MissileTubeBlockEntity>> MISSILE_TUBE =
+            BLOCK_ENTITIES.register("missile_tube", () ->
+                    BlockEntityType.Builder.of(MissileTubeBlockEntity::new,
+                            ModBlocks.MISSILE_TUBE.get()).build(null));
+
     private ModBlockEntities() {}
 
     public static void register(IEventBus bus) {

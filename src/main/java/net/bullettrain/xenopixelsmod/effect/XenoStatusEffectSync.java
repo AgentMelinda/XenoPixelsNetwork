@@ -5,6 +5,7 @@ import net.bullettrain.xenopixelsmod.capability.XenoCapabilities;
 import net.bullettrain.xenopixelsmod.combat.Bt3SparkingSystem;
 import net.bullettrain.xenopixelsmod.config.XenoServerConfig;
 import net.bullettrain.xenopixelsmod.features.progression.CombatSkills;
+import net.bullettrain.xenopixelsmod.capability.XenoPlayerData;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.effect.MobEffect;
 import net.minecraft.world.effect.MobEffectInstance;
@@ -21,6 +22,9 @@ import net.minecraftforge.fml.common.Mod;
 @Mod.EventBusSubscriber(modid = XenoPixelsMod.MOD_ID)
 public final class XenoStatusEffectSync {
     private static final int REFRESH = 80; // 4s — long enough that inventory doesn't flicker
+    private static final String[] SOUL_EFFECT_IDS = {
+            "warrior", "iron", "spark", "finisher", "balanced"
+    };
 
     private XenoStatusEffectSync() {}
 
@@ -37,11 +41,10 @@ public final class XenoStatusEffectSync {
         if (player == null || player.isRemoved()) return;
 
         // --- Super Soul ---
-        String soulId = player.getCapability(XenoCapabilities.XENO_DATA)
-                .map(d -> d.getSuperSoulId())
-                .orElse("");
+        XenoPlayerData xenoData = player.getCapability(XenoCapabilities.XENO_DATA).orElse(null);
+        String soulId = xenoData != null ? xenoData.getSuperSoulId() : "";
         MobEffect wantedSoul = ModEffects.soulEffect(soulId);
-        for (String id : new String[]{"warrior", "iron", "spark", "finisher", "balanced"}) {
+        for (String id : SOUL_EFFECT_IDS) {
             MobEffect e = ModEffects.soulEffect(id);
             if (e == null) continue;
             if (e == wantedSoul) {
@@ -53,8 +56,10 @@ public final class XenoStatusEffectSync {
 
         // --- Combat skill summary ---
         int totalLv = 0;
-        for (String sk : CombatSkills.DEFS.keySet()) {
-            totalLv += CombatSkills.level(player, sk);
+        if (xenoData != null) {
+            for (String sk : CombatSkills.DEFS.keySet()) {
+                totalLv += xenoData.getSkillLevel(sk);
+            }
         }
         if (totalLv > 0) {
             ensure(player, ModEffects.COMBAT_TRAINING.get(), Math.min(11, totalLv - 1), REFRESH);

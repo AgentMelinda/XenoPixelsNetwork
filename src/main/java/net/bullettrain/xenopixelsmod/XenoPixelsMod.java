@@ -31,6 +31,7 @@ public class XenoPixelsMod {
         ModsItems.register(modEventBus); // -- mods item register
         ModBlocks.register(modEventBus);
         net.bullettrain.xenopixelsmod.block.entity.ModBlockEntities.register(modEventBus);
+        net.bullettrain.xenopixelsmod.missile.ModEntities.register(modEventBus);
         ModEffects.register(modEventBus);
         ModNetwork.register();
 
@@ -49,6 +50,22 @@ public class XenoPixelsMod {
             net.bullettrain.xenopixelsmod.features.FeatureManager.bootstrap();
             if (net.bullettrain.xenopixelsmod.config.XenoServerConfig.dmzContentBootstrap) {
                 net.bullettrain.xenopixelsmod.dmz.DmzContentBootstrap.installBundledContent();
+            }
+            // VS thruster + ship-as-ballistic-missile physics attachments
+            try {
+                net.bullettrain.xenopixelsmod.vs.XenoThrusterControl.ensureRegistered();
+                net.bullettrain.xenopixelsmod.vs.ShipBallisticController.ensureRegistered();
+                net.bullettrain.xenopixelsmod.vs.ShipGravityControl.ensureRegistered();
+            } catch (Throwable t) {
+                LOGGER.debug("VS ship attachment register skipped: {}", t.toString());
+            }
+            // Optional CC:Tweaked peripherals (thruster + ballistic guidance)
+            try {
+                Class.forName("net.bullettrain.xenopixelsmod.compat.computercraft.CcCompat")
+                        .getMethod("register")
+                        .invoke(null);
+            } catch (Throwable t) {
+                LOGGER.debug("CC compat not registered: {}", t.toString());
             }
             LOGGER.info("Perf: {}", net.bullettrain.xenopixelsmod.config.XenoPerfConfig.statusLine());
         });
@@ -78,6 +95,25 @@ public class XenoPixelsMod {
                 net.bullettrain.xenopixelsmod.client.config.XenoHudConfig.load();
                 net.bullettrain.xenopixelsmod.client.config.XenoHotbarConfig.load();
                 net.bullettrain.xenopixelsmod.client.config.XenoCooldownHudConfig.load();
+                // Wire GUIs without loading client classes on dedicated server
+                net.bullettrain.xenopixelsmod.client.ClientScreens.openTargetTool = () ->
+                        net.minecraft.client.Minecraft.getInstance().setScreen(
+                                new net.bullettrain.xenopixelsmod.client.gui.TargetScreen());
+                // Ballistic Guidance GUI (includes missile speed 1–20)
+                net.bullettrain.xenopixelsmod.client.ClientScreens.openGuidance = data ->
+                        net.bullettrain.xenopixelsmod.client.ClientGuidance.open(
+                                data.computerPos(), data.x(), data.y(), data.z(),
+                                data.status(), data.pairedThrusters(), data.speedLevel(),
+                                data.apexY(), data.cruiseY(), data.fleetChannel(),
+                                data.salvoIntervalTicks(), data.gravitySi(), data.dragCoefficient(),
+                                data.missileBase(), data.missileCenter(), data.missileNose(),
+                                data.guidanceStopDistance());
+                net.bullettrain.xenopixelsmod.client.ClientScreens.receiveFlightPlan = result -> {
+                    var screen = net.minecraft.client.Minecraft.getInstance().screen;
+                    if (screen instanceof net.bullettrain.xenopixelsmod.client.gui.FlightPlannerScreen planner) {
+                        planner.acceptResult(result);
+                    }
+                };
             });
         }
     }

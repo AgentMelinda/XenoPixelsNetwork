@@ -92,9 +92,13 @@ public final class ProgressionEvents {
             data.addDummyHit(amount);
             int hits = data.getDummyHits();
             long session = data.getDummySessionDamage();
-            atk.displayClientMessage(Component.literal(
-                    String.format("§eDummy §7| hit §f%.1f §7| session §f%d §7| hits §f%d §7| total §f%d",
-                            amount, session, hits, data.getDummyTotalDamage())), true);
+
+            // Throttle action-bar spam: every 5th hit (or first) — saves packet/chat churn in combos
+            if (hits == 1 || hits % 5 == 0) {
+                atk.displayClientMessage(Component.literal(
+                        String.format("§eDummy §7| hit §f%.1f §7| session §f%d §7| hits §f%d §7| total §f%d",
+                                amount, session, hits, data.getDummyTotalDamage())), true);
+            }
 
             // Milestone skill points
             if (hits == 25 || hits == 100 || hits == 250) {
@@ -110,7 +114,7 @@ public final class ProgressionEvents {
                 int dmg = Math.max(1, Math.round(amount));
                 if (data.addQuestProgress(dmg)) {
                     completeQuest(atk, data);
-                } else {
+                } else if (hits % 5 == 0) {
                     atk.displayClientMessage(Component.literal(
                             "§bQuest §7" + data.getQuestProgress() + "/" + data.getQuestTarget()), true);
                 }

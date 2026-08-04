@@ -33,8 +33,8 @@ public final class XenoCooldownHudConfig {
     public static int y = 84;
     public static float scale = 0.87f;
 
-    /** When true, hide the whole strip while nothing is on cooldown / charging. */
-    public static boolean showOnlyWhenActive = false;
+    /** When true, hide the whole strip while nothing is on cooldown / charging. (Default true for FPS.) */
+    public static boolean showOnlyWhenActive = true;
 
     /** Horizontal row (true) vs vertical column (false). */
     public static boolean horizontal = true;

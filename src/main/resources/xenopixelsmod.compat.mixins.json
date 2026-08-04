@@ -8,11 +8,13 @@
     "compat.ballistix.EntityMissileMixin",
     "compat.ballistix.VirtualMissileMixin",
     "compat.ballistix.TileLauncherPlatformMixin",
+    "compat.ballistix.TileLauncherControlPanelMixin",
     "compat.ballistix.TileVerticalLaunchSiloMixin",
-    "compat.voltaic.GenericTileOnLoadMixin",
-    "compat.vs2.ServerShipStaticMixin"
+    "compat.voltaic.GenericTileOnLoadMixin"
   ],
-  "client": [],
+  "client": [
+    "compat.xaero.GuiMapWaypointPickerMixin"
+  ],
   "injectors": {
     "defaultRequire": 0
   },

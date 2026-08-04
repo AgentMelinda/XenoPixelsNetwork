@@ -26,7 +26,9 @@ public class ConditionalMixinPlugin implements IMixinConfigPlugin {
     public boolean shouldApplyMixin(String targetClassName, String mixinClassName) {
         // Package-based gates under mixin.compat.*
         if (mixinClassName.contains(".compat.ballistix.")) {
-            return isModLoaded("ballistix") && isModLoaded("voltaic");
+            // Voltaic is a hard dep of Ballistix; gate only on ballistix so we don't
+            // skip mixins if voltaic's file id is remapped/bundled oddly.
+            return isModLoaded("ballistix");
         }
         if (mixinClassName.contains(".compat.voltaic.")) {
             return isModLoaded("voltaic");
@@ -36,6 +38,9 @@ public class ConditionalMixinPlugin implements IMixinConfigPlugin {
         }
         if (mixinClassName.contains(".compat.create.")) {
             return isModLoaded("create");
+        }
+        if (mixinClassName.contains(".compat.xaero.")) {
+            return isModLoaded("xaeroworldmap");
         }
         return true;
     }
@@ -59,33 +64,37 @@ public class ConditionalMixinPlugin implements IMixinConfigPlugin {
 
     public static boolean isModLoaded(String modId) {
         try {
-            if (FMLLoader.getLoadingModList() == null) return false;
-            return FMLLoader.getLoadingModList().getModFileById(modId) != null;
-        } catch (Throwable t) {
-            try {
-                // Fallback: class present on classpath
-                if ("ballistix".equals(modId)) {
-                    Class.forName("ballistix.common.entity.EntityMissile", false,
-                            ConditionalMixinPlugin.class.getClassLoader());
-                    return true;
-                }
-                if ("voltaic".equals(modId)) {
-                    Class.forName("voltaic.prefab.tile.GenericTile", false,
-                            ConditionalMixinPlugin.class.getClassLoader());
-                    return true;
-                }
-                if ("valkyrienskies".equals(modId)) {
-                    Class.forName("org.valkyrienskies.mod.common.VSGameUtilsKt", false,
-                            ConditionalMixinPlugin.class.getClassLoader());
-                    return true;
-                }
-                if ("create".equals(modId)) {
-                    Class.forName("com.simibubi.create.Create", false,
-                            ConditionalMixinPlugin.class.getClassLoader());
-                    return true;
-                }
-            } catch (Throwable ignored) {
+            if (FMLLoader.getLoadingModList() != null
+                    && FMLLoader.getLoadingModList().getModFileById(modId) != null) {
+                return true;
             }
+        } catch (Throwable ignored) {
+        }
+        // Classpath fallbacks (mixin apply / weird loaders)
+        if ("ballistix".equals(modId)) {
+            return isClassPresent("ballistix.common.entity.EntityMissile")
+                    || isClassPresent("ballistix.common.tile.silo.TileLauncherPlatformT1");
+        }
+        if ("voltaic".equals(modId)) {
+            return isClassPresent("voltaic.prefab.tile.GenericTile");
+        }
+        if ("valkyrienskies".equals(modId)) {
+            return isClassPresent("org.valkyrienskies.mod.common.VSGameUtilsKt");
+        }
+        if ("create".equals(modId)) {
+            return isClassPresent("com.simibubi.create.Create");
+        }
+        if ("xaeroworldmap".equals(modId)) {
+            return isClassPresent("xaero.map.gui.GuiMap");
+        }
+        return false;
+    }
+
+    private static boolean isClassPresent(String name) {
+        try {
+            Class.forName(name, false, ConditionalMixinPlugin.class.getClassLoader());
+            return true;
+        } catch (Throwable t) {
             return false;
         }
     }

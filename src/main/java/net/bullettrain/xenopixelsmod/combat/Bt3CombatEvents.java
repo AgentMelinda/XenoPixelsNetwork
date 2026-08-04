@@ -19,18 +19,19 @@ import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
 
 import java.util.Iterator;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
-import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * Server-side BT3 phase-1: guard state, STM drain, super-counter windows.
  */
 @Mod.EventBusSubscriber(modid = XenoPixelsMod.MOD_ID)
 public final class Bt3CombatEvents {
-    private static final Map<UUID, Long> GUARDING = new ConcurrentHashMap<>();
-    private static final Map<UUID, Integer> COUNTER_UNTIL_TICK = new ConcurrentHashMap<>();
-    private static final Map<UUID, Integer> GUARD_STUN_UNTIL = new ConcurrentHashMap<>();
+    // Forge events and handled packets mutate these on the server thread.
+    private static final Map<UUID, Long> GUARDING = new HashMap<>();
+    private static final Map<UUID, Integer> COUNTER_UNTIL_TICK = new HashMap<>();
+    private static final Map<UUID, Integer> GUARD_STUN_UNTIL = new HashMap<>();
 
     private Bt3CombatEvents() {}
 
@@ -115,37 +116,42 @@ public final class Bt3CombatEvents {
     public static void onServerTick(TickEvent.ServerTickEvent event) {
         if (event.phase != TickEvent.Phase.END) return;
         if (!XenoServerConfig.bt3CombatEnabled || !XenoServerConfig.bt3GuardEnabled) return;
+        int serverTick = event.getServer().getTickCount();
 
-        // Passive STM while holding guard (~every second)
-        Iterator<Map.Entry<UUID, Long>> it = GUARDING.entrySet().iterator();
-        while (it.hasNext()) {
-            Map.Entry<UUID, Long> e = it.next();
-            ServerPlayer p = event.getServer().getPlayerList().getPlayer(e.getKey());
-            if (p == null || !p.isAlive()) {
-                it.remove();
-                continue;
-            }
-            long now = p.level().getGameTime();
-            long last = e.getValue();
-            if (now - last < 20) continue;
-            e.setValue(now);
-            Resources res = readResources(p);
-            float drain = XenoServerConfig.guardStaminaPerSec;
-            if (res != null && drain > 0f) {
-                if (res.getCurrentStamina() < drain) {
-                    setGuarding(p, false);
-                    DmzAnimHelper.broadcastBlockStop(p);
-                    p.displayClientMessage(Component.literal("§eGuard dropped — low stamina"), true);
-                } else {
-                    res.removeStamina(drain);
+        // Entries drain once per second; polling five times per second preserves timing
+        // without resolving every guarding UUID on every server tick.
+        if (serverTick % 4 == 0 && !GUARDING.isEmpty()) {
+            Iterator<Map.Entry<UUID, Long>> it = GUARDING.entrySet().iterator();
+            while (it.hasNext()) {
+                Map.Entry<UUID, Long> e = it.next();
+                ServerPlayer p = event.getServer().getPlayerList().getPlayer(e.getKey());
+                if (p == null || !p.isAlive()) {
+                    it.remove();
+                    continue;
+                }
+                long now = p.level().getGameTime();
+                long last = e.getValue();
+                if (now - last < 20) continue;
+                e.setValue(now);
+                Resources res = readResources(p);
+                float drain = XenoServerConfig.guardStaminaPerSec;
+                if (res != null && drain > 0f) {
+                    if (res.getCurrentStamina() < drain) {
+                        it.remove();
+                        DmzAnimHelper.broadcastBlockStop(p);
+                        p.displayClientMessage(Component.literal("§eGuard dropped — low stamina"), true);
+                    } else {
+                        res.removeStamina(drain);
+                    }
                 }
             }
         }
 
-        // Prune expired counters / stuns
-        int tick = event.getServer().getTickCount();
-        COUNTER_UNTIL_TICK.entrySet().removeIf(en -> en.getValue() < tick - 40);
-        GUARD_STUN_UNTIL.entrySet().removeIf(en -> en.getValue() < tick - 40);
+        // These are queried lazily by exact UUID; bulk pruning once per second is enough.
+        if (serverTick % 20 == 0) {
+            COUNTER_UNTIL_TICK.entrySet().removeIf(en -> en.getValue() < serverTick - 40);
+            GUARD_STUN_UNTIL.entrySet().removeIf(en -> en.getValue() < serverTick - 40);
+        }
     }
 
     @SubscribeEvent

@@ -6,6 +6,7 @@ import com.dragonminez.common.stats.StatsProvider;
 import com.dragonminez.common.stats.character.Resources;
 import com.dragonminez.common.stats.character.Status;
 import com.dragonminez.common.stats.extras.ActionMode;
+import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
 import net.minecraft.world.entity.player.Player;
 import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.api.distmarker.OnlyIn;
@@ -13,9 +14,18 @@ import net.minecraftforge.common.util.LazyOptional;
 
 /**
  * Live read of DragonMineZ client-side stats for the custom HUD.
+ *
+ * <p>Per-game-tick cache: HUD + hotbar + party + combat may all call {@link #read}
+ * in the same tick; capability lookups are not free.
  */
 @OnlyIn(Dist.CLIENT)
 public final class DmzClientStats {
+    /** entityId → snapshot for the current client game time. */
+    private static final Int2ObjectOpenHashMap<Snapshot> TICK_CACHE = new Int2ObjectOpenHashMap<>();
+    private static long cacheGameTime = Long.MIN_VALUE;
+    private static final Snapshot EMPTY = new Snapshot(
+            false, 0, 100, 0f, 0f, 0f, 0f, 0f, 0, 0, false, null);
+
     private DmzClientStats() {}
 
     public static final class Snapshot {
@@ -52,7 +62,7 @@ public final class DmzClientStats {
         }
 
         public static Snapshot empty() {
-            return new Snapshot(false, 0, 100, 0f, 0f, 0f, 0f, 0f, 0, 0, false, null);
+            return EMPTY;
         }
 
         public float releasePercent() {
@@ -96,6 +106,25 @@ public final class DmzClientStats {
      */
     public static Snapshot read(Player player) {
         if (player == null) return Snapshot.empty();
+
+        long gameTime = player.level().getGameTime();
+        if (gameTime != cacheGameTime) {
+            TICK_CACHE.clear();
+            cacheGameTime = gameTime;
+        }
+
+        int id = player.getId();
+        Snapshot cached = TICK_CACHE.get(id);
+        if (cached != null) {
+            return cached;
+        }
+
+        Snapshot snap = readUncached(player);
+        TICK_CACHE.put(id, snap);
+        return snap;
+    }
+
+    private static Snapshot readUncached(Player player) {
         try {
             LazyOptional<StatsData> opt = StatsProvider.get(StatsCapability.INSTANCE, player);
             if (!opt.isPresent()) return Snapshot.empty();

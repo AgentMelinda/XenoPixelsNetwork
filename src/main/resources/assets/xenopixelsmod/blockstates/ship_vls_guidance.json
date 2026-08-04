@@ -1,5 +1,10 @@
 {
   "variants": {
-    "": { "model": "xenopixelsmod:block/ship_vls_guidance" }
+    "facing=down":  { "model": "xenopixelsmod:block/ship_vls_guidance", "x": 90 },
+    "facing=up":    { "model": "xenopixelsmod:block/ship_vls_guidance", "x": 270 },
+    "facing=north": { "model": "xenopixelsmod:block/ship_vls_guidance" },
+    "facing=south": { "model": "xenopixelsmod:block/ship_vls_guidance", "y": 180 },
+    "facing=west":  { "model": "xenopixelsmod:block/ship_vls_guidance", "y": 270 },
+    "facing=east":  { "model": "xenopixelsmod:block/ship_vls_guidance", "y": 90 }
   }
 }

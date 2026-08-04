@@ -1,0 +1,9 @@
+{
+  "parent": "minecraft:block/cube_bottom_top",
+  "textures": {
+    "particle": "xenopixelsmod:block/missile_tube_side",
+    "bottom": "xenopixelsmod:block/missile_tube_bottom",
+    "top": "xenopixelsmod:block/missile_tube_top",
+    "side": "xenopixelsmod:block/missile_tube_side"
+  }
+}

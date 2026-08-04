@@ -1,0 +1,12 @@
+{
+  "parent": "minecraft:block/cube",
+  "textures": {
+    "particle": "xenopixelsmod:block/ship_thruster_side",
+    "north": "xenopixelsmod:block/ship_thruster_front",
+    "south": "xenopixelsmod:block/ship_thruster_back",
+    "east": "xenopixelsmod:block/ship_thruster_side",
+    "west": "xenopixelsmod:block/ship_thruster_side",
+    "up": "xenopixelsmod:block/ship_thruster_side",
+    "down": "xenopixelsmod:block/ship_thruster_side"
+  }
+}

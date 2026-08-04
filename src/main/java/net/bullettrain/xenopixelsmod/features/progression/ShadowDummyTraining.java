@@ -8,8 +8,8 @@ import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntityType;
+import net.minecraft.world.phys.AABB;
 
 /**
  * Spawns DMZ {@link ShadowDummyEntity} as an attacking player clone for training.
@@ -82,8 +82,8 @@ public final class ShadowDummyTraining {
     public static int dismissNearby(ServerPlayer player, double range) {
         if (player == null || !(player.level() instanceof ServerLevel level)) return 0;
         int n = 0;
-        for (Entity e : level.getAllEntities()) {
-            if (!(e instanceof ShadowDummyEntity dummy)) continue;
+        AABB search = player.getBoundingBox().inflate(range);
+        for (ShadowDummyEntity dummy : level.getEntitiesOfClass(ShadowDummyEntity.class, search)) {
             if (!dummy.getPersistentData().getBoolean(TAG_XENO_TRAINING)) continue;
             if (dummy.distanceToSqr(player) > range * range) continue;
             // Only dismiss own if owner set

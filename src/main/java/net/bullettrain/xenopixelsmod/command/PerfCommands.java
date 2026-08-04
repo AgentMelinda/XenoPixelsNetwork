@@ -4,9 +4,6 @@ import com.mojang.brigadier.CommandDispatcher;
 import com.mojang.brigadier.arguments.StringArgumentType;
 import net.bullettrain.xenopixelsmod.XenoPixelsMod;
 import net.bullettrain.xenopixelsmod.config.XenoPerfConfig;
-import net.bullettrain.xenopixelsmod.perf.CreatePerfHooks;
-import net.bullettrain.xenopixelsmod.perf.MsptWatchdog;
-import net.bullettrain.xenopixelsmod.perf.Vs2ShipSleepManager;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
 import net.minecraft.network.chat.Component;
@@ -15,6 +12,7 @@ import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
 
 /**
+ * Module perf: chunk force-load + thruster force distance.
  * <pre>
  * /xenoperf status|reload
  * /xenoperf set &lt;key&gt; &lt;value&gt;
@@ -51,30 +49,18 @@ public final class PerfCommands {
                 .executes(ctx -> {
                     ctx.getSource().sendSuccess(() -> Component.literal(
                             "Usage: /xenoperf <status|reload|set <key> <value>>\n"
-                                    + "keys: enabled, vs2sleep, hotrange, warmrange, maxships, "
-                                    + "msptwatch, msptthreshold, createsleep, createcoupled, "
-                                    + "createhotrange, createmaxcontraptions"), false);
+                                    + "keys: maxrange (blocks, default 1000000=1000km, 0=unlimited),\n"
+                                    + "  thrforce (default off), thralways, thrrange,\n"
+                                    + "  forcechunks (default off), targetonly, radius, duration, playerange,\n"
+                                    + "  statsync, statsheartbeat, statsdirty"), false);
                     return 1;
                 }));
     }
 
     private static int status(CommandSourceStack src) {
-        String create = CreatePerfHooks.isCreateLoaded()
-                ? ("yes contraptions=" + CreatePerfHooks.lastContraptionCount()
-                + " frozen=" + CreatePerfHooks.lastFrozenCount())
-                : "not loaded";
         src.sendSuccess(() -> Component.literal(
-                "§eXenoPixels Perf§r\n"
-                        + XenoPerfConfig.statusLine() + "\n"
-                        + String.format("MSPT avg: %.1f  stressed: %s  effHot: %.0f  effWarm: %.0f\n",
-                        MsptWatchdog.averageMspt(),
-                        MsptWatchdog.isStressed(),
-                        MsptWatchdog.effectiveHotRange(),
-                        MsptWatchdog.effectiveWarmRange())
-                        + "VS2 ships dynamic=" + Vs2ShipSleepManager.lastDynamicCount()
-                        + " static=" + Vs2ShipSleepManager.lastStaticCount()
-                        + " parkedByUs=" + Vs2ShipSleepManager.lastParkedByUsCount() + "\n"
-                        + "Create: " + create), false);
+                "§eXenoPixels Module Perf§r (no global VS2 ship sleep)\n"
+                        + XenoPerfConfig.statusLine()), false);
         return 1;
     }
 
@@ -83,27 +69,29 @@ public final class PerfCommands {
         try {
             switch (k) {
                 case "enabled", "perf" -> XenoPerfConfig.perfEnabled = parseBool(raw);
-                case "vs2sleep", "sleep" -> XenoPerfConfig.vs2SleepEnabled = parseBool(raw);
-                case "hotrange", "hot" -> XenoPerfConfig.vs2HotRange = Double.parseDouble(raw);
-                case "warmrange", "warm" -> XenoPerfConfig.vs2WarmRange = Double.parseDouble(raw);
-                case "maxships" -> XenoPerfConfig.vs2MaxActiveShipsGlobal = Integer.parseInt(raw);
-                case "idleseconds" -> XenoPerfConfig.vs2IdleSeconds = Integer.parseInt(raw);
-                case "msptwatch" -> XenoPerfConfig.msptWatchdogEnabled = parseBool(raw);
-                case "msptthreshold", "mspt" -> XenoPerfConfig.msptThreshold = Double.parseDouble(raw);
-                case "createsleep", "create" -> XenoPerfConfig.createPerfEnabled = parseBool(raw);
-                case "createcoupled", "coupled" -> XenoPerfConfig.createCoupledSleep = parseBool(raw);
-                case "createhotrange" -> XenoPerfConfig.createHotRange = Double.parseDouble(raw);
-                case "createmaxcontraptions", "maxcontraptions" ->
-                        XenoPerfConfig.createMaxContraptionsGlobal = Integer.parseInt(raw);
+                case "maxrange", "range", "ballisticrange" ->
+                        XenoPerfConfig.ballisticMaxRangeBlocks = Integer.parseInt(raw.trim());
+                case "forcechunks", "chunks" -> XenoPerfConfig.forceChunksEnabled = parseBool(raw);
+                case "targetonly", "target" -> XenoPerfConfig.forceChunksTargetOnly = parseBool(raw);
+                case "radius" -> XenoPerfConfig.forceChunksRadius = Integer.parseInt(raw);
+                case "duration" -> XenoPerfConfig.forceChunksDurationTicks = Integer.parseInt(raw);
+                case "playerange", "playerrange" -> XenoPerfConfig.forceChunksPlayerRange = Double.parseDouble(raw);
+                case "thrforce", "thrusterforce", "thrustforce" ->
+                        XenoPerfConfig.thrusterPhysForceEnabled = parseBool(raw);
+                case "thralways", "thrusteralways" -> XenoPerfConfig.thrusterForceAlways = parseBool(raw);
+                case "thrrange", "thrusterrange" -> XenoPerfConfig.thrusterForcePlayerRange = Double.parseDouble(raw);
+                case "statsync", "statsyncinterval" -> XenoPerfConfig.statsSyncIntervalTicks = Integer.parseInt(raw);
+                case "statsheartbeat" -> XenoPerfConfig.statsSyncHeartbeatTicks = Integer.parseInt(raw);
+                case "statsdirty" -> XenoPerfConfig.statsSyncOnlyWhenDirty = parseBool(raw);
                 default -> {
                     src.sendFailure(Component.literal("Unknown key: " + key));
                     return 0;
                 }
             }
-            // re-clamp via apply snapshot roundtrip
             XenoPerfConfig.apply(XenoPerfConfig.snapshot());
             XenoPerfConfig.save();
-            src.sendSuccess(() -> Component.literal("Set " + k + " → saved. " + XenoPerfConfig.statusLine()), true);
+            src.sendSuccess(() -> Component.literal(
+                    "Set " + k + " → saved. " + XenoPerfConfig.statusLine()), true);
             return 1;
         } catch (Exception e) {
             src.sendFailure(Component.literal("Bad value: " + e.getMessage()));

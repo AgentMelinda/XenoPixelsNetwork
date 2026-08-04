@@ -62,6 +62,10 @@ sourceSets.main.resources {
 repositories {
     mavenCentral()
     mavenLocal()
+    maven {
+        url "https://chocolateminecraft.com/maven"
+        name "Xaero's Maven"
+    }
     flatDir {
         dirs 'libs'
     }
@@ -106,6 +110,10 @@ repositories {
         url = 'https://maven.theillusivec4.top/'
     }
     maven {
+        name = 'SquidDev (CC:Tweaked)'
+        url = 'https://maven.squiddev.cc'
+    }
+    maven {
         name = 'IzzelAliz Maven'
         url = 'https://maven.izzel.io/releases/'
     }
@@ -144,6 +152,9 @@ dependencies {
     minecraft "net.minecraftforge:forge:${minecraft_version}-${forge_version}"
     annotationProcessor 'org.spongepowered:mixin:0.8.7:processor'
     compileOnly(annotationProcessor('io.github.llamalad7:mixinextras-common:0.4.1'))
+    // Optional client integration; the dev artifact intentionally uses Mojang names.
+    compileOnly fg.deobf("xaero.lib:xaerolib-forge-1.20.1:1.1.0")
+    compileOnly "xaero.map:xaeroworldmap-forge-1.20.1:1.40.11:dev"
 
     implementation("org.valkyrienskies.core:api:${vs_core_version}") { transitive = false }
     implementation("org.valkyrienskies.core:internal:${vs_core_version}") { transitive = false }
@@ -164,12 +175,16 @@ dependencies {
         library fg.deobf("blank:ballistix:1.0.9")
     }
 
+    // ComputerCraft: Tweaked — optional at runtime; thruster/VLS GenericPeripheral APIs
+    compileOnly fg.deobf("cc.tweaked:cc-tweaked-1.20.1-forge:1.111.0")
+
     implementation fg.deobf("curse.maven:dragonminez-1136088:8469416")
     implementation fg.deobf('software.bernie.geckolib:geckolib-forge-1.20.1:4.8.3')
     implementation 'com.eliotlash.mclib:mclib:20'
     implementation fg.deobf('com.github.glitchfiend:TerraBlender-forge:1.20.1-3.0.1.10')
     implementation fg.deobf('top.theillusivec4.curios:curios-forge:5.14.1+1.20.1')
     implementation 'thedarkcolour:kotlinforforge:4.11.0'
+    testImplementation 'org.junit.jupiter:junit-jupiter:5.10.2'
 
     // ---- LDLib (Phase 1 of the ModernUI -> LDLib HUD migration, see plan.md) ----
     // Resolved only for now; not yet used to render anything, and not Jar-in-Jar'd
@@ -216,6 +231,10 @@ dependencies {
         muiExcludes.delegate = delegate
         muiExcludes()
     }
+}
+
+tasks.named('test', Test).configure {
+    useJUnitPlatform()
 }
 
 def resourceTargets = ['META-INF/mods.toml', 'pack.mcmeta']

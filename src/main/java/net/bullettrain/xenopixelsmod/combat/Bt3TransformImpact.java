@@ -36,7 +36,8 @@ public final class Bt3TransformImpact {
         if (event.phase != TickEvent.Phase.END) return;
         if (!(event.player instanceof ServerPlayer player)) return;
         if (!XenoServerConfig.bt3CombatEnabled || !XenoServerConfig.bt3TransformImpactEnabled) return;
-        if (player.tickCount % 5 != 0) return;
+        // Keep the same 5-tick cadence while distributing players across ticks.
+        if ((player.tickCount + player.getId()) % 5 != 0) return;
 
         String formKey = readFormKey(player);
         String prev = LAST_FORM.get(player.getUUID());

@@ -28,9 +28,9 @@ public final class XenoHudView {
     private static final int STM_SEG_W = 14;
     private static final int STM_SEG_H = 12;
 
-    /** Slant (px) of the parallelogram HP/KI/Stamina bars — leaning like italic fighting-game gauges. */
-    private static final int BAR_SKEW = 10;
-    private static final int STM_SKEW = 4;
+    /** Bar skew (px). Lower = fewer draw calls. 4 still reads as a gauge without killing FPS. */
+    private static final int BAR_SKEW = 4;
+    private static final int STM_SKEW = 0;
 
     // XV2-authentic bar fill colors: HP = red, KI = blue/cyan, STM = gold (kept visually distinct from KI).
     private static final int HP_EMPTY = 0xFF3A0808;
@@ -49,8 +49,8 @@ public final class XenoHudView {
     private static final int PORTRAIT_OUTER = 0xCC050510;
     private static final int PORTRAIT_GOLD = 0xFF42A5F5;
     private static final int PORTRAIT_INNER = 0xFF0A2038;
-    /** Slant (px) of the outer backing plate — matches the bars' parallelogram look. */
-    private static final int PANEL_SKEW = 14;
+    /** Plate skew (px). Tall plates used to do ~90 fill calls each layer. */
+    private static final int PANEL_SKEW = 6;
 
     private XenoHudSnapshot snapshot;
     private int boundsX;
@@ -64,6 +64,8 @@ public final class XenoHudView {
     // instead of snapping instantly — pure visual polish, no data change.
     private float displayedHp = 1f;
     private float displayedKi = 1f;
+    private float displayedStm = 1f;
+    private long lastAnimationNanos;
     private boolean firstFrame = true;
 
     public void setSnapshot(XenoHudSnapshot snapshot) {
@@ -86,6 +88,8 @@ public final class XenoHudView {
     public void resetAnimationState() {
         displayedHp = 1f;
         displayedKi = 1f;
+        displayedStm = 1f;
+        lastAnimationNanos = 0L;
         firstFrame = true;
     }
 
@@ -100,11 +104,18 @@ public final class XenoHudView {
         if (firstFrame) {
             displayedHp = targetHp;
             displayedKi = targetKi;
+            displayedStm = clamp01(snapshot.stmPercent);
             firstFrame = false;
         } else {
-            displayedHp = AnimUtil.ease(displayedHp, targetHp, 0.15f);
-            displayedKi = AnimUtil.ease(displayedKi, targetKi, 0.15f);
+            long now = System.nanoTime();
+            double dt = lastAnimationNanos == 0L ? 1.0 / 60.0
+                    : Math.min(0.1, Math.max(0.0, (now - lastAnimationNanos) / 1_000_000_000.0));
+            float blend = (float) (1.0 - Math.exp(-12.0 * dt));
+            displayedHp += (targetHp - displayedHp) * blend;
+            displayedKi += (targetKi - displayedKi) * blend;
+            displayedStm += (clamp01(snapshot.stmPercent) - displayedStm) * blend;
         }
+        lastAnimationNanos = System.nanoTime();
 
         graphics.pose().pushPose();
         graphics.pose().translate(boundsX, boundsY, 0);
@@ -132,15 +143,11 @@ public final class XenoHudView {
         drawOctagonBorder(graphics, 0, 0, PORTRAIT, PORTRAIT, PORTRAIT_GOLD, 2);
 
         if (snapshot.transforming) {
-            // Animated charge ring drawn OUTSIDE the frame, growing thicker and brighter as charge
-            // fills, plus a fast pulse, so it reads clearly as "charging". Matches the octagon shape.
-            float pulse = AnimUtil.pulse01(500L);
+            // Solid charge ring (no sin pulse every frame)
             float chargePct = clamp01(snapshot.transformChargePercent);
-            int ringPad = 4 + Math.round(pulse * 2f);
-            int ringThickness = 2 + Math.round(chargePct * 4f);
-            int glowAlpha = Math.round(160 + pulse * 95);
-            glowAlpha = Math.max(0, Math.min(255, glowAlpha));
-            int ringColor = (glowAlpha << 24) | (AnimUtil.lerpColor(0xFF1744, 0xFF8A65, pulse * 0.5f) & 0xFFFFFF);
+            int ringPad = 4;
+            int ringThickness = 2 + Math.round(chargePct * 3f);
+            int ringColor = 0xE0FF5252;
             drawOctagonBorder(graphics, -ringPad, -ringPad, PORTRAIT + ringPad * 2, PORTRAIT + ringPad * 2,
                     ringColor, ringThickness);
         }
@@ -157,12 +164,8 @@ public final class XenoHudView {
             graphics.drawString(font, snapshot.releaseText, rx, NAME_Y, 0xFF00E5FF, true);
         }
 
-        // Low-HP warning pulse: fill color flashes toward a brighter orange-red under 25%.
-        int hpColor = HP_NORMAL;
-        if (targetHp < 0.25f) {
-            float alarm = AnimUtil.pulse01(500L);
-            hpColor = AnimUtil.lerpColor(HP_NORMAL, HP_CRITICAL_FLASH, alarm);
-        }
+        // Low-HP warning: solid critical color (no per-frame pulse — saves draw + sin cost)
+        int hpColor = targetHp < 0.25f ? HP_CRITICAL_FLASH : HP_NORMAL;
         drawParallelogramBorder(graphics, CONTENT_LEFT - 2, HP_Y - 2, BAR_W + 4, HP_H + 4, BAR_SKEW, PANEL_BORDER, 1);
         fillParallelogram(graphics, CONTENT_LEFT, HP_Y, BAR_W, HP_H, BAR_SKEW, HP_EMPTY);
         int hpFillW = Math.max(0, Math.round(BAR_W * displayedHp));
@@ -175,18 +178,13 @@ public final class XenoHudView {
         if (kiFillW > 0) fillParallelogram(graphics, CONTENT_LEFT, KI_Y, kiFillW, KI_H, BAR_SKEW, KI_FILLED);
         drawBarValue(graphics, font, CONTENT_LEFT, KI_Y, BAR_W, KI_H, formatPair(snapshot.curKi, snapshot.maxKi));
 
-        int lit = Math.round(STM_SEGMENTS * clamp01(snapshot.stmPercent));
+        // STM: solid segments (shimmer was 16× fillPara + pulse per frame)
+        int lit = Math.round(STM_SEGMENTS * displayedStm);
         int gap = 2;
         for (int i = 0; i < STM_SEGMENTS; i++) {
             int sx = CONTENT_LEFT + i * (STM_SEG_W + gap);
-            if (i < lit) {
-                // Traveling shimmer: each segment pulses slightly out of phase with its neighbors.
-                float shimmer = AnimUtil.pulse01(1400L, i * 90L);
-                int color = AnimUtil.lerpColor(STM_LIT_BASE, STM_LIT_SHIMMER, shimmer * 0.5f);
-                fillParallelogram(graphics, sx, STM_Y, STM_SEG_W, STM_SEG_H, STM_SKEW, color);
-            } else {
-                fillParallelogram(graphics, sx, STM_Y, STM_SEG_W, STM_SEG_H, STM_SKEW, 0xFF2A2415);
-            }
+            fillParallelogram(graphics, sx, STM_Y, STM_SEG_W, STM_SEG_H, STM_SKEW,
+                    i < lit ? STM_LIT_BASE : 0xFF2A2415);
         }
         if (snapshot.maxStm > 0f) {
             String stmText = formatPair(snapshot.curStm, snapshot.maxStm);
@@ -212,32 +210,12 @@ public final class XenoHudView {
      * the "italic" gauge look requested for the HP/KI/Stamina boxes.
      */
     private static void fillParallelogram(GuiGraphics g, int x, int y, int w, int h, int skew, int color) {
-        if (w <= 0 || h <= 0) return;
-        for (int row = 0; row < h; row++) {
-            int offset = rowOffset(row, h, skew);
-            g.fill(x + offset, y + row, x + offset + w, y + row + 1, color);
-        }
+        HudDraw.fillPara(g, x, y, w, h, skew, color);
     }
 
     /** Thin border outline of {@link #fillParallelogram}'s slanted silhouette. */
     private static void drawParallelogramBorder(GuiGraphics g, int x, int y, int w, int h, int skew, int color, int t) {
-        if (w <= 0 || h <= 0 || t <= 0) return;
-        for (int row = 0; row < h; row++) {
-            int offset = rowOffset(row, h, skew);
-            int left = x + offset;
-            int right = left + w;
-            if (row < t || row >= h - t) {
-                g.fill(left, y + row, right, y + row + 1, color);
-            } else {
-                g.fill(left, y + row, Math.min(left + t, right), y + row + 1, color);
-                g.fill(Math.max(right - t, left), y + row, right, y + row + 1, color);
-            }
-        }
-    }
-
-    private static int rowOffset(int row, int h, int skew) {
-        if (h <= 1) return skew;
-        return Math.round(skew * (1f - row / (float) (h - 1)));
+        HudDraw.borderPara(g, x, y, w, h, skew, color, t);
     }
 
     private static void fillOctagon(GuiGraphics g, int x, int y, int w, int h, int color) {
@@ -248,11 +226,7 @@ public final class XenoHudView {
 
     private static void drawOctagonBorder(GuiGraphics g, int x, int y, int w, int h, int color, int t) {
         if (w <= 0 || h <= 0 || t <= 0) return;
-        // Deprecated: now draws a simple rectangle border.
-        g.fill(x + t, y, x + w - t, t, color);
-        g.fill(x + t, y + h - t, x + w, h, color);
-        g.fill(x, y + t, t, y + h, color);
-        g.fill(w - t, y + t, w, y + h, color);
+        HudDraw.borderRect(g, x, y, w, h, color, t);
     }
 
     /** Deprecated: no longer used since the portrait frame is now a square. */
@@ -275,10 +249,10 @@ public final class XenoHudView {
         int iw = PORTRAIT - pad * 2;
         int ih = PORTRAIT - pad * 2;
 
-        // Sky/ground backdrop for the square portrait frame.
-        fillOctagon(g, ix, iy, iw, ih, 0xFF6BB7E8);
-        g.fill(ix, iy + ih * 2 / 3, ix + iw, iy + ih, 0xFF4A8A45);
-        g.fill(ix, iy + ih / 2, ix + iw, iy + ih * 2 / 3, 0xFF5FA35A);
+        // Dark glass backdrop matching the rest of the tech plate.
+        fillOctagon(g, ix, iy, iw, ih, 0xFF0D1B2A);
+        g.fill(ix, iy, ix + iw, iy + ih / 3, 0xFF122A42);
+        g.fill(ix, iy + ih - 2, ix + iw, iy + ih, 0x5542A5F5);
 
         RenderSystem.enableBlend();
         RenderSystem.defaultBlendFunc();
@@ -326,9 +300,12 @@ public final class XenoHudView {
     }
 
     private static String formatNum(float value) {
-        if (value >= 1_000_000f) return String.format("%.1fM", value / 1_000_000f);
-        if (value >= 10_000f) return String.format("%.1fK", value / 1000f);
-        if (Math.abs(value - Math.round(value)) < 0.05f) return String.valueOf(Math.round(value));
-        return String.format("%.0f", value);
+        if (value >= 1_000_000f) return oneDecimal(value / 1_000_000f) + "M";
+        if (value >= 10_000f) return oneDecimal(value / 1000f) + "K";
+        return String.valueOf(Math.round(value));
+    }
+
+    private static String oneDecimal(float value) {
+        return Float.toString(Math.round(value * 10f) / 10f);
     }
 }

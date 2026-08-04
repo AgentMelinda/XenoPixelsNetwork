@@ -15,18 +15,24 @@
     "xenopixels_gods_forms"
   ],
   "skillOfferings": {
-    "beerus": ["xenopixels_divinity"],
-    "whis": ["xenopixels_divinity"],
-    "trunks": ["xenopixels_saga_forms"],
-    "goku": ["xenopixels_fan_ss"],
-    "vegeta": ["xenopixels_fan_ss"],
-    "frieza": ["xenopixels_dark_frieza"]
+    "beerus": [
+      "xenopixels_fan_ss",
+      "xenopixels_divinity",
+      "xenopixels_saga_forms",
+      "xenopixels_dark_frieza"
+    ],
+    "whis": [
+      "xenopixels_fan_ss",
+      "xenopixels_divinity",
+      "xenopixels_saga_forms",
+      "xenopixels_dark_frieza"
+    ]
   },
   "exclusiveFormSkills": {
+    "xenopixels_fan_ss": ["beerus", "whis"],
     "xenopixels_divinity": ["beerus", "whis"],
-    "xenopixels_saga_forms": ["trunks"],
-    "xenopixels_fan_ss": ["goku", "vegeta"],
-    "xenopixels_dark_frieza": ["frieza"]
+    "xenopixels_saga_forms": ["beerus", "whis"],
+    "xenopixels_dark_frieza": ["beerus", "whis"]
   },
   "skillCosts": {
     "xenopixels_divinity": {

@@ -1,7 +1,5 @@
 {
   "variants": {
-    "": {
-      "model": "xenopixelsmod:block/jackietonite_ore_block"
-    }
+    "": { "model": "xenopixelsmod:block/jackietonite_ore_block" }
   }
 }
