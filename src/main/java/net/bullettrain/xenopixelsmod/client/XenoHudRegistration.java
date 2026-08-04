@@ -22,11 +22,13 @@ public final class XenoHudRegistration {
             event.registerAbove(DMZ_TOP, "xeno_hud", new XenoHudOverlay());
             event.registerAbove(DMZ_TOP, "xeno_technique_hotbar", new XenoTechniqueHotbarOverlay());
             event.registerAbove(DMZ_TOP, "xeno_party_hud", new XenoPartyOverlay());
+            event.registerAbove(DMZ_TOP, "xeno_party_menu", new XenoPartyMenuOverlay());
             event.registerAbove(DMZ_TOP, "xeno_cooldown_hud", new XenoCooldownHudOverlay());
         } catch (Exception e) {
             event.registerAbove(VanillaGuiOverlay.HOTBAR.id(), "xeno_hud", new XenoHudOverlay());
             event.registerAbove(VanillaGuiOverlay.HOTBAR.id(), "xeno_technique_hotbar", new XenoTechniqueHotbarOverlay());
             event.registerAbove(VanillaGuiOverlay.HOTBAR.id(), "xeno_party_hud", new XenoPartyOverlay());
+            event.registerAbove(VanillaGuiOverlay.HOTBAR.id(), "xeno_party_menu", new XenoPartyMenuOverlay());
             event.registerAbove(VanillaGuiOverlay.HOTBAR.id(), "xeno_cooldown_hud", new XenoCooldownHudOverlay());
         }
     }
