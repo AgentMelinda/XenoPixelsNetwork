@@ -1,0 +1,25 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "key": {
+    "S": {
+      "item": "xenopixelsmod:strawberry_senzu"
+    },
+    "G": {
+      "tag": "forge:crops/wheat"
+    },
+    "B": {
+      "item": "minecraft:sugar"
+    }
+  },
+  "pattern": [
+    " G ",
+    "SBS",
+    " G "
+  ],
+  "result": {
+    "item": "xenopixelsmod:strawberry_senzu",
+    "count": 4
+  },
+  "show_notification": true
+}

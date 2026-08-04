@@ -1,0 +1,19 @@
+{
+  "type": "minecraft:crafting_shapeless",
+  "category": "misc",
+  "ingredients": [
+    {
+      "item": "xenopixelsmod:sapphire"
+    },
+    {
+      "item": "minecraft:paper"
+    },
+    {
+      "tag": "forge:ingots/iron"
+    }
+  ],
+  "result": {
+    "item": "xenopixelsmod:super_soul_iron",
+    "count": 1
+  }
+}
