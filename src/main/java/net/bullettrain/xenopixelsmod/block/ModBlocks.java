@@ -6,6 +6,10 @@ import net.bullettrain.xenopixelsmod.block.custom.MissileTubeBlock;
 import net.bullettrain.xenopixelsmod.block.custom.ShipThrusterBlock;
 import net.bullettrain.xenopixelsmod.block.custom.ShipVlsGuidanceBlock;
 import net.bullettrain.xenopixelsmod.block.custom.SoundBlock;
+import net.bullettrain.xenopixelsmod.block.TweakPeripheralBlock;
+import net.bullettrain.xenopixelsmod.block.RadarPeripheralBlock;
+import net.bullettrain.xenopixelsmod.block.ShipFlapBlock;
+import net.bullettrain.xenopixelsmod.block.XenoRadarBlock;
 import net.bullettrain.xenopixelsmod.item.ModsItems;
 import net.minecraft.util.valueproviders.UniformInt;
 import net.minecraft.world.item.BlockItem;
@@ -101,6 +105,44 @@ public class ModBlocks {
                     .sound(SoundType.METAL)
                     .noOcclusion()
                     .lightLevel(s -> s.getValue(ShipThrusterBlock.POWERED) ? 10 : 0)));
+
+    /** ComputerCraft/Tweak peripheral for VS2 ship flap control and radar. */
+    public static final RegistryObject<Block> TWEAK_PERIPHERAL = registerBlock("tweak_peripheral",
+            () -> new TweakPeripheralBlock(BlockBehaviour.Properties.of()
+                    .mapColor(MapColor.COLOR_LIGHT_BLUE)
+                    .strength(3.0f, 6f)
+                    .requiresCorrectToolForDrops()
+                    .sound(SoundType.METAL)
+                    .noOcclusion()
+                    .lightLevel(s -> 8)));
+
+    /** Radar peripheral for ship/entity detection (Some-Peripherals style). */
+    public static final RegistryObject<Block> RADAR_PERIPHERAL = registerBlock("radar_peripheral",
+            () -> new RadarPeripheralBlock(BlockBehaviour.Properties.of()
+                    .mapColor(MapColor.COLOR_GREEN)
+                    .strength(3.0f, 6f)
+                    .requiresCorrectToolForDrops()
+                    .sound(SoundType.METAL)
+                    .noOcclusion()
+                    .lightLevel(s -> 10)));
+
+    /** VS2 Ship Flap control surface with Create redstone link support. */
+    public static final RegistryObject<Block> SHIP_FLAP = registerBlock("ship_flap",
+            () -> new ShipFlapBlock(BlockBehaviour.Properties.of()
+                    .mapColor(MapColor.COLOR_GRAY)
+                    .strength(2.5f, 5f)
+                    .sound(SoundType.METAL)
+                    .noOcclusion()));
+
+    /** Advanced radar block entity for ComputerCraft integration. */
+    public static final RegistryObject<Block> XENO_RADAR = registerBlock("xeno_radar",
+            () -> new XenoRadarBlock(BlockBehaviour.Properties.of()
+                    .mapColor(MapColor.COLOR_LIGHT_BLUE)
+                    .strength(3.0f, 6f)
+                    .requiresCorrectToolForDrops()
+                    .sound(SoundType.METAL)
+                    .noOcclusion()
+                    .lightLevel(s -> 12)));
 
     public static final RegistryObject<Block> NETHER_JACKIETONITE_ORE = registerBlock("nether_jackietonite_ore",
             () -> new DropExperienceBlock(

@@ -1,0 +1,10 @@
+{
+  "variants": {
+    "facing=down":  { "model": "xenopixelsmod:block/radar_peripheral", "x": 90 },
+    "facing=up":    { "model": "xenopixelsmod:block/radar_peripheral", "x": 270 },
+    "facing=north": { "model": "xenopixelsmod:block/radar_peripheral" },
+    "facing=south": { "model": "xenopixelsmod:block/radar_peripheral", "y": 180 },
+    "facing=west":  { "model": "xenopixelsmod:block/radar_peripheral", "y": 270 },
+    "facing=east":  { "model": "xenopixelsmod:block/radar_peripheral", "y": 90 }
+  }
+}

@@ -116,6 +116,12 @@ public class ShipVlsGuidanceBlockEntity extends BlockEntity {
     /** EMA of actual server tick spacing, used for lag-aware ETA and target lead. */
     private transient long lastServerTickNanos;
     private transient double observedTickSeconds = 0.05;
+    /** Guidance trajectory recalculation interval (ticks). Higher = better perf, less responsive. */
+    private static final int GUIDANCE_UPDATE_INTERVAL = Math.max(3, Math.min(20, 
+            net.bullettrain.xenopixelsmod.config.XenoPerfConfig.guidanceUpdateIntervalTicks));
+    /** Cache ballistic solution longer when target is stationary (saves CPU). */
+    private int stationaryTargetCacheTicks;
+    private Vec3 lastKnownTargetPos;
 
     public ShipVlsGuidanceBlockEntity(BlockPos pos, BlockState state) {
         super(ModBlockEntities.SHIP_VLS_GUIDANCE.get(), pos, state);
@@ -758,7 +764,23 @@ public class ShipVlsGuidanceBlockEntity extends BlockEntity {
         ShipBallisticController controller = ShipBallisticController.get(missile);
         if (controller == null || !controller.isFlying()) return;
 
-        int interval = controller.getPhase() == MissilePhase.TERMINAL ? 2 : 10;
+        // Performance: throttle recalc based on phase and target movement
+        int interval = controller.getPhase() == MissilePhase.TERMINAL ? 2 : GUIDANCE_UPDATE_INTERVAL;
+        
+        // Extend cache when target is stationary (saves CPU)
+        if (targetShipId < 0 && target != null) {
+            Vec3 currentTargetPos = Vec3.atCenterOf(target);
+            if (lastKnownTargetPos != null && lastKnownTargetPos.distanceTo(currentTargetPos) < 0.5) {
+                stationaryTargetCacheTicks += interval;
+                if (stationaryTargetCacheTicks < GUIDANCE_UPDATE_INTERVAL * 2) {
+                    return; // Skip recalc - target hasn't moved
+                }
+            } else {
+                stationaryTargetCacheTicks = 0;
+                lastKnownTargetPos = currentTargetPos;
+            }
+        }
+        
         if (--adaptiveReplanCooldown > 0) return;
         adaptiveReplanCooldown = interval;
 

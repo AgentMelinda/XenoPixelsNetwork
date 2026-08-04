@@ -51,6 +51,14 @@ public final class XenoPerfConfig {
     public static boolean thrusterForceAlways = true;
     public static double thrusterForcePlayerRange = 128.0;
 
+    // --- Guidance performance ---
+    /** Ticks between guidance trajectory recalculations (higher = better perf). */
+    public static int guidanceUpdateIntervalTicks = 10;
+    /** Max active thrusters per ship to limit physics calculations. */
+    public static int maxActiveThrustersPerShip = 64;
+    /** Enable VS2 ship sleep for idle ships (saves TPS). */
+    public static boolean enableShipSleep = true;
+
     // --- Stats HUD ---
     public static int statsSyncIntervalTicks = 10;
     public static int statsSyncHeartbeatTicks = 40;
@@ -95,6 +103,9 @@ public final class XenoPerfConfig {
         d.thrusterPhysForceEnabled = thrusterPhysForceEnabled;
         d.thrusterForceAlways = thrusterForceAlways;
         d.thrusterForcePlayerRange = thrusterForcePlayerRange;
+        d.guidanceUpdateIntervalTicks = guidanceUpdateIntervalTicks;
+        d.maxActiveThrustersPerShip = maxActiveThrustersPerShip;
+        d.enableShipSleep = enableShipSleep;
         d.statsSyncIntervalTicks = statsSyncIntervalTicks;
         d.statsSyncHeartbeatTicks = statsSyncHeartbeatTicks;
         d.statsSyncOnlyWhenDirty = statsSyncOnlyWhenDirty;
@@ -122,6 +133,12 @@ public final class XenoPerfConfig {
         thrusterForceAlways = d.thrusterForceAlways;
         thrusterForcePlayerRange = Math.max(16.0,
                 d.thrusterForcePlayerRange <= 0 ? 128.0 : d.thrusterForcePlayerRange);
+        // Guidance perf settings
+        guidanceUpdateIntervalTicks = Math.max(3, Math.min(20,
+                d.guidanceUpdateIntervalTicks <= 0 ? 10 : d.guidanceUpdateIntervalTicks));
+        maxActiveThrustersPerShip = Math.max(16, Math.min(256,
+                d.maxActiveThrustersPerShip <= 0 ? 64 : d.maxActiveThrustersPerShip));
+        enableShipSleep = d.enableShipSleep;
         statsSyncIntervalTicks = Math.max(5, Math.min(40,
                 d.statsSyncIntervalTicks <= 0 ? 10 : d.statsSyncIntervalTicks));
         statsSyncHeartbeatTicks = Math.max(statsSyncIntervalTicks, Math.min(200,
@@ -159,6 +176,9 @@ public final class XenoPerfConfig {
         public boolean thrusterPhysForceEnabled = true;
         public boolean thrusterForceAlways = true;
         public double thrusterForcePlayerRange = 128.0;
+        public int guidanceUpdateIntervalTicks = 10;
+        public int maxActiveThrustersPerShip = 64;
+        public boolean enableShipSleep = true;
         public int statsSyncIntervalTicks = 10;
         public int statsSyncHeartbeatTicks = 40;
         public boolean statsSyncOnlyWhenDirty = true;

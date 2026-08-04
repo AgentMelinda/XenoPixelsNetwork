@@ -28,6 +28,12 @@ public final class DmzAnimHelper {
     public static final String KICK_LOW_L = "combat.lowkick_left";
     public static final String KICK_GUT_R = "combat.gutkick_right";
     public static final String KICK_GUT_L = "combat.gutkick_left";
+    /** BT3-style kick animations for cinematic combat. */
+    public static final String KICK_ROUNDHOUSE_R = "combat.roundhouse_right";
+    public static final String KICK_ROUNDHOUSE_L = "combat.roundhouse_left";
+    public static final String KICK_SPINNING = "combat.spinning_kick";
+    public static final String KICK_DRAGON = "combat.dragon_kick";
+    public static final String KICK_AERIAL = "combat.aerial_kick";
     public static final String DASH_FRONT = "base.dash_front";
     public static final String ATTACK1 = "base.attack1";
     public static final String ATTACK2 = "base.attack2";
@@ -141,16 +147,21 @@ public final class DmzAnimHelper {
         float speed = fullyCharged ? 1.2f : 1.05f;
 
         if (style == ChargeStyle.KICK) {
-            // Primary gut kick (sexy mid hit)
-            String primary = fullyCharged ? KICK_GUT_R : KICK_GUT_L;
-            if (verticalBias < 0) primary = KICK_LOW_R;
-            broadcastMelee(player, primary, false, speed);
-            if (chainAnims) {
-                // Delayed follow-up: low kick or opposite side gut for a 2-hit chain
-                String follow = verticalBias > 0 ? KICK_GUT_R : (verticalBias < 0 ? KICK_LOW_L : KICK_LOW_R);
-                scheduleMelee(player, follow, false, speed * 1.05f, 4);
-                if (fullyCharged) {
-                    scheduleMelee(player, KICK_GUT_R, false, 1.25f, 8);
+            // BT3-style cinematic kick combo
+            if (fullyCharged) {
+                // Spinning roundhouse finisher
+                broadcastMelee(player, KICK_SPINNING, false, speed);
+                if (chainAnims) {
+                    scheduleMelee(player, KICK_DRAGON, false, 1.3f, 6);
+                    scheduleMelee(player, KICK_AERIAL, false, 1.1f, 12);
+                }
+            } else {
+                // Quick gut kick into low kick
+                String primary = verticalBias < 0 ? KICK_LOW_R : KICK_GUT_R;
+                broadcastMelee(player, primary, false, speed);
+                if (chainAnims) {
+                    String follow = verticalBias > 0 ? KICK_ROUNDHOUSE_R : KICK_LOW_L;
+                    scheduleMelee(player, follow, false, speed * 1.05f, 4);
                 }
             }
             return;

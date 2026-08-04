@@ -1,0 +1,9 @@
+{
+  "parent": "minecraft:block/orientable",
+  "textures": {
+    "particle": "xenopixelsmod:block/tweak_peripheral_side",
+    "top": "xenopixelsmod:block/tweak_peripheral_top",
+    "front": "xenopixelsmod:block/tweak_peripheral_front",
+    "side": "xenopixelsmod:block/tweak_peripheral_side"
+  }
+}

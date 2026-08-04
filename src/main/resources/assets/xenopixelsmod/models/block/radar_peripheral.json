@@ -1,0 +1,9 @@
+{
+  "parent": "minecraft:block/orientable",
+  "textures": {
+    "particle": "xenopixelsmod:block/radar_peripheral_side",
+    "top": "xenopixelsmod:block/radar_peripheral_top",
+    "front": "xenopixelsmod:block/radar_peripheral_front",
+    "side": "xenopixelsmod:block/radar_peripheral_side"
+  }
+}

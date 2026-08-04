@@ -10,6 +10,8 @@
   "block.xenopixelsmod.missile_tube": "Missile Tube",
   "block.xenopixelsmod.missile_chunk_loader": "Missile Chunk Loader",
   "block.xenopixelsmod.ship_thruster": "Ship Thruster",
+  "block.xenopixelsmod.tweak_peripheral": "Tweak Peripheral",
+  "block.xenopixelsmod.radar_peripheral": "Radar Peripheral",
   "entity.xenopixelsmod.ballistic_missile": "Ballistic Missile",
   "block.xenopixelsmod.jackietonite_ore_block": "Jackietonite Block",
   "block.xenopixelsmod.raw_jackietonite_ore_block": "Raw Jackietonite Block",

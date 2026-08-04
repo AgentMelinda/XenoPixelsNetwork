@@ -32,6 +32,26 @@ public final class ModBlockEntities {
                     BlockEntityType.Builder.of(MissileTubeBlockEntity::new,
                             ModBlocks.MISSILE_TUBE.get()).build(null));
 
+    public static final RegistryObject<BlockEntityType<TweakPeripheralBlockEntity>> TWEAK_PERIPHERAL =
+            BLOCK_ENTITIES.register("tweak_peripheral", () ->
+                    BlockEntityType.Builder.of(TweakPeripheralBlockEntity::new,
+                            ModBlocks.TWEAK_PERIPHERAL.get()).build(null));
+
+    public static final RegistryObject<BlockEntityType<RadarPeripheralBlockEntity>> RADAR_PERIPHERAL =
+            BLOCK_ENTITIES.register("radar_peripheral", () ->
+                    BlockEntityType.Builder.of(RadarPeripheralBlockEntity::new,
+                            ModBlocks.RADAR_PERIPHERAL.get()).build(null));
+
+    public static final RegistryObject<BlockEntityType<ShipFlapBlockEntity>> SHIP_FLAP =
+            BLOCK_ENTITIES.register("ship_flap", () ->
+                    BlockEntityType.Builder.of(ShipFlapBlockEntity::new,
+                            ModBlocks.SHIP_FLAP.get()).build(null));
+
+    public static final RegistryObject<BlockEntityType<ShipRadarBlockEntity>> SHIP_RADAR =
+            BLOCK_ENTITIES.register("ship_radar", () ->
+                    BlockEntityType.Builder.of(ShipRadarBlockEntity::new,
+                            ModBlocks.XENO_RADAR.get()).build(null));
+
     private ModBlockEntities() {}
 
     public static void register(IEventBus bus) {

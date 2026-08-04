@@ -15,16 +15,19 @@ import net.minecraftforge.fml.common.Mod;
 @Mod.EventBusSubscriber(modid = XenoPixelsMod.MOD_ID)
 public final class XenoCapabilities {
     public static final Capability<XenoPlayerData> XENO_DATA = CapabilityManager.get(new CapabilityToken<>() {});
+    public static final Capability<XenoPartyData> XENO_PARTY = CapabilityManager.get(new CapabilityToken<>() {});
     public static final ResourceLocation KEY = new ResourceLocation(XenoPixelsMod.MOD_ID, "xeno_data");
+    public static final ResourceLocation PARTY_KEY = new ResourceLocation(XenoPixelsMod.MOD_ID, "xeno_party");
 
     private XenoCapabilities() {}
 
-    // XenoPlayerData is registered once via @AutoRegisterCapability — do not also call event.register()
+    // XenoPlayerData and XenoPartyData are registered via @AutoRegisterCapability
 
     @SubscribeEvent
     public static void attach(AttachCapabilitiesEvent<Entity> event) {
         if (event.getObject() instanceof Player) {
             event.addCapability(KEY, new XenoDataProvider());
+            event.addCapability(PARTY_KEY, new XenoPartyProvider());
         }
     }
 
@@ -33,6 +36,8 @@ public final class XenoCapabilities {
         event.getOriginal().reviveCaps();
         event.getOriginal().getCapability(XENO_DATA).ifPresent(oldData ->
                 event.getEntity().getCapability(XENO_DATA).ifPresent(newData -> newData.copyFrom(oldData)));
+        event.getOriginal().getCapability(XENO_PARTY).ifPresent(oldParty ->
+                event.getEntity().getCapability(XENO_PARTY).ifPresent(newParty -> newParty.copyFrom(oldParty)));
         event.getOriginal().invalidateCaps();
     }
 }
