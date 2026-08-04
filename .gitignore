@@ -1,26 +1,26 @@
-# eclipse
-bin
-*.launch
-.settings
-.metadata
-.classpath
-.project
+```
+# Compiled and build artifacts
+*.class
+*.o
+*.obj
+*.out
+build/
+target/
 
-# idea
-out
-*.ipr
-*.iws
-*.iml
-.idea
+# Dependencies
+.gradle/
+libs/
+lib/
 
-# gradle
-build
-.gradle
+# Logs and temp files
+*.log
+*.tmp
 
-# other
-eclipse
-run
-libs
+# Editors
+.vscode/
+.idea/
 
-# Files from Forge MDK
-forge*changelog.txt
+# System files
+.DS_Store
+Thumbs.db
+```
