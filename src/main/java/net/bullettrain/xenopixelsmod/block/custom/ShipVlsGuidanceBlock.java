@@ -1,5 +1,6 @@
 package net.bullettrain.xenopixelsmod.block.custom;
 
+import com.mojang.serialization.MapCodec;
 import net.bullettrain.xenopixelsmod.block.entity.ShipVlsGuidanceBlockEntity;
 import net.bullettrain.xenopixelsmod.network.ModNetwork;
 import net.bullettrain.xenopixelsmod.network.packet.OpenGuidancePacket;
@@ -34,12 +35,16 @@ import org.jetbrains.annotations.Nullable;
  * flight or clears aim. Redstone / CC also fires. <b>Not Ballistix.</b>
  */
 public class ShipVlsGuidanceBlock extends BaseEntityBlock {
+    public static final MapCodec<ShipVlsGuidanceBlock> CODEC = simpleCodec(ShipVlsGuidanceBlock::new);
     public static final DirectionProperty FACING = BlockStateProperties.FACING;
 
     public ShipVlsGuidanceBlock(Properties props) {
         super(props);
         this.registerDefaultState(this.stateDefinition.any().setValue(FACING, Direction.NORTH));
     }
+
+    @Override
+    protected MapCodec<? extends BaseEntityBlock> codec() { return CODEC; }
 
     @Override
     public RenderShape getRenderShape(BlockState state) {
@@ -79,8 +84,8 @@ public class ShipVlsGuidanceBlock extends BaseEntityBlock {
     }
 
     @Override
-    public InteractionResult use(BlockState state, Level level, BlockPos pos, Player player,
-                                 InteractionHand hand, BlockHitResult hit) {
+    protected InteractionResult useWithoutItem(BlockState state, Level level, BlockPos pos, Player player,
+                                               BlockHitResult hit) {
         if (level.getBlockEntity(pos) instanceof ShipVlsGuidanceBlockEntity be) {
             // Shift: server-side abort / clear (no GUI)
             if (player.isShiftKeyDown()) {

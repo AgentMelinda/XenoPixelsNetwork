@@ -35,7 +35,7 @@
   "tooltip.xenopixelsmod.target_tool_apply": "Use on a Ballistic Guidance Computer",
   "chat.xenopixelsmod.invalid_coords": "Invalid coordinates",
   "chat.xenopixelsmod.ship_teleported": "Ship teleported to %s, %s, %s",
-  "chat.xenopixelsmod.no_ship_found": "You are not standing on a Valkyrien Skies ship",
+  "chat.xenopixelsmod.no_ship_found": "You are not standing on a Sable ship",
   "chat.xenopixelsmod.strawberry_senzu_cooldown": "Senzu on cooldown: %s seconds left",
   "actionbar.xenopixelsmod.strawberry_senzu_cooldown": "Cooldown: %ss",
 

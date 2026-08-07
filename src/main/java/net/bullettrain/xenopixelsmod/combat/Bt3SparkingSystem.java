@@ -1,15 +1,19 @@
 package net.bullettrain.xenopixelsmod.combat;
 
+import net.neoforged.fml.common.EventBusSubscriber;
+
 import net.bullettrain.xenopixelsmod.XenoPixelsMod;
 import net.bullettrain.xenopixelsmod.config.XenoServerConfig;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.player.Player;
-import net.minecraftforge.event.TickEvent;
-import net.minecraftforge.event.entity.living.LivingHurtEvent;
-import net.minecraftforge.event.entity.player.PlayerEvent;
-import net.minecraftforge.eventbus.api.SubscribeEvent;
-import net.minecraftforge.fml.common.Mod;
+import net.neoforged.neoforge.client.event.ClientTickEvent;
+import net.neoforged.neoforge.event.tick.PlayerTickEvent;
+import net.neoforged.neoforge.event.tick.ServerTickEvent;
+import net.neoforged.neoforge.event.entity.living.LivingDamageEvent;
+import net.neoforged.neoforge.event.entity.player.PlayerEvent;
+import net.neoforged.bus.api.SubscribeEvent;
+import net.neoforged.fml.common.Mod;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -18,7 +22,7 @@ import java.util.UUID;
 /**
  * BT3 Sparking-style meter: build on hits, activate for temporary damage buff + i-frame frames on dash.
  */
-@Mod.EventBusSubscriber(modid = XenoPixelsMod.MOD_ID)
+@EventBusSubscriber(modid = XenoPixelsMod.MOD_ID)
 public final class Bt3SparkingSystem {
     private static final Map<UUID, Float> METER = new HashMap<>();
     private static final Map<UUID, Integer> ACTIVE_UNTIL = new HashMap<>();
@@ -80,12 +84,12 @@ public final class Bt3SparkingSystem {
         try {
             net.bullettrain.xenopixelsmod.effect.XenoStatusEffectSync.ensure(
                     player,
-                    net.bullettrain.xenopixelsmod.effect.ModEffects.SPARKING.get(),
+                    net.bullettrain.xenopixelsmod.effect.ModEffects.SPARKING,
                     0,
                     dur);
             net.bullettrain.xenopixelsmod.effect.XenoStatusEffectSync.remove(
                     player,
-                    net.bullettrain.xenopixelsmod.effect.ModEffects.SPARKING_READY.get());
+                    net.bullettrain.xenopixelsmod.effect.ModEffects.SPARKING_READY);
         } catch (Throwable ignored) {
         }
         return true;
@@ -96,13 +100,12 @@ public final class Bt3SparkingSystem {
     }
 
     @SubscribeEvent
-    public static void onHurt(LivingHurtEvent event) {
+    public static void onHurt(LivingDamageEvent.Pre event) {
         if (!XenoServerConfig.bt3CombatEnabled || !XenoServerConfig.bt3SparkingEnabled) return;
 
         // i-frames during sonic sway / sparking dash
         if (event.getEntity() instanceof ServerPlayer def && hasIFrames(def)) {
-            event.setCanceled(true);
-            event.setAmount(0f);
+            event.setNewDamage(0f);
             return;
         }
 
@@ -111,17 +114,16 @@ public final class Bt3SparkingSystem {
             // Apply sparking damage mult
             float mult = damageMult(atk);
             if (mult > 1.001f) {
-                event.setAmount(event.getAmount() * mult);
+                event.setNewDamage(event.getNewDamage() * mult);
             }
         }
-        if (event.getEntity() instanceof ServerPlayer def && event.getAmount() > 0.05f) {
+        if (event.getEntity() instanceof ServerPlayer def && event.getNewDamage() > 0.05f) {
             addMeter(def, XenoServerConfig.sparkingBuildOnHurt);
         }
     }
 
     @SubscribeEvent
-    public static void onTick(TickEvent.ServerTickEvent event) {
-        if (event.phase != TickEvent.Phase.END) return;
+    public static void onTick(ServerTickEvent.Post event) {
         int t = event.getServer().getTickCount();
         if (t % 20 != 0) return;
         ACTIVE_UNTIL.entrySet().removeIf(e -> e.getValue() < t - 5);

@@ -6,8 +6,8 @@ import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.Component;
-import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.api.distmarker.OnlyIn;
+import net.neoforged.api.distmarker.Dist;
+import net.neoforged.api.distmarker.OnlyIn;
 
 /**
  * Drag / scroll editor for the combat cooldown HUD.
@@ -171,23 +171,23 @@ public class XenoCooldownHudEditScreen extends Screen {
             return true;
         }
         if (resizing) {
-            float delta = ((int) mouseY - resizeStartMouseY) * 0.01f;
-            XenoCooldownHudConfig.scale = XenoCooldownHudConfig.clampScale(resizeStartScale + delta);
+            float scrollY = ((int) mouseY - resizeStartMouseY) * 0.01f;
+            XenoCooldownHudConfig.scale = XenoCooldownHudConfig.clampScale(resizeStartScale + scrollY);
             return true;
         }
         return super.mouseDragged(mouseX, mouseY, button, dragX, dragY);
     }
 
     @Override
-    public boolean mouseScrolled(double mouseX, double mouseY, double delta) {
+    public boolean mouseScrolled(double mouseX, double mouseY, double scrollX, double scrollY) {
         int[] b = XenoCooldownHudOverlay.bounds();
         if (b[2] > 0 && mouseX >= b[0] && mouseX <= b[0] + b[2]
                 && mouseY >= b[1] && mouseY <= b[1] + b[3]) {
             XenoCooldownHudConfig.scale = XenoCooldownHudConfig.clampScale(
-                    XenoCooldownHudConfig.scale + (float) delta * 0.05f);
+                    XenoCooldownHudConfig.scale + (float) scrollY * 0.05f);
             return true;
         }
-        return super.mouseScrolled(mouseX, mouseY, delta);
+        return super.mouseScrolled(mouseX, mouseY, scrollX, scrollY);
     }
 
     @Override

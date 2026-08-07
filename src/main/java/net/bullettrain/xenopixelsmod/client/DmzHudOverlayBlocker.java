@@ -1,13 +1,15 @@
 package net.bullettrain.xenopixelsmod.client;
 
+import net.neoforged.fml.common.EventBusSubscriber;
+
 import net.bullettrain.xenopixelsmod.XenoPixelsMod;
 import net.bullettrain.xenopixelsmod.client.config.XenoClientConfig;
 import net.minecraft.resources.ResourceLocation;
-import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.client.event.RenderGuiOverlayEvent;
-import net.minecraftforge.eventbus.api.EventPriority;
-import net.minecraftforge.eventbus.api.SubscribeEvent;
-import net.minecraftforge.fml.common.Mod;
+import net.neoforged.api.distmarker.Dist;
+import net.neoforged.neoforge.client.event.RenderGuiLayerEvent;
+import net.neoforged.bus.api.EventPriority;
+import net.neoforged.bus.api.SubscribeEvent;
+import net.neoforged.fml.common.Mod;
 
 import java.util.Set;
 
@@ -15,7 +17,7 @@ import java.util.Set;
  * Cancels DragonMineZ HUD overlays according to XenoPixels settings.
  * When our technique hotbar is enabled, DMZ technique/charge HUDs are blocked too.
  */
-@Mod.EventBusSubscriber(modid = XenoPixelsMod.MOD_ID, value = Dist.CLIENT)
+@EventBusSubscriber(modid = XenoPixelsMod.MOD_ID, value = Dist.CLIENT)
 public final class DmzHudOverlayBlocker {
     // Note: scouterhud, tracked_quest_hud, and beam_clash_hud are intentionally NOT blocked here —
     // they're separate HUD elements (scouter readout, quest tracker, beam clash minigame) that should
@@ -34,12 +36,12 @@ public final class DmzHudOverlayBlocker {
     private DmzHudOverlayBlocker() {}
 
     private static ResourceLocation id(String path) {
-        return new ResourceLocation("dragonminez", path);
+        return ResourceLocation.fromNamespaceAndPath("dragonminez", path);
     }
 
     @SubscribeEvent(priority = EventPriority.HIGHEST)
-    public static void onRenderOverlay(RenderGuiOverlayEvent.Pre event) {
-        ResourceLocation id = event.getOverlay().id();
+    public static void onRenderOverlay(RenderGuiLayerEvent.Pre event) {
+        ResourceLocation id = event.getName();
 
         // Always replace DMZ technique bars with ours when enabled
         if (XenoClientConfig.techniqueHotbarEnabled && DMZ_TECHNIQUE_UI.contains(id)) {

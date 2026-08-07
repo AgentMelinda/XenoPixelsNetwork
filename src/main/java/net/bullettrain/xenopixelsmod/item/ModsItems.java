@@ -4,32 +4,32 @@ import net.bullettrain.xenopixelsmod.XenoPixelsMod;
 import net.bullettrain.xenopixelsmod.item.custom.MetalDetectorItem;
 import net.bullettrain.xenopixelsmod.item.custom.StrawBerrySenzuItem;
 import net.bullettrain.xenopixelsmod.item.custom.TargetToolItem;
+import net.minecraft.core.registries.Registries;
 import net.minecraft.world.item.Item;
-import net.minecraftforge.eventbus.api.IEventBus;
-import net.minecraftforge.registries.DeferredRegister;
-import net.minecraftforge.registries.ForgeRegistries;
-import net.minecraftforge.registries.RegistryObject;
+import net.neoforged.bus.api.IEventBus;
+import net.neoforged.neoforge.registries.DeferredRegister;
+import net.neoforged.neoforge.registries.DeferredHolder;
 
 public class ModsItems {
     public static final DeferredRegister<Item> ITEMS =
-            DeferredRegister.create(ForgeRegistries.ITEMS, XenoPixelsMod.MOD_ID);
+            DeferredRegister.create(Registries.ITEM, XenoPixelsMod.MOD_ID);
 
-    public static final RegistryObject<Item> SAPPHIRE = ITEMS.register("sapphire",
+    public static final DeferredHolder<Item, Item> SAPPHIRE = ITEMS.register("sapphire",
             () -> new Item(new Item.Properties()));
 
-    public static final RegistryObject<Item> RAW_SAPPHIRE = ITEMS.register("raw_sapphire",
+    public static final DeferredHolder<Item, Item> RAW_SAPPHIRE = ITEMS.register("raw_sapphire",
             () -> new Item(new Item.Properties()));
 
-    public static final RegistryObject<Item> METAL_DETECTOR = ITEMS.register("metal_detector",
+    public static final DeferredHolder<Item, Item> METAL_DETECTOR = ITEMS.register("metal_detector",
             () -> new MetalDetectorItem(new Item.Properties().durability(100)));
 
-    public static final RegistryObject<Item> STRAWBERRY_SENZU = ITEMS.register("strawberry_senzu",
+    public static final DeferredHolder<Item, Item> STRAWBERRY_SENZU = ITEMS.register("strawberry_senzu",
             () -> new StrawBerrySenzuItem(new Item.Properties()
                     .food(ModFoods.STRAWBERRY_SENZU)
                     .stacksTo(16)));
 
     /** Opens the XYZ Target GUI. Used for VS2 ship teleport / waypoint targeting. */
-    public static final RegistryObject<Item> TARGET_TOOL = ITEMS.register("target_tool",
+    public static final DeferredHolder<Item, Item> TARGET_TOOL = ITEMS.register("target_tool",
             () -> new TargetToolItem(new Item.Properties().stacksTo(1)));
 
     public static void register(IEventBus eventBus) {

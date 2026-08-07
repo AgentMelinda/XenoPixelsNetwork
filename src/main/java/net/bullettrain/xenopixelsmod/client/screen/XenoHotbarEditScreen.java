@@ -6,8 +6,8 @@ import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.Component;
-import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.api.distmarker.OnlyIn;
+import net.neoforged.api.distmarker.Dist;
+import net.neoforged.api.distmarker.OnlyIn;
 
 /**
  * Editor for the technique ("KI") hotbar panel and its ki attack charge meter —
@@ -128,13 +128,13 @@ public class XenoHotbarEditScreen extends Screen {
                     return true;
                 }
                 case HOTBAR_RESIZE -> {
-                    float delta = ((mx - resizeStartMouseX) + (my - resizeStartMouseY)) * 0.005f;
-                    XenoHotbarConfig.hotbarScale = XenoHotbarConfig.clampScale(resizeStartScale + delta);
+                    float scrollY = ((mx - resizeStartMouseX) + (my - resizeStartMouseY)) * 0.005f;
+                    XenoHotbarConfig.hotbarScale = XenoHotbarConfig.clampScale(resizeStartScale + scrollY);
                     return true;
                 }
                 case CHARGE_RESIZE -> {
-                    float delta = ((mx - resizeStartMouseX) + (my - resizeStartMouseY)) * 0.005f;
-                    XenoHotbarConfig.chargeScale = XenoHotbarConfig.clampScale(resizeStartScale + delta);
+                    float scrollY = ((mx - resizeStartMouseX) + (my - resizeStartMouseY)) * 0.005f;
+                    XenoHotbarConfig.chargeScale = XenoHotbarConfig.clampScale(resizeStartScale + scrollY);
                     return true;
                 }
                 default -> {
@@ -153,18 +153,18 @@ public class XenoHotbarEditScreen extends Screen {
     }
 
     @Override
-    public boolean mouseScrolled(double mouseX, double mouseY, double delta) {
+    public boolean mouseScrolled(double mouseX, double mouseY, double scrollX, double scrollY) {
         int mx = (int) mouseX;
         int my = (int) mouseY;
         if (hit(mx, my, chargeBounds()) || hitResizeHandle(mx, my, chargeBounds())) {
-            XenoHotbarConfig.chargeScale = XenoHotbarConfig.clampScale(XenoHotbarConfig.chargeScale + (float) delta * 0.05f);
+            XenoHotbarConfig.chargeScale = XenoHotbarConfig.clampScale(XenoHotbarConfig.chargeScale + (float) scrollY * 0.05f);
             return true;
         }
         if (hit(mx, my, hotbarBounds()) || hitResizeHandle(mx, my, hotbarBounds())) {
-            XenoHotbarConfig.hotbarScale = XenoHotbarConfig.clampScale(XenoHotbarConfig.hotbarScale + (float) delta * 0.05f);
+            XenoHotbarConfig.hotbarScale = XenoHotbarConfig.clampScale(XenoHotbarConfig.hotbarScale + (float) scrollY * 0.05f);
             return true;
         }
-        return super.mouseScrolled(mouseX, mouseY, delta);
+        return super.mouseScrolled(mouseX, mouseY, scrollX, scrollY);
     }
 
     @Override

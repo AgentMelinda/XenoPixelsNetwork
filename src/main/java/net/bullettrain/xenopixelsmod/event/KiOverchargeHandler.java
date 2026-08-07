@@ -1,5 +1,7 @@
 package net.bullettrain.xenopixelsmod.event;
 
+import net.neoforged.fml.common.EventBusSubscriber;
+
 import com.dragonminez.common.init.entities.ki.AbstractKiProjectile;
 import com.dragonminez.common.init.entities.ki.KiExplosionEntity;
 import com.dragonminez.common.stats.character.Resources;
@@ -7,17 +9,17 @@ import net.bullettrain.xenopixelsmod.XenoPixelsMod;
 import net.bullettrain.xenopixelsmod.config.XenoServerConfig;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.Entity;
-import net.minecraftforge.event.entity.EntityJoinLevelEvent;
-import net.minecraftforge.eventbus.api.EventPriority;
-import net.minecraftforge.eventbus.api.SubscribeEvent;
-import net.minecraftforge.fml.common.Mod;
+import net.neoforged.neoforge.event.entity.EntityJoinLevelEvent;
+import net.neoforged.bus.api.EventPriority;
+import net.neoforged.bus.api.SubscribeEvent;
+import net.neoforged.fml.common.Mod;
 
 /**
  * Scales DMZ KI projectiles when the owner's power release is above the overcharge threshold
  * (default 175%). Size, damage, and explosion radius grow per excess percent, multiplied by
  * {@link XenoServerConfig#kiOverchargeMultiplier}.
  */
-@Mod.EventBusSubscriber(modid = XenoPixelsMod.MOD_ID)
+@EventBusSubscriber(modid = XenoPixelsMod.MOD_ID)
 public final class KiOverchargeHandler {
     private KiOverchargeHandler() {}
 

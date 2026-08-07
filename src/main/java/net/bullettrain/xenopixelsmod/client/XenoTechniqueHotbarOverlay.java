@@ -15,16 +15,15 @@ import net.bullettrain.xenopixelsmod.client.hud.AnimUtil;
 import net.bullettrain.xenopixelsmod.client.hud.TechniqueSlotWidget;
 import net.minecraft.client.KeyMapping;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.DeltaTracker;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.network.chat.Component;
-import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.api.distmarker.OnlyIn;
-import net.minecraftforge.client.gui.overlay.ForgeGui;
-import net.minecraftforge.client.gui.overlay.IGuiOverlay;
-import net.minecraftforge.client.settings.KeyModifier;
-import net.minecraftforge.common.util.LazyOptional;
+import net.neoforged.api.distmarker.Dist;
+import net.neoforged.api.distmarker.OnlyIn;
+import net.neoforged.neoforge.client.settings.KeyModifier;
+import com.dragonminez.compat.util.LazyOptional;
 
 import java.util.Locale;
 import java.util.Map;
@@ -34,7 +33,7 @@ import java.util.Map;
  * {@link Techniques#getEquippedSlots()} (same source as TechniqueHotbarHUD).
  */
 @OnlyIn(Dist.CLIENT)
-public class XenoTechniqueHotbarOverlay implements IGuiOverlay {
+public class XenoTechniqueHotbarOverlay {
     /** DMZ uses 8 technique slots (Alt 0-3, Ctrl 4-7). */
     private static final int TOTAL_SLOTS = 8;
     private static final int BAR_SLOTS = 4;
@@ -60,14 +59,13 @@ public class XenoTechniqueHotbarOverlay implements IGuiOverlay {
     private static int lastChargeX, lastChargeY, lastChargeW, lastChargeH;
     private static boolean lastChargeVisible;
 
-    @Override
-    public void render(ForgeGui gui, GuiGraphics g, float partialTick, int screenWidth, int screenHeight) {
+    public void render(GuiGraphics g, DeltaTracker deltaTracker) {
         if (!XenoClientConfig.techniqueHotbarEnabled) return;
         Minecraft mc = Minecraft.getInstance();
-        if (mc.player == null || mc.options.hideGui || mc.options.renderDebug) return;
+        if (mc.player == null || mc.options.hideGui || mc.getDebugOverlay().showDebugScreen()) return;
         // Chat / command prompt / any screen open: never show Alt/Ctrl tech bar
         if (XenoClientConfig.techniqueHotbarHideInChat && mc.screen != null) return;
-        draw(g, screenWidth, screenHeight, false);
+        draw(g, g.guiWidth(), g.guiHeight(), false);
     }
 
     /** Renders a preview (forced-visible bar + a fake charging meter) for the editor screen. */

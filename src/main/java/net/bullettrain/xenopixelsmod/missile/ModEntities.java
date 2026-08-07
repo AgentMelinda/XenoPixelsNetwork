@@ -1,18 +1,18 @@
 package net.bullettrain.xenopixelsmod.missile;
 
 import net.bullettrain.xenopixelsmod.XenoPixelsMod;
+import net.minecraft.core.registries.Registries;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.MobCategory;
-import net.minecraftforge.eventbus.api.IEventBus;
-import net.minecraftforge.registries.DeferredRegister;
-import net.minecraftforge.registries.ForgeRegistries;
-import net.minecraftforge.registries.RegistryObject;
+import net.neoforged.bus.api.IEventBus;
+import net.neoforged.neoforge.registries.DeferredRegister;
+import net.neoforged.neoforge.registries.DeferredHolder;
 
 public final class ModEntities {
     public static final DeferredRegister<EntityType<?>> ENTITIES =
-            DeferredRegister.create(ForgeRegistries.ENTITY_TYPES, XenoPixelsMod.MOD_ID);
+            DeferredRegister.create(Registries.ENTITY_TYPE, XenoPixelsMod.MOD_ID);
 
-    public static final RegistryObject<EntityType<BallisticMissileEntity>> BALLISTIC_MISSILE =
+    public static final DeferredHolder<EntityType<?>, EntityType<BallisticMissileEntity>> BALLISTIC_MISSILE =
             ENTITIES.register("ballistic_missile", () ->
                     EntityType.Builder.<BallisticMissileEntity>of(BallisticMissileEntity::new, MobCategory.MISC)
                             .sized(0.55f, 0.55f)

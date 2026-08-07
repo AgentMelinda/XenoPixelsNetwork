@@ -1,8 +1,9 @@
 package net.bullettrain.xenopixelsmod.vs;
 
+import net.neoforged.fml.common.EventBusSubscriber;
+
 import net.bullettrain.xenopixelsmod.XenoPixelsMod;
-import net.bullettrain.xenopixelsmod.block.entity.ShipThrusterBlockEntity;
-import net.bullettrain.xenopixelsmod.compat.ballistix.MissileChunkLoadManager;
+import net.bullettrain.xenopixelsmod.missile.MissileChunkLoadManager;
 import net.bullettrain.xenopixelsmod.missile.MissilePhase;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.particles.ParticleTypes;
@@ -12,32 +13,26 @@ import net.minecraft.server.level.ServerLevel;
 import net.minecraft.sounds.SoundEvents;
 import net.minecraft.sounds.SoundSource;
 import net.minecraft.world.level.Level;
-import net.minecraft.world.level.block.entity.BlockEntity;
-import net.minecraft.world.level.chunk.LevelChunk;
-import net.minecraftforge.event.TickEvent;
-import net.minecraftforge.eventbus.api.SubscribeEvent;
-import net.minecraftforge.fml.common.Mod;
+import net.neoforged.neoforge.event.tick.ServerTickEvent;
+import net.neoforged.neoforge.server.ServerLifecycleHooks;
+import net.neoforged.bus.api.SubscribeEvent;
+import net.neoforged.fml.common.Mod;
 import org.joml.Vector3dc;
-import org.valkyrienskies.core.api.ships.LoadedServerShip;
-import org.valkyrienskies.core.api.ships.QueryableShipData;
-import org.valkyrienskies.core.api.ships.Ship;
-import org.valkyrienskies.core.api.world.ServerShipWorld;
-import org.valkyrienskies.mod.common.VSGameUtilsKt;
+import dev.ryanhcode.sable.sublevel.ServerSubLevel;
 
 /**
  * Game-thread side of ship-as-missile.
  * Only iterates ships currently in ballistic flight.
  */
-@Mod.EventBusSubscriber(modid = XenoPixelsMod.MOD_ID)
+@EventBusSubscriber(modid = XenoPixelsMod.MOD_ID)
 public final class ShipBallisticTicker {
     private ShipBallisticTicker() {}
 
     @SubscribeEvent
-    public static void onServerTick(TickEvent.ServerTickEvent event) {
-        if (event.phase != TickEvent.Phase.END) return;
+    public static void onServerTick(ServerTickEvent.Post event) {
         if (!ShipBallisticController.anyActiveFlights()) return;
 
-        MinecraftServer server = event.getServer();
+        MinecraftServer server = ServerLifecycleHooks.getCurrentServer();
         if (server == null) return;
 
         for (Long shipId : ShipBallisticController.activeFlightShipIds()) {
@@ -48,7 +43,7 @@ public final class ShipBallisticTicker {
 
     private static void tickActiveShip(MinecraftServer server, long shipId) {
         // Prefer dimension cached on controller (O(1)); fallback multi-dim only if missing
-        LoadedServerShip loaded = null;
+        ServerSubLevel loaded = null;
         ServerLevel level = null;
 
         // Normal path: launch registered the dimension, so resolve one world directly.
@@ -56,7 +51,7 @@ public final class ShipBallisticTicker {
         if (cachedDim != null) {
             ServerLevel cachedLevel = server.getLevel(cachedDim);
             if (cachedLevel != null) {
-                LoadedServerShip cachedShip = resolveLoaded(cachedLevel, shipId);
+                ServerSubLevel cachedShip = resolveLoaded(cachedLevel, shipId);
                 if (cachedShip != null) {
                     loaded = cachedShip;
                     level = cachedLevel;
@@ -69,7 +64,7 @@ public final class ShipBallisticTicker {
         for (ServerLevel candidate : server.getAllLevels()) {
             // Fast path: if we already found nothing, still must scan once per dim without dim cache
             // First try: get controller from ship if loaded in this dim
-            LoadedServerShip ls = resolveLoaded(candidate, shipId);
+            ServerSubLevel ls = resolveLoaded(candidate, shipId);
             if (ls == null) continue;
             ShipBallisticController peek = ShipBallisticController.get(ls);
             if (peek == null || !peek.isFlying()) {
@@ -81,7 +76,7 @@ public final class ShipBallisticTicker {
                 // Wrong dim — keep looking for the bound world
                 ServerLevel bound = server.getLevel(dim);
                 if (bound != null) {
-                    LoadedServerShip inBound = resolveLoaded(bound, shipId);
+                    ServerSubLevel inBound = resolveLoaded(bound, shipId);
                     if (inBound != null) {
                         loaded = inBound;
                         level = bound;
@@ -112,7 +107,7 @@ public final class ShipBallisticTicker {
 
         ctrl.gameTick(loaded);
 
-        Vector3dc pos = loaded.getTransform().getPositionInWorld();
+        Vector3dc pos = VsShipHelper.worldPosition(loaded);
         double px = pos.x(), py = pos.y(), pz = pos.z();
         long time = level.getGameTime();
 
@@ -138,24 +133,15 @@ public final class ShipBallisticTicker {
         }
     }
 
-    private static LoadedServerShip resolveLoaded(ServerLevel level, long shipId) {
-        try {
-            ServerShipWorld world = VSGameUtilsKt.getShipObjectWorld(level);
-            if (world == null) return null;
-            QueryableShipData<LoadedServerShip> loaded = world.getLoadedShips();
-            if (loaded == null) return null;
-            Ship s = loaded.getById(shipId);
-            return s instanceof LoadedServerShip ls ? ls : null;
-        } catch (Throwable t) {
-            return null;
-        }
+    private static ServerSubLevel resolveLoaded(ServerLevel level, long shipId) {
+        return VsShipHelper.getLoadedShipById(level, shipId);
     }
 
-    private static void softArrive(ServerLevel level, LoadedServerShip ship,
+    private static void softArrive(ServerLevel level, ServerSubLevel ship,
                                    ShipBallisticController ctrl,
                                    double x, double y, double z) {
         XenoPixelsMod.LOGGER.info("Ship ballistic ARRIVED ship={} at ({}, {}, {}) — no explosion",
-                ship.getId(), (int) x, (int) y, (int) z);
+                VsShipHelper.getShipId(ship), (int) x, (int) y, (int) z);
 
         // abort() clears flying + ACTIVE_FLIGHTS; thrusters released below
         // (guidance BE clears commandingFlight on next sync when !isFlying)
@@ -168,37 +154,14 @@ public final class ShipBallisticTicker {
         level.playSound(null, BlockPos.containing(x, y, z), SoundEvents.FIRE_EXTINGUISH,
                 SoundSource.BLOCKS, 1.0f, 0.9f);
 
-        try {
-            ship.setStatic(true);
-        } catch (Throwable ignored) {
-        }
     }
 
-    private static void shutdownShipThrusters(ServerLevel level, LoadedServerShip ship) {
+    private static void shutdownShipThrusters(ServerLevel level, ServerSubLevel ship) {
         try {
-            XenoThrusterControl control = ship.getAttachment(XenoThrusterControl.class);
+            XenoThrusterControl control = XenoThrusterControl.get(ship);
             if (control != null) {
                 control.clearAll();
             }
-
-            var chunks = ship.getActiveChunksSet();
-            if (chunks == null) return;
-            final int[] remaining = {48};
-            chunks.forEach((cx, cz) -> {
-                if (remaining[0] <= 0) return;
-                try {
-                    if (!level.hasChunk(cx, cz)) return;
-                    LevelChunk chunk = level.getChunk(cx, cz);
-                    for (BlockEntity be : chunk.getBlockEntities().values()) {
-                        if (remaining[0] <= 0) break;
-                        if (be instanceof ShipThrusterBlockEntity thruster && thruster.isGuidanceOwned()) {
-                            thruster.forceShutdown();
-                            remaining[0]--;
-                        }
-                    }
-                } catch (Throwable ignored) {
-                }
-            });
         } catch (Throwable t) {
             XenoPixelsMod.LOGGER.debug("shutdownShipThrusters: {}", t.toString());
         }

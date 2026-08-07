@@ -1,7 +1,7 @@
 package net.bullettrain.xenopixelsmod.block.entity;
 
 import net.bullettrain.xenopixelsmod.block.custom.MissileTubeBlock;
-import net.bullettrain.xenopixelsmod.compat.ballistix.MissileChunkLoadManager;
+import net.bullettrain.xenopixelsmod.missile.MissileChunkLoadManager;
 import net.bullettrain.xenopixelsmod.missile.BallisticMissileEntity;
 import net.bullettrain.xenopixelsmod.missile.BallisticTrajectory;
 import net.minecraft.core.BlockPos;
@@ -84,8 +84,8 @@ public class MissileTubeBlockEntity extends BlockEntity {
 
         Vec3 spawn = localSpawn;
         try {
-            Vec3 world = net.bullettrain.xenopixelsmod.compat.ballistix.BallistixVs2Compat
-                    .shipyardToWorld(sl, localSpawn);
+            Vec3 world = dev.ryanhcode.sable.companion.SableCompanion.INSTANCE
+                    .projectOutOfSubLevel(sl, localSpawn);
             if (world != null) spawn = world;
         } catch (Throwable ignored) {
         }
@@ -118,15 +118,15 @@ public class MissileTubeBlockEntity extends BlockEntity {
     }
 
     @Override
-    protected void saveAdditional(CompoundTag tag) {
-        super.saveAdditional(tag);
+    protected void saveAdditional(CompoundTag tag, net.minecraft.core.HolderLookup.Provider registries) {
+        super.saveAdditional(tag, registries);
         tag.putInt("Cooldown", cooldown);
         tag.putBoolean("Armed", armed);
     }
 
     @Override
-    public void load(CompoundTag tag) {
-        super.load(tag);
+    public void loadAdditional(CompoundTag tag, net.minecraft.core.HolderLookup.Provider registries) {
+        super.loadAdditional(tag, registries);
         cooldown = tag.getInt("Cooldown");
         armed = !tag.contains("Armed") || tag.getBoolean("Armed");
     }
@@ -141,9 +141,9 @@ public class MissileTubeBlockEntity extends BlockEntity {
     }
 
     @Override
-    public CompoundTag getUpdateTag() {
-        CompoundTag tag = super.getUpdateTag();
-        saveAdditional(tag);
+    public CompoundTag getUpdateTag(net.minecraft.core.HolderLookup.Provider registries) {
+        CompoundTag tag = super.getUpdateTag(registries);
+        saveAdditional(tag, registries);
         return tag;
     }
 

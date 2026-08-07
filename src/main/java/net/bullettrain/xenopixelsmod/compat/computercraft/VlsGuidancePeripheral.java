@@ -37,7 +37,7 @@ import java.util.ArrayList;
 public final class VlsGuidancePeripheral implements GenericPeripheral {
     @Override
     public String id() {
-        return new ResourceLocation(XenoPixelsMod.MOD_ID, "ballistic_guidance").toString();
+        return ResourceLocation.fromNamespaceAndPath(XenoPixelsMod.MOD_ID, "ballistic_guidance").toString();
     }
 
     @LuaFunction(mainThread = true)

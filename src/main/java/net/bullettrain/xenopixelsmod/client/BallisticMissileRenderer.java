@@ -12,8 +12,8 @@ import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.ItemDisplayContext;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
-import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.api.distmarker.OnlyIn;
+import net.neoforged.api.distmarker.Dist;
+import net.neoforged.api.distmarker.OnlyIn;
 
 @OnlyIn(Dist.CLIENT)
 public class BallisticMissileRenderer extends EntityRenderer<BallisticMissileEntity> {
@@ -41,6 +41,6 @@ public class BallisticMissileRenderer extends EntityRenderer<BallisticMissileEnt
 
     @Override
     public ResourceLocation getTextureLocation(BallisticMissileEntity entity) {
-        return new ResourceLocation("minecraft", "textures/item/firework_rocket.png");
+        return ResourceLocation.fromNamespaceAndPath("minecraft", "textures/item/firework_rocket.png");
     }
 }

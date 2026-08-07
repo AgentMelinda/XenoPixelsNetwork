@@ -1,5 +1,7 @@
 package net.bullettrain.xenopixelsmod.command;
 
+import net.neoforged.fml.common.EventBusSubscriber;
+
 import com.mojang.brigadier.CommandDispatcher;
 import com.mojang.brigadier.arguments.BoolArgumentType;
 import com.mojang.brigadier.arguments.StringArgumentType;
@@ -12,14 +14,14 @@ import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraftforge.event.RegisterCommandsEvent;
-import net.minecraftforge.event.entity.player.PlayerEvent;
-import net.minecraftforge.event.server.ServerStartingEvent;
-import net.minecraftforge.eventbus.api.SubscribeEvent;
-import net.minecraftforge.fml.common.Mod;
-import net.minecraftforge.network.PacketDistributor;
+import net.neoforged.neoforge.event.RegisterCommandsEvent;
+import net.neoforged.neoforge.event.entity.player.PlayerEvent;
+import net.neoforged.neoforge.event.server.ServerStartingEvent;
+import net.neoforged.bus.api.SubscribeEvent;
+import net.neoforged.fml.common.Mod;
+import net.neoforged.neoforge.network.PacketDistributor;
 
-@Mod.EventBusSubscriber(modid = XenoPixelsMod.MOD_ID)
+@EventBusSubscriber(modid = XenoPixelsMod.MOD_ID)
 public final class DmzHudCommands {
     private DmzHudCommands() {}
 
@@ -179,16 +181,12 @@ public final class DmzHudCommands {
     }
 
     public static void broadcast() {
-        ModNetwork.CHANNEL.send(PacketDistributor.ALL.noArg(),
-                new SyncServerConfigPacket(XenoServerConfig.snapshot()));
-        ModNetwork.CHANNEL.send(PacketDistributor.ALL.noArg(),
-                new SyncDmzHudStatePacket(XenoServerConfig.dmzHudEnabled));
+        ModNetwork.sendToAll(new SyncServerConfigPacket(XenoServerConfig.snapshot()));
+        ModNetwork.sendToAll(new SyncDmzHudStatePacket(XenoServerConfig.dmzHudEnabled));
     }
 
     private static void syncTo(ServerPlayer player) {
-        ModNetwork.CHANNEL.send(PacketDistributor.PLAYER.with(() -> player),
-                new SyncServerConfigPacket(XenoServerConfig.snapshot()));
-        ModNetwork.CHANNEL.send(PacketDistributor.PLAYER.with(() -> player),
-                new SyncDmzHudStatePacket(XenoServerConfig.dmzHudEnabled));
+        ModNetwork.sendToPlayer(player, new SyncServerConfigPacket(XenoServerConfig.snapshot()));
+        ModNetwork.sendToPlayer(player, new SyncDmzHudStatePacket(XenoServerConfig.dmzHudEnabled));
     }
 }

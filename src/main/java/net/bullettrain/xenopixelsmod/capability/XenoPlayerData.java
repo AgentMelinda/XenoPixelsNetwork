@@ -4,7 +4,6 @@ import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
 import net.minecraft.nbt.StringTag;
 import net.minecraft.nbt.Tag;
-import net.minecraftforge.common.capabilities.AutoRegisterCapability;
 
 import java.util.Collections;
 import java.util.HashMap;
@@ -13,7 +12,6 @@ import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 
-@AutoRegisterCapability
 public class XenoPlayerData {
     private float ki = 100f;
     private float maxKi = 100f;

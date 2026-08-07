@@ -1,5 +1,5 @@
 {
-  "type": "crafting_shaped",
+  "type": "minecraft:crafting_shaped",
   "category": "misc",
   "pattern": [
     "###",
@@ -12,6 +12,6 @@
     }
   },
   "result": {
-    "item": "xenopixelsmod:jackietonite_ore_block"
+    "id": "xenopixelsmod:jackietonite_ore_block"
   }
 }

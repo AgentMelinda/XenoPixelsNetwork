@@ -17,8 +17,8 @@ import net.minecraft.util.Mth;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.phys.Vec3;
-import net.minecraftforge.common.util.LazyOptional;
-import net.minecraftforge.network.NetworkEvent;
+import com.dragonminez.compat.util.LazyOptional;
+import com.dragonminez.compat.network.NetworkEvent;
 
 import java.util.function.Supplier;
 
@@ -927,7 +927,7 @@ public class Bt3CombatPacket {
 
     private static void playItSound(ServerPlayer player, double x, double y, double z, boolean leave) {
         SoundEvent dmz = BuiltInRegistries.SOUND_EVENT.get(
-                new ResourceLocation("dragonminez", leave ? "evasion1" : "evasion2"));
+                ResourceLocation.fromNamespaceAndPath("dragonminez", leave ? "evasion1" : "evasion2"));
         if (dmz != null) {
             player.level().playSound(null, x, y, z, dmz, SoundSource.PLAYERS, 0.95f, leave ? 1.05f : 1.15f);
         } else {
@@ -937,8 +937,8 @@ public class Bt3CombatPacket {
     }
 
     private static void playHitSound(ServerPlayer player, LivingEntity target, boolean finisher) {
-        SoundEvent punch = BuiltInRegistries.SOUND_EVENT.get(new ResourceLocation("dragonminez", "fist_punch"));
-        SoundEvent knock = BuiltInRegistries.SOUND_EVENT.get(new ResourceLocation("dragonminez", "knockback_character"));
+        SoundEvent punch = BuiltInRegistries.SOUND_EVENT.get(ResourceLocation.fromNamespaceAndPath("dragonminez", "fist_punch"));
+        SoundEvent knock = BuiltInRegistries.SOUND_EVENT.get(ResourceLocation.fromNamespaceAndPath("dragonminez", "knockback_character"));
         if (finisher) {
             if (knock != null) {
                 player.level().playSound(null, target.getX(), target.getY(), target.getZ(),
@@ -961,8 +961,8 @@ public class Bt3CombatPacket {
         double y = target.getY() + target.getBbHeight() * 0.4;
         double z = target.getZ();
 
-        SoundEvent punch = BuiltInRegistries.SOUND_EVENT.get(new ResourceLocation("dragonminez", "fist_punch"));
-        SoundEvent knock = BuiltInRegistries.SOUND_EVENT.get(new ResourceLocation("dragonminez", "knockback_character"));
+        SoundEvent punch = BuiltInRegistries.SOUND_EVENT.get(ResourceLocation.fromNamespaceAndPath("dragonminez", "fist_punch"));
+        SoundEvent knock = BuiltInRegistries.SOUND_EVENT.get(ResourceLocation.fromNamespaceAndPath("dragonminez", "knockback_character"));
 
         // DMZ impact if available
         if (punch != null) {

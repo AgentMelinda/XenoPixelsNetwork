@@ -5,6 +5,7 @@ import net.bullettrain.xenopixelsmod.block.entity.ShipVlsGuidanceBlockEntity;
 import net.bullettrain.xenopixelsmod.vs.VsShipHelper;
 import net.minecraft.ChatFormatting;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.component.DataComponents;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerLevel;
@@ -16,10 +17,11 @@ import net.minecraft.world.item.context.UseOnContext;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.component.CustomData;
 import net.minecraft.world.level.Level;
 
 import java.util.List;
-import org.valkyrienskies.core.api.ships.LoadedServerShip;
+import dev.ryanhcode.sable.sublevel.ServerSubLevel;
 
 /**
  * Opens the XYZ target GUI on the client only.
@@ -51,14 +53,15 @@ public class TargetToolItem extends Item {
         Player player = context.getPlayer();
         if (!(level.getBlockEntity(context.getClickedPos()) instanceof ShipVlsGuidanceBlockEntity guidance)) {
             if (!(level instanceof ServerLevel server)) return InteractionResult.SUCCESS;
-            LoadedServerShip ship = VsShipHelper.getLoadedShipAtFast(server, context.getClickedPos());
+            ServerSubLevel ship = VsShipHelper.getLoadedShipAtFast(server, context.getClickedPos());
             if (ship == null) ship = VsShipHelper.getLoadedShipAt(server, context.getClickedPos());
             if (ship == null) return InteractionResult.PASS;
-            var position = ship.getTransform().getPositionInWorld();
-            setStoredMovingTarget(context.getItemInHand(), ship.getId(),
+            var position = VsShipHelper.worldPosition(ship);
+            long shipId = VsShipHelper.getShipId(ship);
+            setStoredMovingTarget(context.getItemInHand(), shipId,
                     BlockPos.containing(position.x(), position.y(), position.z()));
             if (player != null) player.displayClientMessage(Component.literal(
-                    "§bMoving VS2 target designated: ship#" + ship.getId()), true);
+                    "§bMoving Sable target designated: sub-level#" + shipId), true);
             return InteractionResult.CONSUME;
         }
         if (level.isClientSide) return InteractionResult.SUCCESS;
@@ -91,41 +94,44 @@ public class TargetToolItem extends Item {
 
     public static void setStoredTarget(ItemStack stack, BlockPos target) {
         if (stack == null || stack.isEmpty() || target == null) return;
-        CompoundTag tag = stack.getOrCreateTag();
-        tag.putBoolean(TAG_HAS_TARGET, true);
-        tag.putLong(TAG_TARGET, target.asLong());
-        tag.remove(TAG_TARGET_SHIP);
+        CustomData.update(DataComponents.CUSTOM_DATA, stack, tag -> {
+            tag.putBoolean(TAG_HAS_TARGET, true);
+            tag.putLong(TAG_TARGET, target.asLong());
+            tag.remove(TAG_TARGET_SHIP);
+        });
     }
 
     public static void setStoredMovingTarget(ItemStack stack, long shipId, BlockPos lastKnown) {
         if (stack == null || stack.isEmpty() || shipId < 0 || lastKnown == null) return;
-        CompoundTag tag = stack.getOrCreateTag();
-        tag.putBoolean(TAG_HAS_TARGET, true);
-        tag.putLong(TAG_TARGET, lastKnown.asLong());
-        tag.putLong(TAG_TARGET_SHIP, shipId);
+        CustomData.update(DataComponents.CUSTOM_DATA, stack, tag -> {
+            tag.putBoolean(TAG_HAS_TARGET, true);
+            tag.putLong(TAG_TARGET, lastKnown.asLong());
+            tag.putLong(TAG_TARGET_SHIP, shipId);
+        });
     }
 
     public static long getStoredMovingTarget(ItemStack stack) {
-        CompoundTag tag = stack == null ? null : stack.getTag();
-        return tag != null && tag.contains(TAG_TARGET_SHIP) ? tag.getLong(TAG_TARGET_SHIP) : -1L;
+        if (stack == null || stack.isEmpty()) return -1L;
+        CompoundTag tag = stack.getOrDefault(DataComponents.CUSTOM_DATA, CustomData.EMPTY).copyTag();
+        return tag.contains(TAG_TARGET_SHIP) ? tag.getLong(TAG_TARGET_SHIP) : -1L;
     }
 
     public static BlockPos getStoredTarget(ItemStack stack) {
         if (stack == null || stack.isEmpty()) return null;
-        CompoundTag tag = stack.getTag();
-        if (tag == null || !tag.getBoolean(TAG_HAS_TARGET) || !tag.contains(TAG_TARGET)) return null;
+        CompoundTag tag = stack.getOrDefault(DataComponents.CUSTOM_DATA, CustomData.EMPTY).copyTag();
+        if (!tag.getBoolean(TAG_HAS_TARGET) || !tag.contains(TAG_TARGET)) return null;
         return BlockPos.of(tag.getLong(TAG_TARGET));
     }
 
     @Override
-    public void appendHoverText(ItemStack stack, Level level, List<Component> tooltip, TooltipFlag flag) {
+    public void appendHoverText(ItemStack stack, Item.TooltipContext context, List<Component> tooltip, TooltipFlag flag) {
         BlockPos target = getStoredTarget(stack);
         if (target == null) {
             tooltip.add(Component.translatable("tooltip.xenopixelsmod.target_tool_empty")
                     .withStyle(ChatFormatting.GRAY));
         } else {
             long moving = getStoredMovingTarget(stack);
-            if (moving >= 0) tooltip.add(Component.literal("Moving VS2 ship #" + moving)
+            if (moving >= 0) tooltip.add(Component.literal("Moving Sable sub-level #" + moving)
                     .withStyle(ChatFormatting.GOLD));
             tooltip.add(Component.translatable("tooltip.xenopixelsmod.target_tool_target",
                             target.getX(), target.getY(), target.getZ())
@@ -133,6 +139,6 @@ public class TargetToolItem extends Item {
             tooltip.add(Component.translatable("tooltip.xenopixelsmod.target_tool_apply")
                     .withStyle(ChatFormatting.DARK_GRAY));
         }
-        super.appendHoverText(stack, level, tooltip, flag);
+        super.appendHoverText(stack, context, tooltip, flag);
     }
 }

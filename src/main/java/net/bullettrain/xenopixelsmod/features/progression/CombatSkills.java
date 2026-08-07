@@ -32,7 +32,7 @@ public final class CombatSkills {
 
     public static int level(ServerPlayer player, String skillId) {
         if (player == null) return 0;
-        return player.getCapability(XenoCapabilities.XENO_DATA)
+        return XenoCapabilities.get(player)
                 .map(d -> d.getSkillLevel(skillId))
                 .orElse(0);
     }
@@ -57,7 +57,7 @@ public final class CombatSkills {
     public static String tryUnlock(ServerPlayer player, String skillId) {
         SkillDef def = DEFS.get(skillId == null ? "" : skillId.toLowerCase());
         if (def == null) return "Unknown skill. Try: power, guard, sparking, ultimate";
-        XenoPlayerData data = player.getCapability(XenoCapabilities.XENO_DATA).orElse(null);
+        XenoPlayerData data = XenoCapabilities.get(player).orElse(null);
         if (data == null) return "No player data";
         int cur = data.getSkillLevel(def.id);
         if (cur >= 3) return def.title + " is already max level (3)";

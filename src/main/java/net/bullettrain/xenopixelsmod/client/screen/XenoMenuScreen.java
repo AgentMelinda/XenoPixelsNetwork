@@ -6,7 +6,6 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.screens.ConnectScreen;
-import net.minecraft.client.gui.screens.GenericDirtMessageScreen;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.gui.screens.TitleScreen;
 import net.minecraft.client.multiplayer.ServerData;
@@ -91,19 +90,14 @@ public class XenoMenuScreen extends Screen {
 
         Runnable startConnect = () -> {
             ServerAddress address = ServerAddress.parseString(SERVER_HOST);
-            ServerData data = new ServerData("XenoPixels", SERVER_HOST, false);
+            ServerData data = new ServerData("XenoPixels", SERVER_HOST, ServerData.Type.OTHER);
             // Parent must not be the in-world pause/Xeno menu after level is cleared
-            ConnectScreen.startConnecting(new TitleScreen(), mc, address, data, false);
+            ConnectScreen.startConnecting(new TitleScreen(), mc, address, data, false, null);
         };
 
         if (mc.level != null) {
-            boolean local = mc.isLocalServer();
             mc.level.disconnect();
-            if (local) {
-                mc.clearLevel(new GenericDirtMessageScreen(Component.translatable("menu.savingLevel")));
-            } else {
-                mc.clearLevel();
-            }
+            mc.disconnect();
             // Defer until the integrated server / world teardown finishes
             mc.execute(startConnect);
             return;

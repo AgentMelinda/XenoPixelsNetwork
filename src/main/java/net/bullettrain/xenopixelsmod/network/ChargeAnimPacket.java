@@ -4,7 +4,7 @@ import net.bullettrain.xenopixelsmod.combat.DmzAnimHelper;
 import net.bullettrain.xenopixelsmod.config.XenoServerConfig;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraftforge.network.NetworkEvent;
+import com.dragonminez.compat.network.NetworkEvent;
 
 import java.util.function.Supplier;
 

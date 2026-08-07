@@ -19,9 +19,9 @@ public final class XenoHudTextures {
     }
 
     public static final ResourceLocation WHITE =
-            new ResourceLocation(XenoPixelsMod.MOD_ID, "textures/gui/white.png");
+            ResourceLocation.fromNamespaceAndPath(XenoPixelsMod.MOD_ID, "textures/gui/white.png");
 
     /** Existing HUD atlas (currently only used for the skill-orb icon). */
     public static final ResourceLocation ATLAS =
-            new ResourceLocation(XenoPixelsMod.MOD_ID, "textures/gui/xeno_hud.png");
+            ResourceLocation.fromNamespaceAndPath(XenoPixelsMod.MOD_ID, "textures/gui/xeno_hud.png");
 }

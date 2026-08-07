@@ -1,5 +1,7 @@
 package net.bullettrain.xenopixelsmod.command;
 
+import net.neoforged.fml.common.EventBusSubscriber;
+
 import com.mojang.brigadier.CommandDispatcher;
 import com.mojang.brigadier.arguments.DoubleArgumentType;
 import com.mojang.brigadier.arguments.LongArgumentType;
@@ -15,12 +17,12 @@ import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.phys.HitResult;
 import net.minecraft.world.phys.Vec3;
-import net.minecraftforge.event.RegisterCommandsEvent;
-import net.minecraftforge.eventbus.api.SubscribeEvent;
-import net.minecraftforge.fml.common.Mod;
-import org.valkyrienskies.core.api.ships.LoadedServerShip;
+import net.neoforged.neoforge.event.RegisterCommandsEvent;
+import net.neoforged.bus.api.SubscribeEvent;
+import net.neoforged.fml.common.Mod;
+import dev.ryanhcode.sable.sublevel.ServerSubLevel;
 
-@Mod.EventBusSubscriber(modid = XenoPixelsMod.MOD_ID)
+@EventBusSubscriber(modid = XenoPixelsMod.MOD_ID)
 public final class ShipGravityCommands {
     private ShipGravityCommands() { }
 
@@ -61,39 +63,38 @@ public final class ShipGravityCommands {
     }
 
     private static int get(CommandSourceStack source, long shipId) {
-        LoadedServerShip ship = resolve(source, shipId);
+        ServerSubLevel ship = resolve(source, shipId);
         if (ship == null) return noShip(source);
-        ShipGravityControl control = ship.getAttachment(ShipGravityControl.class);
+        ShipGravityControl control = ShipGravityControl.get(ship);
         double gravity = control == null ? ShipGravityControl.NORMAL_GRAVITY : control.getGravitySi();
         source.sendSuccess(() -> Component.literal(String.format(
-                "Ship #%d gravity: %.4f m/s² (%s)", ship.getId(), gravity,
+                "Sable sub-level #%d gravity: %.4f m/s² (%s)", VsShipHelper.getShipId(ship), gravity,
                 gravity > 0 ? "down" : gravity < 0 ? "up" : "zero-g")), false);
         return 1;
     }
 
     private static int set(CommandSourceStack source, long shipId, double gravity) {
-        LoadedServerShip ship = resolve(source, shipId);
+        ServerSubLevel ship = resolve(source, shipId);
         if (ship == null) return noShip(source);
         ShipGravityControl control = ShipGravityControl.getOrCreate(ship);
         control.setGravitySi(gravity);
-        try { if (ship.isStatic()) ship.setStatic(false); } catch (Throwable ignored) { }
         source.sendSuccess(() -> Component.literal(String.format(
-                "Ship #%d gravity set to %.4f m/s² (%s)", ship.getId(), control.getGravitySi(),
+                "Sable sub-level #%d gravity set to %.4f m/s² (%s)", VsShipHelper.getShipId(ship), control.getGravitySi(),
                 control.getGravitySi() > 0 ? "down" : control.getGravitySi() < 0 ? "up" : "zero-g")), true);
         return 1;
     }
 
-    private static LoadedServerShip resolve(CommandSourceStack source, long shipId) {
+    private static ServerSubLevel resolve(CommandSourceStack source, long shipId) {
         ServerLevel level = source.getLevel();
         if (shipId >= 0) return VsShipHelper.getLoadedShipById(level, shipId);
         try {
             ServerPlayer player = source.getPlayerOrException();
             HitResult hit = player.pick(128.0, 0.0f, false);
             if (hit.getType() != HitResult.Type.MISS) {
-                LoadedServerShip lookedAt = VsShipHelper.getLoadedShipAt(level, BlockPos.containing(hit.getLocation()));
+                ServerSubLevel lookedAt = VsShipHelper.getLoadedShipAt(level, BlockPos.containing(hit.getLocation()));
                 if (lookedAt != null) return lookedAt;
             }
-            LoadedServerShip under = VsShipHelper.getLoadedShipAt(level, player.blockPosition().below());
+            ServerSubLevel under = VsShipHelper.getLoadedShipAt(level, player.blockPosition().below());
             if (under != null) return under;
             return VsShipHelper.getClosestLoadedShip(level, new Vec3(player.getX(), player.getY(), player.getZ()), 128.0);
         } catch (Exception ignored) {
@@ -102,7 +103,7 @@ public final class ShipGravityCommands {
     }
 
     private static int noShip(CommandSourceStack source) {
-        source.sendFailure(Component.literal("No loaded VS2 ship selected. Stand on/look at one, or provide its ship ID."));
+        source.sendFailure(Component.literal("No loaded Sable ship selected. Stand on/look at one, or provide its ship ID."));
         return 0;
     }
 }

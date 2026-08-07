@@ -1,5 +1,7 @@
 package net.bullettrain.xenopixelsmod.combat;
 
+import net.neoforged.fml.common.EventBusSubscriber;
+
 import com.dragonminez.common.stats.StatsCapability;
 import com.dragonminez.common.stats.StatsData;
 import com.dragonminez.common.stats.StatsProvider;
@@ -11,12 +13,14 @@ import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.effect.MobEffects;
 import net.minecraft.world.entity.LivingEntity;
-import net.minecraftforge.event.TickEvent;
-import net.minecraftforge.event.entity.living.LivingHurtEvent;
-import net.minecraftforge.event.entity.player.PlayerEvent;
-import net.minecraftforge.eventbus.api.EventPriority;
-import net.minecraftforge.eventbus.api.SubscribeEvent;
-import net.minecraftforge.fml.common.Mod;
+import net.neoforged.neoforge.client.event.ClientTickEvent;
+import net.neoforged.neoforge.event.tick.PlayerTickEvent;
+import net.neoforged.neoforge.event.tick.ServerTickEvent;
+import net.neoforged.neoforge.event.entity.living.LivingDamageEvent;
+import net.neoforged.neoforge.event.entity.player.PlayerEvent;
+import net.neoforged.bus.api.EventPriority;
+import net.neoforged.bus.api.SubscribeEvent;
+import net.neoforged.fml.common.Mod;
 
 import java.util.Iterator;
 import java.util.HashMap;
@@ -26,7 +30,7 @@ import java.util.UUID;
 /**
  * Server-side BT3 phase-1: guard state, STM drain, super-counter windows.
  */
-@Mod.EventBusSubscriber(modid = XenoPixelsMod.MOD_ID)
+@EventBusSubscriber(modid = XenoPixelsMod.MOD_ID)
 public final class Bt3CombatEvents {
     // Forge events and handled packets mutate these on the server thread.
     private static final Map<UUID, Long> GUARDING = new HashMap<>();
@@ -78,12 +82,12 @@ public final class Bt3CombatEvents {
     }
 
     @SubscribeEvent(priority = EventPriority.HIGH)
-    public static void onHurt(LivingHurtEvent event) {
+    public static void onHurt(LivingDamageEvent.Pre event) {
         if (!(event.getEntity() instanceof ServerPlayer defender)) return;
         if (!XenoServerConfig.bt3CombatEnabled) return;
 
         // Super-counter window after any hit (if enabled)
-        if (XenoServerConfig.bt3SuperCounterEnabled && event.getAmount() > 0.05f) {
+        if (XenoServerConfig.bt3SuperCounterEnabled && event.getNewDamage() > 0.05f) {
             openCounterWindow(defender);
         }
 
@@ -109,12 +113,11 @@ public final class Bt3CombatEvents {
         }
         float red = Math.max(0f, Math.min(0.95f, XenoServerConfig.guardDamageReduction
                 + net.bullettrain.xenopixelsmod.features.progression.CombatSkills.guardBonus(defender)));
-        event.setAmount(event.getAmount() * (1f - red));
+        event.setNewDamage(event.getNewDamage() * (1f - red));
     }
 
     @SubscribeEvent
-    public static void onServerTick(TickEvent.ServerTickEvent event) {
-        if (event.phase != TickEvent.Phase.END) return;
+    public static void onServerTick(ServerTickEvent.Post event) {
         if (!XenoServerConfig.bt3CombatEnabled || !XenoServerConfig.bt3GuardEnabled) return;
         int serverTick = event.getServer().getTickCount();
 

@@ -3,7 +3,7 @@ package net.bullettrain.xenopixelsmod.client.config;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import net.bullettrain.xenopixelsmod.XenoPixelsMod;
-import net.minecraftforge.fml.loading.FMLPaths;
+import net.neoforged.fml.loading.FMLPaths;
 
 import java.io.IOException;
 import java.io.Reader;

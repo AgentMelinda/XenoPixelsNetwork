@@ -1,10 +1,8 @@
 plugins {
-    id 'eclipse'
+    id 'java'
     id 'idea'
     id 'maven-publish'
-    id 'net.minecraftforge.gradle' version '[6.0,6.2)'
-    id 'org.parchmentmc.librarian.forgegradle' version '1.+'
-    id 'org.spongepowered.mixin' version '0.7.38'
+    id 'net.neoforged.moddev' version '2.0.143'
 }
 
 version = mod_version
@@ -15,234 +13,139 @@ base {
 }
 
 java {
-    toolchain.languageVersion = JavaLanguageVersion.of(17)
+    toolchain.languageVersion = JavaLanguageVersion.of(21)
     withSourcesJar()
 }
 
-minecraft {
-    mappings channel: mapping_channel, version: mapping_version
-    copyIdeResources = true
+neoForge {
+    version = neo_version
+
+    parchment {
+        minecraftVersion = parchment_minecraft_version
+        mappingsVersion = parchment_mappings_version
+    }
 
     runs {
-        configureEach {
-            workingDirectory project.file('run')
-            property 'forge.logging.markers', 'REGISTRIES'
-            property 'forge.logging.console.level', 'debug'
-            property 'mixin.env.remapRefMap', 'true'
-            property 'mixin.env.refMapRemappingFile', "${projectDir}/build/createSrgToMcp/output.srg"
-            mods {
-                "${mod_id}" {
-                    source sourceSets.main
-                }
-            }
+        client {
+            client()
+            gameDirectory = file('run')
+            systemProperty 'neoforge.enabledGameTestNamespaces', mod_id
         }
-
-        client {}
-        server {}
+        server {
+            server()
+            gameDirectory = file('run')
+            programArgument '--nogui'
+            systemProperty 'neoforge.enabledGameTestNamespaces', mod_id
+        }
         gameTestServer {
-            property 'forge.enabledGameTestNamespaces', mod_id
+            type = 'gameTestServer'
+            gameDirectory = file('run')
+            systemProperty 'neoforge.enabledGameTestNamespaces', mod_id
         }
         data {
-            args '--mod', mod_id, '--all', '--output', file('src/generated/resources/'), '--existing', file('src/main/resources/')
+            data()
+            gameDirectory = file('run-data')
+            programArguments.addAll '--mod', mod_id, '--all', '--output', file('src/generated/resources/').absolutePath,
+                    '--existing', file('src/main/resources/').absolutePath
+        }
+        configureEach {
+            logLevel = org.slf4j.event.Level.INFO
         }
     }
-}
 
-mixin {
-    add sourceSets.main, "mixins.${mod_id}.refmap.json"
-    config "${mod_id}.mixins.json"
-    // Optional Ballistix / Voltaic / VS2-targeted mixins (gated by ConditionalMixinPlugin)
-    config "${mod_id}.compat.mixins.json"
-}
+    mods {
+        "${mod_id}" {
+            sourceSet sourceSets.main
+        }
+    }
 
-sourceSets.main.resources {
-    srcDir 'src/generated/resources'
+    unitTest {
+        enable()
+        testedMod = mods.xenopixelsmod
+    }
 }
 
 repositories {
     mavenCentral()
-    mavenLocal()
-    maven {
-        url "https://chocolateminecraft.com/maven"
-        name "Xaero's Maven"
-    }
-    flatDir {
-        dirs 'libs'
-    }
-    maven {
-        url "https://cursemaven.com"
-    }
-    maven {
-        name = 'ParchmentMC'
-        url = 'https://maven.parchmentmc.org'
-    }
-    maven {
-        name = 'MinecraftForge'
-        url = 'https://maven.minecraftforge.net/'
-    }
-    maven {
-        name = 'Kotlin for Forge'
-        url = 'https://thedarkcolour.github.io/KotlinForForge/'
-        content {
-            includeGroup 'thedarkcolour'
-        }
-    }
-    maven {
-        name = 'Valkyrien Skies Internal'
-        url = project.vs_maven_url ?: 'https://maven.valkyrienskies.org'
-        if (project.vs_maven_username && project.vs_maven_password) {
-            credentials {
-                username = project.vs_maven_username
-                password = project.vs_maven_password
-            }
-        }
-    }
     maven {
         name = 'GeckoLib'
         url = 'https://dl.cloudsmith.io/public/geckolib3/geckolib/maven/'
+        content { includeGroupByRegex 'software\\.bernie.*' }
     }
     maven {
-        name = "Jared's maven"
-        url = 'https://maven.blamejared.com/'
+        name = 'TerraBlender'
+        url = 'https://maven.minecraftforge.net/'
+        content { includeGroup 'com.github.glitchfiend' }
     }
     maven {
-        name = 'Illusive Soulworks'
+        name = 'Curios'
         url = 'https://maven.theillusivec4.top/'
     }
     maven {
-        name = 'SquidDev (CC:Tweaked)'
-        url = 'https://maven.squiddev.cc'
+        name = 'CC Tweaked'
+        url = 'https://maven.squiddev.cc/'
+        content { includeGroup 'cc.tweaked' }
     }
     maven {
-        name = 'IzzelAliz Maven'
-        url = 'https://maven.izzel.io/releases/'
-    }
-    // LDLib migration target (Phase 1) — Modrinth-hosted, must stay exclusive to
-    // maven.modrinth so it can't shadow/override other repos' coordinates.
-    exclusiveContent {
-        forRepository {
-            maven {
-                name = 'Modrinth'
-                url = 'https://api.modrinth.com/maven'
-            }
-        }
-        forRepositories(fg.repository)
-        filter {
-            includeGroup 'maven.modrinth'
+        name = 'Xaero'
+        url = 'https://chocolateminecraft.com/maven/'
+        content {
+            includeGroup 'xaero.map'
+            includeGroup 'xaero.lib'
         }
     }
-}
-
-// library = extra run classpath; jarJar = embedded into the output mod jar (JiJ)
-configurations {
-    library
-    implementation.extendsFrom library
-}
-
-minecraft.runs.configureEach {
-    lazyToken('minecraft_classpath') {
-        configurations.library.copyRecursive().resolve().collect { it.absolutePath }.join(File.pathSeparator)
+    maven {
+        name = 'Modrinth'
+        url = 'https://api.modrinth.com/maven/'
+        content { includeGroup 'maven.modrinth' }
+    }
+    maven {
+        name = 'Sable Companion'
+        url = 'https://maven.ryanhcode.dev/releases'
+        content { includeGroup 'dev.ryanhcode.sable-companion' }
     }
 }
-
-// Enable Forge Jar-in-Jar embedding
-jarJar.enable()
 
 dependencies {
-    minecraft "net.minecraftforge:forge:${minecraft_version}-${forge_version}"
-    annotationProcessor 'org.spongepowered:mixin:0.8.7:processor'
-    compileOnly(annotationProcessor('io.github.llamalad7:mixinextras-common:0.4.1'))
-    // Optional client integration; the dev artifact intentionally uses Mojang names.
-    compileOnly fg.deobf("xaero.lib:xaerolib-forge-1.20.1:1.1.0")
-    compileOnly "xaero.map:xaeroworldmap-forge-1.20.1:1.40.11:dev"
+    // The special DMZ 1.21.1 build produced by the parent repository.
+    implementation files('../build/libs/dragonminez-2.1.3.jar')
 
-    implementation("org.valkyrienskies.core:api:${vs_core_version}") { transitive = false }
-    implementation("org.valkyrienskies.core:internal:${vs_core_version}") { transitive = false }
-    implementation("org.valkyrienskies.core:util:${vs_core_version}") { transitive = false }
-    implementation("org.valkyrienskies.core:impl:${vs_core_version}") { transitive = false }
-    implementation(fg.deobf("org.valkyrienskies:valkyrienskies-120-forge:${vs2_version}")) {
-        transitive = false
-        exclude group: 'org.valkyrienskies.core', module: ''
-    }
+    implementation "software.bernie.geckolib:geckolib-neoforge-1.21.1:${geckolib_version}"
+    implementation "com.github.glitchfiend:TerraBlender-neoforge:${terrablender_version}"
+    implementation "top.theillusivec4.curios:curios-neoforge:${curios_version}"
 
-    // ---- Ballistix + Voltaic (optional at runtime; compileOnly + fg.deobf for mixins) ----
-    // flatDir jars: libs/voltaic-1.0.11.jar , libs/ballistix-1.0.9.jar
-    // Mixins gated by ConditionalMixinPlugin. Run: ./gradlew runClient -PxenoWithBallistix
-    compileOnly fg.deobf("blank:voltaic:1.0.11")
-    compileOnly fg.deobf("blank:ballistix:1.0.9")
-    if (project.hasProperty('xenoWithBallistix')) {
-        library fg.deobf("blank:voltaic:1.0.11")
-        library fg.deobf("blank:ballistix:1.0.9")
-    }
+    // Sable replaces the old Valkyrien Skies 2 integration.
+    implementation "maven.modrinth:${sable_project_id}:${sable_version_id}"
+    implementation "dev.ryanhcode.sable-companion:sable-companion-common-1.21.1:${sable_companion_version}"
 
-    // ComputerCraft: Tweaked — optional at runtime; thruster/VLS GenericPeripheral APIs
-    compileOnly fg.deobf("cc.tweaked:cc-tweaked-1.20.1-forge:1.111.0")
+    // Optional integrations. Only their public/development APIs are compiled against.
+    compileOnly "cc.tweaked:cc-tweaked-1.21.1-common-api:${cc_tweaked_version}"
+    compileOnly "cc.tweaked:cc-tweaked-1.21.1-core-api:${cc_tweaked_version}"
+    compileOnly "cc.tweaked:cc-tweaked-1.21.1-forge-api:${cc_tweaked_version}"
+    compileOnly "xaero.lib:xaerolib-neoforge-1.21.1:${xaerolib_version}"
+    compileOnly "xaero.map:xaeroworldmap-neoforge-1.21.1:${xaero_world_map_version}:all"
 
-    implementation fg.deobf("curse.maven:dragonminez-1136088:8469416")
-    implementation fg.deobf('software.bernie.geckolib:geckolib-forge-1.20.1:4.8.3')
-    implementation 'com.eliotlash.mclib:mclib:20'
-    implementation fg.deobf('com.github.glitchfiend:TerraBlender-forge:1.20.1-3.0.1.10')
-    implementation fg.deobf('top.theillusivec4.curios:curios-forge:5.14.1+1.20.1')
-    implementation 'thedarkcolour:kotlinforforge:4.11.0'
-    testImplementation 'org.junit.jupiter:junit-jupiter:5.10.2'
-
-    // ---- LDLib (Phase 1 of the ModernUI -> LDLib HUD migration, see plan.md) ----
-    // Resolved only for now; not yet used to render anything, and not Jar-in-Jar'd
-    // (external required dependency per plan.md §4.5 — no bundling until license review).
-    implementation fg.deobf("maven.modrinth:${ldlib_modrinth_project}:${ldlib_modrinth_version}")
-
-    // ---- Modern UI (run classpath) ----
-    def muiExcludes = {
-        exclude group: 'org.slf4j', module: 'slf4j-api'
-        exclude group: 'org.apache.logging.log4j', module: 'log4j-core'
-        exclude group: 'org.apache.logging.log4j', module: 'log4j-api'
-        exclude group: 'com.google.code.findbugs', module: 'jsr305'
-        exclude group: 'org.jetbrains', module: 'annotations'
-        exclude group: 'com.ibm.icu', module: 'icu4j'
-        exclude group: 'it.unimi.dsi', module: 'fastutil'
-    }
-
-    library("icyllis.modernui:ModernUI-Core:${modernui_core_version}") {
-        muiExcludes.delegate = delegate
-        muiExcludes()
-    }
-    library("icyllis.modernui:ModernUI-Markflow:${modernui_core_version}") {
-        muiExcludes.delegate = delegate
-        muiExcludes()
-    }
-    // Deobf forge mod for compile/run
-    implementation fg.deobf("icyllis.modernui:ModernUI-Forge:${minecraft_version}-${modernui_version}")
-
-    // ---- Modern UI embedded via Jar-in-Jar (ships inside our mod jar) ----
-    // Pin exact versions so FML can resolve a single nested artifact.
-    jarJar(group: 'icyllis.modernui', name: 'ModernUI-Forge', version: "[${minecraft_version}-${modernui_version}]") {
-        jarJar.pin(it, "${minecraft_version}-${modernui_version}")
-        jarJar.ranged(it, "[${minecraft_version}-${modernui_version},${minecraft_version}-${modernui_version}]")
-    }
-    jarJar(group: 'icyllis.modernui', name: 'ModernUI-Core', version: "[${modernui_core_version}]") {
-        jarJar.pin(it, modernui_core_version)
-        jarJar.ranged(it, "[${modernui_core_version},${modernui_core_version}]")
-        muiExcludes.delegate = delegate
-        muiExcludes()
-    }
-    jarJar(group: 'icyllis.modernui', name: 'ModernUI-Markflow', version: "[${modernui_core_version}]") {
-        jarJar.pin(it, modernui_core_version)
-        jarJar.ranged(it, "[${modernui_core_version},${modernui_core_version}]")
-        muiExcludes.delegate = delegate
-        muiExcludes()
-    }
+    testImplementation 'org.junit.jupiter:junit-jupiter:5.11.4'
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
 }
 
-tasks.named('test', Test).configure {
+sourceSets.main.resources.srcDir 'src/generated/resources'
+
+tasks.withType(JavaCompile).configureEach {
+    options.encoding = 'UTF-8'
+    options.release = 21
+    options.compilerArgs.addAll '-Xlint:-deprecation', '-Xlint:-removal', '-Xmaxerrs', '10000', '-Xmaxwarns', '10000'
+}
+
+tasks.withType(Test).configureEach {
     useJUnitPlatform()
 }
 
-def resourceTargets = ['META-INF/mods.toml', 'pack.mcmeta']
 def replaceProperties = [
         minecraft_version      : minecraft_version,
         minecraft_version_range: minecraft_version_range,
-        forge_version          : forge_version,
-        forge_version_range    : forge_version_range,
+        neo_version            : neo_version,
+        neo_version_range      : neo_version_range,
         loader_version_range   : loader_version_range,
         mod_id                 : mod_id,
         mod_name               : mod_name,
@@ -252,55 +155,40 @@ def replaceProperties = [
         mod_description        : mod_description
 ]
 
-processResources {
+tasks.named('processResources', ProcessResources).configure {
     inputs.properties replaceProperties
-    filesMatching(resourceTargets) {
+    filesMatching(['META-INF/neoforge.mods.toml', 'pack.mcmeta']) {
         expand replaceProperties + [project: project]
     }
 }
 
-tasks.withType(JavaCompile).configureEach {
-    options.encoding = 'UTF-8'
-    options.release = 17
+tasks.withType(AbstractArchiveTask).configureEach {
+    preserveFileTimestamps = false
+    reproducibleFileOrder = true
 }
 
-jar {
+tasks.named('jar', Jar).configure {
+    archiveClassifier = ''
     manifest {
         attributes([
                 'Specification-Title'     : mod_id,
                 'Specification-Vendor'    : mod_authors,
-                'Specification-Version'   : '1',
+                'Specification-Version'   : mod_version,
                 'Implementation-Title'    : project.name,
                 'Implementation-Version'  : project.version,
                 'Implementation-Vendor'   : mod_authors,
-                'Implementation-Timestamp': new Date().format("yyyy-MM-dd'T'HH:mm:ssZ"),
-                'MixinConfigs'            : "${mod_id}.mixins.json,${mod_id}.compat.mixins.json"
+                'MixinConfigs'            : 'xenopixelsmod.mixins.json,xenopixelsmod.compat.mixins.json'
         ])
     }
 }
 
-// Jar-in-Jar fat artifact: build/libs/xenopixelsmod-<ver>-all.jar
-// (META-INF/jarjar embeds ModernUI-Forge + Core + Markflow)
-// FG auto-creates reobfJarJar when jarJar is enabled.
-tasks.named('jar').configure {
-    finalizedBy 'jarJar'
-}
-tasks.named('build').configure {
-    dependsOn 'jarJar'
-    // Prefer reobfuscated JiJ jar when available
-    dependsOn tasks.matching { it.name == 'reobfJarJar' }
-}
-
 publishing {
     publications {
-        mavenJava(MavenPublication) {
-            // Prefer the JiJ-bundled archive when present
-            artifact(tasks.named('jarJar'))
+        register('mavenJava', MavenPublication) {
+            artifact tasks.named('jar')
         }
     }
     repositories {
-        maven {
-            url "file://${project.projectDir}/mcmodsrepo"
-        }
+        maven { url = layout.buildDirectory.dir('repo') }
     }
 }

@@ -1,6 +1,6 @@
-# XenoPixels — Minecraft Forge Mod (1.20.1)
+# XenoPixels Network — Minecraft NeoForge Mod (1.21.1)
 
-XenoPixels (`xenopixelsmod`) — custom DragonMineZ server content, Xenoverse-style HUD, and combat for Forge 1.20.1.
+XenoPixels (`xenopixelsmod`) — custom DragonMineZ server content, Xenoverse-style HUD, combat, and Sable ship support for NeoForge 1.21.1.
 
 ---
 

@@ -1,22 +1,24 @@
 package net.bullettrain.xenopixelsmod;
 
+import net.neoforged.fml.common.EventBusSubscriber;
+
 import com.mojang.logging.LogUtils;
 import net.bullettrain.xenopixelsmod.block.ModBlocks;
+import net.bullettrain.xenopixelsmod.capability.XenoCapabilities;
 import net.bullettrain.xenopixelsmod.effect.ModEffects;
 import net.bullettrain.xenopixelsmod.item.ModCreativeModTabs;
 import net.bullettrain.xenopixelsmod.item.ModsItems;
 import net.bullettrain.xenopixelsmod.network.ModNetwork;
 import net.minecraft.world.item.CreativeModeTabs;
-import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.common.MinecraftForge;
-import net.minecraftforge.event.BuildCreativeModeTabContentsEvent;
-import net.minecraftforge.event.server.ServerStartingEvent;
-import net.minecraftforge.eventbus.api.IEventBus;
-import net.minecraftforge.eventbus.api.SubscribeEvent;
-import net.minecraftforge.fml.common.Mod;
-import net.minecraftforge.fml.event.lifecycle.FMLClientSetupEvent;
-import net.minecraftforge.fml.event.lifecycle.FMLCommonSetupEvent;
-import net.minecraftforge.fml.javafmlmod.FMLJavaModLoadingContext;
+import net.neoforged.api.distmarker.Dist;
+import net.neoforged.neoforge.common.NeoForge;
+import net.neoforged.neoforge.event.BuildCreativeModeTabContentsEvent;
+import net.neoforged.neoforge.event.server.ServerStartingEvent;
+import net.neoforged.bus.api.IEventBus;
+import net.neoforged.bus.api.SubscribeEvent;
+import net.neoforged.fml.common.Mod;
+import net.neoforged.fml.event.lifecycle.FMLClientSetupEvent;
+import net.neoforged.fml.event.lifecycle.FMLCommonSetupEvent;
 import org.slf4j.Logger;
 
 // The value here should match an entry in the META-INF/mods.toml file
@@ -25,21 +27,21 @@ public class XenoPixelsMod {
     public static final String MOD_ID = "xenopixelsmod";
     public static final Logger LOGGER = LogUtils.getLogger();
 
-    public XenoPixelsMod() {
-        IEventBus modEventBus = FMLJavaModLoadingContext.get().getModEventBus();
+    public XenoPixelsMod(IEventBus modEventBus) {
 
         ModsItems.register(modEventBus); // -- mods item register
         ModBlocks.register(modEventBus);
         net.bullettrain.xenopixelsmod.block.entity.ModBlockEntities.register(modEventBus);
         net.bullettrain.xenopixelsmod.missile.ModEntities.register(modEventBus);
         ModEffects.register(modEventBus);
+        XenoCapabilities.register(modEventBus);
         ModNetwork.register();
 
         ModCreativeModTabs.register(modEventBus); // -- creative tab register
 
         modEventBus.addListener(this::commonSetup);
 
-        MinecraftForge.EVENT_BUS.register(this);
+        NeoForge.EVENT_BUS.register(this);
         modEventBus.addListener(this::addCreative);
     }
 
@@ -51,13 +53,13 @@ public class XenoPixelsMod {
             if (net.bullettrain.xenopixelsmod.config.XenoServerConfig.dmzContentBootstrap) {
                 net.bullettrain.xenopixelsmod.dmz.DmzContentBootstrap.installBundledContent();
             }
-            // VS thruster + ship-as-ballistic-missile physics attachments
+            // Sable thruster + moving-sub-level ballistic controls
             try {
                 net.bullettrain.xenopixelsmod.vs.XenoThrusterControl.ensureRegistered();
                 net.bullettrain.xenopixelsmod.vs.ShipBallisticController.ensureRegistered();
                 net.bullettrain.xenopixelsmod.vs.ShipGravityControl.ensureRegistered();
             } catch (Throwable t) {
-                LOGGER.debug("VS ship attachment register skipped: {}", t.toString());
+                LOGGER.debug("Sable physics registration skipped: {}", t.toString());
             }
             // Optional CC:Tweaked peripherals (thruster + ballistic guidance)
             try {
@@ -74,8 +76,8 @@ public class XenoPixelsMod {
     // Add the example block item to the building blocks tab
     private void addCreative(BuildCreativeModeTabContentsEvent event) {
         if(event.getTabKey() == CreativeModeTabs.INGREDIENTS) {
-            event.accept(ModsItems.SAPPHIRE);
-            event.accept(ModsItems.RAW_SAPPHIRE);
+            event.accept(ModsItems.SAPPHIRE.get());
+            event.accept(ModsItems.RAW_SAPPHIRE.get());
         }
     }
 
@@ -86,7 +88,7 @@ public class XenoPixelsMod {
     }
 
     // You can use EventBusSubscriber to automatically register all static methods in the class annotated with @SubscribeEvent
-    @Mod.EventBusSubscriber(modid = MOD_ID, bus = Mod.EventBusSubscriber.Bus.MOD, value = Dist.CLIENT)
+    @EventBusSubscriber(modid = MOD_ID, bus = EventBusSubscriber.Bus.MOD, value = Dist.CLIENT)
     public static class ClientModEvents {
         @SubscribeEvent
         public static void onClientSetup(FMLClientSetupEvent event) {

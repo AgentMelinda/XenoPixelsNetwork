@@ -19,7 +19,7 @@ import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
-import org.valkyrienskies.core.api.ships.LoadedServerShip;
+import dev.ryanhcode.sable.sublevel.ServerSubLevel;
 
 /**
  * Ship thruster BE — hot-path optimized for fleets of idle thrusters on VS hulls.
@@ -131,7 +131,7 @@ public class ShipThrusterBlockEntity extends BlockEntity {
             return;
         }
         try {
-            LoadedServerShip loaded = registeredForceShipId >= 0
+            ServerSubLevel loaded = registeredForceShipId >= 0
                     ? VsShipHelper.getLoadedShipById(sl, registeredForceShipId)
                     : resolveShipCached(sl);
             if (loaded == null) {
@@ -139,7 +139,7 @@ public class ShipThrusterBlockEntity extends BlockEntity {
                 // claiming success and leaving permanent ghost thrust.
                 return;
             }
-            XenoThrusterControl c = loaded.getAttachment(XenoThrusterControl.class);
+            XenoThrusterControl c = XenoThrusterControl.get(loaded);
             if (c != null) c.removeThruster(thrusterKey());
             registeredForceShipId = -1L;
             forceCleared = true;
@@ -149,9 +149,9 @@ public class ShipThrusterBlockEntity extends BlockEntity {
         }
     }
 
-    private @Nullable LoadedServerShip resolveShipCached(ServerLevel sl) {
+    private @Nullable ServerSubLevel resolveShipCached(ServerLevel sl) {
         if (cachedShipId >= 0) {
-            LoadedServerShip byId = VsShipHelper.getLoadedShipById(sl, cachedShipId);
+            ServerSubLevel byId = VsShipHelper.getLoadedShipById(sl, cachedShipId);
             if (byId != null) {
                 if (--shipLookupCooldown <= 0) shipLookupCooldown = 60;
                 return byId;
@@ -160,8 +160,8 @@ public class ShipThrusterBlockEntity extends BlockEntity {
         }
         if (--shipLookupCooldown > 0) return null;
         shipLookupCooldown = 60;
-        LoadedServerShip loaded = VsShipHelper.getLoadedShipAtFast(sl, worldPosition);
-        cachedShipId = loaded != null ? loaded.getId() : -1L;
+        ServerSubLevel loaded = VsShipHelper.getLoadedShipAtFast(sl, worldPosition);
+        cachedShipId = loaded != null ? VsShipHelper.getShipId(loaded) : -1L;
         if (cachedShipId < 0) shipLookupCooldown = 40;
         return loaded;
     }
@@ -339,17 +339,13 @@ public class ShipThrusterBlockEntity extends BlockEntity {
         }
 
         try {
-            LoadedServerShip loaded = resolveShipCached(sl);
+            ServerSubLevel loaded = resolveShipCached(sl);
             if (loaded == null) return;
-            try {
-                if (loaded.isStatic()) loaded.setStatic(false);
-            } catch (Throwable ignored) {
-            }
             XenoThrusterControl control = XenoThrusterControl.getOrCreate(loaded);
             control.setThruster(thrusterKey(),
                     worldPosition.getX(), worldPosition.getY(), worldPosition.getZ(),
                     fx, fy, fz, power);
-            registeredForceShipId = loaded.getId();
+            registeredForceShipId = VsShipHelper.getShipId(loaded);
             lastPushedPower = power;
             lastPushedFx = ifx;
             lastPushedFy = ify;
@@ -393,9 +389,9 @@ public class ShipThrusterBlockEntity extends BlockEntity {
         double y = worldPosition.getY() + 0.5;
         double z = worldPosition.getZ() + 0.5;
         try {
-            LoadedServerShip loaded = resolveShipCached(sl);
-            if (loaded != null && loaded.getShipToWorld() != null) {
-                Vector3d world = loaded.getShipToWorld().transformPosition(new Vector3d(x, y, z));
+            ServerSubLevel loaded = resolveShipCached(sl);
+            if (loaded != null) {
+                Vector3d world = loaded.logicalPose().transformPosition(new Vector3d(x, y, z));
                 x = world.x;
                 y = world.y;
                 z = world.z;
@@ -422,11 +418,11 @@ public class ShipThrusterBlockEntity extends BlockEntity {
         if (level instanceof ServerLevel sl) {
             try {
                 long ownerId = registeredForceShipId >= 0 ? registeredForceShipId : cachedShipId;
-                LoadedServerShip loaded = ownerId >= 0
+                ServerSubLevel loaded = ownerId >= 0
                         ? VsShipHelper.getLoadedShipById(sl, ownerId)
                         : VsShipHelper.getLoadedShipAtFast(sl, worldPosition);
                 if (loaded != null) {
-                    XenoThrusterControl c = loaded.getAttachment(XenoThrusterControl.class);
+                    XenoThrusterControl c = XenoThrusterControl.get(loaded);
                     if (c != null) c.removeThruster(thrusterKey());
                 }
             } catch (Throwable ignored) {
@@ -442,8 +438,8 @@ public class ShipThrusterBlockEntity extends BlockEntity {
     }
 
     @Override
-    protected void saveAdditional(CompoundTag tag) {
-        super.saveAdditional(tag);
+    protected void saveAdditional(CompoundTag tag, net.minecraft.core.HolderLookup.Provider registries) {
+        super.saveAdditional(tag, registries);
         // Guidance ownership and its visual throttle are runtime-only because the
         // ballistic controller attachment is transient and cannot resume after reload.
         tag.putDouble("Power", guidanceOwned ? 0.0 : power);
@@ -453,8 +449,8 @@ public class ShipThrusterBlockEntity extends BlockEntity {
     }
 
     @Override
-    public void load(CompoundTag tag) {
-        super.load(tag);
+    public void loadAdditional(CompoundTag tag, net.minecraft.core.HolderLookup.Provider registries) {
+        super.loadAdditional(tag, registries);
         power = tag.getDouble("Power");
         ccPower = tag.contains("CcPower") ? tag.getDouble("CcPower") : -1;
         maxForce = tag.contains("MaxForce") ? tag.getDouble("MaxForce") : DEFAULT_MAX_FORCE;
@@ -477,9 +473,9 @@ public class ShipThrusterBlockEntity extends BlockEntity {
     }
 
     @Override
-    public CompoundTag getUpdateTag() {
-        CompoundTag tag = super.getUpdateTag();
-        saveAdditional(tag);
+    public CompoundTag getUpdateTag(net.minecraft.core.HolderLookup.Provider registries) {
+        CompoundTag tag = super.getUpdateTag(registries);
+        saveAdditional(tag, registries);
         // Disk persistence deliberately clears runtime guidance, but clients still need
         // the live visual throttle for plumes and the powered model.
         tag.putDouble("Power", power);

@@ -25,7 +25,7 @@ public final class ParallelQuests {
     public static String start(ServerPlayer player, String questId) {
         QuestDef def = QUESTS.get(questId == null ? "" : questId.toLowerCase());
         if (def == null) return "Unknown quest. Try: kill_mobs, kill_players, dummy_session";
-        XenoPlayerData data = player.getCapability(XenoCapabilities.XENO_DATA).orElse(null);
+        XenoPlayerData data = XenoCapabilities.get(player).orElse(null);
         if (data == null) return "No player data";
         if (data.hasActiveQuest()) {
             return "Already on quest: " + data.getQuestId()
@@ -38,7 +38,7 @@ public final class ParallelQuests {
     }
 
     public static String status(ServerPlayer player) {
-        XenoPlayerData data = player.getCapability(XenoCapabilities.XENO_DATA).orElse(null);
+        XenoPlayerData data = XenoCapabilities.get(player).orElse(null);
         if (data == null) return "No player data";
         if (!data.hasActiveQuest()) return "No active quest. /xenoquest start <id>";
         return data.getQuestId() + ": " + data.getQuestProgress() + "/" + data.getQuestTarget();

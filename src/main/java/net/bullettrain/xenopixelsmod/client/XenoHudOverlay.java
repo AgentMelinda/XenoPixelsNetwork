@@ -7,21 +7,20 @@ import net.bullettrain.xenopixelsmod.client.config.XenoHudConfig;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.DeltaTracker;
 import net.minecraft.client.gui.components.PlayerFaceRenderer;
 import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.resources.ResourceLocation;
-import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.api.distmarker.OnlyIn;
-import net.minecraftforge.client.gui.overlay.ForgeGui;
-import net.minecraftforge.client.gui.overlay.IGuiOverlay;
+import net.neoforged.api.distmarker.Dist;
+import net.neoforged.api.distmarker.OnlyIn;
 
 /**
  * Xeno combat HUD — tech-HUD palette (navy glass + cyan rails) with parallelogram
  * plate/bars. Portrait + name + HP/KI gauges + STM segments.
  */
 @OnlyIn(Dist.CLIENT)
-public class XenoHudOverlay implements IGuiOverlay {
-    private static final ResourceLocation TEX = new ResourceLocation(XenoPixelsMod.MOD_ID, "textures/gui/xeno_hud.png");
+public class XenoHudOverlay {
+    private static final ResourceLocation TEX = ResourceLocation.fromNamespaceAndPath(XenoPixelsMod.MOD_ID, "textures/gui/xeno_hud.png");
 
     private static final int PORTRAIT = 68;
     private static final int PORTRAIT_PAD = 4;
@@ -69,11 +68,10 @@ public class XenoHudOverlay implements IGuiOverlay {
     private static final net.bullettrain.xenopixelsmod.client.hud.XenoHudView LDLIB_VIEW =
             new net.bullettrain.xenopixelsmod.client.hud.XenoHudView();
 
-    @Override
-    public void render(ForgeGui gui, GuiGraphics graphics, float partialTick, int screenWidth, int screenHeight) {
+    public void render(GuiGraphics graphics, DeltaTracker deltaTracker) {
         Minecraft mc = Minecraft.getInstance();
         if (mc.player == null || mc.options.hideGui || !XenoClientConfig.xenoHudEnabled || !XenoHudConfig.visible) return;
-        renderHud(graphics, screenWidth, screenHeight, false);
+        renderHud(graphics, graphics.guiWidth(), graphics.guiHeight(), false);
     }
 
     public static void renderHud(GuiGraphics graphics, int screenWidth, int screenHeight, boolean editing) {
@@ -148,7 +146,7 @@ public class XenoHudOverlay implements IGuiOverlay {
 
         LocalPlayer player = mc.player;
         if (player != null) {
-            ResourceLocation skin = player.getSkinTextureLocation();
+            ResourceLocation skin = player.getSkin().texture();
             if (skin != null) {
                 drawPlayerBust(g, skin, ix, iy, iw, ih);
             }

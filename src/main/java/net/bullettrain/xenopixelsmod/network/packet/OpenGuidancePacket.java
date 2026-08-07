@@ -3,7 +3,7 @@ package net.bullettrain.xenopixelsmod.network.packet;
 import net.bullettrain.xenopixelsmod.client.ClientScreens;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.FriendlyByteBuf;
-import net.minecraftforge.network.NetworkEvent;
+import com.dragonminez.compat.network.NetworkEvent;
 
 import java.util.function.Supplier;
 

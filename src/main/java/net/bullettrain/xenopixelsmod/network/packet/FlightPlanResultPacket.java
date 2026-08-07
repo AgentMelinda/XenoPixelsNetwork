@@ -4,7 +4,7 @@ import net.bullettrain.xenopixelsmod.client.ClientScreens;
 import net.bullettrain.xenopixelsmod.missile.BallisticFlightPlan;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.world.phys.Vec3;
-import net.minecraftforge.network.NetworkEvent;
+import com.dragonminez.compat.network.NetworkEvent;
 
 import java.util.ArrayList;
 import java.util.List;

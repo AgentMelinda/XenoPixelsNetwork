@@ -10,10 +10,9 @@ import net.bullettrain.xenopixelsmod.network.packet.BodyCalibrationPacket;
 import net.bullettrain.xenopixelsmod.network.packet.OpenGuidancePacket;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraftforge.network.NetworkDirection;
-import net.minecraftforge.network.NetworkRegistry;
-import net.minecraftforge.network.PacketDistributor;
-import net.minecraftforge.network.simple.SimpleChannel;
+import com.dragonminez.compat.network.NetworkDirection;
+import com.dragonminez.compat.network.NetworkRegistry;
+import com.dragonminez.compat.network.simple.SimpleChannel;
 
 /**
  * Central SimpleChannel registration. Every packet class must be registered here
@@ -25,7 +24,7 @@ public class ModNetwork {
     private static final String PROTOCOL = "10";
 
     public static final SimpleChannel CHANNEL = NetworkRegistry.ChannelBuilder
-            .named(new ResourceLocation(XenoPixelsMod.MOD_ID, "main"))
+            .named(ResourceLocation.fromNamespaceAndPath(XenoPixelsMod.MOD_ID, "main"))
             .networkProtocolVersion(() -> PROTOCOL)
             .clientAcceptedVersions(PROTOCOL::equals)
             .serverAcceptedVersions(PROTOCOL::equals)
@@ -120,10 +119,10 @@ public class ModNetwork {
     }
 
     public static void sendToPlayer(ServerPlayer player, Object msg) {
-        CHANNEL.send(PacketDistributor.PLAYER.with(() -> player), msg);
+        CHANNEL.sendToPlayer(msg, player);
     }
 
     public static void sendToAll(Object msg) {
-        CHANNEL.send(PacketDistributor.ALL.noArg(), msg);
+        CHANNEL.sendToAllPlayers(msg);
     }
 }

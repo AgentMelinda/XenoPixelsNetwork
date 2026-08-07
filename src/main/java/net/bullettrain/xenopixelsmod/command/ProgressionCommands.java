@@ -1,5 +1,7 @@
 package net.bullettrain.xenopixelsmod.command;
 
+import net.neoforged.fml.common.EventBusSubscriber;
+
 import com.mojang.brigadier.CommandDispatcher;
 import com.mojang.brigadier.arguments.StringArgumentType;
 import com.mojang.brigadier.suggestion.SuggestionProvider;
@@ -20,9 +22,9 @@ import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.decoration.ArmorStand;
 import net.minecraft.world.level.Level;
-import net.minecraftforge.event.RegisterCommandsEvent;
-import net.minecraftforge.eventbus.api.SubscribeEvent;
-import net.minecraftforge.fml.common.Mod;
+import net.neoforged.neoforge.event.RegisterCommandsEvent;
+import net.neoforged.bus.api.SubscribeEvent;
+import net.neoforged.fml.common.Mod;
 
 /**
  * Phase 3 public commands:
@@ -34,7 +36,7 @@ import net.minecraftforge.fml.common.Mod;
  * /xenomentor set &lt;player&gt;|clear|status
  * </pre>
  */
-@Mod.EventBusSubscriber(modid = XenoPixelsMod.MOD_ID)
+@EventBusSubscriber(modid = XenoPixelsMod.MOD_ID)
 public final class ProgressionCommands {
     private ProgressionCommands() {}
 
@@ -186,7 +188,7 @@ public final class ProgressionCommands {
         stand.setHealth(stand.getMaxHealth());
         ProgressionEvents.tagAsDummy(stand);
         level.addFreshEntity(stand);
-        p.getCapability(XenoCapabilities.XENO_DATA).ifPresent(XenoPlayerData::resetDummySession);
+        XenoCapabilities.get(p).ifPresent(XenoPlayerData::resetDummySession);
         src.sendSuccess(() -> Component.literal(
                 "§eTraining Dummy spawned. Punch it — session damage shows on action bar. /xenotrain reset"), true);
         return 1;
@@ -224,7 +226,7 @@ public final class ProgressionCommands {
     private static int resetDummy(CommandSourceStack src) {
         ServerPlayer p = src.getPlayer();
         if (p == null) return 0;
-        p.getCapability(XenoCapabilities.XENO_DATA).ifPresent(XenoPlayerData::resetDummySession);
+        XenoCapabilities.get(p).ifPresent(XenoPlayerData::resetDummySession);
         src.sendSuccess(() -> Component.literal("§7Dummy session damage reset"), false);
         return 1;
     }
@@ -232,7 +234,7 @@ public final class ProgressionCommands {
     private static int dummyStats(CommandSourceStack src) {
         ServerPlayer p = src.getPlayer();
         if (p == null) return 0;
-        p.getCapability(XenoCapabilities.XENO_DATA).ifPresent(data ->
+        XenoCapabilities.get(p).ifPresent(data ->
                 src.sendSuccess(() -> Component.literal(
                         "Dummy — session: " + data.getDummySessionDamage()
                                 + " | hits: " + data.getDummyHits()
@@ -260,7 +262,7 @@ public final class ProgressionCommands {
             src.sendFailure(Component.literal("Unknown soul. /xenosoul list"));
             return 0;
         }
-        p.getCapability(XenoCapabilities.XENO_DATA).ifPresent(data -> {
+        XenoCapabilities.get(p).ifPresent(data -> {
             data.setSuperSoulId(def.id());
             src.sendSuccess(() -> Component.literal(
                     "§dEquipped: §f" + def.title() + " §7(" + def.desc() + ")"), true);
@@ -272,7 +274,7 @@ public final class ProgressionCommands {
     private static int soulClear(CommandSourceStack src) {
         ServerPlayer p = src.getPlayer();
         if (p == null) return 0;
-        p.getCapability(XenoCapabilities.XENO_DATA).ifPresent(data -> {
+        XenoCapabilities.get(p).ifPresent(data -> {
             data.setSuperSoulId("");
             src.sendSuccess(() -> Component.literal("§7Super Soul cleared"), true);
             net.bullettrain.xenopixelsmod.effect.XenoStatusEffectSync.sync(p);
@@ -303,7 +305,7 @@ public final class ProgressionCommands {
                     .append(" §7— ").append(def.title()).append(": ").append(def.desc()).append('\n');
         }
         if (p != null) {
-            p.getCapability(XenoCapabilities.XENO_DATA).ifPresent(data ->
+            XenoCapabilities.get(p).ifPresent(data ->
                     sb.append("Skill points: §a").append(data.getSkillPoints()));
         }
         src.sendSuccess(() -> Component.literal(sb.toString().trim()), false);
@@ -329,7 +331,7 @@ public final class ProgressionCommands {
     private static int skillPoints(CommandSourceStack src) {
         ServerPlayer p = src.getPlayer();
         if (p == null) return 0;
-        p.getCapability(XenoCapabilities.XENO_DATA).ifPresent(data ->
+        XenoCapabilities.get(p).ifPresent(data ->
                 src.sendSuccess(() -> Component.literal(
                         "Skill points: " + data.getSkillPoints()
                                 + " (earn via /xenoquest or dummy milestones)"), false));
@@ -337,7 +339,7 @@ public final class ProgressionCommands {
     }
 
     private static int givePoints(CommandSourceStack src, ServerPlayer target, int amount) {
-        target.getCapability(XenoCapabilities.XENO_DATA).ifPresent(data -> {
+        XenoCapabilities.get(target).ifPresent(data -> {
             data.addSkillPoints(amount);
             src.sendSuccess(() -> Component.literal(
                     "Gave " + amount + " skill point(s) to " + target.getGameProfile().getName()), true);
@@ -382,7 +384,7 @@ public final class ProgressionCommands {
     private static int questAbort(CommandSourceStack src) {
         ServerPlayer p = src.getPlayer();
         if (p == null) return 0;
-        p.getCapability(XenoCapabilities.XENO_DATA).ifPresent(data -> {
+        XenoCapabilities.get(p).ifPresent(data -> {
             data.clearQuest();
             src.sendSuccess(() -> Component.literal("§7Quest aborted"), false);
         });
@@ -401,7 +403,7 @@ public final class ProgressionCommands {
             src.sendFailure(Component.literal("You cannot mentor yourself"));
             return 0;
         }
-        student.getCapability(XenoCapabilities.XENO_DATA).ifPresent(data -> {
+        XenoCapabilities.get(student).ifPresent(data -> {
             data.setMentor(mentor.getUUID(), mentor.getGameProfile().getName());
             src.sendSuccess(() -> Component.literal(
                     "§aMentor set to §f" + mentor.getGameProfile().getName()
@@ -415,7 +417,7 @@ public final class ProgressionCommands {
     private static int mentorClear(CommandSourceStack src) {
         ServerPlayer p = src.getPlayer();
         if (p == null) return 0;
-        p.getCapability(XenoCapabilities.XENO_DATA).ifPresent(data -> {
+        XenoCapabilities.get(p).ifPresent(data -> {
             data.clearMentor();
             src.sendSuccess(() -> Component.literal("§7Mentor cleared"), false);
         });
@@ -425,7 +427,7 @@ public final class ProgressionCommands {
     private static int mentorStatus(CommandSourceStack src) {
         ServerPlayer p = src.getPlayer();
         if (p == null) return 0;
-        p.getCapability(XenoCapabilities.XENO_DATA).ifPresent(data -> {
+        XenoCapabilities.get(p).ifPresent(data -> {
             if (data.getMentorUuid() == null) {
                 src.sendSuccess(() -> Component.literal("No mentor. /xenomentor set <player>"), false);
             } else {

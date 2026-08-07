@@ -1,76 +1,65 @@
 package net.bullettrain.xenopixelsmod.vs;
 
+import dev.ryanhcode.sable.api.physics.handle.RigidBodyHandle;
+import dev.ryanhcode.sable.api.sublevel.SubLevelContainer;
+import dev.ryanhcode.sable.platform.SableEventPlatform;
+import dev.ryanhcode.sable.sublevel.ServerSubLevel;
 import net.bullettrain.xenopixelsmod.XenoPixelsMod;
 import org.joml.Vector3d;
-import org.valkyrienskies.core.api.ships.LoadedServerShip;
-import org.valkyrienskies.core.api.ships.PhysShip;
-import org.valkyrienskies.core.api.ships.ShipPhysicsListener;
-import org.valkyrienskies.core.api.world.PhysLevel;
-import org.valkyrienskies.mod.common.VSGameUtilsKt;
 
 import java.util.Map;
+import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
 
-/**
- * Per-ship physics attachment that applies thruster forces on the physics thread.
- * Thruster blocks register themselves with model-space positions + force vectors.
- *
- * <p>Hot-path optimized: mutates existing force entries (no alloc every BE tick).
- */
-public final class XenoThrusterControl implements ShipPhysicsListener {
-    private static final AtomicBoolean REGISTERED = new AtomicBoolean(false);
+/** Runtime thruster controller for Sable moving sub-levels. */
+public final class XenoThrusterControl {
+    private static final AtomicBoolean REGISTERED = new AtomicBoolean();
+    private static final Map<UUID, XenoThrusterControl> CONTROLS = new ConcurrentHashMap<>();
 
-    /** thruster key → state (map for set/remove; dense snapshot for phys) */
     private final Map<String, ThrusterForce> thrusters = new ConcurrentHashMap<>();
-    /** Phys-thread snapshot rebuilt when membership changes — avoids ConcurrentHashMap iteration. */
-    private volatile ThrusterForce[] physSnapshot = new ThrusterForce[0];
+    private volatile ThrusterForce[] physicsSnapshot = new ThrusterForce[0];
+    private final Vector3d localImpulse = new Vector3d();
+    private final Vector3d worldImpulse = new Vector3d();
+    private final Vector3d localPoint = new Vector3d();
+    private final Vector3d worldPoint = new Vector3d();
 
-    /** Call from common setup (or lazily). Safe to call repeatedly. */
     public static void ensureRegistered() {
         if (!REGISTERED.compareAndSet(false, true)) return;
-        try {
-            var core = VSGameUtilsKt.getVsCore();
-            // Runtime-only thruster force map — do not Jackson-serialize on ship save
-            var reg = core.newAttachmentRegistrationBuilder(XenoThrusterControl.class);
-            reg.useTransientSerializer();
-            core.registerAttachment(reg.build());
-            try {
-                core.registerAttachmentForRemoval(XenoThrusterControl.class.getName());
-            } catch (Throwable ignored) {
+        SableEventPlatform.INSTANCE.onPhysicsTick((system, deltaSeconds) -> {
+            for (var candidate : SubLevelContainer.getContainer(system.getLevel()).getAllSubLevels()) {
+                if (!(candidate instanceof ServerSubLevel subLevel)) continue;
+                XenoThrusterControl control = get(subLevel);
+                if (control == null || control.isEmpty()) continue;
+                RigidBodyHandle handle = system.getPhysicsHandle(subLevel);
+                if (handle != null && handle.isValid()) control.physicsTick(subLevel, handle, deltaSeconds);
             }
-            XenoPixelsMod.LOGGER.info("Registered transient XenoThrusterControl attachment");
-        } catch (Throwable t) {
-            REGISTERED.set(false);
-            XenoPixelsMod.LOGGER.warn("Could not register thruster attachment: {}", t.toString());
-        }
+            CONTROLS.keySet().removeIf(id -> SubLevelContainer.getContainer(system.getLevel()).getSubLevel(id) == null);
+        });
+        XenoPixelsMod.LOGGER.info("Registered Sable thruster physics callback");
     }
 
-    public static XenoThrusterControl getOrCreate(LoadedServerShip ship) {
+    public static XenoThrusterControl getOrCreate(ServerSubLevel subLevel) {
         ensureRegistered();
-        XenoThrusterControl existing = ship.getAttachment(XenoThrusterControl.class);
-        if (existing != null) return existing;
-        XenoThrusterControl created = new XenoThrusterControl();
-        ship.setAttachment(XenoThrusterControl.class, created);
-        return created;
+        return CONTROLS.computeIfAbsent(subLevel.getUniqueId(), ignored -> new XenoThrusterControl());
     }
 
-    /**
-     * Register / update thruster force. Mutates in place when the key already exists
-     * so thruster BEs can call this every few ticks without GC thrash.
-     */
+    public static XenoThrusterControl get(ServerSubLevel subLevel) {
+        return subLevel == null ? null : CONTROLS.get(subLevel.getUniqueId());
+    }
+
     public void setThruster(String key, double posX, double posY, double posZ,
                             double forceX, double forceY, double forceZ, double power) {
         if (power <= 0.001) {
-            if (thrusters.remove(key) != null) rebuildSnapshot();
+            removeThruster(key);
             return;
         }
-        ThrusterForce existing = thrusters.get(key);
-        if (existing != null) {
-            existing.update(posX, posY, posZ, forceX, forceY, forceZ, power);
-            return; // membership unchanged — snapshot still valid
+        ThrusterForce force = thrusters.get(key);
+        if (force != null) {
+            force.state = new ForceState(posX, posY, posZ, forceX, forceY, forceZ, power);
+            return;
         }
-        thrusters.put(key, new ThrusterForce(posX, posY, posZ, forceX, forceY, forceZ, power));
+        thrusters.put(key, new ThrusterForce(new ForceState(posX, posY, posZ, forceX, forceY, forceZ, power)));
         rebuildSnapshot();
     }
 
@@ -78,91 +67,37 @@ public final class XenoThrusterControl implements ShipPhysicsListener {
         if (thrusters.remove(key) != null) rebuildSnapshot();
     }
 
-    /** Drop all thruster forces (flight end / emergency stop). */
     public void clearAll() {
         if (thrusters.isEmpty()) return;
         thrusters.clear();
-        physSnapshot = new ThrusterForce[0];
+        physicsSnapshot = new ThrusterForce[0];
     }
+
+    public int thrusterCount() { return thrusters.size(); }
+    public boolean isEmpty() { return thrusters.isEmpty(); }
 
     private void rebuildSnapshot() {
-        physSnapshot = thrusters.values().toArray(new ThrusterForce[0]);
+        physicsSnapshot = thrusters.values().toArray(ThrusterForce[]::new);
     }
 
-    public int thrusterCount() {
-        return thrusters.size();
-    }
-
-    public boolean isEmpty() {
-        return thrusters.isEmpty();
-    }
-
-    /** Reused on phys thread to avoid alloc every force. */
-    private final Vector3d scratchForce = new Vector3d();
-    private final Vector3d scratchPos = new Vector3d();
-    private final Vector3d scratchCom = new Vector3d();
-    private static final AtomicBoolean MODEL_FORCE_FALLBACK_WARNED = new AtomicBoolean(false);
-
-    @Override
-    public void physTick(PhysShip physShip, PhysLevel physLevel) {
-        ThrusterForce[] snap = physSnapshot;
-        if (snap.length == 0) return;
-        try {
-            if (physShip.isStatic()) {
-                physShip.setStatic(false);
-            }
-        } catch (Throwable ignored) {
-        }
-
-        for (ThrusterForce t : snap) {
-            if (t == null) continue;
-            // One volatile reference read gives physics a coherent position/vector/power tuple.
-            ForceState state = t.state;
-            double p = state.power;
-            if (p <= 0.0) continue;
-            scratchForce.set(state.forceX * p, state.forceY * p, state.forceZ * p);
-            scratchPos.set(state.posX + 0.5, state.posY + 0.5, state.posZ + 0.5);
-            try {
-                physShip.applyModelForce(scratchForce, scratchPos);
-            } catch (Throwable modelFailure) {
-                try {
-                    // Body positions are COM-relative. Preserve the thruster lever arm instead
-                    // of silently applying every fallback force through the COM.
-                    scratchCom.set(scratchPos).sub(physShip.getCenterOfMass());
-                    physShip.applyBodyForce(scratchForce, scratchCom);
-                    if (MODEL_FORCE_FALLBACK_WARNED.compareAndSet(false, true)) {
-                        XenoPixelsMod.LOGGER.warn(
-                                "VS applyModelForce failed; using COM-relative body-force fallback: {}",
-                                modelFailure.toString());
-                    }
-                } catch (Throwable ignored2) {
-                    if (MODEL_FORCE_FALLBACK_WARNED.compareAndSet(false, true)) {
-                        XenoPixelsMod.LOGGER.warn(
-                                "VS thruster force application failed in both model and body space: {}",
-                                modelFailure.toString());
-                    }
-                }
-            }
+    private void physicsTick(ServerSubLevel subLevel, RigidBodyHandle handle, double deltaSeconds) {
+        double step = Math.max(0.0, Math.min(deltaSeconds, 0.1));
+        for (ThrusterForce thruster : physicsSnapshot) {
+            ForceState state = thruster.state;
+            if (state == null || state.power <= 0.0) continue;
+            localImpulse.set(state.forceX, state.forceY, state.forceZ).mul(state.power * step);
+            subLevel.logicalPose().transformNormal(localImpulse, worldImpulse);
+            localPoint.set(state.posX + 0.5, state.posY + 0.5, state.posZ + 0.5);
+            subLevel.logicalPose().transformPosition(localPoint, worldPoint);
+            handle.applyImpulseAtPoint(worldImpulse, worldPoint);
         }
     }
 
-    /** Stable snapshot slot; the complete state is published atomically. */
     private static final class ThrusterForce {
-        volatile ForceState state;
-
-        ThrusterForce(double posX, double posY, double posZ,
-                      double forceX, double forceY, double forceZ, double power) {
-            update(posX, posY, posZ, forceX, forceY, forceZ, power);
-        }
-
-        void update(double posX, double posY, double posZ,
-                    double forceX, double forceY, double forceZ, double power) {
-            this.state = new ForceState(posX, posY, posZ, forceX, forceY, forceZ, power);
-        }
+        private volatile ForceState state;
+        private ThrusterForce(ForceState state) { this.state = state; }
     }
 
     private record ForceState(double posX, double posY, double posZ,
-                              double forceX, double forceY, double forceZ,
-                              double power) {
-    }
+                              double forceX, double forceY, double forceZ, double power) {}
 }

@@ -38,7 +38,7 @@ public class SuperSoulItem extends Item {
                 sp.displayClientMessage(Component.literal("§cUnknown Super Soul"), true);
                 return InteractionResultHolder.fail(stack);
             }
-            sp.getCapability(XenoCapabilities.XENO_DATA).ifPresent(data -> {
+            XenoCapabilities.get(sp).ifPresent(data -> {
                 data.setSuperSoulId(def.id());
                 sp.displayClientMessage(Component.literal(
                         "§dEquipped Super Soul: §f" + def.title() + " §7(" + def.desc() + ")"), true);
@@ -49,7 +49,7 @@ public class SuperSoulItem extends Item {
     }
 
     @Override
-    public void appendHoverText(ItemStack stack, @Nullable Level level, List<Component> tip, TooltipFlag flag) {
+    public void appendHoverText(ItemStack stack, Item.TooltipContext context, List<Component> tip, TooltipFlag flag) {
         SuperSoulCatalog.SoulDef def = SuperSoulCatalog.get(soulId);
         if (def != null) {
             tip.add(Component.literal(def.title()).withStyle(ChatFormatting.LIGHT_PURPLE));

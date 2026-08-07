@@ -1,5 +1,7 @@
 package net.bullettrain.xenopixelsmod.command;
 
+import net.neoforged.fml.common.EventBusSubscriber;
+
 import com.dragonminez.common.config.ConfigManager;
 import com.dragonminez.common.config.FormConfig;
 import com.mojang.brigadier.CommandDispatcher;
@@ -15,9 +17,9 @@ import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
 import net.minecraft.commands.SharedSuggestionProvider;
 import net.minecraft.network.chat.Component;
-import net.minecraftforge.event.RegisterCommandsEvent;
-import net.minecraftforge.eventbus.api.SubscribeEvent;
-import net.minecraftforge.fml.common.Mod;
+import net.neoforged.neoforge.event.RegisterCommandsEvent;
+import net.neoforged.bus.api.SubscribeEvent;
+import net.neoforged.fml.common.Mod;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -43,7 +45,7 @@ import java.util.concurrent.CompletableFuture;
  *
  * Tab-completes forms and stats. Range 0–1,000,000.
  */
-@Mod.EventBusSubscriber(modid = XenoPixelsMod.MOD_ID)
+@EventBusSubscriber(modid = XenoPixelsMod.MOD_ID)
 public final class FormMultiplierCommands {
     private static final SuggestionProvider<CommandSourceStack> FORM_OR_GLOBAL =
             FormMultiplierCommands::suggestFormsOrGlobal;

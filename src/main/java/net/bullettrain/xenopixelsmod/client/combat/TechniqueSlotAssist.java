@@ -1,5 +1,7 @@
 package net.bullettrain.xenopixelsmod.client.combat;
 
+import net.neoforged.fml.common.EventBusSubscriber;
+
 import com.dragonminez.client.util.KeyBinds;
 import com.dragonminez.common.stats.StatsCapability;
 import com.dragonminez.common.stats.StatsData;
@@ -14,11 +16,13 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.network.chat.Component;
 import net.minecraft.ChatFormatting;
-import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.client.settings.KeyModifier;
-import net.minecraftforge.event.TickEvent;
-import net.minecraftforge.eventbus.api.SubscribeEvent;
-import net.minecraftforge.fml.common.Mod;
+import net.neoforged.api.distmarker.Dist;
+import net.neoforged.neoforge.client.settings.KeyModifier;
+import net.neoforged.neoforge.client.event.ClientTickEvent;
+import net.neoforged.neoforge.event.tick.PlayerTickEvent;
+import net.neoforged.neoforge.event.tick.ServerTickEvent;
+import net.neoforged.bus.api.SubscribeEvent;
+import net.neoforged.fml.common.Mod;
 
 /**
  * Helps KI technique slot usability when our tech HUD replaces DMZ's.
@@ -31,7 +35,7 @@ import net.minecraftforge.fml.common.Mod;
  * </ul>
  * Does <b>not</b> send cast packets — that remains DMZ's job.
  */
-@Mod.EventBusSubscriber(modid = XenoPixelsMod.MOD_ID, value = Dist.CLIENT)
+@EventBusSubscriber(modid = XenoPixelsMod.MOD_ID, value = Dist.CLIENT)
 public final class TechniqueSlotAssist {
     private static final int SLOT_COUNT = 8;
     private static final long FEEDBACK_COOLDOWN_MS = 900L;
@@ -70,8 +74,7 @@ public final class TechniqueSlotAssist {
     }
 
     @SubscribeEvent
-    public static void onClientTick(TickEvent.ClientTickEvent event) {
-        if (event.phase != TickEvent.Phase.END) return;
+    public static void onClientTick(ClientTickEvent.Post event) {
         if (!XenoClientConfig.techniqueHotbarEnabled) return;
 
         Minecraft mc = Minecraft.getInstance();

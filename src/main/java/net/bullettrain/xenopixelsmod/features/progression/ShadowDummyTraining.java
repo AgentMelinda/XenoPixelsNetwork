@@ -73,7 +73,7 @@ public final class ShadowDummyTraining {
         dummy.setTarget(player);
         dummy.setLastHurtByMob(player);
 
-        player.getCapability(XenoCapabilities.XENO_DATA).ifPresent(d -> d.resetDummySession());
+        XenoCapabilities.get(player).ifPresent(d -> d.resetDummySession());
         player.displayClientMessage(Component.literal(
                 "§dShadow Dummy §f" + pct + "% §7spawned — it will attack you. /xenotrain dismiss"), false);
         return null;

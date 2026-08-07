@@ -7,6 +7,7 @@ import net.bullettrain.xenopixelsmod.block.custom.ShipThrusterBlock;
 import net.bullettrain.xenopixelsmod.block.custom.ShipVlsGuidanceBlock;
 import net.bullettrain.xenopixelsmod.block.custom.SoundBlock;
 import net.bullettrain.xenopixelsmod.item.ModsItems;
+import net.minecraft.core.registries.Registries;
 import net.minecraft.util.valueproviders.UniformInt;
 import net.minecraft.world.item.BlockItem;
 import net.minecraft.world.item.Item;
@@ -17,21 +18,20 @@ import net.minecraft.world.level.block.SoundType;
 import net.minecraft.world.level.block.state.BlockBehaviour;
 import net.minecraft.world.level.block.state.properties.NoteBlockInstrument;
 import net.minecraft.world.level.material.MapColor;
-import net.minecraftforge.eventbus.api.IEventBus;
-import net.minecraftforge.registries.DeferredRegister;
-import net.minecraftforge.registries.ForgeRegistries;
-import net.minecraftforge.registries.RegistryObject;
+import net.neoforged.bus.api.IEventBus;
+import net.neoforged.neoforge.registries.DeferredRegister;
+import net.neoforged.neoforge.registries.DeferredHolder;
 
 import java.util.function.Supplier;
 
 public class ModBlocks {
     public static final DeferredRegister<Block> BLOCKS =
-            DeferredRegister.create(ForgeRegistries.BLOCKS, XenoPixelsMod.MOD_ID);
+            DeferredRegister.create(Registries.BLOCK, XenoPixelsMod.MOD_ID);
 
-    public static final RegistryObject<Block> SOUND_BLOCK = registerBlock("sound_block",
-            () -> new SoundBlock(BlockBehaviour.Properties.copy(Blocks.IRON_BLOCK)));
+    public static final DeferredHolder<Block, Block> SOUND_BLOCK = registerBlock("sound_block",
+            () -> new SoundBlock(BlockBehaviour.Properties.ofFullCopy(Blocks.IRON_BLOCK)));
 
-    public static final RegistryObject<Block> JACKIETONITE_ORE_BLOCK = registerBlock("jackietonite_ore_block",
+    public static final DeferredHolder<Block, Block> JACKIETONITE_ORE_BLOCK = registerBlock("jackietonite_ore_block",
             () -> new Block(BlockBehaviour.Properties.of()
                     .mapColor(MapColor.STONE)
                     .instrument(NoteBlockInstrument.BASEDRUM)
@@ -40,7 +40,7 @@ public class ModBlocks {
             )
     );
 
-    public static final RegistryObject<Block> RAW_JACKIETONITE_ORE_BLOCK = registerBlock("raw_jackietonite_ore_block",
+    public static final DeferredHolder<Block, Block> RAW_JACKIETONITE_ORE_BLOCK = registerBlock("raw_jackietonite_ore_block",
             () -> new Block(BlockBehaviour.Properties.of()
                     .mapColor(MapColor.STONE)
                     .instrument(NoteBlockInstrument.BASEDRUM)
@@ -48,22 +48,18 @@ public class ModBlocks {
             )
     );
 
-    public static final RegistryObject<Block> JACKIETONITE_ORE = registerBlock("jackietonite_ore",
-            () -> new DropExperienceBlock(
-                    BlockBehaviour.Properties.copy(Blocks.STONE)
+    public static final DeferredHolder<Block, Block> JACKIETONITE_ORE = registerBlock("jackietonite_ore",
+            () -> new DropExperienceBlock(UniformInt.of(3, 6), BlockBehaviour.Properties.ofFullCopy(Blocks.STONE)
                             .strength(2f)
-                            .requiresCorrectToolForDrops(),
-                    UniformInt.of(3, 6)));
+                            .requiresCorrectToolForDrops()));
 
-    public static final RegistryObject<Block> DEEPSLATE_JACKIETONITE_ORE = registerBlock("deepslate_jackietonite_ore",
-            () -> new DropExperienceBlock(
-                    BlockBehaviour.Properties.copy(Blocks.DEEPSLATE)
+    public static final DeferredHolder<Block, Block> DEEPSLATE_JACKIETONITE_ORE = registerBlock("deepslate_jackietonite_ore",
+            () -> new DropExperienceBlock(UniformInt.of(3, 6), BlockBehaviour.Properties.ofFullCopy(Blocks.DEEPSLATE)
                             .strength(3f)
-                            .requiresCorrectToolForDrops(),
-                    UniformInt.of(3, 6)));
+                            .requiresCorrectToolForDrops()));
 
     /** Chunk-force along ballistic missile corridors (native Xeno missiles). */
-    public static final RegistryObject<Block> MISSILE_CHUNK_LOADER = registerBlock("missile_chunk_loader",
+    public static final DeferredHolder<Block, Block> MISSILE_CHUNK_LOADER = registerBlock("missile_chunk_loader",
             () -> new MissileChunkLoaderBlock(BlockBehaviour.Properties.of()
                     .mapColor(MapColor.METAL)
                     .strength(3.5f, 8f)
@@ -75,7 +71,7 @@ public class ModBlocks {
      * Ballistic Guidance Computer — world aim point + loft solve + fire nearby tubes.
      * Native XenoPixels system (not Ballistix).
      */
-    public static final RegistryObject<Block> SHIP_VLS_GUIDANCE = registerBlock("ship_vls_guidance",
+    public static final DeferredHolder<Block, Block> SHIP_VLS_GUIDANCE = registerBlock("ship_vls_guidance",
             () -> new ShipVlsGuidanceBlock(BlockBehaviour.Properties.of()
                     .mapColor(MapColor.COLOR_CYAN)
                     .strength(3.5f, 8f)
@@ -84,7 +80,7 @@ public class ModBlocks {
                     .noOcclusion()));
 
     /** Launch tube for {@link net.bullettrain.xenopixelsmod.missile.BallisticMissileEntity}. */
-    public static final RegistryObject<Block> MISSILE_TUBE = registerBlock("missile_tube",
+    public static final DeferredHolder<Block, Block> MISSILE_TUBE = registerBlock("missile_tube",
             () -> new MissileTubeBlock(BlockBehaviour.Properties.of()
                     .mapColor(MapColor.COLOR_GRAY)
                     .strength(4.0f, 10f)
@@ -93,7 +89,7 @@ public class ModBlocks {
                     .noOcclusion()));
 
     /** VS2 directional thruster (Create-style plume + CC power control). */
-    public static final RegistryObject<Block> SHIP_THRUSTER = registerBlock("ship_thruster",
+    public static final DeferredHolder<Block, Block> SHIP_THRUSTER = registerBlock("ship_thruster",
             () -> new ShipThrusterBlock(BlockBehaviour.Properties.of()
                     .mapColor(MapColor.COLOR_ORANGE)
                     .strength(3.5f, 8f)
@@ -102,27 +98,23 @@ public class ModBlocks {
                     .noOcclusion()
                     .lightLevel(s -> s.getValue(ShipThrusterBlock.POWERED) ? 10 : 0)));
 
-    public static final RegistryObject<Block> NETHER_JACKIETONITE_ORE = registerBlock("nether_jackietonite_ore",
-            () -> new DropExperienceBlock(
-                    BlockBehaviour.Properties.copy(Blocks.NETHERRACK)
+    public static final DeferredHolder<Block, Block> NETHER_JACKIETONITE_ORE = registerBlock("nether_jackietonite_ore",
+            () -> new DropExperienceBlock(UniformInt.of(3, 6), BlockBehaviour.Properties.ofFullCopy(Blocks.NETHERRACK)
                             .strength(1f)
-                            .requiresCorrectToolForDrops(),
-                    UniformInt.of(3, 6)));
+                            .requiresCorrectToolForDrops()));
 
-    public static final RegistryObject<Block> END_STONE_JACKIETONITE_ORE = registerBlock("end_stone_jackietonite_ore",
-            () -> new DropExperienceBlock(
-                    BlockBehaviour.Properties.copy(Blocks.END_STONE)
+    public static final DeferredHolder<Block, Block> END_STONE_JACKIETONITE_ORE = registerBlock("end_stone_jackietonite_ore",
+            () -> new DropExperienceBlock(UniformInt.of(3, 6), BlockBehaviour.Properties.ofFullCopy(Blocks.END_STONE)
                             .strength(5f)
-                            .requiresCorrectToolForDrops(),
-                    UniformInt.of(3, 6)));
+                            .requiresCorrectToolForDrops()));
 
-    private static <T extends Block> RegistryObject<T> registerBlock(String name, Supplier<T> block) {
-        RegistryObject<T> toReturn = BLOCKS.register(name, block);
+    private static <T extends Block> DeferredHolder<Block, T> registerBlock(String name, Supplier<T> block) {
+        DeferredHolder<Block, T> toReturn = BLOCKS.register(name, block);
         registerBlockItem(name, toReturn);
         return toReturn;
     }
 
-    private static <T extends Block> RegistryObject<Item> registerBlockItem(String name, RegistryObject<T> block) {
+    private static <T extends Block> DeferredHolder<Item, Item> registerBlockItem(String name, DeferredHolder<Block, T> block) {
         return ModsItems.ITEMS.register(name, () -> new BlockItem(block.get(), new Item.Properties()));
     }
 

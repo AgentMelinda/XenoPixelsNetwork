@@ -1,5 +1,7 @@
 package net.bullettrain.xenopixelsmod.client.combat;
 
+import net.neoforged.fml.common.EventBusSubscriber;
+
 import com.dragonminez.client.events.DMZClientEvent;
 import com.dragonminez.client.events.LockOnEvent;
 import com.dragonminez.client.util.KeyBinds;
@@ -25,13 +27,15 @@ import net.minecraft.sounds.SoundEvent;
 import net.minecraft.sounds.SoundEvents;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.phys.Vec3;
-import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.client.event.InputEvent;
-import net.minecraftforge.client.event.RegisterKeyMappingsEvent;
-import net.minecraftforge.client.settings.KeyConflictContext;
-import net.minecraftforge.event.TickEvent;
-import net.minecraftforge.eventbus.api.SubscribeEvent;
-import net.minecraftforge.fml.common.Mod;
+import net.neoforged.api.distmarker.Dist;
+import net.neoforged.neoforge.client.event.InputEvent;
+import net.neoforged.neoforge.client.event.RegisterKeyMappingsEvent;
+import net.neoforged.neoforge.client.settings.KeyConflictContext;
+import net.neoforged.neoforge.client.event.ClientTickEvent;
+import net.neoforged.neoforge.event.tick.PlayerTickEvent;
+import net.neoforged.neoforge.event.tick.ServerTickEvent;
+import net.neoforged.bus.api.SubscribeEvent;
+import net.neoforged.fml.common.Mod;
 import org.lwjgl.glfw.GLFW;
 
 /**
@@ -239,7 +243,7 @@ public final class Bt3CombatClient {
     /** One-shot per session: take DMZ Block key for our Guard. */
     private static boolean claimedDmzBlockKey;
 
-    @Mod.EventBusSubscriber(modid = XenoPixelsMod.MOD_ID, bus = Mod.EventBusSubscriber.Bus.MOD, value = Dist.CLIENT)
+    @EventBusSubscriber(modid = XenoPixelsMod.MOD_ID, bus = EventBusSubscriber.Bus.MOD, value = Dist.CLIENT)
     public static class ModBus {
         @SubscribeEvent
         public static void onRegisterKeys(RegisterKeyMappingsEvent event) {
@@ -262,11 +266,10 @@ public final class Bt3CombatClient {
         }
     }
 
-    @Mod.EventBusSubscriber(modid = XenoPixelsMod.MOD_ID, value = Dist.CLIENT)
+    @EventBusSubscriber(modid = XenoPixelsMod.MOD_ID, value = Dist.CLIENT)
     public static class ForgeBus {
         @SubscribeEvent
-        public static void onClientTick(TickEvent.ClientTickEvent event) {
-            if (event.phase != TickEvent.Phase.END) return;
+        public static void onClientTick(ClientTickEvent.Post event) {
             Minecraft mc = Minecraft.getInstance();
 
             // One-shot: old options.txt often dual-mapped WASD onto these optional alts,
@@ -530,11 +533,11 @@ public final class Bt3CombatClient {
         }
 
         @SubscribeEvent
-        public static void onClientHurt(net.minecraftforge.event.entity.living.LivingHurtEvent event) {
+        public static void onClientHurt(net.neoforged.neoforge.event.entity.living.LivingDamageEvent.Pre event) {
             Minecraft mc = Minecraft.getInstance();
             if (mc.player == null || event.getEntity() != mc.player) return;
             if (!XenoClientConfig.bt3SuperCounterClient || !XenoServerClientState.superCounter()) return;
-            if (event.getAmount() <= 0.05f) return;
+            if (event.getNewDamage() <= 0.05f) return;
             // Visual only — server owns the real counter window
             counterFlashTicks = Math.max(counterFlashTicks,
                     Math.max(4, XenoServerClientState.get().superCounterWindowTicks));
@@ -1040,7 +1043,7 @@ public final class Bt3CombatClient {
 
     private static void playLocalIt(Minecraft mc, boolean leave) {
         SoundEvent dmz = BuiltInRegistries.SOUND_EVENT.get(
-                new ResourceLocation("dragonminez", leave ? "evasion1" : "evasion2"));
+                ResourceLocation.fromNamespaceAndPath("dragonminez", leave ? "evasion1" : "evasion2"));
         SoundEvent sfx = dmz != null ? dmz : SoundEvents.ENDERMAN_TELEPORT;
         mc.getSoundManager().play(SimpleSoundInstance.forUI(sfx, leave ? 1.05f : 1.2f, 0.9f));
     }

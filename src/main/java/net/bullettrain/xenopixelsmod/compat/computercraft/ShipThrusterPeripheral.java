@@ -21,7 +21,7 @@ import net.minecraft.resources.ResourceLocation;
 public final class ShipThrusterPeripheral implements GenericPeripheral {
     @Override
     public String id() {
-        return new ResourceLocation(XenoPixelsMod.MOD_ID, "ship_thruster").toString();
+        return ResourceLocation.fromNamespaceAndPath(XenoPixelsMod.MOD_ID, "ship_thruster").toString();
     }
 
     @LuaFunction(mainThread = true)

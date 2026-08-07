@@ -3,8 +3,10 @@ package net.bullettrain.xenopixelsmod.features.progression;
 import net.bullettrain.xenopixelsmod.capability.XenoCapabilities;
 import net.bullettrain.xenopixelsmod.capability.XenoPlayerData;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.core.component.DataComponents;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.component.CustomData;
 
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -47,7 +49,7 @@ public final class SuperSoulCatalog {
 
     public static SoulDef equipped(ServerPlayer player) {
         if (player == null) return null;
-        XenoPlayerData data = player.getCapability(XenoCapabilities.XENO_DATA).orElse(null);
+        XenoPlayerData data = XenoCapabilities.get(player).orElse(null);
         if (data == null) return null;
         return get(data.getSuperSoulId());
     }
@@ -73,7 +75,8 @@ public final class SuperSoulCatalog {
     }
 
     public static String soulIdFromStack(ItemStack stack) {
-        if (stack == null || stack.isEmpty() || !stack.hasTag()) return "";
-        return stack.getTag().getString("SuperSoulId");
+        if (stack == null || stack.isEmpty()) return "";
+        return stack.getOrDefault(DataComponents.CUSTOM_DATA, CustomData.EMPTY)
+                .copyTag().getString("SuperSoulId");
     }
 }

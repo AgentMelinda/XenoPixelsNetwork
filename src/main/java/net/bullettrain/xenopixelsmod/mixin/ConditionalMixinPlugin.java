@@ -1,6 +1,6 @@
 package net.bullettrain.xenopixelsmod.mixin;
 
-import net.minecraftforge.fml.loading.FMLLoader;
+import net.neoforged.fml.loading.FMLLoader;
 import org.objectweb.asm.tree.ClassNode;
 import org.spongepowered.asm.mixin.extensibility.IMixinConfigPlugin;
 import org.spongepowered.asm.mixin.extensibility.IMixinInfo;
@@ -25,16 +25,8 @@ public class ConditionalMixinPlugin implements IMixinConfigPlugin {
     @Override
     public boolean shouldApplyMixin(String targetClassName, String mixinClassName) {
         // Package-based gates under mixin.compat.*
-        if (mixinClassName.contains(".compat.ballistix.")) {
-            // Voltaic is a hard dep of Ballistix; gate only on ballistix so we don't
-            // skip mixins if voltaic's file id is remapped/bundled oddly.
-            return isModLoaded("ballistix");
-        }
-        if (mixinClassName.contains(".compat.voltaic.")) {
-            return isModLoaded("voltaic");
-        }
-        if (mixinClassName.contains(".compat.vs2.")) {
-            return isModLoaded("valkyrienskies");
+        if (mixinClassName.contains(".compat.sable.")) {
+            return isModLoaded("sable");
         }
         if (mixinClassName.contains(".compat.create.")) {
             return isModLoaded("create");
@@ -71,15 +63,8 @@ public class ConditionalMixinPlugin implements IMixinConfigPlugin {
         } catch (Throwable ignored) {
         }
         // Classpath fallbacks (mixin apply / weird loaders)
-        if ("ballistix".equals(modId)) {
-            return isClassPresent("ballistix.common.entity.EntityMissile")
-                    || isClassPresent("ballistix.common.tile.silo.TileLauncherPlatformT1");
-        }
-        if ("voltaic".equals(modId)) {
-            return isClassPresent("voltaic.prefab.tile.GenericTile");
-        }
-        if ("valkyrienskies".equals(modId)) {
-            return isClassPresent("org.valkyrienskies.mod.common.VSGameUtilsKt");
+        if ("sable".equals(modId)) {
+            return isClassPresent("dev.ryanhcode.sable.api.SubLevelHelper");
         }
         if ("create".equals(modId)) {
             return isClassPresent("com.simibubi.create.Create");

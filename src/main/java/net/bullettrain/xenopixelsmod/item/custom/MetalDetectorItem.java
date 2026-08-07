@@ -4,6 +4,7 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.InteractionResult;
 import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.context.UseOnContext;
 import net.minecraft.world.level.block.Block;
@@ -37,8 +38,9 @@ public class MetalDetectorItem extends Item {
             }
 
             // Fixed lambda: parameter must be lowercase 'player', not the type name 'Player'
-            pContext.getItemInHand().hurtAndBreak(1, pContext.getPlayer(),
-                    Player -> player.broadcastBreakEvent(player.getUsedItemHand()));
+            pContext.getItemInHand().hurtAndBreak(1, player,
+                    pContext.getHand() == net.minecraft.world.InteractionHand.MAIN_HAND
+                            ? EquipmentSlot.MAINHAND : EquipmentSlot.OFFHAND);
         }
         return InteractionResult.SUCCESS;
     }

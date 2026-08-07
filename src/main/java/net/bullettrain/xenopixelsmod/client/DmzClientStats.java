@@ -8,9 +8,9 @@ import com.dragonminez.common.stats.character.Status;
 import com.dragonminez.common.stats.extras.ActionMode;
 import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
 import net.minecraft.world.entity.player.Player;
-import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.api.distmarker.OnlyIn;
-import net.minecraftforge.common.util.LazyOptional;
+import net.neoforged.api.distmarker.Dist;
+import net.neoforged.api.distmarker.OnlyIn;
+import com.dragonminez.compat.util.LazyOptional;
 
 /**
  * Live read of DragonMineZ client-side stats for the custom HUD.

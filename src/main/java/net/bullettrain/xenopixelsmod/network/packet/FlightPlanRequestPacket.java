@@ -13,7 +13,7 @@ import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.phys.Vec3;
 import net.minecraft.world.level.levelgen.Heightmap;
-import net.minecraftforge.network.NetworkEvent;
+import com.dragonminez.compat.network.NetworkEvent;
 
 import java.util.function.Supplier;
 
@@ -90,8 +90,8 @@ public final class FlightPlanRequestPacket {
             if (targetShipId >= 0 && targetShipId == guidance.getTargetShipId()) {
                 var moving = VsShipHelper.getLoadedShipById(level, targetShipId);
                 if (moving != null) {
-                    var p = moving.getTransform().getPositionInWorld();
-                    var v = moving.getVelocity();
+                    var p = VsShipHelper.worldPosition(moving);
+                    var v = VsShipHelper.velocity(level, moving);
                     resolvedTarget = new Vec3(p.x(), p.y(), p.z());
                     targetVelocity = v == null ? Vec3.ZERO : new Vec3(v.x(), v.y(), v.z());
                     requestedTarget = BlockPos.containing(resolvedTarget);

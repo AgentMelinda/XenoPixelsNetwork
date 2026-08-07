@@ -132,6 +132,6 @@ public final class ExternalThrusterCompat {
     /** Avoid bootstrapping Minecraft registries when pure matching tests load this class. */
     private static final class Tags {
         private static final TagKey<Block> COMPATIBLE_THRUSTERS = BlockTags.create(
-                new ResourceLocation(XenoPixelsMod.MOD_ID, "compatible_thrusters"));
+                ResourceLocation.fromNamespaceAndPath(XenoPixelsMod.MOD_ID, "compatible_thrusters"));
     }
 }

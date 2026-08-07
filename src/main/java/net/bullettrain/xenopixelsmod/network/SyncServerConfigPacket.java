@@ -3,9 +3,8 @@ package net.bullettrain.xenopixelsmod.network;
 import net.bullettrain.xenopixelsmod.client.ClientPacketHandlers;
 import net.bullettrain.xenopixelsmod.config.XenoServerConfig;
 import net.minecraft.network.FriendlyByteBuf;
-import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.fml.DistExecutor;
-import net.minecraftforge.network.NetworkEvent;
+import net.neoforged.api.distmarker.Dist;
+import com.dragonminez.compat.network.NetworkEvent;
 
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -202,8 +201,7 @@ public class SyncServerConfigPacket {
     }
 
     public static void handle(SyncServerConfigPacket msg, Supplier<NetworkEvent.Context> ctx) {
-        ctx.get().enqueueWork(() -> DistExecutor.unsafeRunWhenOn(Dist.CLIENT, () -> () ->
-                ClientPacketHandlers.handleServerConfig(msg.data)));
+        ctx.get().enqueueWork(() -> ClientPacketHandlers.handleServerConfig(msg.data));
         ctx.get().setPacketHandled(true);
     }
 

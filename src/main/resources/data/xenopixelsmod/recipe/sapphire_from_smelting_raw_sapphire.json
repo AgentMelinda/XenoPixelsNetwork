@@ -1,11 +1,11 @@
 {
-  "type": "minecraft:blasting",
+  "type": "minecraft:smelting",
   "category": "misc",
-  "cookingtime": 100,
+  "cookingtime": 200,
   "experience": 0.7,
   "group": "sapphire",
   "ingredient": {
     "item": "xenopixelsmod:raw_sapphire"
   },
-  "result": "xenopixelsmod:sapphire"
+  "result": { "id": "xenopixelsmod:sapphire" }
 }

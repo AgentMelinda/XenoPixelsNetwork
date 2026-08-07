@@ -15,7 +15,7 @@ import net.minecraft.client.gui.components.Tooltip;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.chat.Component;
-import net.minecraftforge.fml.ModList;
+import net.neoforged.fml.ModList;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -918,7 +918,7 @@ public final class FlightPlannerScreen extends Screen {
     }
 
     @Override public void render(GuiGraphics g, int mouseX, int mouseY, float partialTick) {
-        renderBackground(g);
+        renderBackground(g, mouseX, mouseY, partialTick);
         g.fill(panelX, panelY, panelX + PANEL_W, panelY + PANEL_H, 0xf0101720);
         g.renderOutline(panelX, panelY, PANEL_W, PANEL_H, 0xff5da9d6);
         int statusColor = result != null && !result.feasible() ? 0xffff7373 : 0xffd8edf8;
@@ -1123,12 +1123,12 @@ public final class FlightPlannerScreen extends Screen {
         return super.mouseReleased(mouseX, mouseY, button);
     }
 
-    @Override public boolean mouseScrolled(double mouseX, double mouseY, double delta) {
+    @Override public boolean mouseScrolled(double mouseX, double mouseY, double scrollX, double scrollY) {
         if (tab == Tab.BODY && insideBodyViewport(mouseX, mouseY)) {
-            bodyZoom = Math.max(0.45, Math.min(4.0, bodyZoom * Math.pow(1.14, delta)));
+            bodyZoom = Math.max(0.45, Math.min(4.0, bodyZoom * Math.pow(1.14, scrollY)));
             return true;
         }
-        return super.mouseScrolled(mouseX, mouseY, delta);
+        return super.mouseScrolled(mouseX, mouseY, scrollX, scrollY);
     }
 
     private boolean insideGraph(double x, double y) {

@@ -8,8 +8,8 @@ import net.bullettrain.xenopixelsmod.features.transformation.XenoFormRegistry;
 import net.minecraft.client.Minecraft;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.packs.resources.Resource;
-import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.api.distmarker.OnlyIn;
+import net.neoforged.api.distmarker.Dist;
+import net.neoforged.api.distmarker.OnlyIn;
 
 import java.io.BufferedReader;
 import java.io.InputStream;
@@ -30,7 +30,7 @@ public final class XenoContentCatalog {
             "assets/xenopixelsmod/dmz/content_catalog.json"
     };
     private static final ResourceLocation PACK_ID =
-            new ResourceLocation(XenoPixelsMod.MOD_ID, "dmz/content_catalog.json");
+            ResourceLocation.fromNamespaceAndPath(XenoPixelsMod.MOD_ID, "dmz/content_catalog.json");
 
     private static Catalog DATA;
 

@@ -1,5 +1,7 @@
 package net.bullettrain.xenopixelsmod.client.combat;
 
+import net.neoforged.fml.common.EventBusSubscriber;
+
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.blaze3d.vertex.VertexConsumer;
 import net.bullettrain.xenopixelsmod.XenoPixelsMod;
@@ -10,17 +12,17 @@ import net.minecraft.client.renderer.MultiBufferSource;
 import net.minecraft.client.renderer.RenderType;
 import net.minecraft.util.Mth;
 import net.minecraft.world.phys.Vec3;
-import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.client.event.RenderLevelStageEvent;
-import net.minecraftforge.eventbus.api.SubscribeEvent;
-import net.minecraftforge.fml.common.Mod;
+import net.neoforged.api.distmarker.Dist;
+import net.neoforged.neoforge.client.event.RenderLevelStageEvent;
+import net.neoforged.bus.api.SubscribeEvent;
+import net.neoforged.fml.common.Mod;
 import org.joml.Matrix4f;
 
 /**
  * Draws a soft aura / ring around the local player while charge-attacking.
  * Bright flash when fully charged.
  */
-@Mod.EventBusSubscriber(modid = XenoPixelsMod.MOD_ID, value = Dist.CLIENT)
+@EventBusSubscriber(modid = XenoPixelsMod.MOD_ID, value = Dist.CLIENT)
 public final class ChargeAttackGlowRenderer {
     private ChargeAttackGlowRenderer() {}
 
@@ -36,7 +38,7 @@ public final class ChargeAttackGlowRenderer {
 
         float progress = Bt3CombatClient.getChargeProgress();
         boolean full = Bt3CombatClient.isFullyCharged();
-        float partial = event.getPartialTick();
+        float partial = event.getPartialTick().getGameTimeDeltaPartialTick(false);
 
         Vec3 cam = event.getCamera().getPosition();
         double x = Mth.lerp(partial, player.xo, player.getX()) - cam.x;
@@ -74,10 +76,10 @@ public final class ChargeAttackGlowRenderer {
             float x1 = Mth.cos(a1) * radius;
             float z1 = Mth.sin(a1) * radius;
             float alpha = pulse * (full ? 0.95f : 0.55f);
-            vc.vertex(mat, x0, 0, z0).color(r, g, b, alpha).endVertex();
-            vc.vertex(mat, x1, 0, z1).color(r, g, b, alpha).endVertex();
-            vc.vertex(mat, x1 * 0.7f, 0.05f, z1 * 0.7f).color(r, g, b, alpha * 0.3f).endVertex();
-            vc.vertex(mat, x0 * 0.7f, 0.05f, z0 * 0.7f).color(r, g, b, alpha * 0.3f).endVertex();
+            vc.addVertex(mat, x0, 0, z0).setColor(r, g, b, alpha);
+            vc.addVertex(mat, x1, 0, z1).setColor(r, g, b, alpha);
+            vc.addVertex(mat, x1 * 0.7f, 0.05f, z1 * 0.7f).setColor(r, g, b, alpha * 0.3f);
+            vc.addVertex(mat, x0 * 0.7f, 0.05f, z0 * 0.7f).setColor(r, g, b, alpha * 0.3f);
         }
 
         // Vertical halo when fully charged
@@ -91,10 +93,10 @@ public final class ChargeAttackGlowRenderer {
                 float y1 = Mth.cos(a1) * hr * 0.7f;
                 float z1 = Mth.sin(a1) * hr;
                 float alpha = 0.45f * pulse;
-                vc.vertex(mat, 0.02f, y0, z0).color(r, g, b, alpha).endVertex();
-                vc.vertex(mat, 0.02f, y1, z1).color(r, g, b, alpha).endVertex();
-                vc.vertex(mat, -0.02f, y1, z1).color(r, g, b, alpha * 0.4f).endVertex();
-                vc.vertex(mat, -0.02f, y0, z0).color(r, g, b, alpha * 0.4f).endVertex();
+                vc.addVertex(mat, 0.02f, y0, z0).setColor(r, g, b, alpha);
+                vc.addVertex(mat, 0.02f, y1, z1).setColor(r, g, b, alpha);
+                vc.addVertex(mat, -0.02f, y1, z1).setColor(r, g, b, alpha * 0.4f);
+                vc.addVertex(mat, -0.02f, y0, z0).setColor(r, g, b, alpha * 0.4f);
             }
         }
 

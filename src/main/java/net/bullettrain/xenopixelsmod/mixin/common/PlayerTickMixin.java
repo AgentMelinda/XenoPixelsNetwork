@@ -6,7 +6,7 @@ import net.bullettrain.xenopixelsmod.network.ModNetwork;
 import net.bullettrain.xenopixelsmod.network.SyncXenoStatsPacket;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.player.Player;
-import net.minecraftforge.network.PacketDistributor;
+import net.neoforged.neoforge.network.PacketDistributor;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
@@ -57,7 +57,7 @@ public class PlayerTickMixin {
             return;
         }
 
-        serverPlayer.getCapability(XenoCapabilities.XENO_DATA).ifPresent(data -> {
+        XenoCapabilities.get(serverPlayer).ifPresent(data -> {
             // Cheap regen only when below cap (no-op at full)
             if (data.getKi() < data.getMaxKi()) {
                 data.setKi(data.getKi() + 0.4f * (interval / 5f));
@@ -88,8 +88,7 @@ public class PlayerTickMixin {
                 return;
             }
 
-            ModNetwork.CHANNEL.send(
-                    PacketDistributor.PLAYER.with(() -> serverPlayer),
+            ModNetwork.sendToPlayer(serverPlayer,
                     new SyncXenoStatsPacket(hp, maxHp, ki, maxKi, stm, maxStm));
 
             xenopixelsmod$lastSyncedHp = hp;

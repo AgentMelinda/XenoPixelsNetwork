@@ -240,7 +240,7 @@ public final class XenoHudView {
     private void drawPortraitBust(GuiGraphics g, Minecraft mc) {
         AbstractClientPlayer player = mc.player;
         if (player == null) return;
-        ResourceLocation skin = player.getSkinTextureLocation();
+        ResourceLocation skin = player.getSkin().texture();
         if (skin == null) return;
 
         int pad = 5;

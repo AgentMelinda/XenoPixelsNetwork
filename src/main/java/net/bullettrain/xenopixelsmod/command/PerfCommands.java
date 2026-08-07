@@ -1,5 +1,7 @@
 package net.bullettrain.xenopixelsmod.command;
 
+import net.neoforged.fml.common.EventBusSubscriber;
+
 import com.mojang.brigadier.CommandDispatcher;
 import com.mojang.brigadier.arguments.StringArgumentType;
 import net.bullettrain.xenopixelsmod.XenoPixelsMod;
@@ -7,9 +9,9 @@ import net.bullettrain.xenopixelsmod.config.XenoPerfConfig;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
 import net.minecraft.network.chat.Component;
-import net.minecraftforge.event.RegisterCommandsEvent;
-import net.minecraftforge.eventbus.api.SubscribeEvent;
-import net.minecraftforge.fml.common.Mod;
+import net.neoforged.neoforge.event.RegisterCommandsEvent;
+import net.neoforged.bus.api.SubscribeEvent;
+import net.neoforged.fml.common.Mod;
 
 /**
  * Module perf: chunk force-load + thruster force distance.
@@ -18,7 +20,7 @@ import net.minecraftforge.fml.common.Mod;
  * /xenoperf set &lt;key&gt; &lt;value&gt;
  * </pre>
  */
-@Mod.EventBusSubscriber(modid = XenoPixelsMod.MOD_ID)
+@EventBusSubscriber(modid = XenoPixelsMod.MOD_ID)
 public final class PerfCommands {
     private PerfCommands() {}
 

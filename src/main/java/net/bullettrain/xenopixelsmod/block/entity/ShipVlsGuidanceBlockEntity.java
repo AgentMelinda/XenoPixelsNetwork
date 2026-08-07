@@ -3,7 +3,7 @@ package net.bullettrain.xenopixelsmod.block.entity;
 import net.bullettrain.xenopixelsmod.block.custom.MissileTubeBlock;
 import net.bullettrain.xenopixelsmod.block.custom.ShipThrusterBlock;
 import net.bullettrain.xenopixelsmod.block.custom.ShipVlsGuidanceBlock;
-import net.bullettrain.xenopixelsmod.compat.ballistix.MissileChunkLoadManager;
+import net.bullettrain.xenopixelsmod.missile.MissileChunkLoadManager;
 import net.bullettrain.xenopixelsmod.compat.thruster.ExternalThrusterCompat;
 import net.bullettrain.xenopixelsmod.config.XenoPerfConfig;
 import net.bullettrain.xenopixelsmod.missile.BallisticTrajectory;
@@ -30,10 +30,9 @@ import net.minecraft.world.phys.HitResult;
 import net.minecraft.world.phys.Vec3;
 import net.minecraft.world.level.levelgen.Heightmap;
 import org.jetbrains.annotations.Nullable;
-import org.valkyrienskies.core.api.ships.LoadedServerShip;
-import org.valkyrienskies.core.api.ships.ServerShip;
-import org.valkyrienskies.core.api.ships.Ship;
-import org.valkyrienskies.mod.common.VSGameUtilsKt;
+import dev.ryanhcode.sable.sublevel.ServerSubLevel;
+import dev.ryanhcode.sable.companion.SubLevelAccess;
+import dev.ryanhcode.sable.companion.SableCompanion;
 
 import java.util.ArrayList;
 import java.util.Iterator;
@@ -121,24 +120,24 @@ public class ShipVlsGuidanceBlockEntity extends BlockEntity {
         super(ModBlockEntities.SHIP_VLS_GUIDANCE.get(), pos, state);
     }
 
-    private @Nullable LoadedServerShip resolveShipCached(ServerLevel sl) {
+    private @Nullable ServerSubLevel resolveShipCached(ServerLevel sl) {
         return resolveShipCached(sl, false);
     }
 
     /**
      * @param force if true (during flight), never return null due to cooldown — miss must be real
      */
-    private @Nullable LoadedServerShip resolveShipCached(ServerLevel sl, boolean force) {
+    private @Nullable ServerSubLevel resolveShipCached(ServerLevel sl, boolean force) {
         if (cachedShipId >= 0) {
-            LoadedServerShip byId = VsShipHelper.getLoadedShipById(sl, cachedShipId);
+            ServerSubLevel byId = VsShipHelper.getLoadedShipById(sl, cachedShipId);
             if (byId != null) return byId;
             cachedShipId = -1L;
         }
         if (!force && --shipCacheCooldown > 0) return null;
         shipCacheCooldown = force ? 5 : 20;
-        LoadedServerShip loaded = VsShipHelper.getLoadedShipAtFast(sl, worldPosition);
+        ServerSubLevel loaded = VsShipHelper.getLoadedShipAtFast(sl, worldPosition);
         if (loaded == null) loaded = VsShipHelper.getLoadedShipAt(sl, worldPosition);
-        cachedShipId = loaded != null ? loaded.getId() : -1L;
+        cachedShipId = loaded != null ? VsShipHelper.getShipId(loaded) : -1L;
         return loaded;
     }
 
@@ -175,12 +174,12 @@ public class ShipVlsGuidanceBlockEntity extends BlockEntity {
         long myShipId = -1L;
         try {
             if (level instanceof ServerLevel sl) {
-                LoadedServerShip ls = VsShipHelper.getLoadedShipAt(sl, worldPosition);
-                if (ls != null) myShipId = ls.getId();
+                ServerSubLevel ls = VsShipHelper.getLoadedShipAt(sl, worldPosition);
+                if (ls != null) myShipId = VsShipHelper.getShipId(ls);
             }
             if (myShipId < 0) {
-                Ship s = VsShipHelper.getShipAt(level, worldPosition);
-                if (s != null) myShipId = s.getId();
+                SubLevelAccess s = VsShipHelper.getShipAt(level, worldPosition);
+                if (s != null) myShipId = VsShipHelper.getShipId(s);
             }
         } catch (Throwable ignored) {
         }
@@ -193,11 +192,11 @@ public class ShipVlsGuidanceBlockEntity extends BlockEntity {
             if (thruster == null && !ExternalThrusterCompat.isCompatible(candidateState)) continue;
             try {
                 if (myShipId >= 0) {
-                    Ship s = level instanceof ServerLevel sl2
+                    SubLevelAccess s = level instanceof ServerLevel sl2
                             ? VsShipHelper.getLoadedShipAt(sl2, p)
                             : VsShipHelper.getShipAt(level, p);
                     if (s == null) s = VsShipHelper.getShipAt(level, p);
-                    if (s == null || s.getId() != myShipId) continue;
+                    if (s == null || VsShipHelper.getShipId(s) != myShipId) continue;
                 }
             } catch (Throwable ignored) {
             }
@@ -277,8 +276,8 @@ public class ShipVlsGuidanceBlockEntity extends BlockEntity {
 
     String fleetVesselKey() {
         if (level instanceof ServerLevel sl) {
-            LoadedServerShip ship = resolveShipCached(sl, true);
-            if (ship != null) return "ship:" + ship.getId();
+            ServerSubLevel ship = resolveShipCached(sl, true);
+            if (ship != null) return "sable:" + VsShipHelper.getShipId(ship);
         }
         return "block:" + worldPosition.asLong();
     }
@@ -406,13 +405,13 @@ public class ShipVlsGuidanceBlockEntity extends BlockEntity {
         if (base.equals(center) || base.equals(nose) || center.equals(nose)) {
             return BodyCalibrationResult.INVALID_POSITIONS;
         }
-        LoadedServerShip host = VsShipHelper.getLoadedShipAt(sl, worldPosition);
+        ServerSubLevel host = VsShipHelper.getLoadedShipAt(sl, worldPosition);
         if (host == null) return BodyCalibrationResult.HOST_SHIP_MISSING;
         for (BlockPos p : List.of(base, center, nose)) {
             if (!sl.hasChunkAt(p)) return BodyCalibrationResult.BLOCK_UNLOADED;
             if (sl.getBlockState(p).isAir()) return BodyCalibrationResult.BLOCK_EMPTY;
-            LoadedServerShip selectedShip = VsShipHelper.getLoadedShipAt(sl, p);
-            if (selectedShip == null || selectedShip.getId() != host.getId()) {
+            ServerSubLevel selectedShip = VsShipHelper.getLoadedShipAt(sl, p);
+            if (selectedShip == null || VsShipHelper.getShipId(selectedShip) != VsShipHelper.getShipId(host)) {
                 return BodyCalibrationResult.WRONG_SHIP;
             }
         }
@@ -459,10 +458,10 @@ public class ShipVlsGuidanceBlockEntity extends BlockEntity {
         Vec3 targetVelocity = Vec3.ZERO;
         long resolvedShipId = -1L;
         if (targetShipId >= 0 && level instanceof ServerLevel sl) {
-            LoadedServerShip moving = VsShipHelper.getLoadedShipById(sl, targetShipId);
+            ServerSubLevel moving = VsShipHelper.getLoadedShipById(sl, targetShipId);
             if (moving != null) {
-                var p = moving.getTransform().getPositionInWorld();
-                var v = moving.getVelocity();
+                var p = VsShipHelper.worldPosition(moving);
+                var v = VsShipHelper.velocity(sl, moving);
                 targetWorld = new Vec3(p.x(), p.y(), p.z());
                 targetVelocity = v == null ? Vec3.ZERO : new Vec3(v.x(), v.y(), v.z());
                 resolvedShipId = targetShipId;
@@ -583,7 +582,7 @@ public class ShipVlsGuidanceBlockEntity extends BlockEntity {
         // Live status if this ship is currently flying (cheap id path)
         if (level instanceof ServerLevel sl && commandingFlight) {
             try {
-                LoadedServerShip loaded = resolveShipCached(sl);
+                ServerSubLevel loaded = resolveShipCached(sl);
                 if (loaded != null) {
                     ShipBallisticController c = ShipBallisticController.get(loaded);
                     if (c != null && c.isFlying()) {
@@ -653,13 +652,12 @@ public class ShipVlsGuidanceBlockEntity extends BlockEntity {
         Vec3 launch = Vec3.atCenterOf(worldPosition).add(0, 1, 0);
         if (level == null) return launch;
         try {
-            var world = net.bullettrain.xenopixelsmod.compat.ballistix.BallistixVs2Compat
-                    .shipyardToWorld(level, launch);
+            var world = SableCompanion.INSTANCE.projectOutOfSubLevel(level, launch);
             if (world != null) launch = world;
             if (level instanceof ServerLevel sl) {
-                LoadedServerShip ship = VsShipHelper.getLoadedShipAt(sl, worldPosition);
-                if (ship != null && ship.getTransform() != null) {
-                    var com = ship.getTransform().getPositionInWorld();
+                ServerSubLevel ship = VsShipHelper.getLoadedShipAt(sl, worldPosition);
+                if (ship != null) {
+                    var com = VsShipHelper.worldPosition(ship);
                     launch = new Vec3(com.x(), com.y(), com.z());
                 }
             }
@@ -680,10 +678,9 @@ public class ShipVlsGuidanceBlockEntity extends BlockEntity {
         BlockPos raw = BlockPos.containing(loc);
         if (level != null) {
             try {
-                if (VSGameUtilsKt.isBlockInShipyard(level, raw)
-                        || VSGameUtilsKt.getShipManagingPos(level, raw) != null) {
-                    var world = net.bullettrain.xenopixelsmod.compat.ballistix.BallistixVs2Compat
-                            .shipyardToWorld(level, loc);
+                if (SableCompanion.INSTANCE.isInPlotGrid(level, raw)
+                        || SableCompanion.INSTANCE.getContaining(level, raw) != null) {
+                    var world = SableCompanion.INSTANCE.projectOutOfSubLevel(level, loc);
                     if (world != null) {
                         target = BlockPos.containing(world);
                     } else {
@@ -753,7 +750,7 @@ public class ShipVlsGuidanceBlockEntity extends BlockEntity {
 
     private void tickAdaptiveGuidance(ServerLevel sl) {
         if (!plannerSettings.autoEnabled()) return;
-        LoadedServerShip missile = resolveShipCached(sl, true);
+        ServerSubLevel missile = resolveShipCached(sl, true);
         if (missile == null) return;
         ShipBallisticController controller = ShipBallisticController.get(missile);
         if (controller == null || !controller.isFlying()) return;
@@ -763,7 +760,7 @@ public class ShipVlsGuidanceBlockEntity extends BlockEntity {
         adaptiveReplanCooldown = interval;
 
         if (targetShipId >= 0) {
-            LoadedServerShip moving = VsShipHelper.getLoadedShipById(sl, targetShipId);
+            ServerSubLevel moving = VsShipHelper.getLoadedShipById(sl, targetShipId);
             if (moving == null) {
                 movingTargetMissingTicks += interval;
                 controller.enterSearchHold();
@@ -778,7 +775,7 @@ public class ShipVlsGuidanceBlockEntity extends BlockEntity {
                 return;
             }
             movingTargetMissingTicks = 0;
-            var position = moving.getTransform().getPositionInWorld();
+            var position = VsShipHelper.worldPosition(moving);
             target = BlockPos.containing(position.x(), position.y(), position.z());
         }
 
@@ -791,17 +788,17 @@ public class ShipVlsGuidanceBlockEntity extends BlockEntity {
 
     /** Debug-friendly ship detect for status strings / GUI. */
     public String describeShipLink(ServerLevel sl) {
-        LoadedServerShip loaded = VsShipHelper.getLoadedShipAt(sl, worldPosition);
+        ServerSubLevel loaded = VsShipHelper.getLoadedShipAt(sl, worldPosition);
         if (loaded != null) {
-            return "ship#" + loaded.getId() + " loaded";
+            return "Sable sub-level#" + VsShipHelper.getShipId(loaded) + " loaded";
         }
-        ServerShip any = VsShipHelper.getShipAt(sl, worldPosition);
+        SubLevelAccess any = VsShipHelper.getShipAt(sl, worldPosition);
         if (any != null) {
-            return "ship#" + any.getId() + " (not loaded object)";
+            return "Sable sub-level#" + VsShipHelper.getShipId(any) + " (not loaded object)";
         }
         try {
-            if (VSGameUtilsKt.isBlockInShipyard(sl, worldPosition)) {
-                return "shipyard chunk but no ship object";
+            if (SableCompanion.INSTANCE.isInPlotGrid(sl, worldPosition)) {
+                return "Sable plot chunk but no sub-level object";
             }
         } catch (Throwable ignored) {
         }
@@ -865,7 +862,7 @@ public class ShipVlsGuidanceBlockEntity extends BlockEntity {
         if (!(level instanceof ServerLevel sl)) return false;
         boolean aborted = false;
         try {
-            LoadedServerShip loaded = VsShipHelper.getLoadedShipAt(sl, worldPosition);
+            ServerSubLevel loaded = VsShipHelper.getLoadedShipAt(sl, worldPosition);
             if (loaded != null) {
                 ShipBallisticController c = ShipBallisticController.get(loaded);
                 if (c != null && c.isFlying()) {
@@ -888,7 +885,7 @@ public class ShipVlsGuidanceBlockEntity extends BlockEntity {
     private boolean tryLaunchShipMissile(ServerLevel sl) {
         ShipGravityControl gravityControl = null;
         try {
-            LoadedServerShip loaded = VsShipHelper.getLoadedShipAt(sl, worldPosition);
+            ServerSubLevel loaded = VsShipHelper.getLoadedShipAt(sl, worldPosition);
             if (loaded == null) {
                 lastStatus = "not on VS ship — " + describeShipLink(sl);
                 return false;
@@ -915,7 +912,7 @@ public class ShipVlsGuidanceBlockEntity extends BlockEntity {
             ctrl.setGuidanceStopDistance(guidanceStopDistance);
             // ShipGravityControl and ShipBallisticController both compensate VS gravity.
             // Hand ownership to guidance for the flight so their forces never stack.
-            gravityControl = loaded.getAttachment(ShipGravityControl.class);
+            gravityControl = ShipGravityControl.get(loaded);
             if (gravityControl != null) gravityControl.setSuppressed(true);
             boolean ok = ctrl.launch(loaded, targetWorld, loft,
                     boostAccel, boostTicks, terminalGuidance, warheadYield, thrusterCount,
@@ -925,7 +922,7 @@ public class ShipVlsGuidanceBlockEntity extends BlockEntity {
                 if (plan == null) plan = calculateAdvancedPlan(0);
                 if (plan != null) ctrl.setAdvancedPlan(plan);
                 ctrl.setFlightDim(sl.dimension());
-                cachedShipId = loaded.getId();
+                cachedShipId = VsShipHelper.getShipId(loaded);
                 shipCacheCooldown = 0;
                 commandingFlight = true;
                 lastSyncedPhase = null;
@@ -933,7 +930,7 @@ public class ShipVlsGuidanceBlockEntity extends BlockEntity {
                 // Visual throttle only — phys thrust is CoM forces from ShipBallisticController.
                 // Clear any lingering thruster attachment forces that would torque the hull.
                 try {
-                    XenoThrusterControl tc = loaded.getAttachment(XenoThrusterControl.class);
+                    XenoThrusterControl tc = XenoThrusterControl.get(loaded);
                     if (tc != null) tc.clearAll();
                 } catch (Throwable ignored) {
                 }
@@ -957,7 +954,7 @@ public class ShipVlsGuidanceBlockEntity extends BlockEntity {
     private void syncThrustersToFlight(ServerLevel sl) {
         try {
             // force=true: never treat ship-cache cooldown as "flight over"
-            LoadedServerShip loaded = resolveShipCached(sl, true);
+            ServerSubLevel loaded = resolveShipCached(sl, true);
             if (loaded == null) {
                 // Ship unloaded / gone — end guidance ownership only
                 releaseThrusters();
@@ -988,7 +985,7 @@ public class ShipVlsGuidanceBlockEntity extends BlockEntity {
             // Clear thruster phys map once at phase entry — not every 20t forever
             if (phase != lastSyncedPhase) {
                 try {
-                    XenoThrusterControl tc = loaded.getAttachment(XenoThrusterControl.class);
+                    XenoThrusterControl tc = XenoThrusterControl.get(loaded);
                     if (tc != null && !tc.isEmpty()) tc.clearAll();
                 } catch (Throwable ignored) {
                 }
@@ -1014,9 +1011,9 @@ public class ShipVlsGuidanceBlockEntity extends BlockEntity {
         }
     }
 
-    private static void restoreShipGravity(LoadedServerShip ship) {
+    private static void restoreShipGravity(ServerSubLevel ship) {
         try {
-            ShipGravityControl gravity = ship.getAttachment(ShipGravityControl.class);
+            ShipGravityControl gravity = ShipGravityControl.get(ship);
             if (gravity != null) gravity.setSuppressed(false);
         } catch (Throwable ignored) {
         }
@@ -1187,8 +1184,8 @@ public class ShipVlsGuidanceBlockEntity extends BlockEntity {
     }
 
     @Override
-    protected void saveAdditional(CompoundTag tag) {
-        super.saveAdditional(tag);
+    protected void saveAdditional(CompoundTag tag, net.minecraft.core.HolderLookup.Provider registries) {
+        super.saveAdditional(tag, registries);
         if (target != null) tag.putLong("Target", target.asLong());
         if (targetShipId >= 0) tag.putLong("TargetShipId", targetShipId);
         tag.putBoolean("WasPowered", wasPowered);
@@ -1220,8 +1217,8 @@ public class ShipVlsGuidanceBlockEntity extends BlockEntity {
     }
 
     @Override
-    public void load(CompoundTag tag) {
-        super.load(tag);
+    public void loadAdditional(CompoundTag tag, net.minecraft.core.HolderLookup.Provider registries) {
+        super.loadAdditional(tag, registries);
         target = tag.contains("Target") ? BlockPos.of(tag.getLong("Target")) : null;
         targetShipId = tag.contains("TargetShipId") ? tag.getLong("TargetShipId") : -1L;
         movingTargetMissingTicks = 0;
@@ -1296,9 +1293,9 @@ public class ShipVlsGuidanceBlockEntity extends BlockEntity {
     }
 
     @Override
-    public CompoundTag getUpdateTag() {
-        CompoundTag tag = super.getUpdateTag();
-        saveAdditional(tag);
+    public CompoundTag getUpdateTag(net.minecraft.core.HolderLookup.Provider registries) {
+        CompoundTag tag = super.getUpdateTag(registries);
+        saveAdditional(tag, registries);
         return tag;
     }
 

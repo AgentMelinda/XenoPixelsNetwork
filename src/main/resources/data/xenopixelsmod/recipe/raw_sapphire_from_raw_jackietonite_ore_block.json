@@ -1,5 +1,5 @@
 {
-  "type": "crafting_shapeless",
+  "type": "minecraft:crafting_shapeless",
   "category": "misc",
   "ingredients": [
     {
@@ -7,7 +7,7 @@
     }
   ],
   "result": {
-    "item": "xenopixelsmod:raw_sapphire",
+    "id": "xenopixelsmod:raw_sapphire",
     "count": 9
   }
 }

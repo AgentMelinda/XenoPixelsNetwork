@@ -1,5 +1,7 @@
 package net.bullettrain.xenopixelsmod.compat.create;
 
+import net.neoforged.fml.common.EventBusSubscriber;
+
 import net.bullettrain.xenopixelsmod.XenoPixelsMod;
 import net.bullettrain.xenopixelsmod.block.custom.MissileChunkLoaderBlock;
 import net.bullettrain.xenopixelsmod.block.custom.MissileTubeBlock;
@@ -7,6 +9,7 @@ import net.bullettrain.xenopixelsmod.block.custom.ShipThrusterBlock;
 import net.bullettrain.xenopixelsmod.block.custom.ShipVlsGuidanceBlock;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
+import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.sounds.SoundEvents;
 import net.minecraft.sounds.SoundSource;
@@ -17,11 +20,10 @@ import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.properties.DirectionProperty;
-import net.minecraftforge.event.entity.player.PlayerInteractEvent;
-import net.minecraftforge.eventbus.api.EventPriority;
-import net.minecraftforge.eventbus.api.SubscribeEvent;
-import net.minecraftforge.fml.common.Mod;
-import net.minecraftforge.registries.ForgeRegistries;
+import net.neoforged.neoforge.event.entity.player.PlayerInteractEvent;
+import net.neoforged.bus.api.EventPriority;
+import net.neoforged.bus.api.SubscribeEvent;
+import net.neoforged.fml.common.Mod;
 
 /**
  * Soft Create wrench support for VS2 ship blocks (no hard Create compile dep).
@@ -30,9 +32,9 @@ import net.minecraftforge.registries.ForgeRegistries;
  * rotates {@code FACING} around the clicked face axis (same idea as Create's IWrenchable).
  * Sneak-wrench picks the block up like Create does for most machines.
  */
-@Mod.EventBusSubscriber(modid = XenoPixelsMod.MOD_ID)
+@EventBusSubscriber(modid = XenoPixelsMod.MOD_ID)
 public final class CreateWrenchHandler {
-    private static final ResourceLocation CREATE_WRENCH = new ResourceLocation("create", "wrench");
+    private static final ResourceLocation CREATE_WRENCH = ResourceLocation.fromNamespaceAndPath("create", "wrench");
 
     private CreateWrenchHandler() {}
 
@@ -40,7 +42,7 @@ public final class CreateWrenchHandler {
     public static void onRightClickBlock(PlayerInteractEvent.RightClickBlock event) {
         ItemStack stack = event.getItemStack();
         if (stack.isEmpty()) return;
-        ResourceLocation id = ForgeRegistries.ITEMS.getKey(stack.getItem());
+        ResourceLocation id = BuiltInRegistries.ITEM.getKey(stack.getItem());
         if (id == null || !CREATE_WRENCH.equals(id)) return;
 
         Level level = event.getLevel();

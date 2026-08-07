@@ -4,16 +4,15 @@ import com.mojang.blaze3d.systems.RenderSystem;
 import net.bullettrain.xenopixelsmod.client.config.XenoClientConfig;
 import net.bullettrain.xenopixelsmod.client.hud.AnimUtil;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.DeltaTracker;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.PlayerFaceRenderer;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.scores.PlayerTeam;
-import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.api.distmarker.OnlyIn;
-import net.minecraftforge.client.gui.overlay.ForgeGui;
-import net.minecraftforge.client.gui.overlay.IGuiOverlay;
+import net.neoforged.api.distmarker.Dist;
+import net.neoforged.api.distmarker.OnlyIn;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -35,7 +34,7 @@ import java.util.UUID;
  * {@link XenoClientConfig#partyHudEnabled}.</p>
  */
 @OnlyIn(Dist.CLIENT)
-public class XenoPartyOverlay implements IGuiOverlay {
+public class XenoPartyOverlay {
     private static final int MAX_MEMBERS = 4;
     private static final int CHIP_W = 150;
     private static final int CHIP_H = 30;
@@ -50,8 +49,7 @@ public class XenoPartyOverlay implements IGuiOverlay {
     private static long lastMemberScan = Long.MIN_VALUE;
     private static Object cachedLevel;
 
-    @Override
-    public void render(ForgeGui gui, GuiGraphics graphics, float partialTick, int screenWidth, int screenHeight) {
+    public void render(GuiGraphics graphics, DeltaTracker deltaTracker) {
         Minecraft mc = Minecraft.getInstance();
         if (mc.player == null || mc.level == null || mc.options.hideGui) return;
         if (!XenoClientConfig.partyHudEnabled || !XenoClientConfig.xenoHudEnabled) return;
@@ -127,7 +125,7 @@ public class XenoPartyOverlay implements IGuiOverlay {
         int px = x + 3, py = y + 3, ps = PORTRAIT;
         g.fill(px - 1, py - 1, px + ps + 1, py + ps + 1, a8 | 0x1E6BB8);
         if (p instanceof net.minecraft.client.player.AbstractClientPlayer acp) {
-            ResourceLocation skin = acp.getSkinTextureLocation();
+            ResourceLocation skin = acp.getSkin().texture();
             RenderSystem.setShaderColor(1f, 1f, 1f, fade);
             RenderSystem.setShaderTexture(0, skin);
             PlayerFaceRenderer.draw(g, skin, px, py, ps);

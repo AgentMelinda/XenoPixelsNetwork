@@ -1,5 +1,7 @@
 package net.bullettrain.xenopixelsmod.features.progression;
 
+import net.neoforged.fml.common.EventBusSubscriber;
+
 import net.bullettrain.xenopixelsmod.XenoPixelsMod;
 import net.bullettrain.xenopixelsmod.capability.XenoCapabilities;
 import net.bullettrain.xenopixelsmod.capability.XenoPlayerData;
@@ -13,16 +15,16 @@ import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.decoration.ArmorStand;
 import net.minecraft.world.entity.player.Player;
-import net.minecraftforge.event.entity.living.LivingDeathEvent;
-import net.minecraftforge.event.entity.living.LivingHurtEvent;
-import net.minecraftforge.eventbus.api.EventPriority;
-import net.minecraftforge.eventbus.api.SubscribeEvent;
-import net.minecraftforge.fml.common.Mod;
+import net.neoforged.neoforge.event.entity.living.LivingDeathEvent;
+import net.neoforged.neoforge.event.entity.living.LivingDamageEvent;
+import net.neoforged.bus.api.EventPriority;
+import net.neoforged.bus.api.SubscribeEvent;
+import net.neoforged.fml.common.Mod;
 
 /**
  * Phase 3: dummy damage meter, Super Soul + skill damage mods, quests, mentor.
  */
-@Mod.EventBusSubscriber(modid = XenoPixelsMod.MOD_ID)
+@EventBusSubscriber(modid = XenoPixelsMod.MOD_ID)
 public final class ProgressionEvents {
     public static final String DUMMY_TAG = "xenopixelsmod_training_dummy";
 
@@ -33,9 +35,9 @@ public final class ProgressionEvents {
     }
 
     @SubscribeEvent(priority = EventPriority.LOW)
-    public static void onHurt(LivingHurtEvent event) {
+    public static void onHurt(LivingDamageEvent.Pre event) {
         if (event.getEntity().level().isClientSide()) return;
-        float amount = event.getAmount();
+        float amount = event.getNewDamage();
         if (amount <= 0.01f) return;
 
         LivingEntity victim = event.getEntity();
@@ -45,8 +47,8 @@ public final class ProgressionEvents {
         if (victim instanceof ServerPlayer def) {
             float in = SuperSoulCatalog.inMult(def);
             if (in < 0.999f) {
-                event.setAmount(amount * in);
-                amount = event.getAmount();
+                event.setNewDamage(amount * in);
+                amount = event.getNewDamage();
             }
         }
 
@@ -54,8 +56,8 @@ public final class ProgressionEvents {
         if (src instanceof ServerPlayer atk) {
             float mult = CombatSkills.powerMult(atk) * SuperSoulCatalog.outMult(atk);
             if (mult > 1.001f || mult < 0.999f) {
-                event.setAmount(amount * mult);
-                amount = event.getAmount();
+                event.setNewDamage(amount * mult);
+                amount = event.getNewDamage();
             }
 
             // Sparking build with soul/skill
@@ -75,7 +77,7 @@ public final class ProgressionEvents {
                 handleDummyHit(atk, amount);
                 // Keep dummy alive
                 if (victim.getHealth() - amount < 1f) {
-                    event.setAmount(0f);
+                    event.setNewDamage(0f);
                     victim.setHealth(victim.getMaxHealth());
                 }
             }
@@ -88,7 +90,7 @@ public final class ProgressionEvents {
     }
 
     private static void handleDummyHit(ServerPlayer atk, float amount) {
-        atk.getCapability(XenoCapabilities.XENO_DATA).ifPresent(data -> {
+        XenoCapabilities.get(atk).ifPresent(data -> {
             data.addDummyHit(amount);
             int hits = data.getDummyHits();
             long session = data.getDummySessionDamage();
@@ -123,7 +125,7 @@ public final class ProgressionEvents {
     }
 
     private static void mentorAssist(ServerPlayer student, float damage) {
-        student.getCapability(XenoCapabilities.XENO_DATA).ifPresent(data -> {
+        XenoCapabilities.get(student).ifPresent(data -> {
             if (data.getMentorUuid() == null) return;
             ServerPlayer mentor = student.server.getPlayerList().getPlayer(data.getMentorUuid());
             if (mentor == null || mentor == student) return;
@@ -139,7 +141,7 @@ public final class ProgressionEvents {
         if (!(event.getSource().getEntity() instanceof ServerPlayer killer)) return;
         if (!XenoServerConfig.parallelQuestEnabled) return;
 
-        killer.getCapability(XenoCapabilities.XENO_DATA).ifPresent(data -> {
+        XenoCapabilities.get(killer).ifPresent(data -> {
             if (!data.hasActiveQuest()) return;
             String q = data.getQuestId();
             boolean count = switch (q) {

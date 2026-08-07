@@ -7,7 +7,7 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.level.block.entity.BlockEntity;
-import net.minecraftforge.network.NetworkEvent;
+import com.dragonminez.compat.network.NetworkEvent;
 
 import java.util.function.Supplier;
 
@@ -285,25 +285,12 @@ public class GuidanceControlPacket {
         double py = bePos.getY() + 0.5;
         double pz = bePos.getZ() + 0.5;
         try {
-            // Prefer loaded-ship transform (same path as BallistixVs2Compat)
-            var loaded = net.bullettrain.xenopixelsmod.vs.VsShipHelper.getLoadedShipAtFast(level, bePos);
-            if (loaded == null) {
-                loaded = net.bullettrain.xenopixelsmod.vs.VsShipHelper.getLoadedShipAt(level, bePos);
-            }
-            if (loaded != null && loaded.getShipToWorld() != null) {
-                org.joml.Vector3d out = loaded.getShipToWorld().transformPosition(
-                        new org.joml.Vector3d(px, py, pz));
-                px = out.x;
-                py = out.y;
-                pz = out.z;
-            } else {
-                var world = net.bullettrain.xenopixelsmod.compat.ballistix.BallistixVs2Compat
-                        .shipyardToWorld(level, new net.minecraft.world.phys.Vec3(px, py, pz));
-                if (world != null) {
-                    px = world.x;
-                    py = world.y;
-                    pz = world.z;
-                }
+            var world = dev.ryanhcode.sable.companion.SableCompanion.INSTANCE
+                    .projectOutOfSubLevel(level, new net.minecraft.world.phys.Vec3(px, py, pz));
+            if (world != null) {
+                px = world.x;
+                py = world.y;
+                pz = world.z;
             }
         } catch (Throwable ignored) {
         }

@@ -1,5 +1,6 @@
 package net.bullettrain.xenopixelsmod.block.custom;
 
+import com.mojang.serialization.MapCodec;
 import net.bullettrain.xenopixelsmod.block.entity.ShipThrusterBlockEntity;
 import net.bullettrain.xenopixelsmod.block.entity.ShipVlsGuidanceBlockEntity;
 import net.minecraft.core.BlockPos;
@@ -31,6 +32,7 @@ import org.jetbrains.annotations.Nullable;
  * Redstone or ComputerCraft sets power 0..1. Particles mimic Create propulsion plumes.
  */
 public class ShipThrusterBlock extends BaseEntityBlock {
+    public static final MapCodec<ShipThrusterBlock> CODEC = simpleCodec(ShipThrusterBlock::new);
     public static final DirectionProperty FACING = BlockStateProperties.FACING;
     public static final BooleanProperty POWERED = BlockStateProperties.POWERED;
 
@@ -40,6 +42,9 @@ public class ShipThrusterBlock extends BaseEntityBlock {
                 .setValue(FACING, Direction.SOUTH)
                 .setValue(POWERED, false));
     }
+
+    @Override
+    protected MapCodec<? extends BaseEntityBlock> codec() { return CODEC; }
 
     @Override
     public RenderShape getRenderShape(BlockState state) {
@@ -85,8 +90,8 @@ public class ShipThrusterBlock extends BaseEntityBlock {
     }
 
     @Override
-    public InteractionResult use(BlockState state, Level level, BlockPos pos, Player player,
-                                 InteractionHand hand, BlockHitResult hit) {
+    protected InteractionResult useWithoutItem(BlockState state, Level level, BlockPos pos, Player player,
+                                               BlockHitResult hit) {
         if (!level.isClientSide && level.getBlockEntity(pos) instanceof ShipThrusterBlockEntity be) {
             if (player.isShiftKeyDown()) {
                 // Shift: pair / unpair with nearest Ballistic Guidance Computer

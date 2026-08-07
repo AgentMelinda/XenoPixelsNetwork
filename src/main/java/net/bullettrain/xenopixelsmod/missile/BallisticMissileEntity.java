@@ -1,6 +1,6 @@
 package net.bullettrain.xenopixelsmod.missile;
 
-import net.bullettrain.xenopixelsmod.compat.ballistix.MissileChunkLoadManager;
+import net.bullettrain.xenopixelsmod.missile.MissileChunkLoadManager;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.nbt.CompoundTag;
@@ -15,10 +15,10 @@ import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.MoverType;
 import net.minecraft.world.level.Level;
+import net.minecraft.world.level.GameRules;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.HitResult;
 import net.minecraft.world.phys.Vec3;
-import net.minecraftforge.event.ForgeEventFactory;
 
 import java.util.List;
 import java.util.UUID;
@@ -111,8 +111,8 @@ public class BallisticMissileEntity extends Entity {
     }
 
     @Override
-    protected void defineSynchedData() {
-        this.entityData.define(DATA_PHASE, MissilePhase.EJECT.ordinal());
+    protected void defineSynchedData(SynchedEntityData.Builder builder) {
+        builder.define(DATA_PHASE, MissilePhase.EJECT.ordinal());
     }
 
     @Override
@@ -266,9 +266,9 @@ public class BallisticMissileEntity extends Entity {
         setPhase(MissilePhase.DEAD);
         // Yield <= 0: inert / practice munition — no explosion
         if (explosionPower > 0.05f && level() instanceof ServerLevel sl) {
-            boolean grief = ForgeEventFactory.getMobGriefingEvent(sl, this);
+            boolean grief = sl.getGameRules().getBoolean(GameRules.RULE_MOBGRIEFING);
             sl.explode(this, getX(), getY(), getZ(), explosionPower, grief, Level.ExplosionInteraction.MOB);
-            sl.playSound(null, blockPosition(), SoundEvents.GENERIC_EXPLODE, SoundSource.BLOCKS, 2f, 0.9f);
+            sl.playSound(null, blockPosition(), SoundEvents.GENERIC_EXPLODE.value(), SoundSource.BLOCKS, 2f, 0.9f);
         } else if (level() instanceof ServerLevel sl) {
             sl.sendParticles(ParticleTypes.CLOUD, getX(), getY(), getZ(), 8, 0.3, 0.2, 0.3, 0.01);
             sl.playSound(null, blockPosition(), SoundEvents.FIRE_EXTINGUISH, SoundSource.BLOCKS, 0.8f, 1.1f);

@@ -2,7 +2,7 @@ package net.bullettrain.xenopixelsmod.compat.computercraft;
 
 import dan200.computercraft.api.ComputerCraftAPI;
 import net.bullettrain.xenopixelsmod.XenoPixelsMod;
-import net.minecraftforge.fml.ModList;
+import net.neoforged.fml.ModList;
 
 /**
  * Optional ComputerCraft: Tweaked integration.

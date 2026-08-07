@@ -1,5 +1,6 @@
 package net.bullettrain.xenopixelsmod.block.custom;
 
+import com.mojang.serialization.MapCodec;
 import net.bullettrain.xenopixelsmod.block.entity.MissileChunkLoaderBlockEntity;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
@@ -30,12 +31,16 @@ import org.jetbrains.annotations.Nullable;
  * Orientable with Create wrench for ship aesthetics.
  */
 public class MissileChunkLoaderBlock extends BaseEntityBlock {
+    public static final MapCodec<MissileChunkLoaderBlock> CODEC = simpleCodec(MissileChunkLoaderBlock::new);
     public static final DirectionProperty FACING = BlockStateProperties.FACING;
 
     public MissileChunkLoaderBlock(Properties props) {
         super(props);
         this.registerDefaultState(this.stateDefinition.any().setValue(FACING, Direction.UP));
     }
+
+    @Override
+    protected MapCodec<? extends BaseEntityBlock> codec() { return CODEC; }
 
     @Override
     public RenderShape getRenderShape(BlockState state) {
@@ -75,8 +80,8 @@ public class MissileChunkLoaderBlock extends BaseEntityBlock {
     }
 
     @Override
-    public InteractionResult use(BlockState state, Level level, BlockPos pos, Player player,
-                                 InteractionHand hand, BlockHitResult hit) {
+    protected InteractionResult useWithoutItem(BlockState state, Level level, BlockPos pos, Player player,
+                                               BlockHitResult hit) {
         if (!level.isClientSide && level.getBlockEntity(pos) instanceof MissileChunkLoaderBlockEntity be) {
             be.toggleAlwaysOn();
             player.displayClientMessage(Component.literal(

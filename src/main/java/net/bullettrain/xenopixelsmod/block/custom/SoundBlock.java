@@ -17,9 +17,9 @@ public class SoundBlock extends Block {
     }
 
     @Override
-    public InteractionResult use(BlockState pState, Level pLevel, BlockPos pPos,
-                                 Player pPlayer, InteractionHand pHand, BlockHitResult pHit) {
-        pLevel.playSound(pPlayer, pPos, SoundEvents.NOTE_BLOCK_DIDGERIDOO.get(), SoundSource.BLOCKS,
+    protected InteractionResult useWithoutItem(BlockState pState, Level pLevel, BlockPos pPos,
+                                               Player pPlayer, BlockHitResult pHit) {
+        pLevel.playSound(pPlayer, pPos, SoundEvents.NOTE_BLOCK_DIDGERIDOO.value(), SoundSource.BLOCKS,
                 1f, 1f);
         return InteractionResult.SUCCESS;
     }

@@ -6,8 +6,8 @@ import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.Component;
-import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.api.distmarker.OnlyIn;
+import net.neoforged.api.distmarker.Dist;
+import net.neoforged.api.distmarker.OnlyIn;
 
 @OnlyIn(Dist.CLIENT)
 public class XenoHudEditScreen extends Screen {
@@ -107,8 +107,8 @@ public class XenoHudEditScreen extends Screen {
                 return true;
             }
             if (dragTarget == DragTarget.RESIZE) {
-                float delta = ((mx - resizeStartMouseX) + (my - resizeStartMouseY)) * 0.005f;
-                XenoHudConfig.scale = XenoHudConfig.clampScale(resizeStartScale + delta);
+                float scrollY = ((mx - resizeStartMouseX) + (my - resizeStartMouseY)) * 0.005f;
+                XenoHudConfig.scale = XenoHudConfig.clampScale(resizeStartScale + scrollY);
                 XenoHudConfig.clampToScreen(this.width, this.height);
                 return true;
             }
@@ -125,13 +125,13 @@ public class XenoHudEditScreen extends Screen {
     }
 
     @Override
-    public boolean mouseScrolled(double mouseX, double mouseY, double delta) {
+    public boolean mouseScrolled(double mouseX, double mouseY, double scrollX, double scrollY) {
         if (hitHud((int) mouseX, (int) mouseY) || hitResizeHandle((int) mouseX, (int) mouseY)) {
-            XenoHudConfig.scale = XenoHudConfig.clampScale(XenoHudConfig.scale + (float) delta * 0.05f);
+            XenoHudConfig.scale = XenoHudConfig.clampScale(XenoHudConfig.scale + (float) scrollY * 0.05f);
             XenoHudConfig.clampToScreen(this.width, this.height);
             return true;
         }
-        return super.mouseScrolled(mouseX, mouseY, delta);
+        return super.mouseScrolled(mouseX, mouseY, scrollX, scrollY);
     }
 
     @Override

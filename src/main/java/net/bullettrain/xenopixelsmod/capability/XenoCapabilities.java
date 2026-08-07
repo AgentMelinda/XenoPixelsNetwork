@@ -1,38 +1,45 @@
 package net.bullettrain.xenopixelsmod.capability;
 
 import net.bullettrain.xenopixelsmod.XenoPixelsMod;
-import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.player.Player;
-import net.minecraftforge.common.capabilities.Capability;
-import net.minecraftforge.common.capabilities.CapabilityManager;
-import net.minecraftforge.common.capabilities.CapabilityToken;
-import net.minecraftforge.event.AttachCapabilitiesEvent;
-import net.minecraftforge.event.entity.player.PlayerEvent;
-import net.minecraftforge.eventbus.api.SubscribeEvent;
-import net.minecraftforge.fml.common.Mod;
+import net.neoforged.bus.api.IEventBus;
+import net.neoforged.bus.api.SubscribeEvent;
+import net.neoforged.fml.common.EventBusSubscriber;
+import net.neoforged.neoforge.attachment.AttachmentType;
+import net.neoforged.neoforge.event.entity.player.PlayerEvent;
+import net.neoforged.neoforge.registries.DeferredHolder;
+import net.neoforged.neoforge.registries.DeferredRegister;
+import net.neoforged.neoforge.registries.NeoForgeRegistries;
 
-@Mod.EventBusSubscriber(modid = XenoPixelsMod.MOD_ID)
+import java.util.Optional;
+
+/** Persistent XenoPixels player state backed by a NeoForge 1.21 data attachment. */
+@EventBusSubscriber(modid = XenoPixelsMod.MOD_ID)
 public final class XenoCapabilities {
-    public static final Capability<XenoPlayerData> XENO_DATA = CapabilityManager.get(new CapabilityToken<>() {});
-    public static final ResourceLocation KEY = new ResourceLocation(XenoPixelsMod.MOD_ID, "xeno_data");
+    private static final DeferredRegister<AttachmentType<?>> ATTACHMENTS =
+            DeferredRegister.create(NeoForgeRegistries.Keys.ATTACHMENT_TYPES, XenoPixelsMod.MOD_ID);
+
+    public static final DeferredHolder<AttachmentType<?>, AttachmentType<XenoDataProvider>> XENO_DATA =
+            ATTACHMENTS.register("xeno_data", () -> AttachmentType
+                    .serializable(holder -> new XenoDataProvider())
+                    .copyOnDeath()
+                    .build());
 
     private XenoCapabilities() {}
 
-    // XenoPlayerData is registered once via @AutoRegisterCapability — do not also call event.register()
+    public static void register(IEventBus modEventBus) {
+        ATTACHMENTS.register(modEventBus);
+    }
 
-    @SubscribeEvent
-    public static void attach(AttachCapabilitiesEvent<Entity> event) {
-        if (event.getObject() instanceof Player) {
-            event.addCapability(KEY, new XenoDataProvider());
-        }
+    public static Optional<XenoPlayerData> get(Entity entity) {
+        if (!(entity instanceof Player player)) return Optional.empty();
+        return Optional.of(player.getData(XENO_DATA.get()).data());
     }
 
     @SubscribeEvent
     public static void clone(PlayerEvent.Clone event) {
-        event.getOriginal().reviveCaps();
-        event.getOriginal().getCapability(XENO_DATA).ifPresent(oldData ->
-                event.getEntity().getCapability(XENO_DATA).ifPresent(newData -> newData.copyFrom(oldData)));
-        event.getOriginal().invalidateCaps();
+        get(event.getOriginal()).ifPresent(oldData ->
+                get(event.getEntity()).ifPresent(newData -> newData.copyFrom(oldData)));
     }
 }

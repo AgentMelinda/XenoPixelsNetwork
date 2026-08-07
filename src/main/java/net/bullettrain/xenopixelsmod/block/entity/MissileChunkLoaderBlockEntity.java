@@ -1,6 +1,6 @@
 package net.bullettrain.xenopixelsmod.block.entity;
 
-import net.bullettrain.xenopixelsmod.compat.ballistix.MissileChunkLoadManager;
+import net.bullettrain.xenopixelsmod.missile.MissileChunkLoadManager;
 import net.minecraft.core.BlockPos;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.server.level.ServerLevel;
@@ -53,15 +53,15 @@ public class MissileChunkLoaderBlockEntity extends BlockEntity {
     }
 
     @Override
-    protected void saveAdditional(CompoundTag tag) {
-        super.saveAdditional(tag);
+    protected void saveAdditional(CompoundTag tag, net.minecraft.core.HolderLookup.Provider registries) {
+        super.saveAdditional(tag, registries);
         tag.putBoolean("AlwaysOn", alwaysOn);
         tag.putInt("Radius", radius);
     }
 
     @Override
-    public void load(CompoundTag tag) {
-        super.load(tag);
+    public void loadAdditional(CompoundTag tag, net.minecraft.core.HolderLookup.Provider registries) {
+        super.loadAdditional(tag, registries);
         alwaysOn = !tag.contains("AlwaysOn") || tag.getBoolean("AlwaysOn");
         radius = Math.max(1, Math.min(3, tag.contains("Radius") ? tag.getInt("Radius") : 1));
     }

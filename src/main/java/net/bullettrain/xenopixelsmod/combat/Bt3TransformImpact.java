@@ -1,5 +1,7 @@
 package net.bullettrain.xenopixelsmod.combat;
 
+import net.neoforged.fml.common.EventBusSubscriber;
+
 import com.dragonminez.common.stats.StatsCapability;
 import com.dragonminez.common.stats.StatsData;
 import com.dragonminez.common.stats.StatsProvider;
@@ -13,10 +15,12 @@ import net.minecraft.sounds.SoundSource;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
-import net.minecraftforge.event.TickEvent;
-import net.minecraftforge.event.entity.player.PlayerEvent;
-import net.minecraftforge.eventbus.api.SubscribeEvent;
-import net.minecraftforge.fml.common.Mod;
+import net.neoforged.neoforge.client.event.ClientTickEvent;
+import net.neoforged.neoforge.event.tick.PlayerTickEvent;
+import net.neoforged.neoforge.event.tick.ServerTickEvent;
+import net.neoforged.neoforge.event.entity.player.PlayerEvent;
+import net.neoforged.bus.api.SubscribeEvent;
+import net.neoforged.fml.common.Mod;
 
 import java.util.Map;
 import java.util.UUID;
@@ -25,16 +29,15 @@ import java.util.concurrent.ConcurrentHashMap;
 /**
  * When a player's DMZ active form changes, play a short impact ring + light knockback.
  */
-@Mod.EventBusSubscriber(modid = XenoPixelsMod.MOD_ID)
+@EventBusSubscriber(modid = XenoPixelsMod.MOD_ID)
 public final class Bt3TransformImpact {
     private static final Map<UUID, String> LAST_FORM = new ConcurrentHashMap<>();
 
     private Bt3TransformImpact() {}
 
     @SubscribeEvent
-    public static void onPlayerTick(TickEvent.PlayerTickEvent event) {
-        if (event.phase != TickEvent.Phase.END) return;
-        if (!(event.player instanceof ServerPlayer player)) return;
+    public static void onPlayerTick(PlayerTickEvent.Post event) {
+        if (!(event.getEntity() instanceof ServerPlayer player)) return;
         if (!XenoServerConfig.bt3CombatEnabled || !XenoServerConfig.bt3TransformImpactEnabled) return;
         // Keep the same 5-tick cadence while distributing players across ticks.
         if ((player.tickCount + player.getId()) % 5 != 0) return;

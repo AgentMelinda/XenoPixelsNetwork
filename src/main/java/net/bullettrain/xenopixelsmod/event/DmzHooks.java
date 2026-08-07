@@ -1,11 +1,13 @@
 package net.bullettrain.xenopixelsmod.event;
 
+import net.neoforged.fml.common.EventBusSubscriber;
+
 import com.dragonminez.common.events.DMZEvent;
 import net.bullettrain.xenopixelsmod.XenoPixelsMod;
-import net.minecraftforge.eventbus.api.SubscribeEvent;
-import net.minecraftforge.fml.common.Mod;
+import net.neoforged.bus.api.SubscribeEvent;
+import net.neoforged.fml.common.Mod;
 
-@Mod.EventBusSubscriber(modid = XenoPixelsMod.MOD_ID, bus = Mod.EventBusSubscriber.Bus.FORGE)
+@EventBusSubscriber(modid = XenoPixelsMod.MOD_ID, bus = EventBusSubscriber.Bus.GAME)
 public final class DmzHooks {
     private DmzHooks() {
     }

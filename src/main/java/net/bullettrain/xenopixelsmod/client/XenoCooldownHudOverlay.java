@@ -6,12 +6,11 @@ import net.bullettrain.xenopixelsmod.client.config.XenoCooldownHudConfig;
 import net.bullettrain.xenopixelsmod.client.hud.HudDraw;
 import net.bullettrain.xenopixelsmod.network.Bt3CombatPacket;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.DeltaTracker;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
-import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.api.distmarker.OnlyIn;
-import net.minecraftforge.client.gui.overlay.ForgeGui;
-import net.minecraftforge.client.gui.overlay.IGuiOverlay;
+import net.neoforged.api.distmarker.Dist;
+import net.neoforged.api.distmarker.OnlyIn;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -21,7 +20,7 @@ import java.util.List;
  * slant (matches main HUD gauges), neon accents, and gradient meters.
  */
 @OnlyIn(Dist.CLIENT)
-public class XenoCooldownHudOverlay implements IGuiOverlay {
+public class XenoCooldownHudOverlay {
 
     private static final int CHIP_W = 52;
     private static final int CHIP_H = 34;
@@ -53,14 +52,13 @@ public class XenoCooldownHudOverlay implements IGuiOverlay {
         return XenoCooldownHudConfig.squareShape ? 0 : METER_SKEW;
     }
 
-    @Override
-    public void render(ForgeGui gui, GuiGraphics g, float partialTick, int screenWidth, int screenHeight) {
+    public void render(GuiGraphics g, DeltaTracker deltaTracker) {
         if (!XenoClientConfig.cooldownHudEnabled || !XenoCooldownHudConfig.visible) return;
         Minecraft mc = Minecraft.getInstance();
-        if (mc.player == null || mc.options.hideGui || mc.options.renderDebug) return;
+        if (mc.player == null || mc.options.hideGui || mc.getDebugOverlay().showDebugScreen()) return;
         if (!XenoClientConfig.bt3CombatClient || !XenoServerClientState.combat()) return;
         if (mc.screen != null) return;
-        draw(g, screenWidth, screenHeight, false);
+        draw(g, g.guiWidth(), g.guiHeight(), false);
     }
 
     public static void renderEditorPreview(GuiGraphics g, int screenWidth, int screenHeight) {

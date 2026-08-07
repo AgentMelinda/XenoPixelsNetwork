@@ -2,9 +2,7 @@ package net.bullettrain.xenopixelsmod.network;
 
 import net.bullettrain.xenopixelsmod.client.ClientPacketHandlers;
 import net.minecraft.network.FriendlyByteBuf;
-import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.fml.DistExecutor;
-import net.minecraftforge.network.NetworkEvent;
+import com.dragonminez.compat.network.NetworkEvent;
 
 import java.util.function.Supplier;
 
@@ -43,9 +41,8 @@ public class SyncXenoStatsPacket {
     }
 
     public static void handle(SyncXenoStatsPacket msg, Supplier<NetworkEvent.Context> ctx) {
-        ctx.get().enqueueWork(() -> DistExecutor.unsafeRunWhenOn(Dist.CLIENT, () -> () ->
-                ClientPacketHandlers.handleXenoStats(
-                        msg.health, msg.maxHealth, msg.ki, msg.maxKi, msg.stamina, msg.maxStamina)));
+        ctx.get().enqueueWork(() -> ClientPacketHandlers.handleXenoStats(
+                msg.health, msg.maxHealth, msg.ki, msg.maxKi, msg.stamina, msg.maxStamina));
         ctx.get().setPacketHandled(true);
     }
 }

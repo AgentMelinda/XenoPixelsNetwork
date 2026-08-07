@@ -10,15 +10,16 @@ import net.minecraft.world.phys.Vec3;
 import org.joml.Quaterniond;
 import org.joml.Vector3d;
 import org.joml.Vector3dc;
-import org.valkyrienskies.core.api.ships.LoadedServerShip;
-import org.valkyrienskies.core.api.ships.PhysShip;
-import org.valkyrienskies.core.api.ships.ShipPhysicsListener;
-import org.valkyrienskies.core.api.world.PhysLevel;
-import org.valkyrienskies.mod.common.VSGameUtilsKt;
+import dev.ryanhcode.sable.api.physics.handle.RigidBodyHandle;
+import dev.ryanhcode.sable.api.sublevel.SubLevelContainer;
+import dev.ryanhcode.sable.platform.SableEventPlatform;
+import dev.ryanhcode.sable.sublevel.ServerSubLevel;
 
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
+import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
 
@@ -38,8 +39,9 @@ import java.util.concurrent.atomic.AtomicBoolean;
  * so offset thrusters don't tumble the hull. CoM cannot be rewritten by API — we
  * <b>read</b> mass/CoM and thrust through the CoM.
  */
-public final class ShipBallisticController implements ShipPhysicsListener {
+public final class ShipBallisticController {
     private static final AtomicBoolean REGISTERED = new AtomicBoolean(false);
+    private static final Map<UUID, ShipBallisticController> CONTROLLERS = new ConcurrentHashMap<>();
 
     private static final Set<Long> ACTIVE_FLIGHTS =
             Collections.newSetFromMap(new ConcurrentHashMap<>());
@@ -137,6 +139,7 @@ public final class ShipBallisticController implements ShipPhysicsListener {
     /** Monotonic heartbeat written by gameTick and read by physTick. */
     private volatile long lastGuidanceNanos;
     private long lastPhysicsNanos;
+    private double physicsStepSeconds = 0.05;
 
     /** Desired world nose direction, published atomically for the physics thread. */
     private volatile AttitudeCommand attitudeCommand = new AttitudeCommand(0, 1, 0);
@@ -189,36 +192,30 @@ public final class ShipBallisticController implements ShipPhysicsListener {
 
     public static void ensureRegistered() {
         if (!REGISTERED.compareAndSet(false, true)) return;
-        try {
-            var core = VSGameUtilsKt.getVsCore();
-            // Runtime-only: must NOT use Jackson (empty bean → InvalidDefinitionException on ship save)
-            var reg = core.newAttachmentRegistrationBuilder(ShipBallisticController.class);
-            reg.useTransientSerializer();
-            core.registerAttachment(reg.build());
-            // Drop any old Jackson-saved instances that spam the log on load
-            try {
-                core.registerAttachmentForRemoval(ShipBallisticController.class.getName());
-            } catch (Throwable ignored) {
+        SableEventPlatform.INSTANCE.onPhysicsTick((system, deltaSeconds) -> {
+            SubLevelContainer container = SubLevelContainer.getContainer(system.getLevel());
+            for (var candidate : container.getAllSubLevels()) {
+                if (!(candidate instanceof ServerSubLevel subLevel)) continue;
+                ShipBallisticController controller = get(subLevel);
+                if (controller == null || !controller.isFlying()) continue;
+                RigidBodyHandle handle = system.getPhysicsHandle(subLevel);
+                if (handle != null && handle.isValid()) {
+                    controller.physTick(subLevel, handle, deltaSeconds);
+                }
             }
-            XenoPixelsMod.LOGGER.info("Registered transient ShipBallisticController attachment");
-        } catch (Throwable t) {
-            REGISTERED.set(false);
-            XenoPixelsMod.LOGGER.warn("Could not register ship ballistic attachment: {}", t.toString());
-        }
+            CONTROLLERS.keySet().removeIf(id -> container.getSubLevel(id) == null);
+        });
+        XenoPixelsMod.LOGGER.info("Registered Sable ballistic physics callback");
     }
 
-    public static ShipBallisticController getOrCreate(LoadedServerShip ship) {
+    public static ShipBallisticController getOrCreate(ServerSubLevel ship) {
         ensureRegistered();
-        ShipBallisticController existing = ship.getAttachment(ShipBallisticController.class);
-        if (existing != null) return existing;
-        ShipBallisticController created = new ShipBallisticController();
-        ship.setAttachment(ShipBallisticController.class, created);
-        return created;
+        return CONTROLLERS.computeIfAbsent(ship.getUniqueId(), ignored -> new ShipBallisticController());
     }
 
-    public static ShipBallisticController get(LoadedServerShip ship) {
+    public static ShipBallisticController get(ServerSubLevel ship) {
         if (ship == null) return null;
-        return ship.getAttachment(ShipBallisticController.class);
+        return CONTROLLERS.get(ship.getUniqueId());
     }
 
     public static Set<Long> activeFlightShipIds() {
@@ -337,7 +334,7 @@ public final class ShipBallisticController implements ShipPhysicsListener {
      * Arm and launch this ship on a ballistic flight plan.
      * Samples mass + CoM from VS inertia (CoM is not writable — forces go through CoM).
      */
-    public boolean launch(LoadedServerShip ship, Vec3 targetWorld, Vec3 loftHint,
+    public boolean launch(ServerSubLevel ship, Vec3 targetWorld, Vec3 loftHint,
                           double boostAccel, int boostTicks, boolean terminal,
                           float yield, int thrusterCount) {
         return launch(ship, targetWorld, loftHint, boostAccel, boostTicks, terminal,
@@ -345,7 +342,7 @@ public final class ShipBallisticController implements ShipPhysicsListener {
     }
 
     /** Back-compat: single Y = loft peak and cruise altitude. */
-    public boolean launch(LoadedServerShip ship, Vec3 targetWorld, Vec3 loftHint,
+    public boolean launch(ServerSubLevel ship, Vec3 targetWorld, Vec3 loftHint,
                           double boostAccel, int boostTicks, boolean terminal,
                           float yield, int thrusterCount, double desiredApexY) {
         return launch(ship, targetWorld, loftHint, boostAccel, boostTicks, terminal,
@@ -356,7 +353,7 @@ public final class ShipBallisticController implements ShipPhysicsListener {
      * @param desiredLoftY   climb peak (world Y); 0 = auto from plan
      * @param desiredCruiseY level-flight altitude after loft; 0 = same as loft peak
      */
-    public boolean launch(LoadedServerShip ship, Vec3 targetWorld, Vec3 loftHint,
+    public boolean launch(ServerSubLevel ship, Vec3 targetWorld, Vec3 loftHint,
                           double boostAccel, int boostTicks, boolean terminal,
                           float yield, int thrusterCount,
                           double desiredLoftY, double desiredCruiseY) {
@@ -366,7 +363,7 @@ public final class ShipBallisticController implements ShipPhysicsListener {
                 net.bullettrain.xenopixelsmod.missile.BallisticCalculator.DEFAULT_DRAG);
     }
 
-    public boolean launch(LoadedServerShip ship, Vec3 targetWorld, Vec3 loftHint,
+    public boolean launch(ServerSubLevel ship, Vec3 targetWorld, Vec3 loftHint,
                           double boostAccel, int boostTicks, boolean terminal,
                           float yield, int thrusterCount,
                           double desiredLoftY, double desiredCruiseY,
@@ -375,7 +372,7 @@ public final class ShipBallisticController implements ShipPhysicsListener {
         if (isFlying()) return false;
 
         // Prefer transform position (world CoM proxy); refine with inertia if available
-        Vector3dc posWorld = ship.getTransform().getPositionInWorld();
+        Vector3dc posWorld = VsShipHelper.worldPosition(ship);
         Vec3 launch = new Vec3(posWorld.x(), posWorld.y(), posWorld.z());
         sampleMassAndCom(ship);
 
@@ -487,17 +484,13 @@ public final class ShipBallisticController implements ShipPhysicsListener {
                 cruiseY, userCruiseY ? "" : "(=loft)",
                 rangeHorizontal);
 
-        try {
-            if (ship.isStatic()) ship.setStatic(false);
-        } catch (Throwable ignored) {
-        }
-
-        ACTIVE_FLIGHTS.add(ship.getId());
-        this.activeShipId = ship.getId();
+        long shipId = VsShipHelper.getShipId(ship);
+        ACTIVE_FLIGHTS.add(shipId);
+        this.activeShipId = shipId;
 
         XenoPixelsMod.LOGGER.info(
                 "Ship {} ballistic → tgt=({},{},{}) loftY={} cruiseY={} apexXZ=({},{}) range={}",
-                ship.getId(), (int) targetX, (int) targetY, (int) targetZ,
+                shipId, (int) targetX, (int) targetY, (int) targetZ,
                 (int) apexY, (int) cruiseY, (int) apexX, (int) apexZ,
                 String.format("%.0f", rangeHorizontal));
         return true;
@@ -573,13 +566,13 @@ public final class ShipBallisticController implements ShipPhysicsListener {
      * Read mass + CoM from VS inertia. CoM is <b>not settable</b> via public API —
      * we only store it for force-at-CoM and diagnostics.
      */
-    private void sampleMassAndCom(LoadedServerShip ship) {
+    private void sampleMassAndCom(ServerSubLevel ship) {
         hasCom = false;
         shipMass = 1000.0;
         hullArrivalRadius = HIT_RANGE;
         comModelX = comModelY = comModelZ = 0;
         try {
-            var inertia = ship.getInertiaData();
+            var inertia = ship.getMassTracker();
             if (inertia != null) {
                 double m = inertia.getMass();
                 if (m > 1.0) shipMass = m;
@@ -605,19 +598,6 @@ public final class ShipBallisticController implements ShipPhysicsListener {
             }
         } catch (Throwable ignored) {
         }
-        // Fallback: transform positionInShip is often the CoM model position
-        if (!hasCom) {
-            try {
-                Vector3dc p = ship.getTransform().getPositionInShip();
-                if (p != null) {
-                    comModelX = p.x();
-                    comModelY = p.y();
-                    comModelZ = p.z();
-                    hasCom = true;
-                }
-            } catch (Throwable ignored) {
-            }
-        }
     }
 
     public void abort() {
@@ -632,7 +612,7 @@ public final class ShipBallisticController implements ShipPhysicsListener {
     }
 
     /** Game-thread phase machine + Y-corridor update. */
-    public void gameTick(LoadedServerShip ship) {
+    public void gameTick(ServerSubLevel ship) {
         if (!flying || phase == MissilePhase.DEAD) return;
         // Do this before any phase work so physics knows the command source is alive.
         lastGuidanceNanos = System.nanoTime();
@@ -650,8 +630,8 @@ public final class ShipBallisticController implements ShipPhysicsListener {
             sampleMassAndCom(ship);
         }
 
-        Vector3dc pos = ship.getTransform().getPositionInWorld();
-        Vector3dc vel = ship.getVelocity();
+        Vector3dc pos = VsShipHelper.worldPosition(ship);
+        Vector3dc vel = VsShipHelper.velocity(ship.getLevel(), ship);
         double dist = Math.sqrt(pos.distanceSquared(targetX, targetY, targetZ));
         double hitRange = Math.max(Math.max(HIT_RANGE, hullArrivalRadius), guidanceStopDistance);
         if (hasPreviousPosition && segmentDistanceSquared(previousX, previousY, previousZ,
@@ -1215,24 +1195,17 @@ public final class ShipBallisticController implements ShipPhysicsListener {
     // Physics thread
     // -------------------------------------------------------------------------
 
-    @Override
-    public void physTick(PhysShip physShip, PhysLevel physLevel) {
+    private void physTick(ServerSubLevel subLevel, RigidBodyHandle handle, double deltaSeconds) {
         if (!flying || phase == MissilePhase.DEAD) return;
 
         long physicsNow = System.nanoTime();
-        double physicsDeltaSeconds = lastPhysicsNanos > 0L
-                ? Math.max(0.0, Math.min(0.1, (physicsNow - lastPhysicsNanos) / 1_000_000_000.0))
-                : 0.0;
+        double physicsDeltaSeconds = Math.max(0.0, Math.min(0.1, deltaSeconds));
+        physicsStepSeconds = physicsDeltaSeconds;
         lastPhysicsNanos = physicsNow;
-
-        try {
-            if (physShip.isStatic()) physShip.setStatic(false);
-        } catch (Throwable ignored) {
-        }
 
         double mass = shipMass;
         try {
-            double pm = physShip.getMass();
+            double pm = subLevel.getMassTracker().getMass();
             if (pm > 1.0) {
                 mass = pm;
                 shipMass = pm;
@@ -1243,7 +1216,7 @@ public final class ShipBallisticController implements ShipPhysicsListener {
 
         // Prefer live CoM from phys ship (model space)
         try {
-            Vector3dc com = physShip.getCenterOfMass();
+            Vector3dc com = subLevel.getMassTracker().getCenterOfMass();
             if (com != null) {
                 comModelX = com.x();
                 comModelY = com.y();
@@ -1253,8 +1226,8 @@ public final class ShipBallisticController implements ShipPhysicsListener {
         } catch (Throwable ignored) {
         }
 
-        Vector3dc pos = physShip.getTransform().getPositionInWorld();
-        Vector3dc vel = physShip.getVelocity();
+        Vector3dc pos = subLevel.logicalPose().position();
+        Vector3dc vel = handle.getLinearVelocity();
 
         // Physics-side swept intercept. This keeps working if the Minecraft game
         // thread stalls while VS continues simulating the ship.
@@ -1280,14 +1253,14 @@ public final class ShipBallisticController implements ShipPhysicsListener {
         if (physDistance <= arrivalRadius || sweptArrival || crossedAtClosestApproach) {
             impactRequested = true;
             status = sweptArrival ? "arrived (physics sweep)" : "arrived (physics intercept)";
-            applyLagBrake(physShip, mass, vel, true);
+            applyLagBrake(handle, subLevel, mass, vel, true);
             return;
         }
 
         long heartbeatAge = physicsNow - lastGuidanceNanos;
         if (heartbeatAge > GUIDANCE_STALE_NANOS) {
             status = "guidance hold (server lag)";
-            applyLagBrake(physShip, mass, vel, false);
+            applyLagBrake(handle, subLevel, mass, vel, false);
             return;
         }
 
@@ -1300,7 +1273,7 @@ public final class ShipBallisticController implements ShipPhysicsListener {
         // One volatile read gives physics one coherent direction/acceleration command.
         ThrustCommand command = thrustCommand;
         if (autoStable) {
-            applySasToLoft(physShip, mass, command);
+            applySasToLoft(handle, subLevel, mass, command);
         }
 
         // Thrust direction + accel published by gameTick — no re-solve on phys thread
@@ -1360,7 +1333,7 @@ public final class ShipBallisticController implements ShipPhysicsListener {
                 scratchForce.z -= vel.z() * scale;
             }
         }
-        applyComForce(physShip, scratchForce);
+        applyComForce(handle, scratchForce);
     }
 
     /**
@@ -1368,7 +1341,8 @@ public final class ShipBallisticController implements ShipPhysicsListener {
      * consumed. It never reuses the old thrust command: velocity is cancelled with a
      * bounded acceleration and the configured gravity correction remains active.
      */
-    private void applyLagBrake(PhysShip physShip, double mass, Vector3dc velocity,
+    private void applyLagBrake(RigidBodyHandle handle, ServerSubLevel subLevel,
+                               double mass, Vector3dc velocity,
                                boolean emergency) {
         double vx = velocity == null ? 0.0 : velocity.x();
         double vy = velocity == null ? 0.0 : velocity.y();
@@ -1381,31 +1355,26 @@ public final class ShipBallisticController implements ShipPhysicsListener {
             double scale = mass * brakeAccel / speed;
             scratchForce.set(-vx * scale, -vy * scale, -vz * scale);
             ThrustCommand brake = new ThrustCommand(-vx / speed, -vy / speed, -vz / speed, brakeAccel);
-            if (autoStable) applySasToLoft(physShip, mass, brake);
+            if (autoStable) applySasToLoft(handle, subLevel, mass, brake);
         } else {
             scratchForce.zero();
         }
         scratchForce.y += mass * (VS_WORLD_GRAVITY_SI - gravitySi);
-        applyComForce(physShip, scratchForce);
+        applyComForce(handle, scratchForce);
     }
 
     /** Apply world-space force through body CoM (zero lever arm → no tumble from offset). */
-    private void applyComForce(PhysShip physShip, Vector3d worldForce) {
-        try {
-            physShip.applyWorldForceToBodyPos(worldForce, bodyCom);
-        } catch (Throwable t) {
-            try {
-                physShip.applyInvariantForce(worldForce);
-            } catch (Throwable ignored) {
-            }
-        }
+    private void applyComForce(RigidBodyHandle handle, Vector3d worldForce) {
+        scratchAuxTorque.set(worldForce).mul(physicsStepSeconds);
+        handle.applyLinearImpulse(scratchAuxTorque);
     }
 
     /**
      * SAS to loft plan: damp rates, kill roll, point ship +Y (nose) at the same
      * direction we thrust — apex XYZ on boost, corridor on glide, target on terminal.
      */
-    private void applySasToLoft(PhysShip physShip, double mass, ThrustCommand command) {
+    private void applySasToLoft(RigidBodyHandle handle, ServerSubLevel subLevel,
+                                double mass, ThrustCommand command) {
         try {
             // Attitude and correction force are deliberately separate. Terminal
             // velocity cancellation can point backward while the nose must remain
@@ -1442,15 +1411,7 @@ public final class ShipBallisticController implements ShipPhysicsListener {
             double maxAngularAccel = SAS_MAX_ANGULAR_ACCEL
                     * (phase == MissilePhase.BOOST ? 1.15 : 1.0);
 
-            Vector3dc omega = null;
-            try {
-                omega = physShip.getOmega();
-            } catch (Throwable ignored) {
-                try {
-                    omega = physShip.getAngularVelocity();
-                } catch (Throwable ignored2) {
-                }
-            }
+            Vector3dc omega = handle.getAngularVelocity();
 
             // Build a desired WORLD angular acceleration first. Converting it through
             // the full body inertia tensor below gives long/asymmetric ships the same
@@ -1467,20 +1428,20 @@ public final class ShipBallisticController implements ShipPhysicsListener {
             // quaternion continuously chased a roll solution as the target line
             // changed, producing visible shaking without improving interception.
             double strength = SAS_ALIGN_BASE * 5.5 * alignMul;
-            addNoseTrackingAcceleration(physShip, ax, ay, az, strength, scratchTorque);
+            addNoseTrackingAcceleration(subLevel, ax, ay, az, strength, scratchTorque);
             // Cap the combined damping + alignment acceleration, then convert it to
             // the exact torque this hull needs around each principal body axis.
             clampTorque(scratchTorque, maxAngularAccel);
             if (scratchTorque.lengthSquared() > 1.0e-10) {
-                applyInertiaCompensatedTorque(physShip, scratchTorque, mass);
+                applyInertiaCompensatedTorque(handle, subLevel, scratchTorque, mass);
             }
         } catch (Throwable ignored) {
         }
     }
 
-    private double meanMomentOfInertia(PhysShip physShip, double mass) {
+    private double meanMomentOfInertia(ServerSubLevel subLevel, double mass) {
         try {
-            var tensor = physShip.getMomentOfInertia();
+            var tensor = subLevel.getMassTracker().getInertiaTensor();
             double mean = (Math.abs(tensor.m00()) + Math.abs(tensor.m11())
                     + Math.abs(tensor.m22())) / 3.0;
             if (Double.isFinite(mean) && mean > 1.0e-6) {
@@ -1500,43 +1461,38 @@ public final class ShipBallisticController implements ShipPhysicsListener {
     }
 
     /** Converts a world-space angular-acceleration request through the model-space inertia tensor. */
-    private void applyInertiaCompensatedTorque(PhysShip physShip, Vector3d angularAccelWorld,
+    private void applyInertiaCompensatedTorque(RigidBodyHandle handle, ServerSubLevel subLevel,
+                                                Vector3d angularAccelWorld,
                                                 double mass) {
         try {
-            scratchCurrentRotation.set(physShip.getTransform().getShipToWorldRotation()).normalize();
+            scratchCurrentRotation.set(subLevel.logicalPose().orientation()).normalize();
             // I is supplied in model/body axes: alphaWorld -> alphaBody -> I*alphaBody -> torqueWorld.
             scratchAuxTorque.set(angularAccelWorld);
             scratchCurrentRotation.transformInverse(scratchAuxTorque);
-            physShip.getMomentOfInertia().transform(scratchAuxTorque);
+            subLevel.getMassTracker().getInertiaTensor().transform(scratchAuxTorque);
             if (!Double.isFinite(scratchAuxTorque.x) || !Double.isFinite(scratchAuxTorque.y)
                     || !Double.isFinite(scratchAuxTorque.z)) return;
             scratchCurrentRotation.transform(scratchAuxTorque);
-            applyWorldTorque(physShip, scratchAuxTorque);
+            applyWorldTorque(handle, scratchAuxTorque);
         } catch (Throwable ignored) {
             // Older VS implementations may not expose a usable tensor. Retain a
             // conservative scalar fallback instead of silently disabling SAS.
-            scratchAuxTorque.set(angularAccelWorld).mul(meanMomentOfInertia(physShip, mass));
-            applyWorldTorque(physShip, scratchAuxTorque);
+            scratchAuxTorque.set(angularAccelWorld).mul(meanMomentOfInertia(subLevel, mass));
+            applyWorldTorque(handle, scratchAuxTorque);
         }
     }
 
-    private void applyWorldTorque(PhysShip physShip, Vector3d torque) {
-        try {
-            physShip.applyWorldTorque(torque);
-        } catch (Throwable t) {
-            try {
-                physShip.applyInvariantTorque(torque);
-            } catch (Throwable ignored) {
-            }
-        }
+    private void applyWorldTorque(RigidBodyHandle handle, Vector3d torque) {
+        scratchAuxTorque.set(torque).mul(physicsStepSeconds);
+        handle.applyTorqueImpulse(scratchAuxTorque);
     }
 
     /** Adds world-space angular acceleration that directly aligns BASE→NOSE with guidance aim. */
-    private void addNoseTrackingAcceleration(PhysShip physShip,
+    private void addNoseTrackingAcceleration(ServerSubLevel subLevel,
                                              double dx, double dy, double dz,
                                              double strength, Vector3d accumulator) {
         try {
-            scratchCurrentRotation.set(physShip.getTransform().getShipToWorldRotation()).normalize();
+            scratchCurrentRotation.set(subLevel.logicalPose().orientation()).normalize();
             scratchCurrentRotation.transform(scratchNose.set(bodyNoseX, bodyNoseY, bodyNoseZ));
             scratchNose.normalize();
 
@@ -1565,7 +1521,7 @@ public final class ShipBallisticController implements ShipPhysicsListener {
         }
     }
 
-    private void addQuaternionAttitudeTorque(PhysShip physShip,
+    private void addQuaternionAttitudeTorque(ServerSubLevel subLevel,
                                              double dx, double dy, double dz,
                                              double strength, Vector3d accumulator) {
         try {
@@ -1582,7 +1538,7 @@ public final class ShipBallisticController implements ShipPhysicsListener {
             // Preserve the current roll while swinging the nose. Switching between
             // fixed world-up axes near vertical created a discontinuous desired
             // quaternion and was the main source of sudden roll flips.
-            scratchCurrentRotation.set(physShip.getTransform().getShipToWorldRotation()).normalize();
+            scratchCurrentRotation.set(subLevel.logicalPose().orientation()).normalize();
             scratchDesiredRotation.transform(scratchNose.set(bodyUpX, bodyUpY, bodyUpZ));
             scratchCurrentRotation.transform(scratchRight.set(bodyUpX, bodyUpY, bodyUpZ));
             double projection = scratchRight.x * dx + scratchRight.y * dy + scratchRight.z * dz;

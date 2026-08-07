@@ -1,5 +1,7 @@
 package net.bullettrain.xenopixelsmod.dmz;
 
+import net.neoforged.fml.common.EventBusSubscriber;
+
 import com.dragonminez.common.config.ConfigManager;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
@@ -7,11 +9,11 @@ import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import net.bullettrain.xenopixelsmod.XenoPixelsMod;
-import net.minecraftforge.event.server.ServerStartingEvent;
-import net.minecraftforge.eventbus.api.EventPriority;
-import net.minecraftforge.eventbus.api.SubscribeEvent;
-import net.minecraftforge.fml.common.Mod;
-import net.minecraftforge.fml.loading.FMLPaths;
+import net.neoforged.neoforge.event.server.ServerStartingEvent;
+import net.neoforged.bus.api.EventPriority;
+import net.neoforged.bus.api.SubscribeEvent;
+import net.neoforged.fml.common.Mod;
+import net.neoforged.fml.loading.FMLPaths;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -56,7 +58,7 @@ import java.util.Map;
  * </ul>
  * Masters: <b>Beerus</b> and <b>Whis</b> only for every Xeno form skill.
  */
-@Mod.EventBusSubscriber(modid = XenoPixelsMod.MOD_ID)
+@EventBusSubscriber(modid = XenoPixelsMod.MOD_ID)
 public final class DmzContentBootstrap {
     private static final Gson GSON = new GsonBuilder().setPrettyPrinting().disableHtmlEscaping().create();
 
