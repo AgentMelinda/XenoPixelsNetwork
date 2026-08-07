@@ -12,7 +12,7 @@ import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.components.EditBox;
 import net.minecraft.client.gui.components.Tooltip;
-import net.minecraft.client.gui.screens.Screen;
+import net.bullettrain.xenopixelsmod.client.screen.UnblurredScreen;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.chat.Component;
 import net.neoforged.fml.ModList;
@@ -22,7 +22,7 @@ import java.util.List;
 import java.util.Locale;
 
 /** Accuracy-first, server-authoritative ballistic flight-plan editor. */
-public final class FlightPlannerScreen extends Screen {
+public final class FlightPlannerScreen extends UnblurredScreen {
     private enum Tab { EASY, PLAN, AUTO_PLAN, CALCULATOR, BODY, PHASES, WAYPOINTS, ALTITUDE, ENGINE, FLEET, TELEMETRY }
 
     private final ClientScreens.GuidanceOpenData openData;

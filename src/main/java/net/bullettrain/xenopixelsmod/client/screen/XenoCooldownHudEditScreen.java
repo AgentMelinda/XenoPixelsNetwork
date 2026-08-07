@@ -3,8 +3,8 @@ package net.bullettrain.xenopixelsmod.client.screen;
 import net.bullettrain.xenopixelsmod.client.XenoCooldownHudOverlay;
 import net.bullettrain.xenopixelsmod.client.config.XenoCooldownHudConfig;
 import net.minecraft.client.gui.GuiGraphics;
-import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.screens.Screen;
+import net.minecraft.client.gui.components.Button;
 import net.minecraft.network.chat.Component;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.api.distmarker.OnlyIn;
@@ -13,7 +13,7 @@ import net.neoforged.api.distmarker.OnlyIn;
  * Drag / scroll editor for the combat cooldown HUD.
  */
 @OnlyIn(Dist.CLIENT)
-public class XenoCooldownHudEditScreen extends Screen {
+public class XenoCooldownHudEditScreen extends UnblurredScreen {
     private final Screen parent;
     private boolean dragging;
     private int dragOffX;

@@ -3,8 +3,8 @@ package net.bullettrain.xenopixelsmod.client.screen;
 import net.bullettrain.xenopixelsmod.client.XenoTechniqueHotbarOverlay;
 import net.bullettrain.xenopixelsmod.client.config.XenoHotbarConfig;
 import net.minecraft.client.gui.GuiGraphics;
-import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.screens.Screen;
+import net.minecraft.client.gui.components.Button;
 import net.minecraft.network.chat.Component;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.api.distmarker.OnlyIn;
@@ -16,7 +16,7 @@ import net.neoforged.api.distmarker.OnlyIn;
  * two independently moveable/resizeable regions instead of one.
  */
 @OnlyIn(Dist.CLIENT)
-public class XenoHotbarEditScreen extends Screen {
+public class XenoHotbarEditScreen extends UnblurredScreen {
     private enum DragTarget {
         NONE, HOTBAR, HOTBAR_RESIZE, CHARGE, CHARGE_RESIZE
     }

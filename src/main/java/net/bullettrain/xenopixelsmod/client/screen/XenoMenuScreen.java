@@ -4,16 +4,16 @@ import net.bullettrain.xenopixelsmod.client.config.XenoClientConfig;
 import net.bullettrain.xenopixelsmod.client.content.XenoContentCatalog;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.screens.ConnectScreen;
-import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.gui.screens.TitleScreen;
 import net.minecraft.client.multiplayer.ServerData;
 import net.minecraft.client.multiplayer.resolver.ServerAddress;
 import net.minecraft.network.chat.Component;
 
 /** Client title/pause menu entry (no {@code @OnlyIn} — mixins reference this class). */
-public class XenoMenuScreen extends Screen {
+public class XenoMenuScreen extends UnblurredScreen {
     private static final String SERVER_HOST = "xpn.co.il";
 
     private final Screen parent;

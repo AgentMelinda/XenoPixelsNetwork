@@ -8,7 +8,7 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.components.EditBox;
-import net.minecraft.client.gui.screens.Screen;
+import net.bullettrain.xenopixelsmod.client.screen.UnblurredScreen;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.item.ItemStack;
 
@@ -17,7 +17,7 @@ import net.minecraft.world.item.ItemStack;
  * - Set Target: persists coordinates on the held Target Tool through the server.
  * - Teleport Ship: sends a packet to the server to teleport the VS2 ship the player is standing on.
  */
-public class TargetScreen extends Screen {
+public class TargetScreen extends UnblurredScreen {
     private EditBox xBox;
     private EditBox yBox;
     private EditBox zBox;

@@ -3,14 +3,14 @@ package net.bullettrain.xenopixelsmod.client.screen;
 import net.bullettrain.xenopixelsmod.client.XenoHudOverlay;
 import net.bullettrain.xenopixelsmod.client.config.XenoHudConfig;
 import net.minecraft.client.gui.GuiGraphics;
-import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.screens.Screen;
+import net.minecraft.client.gui.components.Button;
 import net.minecraft.network.chat.Component;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.api.distmarker.OnlyIn;
 
 @OnlyIn(Dist.CLIENT)
-public class XenoHudEditScreen extends Screen {
+public class XenoHudEditScreen extends UnblurredScreen {
     private enum DragTarget {
         NONE, HUD, RESIZE
     }

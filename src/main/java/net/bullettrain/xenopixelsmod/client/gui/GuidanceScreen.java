@@ -5,7 +5,7 @@ import net.bullettrain.xenopixelsmod.network.packet.GuidanceControlPacket;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.components.EditBox;
-import net.minecraft.client.gui.screens.Screen;
+import net.bullettrain.xenopixelsmod.client.screen.UnblurredScreen;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.phys.BlockHitResult;
@@ -14,7 +14,7 @@ import net.minecraft.world.phys.HitResult;
 /**
  * Ballistic Guidance — target XYZ, speed, loft Y (climb peak), cruise Y (level flight).
  */
-public class GuidanceScreen extends Screen {
+public class GuidanceScreen extends UnblurredScreen {
     private final BlockPos computerPos;
     private final int initialX, initialY, initialZ;
     private final String statusLine;

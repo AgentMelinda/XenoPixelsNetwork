@@ -2,8 +2,8 @@ package net.bullettrain.xenopixelsmod.client.screen;
 
 import net.bullettrain.xenopixelsmod.client.content.XenoContentCatalog;
 import net.minecraft.client.gui.GuiGraphics;
-import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.screens.Screen;
+import net.minecraft.client.gui.components.Button;
 import net.minecraft.network.chat.Component;
 import net.minecraft.util.FormattedCharSequence;
 import net.neoforged.api.distmarker.Dist;
@@ -12,7 +12,7 @@ import net.neoforged.api.distmarker.OnlyIn;
 import java.util.List;
 
 @OnlyIn(Dist.CLIENT)
-public class XenoContentListScreen extends Screen {
+public class XenoContentListScreen extends UnblurredScreen {
     private final Screen parent;
     private final String heading;
     private final List<XenoContentCatalog.Entry> entries;
