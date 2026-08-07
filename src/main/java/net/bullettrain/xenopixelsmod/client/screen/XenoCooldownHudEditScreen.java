@@ -118,7 +118,7 @@ public class XenoCooldownHudEditScreen extends UnblurredScreen {
                 "Drag panel to move  |  Scroll or drag bottom edge to resize",
                 this.width / 2, 12, 0xFFAAAAAA);
         graphics.drawCenteredString(this.font,
-                String.format("Cooldown HUD  x=%d y=%d  scale=%.2fx  %s",
+                String.format("Cooldown HUD  x=%d y=%d  scale=%.3fx  %s",
                         XenoCooldownHudConfig.x, XenoCooldownHudConfig.y, XenoCooldownHudConfig.scale,
                         XenoCooldownHudConfig.horizontal ? "horizontal" : "vertical"),
                 this.width / 2, 26, 0xFF42A5F5);

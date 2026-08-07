@@ -19,7 +19,12 @@ import java.nio.file.Path;
  */
 @OnlyIn(Dist.CLIENT)
 public final class XenoCooldownHudConfig {
-    public static final float MIN_SCALE = 0.5f;
+    public static final int DEFAULT_X = 0;
+    public static final int DEFAULT_Y = 42;
+    public static final float DEFAULT_SCALE = 0.475f;
+    public static final boolean DEFAULT_SHOW_ONLY_WHEN_ACTIVE = true;
+
+    public static final float MIN_SCALE = 0.25f;
     public static final float MAX_SCALE = 2.5f;
 
     private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
@@ -29,12 +34,12 @@ public final class XenoCooldownHudConfig {
     public static boolean visible = true;
 
     /** Top-left anchor (screen pixels). */
-    public static int x = 2;
-    public static int y = 84;
-    public static float scale = 0.87f;
+    public static int x = DEFAULT_X;
+    public static int y = DEFAULT_Y;
+    public static float scale = DEFAULT_SCALE;
 
     /** When true, hide the whole strip while nothing is on cooldown / charging. (Default true for FPS.) */
-    public static boolean showOnlyWhenActive = true;
+    public static boolean showOnlyWhenActive = DEFAULT_SHOW_ONLY_WHEN_ACTIVE;
 
     /** Horizontal row (true) vs vertical column (false). */
     public static boolean horizontal = true;
@@ -137,7 +142,7 @@ public final class XenoCooldownHudConfig {
         visible = d.visible;
         x = d.x;
         y = d.y;
-        scale = clampScale(d.scale <= 0f ? 1f : d.scale);
+        scale = clampScale(d.scale <= 0f ? DEFAULT_SCALE : d.scale);
         showOnlyWhenActive = d.showOnlyWhenActive;
         horizontal = d.horizontal;
         showLabels = d.showLabels;
@@ -154,10 +159,10 @@ public final class XenoCooldownHudConfig {
 
     public static class Data {
         public boolean visible = true;
-        public int x = 0;
-        public int y = 44;
-        public float scale = 0.75f;
-        public boolean showOnlyWhenActive = false;
+        public int x = DEFAULT_X;
+        public int y = DEFAULT_Y;
+        public float scale = DEFAULT_SCALE;
+        public boolean showOnlyWhenActive = DEFAULT_SHOW_ONLY_WHEN_ACTIVE;
         public boolean horizontal = true;
         public boolean showLabels = true;
         public boolean showSeconds = true;
