@@ -64,3 +64,12 @@ type="optional"
 versionRange="[1.40,)"
 ordering="AFTER"
 side="CLIENT"
+
+# Modern UI — Jar-in-Jar bundled (see build.gradle jarJar). Soft-dep so an external
+# ModernUI-NeoForge 1.21.1 install still coexists cleanly with the nested copy.
+[[dependencies.${mod_id}]]
+modId="modernui"
+type="optional"
+versionRange="[3.12.0,)"
+ordering="AFTER"
+side="BOTH"

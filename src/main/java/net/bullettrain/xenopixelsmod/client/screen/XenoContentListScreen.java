@@ -63,7 +63,7 @@ public class XenoContentListScreen extends UnblurredScreen {
             boolean hover = mouseX >= listX && mouseX <= listX + listW && mouseY >= y && mouseY < y + rowH;
             int bg = sel ? 0xCC1E3A6A : (hover ? 0xAA152040 : 0x660A1228);
             graphics.fill(listX, y, listX + listW, y + rowH - 2, bg);
-            graphics.fill(listX, y, listX + 3, y + rowH - 2, e.accent | 0xFF000000);
+            graphics.fill(listX, y, listX + 3, y + rowH - 2, e.accentOpaque());
             graphics.drawString(this.font, e.title, listX + 8, y + 6, sel ? 0xFFFFFFFF : 0xFFDDDDDD, false);
         }
 
@@ -73,12 +73,12 @@ public class XenoContentListScreen extends UnblurredScreen {
         int dy = listY - 4;
         int dh = this.height - dy - 40;
         graphics.fill(dx, dy, dx + dw, dy + dh, 0xAA0A1020);
-        graphics.fill(dx, dy, dx + 4, dy + dh, selected >= 0 ? (entries.get(selected).accent | 0xFF000000) : 0xFF42A5F5);
+        graphics.fill(dx, dy, dx + 4, dy + dh, selected >= 0 ? entries.get(selected).accentOpaque() : 0xFF42A5F5);
 
         if (selected >= 0 && selected < entries.size()) {
             XenoContentCatalog.Entry e = entries.get(selected);
             graphics.drawString(this.font, e.title, dx + 14, dy + 12, 0xFFFFFFFF, false);
-            graphics.drawString(this.font, e.subtitle, dx + 14, dy + 28, e.accent | 0xFF000000, false);
+            graphics.drawString(this.font, e.subtitle, dx + 14, dy + 28, e.accentOpaque(), false);
 
             List<FormattedCharSequence> lines = this.font.split(Component.literal(e.detail), dw - 28);
             int ty = dy + 50;

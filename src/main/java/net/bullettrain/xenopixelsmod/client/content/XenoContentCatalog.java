@@ -22,7 +22,13 @@ import java.util.Optional;
 
 @OnlyIn(Dist.CLIENT)
 public final class XenoContentCatalog {
-    private static final Gson GSON = new GsonBuilder().create();
+    /**
+     * ARGB accents in JSON are often written as unsigned 32-bit ints (e.g. 4280391411).
+     * Gson's default {@code int} mapping rejects those as out of signed range — parse via long.
+     */
+    private static final Gson GSON = new GsonBuilder()
+            .registerTypeAdapter(Entry.class, new EntryJsonAdapter())
+            .create();
     private static final String[] CLASSPATH_PATHS = {
             "/data/xenopixelsmod/dmz/content_catalog.json",
             "/assets/xenopixelsmod/dmz/content_catalog.json",
@@ -226,6 +232,88 @@ public final class XenoContentCatalog {
         public String title = "";
         public String subtitle = "";
         public String detail = "";
+        /** Packed ARGB color (may be set from unsigned JSON numbers). */
         public int accent = 0xFF42A5F5;
+
+        /** Accent as full-opaque ARGB for fill/draw calls. */
+        public int accentOpaque() {
+            return accent | 0xFF000000;
+        }
+    }
+
+    /** Gson adapter so unsigned ARGB numbers / hex strings deserialize into {@link Entry#accent}. */
+    private static final class EntryJsonAdapter extends com.google.gson.TypeAdapter<Entry> {
+        @Override
+        public void write(com.google.gson.stream.JsonWriter out, Entry value) throws java.io.IOException {
+            if (value == null) {
+                out.nullValue();
+                return;
+            }
+            out.beginObject();
+            out.name("id").value(value.id);
+            out.name("title").value(value.title);
+            out.name("subtitle").value(value.subtitle);
+            out.name("detail").value(value.detail);
+            // Write as unsigned long so re-export stays stable.
+            out.name("accent").value(Integer.toUnsignedLong(value.accent));
+            out.endObject();
+        }
+
+        @Override
+        public Entry read(com.google.gson.stream.JsonReader in) throws java.io.IOException {
+            Entry e = new Entry();
+            in.beginObject();
+            while (in.hasNext()) {
+                String name = in.nextName();
+                switch (name) {
+                    case "id" -> e.id = nullToEmpty(in.nextString());
+                    case "title" -> e.title = nullToEmpty(in.nextString());
+                    case "subtitle" -> e.subtitle = nullToEmpty(in.nextString());
+                    case "detail" -> e.detail = nullToEmpty(in.nextString());
+                    case "accent" -> e.accent = readAccent(in);
+                    default -> in.skipValue();
+                }
+            }
+            in.endObject();
+            return e;
+        }
+
+        private static String nullToEmpty(String s) {
+            return s == null ? "" : s;
+        }
+
+        private static int readAccent(com.google.gson.stream.JsonReader in) throws java.io.IOException {
+            return switch (in.peek()) {
+                case NULL -> {
+                    in.nextNull();
+                    yield 0xFF42A5F5;
+                }
+                case STRING -> parseAccentString(in.nextString());
+                case NUMBER -> (int) in.nextLong(); // accepts unsigned ARGB like 4280391411
+                default -> {
+                    in.skipValue();
+                    yield 0xFF42A5F5;
+                }
+            };
+        }
+
+        private static int parseAccentString(String raw) {
+            if (raw == null || raw.isBlank()) return 0xFF42A5F5;
+            String s = raw.trim();
+            try {
+                if (s.startsWith("#")) {
+                    s = s.substring(1);
+                    if (s.length() == 6) s = "FF" + s;
+                    return (int) Long.parseLong(s, 16);
+                }
+                if (s.startsWith("0x") || s.startsWith("0X")) {
+                    return Long.decode(s).intValue();
+                }
+                // Decimal string that may exceed signed int
+                return (int) Long.parseLong(s);
+            } catch (NumberFormatException ex) {
+                return 0xFF42A5F5;
+            }
+        }
     }
 }
