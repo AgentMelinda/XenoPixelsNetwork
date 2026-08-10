@@ -20,9 +20,7 @@ public final class XenoThrusterControl {
     private final Map<String, ThrusterForce> thrusters = new ConcurrentHashMap<>();
     private volatile ThrusterForce[] physicsSnapshot = new ThrusterForce[0];
     private final Vector3d localImpulse = new Vector3d();
-    private final Vector3d worldImpulse = new Vector3d();
     private final Vector3d localPoint = new Vector3d();
-    private final Vector3d worldPoint = new Vector3d();
 
     public static void ensureRegistered() {
         if (!REGISTERED.compareAndSet(false, true)) return;
@@ -34,7 +32,11 @@ public final class XenoThrusterControl {
                 RigidBodyHandle handle = system.getPhysicsHandle(subLevel);
                 if (handle != null && handle.isValid()) control.physicsTick(subLevel, handle, deltaSeconds);
             }
-            CONTROLS.keySet().removeIf(id -> SubLevelContainer.getContainer(system.getLevel()).getSubLevel(id) == null);
+            // No map cleanup here: this callback fires once per DIMENSION's physics system, so
+            // a removeIf against the currently ticking dimension's container wiped controls for
+            // ships in every OTHER dimension, making thrust flicker as the game thread raced to
+            // re-register it. Entries are tiny, re-created by the thruster BEs, and emptied by
+            // clearAll().
         });
         XenoPixelsMod.LOGGER.info("Registered Sable thruster physics callback");
     }
@@ -85,11 +87,15 @@ public final class XenoThrusterControl {
         for (ThrusterForce thruster : physicsSnapshot) {
             ForceState state = thruster.state;
             if (state == null || state.power <= 0.0) continue;
+            // Everything stays in BODY/MODEL space: Sable's impulse API takes body-space vectors
+            // (its own FloatingBlockController transformInverse()s world velocity and gravity into
+            // body space before filling the impulse vectors it passes to that same call), and the
+            // center of mass it subtracts from this point is body-space too. A thruster's facing
+            // is already ship-local, so converting to world was a spurious extra rotation.
             localImpulse.set(state.forceX, state.forceY, state.forceZ).mul(state.power * step);
-            subLevel.logicalPose().transformNormal(localImpulse, worldImpulse);
             localPoint.set(state.posX + 0.5, state.posY + 0.5, state.posZ + 0.5);
-            subLevel.logicalPose().transformPosition(localPoint, worldPoint);
-            handle.applyImpulseAtPoint(worldImpulse, worldPoint);
+            // Argument order is (position, force) — these were passed the other way round.
+            handle.applyImpulseAtPoint(localPoint, localImpulse);
         }
     }
 

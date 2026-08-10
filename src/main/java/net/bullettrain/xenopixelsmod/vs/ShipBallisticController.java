@@ -203,7 +203,11 @@ public final class ShipBallisticController {
                     controller.physTick(subLevel, handle, deltaSeconds);
                 }
             }
-            CONTROLLERS.keySet().removeIf(id -> container.getSubLevel(id) == null);
+            // No map cleanup here: this callback fires once per DIMENSION's physics system, so
+            // a removeIf against the currently ticking dimension's container deleted controllers
+            // for ships in every OTHER dimension — killing each flight within a tick of launch
+            // (launch banner in the log, then no per-tick logs at all). Controllers remove
+            // themselves when their own flight ends instead.
         });
         XenoPixelsMod.LOGGER.info("Registered Sable ballistic physics callback");
     }
@@ -609,6 +613,9 @@ public final class ShipBallisticController {
             ACTIVE_FLIGHT_DIMS.remove(activeShipId);
             activeShipId = -1L;
         }
+        // Sole cleanup path for the static map (see ensureRegistered). A relaunch goes
+        // through getOrCreate(), so dropping this instance is safe.
+        CONTROLLERS.values().remove(this);
     }
 
     /** Game-thread phase machine + Y-corridor update. */
@@ -1188,6 +1195,7 @@ public final class ShipBallisticController {
             ACTIVE_FLIGHT_DIMS.remove(activeShipId);
             activeShipId = -1L;
         }
+        CONTROLLERS.values().remove(this);
         return true;
     }
 
@@ -1333,7 +1341,7 @@ public final class ShipBallisticController {
                 scratchForce.z -= vel.z() * scale;
             }
         }
-        applyComForce(handle, scratchForce);
+        applyComForce(handle, subLevel, scratchForce);
     }
 
     /**
@@ -1360,12 +1368,22 @@ public final class ShipBallisticController {
             scratchForce.zero();
         }
         scratchForce.y += mass * (VS_WORLD_GRAVITY_SI - gravitySi);
-        applyComForce(handle, scratchForce);
+        applyComForce(handle, subLevel, scratchForce);
     }
 
-    /** Apply world-space force through body CoM (zero lever arm → no tumble from offset). */
-    private void applyComForce(RigidBodyHandle handle, Vector3d worldForce) {
+    /**
+     * Apply world-space force through body CoM (zero lever arm → no tumble from offset).
+     *
+     * <p>Sable's impulse API takes BODY-space vectors, so the world-space force is rotated
+     * into body space first. Sable's own {@code FloatingBlockController} transformInverse()s
+     * world velocity and gravity into body space before filling the impulse vectors it hands
+     * to this same call, and {@code ReactionWheelManager} transformInverse()s immediately
+     * before applying. Passing world-space force made thrust come out rotated by the hull's
+     * orientation — backwards for a hull facing 180 degrees off.
+     */
+    private void applyComForce(RigidBodyHandle handle, ServerSubLevel subLevel, Vector3d worldForce) {
         scratchAuxTorque.set(worldForce).mul(physicsStepSeconds);
+        subLevel.logicalPose().orientation().transformInverse(scratchAuxTorque);
         handle.applyLinearImpulse(scratchAuxTorque);
     }
 
@@ -1466,24 +1484,28 @@ public final class ShipBallisticController {
                                                 double mass) {
         try {
             scratchCurrentRotation.set(subLevel.logicalPose().orientation()).normalize();
-            // I is supplied in model/body axes: alphaWorld -> alphaBody -> I*alphaBody -> torqueWorld.
+            // The tensor is in model/body axes and Sable consumes body-space torque, so the
+            // chain ends in body space: alphaWorld -> alphaBody -> I * alphaBody. Rotating the
+            // result back to world (as this used to) applied SAS torque about the wrong axes.
             scratchAuxTorque.set(angularAccelWorld);
             scratchCurrentRotation.transformInverse(scratchAuxTorque);
             subLevel.getMassTracker().getInertiaTensor().transform(scratchAuxTorque);
             if (!Double.isFinite(scratchAuxTorque.x) || !Double.isFinite(scratchAuxTorque.y)
                     || !Double.isFinite(scratchAuxTorque.z)) return;
-            scratchCurrentRotation.transform(scratchAuxTorque);
-            applyWorldTorque(handle, scratchAuxTorque);
+            applyBodyTorque(handle, scratchAuxTorque);
         } catch (Throwable ignored) {
-            // Older VS implementations may not expose a usable tensor. Retain a
-            // conservative scalar fallback instead of silently disabling SAS.
+            // Some hulls may not expose a usable tensor. Retain a conservative scalar
+            // fallback instead of silently disabling SAS.
             scratchAuxTorque.set(angularAccelWorld).mul(meanMomentOfInertia(subLevel, mass));
-            applyWorldTorque(handle, scratchAuxTorque);
+            scratchCurrentRotation.set(subLevel.logicalPose().orientation()).normalize()
+                    .transformInverse(scratchAuxTorque);
+            applyBodyTorque(handle, scratchAuxTorque);
         }
     }
 
-    private void applyWorldTorque(RigidBodyHandle handle, Vector3d torque) {
-        scratchAuxTorque.set(torque).mul(physicsStepSeconds);
+    /** Torque must already be in body/model axes — see {@link #applyComForce}. */
+    private void applyBodyTorque(RigidBodyHandle handle, Vector3d bodyTorque) {
+        scratchAuxTorque.set(bodyTorque).mul(physicsStepSeconds);
         handle.applyTorqueImpulse(scratchAuxTorque);
     }
 

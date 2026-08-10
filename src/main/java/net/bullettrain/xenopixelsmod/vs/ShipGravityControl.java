@@ -36,6 +36,11 @@ public final class ShipGravityControl {
                 double mass = Math.max(1.0, subLevel.getMassTracker().getMass());
                 double step = Math.max(0.0, Math.min(deltaSeconds, 0.1));
                 control.correctionImpulse.set(0.0, mass * difference * step, 0.0);
+                // World -> body: Sable's impulse API takes body-space vectors (its own
+                // FloatingBlockController transformInverse()s world gravity into body space
+                // before building the impulses it passes to this same call). Without this the
+                // correction tilted with the hull instead of staying vertical.
+                subLevel.logicalPose().orientation().transformInverse(control.correctionImpulse);
                 handle.applyLinearImpulse(control.correctionImpulse);
             }
         });
