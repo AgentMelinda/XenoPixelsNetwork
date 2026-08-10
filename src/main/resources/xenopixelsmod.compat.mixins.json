@@ -4,7 +4,10 @@
   "plugin": "net.bullettrain.xenopixelsmod.mixin.ConditionalMixinPlugin",
   "refmap": "mixins.xenopixelsmod.refmap.json",
   "compatibilityLevel": "JAVA_21",
-  "mixins": [],
+  "mixins": [
+    "compat.create.ContinuousOBBColliderMixin",
+    "compat.create.ContinuousSeparationManifoldMixin"
+  ],
   "client": [
     "compat.xaero.GuiMapWaypointPickerMixin"
   ],
