@@ -309,6 +309,25 @@ public final class XenoServerConfig {
      * silently doing nothing. Turning this off restores DMZ's stock behaviour exactly.
      */
     public static boolean allowKiWithItemInHand = true;
+
+    /**
+     * Punching an incoming ki blast sends it back. Answers the ranged-spam problem that guard
+     * alone cannot: guard costs stamina and still takes chip damage, so a defender with no way
+     * to return fire loses by attrition.
+     */
+    public static boolean kiDeflectEnabled = true;
+    /** Reach in blocks. Slightly beyond melee, since the blast is moving toward you. */
+    public static float kiDeflectReach = 4.0f;
+    /**
+     * How closely the player must be facing the blast, as a dot product. 0.55 is roughly a 57
+     * degree half-cone: generous enough to be usable at speed, tight enough that a blast passing
+     * behind you was genuinely dodged rather than punchable.
+     */
+    public static float kiDeflectAimDot = 0.55f;
+    /** Returned speed as a multiple of the incoming speed. Above 1 rewards the read. */
+    public static float kiDeflectSpeedScale = 1.15f;
+    /** Floor on returned speed, so a nearly-stalled blast still travels somewhere. */
+    public static float kiDeflectMinSpeed = 0.8f;
     /**
      * YAWP flags consulted for ki griefing caused by a player. Griefing is denied when any
      * listed flag is DENIED at the target block, evaluated with the player's region
@@ -469,6 +488,11 @@ public final class XenoServerConfig {
         d.yawpKiGriefingEnabled = yawpKiGriefingEnabled;
         d.sneakToPickup = sneakToPickup;
         d.allowKiWithItemInHand = allowKiWithItemInHand;
+        d.kiDeflectEnabled = kiDeflectEnabled;
+        d.kiDeflectReach = kiDeflectReach;
+        d.kiDeflectAimDot = kiDeflectAimDot;
+        d.kiDeflectSpeedScale = kiDeflectSpeedScale;
+        d.kiDeflectMinSpeed = kiDeflectMinSpeed;
         d.yawpPlayerKiFlags = new java.util.ArrayList<>(yawpPlayerKiFlags);
         d.yawpMobKiFlags = new java.util.ArrayList<>(yawpMobKiFlags);
         d.masterKiGriefRadius = masterKiGriefRadius;
@@ -595,6 +619,11 @@ public final class XenoServerConfig {
         yawpKiGriefingEnabled = d.yawpKiGriefingEnabled;
         sneakToPickup = d.sneakToPickup;
         allowKiWithItemInHand = d.allowKiWithItemInHand;
+        kiDeflectEnabled = d.kiDeflectEnabled;
+        kiDeflectReach = Math.max(0.5f, d.kiDeflectReach);
+        kiDeflectAimDot = Math.max(-1f, Math.min(1f, d.kiDeflectAimDot));
+        kiDeflectSpeedScale = Math.max(0.1f, d.kiDeflectSpeedScale);
+        kiDeflectMinSpeed = Math.max(0.05f, d.kiDeflectMinSpeed);
         // A missing list means "config written before this option existed" - keep the defaults.
         // An explicitly empty list is honoured: it disables that half of the check.
         if (d.yawpPlayerKiFlags != null) {
@@ -1027,6 +1056,11 @@ public final class XenoServerConfig {
         public boolean yawpKiGriefingEnabled = true;
         public boolean sneakToPickup = true;
         public boolean allowKiWithItemInHand = true;
+        public boolean kiDeflectEnabled = true;
+        public float kiDeflectReach = 4.0f;
+        public float kiDeflectAimDot = 0.55f;
+        public float kiDeflectSpeedScale = 1.15f;
+        public float kiDeflectMinSpeed = 0.8f;
         // Null (absent from an older config file) means "use the defaults"; see apply().
         public java.util.List<String> yawpPlayerKiFlags = null;
         public java.util.List<String> yawpMobKiFlags = null;

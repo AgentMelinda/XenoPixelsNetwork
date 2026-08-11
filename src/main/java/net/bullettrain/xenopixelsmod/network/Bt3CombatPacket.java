@@ -760,6 +760,11 @@ net.bullettrain.xenopixelsmod.combat.VanishShadeFx.spawn(player, from);
     }
 
     private static void handleCombo(ServerPlayer player, LivingEntity target, int step, Resources res, StatsData data) {
+        // Deflection first, and it consumes the swing. Checked here rather than on a key of its
+        // own because this runs on every attack press including a whiff, which is exactly when a
+        // player is punching at an incoming blast rather than at a body.
+        if (net.bullettrain.xenopixelsmod.combat.KiDeflect.tryDeflect(player)) return;
+
         // maxComboSteps = finisher every N hits; counter itself free-runs up to 99
         int finisherEvery = Math.max(1, XenoServerConfig.maxComboSteps);
         int countCap = 99;
