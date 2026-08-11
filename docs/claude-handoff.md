@@ -587,3 +587,79 @@ rather than a repo document.
 - `vanish_out.ogg` is still an MP3 renamed to `.ogg`, so vanish is silent. See
   `docs/vanish-sound.md`.
 - The server world-height mismatch is not this mod's; see the Session 2 section.
+
+---
+
+# Session 5
+
+**The first in-game screenshot arrived**, which found a real HUD bug. Also ports CC:LiftLink's
+elevator ComputerCraft methods.
+
+## First in-game look at the modern HUD
+
+Working as intended: the bevelled plate, gradient HP/KI bars with the lit leading tip, the 16
+stamina segments, the DMZ release percentage beside the name (the Session 2 fix), and the combat
+strip with key badges, per-move accent rails, meters and the combo counter.
+
+**The sparking pip column was painting over the bars.** `SPARK_X` was `PORTRAIT_X + PORTRAIT + 2`
+= 68 with a 12px sprite, so the lane spanned 68..80, while `CONTENT_LEFT` was
+`PORTRAIT_X + PORTRAIT + 8` = 74. `drawSparkPips` runs after `drawBar`, so the pips landed on top
+of the first 6px of every bar. Four of them are dark `spark_off` art over bright bars and read as
+notches; the fifth sits below the stamina row over bare plate, which is the stray dot in the
+screenshot — scaling back from it puts the dot at unscaled y≈72, exactly pip 5 at
+`SPARK_Y + 4*13 = 64..76`.
+
+`CONTENT_LEFT` is now derived from the pip lane (`SPARK_X + SPARK_W + SPARK_GUTTER` = 84) rather
+than sharing an origin with it, so the collision is unrepresentable. Cluster width 378 -> 388;
+the unified renderer recomputes `perRow` from it. The 13px pitch is now `SPARK_STEP` rather than
+hardcoded in the view.
+
+Two things noted and deliberately left: the HP/KI numerals sit on top of the bar frame and lit
+tip at the right end, and the screenshot is the plain `modern` renderer — `modernunified` has
+still never been looked at.
+
+## Create elevator ComputerCraft methods
+
+`compat/create/elevator/{ElevatorMethods,ElevatorHelpers}.java`, registered from `CcCompat`.
+Full API reference in `docs/create-elevator-cc.md`.
+
+Ported from CC:LiftLink, which targets 1.20.1/Forge. The peripheral type (`create_elevator`),
+method names and returned table keys are identical, so existing Lua runs unchanged.
+
+**Create became a compile dependency for the first time.** Everything else Create-related in this
+repo works off registry names — `CreateWrenchHandler` looks up `create:wrench` as a
+`ResourceLocation` — but the elevator API cannot be reached that way. Create `6.0.11-295` is now
+`compileOnly`, along with the four libraries javac needs to resolve the elevator classes'
+supertypes: Ponder, Catnip, Flywheel API and Registrate. `transitive = false` on Create itself,
+because its POM pulls a runtime Flywheel and an open-ended Ponder range that would otherwise
+decide our build. Repositories added: `maven.createmod.net` and `maven.ithundxr.dev/snapshots`
+(Registrate is not on Create's own maven). Verified that no Create class ends up in the jar.
+
+The 1.21.1 API was checked member by member with `javap` against the real jar rather than assumed
+from the 1.20.1 original. Everything upstream uses is unchanged, including the public
+`shortName` / `longName` / `lastReportedCurrentFloor` / `offset` fields and the still-protected
+`ControlledContraptionEntity.controllerPos` that forces the reflection.
+
+Gating follows the rule the rest of this repo's optional compat uses: a `[6.0,)` range in
+`mods.toml` wide enough that a Create bump cannot become a boot failure, plus a `Class.forName`
+probe on `ElevatorContactBlockEntity` before anything names `ElevatorMethods` — the registration
+call lives in its own one-line method so the guards have all returned before the JVM has any
+reason to resolve Create's types. It also stands down if `createelevatorcc` is ever installed
+alongside, since CC rejects duplicate method names on one peripheral.
+
+Three deviations from upstream, all commented in place and listed in the doc: the fallback pulley
+scan is bounded to the contact Y range plus 64 rather than the whole world height across a 7x7
+column (~19k lookups per call on a standard world, ~200k on `xeno_max_overworld`, on the server
+thread, every poll); `bestFloorName` no longer uses `Objects.requireNonNullElse`, which throws
+when both names are null; and `modName` reports this mod.
+
+**Licence:** CC:LiftLink is MPL-2.0 and this is a derivative. Under MPL-2.0 section 3.3 the two
+ported files stay MPL — headers in both, entry in `THIRD_PARTY_NOTICES.md` — while the rest of
+the mod keeps All Rights Reserved. That is permitted but means their source ships with the
+project. If carrying MPL files is unwanted, the alternative is a clean-room reimplementation
+against Create's API without reference to theirs.
+
+## Verification
+
+`./gradlew build` passes; 34 tests, zero failures. The elevator methods have **not** been run in
+game — there is no Create install in this environment to attach a modem to.
