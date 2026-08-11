@@ -23,6 +23,13 @@ run
 run-data
 libs
 
+# build/compile transcripts written to the repo root while iterating
+*.log
+
+# byte-compiled tools/*.py helpers
+__pycache__
+*.pyc
+
 
 # Files from Forge MDK
 forge*changelog.txt
