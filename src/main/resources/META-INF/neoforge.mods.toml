@@ -79,6 +79,20 @@ versionRange="[0.6,)"
 ordering="AFTER"
 side="BOTH"
 
+# Create — the elevator ComputerCraft methods (see compat/create/elevator). Create is compiled
+# against but never required: with it absent the peripheral is simply not registered, and the
+# Create wrench support elsewhere works off registry names and needs no dependency at all.
+#
+# Same wide-range rule as YAWP above: an installed "optional" must still satisfy the range, so
+# "[6.0,)" covers the whole Create 6 line rather than turning a version bump into a boot
+# failure. The elevator API this uses has been stable across 6.0.x on both 1.20.1 and 1.21.1.
+[[dependencies.${mod_id}]]
+modId="create"
+type="optional"
+versionRange="[6.0,)"
+ordering="AFTER"
+side="BOTH"
+
 # Modern UI — Jar-in-Jar bundled (see build.gradle jarJar). Soft-dep so an external
 # ModernUI-NeoForge 1.21.1 install still coexists cleanly with the nested copy.
 [[dependencies.${mod_id}]]

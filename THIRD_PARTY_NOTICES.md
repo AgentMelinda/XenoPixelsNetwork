@@ -24,3 +24,18 @@ PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS 
 ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE,
 ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
+
+## CC:LiftLink
+
+`compat/create/elevator/ElevatorHelpers.java` and `compat/create/elevator/ElevatorMethods.java`
+are derived from CC:LiftLink (https://github.com/tiktop101/CC-LiftLink), which targets
+Minecraft 1.20.1 / Forge; ours is the 1.21.1 / NeoForge port of it. The Lua-facing method names
+and returned table keys are kept identical so programs written against CC:LiftLink run
+unchanged.
+
+CC:LiftLink is licensed under the Mozilla Public License 2.0. Under MPL-2.0 section 3.3 those
+two files remain covered by the MPL even though the rest of XenoPixels Network does not: each
+carries an MPL header, and their source — including our modifications — is distributed with
+this project. The remainder of XenoPixels Network is unaffected and keeps its own licence.
+
+A copy of the MPL-2.0 is available at https://mozilla.org/MPL/2.0/.

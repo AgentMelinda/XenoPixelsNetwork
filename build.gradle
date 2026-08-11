@@ -95,6 +95,22 @@ repositories {
         }
     }
     maven {
+        name = 'Create'
+        url = 'https://maven.createmod.net'
+        content {
+            includeGroup 'com.simibubi.create'
+            includeGroup 'net.createmod.ponder'
+            includeGroup 'net.createmod.catnip'
+            includeGroup 'dev.engine-room.flywheel'
+        }
+    }
+    maven {
+        // Registrate is not on Create's own maven; this is where Create itself resolves it.
+        name = 'Registrate'
+        url = 'https://maven.ithundxr.dev/snapshots'
+        content { includeGroup 'com.tterrag.registrate' }
+    }
+    maven {
         name = 'Modrinth'
         url = 'https://api.modrinth.com/maven/'
         content { includeGroup 'maven.modrinth' }
@@ -150,6 +166,14 @@ dependencies {
     // Yet Another World Protector - region protection. Ki griefing asks its flags before
     // breaking blocks; the mod is optional at runtime and the compat is gated on it.
     compileOnly "maven.modrinth:yawp:${yawp_version}"
+    // Create - elevator ComputerCraft methods. transitive=false because Create's POM pulls a
+    // runtime Flywheel and an open-ended Ponder range we do not want deciding our build; the
+    // four libraries it actually needs at compile time are pinned below instead.
+    compileOnly("com.simibubi.create:create-1.21.1:${create_version}") { transitive = false }
+    compileOnly "net.createmod.ponder:ponder-neoforge:${create_ponder_version}"
+    compileOnly "net.createmod.catnip:Catnip-NeoForge-1.21.1:${create_catnip_version}"
+    compileOnly "dev.engine-room.flywheel:flywheel-neoforge-api-1.21.1:${create_flywheel_version}"
+    compileOnly "com.tterrag.registrate:Registrate:${create_registrate_version}"
     compileOnly "xaero.lib:xaerolib-neoforge-1.21.1:${xaerolib_version}"
     compileOnly "xaero.map:xaeroworldmap-neoforge-1.21.1:${xaero_world_map_version}:all"
 
