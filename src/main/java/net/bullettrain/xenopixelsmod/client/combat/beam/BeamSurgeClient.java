@@ -50,19 +50,34 @@ public final class BeamSurgeClient {
         if (player == null || event.getEntity() != player) return;
         if (player.tickCount % SEND_INTERVAL_TICKS != 0) return;
 
-        // The technique that fired the beam is held on Use, the same key DMZ charges with.
-        if (!minecraft.options.keyUse.isDown()) return;
+        // A wave is cast with an Alt+1..4 slot chord and only starts firing once that chord is
+        // RELEASED, so there is no DMZ key held during the firing window at all. Surge therefore
+        // needs a binding of its own, which the player holds while the beam is out.
+        if (!net.bullettrain.xenopixelsmod.client.combat.Bt3CombatClient.BEAM_SURGE.isDown()) return;
         if (minecraft.screen != null) return;
         if (!ownsFiringWave(player)) return;
 
         ModNetwork.sendToServer(new BeamSurgePacket());
     }
 
-    private static boolean ownsFiringWave(LocalPlayer player) {
+    /**
+     * Whether this player owns a wave that is currently firing.
+     *
+     * <p>Public because the shared C binding needs the same answer: while this is true the key
+     * drives the surge and the ki-blast cancel stands down.
+     *
+     * <p>Reads the world rather than tracking the cast, because a wave is anchored 2.5 blocks in
+     * front of its owner and never moves, and because duplicating DMZ's charge-and-release state
+     * machine on our side would drift out of step with theirs. Owner identity is compared by UUID
+     * — the form DMZ's own {@code isFiringKiAttack} uses — since the client resolves a
+     * projectile's owner from the spawn packet and reference equality is the more fragile test.
+     */
+    public static boolean ownsFiringWave(LocalPlayer player) {
+        if (player == null || player.level() == null) return false;
         AABB box = player.getBoundingBox().inflate(SEARCH_RADIUS);
         for (KiWaveEntity wave : player.level().getEntitiesOfClass(KiWaveEntity.class, box,
                 candidate -> candidate.isAlive() && candidate.isFiring())) {
-            if (wave.getOwner() == player) return true;
+            if (wave.isOwner(player)) return true;
         }
         return false;
     }

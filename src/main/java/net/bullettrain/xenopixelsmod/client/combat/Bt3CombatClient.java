@@ -83,6 +83,19 @@ public final class Bt3CombatClient {
     public static final KeyMapping Z_BURST = new KeyMapping(
             "key.xenopixelsmod.bt3_zburst", KeyConflictContext.IN_GAME,
             InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_V, "key.categories.xenopixelsmod");
+    /**
+     * Hold while your own ki wave is firing to make it grow.
+     *
+     * <p>Shares C with {@link #KI_BLAST_CANCEL} by default. Both are ours, so the collision is
+     * resolved by context rather than by two actions racing: while a firing wave is owned this
+     * key drives the surge and the cancel is suppressed. The contexts barely overlap in practice
+     * — cancel is a mid-combo tool and surge only exists while a beam is out — but leaving two
+     * actions silently on one key is how a "sometimes it cancels instead" report gets written.
+     * Either can be rebound.
+     */
+    public static final KeyMapping BEAM_SURGE = new KeyMapping(
+            "key.xenopixelsmod.bt3_beam_surge", KeyConflictContext.IN_GAME,
+            InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_C, "key.categories.xenopixelsmod");
     /** Mid-combo ki blast cancel. */
     public static final KeyMapping KI_BLAST_CANCEL = new KeyMapping(
             "key.xenopixelsmod.bt3_ki_blast_cancel", KeyConflictContext.IN_GAME,
@@ -257,6 +270,7 @@ public final class Bt3CombatClient {
             event.register(GUARD);
             event.register(Z_BURST);
             event.register(KI_BLAST_CANCEL);
+            event.register(BEAM_SURGE);
             event.register(LOCK_NEXT);
             event.register(LOCK_PREV);
             event.register(SONIC_SWAY_LEFT);
@@ -656,6 +670,13 @@ public final class Bt3CombatClient {
         }
 
         // Ki blast cancel mid-combo
+        // Surge owns the shared key while a beam is out; drain the queued clicks so they do
+        // not fire a cancel the moment the beam ends.
+        if (net.bullettrain.xenopixelsmod.client.combat.beam.BeamSurgeClient.ownsFiringWave(mc.player)) {
+            while (KI_BLAST_CANCEL.consumeClick()) {
+                // discarded on purpose
+            }
+        }
         while (KI_BLAST_CANCEL.consumeClick()) {
             if (!XenoClientConfig.bt3KiBlastCancelClient || !XenoServerClientState.kiBlastCancel()) continue;
             if (clientGuarding || chargeMode != ChargeMode.NONE) continue;
