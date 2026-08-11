@@ -23,6 +23,7 @@ import java.util.concurrent.ConcurrentHashMap;
 public final class XenoServerConfig {
     private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
     private static final Path PATH = FMLPaths.CONFIGDIR.get().resolve("xenopixelsmod-server.json");
+    private static final int CURRENT_CONFIG_VERSION = 1;
 
     // --- HUD / DMZ ---
     /** When false, clients block DMZ vanilla HUD overlays. */
@@ -182,6 +183,10 @@ public final class XenoServerConfig {
     public static float superCounterDamageScale = 1.35f;
     public static float kiBlastCancelKiCost = 6.0f;
     public static float kiBlastCancelDamageScale = 0.85f;
+    /** Repeat basic ki blasts while the secondary-function + Use chord remains held. */
+    public static boolean kiBlastHoldToFire = true;
+    /** Server-authoritative interval and cooldown for basic ki blasts. */
+    public static int kiBlastCooldownTicks = 32;
     public static float zBurstKiCost = 8.0f;
     public static float zBurstDamageScale = 0.75f;
     public static double zBurstRange = 8.0;
@@ -394,7 +399,9 @@ public final class XenoServerConfig {
         try (Reader reader = Files.newBufferedReader(PATH)) {
             Data data = GSON.fromJson(reader, Data.class);
             if (data == null) return;
+            boolean migrated = data.configVersion < CURRENT_CONFIG_VERSION;
             apply(data);
+            if (migrated) save();
         } catch (IOException e) {
             XenoPixelsMod.LOGGER.warn("Failed to load server config", e);
         }
@@ -413,6 +420,7 @@ public final class XenoServerConfig {
 
     public static Data snapshot() {
         Data d = new Data();
+        d.configVersion = CURRENT_CONFIG_VERSION;
         d.dmzHudEnabled = dmzHudEnabled;
         d.dmzContentBootstrap = dmzContentBootstrap;
         d.bt3CombatEnabled = bt3CombatEnabled;
@@ -476,6 +484,8 @@ public final class XenoServerConfig {
         d.superCounterDamageScale = superCounterDamageScale;
         d.kiBlastCancelKiCost = kiBlastCancelKiCost;
         d.kiBlastCancelDamageScale = kiBlastCancelDamageScale;
+        d.kiBlastHoldToFire = kiBlastHoldToFire;
+        d.kiBlastCooldownTicks = kiBlastCooldownTicks;
         d.zBurstKiCost = zBurstKiCost;
         d.zBurstDamageScale = zBurstDamageScale;
         d.zBurstRange = zBurstRange;
@@ -614,6 +624,8 @@ public final class XenoServerConfig {
         superCounterDamageScale = d.superCounterDamageScale > 0f ? d.superCounterDamageScale : 1.35f;
         kiBlastCancelKiCost = Math.max(0f, d.kiBlastCancelKiCost);
         kiBlastCancelDamageScale = d.kiBlastCancelDamageScale > 0f ? d.kiBlastCancelDamageScale : 0.85f;
+        kiBlastHoldToFire = d.kiBlastHoldToFire;
+        kiBlastCooldownTicks = Math.max(1, d.kiBlastCooldownTicks);
         zBurstKiCost = Math.max(0f, d.zBurstKiCost);
         zBurstDamageScale = d.zBurstDamageScale > 0f ? d.zBurstDamageScale : 0.75f;
         zBurstRange = d.zBurstRange > 0 ? d.zBurstRange : 8.0;
@@ -997,6 +1009,7 @@ public final class XenoServerConfig {
     }
 
     public static class Data {
+        public int configVersion;
         public boolean dmzHudEnabled = false;
         public boolean dmzContentBootstrap = true;
         public boolean bt3CombatEnabled = true;
@@ -1060,6 +1073,8 @@ public final class XenoServerConfig {
         public float superCounterDamageScale = 1.35f;
         public float kiBlastCancelKiCost = 6.0f;
         public float kiBlastCancelDamageScale = 0.85f;
+        public boolean kiBlastHoldToFire = true;
+        public int kiBlastCooldownTicks = 32;
         public float zBurstKiCost = 8.0f;
         public float zBurstDamageScale = 0.75f;
         public double zBurstRange = 8.0;

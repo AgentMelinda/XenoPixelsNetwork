@@ -106,6 +106,8 @@ public class SyncServerConfigPacket {
         buf.writeFloat(d.kickDownRangeBonus);
         buf.writeVarInt(d.maxComboSteps);
         buf.writeVarInt(d.chargeMaxTicks);
+        buf.writeBoolean(d.kiBlastHoldToFire);
+        buf.writeVarInt(Math.max(1, d.kiBlastCooldownTicks));
     }
 
     public static SyncServerConfigPacket decode(FriendlyByteBuf buf) {
@@ -197,6 +199,8 @@ public class SyncServerConfigPacket {
         d.kickDownRangeBonus = buf.readFloat();
         d.maxComboSteps = buf.readVarInt();
         d.chargeMaxTicks = buf.readVarInt();
+        d.kiBlastHoldToFire = buf.readBoolean();
+        d.kiBlastCooldownTicks = Math.max(1, buf.readVarInt());
         return new SyncServerConfigPacket(d);
     }
 

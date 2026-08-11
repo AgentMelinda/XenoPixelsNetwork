@@ -4,10 +4,12 @@
   "refmap": "mixins.xenopixelsmod.refmap.json",
   "compatibilityLevel": "JAVA_21",
   "mixins": [
+    "common.KiBlastC2SMixin",
     "common.PlayerTickMixin",
     "common.StatsDataFormMultiplierMixin"
   ],
   "client": [
+    "client.ClientStatsEventsMixin",
     "client.PauseScreenMixin",
     "client.TitleScreenMixin"
   ],
