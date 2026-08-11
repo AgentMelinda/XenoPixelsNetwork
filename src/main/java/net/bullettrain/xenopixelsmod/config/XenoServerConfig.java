@@ -352,6 +352,16 @@ public final class XenoServerConfig {
     public static float beamSurgeReachGain = 0.8f;
     /** How far from the player to look for their own wave. A wave is anchored at its origin. */
     public static float beamSurgeSearchRadius = 12.0f;
+
+    /**
+     * The sparking aura: rising ki shell, ground debris and lightning arcs while sparking.
+     *
+     * <p>Sparking already changed how a fight works - damage multiplier, i-frames - with almost
+     * no presence. A state that matters that much should be visible from across the arena.
+     */
+    public static boolean sparkingAuraEnabled = true;
+    /** Aura particle density, 0 to 3. Sustained every tick, so this is the main cost knob. */
+    public static float sparkingAuraDensity = 1.0f;
     /**
      * YAWP flags consulted for ki griefing caused by a player. Griefing is denied when any
      * listed flag is DENIED at the target block, evaluated with the player's region
@@ -525,6 +535,8 @@ public final class XenoServerConfig {
         d.beamSurgeDamageGain = beamSurgeDamageGain;
         d.beamSurgeReachGain = beamSurgeReachGain;
         d.beamSurgeSearchRadius = beamSurgeSearchRadius;
+        d.sparkingAuraEnabled = sparkingAuraEnabled;
+        d.sparkingAuraDensity = sparkingAuraDensity;
         d.yawpPlayerKiFlags = new java.util.ArrayList<>(yawpPlayerKiFlags);
         d.yawpMobKiFlags = new java.util.ArrayList<>(yawpMobKiFlags);
         d.masterKiGriefRadius = masterKiGriefRadius;
@@ -664,6 +676,8 @@ public final class XenoServerConfig {
         beamSurgeDamageGain = Math.max(0f, d.beamSurgeDamageGain);
         beamSurgeReachGain = Math.max(0f, d.beamSurgeReachGain);
         beamSurgeSearchRadius = Math.max(2f, d.beamSurgeSearchRadius);
+        sparkingAuraEnabled = d.sparkingAuraEnabled;
+        sparkingAuraDensity = Math.max(0f, Math.min(3f, d.sparkingAuraDensity));
         // A missing list means "config written before this option existed" - keep the defaults.
         // An explicitly empty list is honoured: it disables that half of the check.
         if (d.yawpPlayerKiFlags != null) {
@@ -1109,6 +1123,8 @@ public final class XenoServerConfig {
         public float beamSurgeDamageGain = 1.5f;
         public float beamSurgeReachGain = 0.8f;
         public float beamSurgeSearchRadius = 12.0f;
+        public boolean sparkingAuraEnabled = true;
+        public float sparkingAuraDensity = 1.0f;
         // Null (absent from an older config file) means "use the defaults"; see apply().
         public java.util.List<String> yawpPlayerKiFlags = null;
         public java.util.List<String> yawpMobKiFlags = null;

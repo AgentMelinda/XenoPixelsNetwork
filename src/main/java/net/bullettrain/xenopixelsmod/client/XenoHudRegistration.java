@@ -23,6 +23,8 @@ public final class XenoHudRegistration {
         event.registerAbove(DMZ_TOP, ResourceLocation.fromNamespaceAndPath(XenoPixelsMod.MOD_ID, "xeno_technique_hotbar"), new XenoTechniqueHotbarOverlay()::render);
         event.registerAbove(DMZ_TOP, ResourceLocation.fromNamespaceAndPath(XenoPixelsMod.MOD_ID, "xeno_party_hud"), new XenoPartyOverlay()::render);
         event.registerAbove(DMZ_TOP, ResourceLocation.fromNamespaceAndPath(XenoPixelsMod.MOD_ID, "xeno_cooldown_hud"), new XenoCooldownHudOverlay()::render);
+        event.registerAbove(DMZ_TOP, ResourceLocation.fromNamespaceAndPath(XenoPixelsMod.MOD_ID, "xeno_sparking_tint"),
+                new net.bullettrain.xenopixelsmod.client.combat.fx.SparkingTintOverlay()::render);
         event.registerAbove(DMZ_TOP, ResourceLocation.fromNamespaceAndPath(XenoPixelsMod.MOD_ID, "xeno_speed_lines"),
                 new net.bullettrain.xenopixelsmod.client.combat.fx.SpeedLinesOverlay()::render);
         // Last, so the impact flash washes over the HUD rather than under it — a flash the

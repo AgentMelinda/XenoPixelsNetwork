@@ -89,6 +89,8 @@ public final class XenoClientConfig {
     public static boolean beamSurgeClient = true;
     /** Radial speed lines while moving fast. Camera-adjacent, so it gets its own switch. */
     public static boolean speedLinesEnabled = true;
+    /** Warm vignette while sparking. Separate switch: it is on screen for seconds. */
+    public static boolean sparkingTintEnabled = true;
     /** Hide Alt/Ctrl technique hotbar while chat/command screen is open. */
     public static boolean techniqueHotbarHideInChat = true;
 
@@ -157,6 +159,7 @@ public final class XenoClientConfig {
         d.hudCompactNumbers = hudCompactNumbers;
         d.beamSurgeClient = beamSurgeClient;
         d.speedLinesEnabled = speedLinesEnabled;
+        d.sparkingTintEnabled = sparkingTintEnabled;
         d.techniqueHotbarHideInChat = techniqueHotbarHideInChat;
         return d;
     }
@@ -199,6 +202,7 @@ public final class XenoClientConfig {
         hudCompactNumbers = d.hudCompactNumbers;
         beamSurgeClient = d.beamSurgeClient;
         speedLinesEnabled = d.speedLinesEnabled;
+        sparkingTintEnabled = d.sparkingTintEnabled;
         techniqueHotbarHideInChat = d.techniqueHotbarHideInChat;
     }
 
@@ -239,6 +243,7 @@ public final class XenoClientConfig {
         public boolean hudCompactNumbers = true;
         public boolean beamSurgeClient = true;
         public boolean speedLinesEnabled = true;
+        public boolean sparkingTintEnabled = true;
         public boolean techniqueHotbarHideInChat = true;
     }
 }
