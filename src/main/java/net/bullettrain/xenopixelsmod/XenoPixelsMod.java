@@ -128,6 +128,8 @@ public class XenoPixelsMod {
                         planner.acceptAeroState(state);
                     }
                 };
+                net.bullettrain.xenopixelsmod.client.ClientScreens.receiveCombatFx =
+                        net.bullettrain.xenopixelsmod.client.combat.fx.CombatFxClient::accept;
             });
         }
     }

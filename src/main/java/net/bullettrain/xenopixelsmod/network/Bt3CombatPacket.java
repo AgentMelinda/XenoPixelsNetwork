@@ -5,6 +5,8 @@ import com.dragonminez.common.stats.StatsData;
 import com.dragonminez.common.stats.StatsProvider;
 import com.dragonminez.common.stats.character.Resources;
 import net.bullettrain.xenopixelsmod.combat.DmzAnimHelper;
+import net.bullettrain.xenopixelsmod.combat.fx.CombatFx;
+import net.bullettrain.xenopixelsmod.combat.fx.CombatFxKind;
 import net.bullettrain.xenopixelsmod.config.XenoServerConfig;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.network.FriendlyByteBuf;
@@ -256,7 +258,8 @@ public class Bt3CombatPacket {
         playItSound(player, dest.x, dest.y, dest.z, false);
         // Stamped after the teleport so the shade is left behind the fighter rather than being
         // spawned on top of them for a tick.
-        net.bullettrain.xenopixelsmod.combat.VanishShadeFx.spawn(player, from);
+net.bullettrain.xenopixelsmod.combat.VanishShadeFx.spawn(player, from);
+        CombatFx.cue(player.serverLevel(), from, CombatFxKind.VANISH_CLAP, 1.0f);
     }
 
     private static void handleChase(ServerPlayer player, LivingEntity target, Resources res) {
@@ -413,19 +416,10 @@ public class Bt3CombatPacket {
             }
         }
         if (player.level() instanceof net.minecraft.server.level.ServerLevel sl) {
-            double hx = target.getX();
-            double hy = target.getY() + target.getBbHeight() * 0.5;
-            double hz = target.getZ();
-            sl.sendParticles(net.minecraft.core.particles.ParticleTypes.CRIT,
-                    hx, hy, hz, full ? 14 : 8, 0.25, 0.35, 0.25, 0.08);
-            if (full) {
-                sl.sendParticles(net.minecraft.core.particles.ParticleTypes.SWEEP_ATTACK,
-                        hx, hy, hz, 2, 0.1, 0.1, 0.1, 0.0);
-            }
-            if (kick && full) {
-                sl.sendParticles(net.minecraft.core.particles.ParticleTypes.ELECTRIC_SPARK,
-                        hx, hy, hz, 6, 0.2, 0.25, 0.2, 0.02);
-            }
+            // Shockwave disc faces the way the blow travelled, so a charged hit reads as a
+            // direction rather than as a puff of crits at the target's chest.
+            CombatFx.impact(sl, target, target.position().subtract(player.position()),
+                    full ? CombatFx.Weight.HEAVY : CombatFx.Weight.LIGHT);
         }
     }
 
@@ -559,7 +553,8 @@ public class Bt3CombatPacket {
         teleportFacing(player, dest, target);
         playItSound(player, dest.x, dest.y, dest.z, false);
         // A super counter is a vanish, so it leaves the same shade behind.
-        net.bullettrain.xenopixelsmod.combat.VanishShadeFx.spawn(player, from);
+net.bullettrain.xenopixelsmod.combat.VanishShadeFx.spawn(player, from);
+        CombatFx.cue(player.serverLevel(), from, CombatFxKind.COUNTER_FLASH, 1.0f);
 
         float base = (float) Math.max(2.0, player.getAttackStrengthScale(0.5f) * 5.0f);
         if (data != null) {
@@ -729,6 +724,10 @@ public class Bt3CombatPacket {
         if (player.level() instanceof net.minecraft.server.level.ServerLevel sl) {
             sl.sendParticles(net.minecraft.core.particles.ParticleTypes.EXPLOSION,
                     player.getX(), player.getY() + 1, player.getZ(), 3, 0.5, 0.5, 0.5, 0.01);
+            // Gold ring along the firing direction. The only ULTIMATE-weight call in the mod;
+            // it is the ceiling the other tiers are read against.
+            CombatFx.impact(sl, player.position().add(0.0, player.getBbHeight() * 0.6, 0.0),
+                    player.getLookAngle(), CombatFx.Weight.ULTIMATE);
         }
         player.displayClientMessage(net.minecraft.network.chat.Component.literal("§c§lULTIMATE!"), true);
     }
@@ -751,6 +750,10 @@ public class Bt3CombatPacket {
             target.hurt(player.damageSources().playerAttack(player),
                     base * XenoServerConfig.zBurstDamageScale);
             playHitSound(player, target, false);
+            if (player.level() instanceof net.minecraft.server.level.ServerLevel sl) {
+                CombatFx.impact(sl, target, target.position().subtract(player.position()),
+                        CombatFx.Weight.HEAVY);
+            }
         }
         player.level().playSound(null, land.x, land.y, land.z,
                 SoundEvents.PLAYER_ATTACK_SWEEP, SoundSource.PLAYERS, 0.85f, 1.25f);
@@ -801,6 +804,12 @@ public class Bt3CombatPacket {
             }
 
             playHitSound(player, target, finisher);
+            if (player.level() instanceof net.minecraft.server.level.ServerLevel sl) {
+                // LIGHT for the string, HEAVY only on the finisher — a rush chain that punched
+                // at finisher weight every hit would leave the camera permanently shaking.
+                CombatFx.impact(sl, target, target.position().subtract(player.position()),
+                        finisher ? CombatFx.Weight.HEAVY : CombatFx.Weight.LIGHT);
+            }
         }
     }
 

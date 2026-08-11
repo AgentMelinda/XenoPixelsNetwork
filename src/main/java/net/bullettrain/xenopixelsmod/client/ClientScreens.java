@@ -2,6 +2,7 @@ package net.bullettrain.xenopixelsmod.client;
 
 import net.bullettrain.xenopixelsmod.aero.AeroStateSnapshot;
 import net.bullettrain.xenopixelsmod.missile.BallisticFlightPlan;
+import net.bullettrain.xenopixelsmod.network.packet.CombatFxPacket;
 import net.minecraft.core.BlockPos;
 
 import java.util.function.Consumer;
@@ -22,6 +23,16 @@ public final class ClientScreens {
 
     /** Authoritative Aero controller state pushed by the server; the GUI renders only this. */
     public static Consumer<AeroStateSnapshot> receiveAeroState = state -> {
+    };
+
+    /**
+     * Combat impact cue from the server; bound on the client to the combat FX manager.
+     *
+     * <p>Left as a no-op on a dedicated server, which is the whole point of this class — the
+     * binding lives in the client-only branch of {@code XenoPixelsMod} so nothing here ever
+     * reaches {@code net.minecraft.client}.
+     */
+    public static Consumer<CombatFxPacket> receiveCombatFx = fx -> {
     };
 
     private ClientScreens() {

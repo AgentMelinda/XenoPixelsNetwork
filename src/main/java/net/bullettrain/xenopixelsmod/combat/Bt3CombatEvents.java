@@ -114,6 +114,16 @@ public final class Bt3CombatEvents {
         float red = Math.max(0f, Math.min(0.95f, XenoServerConfig.guardDamageReduction
                 + net.bullettrain.xenopixelsmod.features.progression.CombatSkills.guardBonus(defender)));
         event.setNewDamage(event.getNewDamage() * (1f - red));
+
+        // Cyan push-back facing the attacker, so a blocked hit is visibly different from one
+        // that landed. Without this the only feedback for a successful guard is damage the
+        // defender never sees, which is why blocking read as doing nothing.
+        if (defender.level() instanceof net.minecraft.server.level.ServerLevel sl
+                && event.getSource().getEntity() instanceof LivingEntity attacker) {
+            net.bullettrain.xenopixelsmod.combat.fx.CombatFx.impact(sl, defender,
+                    defender.position().subtract(attacker.position()),
+                    net.bullettrain.xenopixelsmod.combat.fx.CombatFx.Weight.GUARD);
+        }
     }
 
     @SubscribeEvent

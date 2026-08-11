@@ -10,6 +10,7 @@ import net.bullettrain.xenopixelsmod.network.packet.BodyCalibrationPacket;
 import net.bullettrain.xenopixelsmod.network.packet.OpenGuidancePacket;
 import net.bullettrain.xenopixelsmod.network.packet.AeroControlPacket;
 import net.bullettrain.xenopixelsmod.network.packet.AeroStatePacket;
+import net.bullettrain.xenopixelsmod.network.packet.CombatFxPacket;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
 import com.dragonminez.compat.network.NetworkDirection;
@@ -25,12 +26,13 @@ public class ModNetwork {
     /**
      * Bump when packet set or wire format changes.
      *
+     * <p>13: appended {@code CombatFxPacket}, the combat impact cue.
      * <p>12: extends Aero control/state with absolute-attitude target/route autopilot.
      * <p>11: appended {@code AeroControlPacket} and {@code AeroStatePacket} for the Aero
      * flight controller. Clients and servers must both run this build — the channel refuses
      * a mismatched protocol, so a 10 client cannot join an 11 server or vice versa.
      */
-    private static final String PROTOCOL = "12";
+    private static final String PROTOCOL = "13";
 
     public static final SimpleChannel CHANNEL = NetworkRegistry.ChannelBuilder
             .named(ResourceLocation.fromNamespaceAndPath(XenoPixelsMod.MOD_ID, "main"))
@@ -131,6 +133,16 @@ public class ModNetwork {
                 .decoder(AeroStatePacket::new)
                 .encoder(AeroStatePacket::encode)
                 .consumerMainThread(AeroStatePacket::handle)
+                .add();
+
+        // --- Combat impact FX (appended) ---
+        // Server → client, but registered here at the end rather than up in the S2C block:
+        // ids come from registration order, and inserting into that block would renumber every
+        // client → server packet below it.
+        CHANNEL.messageBuilder(CombatFxPacket.class, id++, NetworkDirection.PLAY_TO_CLIENT)
+                .decoder(CombatFxPacket::new)
+                .encoder(CombatFxPacket::encode)
+                .consumerMainThread(CombatFxPacket::handle)
                 .add();
 
         XenoPixelsMod.LOGGER.info("ModNetwork: registered {} packet types (protocol {})", id, PROTOCOL);

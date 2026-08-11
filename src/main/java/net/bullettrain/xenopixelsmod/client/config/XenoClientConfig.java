@@ -63,6 +63,16 @@ public final class XenoClientConfig {
     public static boolean bt3KickChainAnims = true;
     /** Crit/spark particles on charge release and impacts. */
     public static boolean bt3CombatParticles = true;
+    /**
+     * Camera shake on impact. Opt-out because unrequested camera motion is an accessibility
+     * problem, not a taste one; turning it off leaves the flash and the world particles, so no
+     * information is lost with it.
+     */
+    public static boolean bt3ScreenShake = true;
+    /** Scales the shake. 0 is equivalent to disabling it; above 1 exaggerates it. */
+    public static float bt3ScreenShakeStrength = 1.0f;
+    /** The tinted vignette flash on impact, on its own switch so it survives disabling shake. */
+    public static boolean bt3ImpactFlash = true;
     /** Hide Alt/Ctrl technique hotbar while chat/command screen is open. */
     public static boolean techniqueHotbarHideInChat = true;
 
@@ -124,6 +134,9 @@ public final class XenoClientConfig {
         d.bt3CombatAnims = bt3CombatAnims;
         d.bt3KickChainAnims = bt3KickChainAnims;
         d.bt3CombatParticles = bt3CombatParticles;
+        d.bt3ScreenShake = bt3ScreenShake;
+        d.bt3ScreenShakeStrength = bt3ScreenShakeStrength;
+        d.bt3ImpactFlash = bt3ImpactFlash;
         d.techniqueHotbarHideInChat = techniqueHotbarHideInChat;
         return d;
     }
@@ -159,6 +172,9 @@ public final class XenoClientConfig {
         bt3CombatAnims = d.bt3CombatAnims;
         bt3KickChainAnims = d.bt3KickChainAnims;
         bt3CombatParticles = d.bt3CombatParticles;
+        bt3ScreenShake = d.bt3ScreenShake;
+        bt3ScreenShakeStrength = d.bt3ScreenShakeStrength;
+        bt3ImpactFlash = d.bt3ImpactFlash;
         techniqueHotbarHideInChat = d.techniqueHotbarHideInChat;
     }
 
@@ -192,6 +208,9 @@ public final class XenoClientConfig {
         public boolean bt3CombatAnims = true;
         public boolean bt3KickChainAnims = true;
         public boolean bt3CombatParticles = true;
+        public boolean bt3ScreenShake = true;
+        public float bt3ScreenShakeStrength = 1.0f;
+        public boolean bt3ImpactFlash = true;
         public boolean techniqueHotbarHideInChat = true;
     }
 }
