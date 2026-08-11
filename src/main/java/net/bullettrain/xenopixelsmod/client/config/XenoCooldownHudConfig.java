@@ -22,13 +22,14 @@ public final class XenoCooldownHudConfig {
     public static final int DEFAULT_X = 0;
     public static final int DEFAULT_Y = 42;
     public static final float DEFAULT_SCALE = 0.475f;
-    public static final boolean DEFAULT_SHOW_ONLY_WHEN_ACTIVE = true;
+    public static final boolean DEFAULT_SHOW_ONLY_WHEN_ACTIVE = false;
 
     public static final float MIN_SCALE = 0.25f;
     public static final float MAX_SCALE = 2.5f;
 
     private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
     private static final Path PATH = FMLPaths.CONFIGDIR.get().resolve("xenopixelsmod-cooldown-hud.json");
+    private static final int CURRENT_CONFIG_VERSION = 1;
 
     /** Master visibility (also gated by {@link XenoClientConfig#cooldownHudEnabled}). */
     public static boolean visible = true;
@@ -38,7 +39,7 @@ public final class XenoCooldownHudConfig {
     public static int y = DEFAULT_Y;
     public static float scale = DEFAULT_SCALE;
 
-    /** When true, hide the whole strip while nothing is on cooldown / charging. (Default true for FPS.) */
+    /** When true, hide the whole strip while nothing is on cooldown / charging. */
     public static boolean showOnlyWhenActive = DEFAULT_SHOW_ONLY_WHEN_ACTIVE;
 
     /** Horizontal row (true) vs vertical column (false). */
@@ -80,7 +81,13 @@ public final class XenoCooldownHudConfig {
         try (Reader reader = Files.newBufferedReader(PATH)) {
             Data data = GSON.fromJson(reader, Data.class);
             if (data == null) return;
+            boolean migrated = data.configVersion < CURRENT_CONFIG_VERSION;
+            if (migrated) {
+                data.showOnlyWhenActive = DEFAULT_SHOW_ONLY_WHEN_ACTIVE;
+                data.configVersion = CURRENT_CONFIG_VERSION;
+            }
             apply(data);
+            if (migrated) save();
         } catch (IOException e) {
             XenoPixelsMod.LOGGER.warn("Failed to load cooldown HUD config", e);
         }
@@ -118,6 +125,7 @@ public final class XenoCooldownHudConfig {
 
     public static Data snapshot() {
         Data d = new Data();
+        d.configVersion = CURRENT_CONFIG_VERSION;
         d.visible = visible;
         d.x = x;
         d.y = y;
@@ -158,6 +166,7 @@ public final class XenoCooldownHudConfig {
     }
 
     public static class Data {
+        public int configVersion;
         public boolean visible = true;
         public int x = DEFAULT_X;
         public int y = DEFAULT_Y;
