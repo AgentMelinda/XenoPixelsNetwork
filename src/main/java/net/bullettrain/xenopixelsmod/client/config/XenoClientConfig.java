@@ -74,12 +74,11 @@ public final class XenoClientConfig {
     /** The tinted vignette flash on impact, on its own switch so it survives disabling shake. */
     public static boolean bt3ImpactFlash = true;
     /**
-     * Let a right-click that would place a block or use an item do that instead of
-     * starting a guard. Guard shares its binding with vanilla Use, so without this the
-     * two fight over every right-click and building becomes impossible while the guard
-     * key is bound to the mouse.
+     * Ticks the guard key must be held before guard engages. A shorter press places a block or
+     * uses an item instead. Guard shares right-click with vanilla Use, and a hold threshold is
+     * what makes the two unambiguous rather than a guess.
      */
-    public static boolean bt3GuardYieldsToUse = true;
+    public static int bt3GuardHoldTicks = 5;
     /**
      * Abbreviate HUD figures as k/M. Off shows the exact number, which is what a player
      * checking whether a heal landed actually wants.
@@ -155,7 +154,7 @@ public final class XenoClientConfig {
         d.bt3ScreenShake = bt3ScreenShake;
         d.bt3ScreenShakeStrength = bt3ScreenShakeStrength;
         d.bt3ImpactFlash = bt3ImpactFlash;
-        d.bt3GuardYieldsToUse = bt3GuardYieldsToUse;
+        d.bt3GuardHoldTicks = bt3GuardHoldTicks;
         d.hudCompactNumbers = hudCompactNumbers;
         d.beamSurgeClient = beamSurgeClient;
         d.speedLinesEnabled = speedLinesEnabled;
@@ -198,7 +197,7 @@ public final class XenoClientConfig {
         bt3ScreenShake = d.bt3ScreenShake;
         bt3ScreenShakeStrength = d.bt3ScreenShakeStrength;
         bt3ImpactFlash = d.bt3ImpactFlash;
-        bt3GuardYieldsToUse = d.bt3GuardYieldsToUse;
+        bt3GuardHoldTicks = Math.max(0, d.bt3GuardHoldTicks);
         hudCompactNumbers = d.hudCompactNumbers;
         beamSurgeClient = d.beamSurgeClient;
         speedLinesEnabled = d.speedLinesEnabled;
@@ -239,7 +238,7 @@ public final class XenoClientConfig {
         public boolean bt3ScreenShake = true;
         public float bt3ScreenShakeStrength = 1.0f;
         public boolean bt3ImpactFlash = true;
-        public boolean bt3GuardYieldsToUse = true;
+        public int bt3GuardHoldTicks = 5;
         public boolean hudCompactNumbers = true;
         public boolean beamSurgeClient = true;
         public boolean speedLinesEnabled = true;

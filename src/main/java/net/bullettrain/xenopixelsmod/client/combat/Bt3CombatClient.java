@@ -305,6 +305,7 @@ public final class Bt3CombatClient {
                     ModNetwork.CHANNEL.sendToServer(new Bt3CombatPacket(
                             Bt3CombatPacket.Action.GUARD, -1, 0));
                 }
+                clearGuardInputState();
                 resetCharge();
                 return;
             }
@@ -314,6 +315,7 @@ public final class Bt3CombatClient {
                     ModNetwork.CHANNEL.sendToServer(new Bt3CombatPacket(
                             Bt3CombatPacket.Action.GUARD, -1, 0));
                 }
+                clearGuardInputState();
                 resetCharge();
                 return;
             }
@@ -536,11 +538,12 @@ public final class Bt3CombatClient {
                 event.setCanceled(true);
                 event.setSwingHand(false);
             }
-            // If Guard is bound to use-item key (default RMB), cancel use while Guard is held
-            // even before clientGuarding flips on the same tick edge
+            // Guard and vanilla Use share RMB by default. Hold the first Use until release so a
+            // tap can replay it once while a long press becomes guard without placing first.
             if (XenoClientConfig.bt3GuardClient && XenoServerClientState.guard()
                     && GUARD.isDown() && chargeMode == ChargeMode.NONE
                     && event.isUseItem()) {
+                guardTapPending = true;
                 event.setCanceled(true);
                 event.setSwingHand(false);
             }
@@ -559,47 +562,41 @@ public final class Bt3CombatClient {
         }
     }
 
-    /**
-     * True while this right-click press has been handed to Use instead of Guard.
-     *
-     * <p>Latched for the whole press rather than re-evaluated every tick. Guard shares its
-     * binding with vanilla Use, so a per-tick test would flicker into a guard the moment the
-     * player's crosshair left the block they were placing against — mid-click, while still
-     * holding the button. The decision is made once on the press edge and held until release.
-     */
-    private static boolean guardYieldedToUse;
+    /** Ticks the guard key has been held on this press; -1 when the key is up. */
+    private static int guardHeldTicks = -1;
+    /** True after the initial shared-key Use was suppressed and may need replaying on a tap. */
+    private static boolean guardTapPending;
 
     /**
-     * Whether this right-click should place or use rather than guard.
+     * Guard engages on a hold, never on a tap.
      *
-     * <p>Deliberately conservative: it only yields when the player is holding something and
-     * aiming at a block or an entity, which is the case where they plainly meant to interact.
-     * An empty-handed right-click, or one aimed at nothing, is a guard — which is what it will
-     * be in a fight.
+     * <p>Guard shares its binding with vanilla Use — {@code claimDmzBlockKey} puts it on
+     * right-click — so a press is genuinely ambiguous: it could be a block being placed or a guard
+     * going up. The previous attempt guessed from what the player was holding and what they were
+     * looking at, and guessed wrong often enough that building was impossible.
+     *
+     * <p>A hold threshold removes the ambiguity instead of refereeing it. The initial vanilla Use
+     * is deferred: releasing before the threshold replays it once, while reaching the threshold
+     * discards it and starts guard. The cost is the threshold's delay before either action, which
+     * is why it is configurable.
      */
-    private static boolean rightClickWantsUse(Minecraft mc) {
-        if (!XenoClientConfig.bt3GuardYieldsToUse) return false;
-        LocalPlayer player = mc.player;
-        if (player == null) return false;
-        if (player.getMainHandItem().isEmpty() && player.getOffhandItem().isEmpty()) return false;
-
-        var hit = mc.hitResult;
-        if (hit == null) return false;
-        return hit.getType() == net.minecraft.world.phys.HitResult.Type.BLOCK
-                || hit.getType() == net.minecraft.world.phys.HitResult.Type.ENTITY;
-    }
-
     private static void tickGuard(Minecraft mc) {
         boolean down = GUARD.isDown();
-        if (!down) {
-            guardYieldedToUse = false;
-        } else if (!guardWasDown && !clientGuarding) {
-            // Press edge: decide once whether this click belongs to Use or to Guard.
-            guardYieldedToUse = rightClickWantsUse(mc);
+        if (down) {
+            guardHeldTicks = guardHeldTicks < 0 ? 1 : guardHeldTicks + 1;
+        } else {
+            boolean shouldReplayUse = guardTapPending && !clientGuarding
+                    && XenoClientConfig.bt3GuardClient && XenoServerClientState.guard()
+                    && chargeMode == ChargeMode.NONE;
+            guardTapPending = false;
+            guardHeldTicks = -1;
+            if (shouldReplayUse) replayDeferredUse(mc);
         }
+        boolean heldLongEnough = guardHeldTicks >= Math.max(0, XenoClientConfig.bt3GuardHoldTicks);
+        if (heldLongEnough || chargeMode != ChargeMode.NONE) guardTapPending = false;
 
         boolean want = XenoClientConfig.bt3GuardClient && XenoServerClientState.guard()
-                && down && !guardYieldedToUse && chargeMode == ChargeMode.NONE;
+                && down && heldLongEnough && chargeMode == ChargeMode.NONE;
         LocalPlayer local = mc.player;
         if (want && !guardWasDown) {
             clientGuarding = true;
@@ -626,6 +623,19 @@ public final class Bt3CombatClient {
             }
         }
         guardWasDown = want;
+    }
+
+    private static void clearGuardInputState() {
+        guardHeldTicks = -1;
+        guardTapPending = false;
+        guardWasDown = false;
+    }
+
+    private static void replayDeferredUse(Minecraft mc) {
+        if (mc == null || mc.player == null || mc.gameMode == null || mc.screen != null) return;
+        // Queue one ordinary Use click for Minecraft's next key-processing pass. At that point
+        // GUARD is physically up, so our interception lets vanilla handle the action normally.
+        KeyMapping.click(mc.options.keyUse.getKey());
     }
 
     private static void tickPhase1Keys(Minecraft mc) {
