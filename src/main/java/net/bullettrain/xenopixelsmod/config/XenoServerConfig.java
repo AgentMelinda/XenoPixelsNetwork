@@ -328,6 +328,30 @@ public final class XenoServerConfig {
     public static float kiDeflectSpeedScale = 1.15f;
     /** Floor on returned speed, so a nearly-stalled blast still travels somewhere. */
     public static float kiDeflectMinSpeed = 0.8f;
+
+    // --- sustained ki wave ("beam surge") ---
+
+    /**
+     * Hold the fire key to keep a ki wave alive and growing.
+     *
+     * <p>Off restores DMZ's stock behaviour, where a wave lives 80 ticks times its charge
+     * multiplier and nothing can extend it.
+     */
+    public static boolean beamSurgeEnabled = true;
+    /** Ki drained per tick of sustain, before the growth surcharge. */
+    public static float beamSurgeKiPerTick = 1.6f;
+    /** Stamina drained per tick of sustain, before the growth surcharge. */
+    public static float beamSurgeStaminaPerTick = 0.5f;
+    /** Extra cost at full surge, as a multiple. 1.0 means a maxed beam costs double. */
+    public static float beamSurgeCostGrowth = 1.0f;
+    /** Beam thickness at full surge, as a fraction added to its baseline size. */
+    public static float beamSurgeSizeGain = 1.2f;
+    /** Damage at full surge, as a fraction added to its baseline. */
+    public static float beamSurgeDamageGain = 1.5f;
+    /** Length growth per tick at full surge, as a fraction added to its baseline. */
+    public static float beamSurgeReachGain = 0.8f;
+    /** How far from the player to look for their own wave. A wave is anchored at its origin. */
+    public static float beamSurgeSearchRadius = 12.0f;
     /**
      * YAWP flags consulted for ki griefing caused by a player. Griefing is denied when any
      * listed flag is DENIED at the target block, evaluated with the player's region
@@ -493,6 +517,14 @@ public final class XenoServerConfig {
         d.kiDeflectAimDot = kiDeflectAimDot;
         d.kiDeflectSpeedScale = kiDeflectSpeedScale;
         d.kiDeflectMinSpeed = kiDeflectMinSpeed;
+        d.beamSurgeEnabled = beamSurgeEnabled;
+        d.beamSurgeKiPerTick = beamSurgeKiPerTick;
+        d.beamSurgeStaminaPerTick = beamSurgeStaminaPerTick;
+        d.beamSurgeCostGrowth = beamSurgeCostGrowth;
+        d.beamSurgeSizeGain = beamSurgeSizeGain;
+        d.beamSurgeDamageGain = beamSurgeDamageGain;
+        d.beamSurgeReachGain = beamSurgeReachGain;
+        d.beamSurgeSearchRadius = beamSurgeSearchRadius;
         d.yawpPlayerKiFlags = new java.util.ArrayList<>(yawpPlayerKiFlags);
         d.yawpMobKiFlags = new java.util.ArrayList<>(yawpMobKiFlags);
         d.masterKiGriefRadius = masterKiGriefRadius;
@@ -624,6 +656,14 @@ public final class XenoServerConfig {
         kiDeflectAimDot = Math.max(-1f, Math.min(1f, d.kiDeflectAimDot));
         kiDeflectSpeedScale = Math.max(0.1f, d.kiDeflectSpeedScale);
         kiDeflectMinSpeed = Math.max(0.05f, d.kiDeflectMinSpeed);
+        beamSurgeEnabled = d.beamSurgeEnabled;
+        beamSurgeKiPerTick = Math.max(0f, d.beamSurgeKiPerTick);
+        beamSurgeStaminaPerTick = Math.max(0f, d.beamSurgeStaminaPerTick);
+        beamSurgeCostGrowth = Math.max(0f, d.beamSurgeCostGrowth);
+        beamSurgeSizeGain = Math.max(0f, d.beamSurgeSizeGain);
+        beamSurgeDamageGain = Math.max(0f, d.beamSurgeDamageGain);
+        beamSurgeReachGain = Math.max(0f, d.beamSurgeReachGain);
+        beamSurgeSearchRadius = Math.max(2f, d.beamSurgeSearchRadius);
         // A missing list means "config written before this option existed" - keep the defaults.
         // An explicitly empty list is honoured: it disables that half of the check.
         if (d.yawpPlayerKiFlags != null) {
@@ -1061,6 +1101,14 @@ public final class XenoServerConfig {
         public float kiDeflectAimDot = 0.55f;
         public float kiDeflectSpeedScale = 1.15f;
         public float kiDeflectMinSpeed = 0.8f;
+        public boolean beamSurgeEnabled = true;
+        public float beamSurgeKiPerTick = 1.6f;
+        public float beamSurgeStaminaPerTick = 0.5f;
+        public float beamSurgeCostGrowth = 1.0f;
+        public float beamSurgeSizeGain = 1.2f;
+        public float beamSurgeDamageGain = 1.5f;
+        public float beamSurgeReachGain = 0.8f;
+        public float beamSurgeSearchRadius = 12.0f;
         // Null (absent from an older config file) means "use the defaults"; see apply().
         public java.util.List<String> yawpPlayerKiFlags = null;
         public java.util.List<String> yawpMobKiFlags = null;

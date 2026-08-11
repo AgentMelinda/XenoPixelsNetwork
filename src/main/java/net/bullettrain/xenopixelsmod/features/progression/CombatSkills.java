@@ -16,6 +16,7 @@ public final class CombatSkills {
     public static final String GUARD = "guard";       // better guard reduction
     public static final String SPARKING = "sparking"; // faster meter build
     public static final String ULTIMATE = "ultimate"; // ultimate damage
+    public static final String BEAM = "beam";         // sustained beam ceiling and ramp
 
     public static final Map<String, SkillDef> DEFS = new LinkedHashMap<>();
 
@@ -24,6 +25,8 @@ public final class CombatSkills {
         DEFS.put(GUARD, new SkillDef(GUARD, "Iron Guard", "Guard damage reduction +5% per level", 1));
         DEFS.put(SPARKING, new SkillDef(SPARKING, "Spark Drive", "Sparking meter build +15% per level", 1));
         DEFS.put(ULTIMATE, new SkillDef(ULTIMATE, "Finisher Focus", "Ultimate damage +12% per level", 1));
+        DEFS.put(BEAM, new SkillDef(BEAM, "Wave Mastery",
+                "Sustained beams grow bigger, faster - higher ceiling and quicker ramp", 1));
     }
 
     private CombatSkills() {}
@@ -53,10 +56,25 @@ public final class CombatSkills {
         return 1f + 0.12f * level(player, ULTIMATE);
     }
 
+    /**
+     * Progress toward the next Wave Mastery level, awarded for sustaining a beam.
+     *
+     * <p>Granted as a skill point rather than a hidden XP bar so it flows through the same
+     * unlock the other four skills use - the player spends it when they choose, and mastery
+     * cannot silently level mid-fight and change how a beam behaves under them.
+     */
+    public static void awardBeamProgress(ServerPlayer player) {
+        if (player == null) return;
+        XenoCapabilities.get(player).ifPresent(data -> {
+            if (data.getSkillLevel(BEAM) >= 3) return;
+            data.setSkillPoints(data.getSkillPoints() + 1);
+        });
+    }
+
     /** @return null on success, error message otherwise */
     public static String tryUnlock(ServerPlayer player, String skillId) {
         SkillDef def = DEFS.get(skillId == null ? "" : skillId.toLowerCase());
-        if (def == null) return "Unknown skill. Try: power, guard, sparking, ultimate";
+        if (def == null) return "Unknown skill. Try: power, guard, sparking, ultimate, beam";
         XenoPlayerData data = XenoCapabilities.get(player).orElse(null);
         if (data == null) return "No player data";
         int cur = data.getSkillLevel(def.id);

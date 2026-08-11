@@ -10,6 +10,7 @@ import net.bullettrain.xenopixelsmod.network.packet.BodyCalibrationPacket;
 import net.bullettrain.xenopixelsmod.network.packet.OpenGuidancePacket;
 import net.bullettrain.xenopixelsmod.network.packet.AeroControlPacket;
 import net.bullettrain.xenopixelsmod.network.packet.AeroStatePacket;
+import net.bullettrain.xenopixelsmod.network.packet.BeamSurgePacket;
 import net.bullettrain.xenopixelsmod.network.packet.CombatFxPacket;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
@@ -26,13 +27,14 @@ public class ModNetwork {
     /**
      * Bump when packet set or wire format changes.
      *
+     * <p>14: appended {@code BeamSurgePacket}, the sustained-beam feed report.
      * <p>13: appended {@code CombatFxPacket}, the combat impact cue.
      * <p>12: extends Aero control/state with absolute-attitude target/route autopilot.
      * <p>11: appended {@code AeroControlPacket} and {@code AeroStatePacket} for the Aero
      * flight controller. Clients and servers must both run this build — the channel refuses
      * a mismatched protocol, so a 10 client cannot join an 11 server or vice versa.
      */
-    private static final String PROTOCOL = "13";
+    private static final String PROTOCOL = "14";
 
     public static final SimpleChannel CHANNEL = NetworkRegistry.ChannelBuilder
             .named(ResourceLocation.fromNamespaceAndPath(XenoPixelsMod.MOD_ID, "main"))
@@ -143,6 +145,13 @@ public class ModNetwork {
                 .decoder(CombatFxPacket::new)
                 .encoder(CombatFxPacket::encode)
                 .consumerMainThread(CombatFxPacket::handle)
+                .add();
+
+        // --- sustained ki wave (appended) ---
+        CHANNEL.messageBuilder(BeamSurgePacket.class, id++, NetworkDirection.PLAY_TO_SERVER)
+                .decoder(BeamSurgePacket::new)
+                .encoder(BeamSurgePacket::encode)
+                .consumerMainThread(BeamSurgePacket::handle)
                 .add();
 
         XenoPixelsMod.LOGGER.info("ModNetwork: registered {} packet types (protocol {})", id, PROTOCOL);

@@ -85,6 +85,8 @@ public final class XenoClientConfig {
      * checking whether a heal landed actually wants.
      */
     public static boolean hudCompactNumbers = true;
+    /** Report the held fire key so a beam can be sustained. Off opts out entirely. */
+    public static boolean beamSurgeClient = true;
     /** Hide Alt/Ctrl technique hotbar while chat/command screen is open. */
     public static boolean techniqueHotbarHideInChat = true;
 
@@ -151,6 +153,7 @@ public final class XenoClientConfig {
         d.bt3ImpactFlash = bt3ImpactFlash;
         d.bt3GuardYieldsToUse = bt3GuardYieldsToUse;
         d.hudCompactNumbers = hudCompactNumbers;
+        d.beamSurgeClient = beamSurgeClient;
         d.techniqueHotbarHideInChat = techniqueHotbarHideInChat;
         return d;
     }
@@ -191,6 +194,7 @@ public final class XenoClientConfig {
         bt3ImpactFlash = d.bt3ImpactFlash;
         bt3GuardYieldsToUse = d.bt3GuardYieldsToUse;
         hudCompactNumbers = d.hudCompactNumbers;
+        beamSurgeClient = d.beamSurgeClient;
         techniqueHotbarHideInChat = d.techniqueHotbarHideInChat;
     }
 
@@ -229,6 +233,7 @@ public final class XenoClientConfig {
         public boolean bt3ImpactFlash = true;
         public boolean bt3GuardYieldsToUse = true;
         public boolean hudCompactNumbers = true;
+        public boolean beamSurgeClient = true;
         public boolean techniqueHotbarHideInChat = true;
     }
 }
