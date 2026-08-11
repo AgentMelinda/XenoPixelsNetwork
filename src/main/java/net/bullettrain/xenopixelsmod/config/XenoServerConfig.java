@@ -287,6 +287,28 @@ public final class XenoServerConfig {
      * DMZ's allowKiGriefing* gamerules still apply first, this can only deny further.
      */
     public static boolean yawpKiGriefingEnabled = true;
+
+    // --- quality-of-life overrides for DragonMineZ restrictions ---
+
+    /**
+     * Only pick items up while sneaking.
+     *
+     * <p>A DMZ fight against a mob group leaves far more drops than vanilla combat does, and
+     * walking through them fills the hotbar with junk mid-fight. Requiring a deliberate crouch
+     * makes pickup something the player asks for. Items are left on the ground untouched, so
+     * their normal despawn timer still applies and nothing is destroyed by this.
+     */
+    public static boolean sneakToPickup = true;
+
+    /**
+     * Let techniques and ki attacks fire with something in the main hand.
+     *
+     * <p>DMZ gates every technique on an empty main hand, in five separate places across client
+     * and server. That is a defensible design — it keeps ki and weapons as separate stances —
+     * but on a server where players carry tools constantly it mostly reads as the ki button
+     * silently doing nothing. Turning this off restores DMZ's stock behaviour exactly.
+     */
+    public static boolean allowKiWithItemInHand = true;
     /**
      * YAWP flags consulted for ki griefing caused by a player. Griefing is denied when any
      * listed flag is DENIED at the target block, evaluated with the player's region
@@ -445,6 +467,8 @@ public final class XenoServerConfig {
         d.maxComboSteps = maxComboSteps;
         d.chargeMaxTicks = chargeMaxTicks;
         d.yawpKiGriefingEnabled = yawpKiGriefingEnabled;
+        d.sneakToPickup = sneakToPickup;
+        d.allowKiWithItemInHand = allowKiWithItemInHand;
         d.yawpPlayerKiFlags = new java.util.ArrayList<>(yawpPlayerKiFlags);
         d.yawpMobKiFlags = new java.util.ArrayList<>(yawpMobKiFlags);
         d.masterKiGriefRadius = masterKiGriefRadius;
@@ -569,6 +593,8 @@ public final class XenoServerConfig {
         chargeMaxTicks = Math.max(10, Math.min(80, d.chargeMaxTicks <= 0 ? 28 : d.chargeMaxTicks));
 
         yawpKiGriefingEnabled = d.yawpKiGriefingEnabled;
+        sneakToPickup = d.sneakToPickup;
+        allowKiWithItemInHand = d.allowKiWithItemInHand;
         // A missing list means "config written before this option existed" - keep the defaults.
         // An explicitly empty list is honoured: it disables that half of the check.
         if (d.yawpPlayerKiFlags != null) {
@@ -999,6 +1025,8 @@ public final class XenoServerConfig {
         public int maxComboSteps = 5;
         public int chargeMaxTicks = 28;
         public boolean yawpKiGriefingEnabled = true;
+        public boolean sneakToPickup = true;
+        public boolean allowKiWithItemInHand = true;
         // Null (absent from an older config file) means "use the defaults"; see apply().
         public java.util.List<String> yawpPlayerKiFlags = null;
         public java.util.List<String> yawpMobKiFlags = null;

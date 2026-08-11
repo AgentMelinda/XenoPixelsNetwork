@@ -545,9 +545,47 @@ public final class Bt3CombatClient {
         }
     }
 
+    /**
+     * True while this right-click press has been handed to Use instead of Guard.
+     *
+     * <p>Latched for the whole press rather than re-evaluated every tick. Guard shares its
+     * binding with vanilla Use, so a per-tick test would flicker into a guard the moment the
+     * player's crosshair left the block they were placing against — mid-click, while still
+     * holding the button. The decision is made once on the press edge and held until release.
+     */
+    private static boolean guardYieldedToUse;
+
+    /**
+     * Whether this right-click should place or use rather than guard.
+     *
+     * <p>Deliberately conservative: it only yields when the player is holding something and
+     * aiming at a block or an entity, which is the case where they plainly meant to interact.
+     * An empty-handed right-click, or one aimed at nothing, is a guard — which is what it will
+     * be in a fight.
+     */
+    private static boolean rightClickWantsUse(Minecraft mc) {
+        if (!XenoClientConfig.bt3GuardYieldsToUse) return false;
+        LocalPlayer player = mc.player;
+        if (player == null) return false;
+        if (player.getMainHandItem().isEmpty() && player.getOffhandItem().isEmpty()) return false;
+
+        var hit = mc.hitResult;
+        if (hit == null) return false;
+        return hit.getType() == net.minecraft.world.phys.HitResult.Type.BLOCK
+                || hit.getType() == net.minecraft.world.phys.HitResult.Type.ENTITY;
+    }
+
     private static void tickGuard(Minecraft mc) {
+        boolean down = GUARD.isDown();
+        if (!down) {
+            guardYieldedToUse = false;
+        } else if (!guardWasDown && !clientGuarding) {
+            // Press edge: decide once whether this click belongs to Use or to Guard.
+            guardYieldedToUse = rightClickWantsUse(mc);
+        }
+
         boolean want = XenoClientConfig.bt3GuardClient && XenoServerClientState.guard()
-                && GUARD.isDown() && chargeMode == ChargeMode.NONE;
+                && down && !guardYieldedToUse && chargeMode == ChargeMode.NONE;
         LocalPlayer local = mc.player;
         if (want && !guardWasDown) {
             clientGuarding = true;

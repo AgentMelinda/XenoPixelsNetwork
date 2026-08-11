@@ -73,6 +73,13 @@ public final class XenoClientConfig {
     public static float bt3ScreenShakeStrength = 1.0f;
     /** The tinted vignette flash on impact, on its own switch so it survives disabling shake. */
     public static boolean bt3ImpactFlash = true;
+    /**
+     * Let a right-click that would place a block or use an item do that instead of
+     * starting a guard. Guard shares its binding with vanilla Use, so without this the
+     * two fight over every right-click and building becomes impossible while the guard
+     * key is bound to the mouse.
+     */
+    public static boolean bt3GuardYieldsToUse = true;
     /** Hide Alt/Ctrl technique hotbar while chat/command screen is open. */
     public static boolean techniqueHotbarHideInChat = true;
 
@@ -137,6 +144,7 @@ public final class XenoClientConfig {
         d.bt3ScreenShake = bt3ScreenShake;
         d.bt3ScreenShakeStrength = bt3ScreenShakeStrength;
         d.bt3ImpactFlash = bt3ImpactFlash;
+        d.bt3GuardYieldsToUse = bt3GuardYieldsToUse;
         d.techniqueHotbarHideInChat = techniqueHotbarHideInChat;
         return d;
     }
@@ -175,6 +183,7 @@ public final class XenoClientConfig {
         bt3ScreenShake = d.bt3ScreenShake;
         bt3ScreenShakeStrength = d.bt3ScreenShakeStrength;
         bt3ImpactFlash = d.bt3ImpactFlash;
+        bt3GuardYieldsToUse = d.bt3GuardYieldsToUse;
         techniqueHotbarHideInChat = d.techniqueHotbarHideInChat;
     }
 
@@ -211,6 +220,7 @@ public final class XenoClientConfig {
         public boolean bt3ScreenShake = true;
         public float bt3ScreenShakeStrength = 1.0f;
         public boolean bt3ImpactFlash = true;
+        public boolean bt3GuardYieldsToUse = true;
         public boolean techniqueHotbarHideInChat = true;
     }
 }
