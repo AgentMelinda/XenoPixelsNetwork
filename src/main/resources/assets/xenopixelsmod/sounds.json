@@ -1,0 +1,12 @@
+{
+  "vanish": {
+    "category": "player",
+    "subtitle": "subtitles.xenopixelsmod.vanish",
+    "sounds": [
+      {
+        "name": "xenopixelsmod:vanish_out",
+        "stream": false
+      }
+    ]
+  }
+}

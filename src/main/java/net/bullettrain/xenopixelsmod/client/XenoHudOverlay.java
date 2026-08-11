@@ -65,8 +65,17 @@ public class XenoHudOverlay {
     private static String formattedHp = "";
     private static String formattedKi = "";
 
-    private static final net.bullettrain.xenopixelsmod.client.hud.XenoHudView LDLIB_VIEW =
-            new net.bullettrain.xenopixelsmod.client.hud.XenoHudView();
+    /**
+     * Modern textured renderer. The older flat-rectangle {@code XenoHudView} is retained in
+     * the tree as a reference implementation but is no longer wired to a toggle — the choice
+     * is now legacy-procedural vs. this.
+     */
+    private static final net.bullettrain.xenopixelsmod.client.hud.XenoModernHudView MODERN_VIEW =
+            new net.bullettrain.xenopixelsmod.client.hud.XenoModernHudView();
+
+    /** Modern renderer with the combat cooldown strip folded into the same panel. */
+    private static final net.bullettrain.xenopixelsmod.client.hud.XenoUnifiedHudView UNIFIED_VIEW =
+            new net.bullettrain.xenopixelsmod.client.hud.XenoUnifiedHudView();
 
     public void render(GuiGraphics graphics, DeltaTracker deltaTracker) {
         Minecraft mc = Minecraft.getInstance();
@@ -80,13 +89,21 @@ public class XenoHudOverlay {
 
         XenoHudSnapshot snap = XenoHudSnapshotFactory.capture(mc);
 
+        if (XenoHudConfig.unifiedActive()) {
+            // One panel for the stat cluster and the combat strip
+            // (/xenohud renderer modernunified).
+            UNIFIED_VIEW.setSnapshot(snap);
+            UNIFIED_VIEW.setBounds(XenoHudConfig.x, XenoHudConfig.y, XenoHudConfig.scale);
+            UNIFIED_VIEW.setEditorMode(editing);
+            UNIFIED_VIEW.render(graphics);
+            return;
+        }
         if (!XenoHudConfig.legacyHudRenderer) {
-            // Phase 4 LDLib-backed renderer (migration-testing toggle).
-            LDLIB_VIEW.setSnapshot(snap);
-            LDLIB_VIEW.setBounds(XenoHudConfig.x, XenoHudConfig.y,
-                    XenoHudConfig.BASE_WIDTH, XenoHudConfig.BASE_HEIGHT, XenoHudConfig.scale);
-            LDLIB_VIEW.setEditorMode(editing);
-            LDLIB_VIEW.render(graphics, 1f);
+            // Modern renderer: blits the generated chrome atlas (/xenohud renderer modern).
+            MODERN_VIEW.setSnapshot(snap);
+            MODERN_VIEW.setBounds(XenoHudConfig.x, XenoHudConfig.y, XenoHudConfig.scale);
+            MODERN_VIEW.setEditorMode(editing);
+            MODERN_VIEW.render(graphics);
             return;
         }
 
@@ -157,56 +174,10 @@ public class XenoHudOverlay {
         g.fill(0, s - 2, s, s, 0x442A2A3A);
 
         if (snap.transforming) {
-            drawTransformChargeBorder(g, -4, -4, s + 8, s + 8, 0, snap.transformChargePercent);
-        }
-    }
-
-    /**
-     * Red rounded border that fills clockwise with transform charge (hold G).
-     * Track is dim; fill is bright red — no percentage text.
-     */
-    private static void drawTransformChargeBorder(GuiGraphics g, int x, int y, int w, int h, int radius, float percent) {
-        percent = clamp01(percent);
-        if (percent <= 0f) return;
-
-        int t = 4;
-        net.bullettrain.xenopixelsmod.client.hud.HudDraw.borderRect(
-                g, x, y, w, h, 0xAA3A0A12, t);
-
-        // Approximate progressive fill with rounded outline segments via perimeter walk
-        int top = w;
-        int right = h - t;
-        int bottom = w - t;
-        int left = h - 2 * t;
-        int perimeter = Math.max(1, top + right + bottom + left);
-        int filled = Math.max(1, Math.round(perimeter * percent));
-
-        int core = 0xFFFF1744;
-        int hot = 0xFFFF8A80;
-        int rem = filled;
-
-        int take = Math.min(rem, top);
-        if (take > 0) {
-            g.fill(x, y, x + take, y + t, core);
-            g.fill(x, y + 1, x + take, y + 2, hot);
-            rem -= take;
-        }
-        take = Math.min(rem, right);
-        if (take > 0) {
-            g.fill(x + w - t, y + t, x + w, y + t + take, core);
-            g.fill(x + w - 2, y + t, x + w - 1, y + t + take, hot);
-            rem -= take;
-        }
-        take = Math.min(rem, bottom);
-        if (take > 0) {
-            g.fill(x + w - take, y + h - t, x + w, y + h, core);
-            g.fill(x + w - take, y + h - 2, x + w, y + h - 1, hot);
-            rem -= take;
-        }
-        take = Math.min(rem, left);
-        if (take > 0) {
-            g.fill(x, y + h - t - take, x + t, y + h - t, core);
-            g.fill(x + 1, y + h - t - take, x + 2, y + h - t, hot);
+            // Moved to HudDraw so the modern and unified renderers can draw the same indicator;
+            // the geometry here is unchanged — a ring 4px outside the portrait square.
+            net.bullettrain.xenopixelsmod.client.hud.HudDraw.transformChargeBorder(
+                    g, -4, -4, s + 8, s + 8, snap.transformChargePercent);
         }
     }
 

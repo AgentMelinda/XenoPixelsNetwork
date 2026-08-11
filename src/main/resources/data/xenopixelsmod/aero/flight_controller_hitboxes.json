@@ -1,0 +1,74 @@
+{
+  "regions": [
+    {
+      "name": "button_engage",
+      "action": "toggle_flight",
+      "min": [
+        0.39062,
+        0.26562,
+        0.07812
+      ],
+      "max": [
+        0.67188,
+        0.40937,
+        0.35938
+      ]
+    },
+    {
+      "name": "button_map",
+      "action": "toggle_map",
+      "min": [
+        0.64062,
+        0.26562,
+        0.07812
+      ],
+      "max": [
+        0.92188,
+        0.40937,
+        0.35938
+      ]
+    },
+    {
+      "name": "button_mode",
+      "action": "cycle_mode",
+      "min": [
+        0.14062,
+        0.26562,
+        0.07812
+      ],
+      "max": [
+        0.42188,
+        0.40937,
+        0.35938
+      ]
+    },
+    {
+      "name": "lever_attitude",
+      "action": "reset_attitude",
+      "min": [
+        0.65312,
+        0.26562,
+        0.27813
+      ],
+      "max": [
+        0.84688,
+        0.70312,
+        0.47188
+      ]
+    },
+    {
+      "name": "lever_throttle",
+      "action": "step_throttle",
+      "min": [
+        0.15313,
+        0.26562,
+        0.27813
+      ],
+      "max": [
+        0.34688,
+        0.70312,
+        0.47188
+      ]
+    }
+  ]
+}

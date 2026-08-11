@@ -254,6 +254,9 @@ public class Bt3CombatPacket {
         // Face-on teleport: syncs camera + kills residual flight (teleportTo alone desyncs DMZ flight)
         teleportFacing(player, dest, target);
         playItSound(player, dest.x, dest.y, dest.z, false);
+        // Stamped after the teleport so the shade is left behind the fighter rather than being
+        // spawned on top of them for a tick.
+        net.bullettrain.xenopixelsmod.combat.VanishShadeFx.spawn(player, from);
     }
 
     private static void handleChase(ServerPlayer player, LivingEntity target, Resources res) {
@@ -555,6 +558,8 @@ public class Bt3CombatPacket {
         Vec3 dest = vanishBehind(player, target, s);
         teleportFacing(player, dest, target);
         playItSound(player, dest.x, dest.y, dest.z, false);
+        // A super counter is a vanish, so it leaves the same shade behind.
+        net.bullettrain.xenopixelsmod.combat.VanishShadeFx.spawn(player, from);
 
         float base = (float) Math.max(2.0, player.getAttackStrengthScale(0.5f) * 5.0f);
         if (data != null) {
@@ -926,6 +931,19 @@ public class Bt3CombatPacket {
     }
 
     private static void playItSound(ServerPlayer player, double x, double y, double z, boolean leave) {
+        // Server-configured override first, so an operator can point vanish at their own sound
+        // without a code change. An id that does not resolve falls through to the usual chain
+        // rather than silencing the move.
+        String configured = leave ? XenoServerConfig.vanishSoundOut : XenoServerConfig.vanishSoundIn;
+        if (configured != null && !configured.isBlank()) {
+            ResourceLocation id = ResourceLocation.tryParse(configured);
+            SoundEvent custom = id == null ? null : BuiltInRegistries.SOUND_EVENT.get(id);
+            if (custom != null) {
+                player.level().playSound(null, x, y, z, custom, SoundSource.PLAYERS,
+                        1.0f, leave ? 1.0f : 1.1f);
+                return;
+            }
+        }
         SoundEvent dmz = BuiltInRegistries.SOUND_EVENT.get(
                 ResourceLocation.fromNamespaceAndPath("dragonminez", leave ? "evasion1" : "evasion2"));
         if (dmz != null) {

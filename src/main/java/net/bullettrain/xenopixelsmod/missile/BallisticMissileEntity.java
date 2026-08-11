@@ -34,6 +34,16 @@ public class BallisticMissileEntity extends Entity {
     private static final int EJECT_TICKS = 8;
     private static final double TERMINAL_ACQUIRE_RANGE = 48.0;
     private static final double TERMINAL_MAX_TURN = 0.12; // rad/tick steer limit
+    /** Terminal dive keeps most of gravity so the arc still reads as a falling warhead. */
+    private static final double TERMINAL_GRAVITY_SCALE = 0.85;
+    /**
+     * Cap on the time-to-go used for gravity compensation, in ticks.
+     *
+     * <p>Time-to-go is distance/speed, so a heavily dragged or slow missile can produce a huge
+     * estimate and, with it, an aim point far above the sky. Three seconds of lead is well past
+     * any real terminal run.
+     */
+    private static final double TERMINAL_MAX_LEAD_TICKS = 60.0;
     private static final int MIN_LIFETIME = 20 * 90;
 
     private double targetX, targetY, targetZ;
@@ -168,11 +178,26 @@ public class BallisticMissileEntity extends Entity {
                 }
             }
             case TERMINAL -> {
-                vel = vel.add(0, -BallisticCalculator.toTickGravity(gravitySi) * 0.85, 0);
+                double tickGravity = BallisticCalculator.toTickGravity(gravitySi) * TERMINAL_GRAVITY_SCALE;
+                vel = vel.add(0, -tickGravity, 0);
                 if (hasTarget) {
                     Vec3 toTarget = new Vec3(targetX - pos.x, targetY - pos.y, targetZ - pos.z);
-                    if (toTarget.lengthSqr() > 1.0e-6) {
-                        Vec3 desired = toTarget.normalize().scale(Math.max(0.8, vel.length()));
+                    double distance = toTarget.length();
+                    if (distance > 1.0e-3) {
+                        double speed = Math.max(0.8, vel.length());
+                        // Gravity compensation. Steering straight at the target is pure pursuit:
+                        // every tick gravity pulls the velocity below the line of sight, and the
+                        // turn-rate limit cannot claw all of it back, so the path sags and the
+                        // missile lands short and low — near the target but never on it. Aiming
+                        // high by the drop gravity will impose over the remaining flight cancels
+                        // that bias instead of fighting it one tick at a time.
+                        double drop = 0.0;
+                        if (net.bullettrain.xenopixelsmod.config.XenoServerConfig
+                                .missileTerminalGravityCompensation) {
+                            double timeToGo = Math.min(TERMINAL_MAX_LEAD_TICKS, distance / speed);
+                            drop = 0.5 * tickGravity * timeToGo * timeToGo;
+                        }
+                        Vec3 desired = toTarget.add(0, drop, 0).normalize().scale(speed);
                         // Limited turn rate (no magic 180° snaps)
                         vel = steer(vel, desired, TERMINAL_MAX_TURN);
                     }

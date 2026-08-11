@@ -1,4 +1,10 @@
-"""Generate 16x16 block textures as PNG without Pillow."""
+"""Generate 16x16 block textures as PNG without Pillow.
+
+SUPERSEDED by ``gen_vs2_block_textures.py``, which draws the whole ship set on the shared
+XenoPixels palette. This script still writes some of the same filenames in the older
+brass-and-gold style, so running it reverts that art. Kept for reference only — its
+``write_png`` is the implementation the newer generators reuse.
+"""
 from __future__ import annotations
 
 import random

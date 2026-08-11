@@ -1,0 +1,6 @@
+{
+  "selector": "xenopixelsmod:missile_chunk_loader",
+  "properties": {
+    "sable:mass": 2.0
+  }
+}

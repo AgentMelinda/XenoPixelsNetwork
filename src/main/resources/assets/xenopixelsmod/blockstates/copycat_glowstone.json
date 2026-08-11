@@ -1,0 +1,6 @@
+{
+  "variants": {
+    "powered=false": { "model": "xenopixelsmod:block/copycat_glowstone" },
+    "powered=true": { "model": "xenopixelsmod:block/copycat_glowstone" }
+  }
+}

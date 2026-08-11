@@ -1,11 +1,16 @@
 package net.bullettrain.xenopixelsmod.client.gui;
 
+import net.bullettrain.xenopixelsmod.aero.AeroAutopilotMode;
+import net.bullettrain.xenopixelsmod.aero.AeroStateSnapshot;
+import net.bullettrain.xenopixelsmod.aero.AeroSubsystem;
+import net.bullettrain.xenopixelsmod.aero.ControllerMode;
 import net.bullettrain.xenopixelsmod.client.ClientScreens;
 import net.bullettrain.xenopixelsmod.missile.BallisticFlightPlan;
 import net.bullettrain.xenopixelsmod.network.ModNetwork;
 import net.bullettrain.xenopixelsmod.network.packet.BodyCalibrationPacket;
 import net.bullettrain.xenopixelsmod.network.packet.FlightPlanRequestPacket;
 import net.bullettrain.xenopixelsmod.network.packet.GuidanceControlPacket;
+import net.bullettrain.xenopixelsmod.network.packet.AeroControlPacket;
 import net.bullettrain.xenopixelsmod.vs.VsShipHelper;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
@@ -29,11 +34,13 @@ public final class FlightPlannerScreen extends UnblurredScreen {
     private Tab tab = Tab.EASY;
     private BallisticFlightPlan.Settings settings = BallisticFlightPlan.Settings.defaults();
     private BallisticFlightPlan.Result result;
+    private AeroStateSnapshot aeroState;
     private BlockPos currentTarget;
     private long selectedTargetShipId = -1L;
     private double guidanceStopDistance;
     private int easyCruiseY;
     private int revision;
+    private int aeroPollTicks;
     private int selectedWaypoint;
     private int draggedPhaseHandle = -1;
     private String notice = "Loading server plan...";
@@ -131,8 +138,11 @@ public final class FlightPlannerScreen extends UnblurredScreen {
         clearWidgets();
         int x = panelX + 10;
         if (tab == Tab.EASY) {
-            addRenderableWidget(Button.builder(Component.literal("EASY GUIDANCE"), b -> {})
-                    .tooltip(Tooltip.create(Component.literal("The recommended guided launch workflow.")))
+            boolean flightUi = isFlightUi();
+            addRenderableWidget(Button.builder(Component.literal(flightUi ? "EASY FLIGHT" : "EASY GUIDANCE"), b -> {})
+                    .tooltip(Tooltip.create(Component.literal(flightUi
+                            ? "Manual, target, and waypoint-route ship flight."
+                            : "The recommended guided launch workflow.")))
                     .bounds(x, panelY + 25, 146, 18).build());
             addRenderableWidget(Button.builder(Component.literal("Advanced settings  >"), b -> switchTab(Tab.PLAN))
                     .tooltip(Tooltip.create(Component.literal("Open manual ballistic, body, engine and fleet controls.")))
@@ -166,6 +176,18 @@ public final class FlightPlannerScreen extends UnblurredScreen {
             case TELEMETRY -> { }
         }
         int bottom = panelY + PANEL_H - 24;
+        if (isFlightUi()) {
+            addRenderableWidget(Button.builder(Component.literal("Save Route"), b -> request(FlightPlanRequestPacket.Action.APPLY))
+                    .tooltip(Tooltip.create(Component.literal("Save target and ordered waypoints for route autopilot.")))
+                    .bounds(panelX + 250, bottom, 74, 18).build());
+            addRenderableWidget(Button.builder(Component.literal("STOP"), b ->
+                            ModNetwork.sendToServer(AeroControlPacket.emergencyStop(openData.computerPos())))
+                    .tooltip(Tooltip.create(Component.literal("Immediately release thrust and disengage flight.")))
+                    .bounds(panelX + 328, bottom, 56, 18).build());
+            addRenderableWidget(Button.builder(Component.literal("X"), b -> onClose())
+                    .bounds(panelX + 388, bottom, 24, 18).build());
+            return;
+        }
         addRenderableWidget(Button.builder(Component.literal("Check Route"), b -> request(FlightPlanRequestPacket.Action.PREVIEW))
                 .tooltip(Tooltip.create(Component.literal("Ask the server to simulate this route. This does not launch.")))
                 .bounds(panelX + 174, bottom, 72, 18).build());
@@ -184,6 +206,10 @@ public final class FlightPlannerScreen extends UnblurredScreen {
 
     /** One-screen beginner workflow; advanced tabs remain available above. */
     private void initEasy() {
+        if (isFlightUi()) {
+            initEasyFlight();
+            return;
+        }
         easyTargetBox = box(panelX + 12, panelY + 72, 146,
                 xyz(currentTarget.getX(), currentTarget.getY(), currentTarget.getZ()));
         easyTargetBox.setResponder(value -> invalidatePreview("Target changed — build and check a new route."));
@@ -221,6 +247,76 @@ public final class FlightPlannerScreen extends UnblurredScreen {
                     notice = "Engine search requested. Launch when the checked route is ready.";
                 }).tooltip(Tooltip.create(Component.literal("Pairs this mod's thrusters and supported engines from other mods.")))
                 .bounds(panelX + 12, panelY + 200, 146, 20).build());
+    }
+
+    private void initEasyFlight() {
+        easyTargetBox = box(panelX + 12, panelY + 72, 146,
+                xyz(currentTarget.getX(), currentTarget.getY(), currentTarget.getZ()));
+        easyTargetBox.setResponder(value -> notice = "Target changed — choose Target Auto or save the route");
+
+        addRenderableWidget(Button.builder(Component.literal(autoLabel(AeroAutopilotMode.MANUAL, "Manual")), b ->
+                        selectAutopilot(AeroAutopilotMode.MANUAL))
+                .bounds(panelX + 12, panelY + 104, 46, 18).build());
+        addRenderableWidget(Button.builder(Component.literal(autoLabel(AeroAutopilotMode.TARGET, "Target Auto")), b ->
+                        selectAutopilot(AeroAutopilotMode.TARGET))
+                .tooltip(Tooltip.create(Component.literal("Fly directly to the target, brake, then hover.")))
+                .bounds(panelX + 62, panelY + 104, 72, 18).build());
+        addRenderableWidget(Button.builder(Component.literal(autoLabel(AeroAutopilotMode.ROUTE, "Route Auto")), b ->
+                        selectAutopilot(AeroAutopilotMode.ROUTE))
+                .tooltip(Tooltip.create(Component.literal("Follow the ordered Points-tab waypoints, then brake and hover at target.")))
+                .bounds(panelX + 12, panelY + 128, 72, 18).build());
+
+        boolean engaged = aeroState != null && aeroState.flightEngaged();
+        addRenderableWidget(Button.builder(Component.literal(engaged ? "ENGAGED" : "ENGAGE FLIGHT"), b -> {
+                    captureVisibleFields();
+                    ModNetwork.sendToServer(GuidanceControlPacket.setTarget(openData.computerPos(),
+                            currentTarget.getX(), currentTarget.getY(), currentTarget.getZ()));
+                    ModNetwork.sendToServer(AeroControlPacket.toggle(openData.computerPos(),
+                            AeroSubsystem.FLIGHT, !engaged));
+                    notice = engaged ? "Disengage requested" : "Flight engagement requested";
+                }).tooltip(Tooltip.create(Component.literal("Engage thrust and absolute attitude control.")))
+                .bounds(panelX + 12, panelY + 164, 122, 22).build());
+
+        addRenderableWidget(Button.builder(Component.literal("Pair Engines"), b ->
+                        ModNetwork.sendToServer(AeroControlPacket.link(openData.computerPos(),
+                                net.bullettrain.xenopixelsmod.aero.AeroAction.Link.Op.PAIR_NEARBY)))
+                .bounds(panelX + 12, panelY + 194, 122, 18).build());
+    }
+
+    private String autoLabel(AeroAutopilotMode mode, String name) {
+        return aeroState != null && aeroState.autopilotMode() == mode ? "• " + name : name;
+    }
+
+    private void selectAutopilot(AeroAutopilotMode mode) {
+        captureVisibleFields();
+        ModNetwork.sendToServer(GuidanceControlPacket.setTarget(openData.computerPos(),
+                currentTarget.getX(), currentTarget.getY(), currentTarget.getZ()));
+        ModNetwork.sendToServer(AeroControlPacket.setAutopilot(openData.computerPos(), mode));
+        notice = mode == AeroAutopilotMode.MANUAL ? "Manual absolute-attitude flight selected"
+                : mode == AeroAutopilotMode.TARGET ? "Target autopilot selected"
+                : "Route autopilot selected — use Save Route after editing Points";
+    }
+
+    private boolean isFlightUi() {
+        return aeroState != null && aeroState.mode() == ControllerMode.FLIGHT;
+    }
+
+    public void acceptAeroState(AeroStateSnapshot state) {
+        if (state == null || !state.controllerPos().equals(openData.computerPos())) return;
+        boolean rebuild = aeroState == null || aeroState.mode() != state.mode()
+                || aeroState.autopilotMode() != state.autopilotMode()
+                || aeroState.flightEngaged() != state.flightEngaged();
+        aeroState = state;
+        notice = state.status();
+        if (rebuild) rebuildPlannerWidgets();
+    }
+
+    @Override public void tick() {
+        super.tick();
+        if (isFlightUi() && ++aeroPollTicks >= 10) {
+            aeroPollTicks = 0;
+            ModNetwork.sendToServer(AeroControlPacket.requestState(openData.computerPos()));
+        }
     }
 
     private void setEasyCruiseY() {
@@ -751,7 +847,7 @@ public final class FlightPlannerScreen extends UnblurredScreen {
 
     private void autoTuneForDistance() {
         captureVisibleFields();
-        if (tab == Tab.EASY) {
+        if (tab == Tab.EASY && !isFlightUi()) {
             ModNetwork.sendToServer(GuidanceControlPacket.setCruiseY(openData.computerPos(), easyCruiseY));
         }
         BallisticFlightPlan.TrajectoryProfile requestedEasyProfile = tab == Tab.EASY
@@ -1155,9 +1251,22 @@ public final class FlightPlannerScreen extends UnblurredScreen {
         if (tab == Tab.EASY) {
             int x = panelX + GRAPH_X + 5;
             int y = panelY + 190;
-            g.drawString(font, "EASY GUIDANCE", x, y, 0xff8ed6ff, false);
-            g.drawString(font, "Style: " + easyStyleName(settings.profile()), x, y + 13, 0xffa8c7d8, false);
-            g.drawString(font, "Read the status below before launch", x, y + 26, 0xffffc078, false);
+            if (isFlightUi()) {
+                g.drawString(font, "AERO FLIGHT", x, y, 0xff8ed6ff, false);
+                String mode = aeroState == null ? "waiting" : aeroState.autopilotMode().name().toLowerCase();
+                g.drawString(font, "Mode: " + mode, x, y + 13, 0xffa8c7d8, false);
+                if (aeroState != null) {
+                    g.drawString(font, String.format(Locale.ROOT, "Distance %.1f · speed %.1f",
+                            aeroState.targetDistance(), aeroState.actualSpeed()), x, y + 26, 0xffb8d7e8, false);
+                    if (aeroState.waypointCount() > 0) g.drawString(font,
+                            "Waypoint " + (aeroState.waypointIndex() + 1) + "/" + aeroState.waypointCount(),
+                            x, y + 39, 0xff82e89a, false);
+                }
+            } else {
+                g.drawString(font, "EASY GUIDANCE", x, y, 0xff8ed6ff, false);
+                g.drawString(font, "Style: " + easyStyleName(settings.profile()), x, y + 13, 0xffa8c7d8, false);
+                g.drawString(font, "Read the status below before launch", x, y + 26, 0xffffc078, false);
+            }
         }
         if (tab == Tab.TELEMETRY && result != null) {
             int x = panelX + 12, y = panelY + 66;

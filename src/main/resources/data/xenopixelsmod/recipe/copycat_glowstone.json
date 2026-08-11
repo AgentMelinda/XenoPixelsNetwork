@@ -1,0 +1,18 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "building",
+  "pattern": [
+    "GGG",
+    "GCG",
+    "GGG"
+  ],
+  "key": {
+    "G": { "item": "minecraft:glowstone_dust" },
+    "C": { "item": "minecraft:glass" }
+  },
+  "result": {
+    "id": "xenopixelsmod:copycat_glowstone",
+    "count": 4
+  },
+  "show_notification": true
+}

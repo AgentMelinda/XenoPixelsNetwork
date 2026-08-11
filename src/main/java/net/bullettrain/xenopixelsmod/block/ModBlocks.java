@@ -2,6 +2,7 @@ package net.bullettrain.xenopixelsmod.block;
 
 import net.bullettrain.xenopixelsmod.XenoPixelsMod;
 import net.bullettrain.xenopixelsmod.block.custom.MissileChunkLoaderBlock;
+import net.bullettrain.xenopixelsmod.block.custom.CopycatGlowstoneBlock;
 import net.bullettrain.xenopixelsmod.block.custom.MissileTubeBlock;
 import net.bullettrain.xenopixelsmod.block.custom.ShipThrusterBlock;
 import net.bullettrain.xenopixelsmod.block.custom.ShipVlsGuidanceBlock;
@@ -30,6 +31,12 @@ public class ModBlocks {
 
     public static final DeferredHolder<Block, Block> SOUND_BLOCK = registerBlock("sound_block",
             () -> new SoundBlock(BlockBehaviour.Properties.ofFullCopy(Blocks.IRON_BLOCK)));
+
+    /** Maximum-light decorative block that renders a material applied with a block item. */
+    public static final DeferredHolder<Block, CopycatGlowstoneBlock> COPYCAT_GLOWSTONE =
+            registerBlock("copycat_glowstone", () -> new CopycatGlowstoneBlock(
+                    BlockBehaviour.Properties.ofFullCopy(Blocks.GLOWSTONE).lightLevel(state ->
+                            state.getValue(CopycatGlowstoneBlock.POWERED) ? 15 : 0)));
 
     public static final DeferredHolder<Block, Block> JACKIETONITE_ORE_BLOCK = registerBlock("jackietonite_ore_block",
             () -> new Block(BlockBehaviour.Properties.of()

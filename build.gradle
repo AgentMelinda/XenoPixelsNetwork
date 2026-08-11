@@ -147,6 +147,9 @@ dependencies {
     compileOnly "cc.tweaked:cc-tweaked-1.21.1-common-api:${cc_tweaked_version}"
     compileOnly "cc.tweaked:cc-tweaked-1.21.1-core-api:${cc_tweaked_version}"
     compileOnly "cc.tweaked:cc-tweaked-1.21.1-forge-api:${cc_tweaked_version}"
+    // Yet Another World Protector - region protection. Ki griefing asks its flags before
+    // breaking blocks; the mod is optional at runtime and the compat is gated on it.
+    compileOnly "maven.modrinth:yawp:${yawp_version}"
     compileOnly "xaero.lib:xaerolib-neoforge-1.21.1:${xaerolib_version}"
     compileOnly "xaero.map:xaeroworldmap-neoforge-1.21.1:${xaero_world_map_version}:all"
 

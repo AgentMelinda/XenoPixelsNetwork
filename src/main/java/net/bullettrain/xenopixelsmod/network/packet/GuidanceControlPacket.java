@@ -279,8 +279,11 @@ public class GuidanceControlPacket {
 
     /**
      * Player ↔ computer distance in <b>world</b> space (VS shipyard coords are millions away).
+     *
+     * <p>Public so {@code AeroControlPacket} enforces the identical reach rule rather than
+     * growing a second, drifting copy of it.
      */
-    private static boolean withinGuidanceReach(ServerPlayer player, ServerLevel level, BlockPos bePos) {
+    public static boolean withinGuidanceReach(ServerPlayer player, ServerLevel level, BlockPos bePos) {
         double px = bePos.getX() + 0.5;
         double py = bePos.getY() + 0.5;
         double pz = bePos.getZ() + 0.5;

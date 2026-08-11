@@ -41,6 +41,20 @@ public final class XenoHudConfig {
      * Temporary; remove once signed off (repo plan.md Phase 6).
      */
     public static boolean legacyTechniqueRenderer = true;
+    /**
+     * Modern-unified renderer: the stat cluster and the BT3 combat cooldown strip drawn as one
+     * panel at the main HUD's position and scale, instead of two independently placed ones.
+     *
+     * <p>Only meaningful while {@link #legacyHudRenderer} is false, which is why this is a
+     * second flag rather than a replacement — a config written before this option existed
+     * simply has it absent, and lands on plain modern exactly as it did before.
+     */
+    public static boolean unifiedHudRenderer = false;
+
+    /** True when the unified renderer owns drawing the cooldown strip. */
+    public static boolean unifiedActive() {
+        return !legacyHudRenderer && unifiedHudRenderer;
+    }
 
     private XenoHudConfig() {}
 
@@ -58,6 +72,7 @@ public final class XenoHudConfig {
             visible = data.visible;
             legacyHudRenderer = data.legacyHudRenderer;
             legacyTechniqueRenderer = data.legacyTechniqueRenderer;
+            unifiedHudRenderer = data.unifiedHudRenderer;
         } catch (IOException e) {
             XenoPixelsMod.LOGGER.warn("Failed to load HUD config", e);
         }
@@ -71,6 +86,7 @@ public final class XenoHudConfig {
         data.visible = visible;
         data.legacyHudRenderer = legacyHudRenderer;
         data.legacyTechniqueRenderer = legacyTechniqueRenderer;
+        data.unifiedHudRenderer = unifiedHudRenderer;
         try {
             Files.createDirectories(PATH.getParent());
             try (Writer writer = Files.newBufferedWriter(PATH)) {
@@ -98,12 +114,36 @@ public final class XenoHudConfig {
         return Math.max(MIN_SCALE, Math.min(MAX_SCALE, value));
     }
 
+    /**
+     * Unscaled footprint of the last unified panel drawn.
+     *
+     * <p>The unified plate's height depends on how many combat chips wrap into it, so unlike the
+     * other renderers it has no constant. Clamping it against {@link #BASE_HEIGHT} let the panel
+     * hang off the bottom of the screen, and dragging it in {@code /xenohud edit} stopped short
+     * of the real edge. Reported by the view each frame; the constants stand in until then.
+     */
+    private static volatile int unifiedWidth = BASE_WIDTH;
+    private static volatile int unifiedHeight = BASE_HEIGHT;
+
+    public static void reportUnifiedSize(int width, int height) {
+        unifiedWidth = Math.max(1, width);
+        unifiedHeight = Math.max(1, height);
+    }
+
+    public static int baseWidth() {
+        return unifiedActive() ? unifiedWidth : BASE_WIDTH;
+    }
+
+    public static int baseHeight() {
+        return unifiedActive() ? unifiedHeight : BASE_HEIGHT;
+    }
+
     public static int scaledWidth() {
-        return Math.round(BASE_WIDTH * scale);
+        return Math.round(baseWidth() * scale);
     }
 
     public static int scaledHeight() {
-        return Math.round(BASE_HEIGHT * scale);
+        return Math.round(baseHeight() * scale);
     }
 
     public static void clampToScreen(int screenWidth, int screenHeight) {
@@ -120,5 +160,6 @@ public final class XenoHudConfig {
         boolean visible = true;
         boolean legacyHudRenderer = true;
         boolean legacyTechniqueRenderer = true;
+        boolean unifiedHudRenderer = false;
     }
 }

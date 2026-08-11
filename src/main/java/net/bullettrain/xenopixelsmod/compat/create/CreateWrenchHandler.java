@@ -7,10 +7,13 @@ import net.bullettrain.xenopixelsmod.block.custom.MissileChunkLoaderBlock;
 import net.bullettrain.xenopixelsmod.block.custom.MissileTubeBlock;
 import net.bullettrain.xenopixelsmod.block.custom.ShipThrusterBlock;
 import net.bullettrain.xenopixelsmod.block.custom.ShipVlsGuidanceBlock;
+import net.bullettrain.xenopixelsmod.block.custom.CopycatGlowstoneBlock;
+import net.bullettrain.xenopixelsmod.block.entity.CopycatGlowstoneBlockEntity;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.network.chat.Component;
 import net.minecraft.sounds.SoundEvents;
 import net.minecraft.sounds.SoundSource;
 import net.minecraft.world.InteractionResult;
@@ -48,6 +51,25 @@ public final class CreateWrenchHandler {
         Level level = event.getLevel();
         BlockPos pos = event.getPos();
         BlockState state = level.getBlockState(pos);
+
+        // Copycat materials are intentionally one-shot. The Create wrench is the sole
+        // unbinding tool, and this high-priority event makes that reliable even when Create's
+        // own wrench handlers would otherwise consume the interaction first.
+        if (state.getBlock() instanceof CopycatGlowstoneBlock
+                && level.getBlockEntity(pos) instanceof CopycatGlowstoneBlockEntity copycat
+                && copycat.hasCustomMaterial()) {
+            Player player = event.getEntity();
+            if (!level.isClientSide && copycat.resetMaterial()) {
+                level.playSound(null, pos, SoundEvents.ITEM_FRAME_REMOVE_ITEM,
+                        SoundSource.BLOCKS, 0.8f, 1.1f);
+                player.displayClientMessage(Component.translatable(
+                        "message.xenopixelsmod.copycat_glowstone_unbound"), true);
+            }
+            event.setCancellationResult(InteractionResult.sidedSuccess(level.isClientSide));
+            event.setCanceled(true);
+            return;
+        }
+
         DirectionProperty facing = facingProperty(state.getBlock());
         if (facing == null || !state.hasProperty(facing)) return;
 

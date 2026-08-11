@@ -28,6 +28,7 @@ public class ModCreativeModTabs {
                         pOutput.accept(ModBlocks.MISSILE_TUBE.get());
                         pOutput.accept(ModBlocks.MISSILE_CHUNK_LOADER.get());
                         pOutput.accept(ModBlocks.SHIP_THRUSTER.get());
+                        pOutput.accept(ModBlocks.COPYCAT_GLOWSTONE.get());
 
                         pOutput.accept(ModBlocks.JACKIETONITE_ORE_BLOCK.get());
                         pOutput.accept(ModBlocks.RAW_JACKIETONITE_ORE_BLOCK.get());

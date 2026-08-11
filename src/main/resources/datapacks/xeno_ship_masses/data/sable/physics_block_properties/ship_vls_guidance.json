@@ -1,0 +1,6 @@
+{
+  "selector": "xenopixelsmod:ship_vls_guidance",
+  "properties": {
+    "sable:mass": 2.5
+  }
+}

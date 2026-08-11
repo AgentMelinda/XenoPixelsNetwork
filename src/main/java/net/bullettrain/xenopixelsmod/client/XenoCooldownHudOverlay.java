@@ -3,7 +3,10 @@ package net.bullettrain.xenopixelsmod.client;
 import net.bullettrain.xenopixelsmod.client.combat.Bt3CombatClient;
 import net.bullettrain.xenopixelsmod.client.config.XenoClientConfig;
 import net.bullettrain.xenopixelsmod.client.config.XenoCooldownHudConfig;
+import net.bullettrain.xenopixelsmod.client.config.XenoHudConfig;
 import net.bullettrain.xenopixelsmod.client.hud.HudDraw;
+import net.bullettrain.xenopixelsmod.client.hud.XenoHudLayout;
+import net.bullettrain.xenopixelsmod.client.hud.XenoHudTextures;
 import net.bullettrain.xenopixelsmod.network.Bt3CombatPacket;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.DeltaTracker;
@@ -22,9 +25,9 @@ import java.util.List;
 @OnlyIn(Dist.CLIENT)
 public class XenoCooldownHudOverlay {
 
-    private static final int CHIP_W = 52;
-    private static final int CHIP_H = 34;
-    private static final int GAP = 4;
+    public static final int CHIP_W = 52;
+    public static final int CHIP_H = 34;
+    public static final int GAP = 4;
     private static final int PAD_X = 8;
     private static final int PAD_Y = 6;
     private static final int TITLE_H = 12;
@@ -53,12 +56,44 @@ public class XenoCooldownHudOverlay {
     }
 
     public void render(GuiGraphics g, DeltaTracker deltaTracker) {
-        if (!XenoClientConfig.cooldownHudEnabled || !XenoCooldownHudConfig.visible) return;
+        // The unified renderer draws this strip inside the main HUD's panel; drawing it here
+        // as well would put a second copy on screen at its own position.
+        if (XenoHudConfig.unifiedActive()) return;
+        if (!enabledNow()) return;
         Minecraft mc = Minecraft.getInstance();
-        if (mc.player == null || mc.options.hideGui || mc.getDebugOverlay().showDebugScreen()) return;
-        if (!XenoClientConfig.bt3CombatClient || !XenoServerClientState.combat()) return;
         if (mc.screen != null) return;
         draw(g, g.guiWidth(), g.guiHeight(), false);
+    }
+
+    private static boolean enabledNow() {
+        if (!XenoClientConfig.cooldownHudEnabled || !XenoCooldownHudConfig.visible) return false;
+        Minecraft mc = Minecraft.getInstance();
+        if (mc.player == null || mc.options.hideGui || mc.getDebugOverlay().showDebugScreen()) return false;
+        return XenoClientConfig.bt3CombatClient && XenoServerClientState.combat();
+    }
+
+    /**
+     * Chips for the unified renderer, or an empty list when the strip should not be shown.
+     *
+     * <p>Centralising the gate here keeps one answer to "is the cooldown strip on right now",
+     * including the {@code showOnlyWhenActive} rule, rather than duplicating that logic in the
+     * unified view where it could drift.
+     */
+    public static List<Chip> chipsForUnified(boolean editing) {
+        if (!editing && !enabledNow()) return List.of();
+        List<Chip> chips = buildChips(editing);
+        if (chips.isEmpty()) return List.of();
+        if (XenoCooldownHudConfig.showOnlyWhenActive && !editing) {
+            boolean any = false;
+            for (Chip c : chips) {
+                if (c.busy) {
+                    any = true;
+                    break;
+                }
+            }
+            if (!any) return List.of();
+        }
+        return chips;
     }
 
     public static void renderEditorPreview(GuiGraphics g, int screenWidth, int screenHeight) {
@@ -107,6 +142,16 @@ public class XenoCooldownHudOverlay {
         g.pose().translate(baseX, baseY, 0);
         g.pose().scale(scale, scale, 1f);
 
+        // Follows the same toggle as the main HUD (/xenohud renderer), so a player who opted
+        // into the modern look gets it here too rather than a textured HUD above a procedural
+        // cooldown strip. The legacy path below is untouched, including its skew and the
+        // squareShape option, which cannot apply to pre-baked sprites.
+        if (!XenoHudConfig.legacyHudRenderer) {
+            drawModern(g, font, chips, panelW, panelH, horiz);
+            g.pose().popPose();
+            return;
+        }
+
         // --- Tech-HUD palette plate (navy glass + cyan rail, same family as KI technique bar) ---
         // Outer shadow
         fillPara(g, -3, -3, panelW + 6, panelH + 6, pSkew > 0 ? pSkew + 1 : 0, 0xCC050510);
@@ -140,6 +185,105 @@ public class XenoCooldownHudOverlay {
         }
 
         g.pose().popPose();
+    }
+
+    /**
+     * Modern chrome: the same layout and the same chip data, drawn by blitting the generated
+     * atlas instead of stacking flat parallelogram fills.
+     *
+     * <p>The chip plates are neutral art; each move's accent colour arrives through the tinted
+     * rail and meter fill, which is what lets three plate sprites cover every chip.
+     */
+    private static void drawModern(GuiGraphics g, Font font, List<Chip> chips,
+                                   int panelW, int panelH, boolean horiz) {
+        var atlas = XenoHudTextures.HUD_ATLAS;
+        int originY = PAD_Y + TITLE_H;
+        HudDraw.blitNineSlice(g, atlas, XenoHudLayout.PANEL, 0, 0, panelW, panelH,
+                XenoHudLayout.PANEL_CORNER);
+
+        g.drawString(font, "COMBAT", PAD_X + 2, 3, 0xFF90CAF9, true);
+        int pipX = PAD_X + font.width("COMBAT") + 8;
+        for (int i = 0; i < Math.min(5, chips.size()); i++) {
+            Chip c = chips.get(i);
+            HudDraw.blitScaledTinted(g, atlas,
+                    c.busy ? XenoHudLayout.SPARK_ON : XenoHudLayout.SPARK_OFF,
+                    pipX + i * 7, 4, 5, 5,
+                    !c.enabled ? 0x883A4550 : (c.busy ? c.accent : 0xAA66BB6A));
+        }
+
+        for (int i = 0; i < chips.size(); i++) {
+            int cx = horiz ? PAD_X + i * (CHIP_W + GAP) : PAD_X;
+            int cy = horiz ? originY : originY + i * (CHIP_H + GAP);
+            drawModernChip(g, font, cx, cy, chips.get(i));
+        }
+    }
+
+    public static void drawModernChip(GuiGraphics g, Font font, int x, int y, Chip chip) {
+        var atlas = XenoHudTextures.HUD_ATLAS;
+        XenoHudLayout.Region plate = !chip.enabled ? XenoHudLayout.CD_CHIP_OFF
+                : chip.busy ? XenoHudLayout.CD_CHIP_HOT : XenoHudLayout.CD_CHIP_IDLE;
+        HudDraw.blitNineSlice(g, atlas, plate, x, y, CHIP_W, CHIP_H, XenoHudLayout.CD_CHIP_CORNER);
+
+        // Accent rail: the only place a disabled chip loses its colour entirely.
+        HudDraw.blitScaledTinted(g, atlas, XenoHudLayout.CD_RAIL, x + 2, y + 3, 2, CHIP_H - 6,
+                chip.enabled ? (chip.accent | 0xFF000000) : 0xFF3A4550);
+
+        int badgeBottomY = y + 2;
+        if (XenoCooldownHudConfig.showLabels && chip.key != null && !chip.key.isEmpty()) {
+            int bw = font.width(chip.key) + 6;
+            int bh = 9;
+            int bx = x + (CHIP_W - bw) / 2;
+            HudDraw.blitNineSlice(g, atlas, XenoHudLayout.CD_BADGE, bx, y + 2, bw, bh,
+                    XenoHudLayout.CD_BADGE_CORNER);
+            g.drawString(font, chip.key, bx + 3, y + 3,
+                    chip.enabled ? 0xFFB0BEC5 : 0xFF5A6570, false);
+            badgeBottomY = y + 2 + bh;
+        }
+
+        int contentW = CHIP_W - 10;
+        String name = font.width(chip.name) > contentW ? chip.shortName : chip.name;
+        g.drawString(font, name, x + (CHIP_W - font.width(name)) / 2, badgeBottomY + 2,
+                chip.enabled ? 0xFFF0F4FA : 0xFF5A6570, false);
+
+        int mx = x + 6;
+        int mw = CHIP_W - 12;
+        int my = y + CHIP_H - XenoHudLayout.CD_METER_H - 3;
+
+        if (chip.meterMode == MeterMode.COMBO) {
+            int step = Math.max(0, chip.comboStep);
+            String counter = "x" + step;
+            int cw = font.width(counter);
+            int cxText = x + (CHIP_W - cw) / 2;
+            HudDraw.blitNineSlice(g, atlas, XenoHudLayout.CD_BADGE, cxText - 3, my - 3,
+                    cw + 6, 10, XenoHudLayout.CD_BADGE_CORNER);
+            g.drawString(font, counter, cxText, my - 2,
+                    !chip.enabled ? 0xFF5A6570 : (step > 0 ? 0xFFFFCDD2 : 0xFF78909C), false);
+            return;
+        }
+
+        HudDraw.blitScaledTinted(g, atlas, XenoHudLayout.CD_METER_TRACK, mx, my, mw,
+                XenoHudLayout.CD_METER_H, 0xFFFFFFFF);
+        if (!chip.enabled) return;
+
+        boolean metered = (chip.meterMode == MeterMode.COOLDOWN || chip.meterMode == MeterMode.CHARGE)
+                && chip.fraction > 0.001f;
+        if (metered) {
+            // Cooling reads blue, charging reads in the move's own accent — the same colour
+            // split the legacy strip used, so the two renderers stay learnable together.
+            int tint = chip.meterMode == MeterMode.COOLDOWN ? 0xFF81D4FA : (chip.accent | 0xFF000000);
+            int fill = Math.max(2, Math.round(mw * chip.fraction));
+            HudDraw.blitScaledTinted(g, atlas, XenoHudLayout.CD_METER_FILL, mx, my, fill,
+                    XenoHudLayout.CD_METER_H, tint);
+            if (chip.meterMode == MeterMode.COOLDOWN && XenoCooldownHudConfig.showSeconds
+                    && !chip.timeText.isEmpty()) {
+                g.drawString(font, chip.timeText,
+                        x + (CHIP_W - font.width(chip.timeText)) / 2, my - 9, 0xFFE1F5FE, false);
+            }
+        } else if (!chip.busy) {
+            // Ready: a dim full-width wash in the move's accent.
+            HudDraw.blitScaledTinted(g, atlas, XenoHudLayout.CD_METER_FILL, mx, my, mw,
+                    XenoHudLayout.CD_METER_H, (chip.accent & 0x00FFFFFF) | 0x77000000);
+        }
     }
 
     private static void drawChip(GuiGraphics g, Font font, int x, int y, Chip chip) {
@@ -263,7 +407,7 @@ public class XenoCooldownHudOverlay {
         HudDraw.borderPara(g, x, y, w, h, skew, color, t);
     }
 
-    private static List<Chip> buildChips(boolean editing) {
+    public static List<Chip> buildChips(boolean editing) {
         List<Chip> list = new ArrayList<>();
         float moveFrac = editing ? 0.45f : Bt3CombatClient.getMoveCooldownFraction();
         boolean moveCd = editing || Bt3CombatClient.isMoveOnCooldown();
@@ -422,11 +566,11 @@ public class XenoCooldownHudOverlay {
         return String.valueOf(Math.max(1, Math.round(seconds)));
     }
 
-    private enum MeterMode {
+    public enum MeterMode {
         COOLDOWN, CHARGE, COMBO
     }
 
-    private static final class Chip {
+    public static final class Chip {
         String name = "";
         String shortName = "";
         String key = "";

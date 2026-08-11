@@ -13,6 +13,9 @@ import java.util.Set;
  * Uses {@link FMLLoader#getLoadingModList()} (available during mixin apply).
  */
 public class ConditionalMixinPlugin implements IMixinConfigPlugin {
+    /** Permission API the ki-griefing compat compiles against; absent on older YAWP builds. */
+    private static final String YAWP_API_CLASS = "de.z0rdak.yawp.api.permission.FlagPermissions";
+
     @Override
     public void onLoad(String mixinPackage) {
     }
@@ -33,6 +36,16 @@ public class ConditionalMixinPlugin implements IMixinConfigPlugin {
         }
         if (mixinClassName.contains(".compat.xaero.")) {
             return isModLoaded("xaeroworldmap");
+        }
+        if (mixinClassName.contains(".compat.aerostar.")) {
+            return isModLoaded("aerostarcomp");
+        }
+        if (mixinClassName.contains(".compat.yawp.")) {
+            // Not just "is YAWP installed" — the ki-griefing hook calls the 0.6.3 permission
+            // API, and older builds on the 0.6 line ship a different surface. Requiring the
+            // class itself means an unsupported YAWP silently skips the compat hook instead
+            // of booting fine and then throwing NoClassDefFoundError on the first ki blast.
+            return isModLoaded("yawp") && isClassPresent(YAWP_API_CLASS);
         }
         return true;
     }
@@ -71,6 +84,12 @@ public class ConditionalMixinPlugin implements IMixinConfigPlugin {
         }
         if ("xaeroworldmap".equals(modId)) {
             return isClassPresent("xaero.map.gui.GuiMap");
+        }
+        if ("yawp".equals(modId)) {
+            return isClassPresent(YAWP_API_CLASS);
+        }
+        if ("aerostarcomp".equals(modId)) {
+            return isClassPresent("com.bega.aerostarcomp.physics.OrbitGravitySystem");
         }
         return false;
     }

@@ -3,6 +3,11 @@ package net.bullettrain.xenopixelsmod.compat.computercraft;
 import dan200.computercraft.api.lua.LuaFunction;
 import dan200.computercraft.api.peripheral.GenericPeripheral;
 import net.bullettrain.xenopixelsmod.XenoPixelsMod;
+import net.bullettrain.xenopixelsmod.aero.AeroAction;
+import net.bullettrain.xenopixelsmod.aero.AeroActionDispatcher;
+import net.bullettrain.xenopixelsmod.aero.AeroAutopilotMode;
+import net.bullettrain.xenopixelsmod.aero.AeroSubsystem;
+import net.bullettrain.xenopixelsmod.aero.ControllerMode;
 import net.bullettrain.xenopixelsmod.block.entity.ShipVlsGuidanceBlockEntity;
 import net.bullettrain.xenopixelsmod.missile.BallisticFlightPlan;
 import net.minecraft.core.BlockPos;
@@ -309,5 +314,56 @@ public final class VlsGuidancePeripheral implements GenericPeripheral {
                 s.waypointLayerEnabled(), s.altitudeLayerEnabled(), s.motorCutoffFraction(), s.apexFraction(),
                 s.terminalFraction(), s.minimumClearanceY(), s.ceilingY(), s.desiredAngleDeg(),
                 s.angleCommandY(), s.angleCommandDeg(), s.waypoints().size(), be.getTargetShipId()};
+    }
+
+    @LuaFunction(mainThread = true)
+    public final Object setAeroMode(ShipVlsGuidanceBlockEntity be, String mode) {
+        ControllerMode parsed = "flight".equalsIgnoreCase(mode) ? ControllerMode.FLIGHT : ControllerMode.MISSILE;
+        return action(be, new AeroAction.SetMode(parsed));
+    }
+
+    @LuaFunction(mainThread = true)
+    public final Object setAeroAutopilot(ShipVlsGuidanceBlockEntity be, String mode) {
+        try {
+            AeroAutopilotMode parsed = AeroAutopilotMode.valueOf(mode.trim().toUpperCase());
+            return action(be, new AeroAction.SetAutopilot(parsed));
+        } catch (RuntimeException ex) {
+            return new Object[]{false, "mode must be manual, target, or route"};
+        }
+    }
+
+    @LuaFunction(mainThread = true)
+    public final Object engageAero(ShipVlsGuidanceBlockEntity be, boolean enabled) {
+        return action(be, new AeroAction.ToggleSubsystem(AeroSubsystem.FLIGHT, enabled));
+    }
+
+    @LuaFunction(mainThread = true)
+    public final Object setAeroThrottle(ShipVlsGuidanceBlockEntity be, double throttle) {
+        return action(be, new AeroAction.SetThrottle(throttle));
+    }
+
+    @LuaFunction(mainThread = true)
+    public final Object setAeroAttitude(ShipVlsGuidanceBlockEntity be,
+                                        double yaw, double pitch, double roll) {
+        return action(be, new AeroAction.SetAttitude(yaw, pitch, roll));
+    }
+
+    @LuaFunction(mainThread = true)
+    public final Object stopAero(ShipVlsGuidanceBlockEntity be) {
+        return action(be, new AeroAction.EmergencyStop());
+    }
+
+    /** {mode, autopilot, engaged, throttle, yaw, pitch, roll, distance, speed, waypoint, count, status}. */
+    @LuaFunction(mainThread = true)
+    public final Object getAeroState(ShipVlsGuidanceBlockEntity be) {
+        var bus = be.aeroBus();
+        return new Object[]{bus.mode().name(), bus.autopilotMode().name(), bus.isFlightEngaged(),
+                bus.throttle(), bus.yawDeg(), bus.pitchDeg(), bus.rollDeg(), bus.targetDistance(),
+                bus.actualSpeed(), bus.waypointIndex(), bus.waypointCount(), bus.status()};
+    }
+
+    private static Object action(ShipVlsGuidanceBlockEntity be, AeroAction action) {
+        AeroActionDispatcher.Result result = AeroActionDispatcher.dispatch(be, action, null);
+        return new Object[]{result.accepted(), result.message()};
     }
 }

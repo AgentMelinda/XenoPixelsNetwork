@@ -17,6 +17,11 @@ public final class ModBlockEntities {
                     BlockEntityType.Builder.of(MissileChunkLoaderBlockEntity::new,
                             ModBlocks.MISSILE_CHUNK_LOADER.get()).build(null));
 
+    public static final DeferredHolder<BlockEntityType<?>, BlockEntityType<CopycatGlowstoneBlockEntity>> COPYCAT_GLOWSTONE =
+            BLOCK_ENTITIES.register("copycat_glowstone", () ->
+                    BlockEntityType.Builder.of(CopycatGlowstoneBlockEntity::new,
+                            ModBlocks.COPYCAT_GLOWSTONE.get()).build(null));
+
     public static final DeferredHolder<BlockEntityType<?>, BlockEntityType<ShipVlsGuidanceBlockEntity>> SHIP_VLS_GUIDANCE =
             BLOCK_ENTITIES.register("ship_vls_guidance", () ->
                     BlockEntityType.Builder.of(ShipVlsGuidanceBlockEntity::new,

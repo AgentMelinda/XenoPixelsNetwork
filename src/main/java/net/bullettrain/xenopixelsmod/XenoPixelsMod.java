@@ -34,6 +34,7 @@ public class XenoPixelsMod {
         net.bullettrain.xenopixelsmod.block.entity.ModBlockEntities.register(modEventBus);
         net.bullettrain.xenopixelsmod.missile.ModEntities.register(modEventBus);
         ModEffects.register(modEventBus);
+        net.bullettrain.xenopixelsmod.sound.ModSounds.register(modEventBus);
         XenoCapabilities.register(modEventBus);
         ModNetwork.register();
 
@@ -49,6 +50,8 @@ public class XenoPixelsMod {
         event.enqueueWork(() -> {
             net.bullettrain.xenopixelsmod.config.XenoServerConfig.load();
             net.bullettrain.xenopixelsmod.config.XenoPerfConfig.load();
+            net.bullettrain.xenopixelsmod.aero.gravity.OrbitalGravityConfig.load();
+            net.bullettrain.xenopixelsmod.aero.AeroConfig.load();
             net.bullettrain.xenopixelsmod.features.FeatureManager.bootstrap();
             if (net.bullettrain.xenopixelsmod.config.XenoServerConfig.dmzContentBootstrap) {
                 net.bullettrain.xenopixelsmod.dmz.DmzContentBootstrap.installBundledContent();
@@ -58,6 +61,9 @@ public class XenoPixelsMod {
                 net.bullettrain.xenopixelsmod.vs.XenoThrusterControl.ensureRegistered();
                 net.bullettrain.xenopixelsmod.vs.ShipBallisticController.ensureRegistered();
                 net.bullettrain.xenopixelsmod.vs.ShipGravityControl.ensureRegistered();
+                // Replaces AeroStar's OrbitGravitySystem, which crashes on Northstar Redux 0.6.
+                net.bullettrain.xenopixelsmod.aero.gravity.OrbitalGravitySystem.ensureRegistered();
+                net.bullettrain.xenopixelsmod.aero.control.AeroStabilizerSystem.ensureRegistered();
             } catch (Throwable t) {
                 LOGGER.debug("Sable physics registration skipped: {}", t.toString());
             }
@@ -114,6 +120,12 @@ public class XenoPixelsMod {
                     var screen = net.minecraft.client.Minecraft.getInstance().screen;
                     if (screen instanceof net.bullettrain.xenopixelsmod.client.gui.FlightPlannerScreen planner) {
                         planner.acceptResult(result);
+                    }
+                };
+                net.bullettrain.xenopixelsmod.client.ClientScreens.receiveAeroState = state -> {
+                    var screen = net.minecraft.client.Minecraft.getInstance().screen;
+                    if (screen instanceof net.bullettrain.xenopixelsmod.client.gui.FlightPlannerScreen planner) {
+                        planner.acceptAeroState(state);
                     }
                 };
             });

@@ -1,6 +1,7 @@
 package net.bullettrain.xenopixelsmod.vs;
 
 import net.bullettrain.xenopixelsmod.XenoPixelsMod;
+import net.bullettrain.xenopixelsmod.config.XenoServerConfig;
 import net.bullettrain.xenopixelsmod.missile.BallisticTrajectory;
 import net.bullettrain.xenopixelsmod.missile.BallisticFlightPlan;
 import net.bullettrain.xenopixelsmod.missile.MissilePhase;
@@ -141,7 +142,7 @@ public final class ShipBallisticController {
     private long lastPhysicsNanos;
     private double physicsStepSeconds = 0.05;
 
-    /** Desired world nose direction, published atomically for the physics thread. */
+    /** Desired world nose and roll-up directions, published atomically for the physics thread. */
     private volatile AttitudeCommand attitudeCommand = new AttitudeCommand(0, 1, 0);
     /** Calibrated local/model-space nose and roll-up axes. */
     private volatile double bodyNoseX = 0, bodyNoseY = 1, bodyNoseZ = 0;
@@ -181,7 +182,11 @@ public final class ShipBallisticController {
     private record ThrustCommand(double x, double y, double z, double accelSi) {
     }
 
-    record AttitudeCommand(double x, double y, double z) {
+    record AttitudeCommand(double x, double y, double z,
+                           double upX, double upY, double upZ) {
+        AttitudeCommand(double x, double y, double z) {
+            this(x, y, z, 0, 0, 1);
+        }
     }
 
     record AccelerationCommand(double x, double y, double z) {
@@ -426,6 +431,15 @@ public final class ShipBallisticController {
         if (resolvedCruise > resolvedLoft) {
             resolvedLoft = resolvedCruise;
         }
+        // Altitude ceiling. Northstar teleports anything crossing its atmosphere height into a
+        // space dimension, and a Sable hull is a sub-level rather than an entity, so no entity
+        // tag can exempt it — the only reliable defence is not to fly that high. Clamped here
+        // rather than in the planner so a hand-entered loft is capped too.
+        double ceiling = XenoServerConfig.missileMaxApexY;
+        if (ceiling > 0.0) {
+            resolvedLoft = Math.min(resolvedLoft, ceiling);
+            resolvedCruise = Math.min(resolvedCruise, resolvedLoft);
+        }
         this.apexY = resolvedLoft;
         this.cruiseY = resolvedCruise;
         this.apexZ = plan.apexZ();
@@ -479,7 +493,7 @@ public final class ShipBallisticController {
         this.flightDim = null;
         this.phase = MissilePhase.EJECT;
         this.flying = true;
-        this.attitudeCommand = new AttitudeCommand(ejectDir.x, ejectDir.y, ejectDir.z);
+        this.attitudeCommand = initialAttitude(ship, ejectDir.x, ejectDir.y, ejectDir.z);
         this.thrustCommand = new ThrustCommand(
                 ejectDir.x, ejectDir.y, ejectDir.z, this.boostAccel * ACCEL_TO_SI);
         this.status = String.format(
@@ -602,6 +616,27 @@ public final class ShipBallisticController {
             }
         } catch (Throwable ignored) {
         }
+    }
+
+    /**
+     * Abort every ship flight in progress, in every dimension.
+     *
+     * <p>Iterates a copy: {@link #abort()} removes the controller from {@code CONTROLLERS}, so
+     * aborting while iterating the live collection would fault.
+     *
+     * @return how many flights were aborted
+     */
+    public static int abortAll() {
+        int aborted = 0;
+        for (ShipBallisticController controller : new java.util.ArrayList<>(CONTROLLERS.values())) {
+            if (controller.isFlying()) aborted++;
+            controller.abort();
+        }
+        // abort() clears each entry, but a controller that was never flying leaves the map
+        // holding an inert instance; drop those too so a purge really is a purge.
+        CONTROLLERS.clear();
+        ACTIVE_FLIGHTS.clear();
+        return aborted;
     }
 
     public void abort() {
@@ -1152,12 +1187,34 @@ public final class ShipBallisticController {
         attitudeCommand = slewDirection(previous, x, y, z, maxSlewRadians);
     }
 
+    /**
+     * Starts guidance with the roll the assembled ship actually has on the launch pad.
+     * The three-point body calibration defines a nose axis, but cannot define roll because
+     * base, center, and nose lie on the same line. Capturing the live pose avoids inventing an
+     * arbitrary world-up direction and makes existing ships retain their authored orientation.
+     */
+    private AttitudeCommand initialAttitude(ServerSubLevel ship, double nx, double ny, double nz) {
+        try {
+            Quaterniond rotation = new Quaterniond(ship.logicalPose().orientation()).normalize();
+            Vector3d currentNose = rotation.transform(
+                    new Vector3d(bodyNoseX, bodyNoseY, bodyNoseZ)).normalize();
+            Vector3d currentUp = rotation.transform(
+                    new Vector3d(bodyUpX, bodyUpY, bodyUpZ)).normalize();
+            return transportRoll(new AttitudeCommand(
+                    currentNose.x, currentNose.y, currentNose.z,
+                    currentUp.x, currentUp.y, currentUp.z), nx, ny, nz);
+        } catch (Throwable ignored) {
+            return transportRoll(new AttitudeCommand(bodyNoseX, bodyNoseY, bodyNoseZ,
+                    bodyUpX, bodyUpY, bodyUpZ), nx, ny, nz);
+        }
+    }
+
     /** Slews a unit direction without the zero-vector singularity of linear interpolation. */
     static AttitudeCommand slewDirection(AttitudeCommand from, double tx, double ty, double tz,
                                          double maxRadians) {
         double dot = Math.max(-1.0, Math.min(1.0, from.x * tx + from.y * ty + from.z * tz));
         double angle = Math.acos(dot);
-        if (angle <= maxRadians || angle < 1.0e-8) return new AttitudeCommand(tx, ty, tz);
+        if (angle <= maxRadians || angle < 1.0e-8) return transportRoll(from, tx, ty, tz);
 
         double ax = from.y * tz - from.z * ty;
         double ay = from.z * tx - from.x * tz;
@@ -1182,7 +1239,67 @@ public final class ShipBallisticController {
         double ny = from.y * c + crossY * s + ay * axisDot * (1.0 - c);
         double nz = from.z * c + crossZ * s + az * axisDot * (1.0 - c);
         double n = Math.sqrt(nx * nx + ny * ny + nz * nz);
-        return new AttitudeCommand(nx / n, ny / n, nz / n);
+        return transportRoll(from, nx / n, ny / n, nz / n);
+    }
+
+    /**
+     * Parallel-transports the roll-up vector through the shortest nose rotation. This keeps
+     * roll continuous through climbs and dives without chasing a fixed world-up vector (which
+     * becomes singular when the missile points vertically).
+     */
+    static AttitudeCommand transportRoll(AttitudeCommand from, double nx, double ny, double nz) {
+        double noseLength = Math.sqrt(nx * nx + ny * ny + nz * nz);
+        if (noseLength < 1.0e-9) return from;
+        nx /= noseLength; ny /= noseLength; nz /= noseLength;
+
+        double fx = from.x, fy = from.y, fz = from.z;
+        double fromLength = Math.sqrt(fx * fx + fy * fy + fz * fz);
+        if (fromLength < 1.0e-9) {
+            fx = 0; fy = 1; fz = 0;
+        } else {
+            fx /= fromLength; fy /= fromLength; fz /= fromLength;
+        }
+
+        double ax = fy * nz - fz * ny;
+        double ay = fz * nx - fx * nz;
+        double az = fx * ny - fy * nx;
+        double sin = Math.sqrt(ax * ax + ay * ay + az * az);
+        double dot = Math.max(-1.0, Math.min(1.0, fx * nx + fy * ny + fz * nz));
+
+        double ux = from.upX, uy = from.upY, uz = from.upZ;
+        if (sin > 1.0e-9) {
+            ax /= sin; ay /= sin; az /= sin;
+            double angle = Math.atan2(sin, dot);
+            double c = Math.cos(angle), s = Math.sin(angle);
+            double crossX = ay * uz - az * uy;
+            double crossY = az * ux - ax * uz;
+            double crossZ = ax * uy - ay * ux;
+            double axisDot = ax * ux + ay * uy + az * uz;
+            ux = ux * c + crossX * s + ax * axisDot * (1.0 - c);
+            uy = uy * c + crossY * s + ay * axisDot * (1.0 - c);
+            uz = uz * c + crossZ * s + az * axisDot * (1.0 - c);
+        } else if (dot < 0.0) {
+            // A true 180-degree reversal has no unique shortest axis. Rotating about the
+            // current roll-up vector flips the nose while preserving roll deterministically.
+            double projection = ux * fx + uy * fy + uz * fz;
+            ux -= fx * projection; uy -= fy * projection; uz -= fz * projection;
+        }
+
+        // Remove accumulated floating-point drift and recover from a malformed legacy frame.
+        double projection = ux * nx + uy * ny + uz * nz;
+        ux -= nx * projection; uy -= ny * projection; uz -= nz * projection;
+        double upLength = Math.sqrt(ux * ux + uy * uy + uz * uz);
+        if (upLength < 1.0e-9) {
+            if (Math.abs(ny) < 0.9) {
+                ux = 0; uy = 1; uz = 0;
+            } else {
+                ux = 0; uy = 0; uz = 1;
+            }
+            projection = ux * nx + uy * ny + uz * nz;
+            ux -= nx * projection; uy -= ny * projection; uz -= nz * projection;
+            upLength = Math.sqrt(ux * ux + uy * uy + uz * uz);
+        }
+        return new AttitudeCommand(nx, ny, nz, ux / upLength, uy / upLength, uz / upLength);
     }
 
     public boolean consumeImpact() {
@@ -1442,11 +1559,13 @@ public final class ShipBallisticController {
                         -SAS_OMEGA_GAIN * (0.85 + 0.15 * alignMul));
             }
 
-            // Track only the calibrated nose vector. The previous full-attitude
-            // quaternion continuously chased a roll solution as the target line
-            // changed, producing visible shaking without improving interception.
+            // Track the calibrated nose strongly. Roll uses a separately transported launch
+            // reference below, so it stays continuous instead of chasing fixed world-up near
+            // vertical flight (the source of the old full-quaternion shaking).
             double strength = SAS_ALIGN_BASE * 5.5 * alignMul;
             addNoseTrackingAcceleration(subLevel, ax, ay, az, strength, scratchTorque);
+            addRollTrackingAcceleration(subLevel, attitude,
+                    SAS_ALIGN_BASE * 1.4 * alignMul, scratchTorque);
             // Cap the combined damping + alignment acceleration, then convert it to
             // the exact torque this hull needs around each principal body axis.
             clampTorque(scratchTorque, maxAngularAccel);
@@ -1539,6 +1658,57 @@ public final class ShipBallisticController {
             }
             double scale = strength * angle / axisLength;
             accumulator.add(axisX * scale, axisY * scale, axisZ * scale);
+        } catch (Throwable ignored) {
+        }
+    }
+
+    /**
+     * Restores roll around the desired nose without changing the guidance direction.
+     * Correction fades out during large nose errors so a hard pitch/yaw turn always wins.
+     */
+    private void addRollTrackingAcceleration(ServerSubLevel subLevel,
+                                             AttitudeCommand desired,
+                                             double strength, Vector3d accumulator) {
+        try {
+            scratchCurrentRotation.set(subLevel.logicalPose().orientation()).normalize();
+            scratchCurrentRotation.transform(scratchNose.set(bodyNoseX, bodyNoseY, bodyNoseZ));
+            scratchNose.normalize();
+            double noseDot = Math.max(-1.0, Math.min(1.0,
+                    scratchNose.x * desired.x + scratchNose.y * desired.y
+                            + scratchNose.z * desired.z));
+            // Avoid roll torque fighting the shortest nose correction during a hard turn.
+            double authority = Math.max(0.0, Math.min(1.0,
+                    (noseDot - Math.cos(Math.toRadians(35.0))) / 0.12));
+            if (authority <= 0.0) return;
+
+            scratchCurrentRotation.transform(scratchRight.set(bodyUpX, bodyUpY, bodyUpZ));
+            double projection = scratchRight.x * desired.x
+                    + scratchRight.y * desired.y + scratchRight.z * desired.z;
+            scratchRight.sub(desired.x * projection, desired.y * projection,
+                    desired.z * projection);
+            if (scratchRight.lengthSquared() < 1.0e-9) return;
+            scratchRight.normalize();
+
+            scratchAuxTorque.set(desired.upX, desired.upY, desired.upZ);
+            projection = scratchAuxTorque.x * desired.x
+                    + scratchAuxTorque.y * desired.y + scratchAuxTorque.z * desired.z;
+            scratchAuxTorque.sub(desired.x * projection, desired.y * projection,
+                    desired.z * projection);
+            if (scratchAuxTorque.lengthSquared() < 1.0e-9) return;
+            scratchAuxTorque.normalize();
+
+            double crossX = scratchRight.y * scratchAuxTorque.z
+                    - scratchRight.z * scratchAuxTorque.y;
+            double crossY = scratchRight.z * scratchAuxTorque.x
+                    - scratchRight.x * scratchAuxTorque.z;
+            double crossZ = scratchRight.x * scratchAuxTorque.y
+                    - scratchRight.y * scratchAuxTorque.x;
+            double sin = desired.x * crossX + desired.y * crossY + desired.z * crossZ;
+            double cos = Math.max(-1.0, Math.min(1.0, scratchRight.dot(scratchAuxTorque)));
+            double rollError = Math.atan2(sin, cos);
+            accumulator.add(desired.x * rollError * strength * authority,
+                    desired.y * rollError * strength * authority,
+                    desired.z * rollError * strength * authority);
         } catch (Throwable ignored) {
         }
     }

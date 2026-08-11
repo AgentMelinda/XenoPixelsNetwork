@@ -5,8 +5,12 @@
   "refmap": "mixins.xenopixelsmod.refmap.json",
   "compatibilityLevel": "JAVA_21",
   "mixins": [
+    "compat.aerostar.OrbitGravitySystemMixin",
     "compat.create.ContinuousOBBColliderMixin",
-    "compat.create.ContinuousSeparationManifoldMixin"
+    "compat.create.ContinuousSeparationManifoldMixin",
+    "compat.yawp.MainGameRulesMixin",
+    "compat.yawp.RegionFlagMixin",
+    "compat.yawp.IFlagArgumentTypeMixin"
   ],
   "client": [
     "compat.xaero.GuiMapWaypointPickerMixin"

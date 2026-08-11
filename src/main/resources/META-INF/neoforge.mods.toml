@@ -65,6 +65,20 @@ versionRange="[1.40,)"
 ordering="AFTER"
 side="CLIENT"
 
+# Yet Another World Protector — region protection. When present, its flags can veto
+# DragonMineZ ki griefing (see XenoServerConfig#yawpKiGriefingEnabled).
+#
+# The range must stay below the oldest beta we tolerate: an "optional" dependency that IS
+# installed must still satisfy versionRange, so a narrow bound turns a soft compat hook into
+# a hard boot failure. Maven also orders "0.6.2-beta1" BELOW "0.6.2", so a "[0.6.2,)" bound
+# would still reject the 0.6.2 betas. "[0.6,)" accepts the whole 0.6 line including betas.
+[[dependencies.${mod_id}]]
+modId="yawp"
+type="optional"
+versionRange="[0.6,)"
+ordering="AFTER"
+side="BOTH"
+
 # Modern UI — Jar-in-Jar bundled (see build.gradle jarJar). Soft-dep so an external
 # ModernUI-NeoForge 1.21.1 install still coexists cleanly with the nested copy.
 [[dependencies.${mod_id}]]

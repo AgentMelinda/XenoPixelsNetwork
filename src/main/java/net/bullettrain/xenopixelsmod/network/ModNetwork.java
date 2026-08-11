@@ -8,6 +8,8 @@ import net.bullettrain.xenopixelsmod.network.packet.FlightPlanRequestPacket;
 import net.bullettrain.xenopixelsmod.network.packet.FlightPlanResultPacket;
 import net.bullettrain.xenopixelsmod.network.packet.BodyCalibrationPacket;
 import net.bullettrain.xenopixelsmod.network.packet.OpenGuidancePacket;
+import net.bullettrain.xenopixelsmod.network.packet.AeroControlPacket;
+import net.bullettrain.xenopixelsmod.network.packet.AeroStatePacket;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
 import com.dragonminez.compat.network.NetworkDirection;
@@ -20,8 +22,15 @@ import com.dragonminez.compat.network.simple.SimpleChannel;
  * {@code Invalid message &lt;packet class&gt;}.
  */
 public class ModNetwork {
-    /** Bump when packet set or wire format changes. */
-    private static final String PROTOCOL = "10";
+    /**
+     * Bump when packet set or wire format changes.
+     *
+     * <p>12: extends Aero control/state with absolute-attitude target/route autopilot.
+     * <p>11: appended {@code AeroControlPacket} and {@code AeroStatePacket} for the Aero
+     * flight controller. Clients and servers must both run this build — the channel refuses
+     * a mismatched protocol, so a 10 client cannot join an 11 server or vice versa.
+     */
+    private static final String PROTOCOL = "12";
 
     public static final SimpleChannel CHANNEL = NetworkRegistry.ChannelBuilder
             .named(ResourceLocation.fromNamespaceAndPath(XenoPixelsMod.MOD_ID, "main"))
@@ -109,6 +118,19 @@ public class ModNetwork {
                 .decoder(ChargeAnimPacket::decode)
                 .encoder(ChargeAnimPacket::encode)
                 .consumerMainThread(ChargeAnimPacket::handle)
+                .add();
+
+        // --- Aero flight controller (appended; ids are assigned by registration order) ---
+        CHANNEL.messageBuilder(AeroControlPacket.class, id++, NetworkDirection.PLAY_TO_SERVER)
+                .decoder(AeroControlPacket::new)
+                .encoder(AeroControlPacket::encode)
+                .consumerMainThread(AeroControlPacket::handle)
+                .add();
+
+        CHANNEL.messageBuilder(AeroStatePacket.class, id++, NetworkDirection.PLAY_TO_CLIENT)
+                .decoder(AeroStatePacket::new)
+                .encoder(AeroStatePacket::encode)
+                .consumerMainThread(AeroStatePacket::handle)
                 .add();
 
         XenoPixelsMod.LOGGER.info("ModNetwork: registered {} packet types (protocol {})", id, PROTOCOL);

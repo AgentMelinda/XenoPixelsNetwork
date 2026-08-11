@@ -1,4 +1,10 @@
-"""Create-propulsion style 16x16 block textures for VS2 ship blocks (no Pillow)."""
+"""Create-propulsion style 16x16 block textures for VS2 ship blocks (no Pillow).
+
+SUPERSEDED by ``gen_vs2_block_textures.py``. This script writes the same 18 filenames in the
+older brass-and-gold Create palette; the ship set now shares the gunmetal/cyan palette used by
+the flight controller rig and the copycat glowstone. Running this reverts all of it. Kept for
+reference only.
+"""
 from __future__ import annotations
 
 import random

@@ -1,9 +1,13 @@
 package net.bullettrain.xenopixelsmod.block.custom;
 
 import com.mojang.serialization.MapCodec;
+import net.bullettrain.xenopixelsmod.aero.AeroHitRegions;
+import net.bullettrain.xenopixelsmod.aero.AeroPanelActions;
 import net.bullettrain.xenopixelsmod.block.entity.ShipVlsGuidanceBlockEntity;
 import net.bullettrain.xenopixelsmod.network.ModNetwork;
 import net.bullettrain.xenopixelsmod.network.packet.OpenGuidancePacket;
+import net.bullettrain.xenopixelsmod.network.packet.AeroStatePacket;
+import net.bullettrain.xenopixelsmod.aero.AeroStateSnapshot;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.network.chat.Component;
@@ -26,6 +30,7 @@ import net.minecraft.world.level.block.state.StateDefinition;
 import net.minecraft.world.level.block.state.properties.BlockStateProperties;
 import net.minecraft.world.level.block.state.properties.DirectionProperty;
 import net.minecraft.world.phys.BlockHitResult;
+import net.minecraft.world.phys.Vec3;
 import org.jetbrains.annotations.Nullable;
 
 /**
@@ -100,6 +105,19 @@ public class ShipVlsGuidanceBlock extends BaseEntityBlock {
                 return InteractionResult.sidedSuccess(level.isClientSide);
             }
 
+            // Physical panel first: a click that lands on a modelled control operates that
+            // control instead of opening the GUI. Regions come from the model geometry via
+            // AeroHitRegions, so this carries no hard-coded hit percentages.
+            if (!level.isClientSide && player instanceof ServerPlayer panelUser) {
+                Vec3 local = hit.getLocation().subtract(Vec3.atLowerCornerOf(pos));
+                Vec3 model = AeroHitRegions.toModelSpace(local, state.getValue(FACING));
+                AeroHitRegions.Region region = AeroHitRegions.at(model.x, model.y, model.z);
+                if (region != null) {
+                    AeroPanelActions.activate(be, region, panelUser);
+                    return InteractionResult.CONSUME;
+                }
+            }
+
             // Normal right-click: the server owns the persisted configuration and sends
             // the complete snapshot. Client-side BE data is often stale on moving ships.
             if (!level.isClientSide && player instanceof ServerPlayer serverPlayer) {
@@ -120,6 +138,8 @@ public class ShipVlsGuidanceBlock extends BaseEntityBlock {
                         be.getGravitySi(), be.getDragCoefficient(),
                         be.getMissileBaseBlock(), be.getMissileCenterBlock(), be.getMissileNoseBlock(),
                         be.getGuidanceStopDistance()));
+                ModNetwork.sendToPlayer(serverPlayer, new AeroStatePacket(
+                        AeroStateSnapshot.of(pos.immutable(), be.aeroBus())));
             }
         }
         return InteractionResult.sidedSuccess(level.isClientSide);

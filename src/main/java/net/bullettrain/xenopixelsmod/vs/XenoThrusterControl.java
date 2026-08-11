@@ -5,6 +5,7 @@ import dev.ryanhcode.sable.api.sublevel.SubLevelContainer;
 import dev.ryanhcode.sable.platform.SableEventPlatform;
 import dev.ryanhcode.sable.sublevel.ServerSubLevel;
 import net.bullettrain.xenopixelsmod.XenoPixelsMod;
+import net.bullettrain.xenopixelsmod.config.XenoServerConfig;
 import org.joml.Vector3d;
 
 import java.util.Map;
@@ -94,10 +95,51 @@ public final class XenoThrusterControl {
             // is already ship-local, so converting to world was a spurious extra rotation.
             localImpulse.set(state.forceX, state.forceY, state.forceZ).mul(state.power * step);
             localPoint.set(state.posX + 0.5, state.posY + 0.5, state.posZ + 0.5);
+            if (!sane(subLevel, localImpulse, localPoint)) continue;
             // Argument order is (position, force) — these were passed the other way round.
             handle.applyImpulseAtPoint(localPoint, localImpulse);
         }
     }
+
+    /**
+     * Reject or clamp an impulse before Rapier ever sees it.
+     *
+     * <p>Rapier integrates a bad impulse straight into the body's velocity, so a single NaN or
+     * runaway value does not merely misplace the ship for one tick — the sub-level comes apart,
+     * and correcting the input afterwards cannot undo it. Guarding the input is the only point
+     * at which this is recoverable.
+     *
+     * <p>The warning is throttled to once per ship: this runs inside the physics tick, and an
+     * unthrottled log line here would itself become the performance problem.
+     *
+     * @return false when the impulse must not be applied at all
+     */
+    private boolean sane(ServerSubLevel subLevel, Vector3d impulse, Vector3d point) {
+        if (!XenoServerConfig.thrusterImpulseGuardEnabled) return true;
+
+        if (!Double.isFinite(impulse.x) || !Double.isFinite(impulse.y) || !Double.isFinite(impulse.z)
+                || !Double.isFinite(point.x) || !Double.isFinite(point.y) || !Double.isFinite(point.z)) {
+            warnOnce(subLevel, "non-finite thruster impulse {} at {} — skipped", impulse, point);
+            return false;
+        }
+        double max = XenoServerConfig.thrusterMaxImpulse;
+        double length = impulse.length();
+        if (max > 0.0 && length > max) {
+            // Clamp rather than skip: a legitimately over-tuned thruster should still push,
+            // just not hard enough to tear its own hull apart.
+            impulse.mul(max / length);
+            warnOnce(subLevel, "thruster impulse {} exceeded cap {} — clamped", length, max);
+        }
+        return true;
+    }
+
+    private void warnOnce(ServerSubLevel subLevel, String message, Object... args) {
+        if (!warnedShips.add(subLevel.getUniqueId())) return;
+        XenoPixelsMod.LOGGER.warn("[ship " + VsShipHelper.getShipId(subLevel) + "] " + message, args);
+    }
+
+    /** Ships already warned about, so the physics tick never spams the log. */
+    private final java.util.Set<java.util.UUID> warnedShips = java.util.concurrent.ConcurrentHashMap.newKeySet();
 
     private static final class ThrusterForce {
         private volatile ForceState state;

@@ -82,22 +82,48 @@ public final class XenoHudCommands {
                         .then(Commands.literal("legacy")
                                 .executes(ctx -> {
                                     XenoHudConfig.legacyHudRenderer = true;
+                                    XenoHudConfig.unifiedHudRenderer = false;
                                     XenoHudConfig.save();
                                     ctx.getSource().sendSuccess(() -> Component.literal("Xeno HUD renderer: legacy"), false);
                                     return 1;
                                 }))
+                        .then(Commands.literal("modern")
+                                .executes(ctx -> {
+                                    XenoHudConfig.legacyHudRenderer = false;
+                                    XenoHudConfig.unifiedHudRenderer = false;
+                                    XenoHudConfig.save();
+                                    ctx.getSource().sendSuccess(() -> Component.literal(
+                                            "Xeno HUD renderer: modern (textured atlas)"), false);
+                                    return 1;
+                                }))
+                        .then(Commands.literal("modernunified")
+                                .executes(ctx -> {
+                                    XenoHudConfig.legacyHudRenderer = false;
+                                    XenoHudConfig.unifiedHudRenderer = true;
+                                    XenoHudConfig.save();
+                                    ctx.getSource().sendSuccess(() -> Component.literal(
+                                            "Xeno HUD renderer: modernunified (stats + combat "
+                                                    + "cooldowns in one panel; the cooldown HUD's "
+                                                    + "own position and scale are ignored)"), false);
+                                    return 1;
+                                }))
+                        // Kept so existing macros and muscle memory still work after the
+                        // flat-rectangle LDLib spike was replaced by the textured renderer.
                         .then(Commands.literal("ldlib")
                                 .executes(ctx -> {
                                     XenoHudConfig.legacyHudRenderer = false;
+                                    XenoHudConfig.unifiedHudRenderer = false;
                                     XenoHudConfig.save();
                                     ctx.getSource().sendSuccess(() -> Component.literal(
-                                            "Xeno HUD renderer: ldlib (Phase 4 spike, WIP)"), false);
+                                            "Xeno HUD renderer: modern (alias 'ldlib')"), false);
                                     return 1;
                                 }))
                         .executes(ctx -> {
+                            String current = XenoHudConfig.legacyHudRenderer ? "legacy"
+                                    : XenoHudConfig.unifiedHudRenderer ? "modernunified" : "modern";
                             ctx.getSource().sendSuccess(() -> Component.literal(
-                                    "Xeno HUD renderer: " + (XenoHudConfig.legacyHudRenderer ? "legacy" : "ldlib")
-                                            + " (usage: /xenohud renderer <legacy|ldlib>)"), false);
+                                    "Xeno HUD renderer: " + current
+                                            + " (usage: /xenohud renderer <legacy|modern|modernunified>)"), false);
                             return 1;
                         }))
                 .then(Commands.literal("techrenderer")

@@ -1,5 +1,16 @@
 package net.bullettrain.xenopixelsmod.block.entity;
 
+import net.bullettrain.xenopixelsmod.aero.AeroAnimState;
+import net.bullettrain.xenopixelsmod.aero.AeroAutopilotMode;
+import net.bullettrain.xenopixelsmod.aero.AeroBus;
+import net.bullettrain.xenopixelsmod.aero.AeroLinkManager;
+import net.bullettrain.xenopixelsmod.aero.AeroPowerBudget;
+import net.bullettrain.xenopixelsmod.aero.ControllerMode;
+import net.bullettrain.xenopixelsmod.aero.control.AeroStabilizerSystem;
+import net.bullettrain.xenopixelsmod.aero.control.AeroFlightDirector;
+import net.bullettrain.xenopixelsmod.aero.control.SableAttitudeMath;
+import net.bullettrain.xenopixelsmod.aero.control.VectorMixer;
+import net.bullettrain.xenopixelsmod.aero.power.AeroEnergyStorage;
 import net.bullettrain.xenopixelsmod.block.custom.MissileTubeBlock;
 import net.bullettrain.xenopixelsmod.block.custom.ShipThrusterBlock;
 import net.bullettrain.xenopixelsmod.block.custom.ShipVlsGuidanceBlock;
@@ -30,9 +41,18 @@ import net.minecraft.world.phys.HitResult;
 import net.minecraft.world.phys.Vec3;
 import net.minecraft.world.level.levelgen.Heightmap;
 import org.jetbrains.annotations.Nullable;
+import org.joml.Vector3d;
+import org.joml.Vector3dc;
 import dev.ryanhcode.sable.sublevel.ServerSubLevel;
 import dev.ryanhcode.sable.companion.SubLevelAccess;
 import dev.ryanhcode.sable.companion.SableCompanion;
+import software.bernie.geckolib.animatable.GeoBlockEntity;
+import software.bernie.geckolib.animatable.instance.AnimatableInstanceCache;
+import software.bernie.geckolib.animation.Animation;
+import software.bernie.geckolib.animation.AnimatableManager;
+import software.bernie.geckolib.animation.AnimationController;
+import software.bernie.geckolib.animation.RawAnimation;
+import software.bernie.geckolib.util.GeckoLibUtil;
 
 import java.util.ArrayList;
 import java.util.Iterator;
@@ -49,7 +69,7 @@ import java.util.Set;
  * <p><b>Primary mode (on a VS2 ship):</b> hull is the ballistic missile via
  * {@link ShipBallisticController}. Paired thrusters provide boost scale + plume.
  */
-public class ShipVlsGuidanceBlockEntity extends BlockEntity {
+public class ShipVlsGuidanceBlockEntity extends BlockEntity implements GeoBlockEntity {
     private BlockPos target;
     private boolean wasPowered;
     private int searchRadius = 8;
@@ -115,9 +135,237 @@ public class ShipVlsGuidanceBlockEntity extends BlockEntity {
     /** EMA of actual server tick spacing, used for lag-aware ETA and target lead. */
     private transient long lastServerTickNanos;
     private transient double observedTickSeconds = 0.05;
+    /** Aero flight-controller state. Inert while the bus is in {@link ControllerMode#MISSILE}. */
+    private final AeroBus aeroBus = new AeroBus();
+    private int aeroLinkCooldown;
+    /** FE buffer for flight mode. Inert (and undrawn) while the controller is in missile mode. */
+    private final AeroEnergyStorage aeroEnergy = new AeroEnergyStorage();
+    /** Cached link survey, refreshed on the same slow cadence the bus counts use. */
+    private List<AeroLinkManager.Link> aeroLinks = new ArrayList<>();
+    /** True while we are actively commanding engines, so shutdown happens exactly once. */
+    private boolean aeroCommanding;
+    /**
+     * Last heading the flight director produced, held while it has none to give. Runtime-only
+     * and reset on disengage, like every other piece of live flight state.
+     */
+    private transient double aeroAutoYawDeg;
+    private transient double aeroAutoPitchDeg;
+    /** Client-only mirrors of runtime bus state, used purely to pick an animation. */
+    private AeroBus.PowerTier clientTier = AeroBus.PowerTier.NOMINAL;
+    private boolean clientEngaged;
+    /** GeckoLib animation cache; the renderer drives it from {@link #aeroAnimState()}. */
+    private final AnimatableInstanceCache aeroAnimCache = GeckoLibUtil.createInstanceCache(this);
+
+    private static AeroBus.PowerTier parseTier(String name) {
+        for (AeroBus.PowerTier tier : AeroBus.PowerTier.values()) {
+            if (tier.name().equalsIgnoreCase(name)) return tier;
+        }
+        return AeroBus.PowerTier.NOMINAL;
+    }
 
     public ShipVlsGuidanceBlockEntity(BlockPos pos, BlockState state) {
         super(ModBlockEntities.SHIP_VLS_GUIDANCE.get(), pos, state);
+    }
+
+    // --- Aero flight controller ------------------------------------------------------
+
+    public AeroBus aeroBus() {
+        return aeroBus;
+    }
+
+    /** True while a missile launch is in progress; mode changes are refused during one. */
+    public boolean isCommandingFlight() {
+        return commandingFlight;
+    }
+
+    /** Push controller state to tracking clients. Separate name so intent reads clearly. */
+    public void syncAero() {
+        sync();
+    }
+
+    /** Re-survey paired devices and publish their health onto the bus. */
+    public void refreshAeroLinks() {
+        aeroLinks = AeroLinkManager.refresh(level, pairedThrusters, aeroBus);
+    }
+
+    /**
+     * Flight-mode tick. Called from {@link #serverTick()} before the missile idle early-out,
+     * and does nothing at all unless an operator has switched the block into flight mode —
+     * that gate is what keeps existing missile behavior byte-identical.
+     */
+    private void aeroTick(ServerLevel sl) {
+        if (aeroBus.mode() != ControllerMode.FLIGHT) {
+            if (aeroCommanding) {
+                VectorMixer.shutdown(level, aeroLinks);
+                ServerSubLevel ship = resolveShipCached(sl);
+                if (ship != null) AeroStabilizerSystem.clear(ship);
+                aeroCommanding = false;
+            }
+            return;
+        }
+
+        AeroBus.PowerTier previousTier = aeroBus.powerTier();
+        AeroPowerBudget.tick(aeroBus, aeroEnergy);
+        if (aeroBus.powerTier() == AeroBus.PowerTier.OFFLINE
+                && previousTier != AeroBus.PowerTier.OFFLINE) {
+            // Losing power must not leave engines running; the thruster BEs treat guidance
+            // ownership as runtime-only, so this is the only place that can release them.
+            AeroLinkManager.releaseAll(level, pairedThrusters);
+            aeroBus.disengageRuntime("power lost — flight disengaged");
+            setChanged();
+            syncAero();
+        }
+
+        // Link health is only needed for display and for the mixer; a slow cadence is fine.
+        if (--aeroLinkCooldown <= 0) {
+            aeroLinkCooldown = 40;
+            aeroLinks = AeroLinkManager.refresh(level, pairedThrusters, aeroBus);
+        }
+
+        aeroFlightControl(sl);
+    }
+
+    /**
+     * Phase 3 flight control: distribute commanded thrust and run attitude stabilization.
+     *
+     * <p>Gated on flight actually being engaged and powered — a controller that is merely in
+     * flight mode must not command engines. On any of those failing, engines are cut and the
+     * stabilizer released rather than left latched.
+     */
+    private void aeroFlightControl(ServerLevel sl) {
+        boolean active = aeroBus.isFlightEngaged()
+                && aeroBus.powerTier() != AeroBus.PowerTier.OFFLINE
+                && aeroBus.powerTier() != AeroBus.PowerTier.CRITICAL;
+
+        ServerSubLevel ship = resolveShipCached(sl);
+        if (active && ship == null) {
+            aeroBus.disengageRuntime("ship unavailable — flight disengaged");
+            VectorMixer.shutdown(level, aeroLinks);
+            aeroCommanding = false;
+            syncAero();
+            return;
+        }
+        if (!active) {
+            if (aeroCommanding) {
+                VectorMixer.shutdown(level, aeroLinks);
+                if (ship != null) AeroStabilizerSystem.setCommand(ship, 0, 0, 0, false);
+                aeroCommanding = false;
+            }
+            return;
+        }
+        aeroCommanding = true;
+
+        Vector3d bodyNose = aeroBodyNose();
+        Vector3d bodyUp = aeroBodyUp(bodyNose);
+        double yaw = aeroBus.yawDeg();
+        double pitch = aeroBus.pitchDeg();
+        double roll = aeroBus.rollDeg();
+        Vector3d bodyThrust = new Vector3d(bodyNose);
+        double throttle = aeroBus.throttle();
+
+        if (aeroBus.autopilotMode() != AeroAutopilotMode.MANUAL) {
+            List<Vector3d> route = aeroRoute(aeroBus.autopilotMode());
+            if (target == null || route.isEmpty()) {
+                aeroBus.disengageRuntime("target lost — flight disengaged");
+                VectorMixer.shutdown(level, aeroLinks);
+                AeroStabilizerSystem.clear(ship);
+                aeroCommanding = false;
+                syncAero();
+                return;
+            }
+            Vector3dc worldPosition = VsShipHelper.worldPosition(ship);
+            Vector3dc worldVelocity = VsShipHelper.velocity(sl, ship);
+            ShipGravityControl gravityControl = ShipGravityControl.get(ship);
+            double gravity = gravityControl == null ? ShipGravityControl.NORMAL_GRAVITY
+                    : gravityControl.getGravitySi();
+            AeroFlightDirector.Command command = AeroFlightDirector.guide(
+                    worldPosition, worldVelocity, route, aeroBus.waypointIndex(), gravity);
+            aeroBus.reportAutopilot(command.waypointIndex(), route.size(), command.distance(),
+                    command.speed(), command.status());
+            // Hold the last commanded heading when the director has none to give (hovering on
+            // the target), rather than snapping the hull round to north. The bus's own yaw is
+            // not updated during autopilot, so the held value has to be tracked here.
+            if (command.headingValid()) {
+                aeroAutoYawDeg = command.yawDeg();
+                aeroAutoPitchDeg = command.pitchDeg();
+            }
+            yaw = aeroAutoYawDeg;
+            pitch = aeroAutoPitchDeg;
+            roll = 0.0;
+            bodyThrust.set(command.accelerationWorld());
+            ship.logicalPose().orientation().transformInverse(bodyThrust);
+            // Magnitude, matching the director's own clamp: a negative-gravity body still needs
+            // the compensation counted, or the throttle normalisation saturates against a
+            // ceiling smaller than the acceleration actually being commanded.
+            throttle = Math.min(1.0, command.accelerationWorld().length()
+                    / (AeroFlightDirector.MAX_ACCEL + Math.abs(gravity)));
+        } else {
+            // Track the operator's setpoints while in manual so that engaging autopilot starts
+            // from the heading the ship is already holding rather than from due north.
+            aeroAutoYawDeg = yaw;
+            aeroAutoPitchDeg = pitch;
+            aeroBus.reportAutopilot(0, 0, 0, VsShipHelper.velocity(sl, ship).length(), "manual flight");
+        }
+
+        AeroStabilizerSystem.setTargetAttitude(ship, yaw, pitch, roll, bodyNose, bodyUp, true);
+        VectorMixer.apply(level, aeroLinks, bodyThrust.x, bodyThrust.y, bodyThrust.z, throttle);
+    }
+
+    private Vector3d aeroBodyNose() {
+        BlockPos base = getMissileBaseBlock();
+        BlockPos nose = getMissileNoseBlock();
+        return SableAttitudeMath.calibratedNose(base.getX(), base.getY(), base.getZ(),
+                nose.getX(), nose.getY(), nose.getZ());
+    }
+
+    /**
+     * Roll reference for the hull, i.e. which way is "up" on the ship.
+     *
+     * <p><b>Body calibration cannot supply this.</b> Base, centre and nose are three points
+     * along the hull's axis — collinear by construction, and the default calibration is exactly
+     * {@code pos.below()}, {@code pos}, {@code pos.above()}. Projecting {@code centre - base}
+     * perpendicular to the nose therefore yields the zero vector, and
+     * {@code SableAttitudeMath.orthogonalUp} falls through to an arbitrary axis. That is why a
+     * ship could hold pitch and yaw perfectly while sitting at the wrong roll: the roll
+     * reference was never derived from the ship at all.
+     *
+     * <p>The controller block's own {@code FACING} is used instead. It is a genuine ship-local
+     * direction, it is stored in the block state, and it is only collinear with the nose if the
+     * operator has pointed the controller straight along the hull axis — in which case we fall
+     * back to the old calibration-derived vector and then to world up.
+     */
+    private Vector3d aeroBodyUp(Vector3dc nose) {
+        BlockState state = getBlockState();
+        if (state.hasProperty(ShipVlsGuidanceBlock.FACING)) {
+            net.minecraft.core.Direction facing = state.getValue(ShipVlsGuidanceBlock.FACING);
+            Vector3d candidate = new Vector3d(facing.getStepX(), facing.getStepY(), facing.getStepZ());
+            // Anything within ~8 degrees of the nose axis gives no usable roll information.
+            if (Math.abs(candidate.dot(nose)) < 0.99) {
+                return SableAttitudeMath.calibratedUp(nose, 0, 0, 0,
+                        candidate.x, candidate.y, candidate.z);
+            }
+        }
+        BlockPos base = getMissileBaseBlock();
+        BlockPos center = getMissileCenterBlock();
+        return SableAttitudeMath.calibratedUp(nose, base.getX(), base.getY(), base.getZ(),
+                center.getX(), center.getY(), center.getZ());
+    }
+
+    private List<Vector3d> aeroRoute(AeroAutopilotMode mode) {
+        List<Vector3d> route = new ArrayList<>();
+        if (mode == AeroAutopilotMode.ROUTE) {
+            for (BallisticFlightPlan.Waypoint waypoint : plannerSettings.waypoints()) {
+                route.add(new Vector3d(waypoint.x(), waypoint.y(), waypoint.z()));
+            }
+        }
+        if (target != null) route.add(new Vector3d(target.getX() + 0.5, target.getY() + 0.5,
+                target.getZ() + 0.5));
+        return route;
+    }
+
+    /** Exposed for the {@code Capabilities.EnergyStorage.BLOCK} provider. */
+    public AeroEnergyStorage aeroEnergy() {
+        return aeroEnergy;
     }
 
     private @Nullable ServerSubLevel resolveShipCached(ServerLevel sl) {
@@ -721,6 +969,7 @@ public class ShipVlsGuidanceBlockEntity extends BlockEntity {
         lastServerTickNanos = now;
         FleetFireControlManager.register(this);
         FleetFireControlManager.tick(sl);
+        aeroTick(sl);
 
         // Idle: almost free — only rare prune + rare redstone safety poll
         if (!commandingFlight) {
@@ -1208,6 +1457,11 @@ public class ShipVlsGuidanceBlockEntity extends BlockEntity {
         tag.putFloat("Yield", warheadYield);
         tag.putBoolean("ShipMissile", shipMissileMode);
         tag.putBoolean("AlsoTubes", alsoFireTubes);
+        // Aero saves operator config only; live throttle/attitude are deliberately not
+        // persisted, matching the no-resume-after-reload rule the missile path already uses.
+        tag.put("Aero", aeroBus.save());
+        // New key; absent in pre-Aero saves, which simply start with an empty buffer.
+        tag.putInt("AeroEnergy", aeroEnergy.getEnergyStored());
         // Commanding is runtime-only (not restored on load)
         ListTag list = new ListTag();
         for (BlockPos p : pairedThrusters) {
@@ -1272,6 +1526,15 @@ public class ShipVlsGuidanceBlockEntity extends BlockEntity {
         if (tag.contains("Yield")) warheadYield = tag.getFloat("Yield");
         shipMissileMode = !tag.contains("ShipMissile") || tag.getBoolean("ShipMissile");
         alsoFireTubes = tag.contains("AlsoTubes") && tag.getBoolean("AlsoTubes");
+        // Absent tag leaves the bus at its MISSILE default, so pre-Aero saves are unchanged.
+        aeroBus.load(tag.contains("Aero", Tag.TAG_COMPOUND) ? tag.getCompound("Aero") : null);
+        aeroEnergy.setStored(tag.contains("AeroEnergy") ? tag.getInt("AeroEnergy") : 0);
+        aeroLinkCooldown = 0;
+        // Present only in the network update tag; absent when loading from disk, where the
+        // controller must come back unengaged.
+        clientTier = tag.contains("AeroTierClient")
+                ? parseTier(tag.getString("AeroTierClient")) : AeroBus.PowerTier.NOMINAL;
+        clientEngaged = tag.getBoolean("AeroEngagedClient");
         // Never resume mid-flight after chunk reload — ACTIVE_FLIGHTS / phys state is lost
         commandingFlight = false;
         pairedThrusters.clear();
@@ -1289,6 +1552,11 @@ public class ShipVlsGuidanceBlockEntity extends BlockEntity {
     @Override
     public void setRemoved() {
         FleetFireControlManager.unregister(this);
+        if (level instanceof ServerLevel sl) {
+            ServerSubLevel ship = resolveShipCached(sl);
+            if (ship != null) AeroStabilizerSystem.clear(ship);
+            VectorMixer.shutdown(level, aeroLinks);
+        }
         super.setRemoved();
     }
 
@@ -1296,7 +1564,33 @@ public class ShipVlsGuidanceBlockEntity extends BlockEntity {
     public CompoundTag getUpdateTag(net.minecraft.core.HolderLookup.Provider registries) {
         CompoundTag tag = super.getUpdateTag(registries);
         saveAdditional(tag, registries);
+        // Power tier and engagement are runtime-only on disk, but the client needs them to
+        // pick an animation. Same split ShipThrusterBlockEntity uses for its visual throttle.
+        tag.putString("AeroTierClient", aeroBus.powerTier().name());
+        tag.putBoolean("AeroEngagedClient", aeroBus.isFlightEngaged());
         return tag;
+    }
+
+    /** Client-side animation state, driven entirely by synced values. */
+    public AeroAnimState aeroAnimState() {
+        return AeroAnimState.of(aeroBus.mode(), clientTier, clientEngaged);
+    }
+
+    @Override
+    public void registerControllers(AnimatableManager.ControllerRegistrar controllers) {
+        controllers.add(new AnimationController<>(this, "aero", 5, state -> {
+            AeroAnimState desired = aeroAnimState();
+            // setAndContinue restarts only when the id changes, so a held state does not
+            // re-trigger every tick — which is what makes one-shot POWERING behave.
+            return state.setAndContinue(RawAnimation.begin().then(
+                    desired.animationId(),
+                    desired.loops() ? Animation.LoopType.LOOP : Animation.LoopType.PLAY_ONCE));
+        }));
+    }
+
+    @Override
+    public AnimatableInstanceCache getAnimatableInstanceCache() {
+        return aeroAnimCache;
     }
 
     @Override

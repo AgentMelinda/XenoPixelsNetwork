@@ -75,6 +75,82 @@ public final class XenoServerConfig {
     /** Mentor pairing assist ({@code /xenomentor}). */
     public static boolean mentorEnabled = true;
 
+    // --- Copycat glowstone power ---
+    /** Require Forge Energy for copycat glowstone light. False keeps the block always lit. */
+    public static boolean copycatForgeEnergyEnabled = false;
+    public static int copycatEnergyCapacity = 100_000;
+    public static int copycatMaxReceiveFePerTick = 1_000;
+    public static int copycatEnergyUseFePerTick = 10;
+
+    /**
+     * Hard ceiling on a ship-as-missile's loft and cruise altitude. 0 disables the clamp.
+     *
+     * <p>Northstar teleports anything crossing {@code atmosphereTeleportHeight} (default 1000)
+     * into a space dimension. A Sable hull is a sub-level, not an entity, so Northstar's
+     * {@code ignore_world_bounds_teleport} entity tag cannot exempt it — the only reliable
+     * defence is to keep the arc below that altitude. Default 950 leaves margin under the
+     * stock 1000; raise it if you have raised Northstar's, lower it if a hull still transits.
+     */
+    public static double missileMaxApexY = 950.0;
+
+    // --- Missile terminal guidance ---
+    /**
+     * Aim the terminal phase at a gravity-compensated point instead of straight at the target.
+     *
+     * <p><b>Off by default — the plain pure-pursuit path is the shipped behaviour.</b>
+     * Compensation was tried against a reported consistent short-and-low bias, but in practice
+     * it was worse than the uncompensated path, which lands within a few blocks. It is kept
+     * behind this flag rather than deleted so the idea can be re-tested with better constants
+     * (the {@code 0.5·g·t²} term almost certainly over-corrects at short time-to-go, since the
+     * missile is already diving).
+     *
+     * <p>With this false the terminal phase is arithmetically identical to the original code.
+     */
+    public static boolean missileTerminalGravityCompensation = false;
+
+    // --- Thruster impulse guard ---
+    /**
+     * Refuse to hand Sable a thruster impulse that is not finite, or that exceeds
+     * {@link #thrusterMaxImpulse}.
+     *
+     * <p>A single bad impulse does not just move a ship — Rapier integrates it into the body's
+     * velocity and inertia, and the sub-level tears itself apart in a way that looks like an
+     * explosion and cannot be undone by fixing the input on the next tick. This clamps instead,
+     * and logs once per ship so a runaway shows up in the log rather than only in the wreckage.
+     *
+     * <p>Disable to get the raw pre-guard behaviour back when diagnosing.
+     */
+    public static boolean thrusterImpulseGuardEnabled = true;
+    /**
+     * Largest per-tick impulse magnitude a single thruster may apply.
+     *
+     * <p>Normal full power is {@code maxForce × 1.0 × step} — with the 1,200,000 default force
+     * and a 60 Hz step that is about 20,000, so the 50,000 default leaves ample headroom for
+     * tuning while still catching a genuine runaway.
+     */
+    public static double thrusterMaxImpulse = 50_000.0;
+
+    // --- Vanish shade (the black afterimage left behind on a vanish) ---
+    /** Stamp a black humanoid silhouette with electric arcs where a vanish started. */
+    public static boolean vanishShadeEnabled = true;
+    /** Silhouette density, 0..3. 1.0 is roughly fifty particles; 0 disables the silhouette. */
+    public static double vanishShadeDensity = 1.0;
+    /** Thunder crack volume on vanish, 0..1. 0 silences it without touching the visual. */
+    public static double vanishThunderVolume = 0.35;
+    /**
+     * Sound ids played when a fighter leaves and arrives during a vanish, e.g.
+     * {@code "xenopixelsmod:vanish_out"}.
+     *
+     * <p>Empty means "keep the built-in behaviour", which is DragonMineZ's {@code evasion1} /
+     * {@code evasion2} with a vanilla enderman-teleport fallback. This is a configured id rather
+     * than a registered-and-shipped sound event on purpose: declaring a sound in
+     * {@code sounds.json} whose {@code .ogg} is not present makes every client log a missing-asset
+     * error on resource load, so the mod must not ship a dangling entry. Point these at your own
+     * sound once you have added the file, or at any sound from an installed mod.
+     */
+    public static String vanishSoundOut = "xenopixelsmod:vanish";
+    public static String vanishSoundIn = "xenopixelsmod:vanish";
+
     public static float rushChainKiCost = 10.0f;
     public static float rushChainDamageScale = 0.9f;
     public static double rushChainRange = 16.0;
@@ -205,6 +281,34 @@ public final class XenoServerConfig {
     /** Ticks to reach full charge (20 = 1s). */
     public static int chargeMaxTicks = 28;
 
+    // --- YAWP (Yet Another World Protector) region protection ---
+    /**
+     * Let YAWP regions veto DMZ ki griefing. Only has an effect when YAWP is installed;
+     * DMZ's allowKiGriefing* gamerules still apply first, this can only deny further.
+     */
+    public static boolean yawpKiGriefingEnabled = true;
+    /**
+     * YAWP flags consulted for ki griefing caused by a player. Griefing is denied when any
+     * listed flag is DENIED at the target block, evaluated with the player's region
+     * permissions, so region owners/members are unaffected.
+     * Names are YAWP flag ids as used by {@code /wp flag add}; unknown names are ignored
+     * (with a warning) so a YAWP update that renames a flag cannot break ki combat.
+     */
+    public static java.util.List<String> yawpPlayerKiFlags =
+            new java.util.ArrayList<>(java.util.List.of("break-blocks", "explosions-blocks"));
+    /** YAWP flags consulted for ki griefing caused by a mob or an unowned projectile. */
+    public static java.util.List<String> yawpMobKiFlags =
+            new java.util.ArrayList<>(java.util.List.of("mob-griefing", "explosions-blocks"));
+    /**
+     * Radius in blocks around a DMZ master treated as protected by the
+     * {@code ki-griefing-masters} region flag. 0 disables master-aware ki protection.
+     *
+     * <p>DMZ gates master-structure griefing behind its own gamerule but exposes no "is this
+     * block part of a master's site" query, so proximity to the master entity is the available
+     * approximation. Only scanned when that flag is actually set on the region.
+     */
+    public static double masterKiGriefRadius = 24.0;
+
     private XenoServerConfig() {}
 
     public static void load() {
@@ -259,6 +363,19 @@ public final class XenoServerConfig {
         d.trainingDummyEnabled = trainingDummyEnabled;
         d.parallelQuestEnabled = parallelQuestEnabled;
         d.mentorEnabled = mentorEnabled;
+        d.copycatForgeEnergyEnabled = copycatForgeEnergyEnabled;
+        d.copycatEnergyCapacity = copycatEnergyCapacity;
+        d.copycatMaxReceiveFePerTick = copycatMaxReceiveFePerTick;
+        d.copycatEnergyUseFePerTick = copycatEnergyUseFePerTick;
+        d.missileMaxApexY = missileMaxApexY;
+        d.missileTerminalGravityCompensation = missileTerminalGravityCompensation;
+        d.thrusterImpulseGuardEnabled = thrusterImpulseGuardEnabled;
+        d.thrusterMaxImpulse = thrusterMaxImpulse;
+        d.vanishShadeEnabled = vanishShadeEnabled;
+        d.vanishShadeDensity = vanishShadeDensity;
+        d.vanishThunderVolume = vanishThunderVolume;
+        d.vanishSoundOut = vanishSoundOut;
+        d.vanishSoundIn = vanishSoundIn;
         d.rushChainKiCost = rushChainKiCost;
         d.rushChainDamageScale = rushChainDamageScale;
         d.rushChainRange = rushChainRange;
@@ -327,6 +444,10 @@ public final class XenoServerConfig {
         d.kickDownRangeBonus = kickDownRangeBonus;
         d.maxComboSteps = maxComboSteps;
         d.chargeMaxTicks = chargeMaxTicks;
+        d.yawpKiGriefingEnabled = yawpKiGriefingEnabled;
+        d.yawpPlayerKiFlags = new java.util.ArrayList<>(yawpPlayerKiFlags);
+        d.yawpMobKiFlags = new java.util.ArrayList<>(yawpMobKiFlags);
+        d.masterKiGriefRadius = masterKiGriefRadius;
         return d;
     }
 
@@ -357,6 +478,25 @@ public final class XenoServerConfig {
         trainingDummyEnabled = d.trainingDummyEnabled;
         parallelQuestEnabled = d.parallelQuestEnabled;
         mentorEnabled = d.mentorEnabled;
+        copycatForgeEnergyEnabled = d.copycatForgeEnergyEnabled;
+        copycatEnergyCapacity = Math.max(1_000,
+                d.copycatEnergyCapacity <= 0 ? 100_000 : d.copycatEnergyCapacity);
+        copycatMaxReceiveFePerTick = Math.max(1,
+                d.copycatMaxReceiveFePerTick <= 0 ? 1_000 : d.copycatMaxReceiveFePerTick);
+        copycatEnergyUseFePerTick = Math.max(0,
+                d.copycatEnergyUseFePerTick < 0 ? 10 : d.copycatEnergyUseFePerTick);
+        missileMaxApexY = Math.max(0.0, d.missileMaxApexY);
+        missileTerminalGravityCompensation = d.missileTerminalGravityCompensation;
+        thrusterImpulseGuardEnabled = d.thrusterImpulseGuardEnabled;
+        // A zero or negative cap would clamp every thruster to nothing; treat it as "unset".
+        thrusterMaxImpulse = d.thrusterMaxImpulse > 0.0 ? d.thrusterMaxImpulse : 50_000.0;
+        vanishShadeEnabled = d.vanishShadeEnabled;
+        vanishShadeDensity = Math.max(0.0, Math.min(3.0, d.vanishShadeDensity));
+        vanishThunderVolume = Math.max(0.0, Math.min(1.0, d.vanishThunderVolume));
+        // Blank stays blank; a whitespace-only id would otherwise become a failed lookup
+        // on every single vanish.
+        vanishSoundOut = d.vanishSoundOut == null ? "" : d.vanishSoundOut.trim();
+        vanishSoundIn = d.vanishSoundIn == null ? "" : d.vanishSoundIn.trim();
         rushChainKiCost = Math.max(0f, d.rushChainKiCost);
         rushChainDamageScale = d.rushChainDamageScale > 0f ? d.rushChainDamageScale : 0.9f;
         rushChainRange = d.rushChainRange > 0 ? d.rushChainRange : 16.0;
@@ -427,6 +567,19 @@ public final class XenoServerConfig {
         kickDownRangeBonus = Math.max(0f, d.kickDownRangeBonus);
         maxComboSteps = Math.max(1, Math.min(8, d.maxComboSteps <= 0 ? 5 : d.maxComboSteps));
         chargeMaxTicks = Math.max(10, Math.min(80, d.chargeMaxTicks <= 0 ? 28 : d.chargeMaxTicks));
+
+        yawpKiGriefingEnabled = d.yawpKiGriefingEnabled;
+        // A missing list means "config written before this option existed" - keep the defaults.
+        // An explicitly empty list is honoured: it disables that half of the check.
+        if (d.yawpPlayerKiFlags != null) {
+            yawpPlayerKiFlags = new java.util.ArrayList<>(d.yawpPlayerKiFlags);
+        }
+        if (d.yawpMobKiFlags != null) {
+            yawpMobKiFlags = new java.util.ArrayList<>(d.yawpMobKiFlags);
+        }
+        if (d.masterKiGriefRadius != null) {
+            masterKiGriefRadius = Math.max(0.0, Math.min(256.0, d.masterKiGriefRadius));
+        }
     }
 
     public static float fistReleaseStamina(float charge01) {
@@ -760,6 +913,19 @@ public final class XenoServerConfig {
         public boolean trainingDummyEnabled = true;
         public boolean parallelQuestEnabled = true;
         public boolean mentorEnabled = true;
+        public boolean copycatForgeEnergyEnabled = false;
+        public int copycatEnergyCapacity = 100_000;
+        public int copycatMaxReceiveFePerTick = 1_000;
+        public int copycatEnergyUseFePerTick = 10;
+        public double missileMaxApexY = 950.0;
+        public boolean missileTerminalGravityCompensation = false;
+        public boolean thrusterImpulseGuardEnabled = true;
+        public double thrusterMaxImpulse = 50_000.0;
+        public boolean vanishShadeEnabled = true;
+        public double vanishShadeDensity = 1.0;
+        public double vanishThunderVolume = 0.35;
+        public String vanishSoundOut = "xenopixelsmod:vanish";
+        public String vanishSoundIn = "xenopixelsmod:vanish";
         public float rushChainKiCost = 10.0f;
         public float rushChainDamageScale = 0.9f;
         public double rushChainRange = 16.0;
@@ -832,5 +998,11 @@ public final class XenoServerConfig {
         public float kickDownRangeBonus = 4.0f;
         public int maxComboSteps = 5;
         public int chargeMaxTicks = 28;
+        public boolean yawpKiGriefingEnabled = true;
+        // Null (absent from an older config file) means "use the defaults"; see apply().
+        public java.util.List<String> yawpPlayerKiFlags = null;
+        public java.util.List<String> yawpMobKiFlags = null;
+        /** Boxed so an absent key keeps the default instead of resetting to 0. */
+        public Double masterKiGriefRadius = null;
     }
 }

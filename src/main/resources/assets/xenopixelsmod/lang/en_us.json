@@ -4,8 +4,12 @@
   "item.xenopixelsmod.metal_detector": "Metal Detector",
   "item.xenopixelsmod.strawberry_senzu": "Strawberry Senzu Bean",
   "item.xenopixelsmod.target_tool": "Ship Target Tool",
-
   "block.xenopixelsmod.sound_block": "Sound Block",
+  "block.xenopixelsmod.copycat_glowstone": "Copycat Glowstone",
+  "message.xenopixelsmod.copycat_glowstone_applied": "Copied %s",
+  "message.xenopixelsmod.copycat_glowstone_reset": "Reset to Copycat Shell",
+  "message.xenopixelsmod.copycat_glowstone_unbound": "Copied texture unbound",
+  "message.xenopixelsmod.copycat_glowstone_locked": "Texture locked — use a Create Wrench to unbind it",
   "block.xenopixelsmod.ship_vls_guidance": "Ballistic Guidance Computer",
   "block.xenopixelsmod.missile_tube": "Missile Tube",
   "block.xenopixelsmod.missile_chunk_loader": "Missile Chunk Loader",
@@ -17,15 +21,12 @@
   "block.xenopixelsmod.deepslate_jackietonite_ore": "Deepslate Jackietonite Ore",
   "block.xenopixelsmod.nether_jackietonite_ore": "Nether Jackietonite Ore",
   "block.xenopixelsmod.end_stone_jackietonite_ore": "End Stone Jackietonite Ore",
-
   "creativetab.xenopixels_tab": "XenoPixels",
-
   "gui.xenopixelsmod.target_title": "XenoPixels Target",
   "gui.xenopixelsmod.set_target": "Set Target",
   "gui.xenopixelsmod.teleport_ship": "Teleport Ship",
   "gui.xenopixelsmod.stored_target": "Stored: %s, %s, %s",
   "gui.xenopixelsmod.guidance_title": "Ballistic Guidance",
-
   "chat.xenopixelsmod.target_set": "Target set to %s, %s, %s",
   "chat.xenopixelsmod.target_tool_not_held": "Hold a Ship Target Tool to store coordinates.",
   "chat.xenopixelsmod.target_tool_empty": "This Target Tool has no stored target. Right-click air to configure it.",
@@ -38,7 +39,6 @@
   "chat.xenopixelsmod.no_ship_found": "You are not standing on a Sable ship",
   "chat.xenopixelsmod.strawberry_senzu_cooldown": "Senzu on cooldown: %s seconds left",
   "actionbar.xenopixelsmod.strawberry_senzu_cooldown": "Cooldown: %ss",
-
   "key.categories.xenopixelsmod": "XenoPixels",
   "key.xenopixelsmod.bt3_dash_left": "Dash Left (optional alt)",
   "key.xenopixelsmod.bt3_dash_right": "Dash Right (optional alt)",
@@ -55,5 +55,6 @@
   "key.xenopixelsmod.bt3_sonic_left": "Sonic Sway Left",
   "key.xenopixelsmod.bt3_sonic_right": "Sonic Sway Right",
   "key.xenopixelsmod.bt3_ultimate": "Ultimate",
-  "key.xenopixelsmod.bt3_sparking": "Sparking Mode"
+  "key.xenopixelsmod.bt3_sparking": "Sparking Mode",
+  "subtitles.xenopixelsmod.vanish": "Fighter vanishes"
 }

@@ -1,5 +1,6 @@
 package net.bullettrain.xenopixelsmod.client;
 
+import net.bullettrain.xenopixelsmod.aero.AeroStateSnapshot;
 import net.bullettrain.xenopixelsmod.missile.BallisticFlightPlan;
 import net.minecraft.core.BlockPos;
 
@@ -17,6 +18,10 @@ public final class ClientScreens {
     };
 
     public static Consumer<BallisticFlightPlan.Result> receiveFlightPlan = result -> {
+    };
+
+    /** Authoritative Aero controller state pushed by the server; the GUI renders only this. */
+    public static Consumer<AeroStateSnapshot> receiveAeroState = state -> {
     };
 
     private ClientScreens() {

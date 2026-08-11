@@ -53,6 +53,41 @@ class ShipBallisticControllerTest {
     }
 
     @Test
+    void attitudeSlewTransportsRollWithoutTwisting() {
+        ShipBallisticController.AttitudeCommand from =
+                new ShipBallisticController.AttitudeCommand(0, 1, 0, 0, 0, 1);
+        ShipBallisticController.AttitudeCommand next = ShipBallisticController.slewDirection(
+                from, 1, 0, 0, Math.toRadians(90));
+
+        assertEquals(1.0, next.x(), 1.0e-9);
+        assertEquals(0.0, next.y(), 1.0e-9);
+        assertEquals(0.0, next.z(), 1.0e-9);
+        assertEquals(0.0, next.upX(), 1.0e-9);
+        assertEquals(0.0, next.upY(), 1.0e-9);
+        assertEquals(1.0, next.upZ(), 1.0e-9,
+                "a yaw turn must preserve the ship's launch roll");
+    }
+
+    @Test
+    void transportedRollStaysUnitAndPerpendicularAcrossRouteTurns() {
+        ShipBallisticController.AttitudeCommand command =
+                new ShipBallisticController.AttitudeCommand(0, 1, 0, 0, 0, 1);
+        double[][] directions = {{0.6, 0.8, 0}, {1, 0, 0}, {0.3, -0.4, 0.866}, {0, -1, 0}};
+        for (double[] direction : directions) {
+            double length = Math.sqrt(direction[0] * direction[0]
+                    + direction[1] * direction[1] + direction[2] * direction[2]);
+            command = ShipBallisticController.transportRoll(command,
+                    direction[0] / length, direction[1] / length, direction[2] / length);
+            double upLength = Math.sqrt(command.upX() * command.upX()
+                    + command.upY() * command.upY() + command.upZ() * command.upZ());
+            double dot = command.x() * command.upX()
+                    + command.y() * command.upY() + command.z() * command.upZ();
+            assertEquals(1.0, upLength, 1.0e-9);
+            assertEquals(0.0, dot, 1.0e-9);
+        }
+    }
+
+    @Test
     void terminalGuidancePreservesSmallCorrectionMagnitude() {
         ShipBallisticController.AccelerationCommand command =
                 ShipBallisticController.terminalAcceleration(100, 0, 0, 52, 0, 0, 20);
