@@ -130,6 +130,8 @@ public class XenoPixelsMod {
                 };
                 net.bullettrain.xenopixelsmod.client.ClientScreens.receiveCombatFx =
                         net.bullettrain.xenopixelsmod.client.combat.fx.CombatFxClient::accept;
+                net.bullettrain.xenopixelsmod.client.ClientScreens.receiveParty =
+                        net.bullettrain.xenopixelsmod.client.ClientParty::accept;
             });
         }
     }

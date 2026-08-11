@@ -62,15 +62,23 @@ public class XenoPartyOverlay {
             cachedLevel = mc.level;
             lastMemberScan = gameTime;
             CACHED_MEMBERS.clear();
-            if (team != null) {
+            // A real XenoPixels party wins over a scoreboard team. The team path is kept as a
+            // fallback because it is how this overlay shipped and some servers do drive their
+            // groups off teams - but it is no longer the only way to populate the strip, which
+            // is why the widget used to show nothing to anyone.
+            if (ClientParty.active()) {
+                for (Player p : mc.level.players()) {
+                    if (p != self && ClientParty.contains(p.getUUID())) CACHED_MEMBERS.add(p);
+                }
+            } else if (team != null) {
                 for (Player p : mc.level.players()) {
                     if (p != self && p.getTeam() == team) CACHED_MEMBERS.add(p);
                 }
-                // Refresh twice per second; positions do not need an FPS-rate full sort.
-                CACHED_MEMBERS.sort((a, b) -> Double.compare(self.distanceToSqr(a), self.distanceToSqr(b)));
-                if (CACHED_MEMBERS.size() > MAX_MEMBERS) {
-                    CACHED_MEMBERS.subList(MAX_MEMBERS, CACHED_MEMBERS.size()).clear();
-                }
+            }
+            // Refresh twice per second; positions do not need an FPS-rate full sort.
+            CACHED_MEMBERS.sort((a, b) -> Double.compare(self.distanceToSqr(a), self.distanceToSqr(b)));
+            if (CACHED_MEMBERS.size() > MAX_MEMBERS) {
+                CACHED_MEMBERS.subList(MAX_MEMBERS, CACHED_MEMBERS.size()).clear();
             }
         }
         List<Player> members = CACHED_MEMBERS;

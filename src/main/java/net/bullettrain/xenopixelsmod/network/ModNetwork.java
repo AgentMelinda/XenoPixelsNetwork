@@ -12,6 +12,7 @@ import net.bullettrain.xenopixelsmod.network.packet.AeroControlPacket;
 import net.bullettrain.xenopixelsmod.network.packet.AeroStatePacket;
 import net.bullettrain.xenopixelsmod.network.packet.BeamSurgePacket;
 import net.bullettrain.xenopixelsmod.network.packet.CombatFxPacket;
+import net.bullettrain.xenopixelsmod.network.packet.PartySyncPacket;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
 import com.dragonminez.compat.network.NetworkDirection;
@@ -27,6 +28,7 @@ public class ModNetwork {
     /**
      * Bump when packet set or wire format changes.
      *
+     * <p>15: appended {@code PartySyncPacket}, the party roster.
      * <p>14: appended {@code BeamSurgePacket}, the sustained-beam feed report.
      * <p>13: appended {@code CombatFxPacket}, the combat impact cue.
      * <p>12: extends Aero control/state with absolute-attitude target/route autopilot.
@@ -34,7 +36,7 @@ public class ModNetwork {
      * flight controller. Clients and servers must both run this build — the channel refuses
      * a mismatched protocol, so a 10 client cannot join an 11 server or vice versa.
      */
-    private static final String PROTOCOL = "14";
+    private static final String PROTOCOL = "15";
 
     public static final SimpleChannel CHANNEL = NetworkRegistry.ChannelBuilder
             .named(ResourceLocation.fromNamespaceAndPath(XenoPixelsMod.MOD_ID, "main"))
@@ -152,6 +154,13 @@ public class ModNetwork {
                 .decoder(BeamSurgePacket::new)
                 .encoder(BeamSurgePacket::encode)
                 .consumerMainThread(BeamSurgePacket::handle)
+                .add();
+
+        // --- party roster (appended) ---
+        CHANNEL.messageBuilder(PartySyncPacket.class, id++, NetworkDirection.PLAY_TO_CLIENT)
+                .decoder(PartySyncPacket::new)
+                .encoder(PartySyncPacket::encode)
+                .consumerMainThread(PartySyncPacket::handle)
                 .add();
 
         XenoPixelsMod.LOGGER.info("ModNetwork: registered {} packet types (protocol {})", id, PROTOCOL);
