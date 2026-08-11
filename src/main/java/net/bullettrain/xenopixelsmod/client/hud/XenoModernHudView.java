@@ -178,7 +178,7 @@ public final class XenoModernHudView {
         float meter = Math.max(0f, Math.min(1f, sparkMeter(snap)));
         int lit = Math.round(XenoHudLayout.SPARK_PIPS * meter);
         for (int i = 0; i < XenoHudLayout.SPARK_PIPS; i++) {
-            int y = XenoHudLayout.SPARK_Y + i * 13;
+            int y = XenoHudLayout.SPARK_Y + i * XenoHudLayout.SPARK_STEP;
             HudDraw.blitRegion(graphics, XenoHudTextures.HUD_ATLAS,
                     i < lit ? XenoHudLayout.SPARK_ON : XenoHudLayout.SPARK_OFF,
                     XenoHudLayout.SPARK_X, y);

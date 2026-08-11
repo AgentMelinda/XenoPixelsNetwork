@@ -82,7 +82,22 @@ public final class XenoHudLayout {
     // beneath, and a sparking pip column beside the portrait (which the HUD never had).
     public static final int PORTRAIT_X = 2;
     public static final int PORTRAIT_Y = 12;
-    public static final int CONTENT_LEFT = PORTRAIT_X + PORTRAIT + 8;
+
+    // Sparking pip column, declared before CONTENT_LEFT because the bars are positioned to
+    // clear it. It previously sat at PORTRAIT + 2 while CONTENT_LEFT was PORTRAIT + 8, so a
+    // 12px-wide pip overlapped the first 6px of every bar — and since drawSparkPips runs after
+    // drawBar, it painted over them. Deriving CONTENT_LEFT from the lane makes that unrepresentable.
+    public static final int SPARK_PIPS = 5;
+    /** Pip sprite size; {@link #SPARK_OFF} and {@link #SPARK_ON} are both 12x12. */
+    public static final int SPARK_W = 12;
+    /** Vertical pitch of the pip column. */
+    public static final int SPARK_STEP = 13;
+    public static final int SPARK_X = PORTRAIT_X + PORTRAIT + 2;
+    public static final int SPARK_Y = PORTRAIT_Y;
+    /** Gap between the pip lane and the bars. */
+    public static final int SPARK_GUTTER = 4;
+
+    public static final int CONTENT_LEFT = SPARK_X + SPARK_W + SPARK_GUTTER;
     public static final int NAME_Y = 2;
     public static final int HP_Y = 16;
     public static final int KI_Y = HP_Y + BAR_H + 3;
@@ -96,10 +111,6 @@ public final class XenoHudLayout {
     /** Gap between the player name and the DMZ power-release percentage beside it. */
     public static final int RELEASE_GAP = 8;
     public static final int RELEASE_COLOR = 0xFF68CAE6;
-
-    public static final int SPARK_PIPS = 5;
-    public static final int SPARK_X = PORTRAIT_X + PORTRAIT + 2;
-    public static final int SPARK_Y = PORTRAIT_Y;
 
     /** Unscaled width of the whole cluster; {@code XenoHudConfig.scaledWidth()} scales it. */
     public static int width() {
