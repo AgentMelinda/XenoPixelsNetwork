@@ -87,6 +87,8 @@ public final class XenoClientConfig {
     public static boolean hudCompactNumbers = true;
     /** Report the held fire key so a beam can be sustained. Off opts out entirely. */
     public static boolean beamSurgeClient = true;
+    /** Radial speed lines while moving fast. Camera-adjacent, so it gets its own switch. */
+    public static boolean speedLinesEnabled = true;
     /** Hide Alt/Ctrl technique hotbar while chat/command screen is open. */
     public static boolean techniqueHotbarHideInChat = true;
 
@@ -154,6 +156,7 @@ public final class XenoClientConfig {
         d.bt3GuardYieldsToUse = bt3GuardYieldsToUse;
         d.hudCompactNumbers = hudCompactNumbers;
         d.beamSurgeClient = beamSurgeClient;
+        d.speedLinesEnabled = speedLinesEnabled;
         d.techniqueHotbarHideInChat = techniqueHotbarHideInChat;
         return d;
     }
@@ -195,6 +198,7 @@ public final class XenoClientConfig {
         bt3GuardYieldsToUse = d.bt3GuardYieldsToUse;
         hudCompactNumbers = d.hudCompactNumbers;
         beamSurgeClient = d.beamSurgeClient;
+        speedLinesEnabled = d.speedLinesEnabled;
         techniqueHotbarHideInChat = d.techniqueHotbarHideInChat;
     }
 
@@ -234,6 +238,7 @@ public final class XenoClientConfig {
         public boolean bt3GuardYieldsToUse = true;
         public boolean hudCompactNumbers = true;
         public boolean beamSurgeClient = true;
+        public boolean speedLinesEnabled = true;
         public boolean techniqueHotbarHideInChat = true;
     }
 }

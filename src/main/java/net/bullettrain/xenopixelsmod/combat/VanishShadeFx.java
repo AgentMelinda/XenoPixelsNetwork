@@ -1,5 +1,6 @@
 package net.bullettrain.xenopixelsmod.combat;
 
+import net.bullettrain.xenopixelsmod.combat.fx.SilhouetteFx;
 import net.bullettrain.xenopixelsmod.config.XenoServerConfig;
 import net.minecraft.core.particles.DustParticleOptions;
 import net.minecraft.core.particles.ParticleTypes;
@@ -44,31 +45,6 @@ public final class VanishShadeFx {
      * a rectangle of dust does not read as a person. Head, torso, arms and legs each get their
      * own density so the shape survives being seen for under a second.
      */
-    private static final float[][] BODY = {
-            // head
-            {0.00f, 0.90f, 1.35f}, {-0.10f, 0.88f, 1.1f}, {0.10f, 0.88f, 1.1f},
-            {0.00f, 0.97f, 1.1f}, {0.00f, 0.81f, 1.1f},
-            // torso
-            {0.00f, 0.72f, 1.3f}, {0.00f, 0.62f, 1.3f}, {0.00f, 0.52f, 1.3f},
-            {0.00f, 0.42f, 1.2f},
-            {-0.13f, 0.68f, 1.1f}, {0.13f, 0.68f, 1.1f},
-            {-0.13f, 0.55f, 1.1f}, {0.13f, 0.55f, 1.1f},
-            {-0.11f, 0.44f, 1.0f}, {0.11f, 0.44f, 1.0f},
-            // arms
-            {-0.28f, 0.70f, 1.0f}, {0.28f, 0.70f, 1.0f},
-            {-0.30f, 0.58f, 1.0f}, {0.30f, 0.58f, 1.0f},
-            {-0.31f, 0.46f, 1.0f}, {0.31f, 0.46f, 1.0f},
-            {-0.30f, 0.35f, 0.9f}, {0.30f, 0.35f, 0.9f},
-            // legs
-            {-0.11f, 0.30f, 1.1f}, {0.11f, 0.30f, 1.1f},
-            {-0.12f, 0.20f, 1.1f}, {0.12f, 0.20f, 1.1f},
-            {-0.12f, 0.10f, 1.0f}, {0.12f, 0.10f, 1.0f},
-            {-0.12f, 0.02f, 1.0f}, {0.12f, 0.02f, 1.0f},
-    };
-
-    /** Points that get the violet rim instead of the shade colour: the outline of the figure. */
-    private static final int RIM_STRIDE = 4;
-
     private VanishShadeFx() {
     }
 
@@ -89,31 +65,9 @@ public final class VanishShadeFx {
 
         float height = Math.max(0.5f, owner.getBbHeight());
         float width = Math.max(0.3f, owner.getBbWidth());
-        // yHeadRot survives the teleport that has usually already happened; getYRot on a
-        // just-teleported player has been snapped to face the new target.
-        double yaw = Math.toRadians(owner.yHeadRot);
-        double sin = Math.sin(-yaw);
-        double cos = Math.cos(-yaw);
-
-        // Every Nth point is dropped at low density, so turning it down thins the figure evenly
-        // instead of lopping off whichever body part happens to be last in the table.
-        int keep = Math.max(1, (int) Math.round(1.0 / Math.min(1.0, density)));
-        for (int i = 0; i < BODY.length; i++) {
-            if (density < 1.0 && (i % keep) != 0) continue;
-            float[] point = BODY[i];
-            double lx = point[0] * width * 2.0;
-            double ly = point[1] * height;
-            // Rotate the local X offset into world space around the entity's facing.
-            double x = origin.x + lx * cos;
-            double z = origin.z + lx * sin;
-            double y = origin.y + ly;
-
-            boolean rim = (i % RIM_STRIDE) == 0;
-            DustParticleOptions dust = new DustParticleOptions(
-                    rim ? RIM : SHADE, point[2] * (rim ? 1.0f : 1.25f));
-            // Zero velocity: the silhouette has to hold its shape for the second it exists.
-            level.sendParticles(dust, x, y, z, 1, 0.02, 0.02, 0.02, 0.0);
-        }
+        // The figure itself is SilhouetteFx's; density above 1 only thickens the arcs below.
+        SilhouetteFx.stamp(level, origin, owner.yHeadRot, height, width,
+                Math.min(1.0, density), SHADE, RIM, 1.0f);
 
         arcs(level, origin, height, density);
         thunder(level, origin);
