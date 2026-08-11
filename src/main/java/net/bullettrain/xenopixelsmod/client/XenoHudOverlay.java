@@ -271,14 +271,7 @@ public class XenoHudOverlay {
     }
 
     private static String formatNum(float value) {
-        if (value >= 1_000_000f) return oneDecimal(value / 1_000_000f) + "M";
-        if (value >= 10_000f) return oneDecimal(value / 1000f) + "K";
-        if (Math.abs(value - Math.round(value)) < 0.05f) return String.valueOf(Math.round(value));
-        return String.valueOf(Math.round(value));
-    }
-
-    private static String oneDecimal(float value) {
-        return Float.toString(Math.round(value * 10f) / 10f);
+        return net.bullettrain.xenopixelsmod.client.hud.HudNumbers.format(value);
     }
 
     private static void updateVisualState(Minecraft mc, XenoHudSnapshot snap, boolean editing) {

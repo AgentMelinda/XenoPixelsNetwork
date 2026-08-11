@@ -80,6 +80,11 @@ public final class XenoClientConfig {
      * key is bound to the mouse.
      */
     public static boolean bt3GuardYieldsToUse = true;
+    /**
+     * Abbreviate HUD figures as k/M. Off shows the exact number, which is what a player
+     * checking whether a heal landed actually wants.
+     */
+    public static boolean hudCompactNumbers = true;
     /** Hide Alt/Ctrl technique hotbar while chat/command screen is open. */
     public static boolean techniqueHotbarHideInChat = true;
 
@@ -145,6 +150,7 @@ public final class XenoClientConfig {
         d.bt3ScreenShakeStrength = bt3ScreenShakeStrength;
         d.bt3ImpactFlash = bt3ImpactFlash;
         d.bt3GuardYieldsToUse = bt3GuardYieldsToUse;
+        d.hudCompactNumbers = hudCompactNumbers;
         d.techniqueHotbarHideInChat = techniqueHotbarHideInChat;
         return d;
     }
@@ -184,6 +190,7 @@ public final class XenoClientConfig {
         bt3ScreenShakeStrength = d.bt3ScreenShakeStrength;
         bt3ImpactFlash = d.bt3ImpactFlash;
         bt3GuardYieldsToUse = d.bt3GuardYieldsToUse;
+        hudCompactNumbers = d.hudCompactNumbers;
         techniqueHotbarHideInChat = d.techniqueHotbarHideInChat;
     }
 
@@ -221,6 +228,7 @@ public final class XenoClientConfig {
         public float bt3ScreenShakeStrength = 1.0f;
         public boolean bt3ImpactFlash = true;
         public boolean bt3GuardYieldsToUse = true;
+        public boolean hudCompactNumbers = true;
         public boolean techniqueHotbarHideInChat = true;
     }
 }

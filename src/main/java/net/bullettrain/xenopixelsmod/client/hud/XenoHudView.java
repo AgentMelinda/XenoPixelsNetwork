@@ -300,12 +300,6 @@ public final class XenoHudView {
     }
 
     private static String formatNum(float value) {
-        if (value >= 1_000_000f) return oneDecimal(value / 1_000_000f) + "M";
-        if (value >= 10_000f) return oneDecimal(value / 1000f) + "K";
-        return String.valueOf(Math.round(value));
-    }
-
-    private static String oneDecimal(float value) {
-        return Float.toString(Math.round(value * 10f) / 10f);
+        return HudNumbers.format(value);
     }
 }

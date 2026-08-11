@@ -219,7 +219,7 @@ public final class XenoModernHudView {
     }
 
     private static String formatPair(double current, double max) {
-        return (long) Math.max(0, current) + "/" + (long) Math.max(0, max);
+        return HudNumbers.formatPair(current, max);
     }
 
     /** Exponential ease toward the true value, framerate-independent. */
