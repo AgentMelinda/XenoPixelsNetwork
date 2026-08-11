@@ -10,14 +10,25 @@ Implementation: `compat/create/elevator/ElevatorMethods.java` (the Lua surface) 
 
 ## Wiring it up
 
-Attach a wired modem to an **elevator contact** — one of the redstone contact blocks on the
-shaft, not the pulley. Any contact on the column works and they all report the same elevator, so
-in practice you attach to whichever one is nearest the computer.
+The peripheral is an **elevator contact** — one of the redstone contact blocks on the shaft, not
+the pulley. Any contact on the column works and they all report the same elevator, so use
+whichever one is easiest to reach.
+
+There are two ways to reach it, and `peripheral.find` covers both because it searches the
+computer's own faces as well as the wired network:
 
 ```lua
 local lift = peripheral.find("create_elevator")
-if not lift then error("no elevator contact on the network") end
+if not lift then error("no elevator contact found") end
 ```
+
+**Directly.** Place the computer against a contact block. It appears on that side with no modem
+involved — `peripheral.wrap("left")` and so on also work.
+
+**Over a network.** Put a wired modem on the contact block and right-click it so it lights up; it
+will report the peripheral name it has taken (`create_elevator_0` and so on). Run networking
+cable to a modem on the computer and right-click that one too. This is the usual arrangement,
+since the contacts are out on the shaft where you would rather not put a computer.
 
 The peripheral appears only when Create is installed. With Create absent the methods are simply
 not registered — nothing errors at boot.
