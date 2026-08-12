@@ -11,13 +11,12 @@ import net.minecraft.client.gui.GuiGraphics;
 import java.util.List;
 
 /**
- * The modern-unified HUD: the stat cluster and the BT3 combat cooldown strip as one panel.
+ * The modern-unified HUD: the stat cluster and its attached BT3 combat cooldown rail.
  *
  * <p>Selected with {@code /xenohud renderer modernunified}. Previously these were two separate
- * overlays with independent positions, scales and backing plates, which meant a player had to
- * align them by hand and they drifted apart again on any resolution change. Here the combat
- * strip is laid out relative to the stat cluster and both sit under a single nine-sliced plate,
- * so the whole thing moves and scales as one object at {@code XenoHudConfig}'s x/y/scale.
+ * overlays with independent positions and scales. Here the combat plates are laid out relative
+ * to the stat cluster, so the whole composition moves and scales as one object at
+ * {@code XenoHudConfig}'s x/y/scale without the obsolete rectangular backing panel.
  *
  * <p>The cooldown strip's own position and scale settings are deliberately ignored in this mode
  * — that is what "unified" means. Its content settings ({@code showLabels}, {@code showSeconds},
@@ -25,17 +24,13 @@ import java.util.List;
  * describe what to draw rather than where.
  *
  * <p>Nothing is re-derived here: the stat half delegates to {@link XenoModernHudView#renderContent}
- * and the chips come from {@link XenoCooldownHudOverlay#chipsForUnified} and are drawn by that
- * class's own modern chip painter. This view owns layout and the shared plate, nothing else.
+ * and the chips come from {@link XenoCooldownHudOverlay#chipsForUnified}. This view owns only
+ * their shared placement and reported editor bounds.
  */
 public final class XenoUnifiedHudView {
 
     /** Gap between the stat cluster and the combat row. */
-    private static final int SECTION_GAP = 4;
-    /** Inset from the shared plate's edge to the content inside it. */
-    private static final int PLATE_PAD = 4;
-    private static final int TITLE_H = 10;
-
+    private static final int SECTION_GAP = 0;
     private final XenoModernHudView stats = new XenoModernHudView();
 
     private int boundsX;
@@ -67,20 +62,14 @@ public final class XenoUnifiedHudView {
         List<XenoCooldownHudOverlay.Chip> chips = XenoCooldownHudOverlay.chipsForUnified(editorMode);
 
         int statsW = XenoHudLayout.width();
-        int statsH = XenoHudLayout.height();
-        int chipW = XenoCooldownHudOverlay.CHIP_W;
-        int chipH = XenoCooldownHudOverlay.CHIP_H;
-        int gap = XenoCooldownHudOverlay.GAP;
-
-        // The combat row wraps rather than running off the plate: at the stat cluster's width a
-        // full seven-chip row would otherwise overhang it by a wide margin.
-        int perRow = Math.max(1, (statsW + gap) / (chipW + gap));
-        int rows = chips.isEmpty() ? 0 : (chips.size() + perRow - 1) / perRow;
-        int combatH = rows == 0 ? 0 : TITLE_H + rows * chipH + (rows - 1) * gap;
+        int statsH = XenoModernHudView.VISIBLE_BOTTOM;
+        int columns = chips.isEmpty() ? 1 : XenoCooldownHudOverlay.modernColumns(chips.size());
+        int combatH = chips.isEmpty() ? 0
+                : XenoCooldownHudOverlay.modernRailHeight(chips.size(), columns);
 
         int contentH = statsH + (combatH == 0 ? 0 : SECTION_GAP + combatH);
-        int plateW = statsW + PLATE_PAD * 2;
-        int plateH = contentH + PLATE_PAD * 2;
+        int plateW = statsW;
+        int plateH = contentH;
         // The plate grows with the number of wrapped chip rows, so the screen clamp and the
         // editor's drag bounds have to learn its real size from here rather than assume the
         // stat cluster's constant height.
@@ -92,19 +81,12 @@ public final class XenoUnifiedHudView {
         pose.scale(scale, scale, 1f);
         RenderSystem.enableBlend();
 
-        // One plate for both halves — the point of the mode.
-        HudDraw.blitNineSlice(graphics, XenoHudTextures.HUD_ATLAS, XenoHudLayout.PANEL,
-                0, 0, plateW, plateH, XenoHudLayout.PANEL_CORNER);
-
-        pose.pushPose();
-        pose.translate(PLATE_PAD, PLATE_PAD, 0);
         stats.renderContent(graphics);
-        pose.popPose();
 
-        if (rows > 0) {
+        if (!chips.isEmpty()) {
             pose.pushPose();
-            pose.translate(PLATE_PAD, PLATE_PAD + statsH + SECTION_GAP, 0);
-            drawCombat(graphics, font, chips, perRow, statsW);
+            pose.translate(0, statsH + SECTION_GAP, 0);
+            XenoCooldownHudOverlay.drawModernRail(graphics, font, chips, statsW, columns);
             pose.popPose();
         }
 
@@ -116,26 +98,8 @@ public final class XenoUnifiedHudView {
         pose.popPose();
     }
 
-    private void drawCombat(GuiGraphics graphics, Font font,
-                            List<XenoCooldownHudOverlay.Chip> chips, int perRow, int width) {
-        // Divider plus label, so the combat half is legibly its own section of the one panel
-        // rather than chips floating under the stamina meter.
-        HudDraw.fillRect(graphics, 0, 0, width, 1, 0x5542A5F5);
-        graphics.drawString(font, "COMBAT", 1, 2, 0xFF90CAF9, true);
-
-        int chipW = XenoCooldownHudOverlay.CHIP_W;
-        int chipH = XenoCooldownHudOverlay.CHIP_H;
-        int gap = XenoCooldownHudOverlay.GAP;
-        for (int i = 0; i < chips.size(); i++) {
-            int row = i / perRow;
-            int col = i % perRow;
-            XenoCooldownHudOverlay.drawModernChip(graphics, font,
-                    col * (chipW + gap), TITLE_H + row * (chipH + gap), chips.get(i));
-        }
-    }
-
     /** Unscaled width of the whole unified panel, for editor bounds and screen clamping. */
     public static int width() {
-        return XenoHudLayout.width() + PLATE_PAD * 2;
+        return XenoHudLayout.width();
     }
 }

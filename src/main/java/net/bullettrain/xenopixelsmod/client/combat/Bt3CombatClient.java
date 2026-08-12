@@ -73,8 +73,7 @@ public final class Bt3CombatClient {
             InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_N, "key.categories.xenopixelsmod");
     /**
      * Hold to guard / block (STM drain).
-     * Default matches DMZ {@code block_key} (right-click); we claim that binding at runtime
-     * and unbind DMZ's Block so only XenoPixels guard runs.
+     * Dedicated B default keeps vanilla right-click exclusively available for Use/place.
      */
     public static final KeyMapping GUARD = new KeyMapping(
             "key.xenopixelsmod.bt3_guard", KeyConflictContext.IN_GAME,
@@ -86,16 +85,17 @@ public final class Bt3CombatClient {
     /**
      * Hold while your own ki wave is firing to make it grow.
      *
-     * <p>Shares C with {@link #KI_BLAST_CANCEL} by default. Both are ours, so the collision is
-     * resolved by context rather than by two actions racing: while a firing wave is owned this
-     * key drives the surge and the cancel is suppressed. The contexts barely overlap in practice
-     * — cancel is a mid-combo tool and surge only exists while a beam is out — but leaving two
-     * actions silently on one key is how a "sometimes it cancels instead" report gets written.
-     * Either can be rebound.
+     * <p>Left Alt, because that is the key already in the player's hand. A wave is cast with DMZ's
+     * Alt+1..4 technique chord and only starts firing once that chord is released, so Alt is free
+     * for the whole firing window and pressing it again is unambiguous — DMZ's
+     * {@code SECOND_FUNCTION_KEY} is a bare modifier that does nothing without a slot key.
+     *
+     * <p>This was previously C, which was unusable: C is DMZ's {@code ki_charge}, so holding it to
+     * surge also started a ki charge. {@code migrateBeamSurgeKey} moves existing profiles off it.
      */
     public static final KeyMapping BEAM_SURGE = new KeyMapping(
             "key.xenopixelsmod.bt3_beam_surge", KeyConflictContext.IN_GAME,
-            InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_C, "key.categories.xenopixelsmod");
+            InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_LEFT_ALT, "key.categories.xenopixelsmod");
     /** Mid-combo ki blast cancel. */
     public static final KeyMapping KI_BLAST_CANCEL = new KeyMapping(
             "key.xenopixelsmod.bt3_ki_blast_cancel", KeyConflictContext.IN_GAME,
@@ -253,8 +253,10 @@ public final class Bt3CombatClient {
     }
 
     private static boolean scrubbedDualWasdBinds;
-    /** One-shot per session: take DMZ Block key for our Guard. */
-    private static boolean claimedDmzBlockKey;
+    /** One-shot per session: repair bindings written by the old right-click Guard takeover. */
+    private static boolean migratedGuardBinding;
+    /** One-shot per session: move Beam Surge off C, which is DMZ's ki_charge. */
+    private static boolean migratedBeamSurgeBinding;
 
     @EventBusSubscriber(modid = XenoPixelsMod.MOD_ID, bus = EventBusSubscriber.Bus.MOD, value = Dist.CLIENT)
     public static class ModBus {
@@ -293,10 +295,14 @@ public final class Bt3CombatClient {
                 scrubDualWasdBinds(mc);
             }
 
-            // Claim DMZ Block binding for XenoPixels Guard (unbind DMZ block_key).
-            if (!claimedDmzBlockKey && mc.player != null) {
-                claimedDmzBlockKey = true;
-                claimDmzBlockKey(mc);
+            if (!migratedGuardBinding && mc.player != null) {
+                migratedGuardBinding = true;
+                ensureDedicatedGuardKey(mc);
+            }
+
+            if (!migratedBeamSurgeBinding && mc.player != null) {
+                migratedBeamSurgeBinding = true;
+                migrateBeamSurgeKey(mc);
             }
 
             if (mc.player == null || mc.level == null || mc.screen != null) {
@@ -440,48 +446,56 @@ public final class Bt3CombatClient {
             }
         }
 
-        /**
-         * Steal DMZ's Block key for XenoPixels Guard and leave DMZ {@code block_key} unbound.
-         * Default DMZ binding is right-click (mouse 1); if the player rebound Block, we take that key instead.
-         */
-        private static void claimDmzBlockKey(Minecraft mc) {
+        /** Restore the dedicated B binding after builds that copied DMZ Block's RMB binding. */
+        private static void ensureDedicatedGuardKey(Minecraft mc) {
             try {
+                boolean changed = false;
+                if (isRightMouse(GUARD)) {
+                    GUARD.setKey(InputConstants.Type.KEYSYM.getOrCreate(GLFW.GLFW_KEY_B));
+                    changed = true;
+                }
                 KeyMapping dmzBlock = KeyBinds.BLOCK_KEY;
-                if (dmzBlock == null) {
-                    XenoPixelsMod.LOGGER.debug("DMZ BLOCK_KEY missing; skip claim");
-                    return;
+                if (dmzBlock != null && isRightMouse(dmzBlock)) {
+                    dmzBlock.setKey(InputConstants.UNKNOWN);
+                    changed = true;
                 }
-                if (dmzBlock.isUnbound()) {
-                    // Already free — ensure our Guard has a usable default (RMB)
-                    if (GUARD.isUnbound()) {
-                        GUARD.setKey(InputConstants.Type.MOUSE.getOrCreate(GLFW.GLFW_MOUSE_BUTTON_RIGHT));
-                        KeyMapping.resetMapping();
-                        mc.options.save();
-                        XenoPixelsMod.LOGGER.info(
-                                "DMZ Block already unbound; set XenoPixels Guard to right-click");
-                    }
-                    return;
-                }
-
-                InputConstants.Key dmzKey = dmzBlock.getKey();
-                boolean guardAlreadySame = !GUARD.isUnbound()
-                        && GUARD.getKey().getType() == dmzKey.getType()
-                        && GUARD.getKey().getValue() == dmzKey.getValue();
-
-                if (!guardAlreadySame) {
-                    GUARD.setKey(dmzKey);
-                }
-                dmzBlock.setKey(InputConstants.UNKNOWN);
+                if (!changed) return;
                 KeyMapping.resetMapping();
                 mc.options.save();
-
-                String keyName = dmzKey.getDisplayName().getString();
-                XenoPixelsMod.LOGGER.info(
-                        "Claimed DMZ Block key [{}] for XenoPixels Guard; unbound key.dragonminez.block_key",
-                        keyName);
+                XenoPixelsMod.LOGGER.info("Migrated Guard to B; right-click is reserved for vanilla Use/place");
             } catch (Throwable t) {
-                XenoPixelsMod.LOGGER.warn("Failed to claim DMZ Block key for Guard: {}", t.toString());
+                XenoPixelsMod.LOGGER.warn("Failed to migrate Guard key binding: {}", t.toString());
             }
+        }
+
+        /**
+         * Move Beam Surge off C, which older builds shipped as its default.
+         *
+         * <p>C is DMZ's {@code ki_charge}, so holding it to grow a wave also started a ki charge
+         * and the surge never read as working. Deliberately narrow: only a binding still sitting
+         * on exactly C is moved, so anyone who rebound it on purpose is left alone.
+         */
+        private static void migrateBeamSurgeKey(Minecraft mc) {
+            try {
+                if (BEAM_SURGE.isUnbound()) return;
+                InputConstants.Key key = BEAM_SURGE.getKey();
+                if (key.getType() != InputConstants.Type.KEYSYM || key.getValue() != GLFW.GLFW_KEY_C) {
+                    return;
+                }
+                BEAM_SURGE.setKey(InputConstants.Type.KEYSYM.getOrCreate(GLFW.GLFW_KEY_LEFT_ALT));
+                KeyMapping.resetMapping();
+                mc.options.save();
+                XenoPixelsMod.LOGGER.info(
+                        "Migrated Beam Surge from C to Left Alt; C stays with DragonMineZ ki_charge");
+            } catch (Throwable t) {
+                XenoPixelsMod.LOGGER.warn("Failed to migrate Beam Surge key binding: {}", t.toString());
+            }
+        }
+
+        private static boolean isRightMouse(KeyMapping mapping) {
+            return mapping != null && !mapping.isUnbound()
+                    && mapping.getKey().getType() == InputConstants.Type.MOUSE
+                    && mapping.getKey().getValue() == GLFW.GLFW_MOUSE_BUTTON_RIGHT;
         }
 
         @SubscribeEvent
@@ -538,15 +552,6 @@ public final class Bt3CombatClient {
                 event.setCanceled(true);
                 event.setSwingHand(false);
             }
-            // Guard and vanilla Use share RMB by default. Hold the first Use until release so a
-            // tap can replay it once while a long press becomes guard without placing first.
-            if (XenoClientConfig.bt3GuardClient && XenoServerClientState.guard()
-                    && GUARD.isDown() && chargeMode == ChargeMode.NONE
-                    && event.isUseItem()) {
-                guardTapPending = true;
-                event.setCanceled(true);
-                event.setSwingHand(false);
-            }
         }
 
         @SubscribeEvent
@@ -562,41 +567,11 @@ public final class Bt3CombatClient {
         }
     }
 
-    /** Ticks the guard key has been held on this press; -1 when the key is up. */
-    private static int guardHeldTicks = -1;
-    /** True after the initial shared-key Use was suppressed and may need replaying on a tap. */
-    private static boolean guardTapPending;
-
-    /**
-     * Guard engages on a hold, never on a tap.
-     *
-     * <p>Guard shares its binding with vanilla Use — {@code claimDmzBlockKey} puts it on
-     * right-click — so a press is genuinely ambiguous: it could be a block being placed or a guard
-     * going up. The previous attempt guessed from what the player was holding and what they were
-     * looking at, and guessed wrong often enough that building was impossible.
-     *
-     * <p>A hold threshold removes the ambiguity instead of refereeing it. The initial vanilla Use
-     * is deferred: releasing before the threshold replays it once, while reaching the threshold
-     * discards it and starts guard. The cost is the threshold's delay before either action, which
-     * is why it is configurable.
-     */
+    /** Dedicated-key Guard engages immediately; right-click is never deferred or replayed. */
     private static void tickGuard(Minecraft mc) {
         boolean down = GUARD.isDown();
-        if (down) {
-            guardHeldTicks = guardHeldTicks < 0 ? 1 : guardHeldTicks + 1;
-        } else {
-            boolean shouldReplayUse = guardTapPending && !clientGuarding
-                    && XenoClientConfig.bt3GuardClient && XenoServerClientState.guard()
-                    && chargeMode == ChargeMode.NONE;
-            guardTapPending = false;
-            guardHeldTicks = -1;
-            if (shouldReplayUse) replayDeferredUse(mc);
-        }
-        boolean heldLongEnough = guardHeldTicks >= Math.max(0, XenoClientConfig.bt3GuardHoldTicks);
-        if (heldLongEnough || chargeMode != ChargeMode.NONE) guardTapPending = false;
-
         boolean want = XenoClientConfig.bt3GuardClient && XenoServerClientState.guard()
-                && down && heldLongEnough && chargeMode == ChargeMode.NONE;
+                && down && chargeMode == ChargeMode.NONE;
         LocalPlayer local = mc.player;
         if (want && !guardWasDown) {
             clientGuarding = true;
@@ -626,16 +601,7 @@ public final class Bt3CombatClient {
     }
 
     private static void clearGuardInputState() {
-        guardHeldTicks = -1;
-        guardTapPending = false;
         guardWasDown = false;
-    }
-
-    private static void replayDeferredUse(Minecraft mc) {
-        if (mc == null || mc.player == null || mc.gameMode == null || mc.screen != null) return;
-        // Queue one ordinary Use click for Minecraft's next key-processing pass. At that point
-        // GUARD is physically up, so our interception lets vanilla handle the action normally.
-        KeyMapping.click(mc.options.keyUse.getKey());
     }
 
     private static void tickPhase1Keys(Minecraft mc) {
@@ -679,14 +645,8 @@ public final class Bt3CombatClient {
             comboTicksLeft = COMBO_WINDOW_TICKS;
         }
 
-        // Ki blast cancel mid-combo
-        // Surge owns the shared key while a beam is out; drain the queued clicks so they do
-        // not fire a cancel the moment the beam ends.
-        if (net.bullettrain.xenopixelsmod.client.combat.beam.BeamSurgeClient.ownsFiringWave(mc.player)) {
-            while (KI_BLAST_CANCEL.consumeClick()) {
-                // discarded on purpose
-            }
-        }
+        // Ki blast cancel mid-combo. Surge moved to Left Alt, so the two no longer share a key
+        // and cancel no longer has to stand down while a beam is out.
         while (KI_BLAST_CANCEL.consumeClick()) {
             if (!XenoClientConfig.bt3KiBlastCancelClient || !XenoServerClientState.kiBlastCancel()) continue;
             if (clientGuarding || chargeMode != ChargeMode.NONE) continue;

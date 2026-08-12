@@ -1,7 +1,10 @@
 package net.bullettrain.xenopixelsmod.client.combat.beam;
 
-import com.dragonminez.common.init.entities.ki.KiWaveEntity;
+import com.dragonminez.client.util.KeyBinds;
+import com.dragonminez.common.init.entities.ki.AbstractKiProjectile;
+import com.dragonminez.common.init.entities.ki.KiBlastEntity;
 import net.bullettrain.xenopixelsmod.XenoPixelsMod;
+import net.minecraft.client.KeyMapping;
 import net.bullettrain.xenopixelsmod.client.config.XenoClientConfig;
 import net.bullettrain.xenopixelsmod.network.ModNetwork;
 import net.bullettrain.xenopixelsmod.network.packet.BeamSurgePacket;
@@ -35,11 +38,14 @@ public final class BeamSurgeClient {
      */
     private static final int SEND_INTERVAL_TICKS = 2;
 
-    /** Matches the server's search radius; a wave sits beside its owner. */
-    private static final double SEARCH_RADIUS = 12.0;
+    /** Matches the server's radius, and DMZ's own charging-entity lookup in TechniqueDispatcher. */
+    private static final double SEARCH_RADIUS = 30.0;
 
     private BeamSurgeClient() {
     }
+
+    /** Packets sent this session, shown by the debug readout so a silent chain is obvious. */
+    private static int sentCount;
 
     @SubscribeEvent
     public static void onPlayerTick(PlayerTickEvent.Post event) {
@@ -50,21 +56,48 @@ public final class BeamSurgeClient {
         if (player == null || event.getEntity() != player) return;
         if (player.tickCount % SEND_INTERVAL_TICKS != 0) return;
 
-        // A wave is cast with an Alt+1..4 slot chord and only starts firing once that chord is
-        // RELEASED, so there is no DMZ key held during the firing window at all. Surge therefore
-        // needs a binding of its own, which the player holds while the beam is out.
-        if (!net.bullettrain.xenopixelsmod.client.combat.Bt3CombatClient.BEAM_SURGE.isDown()) return;
-        if (minecraft.screen != null) return;
-        if (!ownsFiringWave(player)) return;
+        boolean keyDown = surgeKeyDown();
+        AbstractKiProjectile wave = findOwnedWave(player);
+        if (keyDown && minecraft.screen == null && wave != null) {
+            sentCount++;
+            ModNetwork.sendToServer(new BeamSurgePacket());
+        }
 
-        ModNetwork.sendToServer(new BeamSurgePacket());
+        if (XenoClientConfig.beamSurgeDebug) {
+            // Reports the whole chain in one line, because "it does not work" can mean the key is
+            // not registering, the wave is not being recognised as ours, or the server is ignoring
+            // a packet that did arrive -- and those need different fixes. Size is synced entity
+            // data, so watching it climb proves the server side is applying growth without needing
+            // a diagnostic packet of its own.
+            player.displayClientMessage(net.minecraft.network.chat.Component.literal(
+                    "§7surge key=§f" + keyDown
+                            + " §7wave=§f" + (wave != null)
+                            + " §7sent=§f" + sentCount
+                            + " §7size=§f" + (wave == null ? "-" : String.format("%.2f", wave.getSize()))), true);
+        }
+    }
+
+    /**
+     * Whether the surge key is physically held.
+     *
+     * <p>Polls the window rather than reading {@link net.minecraft.client.KeyMapping#isDown()}.
+     * {@code isDown()} is only set when NeoForge's key dispatch picks a binding out of its
+     * modifier/conflict-context buckets, and that goes wrong for exactly the two cases this key
+     * lives in: it shares its physical key with another mod's binding, and it sits on a key that is
+     * itself a modifier. DragonMineZ hit the same wall and wrote {@code KeyBinds.isPhysicallyDown}
+     * for its technique chords, so this reuses that rather than inventing a second answer.
+     */
+    private static boolean surgeKeyDown() {
+        KeyMapping surge = net.bullettrain.xenopixelsmod.client.combat.Bt3CombatClient.BEAM_SURGE;
+        try {
+            return KeyBinds.isPhysicallyDown(surge);
+        } catch (Throwable t) {
+            return surge.isDown();
+        }
     }
 
     /**
      * Whether this player owns a wave that is currently firing.
-     *
-     * <p>Public because the shared C binding needs the same answer: while this is true the key
-     * drives the surge and the ki-blast cancel stands down.
      *
      * <p>Reads the world rather than tracking the cast, because a wave is anchored 2.5 blocks in
      * front of its owner and never moves, and because duplicating DMZ's charge-and-release state
@@ -73,12 +106,33 @@ public final class BeamSurgeClient {
      * projectile's owner from the spawn packet and reference equality is the more fragile test.
      */
     public static boolean ownsFiringWave(LocalPlayer player) {
-        if (player == null || player.level() == null) return false;
+        return findOwnedWave(player) != null;
+    }
+
+    /**
+     * The firing beam this player owns, or null.
+     *
+     * <p>Scans {@link AbstractKiProjectile}, not {@code KiWaveEntity}. {@code TechniqueDispatcher}
+     * spawns a {@code KiWaveEntity} for WAVE techniques but a {@code KiLaserEntity} for LASER and
+     * BEAM ones, so looking only for waves silently excluded every laser and beam from surging.
+     * {@code isFiring()} is declared on the shared base, so one scan covers both.
+     *
+     * <p>{@code KiBlastEntity} is excluded on purpose: a thrown ki ball is a different mechanic and
+     * surging it is not what this is for.
+     */
+    public static AbstractKiProjectile findOwnedWave(LocalPlayer player) {
+        if (player == null || player.level() == null) return null;
         AABB box = player.getBoundingBox().inflate(SEARCH_RADIUS);
-        for (KiWaveEntity wave : player.level().getEntitiesOfClass(KiWaveEntity.class, box,
-                candidate -> candidate.isAlive() && candidate.isFiring())) {
-            if (wave.isOwner(player)) return true;
+        for (AbstractKiProjectile beam : player.level().getEntitiesOfClass(
+                AbstractKiProjectile.class, box, BeamSurgeClient::surgeable)) {
+            if (beam.isOwner(player)) return beam;
         }
-        return false;
+        return null;
+    }
+
+    /** Alive, firing, not mid-clash, and a sustained beam rather than a thrown ball. */
+    private static boolean surgeable(AbstractKiProjectile candidate) {
+        return candidate.isAlive() && candidate.isFiring() && !candidate.isClashLocked()
+                && !(candidate instanceof KiBlastEntity);
     }
 }

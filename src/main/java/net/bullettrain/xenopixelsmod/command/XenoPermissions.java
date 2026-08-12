@@ -87,6 +87,8 @@ public final class XenoPermissions {
             client("xenohud.renderer", "Use /xenohud renderer");
     public static final PermissionNode<Boolean> XENOHUD_TECHRENDERER =
             client("xenohud.techrenderer", "Use /xenohud techrenderer");
+    public static final PermissionNode<Boolean> XENOHUD_PORTRAIT =
+            client("xenohud.portrait", "Use /xenohud portrait");
     public static final PermissionNode<Boolean> XENOHUD_PARTY =
             client("xenohud.party", "Use /xenohud party");
     public static final PermissionNode<Boolean> XENOHUD_TECHHUD_EDIT =

@@ -4,6 +4,7 @@ import net.bullettrain.xenopixelsmod.aero.AeroStateSnapshot;
 import net.bullettrain.xenopixelsmod.missile.BallisticFlightPlan;
 import net.bullettrain.xenopixelsmod.network.packet.CombatFxPacket;
 import net.bullettrain.xenopixelsmod.network.packet.PartySyncPacket;
+import net.bullettrain.xenopixelsmod.network.packet.PartyPingPacket;
 import net.minecraft.core.BlockPos;
 
 import java.util.function.Consumer;
@@ -38,6 +39,12 @@ public final class ClientScreens {
 
     /** Party roster pushed by the server; the HUD renders only this. */
     public static Consumer<PartySyncPacket> receiveParty = party -> {
+    };
+
+    public static Consumer<PartyPingPacket> receivePartyPing = ping -> {
+    };
+
+    public static Runnable openParty = () -> {
     };
 
     private ClientScreens() {

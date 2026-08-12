@@ -23,7 +23,7 @@ import java.util.concurrent.ConcurrentHashMap;
 public final class XenoServerConfig {
     private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
     private static final Path PATH = FMLPaths.CONFIGDIR.get().resolve("xenopixelsmod-server.json");
-    private static final int CURRENT_CONFIG_VERSION = 1;
+    private static final int CURRENT_CONFIG_VERSION = 3;
 
     // --- HUD / DMZ ---
     /** When false, clients block DMZ vanilla HUD overlays. */
@@ -333,6 +333,24 @@ public final class XenoServerConfig {
     public static float kiDeflectSpeedScale = 1.15f;
     /** Floor on returned speed, so a nearly-stalled blast still travels somewhere. */
     public static float kiDeflectMinSpeed = 0.8f;
+    /**
+     * Returned damage as a multiple of the incoming blast's. Paired with the stamina cost: you
+     * spend something real to turn a shot around, and the shot you send back hits harder for it.
+     */
+    public static float kiDeflectDamageScale = 1.25f;
+    /**
+     * Stamina spent per deflect. Zero makes deflection free.
+     *
+     * <p>A cost rather than a pure cooldown, because a cooldown would make a rapid volley
+     * undeflectable by construction — with a cost you can answer every shot in a burst for as long
+     * as your stamina holds, which is the read worth rewarding.
+     */
+    public static float kiDeflectStaminaCost = 4.0f;
+    /**
+     * Minimum ticks between deflects. Small on purpose: this only exists so mashing attack cannot
+     * auto-clear everything in reach, not to gate the volley itself. Zero disables it.
+     */
+    public static int kiDeflectCooldownTicks = 4;
 
     // --- sustained ki wave ("beam surge") ---
 
@@ -356,7 +374,7 @@ public final class XenoServerConfig {
     /** Length growth per tick at full surge, as a fraction added to its baseline. */
     public static float beamSurgeReachGain = 0.8f;
     /** How far from the player to look for their own wave. A wave is anchored at its origin. */
-    public static float beamSurgeSearchRadius = 12.0f;
+    public static float beamSurgeSearchRadius = 30.0f;
 
     /**
      * The sparking aura: rising ki shell, ground debris and lightning arcs while sparking.
@@ -401,7 +419,19 @@ public final class XenoServerConfig {
             if (data == null) return;
             boolean migrated = data.configVersion < CURRENT_CONFIG_VERSION;
             apply(data);
-            if (migrated) save();
+            if (migrated) {
+                // Guard stays enabled; the client now owns it on a dedicated non-Use key.
+                boolean wasDisabled = !bt3GuardEnabled;
+                bt3GuardEnabled = true;
+                if (wasDisabled) {
+                    XenoPixelsMod.LOGGER.info(
+                            "Config migration re-enabled bt3GuardEnabled: Guard no longer takes"
+                                    + " right-click, so the reason to disable it is gone. Set it"
+                                    + " back to false in xenopixelsmod-server.json if you still"
+                                    + " want it off.");
+                }
+                save();
+            }
         } catch (IOException e) {
             XenoPixelsMod.LOGGER.warn("Failed to load server config", e);
         }
@@ -537,6 +567,9 @@ public final class XenoServerConfig {
         d.kiDeflectAimDot = kiDeflectAimDot;
         d.kiDeflectSpeedScale = kiDeflectSpeedScale;
         d.kiDeflectMinSpeed = kiDeflectMinSpeed;
+        d.kiDeflectDamageScale = kiDeflectDamageScale;
+        d.kiDeflectStaminaCost = kiDeflectStaminaCost;
+        d.kiDeflectCooldownTicks = kiDeflectCooldownTicks;
         d.beamSurgeEnabled = beamSurgeEnabled;
         d.beamSurgeKiPerTick = beamSurgeKiPerTick;
         d.beamSurgeStaminaPerTick = beamSurgeStaminaPerTick;
@@ -680,6 +713,9 @@ public final class XenoServerConfig {
         kiDeflectAimDot = Math.max(-1f, Math.min(1f, d.kiDeflectAimDot));
         kiDeflectSpeedScale = Math.max(0.1f, d.kiDeflectSpeedScale);
         kiDeflectMinSpeed = Math.max(0.05f, d.kiDeflectMinSpeed);
+        kiDeflectDamageScale = Math.max(0.1f, d.kiDeflectDamageScale);
+        kiDeflectStaminaCost = Math.max(0f, d.kiDeflectStaminaCost);
+        kiDeflectCooldownTicks = Math.max(0, Math.min(100, d.kiDeflectCooldownTicks));
         beamSurgeEnabled = d.beamSurgeEnabled;
         beamSurgeKiPerTick = Math.max(0f, d.beamSurgeKiPerTick);
         beamSurgeStaminaPerTick = Math.max(0f, d.beamSurgeStaminaPerTick);
@@ -1130,6 +1166,9 @@ public final class XenoServerConfig {
         public float kiDeflectAimDot = 0.55f;
         public float kiDeflectSpeedScale = 1.15f;
         public float kiDeflectMinSpeed = 0.8f;
+        public float kiDeflectDamageScale = 1.25f;
+        public float kiDeflectStaminaCost = 4.0f;
+        public int kiDeflectCooldownTicks = 4;
         public boolean beamSurgeEnabled = true;
         public float beamSurgeKiPerTick = 1.6f;
         public float beamSurgeStaminaPerTick = 0.5f;
@@ -1137,7 +1176,7 @@ public final class XenoServerConfig {
         public float beamSurgeSizeGain = 1.2f;
         public float beamSurgeDamageGain = 1.5f;
         public float beamSurgeReachGain = 0.8f;
-        public float beamSurgeSearchRadius = 12.0f;
+        public float beamSurgeSearchRadius = 30.0f;
         public boolean sparkingAuraEnabled = true;
         public float sparkingAuraDensity = 1.0f;
         // Null (absent from an older config file) means "use the defaults"; see apply().

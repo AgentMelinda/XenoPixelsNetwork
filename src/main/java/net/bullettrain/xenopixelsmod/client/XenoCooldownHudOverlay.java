@@ -1,17 +1,18 @@
 package net.bullettrain.xenopixelsmod.client;
 
+import com.mojang.blaze3d.systems.RenderSystem;
+import net.bullettrain.xenopixelsmod.XenoPixelsMod;
 import net.bullettrain.xenopixelsmod.client.combat.Bt3CombatClient;
 import net.bullettrain.xenopixelsmod.client.config.XenoClientConfig;
 import net.bullettrain.xenopixelsmod.client.config.XenoCooldownHudConfig;
 import net.bullettrain.xenopixelsmod.client.config.XenoHudConfig;
 import net.bullettrain.xenopixelsmod.client.hud.HudDraw;
-import net.bullettrain.xenopixelsmod.client.hud.XenoHudLayout;
-import net.bullettrain.xenopixelsmod.client.hud.XenoHudTextures;
 import net.bullettrain.xenopixelsmod.network.Bt3CombatPacket;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.DeltaTracker;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.resources.ResourceLocation;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.api.distmarker.OnlyIn;
 
@@ -28,6 +29,11 @@ public class XenoCooldownHudOverlay {
     public static final int CHIP_W = 52;
     public static final int CHIP_H = 34;
     public static final int GAP = 4;
+    public static final int MODERN_CHIP_W = 82;
+    public static final int MODERN_CHIP_H = 25;
+    public static final int MODERN_GAP = 3;
+    public static final int MODERN_TITLE_H = 0;
+    public static final int MODERN_MAX_COLUMNS = 4;
     private static final int PAD_X = 8;
     private static final int PAD_Y = 6;
     private static final int TITLE_H = 12;
@@ -38,8 +44,12 @@ public class XenoCooldownHudOverlay {
     private static final int CHIP_SKEW = 4;
     private static final int METER_SKEW = 3;
 
-    private static final int GOLD = 0xFFC9A227;
-    private static final int GOLD_DIM = 0x886B5416;
+    private static final ResourceLocation MODERN_READY = ResourceLocation.fromNamespaceAndPath(
+            XenoPixelsMod.MOD_ID, "textures/gui/xeno_cooldown_plate_ready.png");
+    private static final ResourceLocation MODERN_ACTIVE = ResourceLocation.fromNamespaceAndPath(
+            XenoPixelsMod.MOD_ID, "textures/gui/xeno_cooldown_plate_active.png");
+    private static final ResourceLocation MODERN_DISABLED = ResourceLocation.fromNamespaceAndPath(
+            XenoPixelsMod.MOD_ID, "textures/gui/xeno_cooldown_plate_disabled.png");
 
     private static int lastX, lastY, lastW, lastH;
 
@@ -121,6 +131,11 @@ public class XenoCooldownHudOverlay {
             if (!any) return;
         }
 
+        if (!XenoHudConfig.legacyHudRenderer) {
+            drawModernStandalone(g, screenWidth, screenHeight, font, chips, editing);
+            return;
+        }
+
         float scale = XenoCooldownHudConfig.scale;
         int n = chips.size();
         boolean horiz = XenoCooldownHudConfig.horizontal;
@@ -141,16 +156,6 @@ public class XenoCooldownHudOverlay {
         g.pose().pushPose();
         g.pose().translate(baseX, baseY, 0);
         g.pose().scale(scale, scale, 1f);
-
-        // Follows the same toggle as the main HUD (/xenohud renderer), so a player who opted
-        // into the modern look gets it here too rather than a textured HUD above a procedural
-        // cooldown strip. The legacy path below is untouched, including its skew and the
-        // squareShape option, which cannot apply to pre-baked sprites.
-        if (!XenoHudConfig.legacyHudRenderer) {
-            drawModern(g, font, chips, panelW, panelH, horiz);
-            g.pose().popPose();
-            return;
-        }
 
         // --- Tech-HUD palette plate (navy glass + cyan rail, same family as KI technique bar) ---
         // Outer shadow
@@ -187,103 +192,142 @@ public class XenoCooldownHudOverlay {
         g.pose().popPose();
     }
 
-    /**
-     * Modern chrome: the same layout and the same chip data, drawn by blitting the generated
-     * atlas instead of stacking flat parallelogram fills.
-     *
-     * <p>The chip plates are neutral art; each move's accent colour arrives through the tinted
-     * rail and meter fill, which is what lets three plate sprites cover every chip.
-     */
-    private static void drawModern(GuiGraphics g, Font font, List<Chip> chips,
-                                   int panelW, int panelH, boolean horiz) {
-        var atlas = XenoHudTextures.HUD_ATLAS;
-        int originY = PAD_Y + TITLE_H;
-        HudDraw.blitNineSlice(g, atlas, XenoHudLayout.PANEL, 0, 0, panelW, panelH,
-                XenoHudLayout.PANEL_CORNER);
+    private static void drawModernStandalone(GuiGraphics g, int screenWidth, int screenHeight,
+                                             Font font, List<Chip> chips, boolean editing) {
+        int columns = XenoCooldownHudConfig.horizontal ? modernColumns(chips.size()) : 1;
+        int railW = modernRailWidth(chips.size(), columns);
+        int railH = modernRailHeight(chips.size(), columns);
+        float scale = XenoCooldownHudConfig.scale;
+        int baseX = Math.max(0, Math.min(Math.max(0, screenWidth - Math.round(railW * scale)),
+                XenoCooldownHudConfig.x));
+        int baseY = Math.max(0, Math.min(Math.max(0, screenHeight - Math.round(railH * scale)),
+                XenoCooldownHudConfig.y));
+        lastX = baseX;
+        lastY = baseY;
+        lastW = Math.round(railW * scale);
+        lastH = Math.round(railH * scale);
 
-        g.drawString(font, "COMBAT", PAD_X + 2, 3, 0xFF90CAF9, true);
-        int pipX = PAD_X + font.width("COMBAT") + 8;
-        for (int i = 0; i < Math.min(5, chips.size()); i++) {
-            Chip c = chips.get(i);
-            HudDraw.blitScaledTinted(g, atlas,
-                    c.busy ? XenoHudLayout.SPARK_ON : XenoHudLayout.SPARK_OFF,
-                    pipX + i * 7, 4, 5, 5,
-                    !c.enabled ? 0x883A4550 : (c.busy ? c.accent : 0xAA66BB6A));
+        g.pose().pushPose();
+        g.pose().translate(baseX, baseY, 0);
+        g.pose().scale(scale, scale, 1f);
+        RenderSystem.enableBlend();
+        RenderSystem.defaultBlendFunc();
+        drawModernRail(g, font, chips, railW, columns);
+        if (editing) g.renderOutline(0, 0, railW, railH, 0xFF42A5F5);
+        RenderSystem.disableBlend();
+        g.pose().popPose();
+    }
+
+    public static int modernColumns(int count) {
+        return Math.max(1, Math.min(MODERN_MAX_COLUMNS, count));
+    }
+
+    public static int modernRailWidth(int count, int columns) {
+        int used = Math.max(1, Math.min(Math.max(1, count), Math.max(1, columns)));
+        return used * MODERN_CHIP_W + (used - 1) * MODERN_GAP;
+    }
+
+    public static int modernRailHeight(int count, int columns) {
+        int rows = Math.max(1, (Math.max(1, count) + Math.max(1, columns) - 1) / Math.max(1, columns));
+        return MODERN_TITLE_H + rows * MODERN_CHIP_H + (rows - 1) * MODERN_GAP;
+    }
+
+    /** Draws balanced rows of supplied XV plates inside the caller's available width. */
+    public static void drawModernRail(GuiGraphics g, Font font, List<Chip> chips,
+                                      int availableWidth, int columns) {
+        if (chips.isEmpty()) return;
+        columns = Math.max(1, Math.min(columns, chips.size()));
+        int gridLeft = (availableWidth - modernRailWidth(chips.size(), columns)) / 2;
+        int titleW = font.width("COMBAT");
+        if (gridLeft >= titleW + 4) {
+            g.drawString(font, "COMBAT", 2, 8, 0xFF90CAF9, true);
         }
-
-        for (int i = 0; i < chips.size(); i++) {
-            int cx = horiz ? PAD_X + i * (CHIP_W + GAP) : PAD_X;
-            int cy = horiz ? originY : originY + i * (CHIP_H + GAP);
-            drawModernChip(g, font, cx, cy, chips.get(i));
+        int rows = (chips.size() + columns - 1) / columns;
+        for (int row = 0; row < rows; row++) {
+            int first = row * columns;
+            int rowCount = Math.min(columns, chips.size() - first);
+            int rowW = rowCount * MODERN_CHIP_W + (rowCount - 1) * MODERN_GAP;
+            int startX = (availableWidth - rowW) / 2;
+            int y = MODERN_TITLE_H + row * (MODERN_CHIP_H + MODERN_GAP);
+            for (int col = 0; col < rowCount; col++) {
+                drawModernChip(g, font, startX + col * (MODERN_CHIP_W + MODERN_GAP), y,
+                        chips.get(first + col));
+            }
         }
     }
 
     public static void drawModernChip(GuiGraphics g, Font font, int x, int y, Chip chip) {
-        var atlas = XenoHudTextures.HUD_ATLAS;
-        XenoHudLayout.Region plate = !chip.enabled ? XenoHudLayout.CD_CHIP_OFF
-                : chip.busy ? XenoHudLayout.CD_CHIP_HOT : XenoHudLayout.CD_CHIP_IDLE;
-        HudDraw.blitNineSlice(g, atlas, plate, x, y, CHIP_W, CHIP_H, XenoHudLayout.CD_CHIP_CORNER);
+        ResourceLocation plate;
+        int sourceW;
+        int sourceH;
+        if (!chip.enabled) {
+            plate = MODERN_DISABLED;
+            sourceW = 278;
+            sourceH = 78;
+        } else if (chip.busy) {
+            plate = MODERN_ACTIVE;
+            sourceW = 320;
+            sourceH = 66;
+        } else {
+            plate = MODERN_READY;
+            sourceW = 320;
+            sourceH = 64;
+        }
+        if (!chip.enabled) g.setColor(0.58f, 0.58f, 0.58f, 0.72f);
+        g.blit(plate, x, y, MODERN_CHIP_W, MODERN_CHIP_H, 0f, 0f,
+                sourceW, sourceH, sourceW, sourceH);
+        g.setColor(1f, 1f, 1f, 1f);
 
-        // Accent rail: the only place a disabled chip loses its colour entirely.
-        HudDraw.blitScaledTinted(g, atlas, XenoHudLayout.CD_RAIL, x + 2, y + 3, 2, CHIP_H - 6,
-                chip.enabled ? (chip.accent | 0xFF000000) : 0xFF3A4550);
+        int textColor = chip.enabled ? 0xFFF4F8FF : 0xFF68727D;
+        int nameX = x + 8;
+        if (XenoCooldownHudConfig.showLabels && !chip.key.isEmpty()) {
+            String key = font.plainSubstrByWidth(chip.key, 18);
+            g.drawString(font, key, x + 8, y + 6, chip.enabled ? 0xFFB6DDF1 : 0xFF59636D, false);
+            nameX = x + 28;
+        }
+        String status = chip.meterMode == MeterMode.COMBO ? "x" + Math.max(0, chip.comboStep)
+                : XenoCooldownHudConfig.showSeconds ? chip.timeText : "";
+        int statusW = status.isEmpty() ? 0 : font.width(status) + 3;
+        int nameWidth = Math.max(8, x + MODERN_CHIP_W - 7 - statusW - nameX);
+        String name = font.width(chip.name) <= nameWidth ? chip.name
+                : font.width(chip.shortName) <= nameWidth ? chip.shortName
+                : font.plainSubstrByWidth(chip.shortName, nameWidth);
+        g.drawString(font, name, nameX, y + 6, textColor, false);
 
-        int badgeBottomY = y + 2;
-        if (XenoCooldownHudConfig.showLabels && chip.key != null && !chip.key.isEmpty()) {
-            int bw = font.width(chip.key) + 6;
-            int bh = 9;
-            int bx = x + (CHIP_W - bw) / 2;
-            HudDraw.blitNineSlice(g, atlas, XenoHudLayout.CD_BADGE, bx, y + 2, bw, bh,
-                    XenoHudLayout.CD_BADGE_CORNER);
-            g.drawString(font, chip.key, bx + 3, y + 3,
-                    chip.enabled ? 0xFFB0BEC5 : 0xFF5A6570, false);
-            badgeBottomY = y + 2 + bh;
+        if (!status.isEmpty()) {
+            g.drawString(font, status, x + MODERN_CHIP_W - 7 - font.width(status), y + 6,
+                    chip.enabled ? 0xFFFFE0B2 : 0xFF59636D, false);
         }
 
-        int contentW = CHIP_W - 10;
-        String name = font.width(chip.name) > contentW ? chip.shortName : chip.name;
-        g.drawString(font, name, x + (CHIP_W - font.width(name)) / 2, badgeBottomY + 2,
-                chip.enabled ? 0xFFF0F4FA : 0xFF5A6570, false);
-
-        int mx = x + 6;
-        int mw = CHIP_W - 12;
-        int my = y + CHIP_H - XenoHudLayout.CD_METER_H - 3;
-
+        int meterX = x + 10;
+        int meterY = y + 17;
+        int meterW = MODERN_CHIP_W - 20;
         if (chip.meterMode == MeterMode.COMBO) {
-            int step = Math.max(0, chip.comboStep);
-            String counter = "x" + step;
-            int cw = font.width(counter);
-            int cxText = x + (CHIP_W - cw) / 2;
-            HudDraw.blitNineSlice(g, atlas, XenoHudLayout.CD_BADGE, cxText - 3, my - 3,
-                    cw + 6, 10, XenoHudLayout.CD_BADGE_CORNER);
-            g.drawString(font, counter, cxText, my - 2,
-                    !chip.enabled ? 0xFF5A6570 : (step > 0 ? 0xFFFFCDD2 : 0xFF78909C), false);
-            return;
+            drawContainedMeter(g, meterX, meterY, meterW, 3,
+                    chip.comboStep <= 0 ? 0f : Math.min(1f, chip.comboStep / 5f),
+                    chip.accent, chip.enabled);
+        } else {
+            float value = chip.busy ? chip.fraction : chip.enabled ? 1f : 0f;
+            int color = chip.meterMode == MeterMode.COOLDOWN ? 0xFF55C7FF : chip.accent;
+            drawContainedMeter(g, meterX, meterY, meterW, 3, value, color, chip.enabled);
         }
+    }
 
-        HudDraw.blitScaledTinted(g, atlas, XenoHudLayout.CD_METER_TRACK, mx, my, mw,
-                XenoHudLayout.CD_METER_H, 0xFFFFFFFF);
-        if (!chip.enabled) return;
-
-        boolean metered = (chip.meterMode == MeterMode.COOLDOWN || chip.meterMode == MeterMode.CHARGE)
-                && chip.fraction > 0.001f;
-        if (metered) {
-            // Cooling reads blue, charging reads in the move's own accent — the same colour
-            // split the legacy strip used, so the two renderers stay learnable together.
-            int tint = chip.meterMode == MeterMode.COOLDOWN ? 0xFF81D4FA : (chip.accent | 0xFF000000);
-            int fill = Math.max(2, Math.round(mw * chip.fraction));
-            HudDraw.blitScaledTinted(g, atlas, XenoHudLayout.CD_METER_FILL, mx, my, fill,
-                    XenoHudLayout.CD_METER_H, tint);
-            if (chip.meterMode == MeterMode.COOLDOWN && XenoCooldownHudConfig.showSeconds
-                    && !chip.timeText.isEmpty()) {
-                g.drawString(font, chip.timeText,
-                        x + (CHIP_W - font.width(chip.timeText)) / 2, my - 9, 0xFFE1F5FE, false);
-            }
-        } else if (!chip.busy) {
-            // Ready: a dim full-width wash in the move's accent.
-            HudDraw.blitScaledTinted(g, atlas, XenoHudLayout.CD_METER_FILL, mx, my, mw,
-                    XenoHudLayout.CD_METER_H, (chip.accent & 0x00FFFFFF) | 0x77000000);
+    private static void drawContainedMeter(GuiGraphics g, int x, int y, int w, int h,
+                                           float fraction, int fill, boolean enabled) {
+        int skew = 2;
+        int rowW = Math.max(1, w - skew);
+        fraction = Math.max(0f, Math.min(1f, fraction));
+        HudDraw.fillPara(g, x, y, rowW, h, skew, enabled ? 0xCC071624 : 0xAA15191D);
+        int filled = Math.round(rowW * fraction);
+        if (filled > 0) {
+            int fillSkew = Math.min(skew, filled);
+            HudDraw.fillPara(g, x, y, filled, h, fillSkew,
+                    enabled ? (fill | 0xFF000000) : 0xFF343A40);
+            HudDraw.fillPara(g, x, y, filled, 1, fillSkew, 0x88FFFFFF);
         }
+        HudDraw.borderPara(g, x, y, rowW, h, skew,
+                enabled ? 0xBB90CAF9 : 0x88505A64, 1);
     }
 
     private static void drawChip(GuiGraphics g, Font font, int x, int y, Chip chip) {
@@ -407,8 +451,28 @@ public class XenoCooldownHudOverlay {
         HudDraw.borderPara(g, x, y, w, h, skew, color, t);
     }
 
+    /**
+     * The chip strip for the current tick.
+     *
+     * <p>Rebuilt once per client tick, not once per frame. The strip is ten-odd chips and the old
+     * shape allocated a list plus a {@code Chip} for each of them on every single frame, so at
+     * 200fps this churned roughly two thousand short-lived objects a second to describe state that
+     * only changes twenty times a second. Chips come from a pool and are mutated in place.
+     *
+     * <p>The returned list is shared and read-only to callers. That is safe because the standalone
+     * overlay stands down whenever {@code XenoHudConfig.unifiedActive()}, so only one consumer ever
+     * reads it in a given frame.
+     */
     public static List<Chip> buildChips(boolean editing) {
-        List<Chip> list = new ArrayList<>();
+        Minecraft chipMc = Minecraft.getInstance();
+        long now = chipMc.level == null ? Long.MIN_VALUE : chipMc.level.getGameTime();
+        if (now != Long.MIN_VALUE && now == chipsGameTime && editing == chipsEditing) return CHIPS;
+        chipsGameTime = now;
+        chipsEditing = editing;
+        CHIPS.clear();
+        poolCursor = 0;
+
+        List<Chip> list = CHIPS;
         float moveFrac = editing ? 0.45f : Bt3CombatClient.getMoveCooldownFraction();
         boolean moveCd = editing || Bt3CombatClient.isMoveOnCooldown();
         Bt3CombatPacket.Action last = Bt3CombatClient.getLastMoveAction();
@@ -536,6 +600,21 @@ public class XenoCooldownHudOverlay {
         return list;
     }
 
+    /** Chips for the current tick, and the pool they are drawn from. */
+    private static final List<Chip> CHIPS = new ArrayList<>();
+    private static final List<Chip> CHIP_POOL = new ArrayList<>();
+    private static int poolCursor;
+    private static long chipsGameTime = Long.MIN_VALUE;
+    private static boolean chipsEditing;
+
+    private static Chip nextPooled() {
+        if (poolCursor < CHIP_POOL.size()) return CHIP_POOL.get(poolCursor++);
+        Chip fresh = new Chip();
+        CHIP_POOL.add(fresh);
+        poolCursor++;
+        return fresh;
+    }
+
     private static boolean isChargeAction(Bt3CombatPacket.Action a) {
         return a == Bt3CombatPacket.Action.CHARGE_FIST
                 || a == Bt3CombatPacket.Action.CHARGE_KICK
@@ -546,7 +625,7 @@ public class XenoCooldownHudOverlay {
             String name, String shortName, String key, int accent,
             boolean busy, float fraction, String timeText, MeterMode mode, int comboStep,
             boolean enabled, boolean highlight) {
-        Chip c = new Chip();
+        Chip c = nextPooled();
         c.name = name;
         c.shortName = shortName;
         c.key = key;
@@ -560,9 +639,19 @@ public class XenoCooldownHudOverlay {
         return c;
     }
 
+    /**
+     * Sub-second times as "0.4", whole seconds otherwise.
+     *
+     * <p>Integer math rather than {@code String.format}: this runs every frame for the whole chip
+     * strip while any cooldown is live, and {@code String.format} allocates a {@code Formatter}
+     * and re-parses its pattern on each call.
+     */
     private static String formatTime(float seconds) {
         if (seconds <= 0f) return "";
-        if (seconds < 1f) return String.format("%.1f", seconds);
+        if (seconds < 1f) {
+            int tenths = Math.max(0, Math.min(9, (int) (seconds * 10f)));
+            return "0." + tenths;
+        }
         return String.valueOf(Math.max(1, Math.round(seconds)));
     }
 

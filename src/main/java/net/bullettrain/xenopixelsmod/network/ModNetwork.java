@@ -13,6 +13,9 @@ import net.bullettrain.xenopixelsmod.network.packet.AeroStatePacket;
 import net.bullettrain.xenopixelsmod.network.packet.BeamSurgePacket;
 import net.bullettrain.xenopixelsmod.network.packet.CombatFxPacket;
 import net.bullettrain.xenopixelsmod.network.packet.PartySyncPacket;
+import net.bullettrain.xenopixelsmod.network.packet.PartyActionPacket;
+import net.bullettrain.xenopixelsmod.network.packet.PartyPingPacket;
+import net.bullettrain.xenopixelsmod.network.packet.OpenPartyScreenPacket;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
 import com.dragonminez.compat.network.NetworkDirection;
@@ -28,6 +31,7 @@ public class ModNetwork {
     /**
      * Bump when packet set or wire format changes.
      *
+     * <p>16: expanded party state and appended action, ping, and screen-open packets.
      * <p>15: appended {@code PartySyncPacket}, the party roster.
      * <p>14: appended {@code BeamSurgePacket}, the sustained-beam feed report.
      * <p>13: appended {@code CombatFxPacket}, the combat impact cue.
@@ -36,7 +40,7 @@ public class ModNetwork {
      * flight controller. Clients and servers must both run this build — the channel refuses
      * a mismatched protocol, so a 10 client cannot join an 11 server or vice versa.
      */
-    private static final String PROTOCOL = "15";
+    private static final String PROTOCOL = "16";
 
     public static final SimpleChannel CHANNEL = NetworkRegistry.ChannelBuilder
             .named(ResourceLocation.fromNamespaceAndPath(XenoPixelsMod.MOD_ID, "main"))
@@ -161,6 +165,24 @@ public class ModNetwork {
                 .decoder(PartySyncPacket::new)
                 .encoder(PartySyncPacket::encode)
                 .consumerMainThread(PartySyncPacket::handle)
+                .add();
+
+        CHANNEL.messageBuilder(PartyActionPacket.class, id++, NetworkDirection.PLAY_TO_SERVER)
+                .decoder(PartyActionPacket::new)
+                .encoder(PartyActionPacket::encode)
+                .consumerMainThread(PartyActionPacket::handle)
+                .add();
+
+        CHANNEL.messageBuilder(PartyPingPacket.class, id++, NetworkDirection.PLAY_TO_CLIENT)
+                .decoder(PartyPingPacket::new)
+                .encoder(PartyPingPacket::encode)
+                .consumerMainThread(PartyPingPacket::handle)
+                .add();
+
+        CHANNEL.messageBuilder(OpenPartyScreenPacket.class, id++, NetworkDirection.PLAY_TO_CLIENT)
+                .decoder(OpenPartyScreenPacket::new)
+                .encoder(OpenPartyScreenPacket::encode)
+                .consumerMainThread(OpenPartyScreenPacket::handle)
                 .add();
 
         XenoPixelsMod.LOGGER.info("ModNetwork: registered {} packet types (protocol {})", id, PROTOCOL);

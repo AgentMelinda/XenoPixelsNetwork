@@ -114,11 +114,11 @@ public final class XenoHudLayout {
 
     /** Unscaled width of the whole cluster; {@code XenoHudConfig.scaledWidth()} scales it. */
     public static int width() {
-        return CONTENT_LEFT + BAR_W + 4;
+        return 420;
     }
 
     /** Unscaled height of the whole cluster. */
     public static int height() {
-        return Math.max(PORTRAIT_Y + PORTRAIT, STM_Y + STM_SEG_H) + 4;
+        return 180;
     }
 }

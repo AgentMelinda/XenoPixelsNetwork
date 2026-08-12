@@ -1,6 +1,7 @@
 package net.bullettrain.xenopixelsmod.combat.beam;
 
-import com.dragonminez.common.init.entities.ki.KiWaveEntity;
+import com.dragonminez.common.init.entities.ki.AbstractKiProjectile;
+import com.dragonminez.common.init.entities.ki.KiBlastEntity;
 import com.dragonminez.common.stats.StatsCapability;
 import com.dragonminez.common.stats.StatsProvider;
 import com.dragonminez.common.stats.character.Resources;
@@ -94,9 +95,15 @@ public final class BeamSurgeManager {
         String levelId = level.dimension().location().toString();
 
         for (ServerPlayer player : level.players()) {
-            KiWaveEntity beam = findOwnedBeam(level, player);
             ResourceKeyed key = new ResourceKeyed(levelId, player.getUUID());
 
+            // Two hash lookups before the entity query. Scanning a box this size per player per
+            // tick to ask "is anyone beaming" costs the same whether anyone is or not, and almost
+            // nobody ever is. A player is only interesting if they just reported the key down or
+            // already has surge in flight that still needs to decay.
+            if (!FEEDING.containsKey(player.getUUID()) && !STATES.containsKey(key)) continue;
+
+            AbstractKiProjectile beam = findOwnedBeam(level, player);
             if (beam == null) {
                 STATES.remove(key);
                 continue;
@@ -158,7 +165,7 @@ public final class BeamSurgeManager {
     }
 
     /** Push the four growth axes onto the live beam. */
-    private static void apply(ServerPlayer player, KiWaveEntity beam, Tracked tracked,
+    private static void apply(ServerPlayer player, AbstractKiProjectile beam, Tracked tracked,
                               boolean fed) {
         BeamSurgeState state = tracked.state;
         float surge = (float) state.surge();
@@ -209,16 +216,31 @@ public final class BeamSurgeManager {
         }
     }
 
-    /** The player's own firing wave, or null. */
-    private static KiWaveEntity findOwnedBeam(ServerLevel level, ServerPlayer player) {
-        // A wave is anchored at its origin and grows outward, so it stays near its owner - a
+    /**
+     * The player's own firing beam, or null.
+     *
+     * <p>Scans {@link AbstractKiProjectile} rather than {@code KiWaveEntity}: DMZ's
+     * {@code TechniqueDispatcher} spawns a wave for WAVE techniques but a {@code KiLaserEntity} for
+     * LASER and BEAM ones, so a wave-only scan silently excluded every laser and beam from surging.
+     * {@code isFiring()} lives on the shared base, so one scan covers both.
+     */
+    private static AbstractKiProjectile findOwnedBeam(ServerLevel level, ServerPlayer player) {
+        // A beam is anchored at its origin and grows outward, so it stays near its owner - a
         // modest box around the player finds it without scanning the level.
         AABB box = player.getBoundingBox().inflate(XenoServerConfig.beamSurgeSearchRadius);
-        for (KiWaveEntity beam : level.getEntitiesOfClass(KiWaveEntity.class, box,
-                candidate -> candidate.isAlive() && candidate.isFiring())) {
-            if (beam.getOwner() == player) return beam;
+        for (AbstractKiProjectile beam : level.getEntitiesOfClass(AbstractKiProjectile.class, box,
+                BeamSurgeManager::surgeable)) {
+            // UUID identity, the same test the client's ownsFiringWave uses. getOwner() resolves
+            // lazily from a stored UUID and can hand back a stale or null reference across a
+            // respawn or dimension change, which silently stops the surge applying.
+            if (beam.isOwner(player)) return beam;
         }
         return null;
+    }
+
+    /** Alive, firing, and a sustained beam rather than a thrown ki ball, which is not this feature. */
+    private static boolean surgeable(AbstractKiProjectile candidate) {
+        return candidate.isAlive() && candidate.isFiring() && !(candidate instanceof KiBlastEntity);
     }
 
     private static Resources resources(ServerPlayer player) {

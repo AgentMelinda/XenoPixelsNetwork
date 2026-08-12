@@ -96,6 +96,17 @@ public final class LockOnCycle {
         }
     }
 
+    /** Public, safe lock adoption used by the optional XenoParty target-assist marker. */
+    public static boolean lock(LivingEntity target) {
+        if (target == null || !target.isAlive() || !resolveField()) return false;
+        try {
+            lockedTargetField.set(null, target);
+            return true;
+        } catch (Throwable t) {
+            return false;
+        }
+    }
+
     private static boolean resolveField() {
         if (fieldResolved) return lockedTargetField != null;
         fieldResolved = true;

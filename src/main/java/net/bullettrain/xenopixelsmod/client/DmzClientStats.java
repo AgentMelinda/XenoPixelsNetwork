@@ -24,7 +24,7 @@ public final class DmzClientStats {
     private static final Int2ObjectOpenHashMap<Snapshot> TICK_CACHE = new Int2ObjectOpenHashMap<>();
     private static long cacheGameTime = Long.MIN_VALUE;
     private static final Snapshot EMPTY = new Snapshot(
-            false, 0, 100, 0f, 0f, 0f, 0f, 0f, 0, 0, false, null);
+            false, 0, 100, 0f, 0f, 0f, 0f, 0f, 0, 0, false, null, 0, "");
 
     private DmzClientStats() {}
 
@@ -43,10 +43,13 @@ public final class DmzClientStats {
         public final int displayActionCharge;
         public final boolean actionCharging;
         public final ActionMode selectedAction;
+        public final int level;
+        public final String activeForm;
 
         private Snapshot(boolean present, int powerRelease, int releaseLimit,
                          float energy, float maxEnergy, float stamina, float maxStamina, float maxHealth,
-                         int actionCharge, int displayActionCharge, boolean actionCharging, ActionMode selectedAction) {
+                         int actionCharge, int displayActionCharge, boolean actionCharging, ActionMode selectedAction,
+                         int level, String activeForm) {
             this.present = present;
             this.powerRelease = powerRelease;
             this.releaseLimit = releaseLimit;
@@ -59,6 +62,8 @@ public final class DmzClientStats {
             this.displayActionCharge = displayActionCharge;
             this.actionCharging = actionCharging;
             this.selectedAction = selectedAction;
+            this.level = level;
+            this.activeForm = activeForm == null ? "" : activeForm;
         }
 
         public static Snapshot empty() {
@@ -162,7 +167,9 @@ public final class DmzClientStats {
                     charge,
                     displayCharge,
                     charging,
-                    mode
+                    mode,
+                    data.getLevel(),
+                    data.getCharacter() == null ? "" : data.getCharacter().getActiveForm()
             );
         } catch (Throwable t) {
             return Snapshot.empty();

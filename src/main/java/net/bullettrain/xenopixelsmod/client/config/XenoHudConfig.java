@@ -17,16 +17,44 @@ import java.nio.file.Path;
 public final class XenoHudConfig {
     /** Floating XV2 strip: portrait + name + HP/KI/STM */
     public static final int BASE_WIDTH = 420;
-    public static final int BASE_HEIGHT = 90;
+    public static final int BASE_HEIGHT = 180;
     public static final float MIN_SCALE = 0.5f;
     public static final float MAX_SCALE = 2.5f;
 
     private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
     private static final Path PATH = FMLPaths.CONFIGDIR.get().resolve("xenopixelsmod-hud.json");
-    private static final int CURRENT_CONFIG_VERSION = 1;
+    private static final int CURRENT_CONFIG_VERSION = 2;
 
-    public static int x = 3;
-    public static int y = 3;
+    /** What fills the round portrait well on the main panel. */
+    public enum PortraitMode {
+        /** Flat player skin face. The default: always available, never surprising. */
+        SKIN,
+        /** Live DragonMineZ character — race model, hair, active form. */
+        CHARACTER;
+
+        public static PortraitMode parse(String value) {
+            if (value == null) return SKIN;
+            return "character".equalsIgnoreCase(value.trim()) ? CHARACTER : SKIN;
+        }
+    }
+
+    /** Top-left corner. Previously a {@code -1} sentinel resolved to top-right on first render. */
+    public static int x = 0;
+    public static int y = 0;
+    public static PortraitMode portraitMode = PortraitMode.SKIN;
+    /** Clip the portrait to the well's circle. Off leaves a square with visible corners. */
+    public static boolean portraitMask = true;
+    /** Trace transform charge around the well instead of boxing it in a rectangle. */
+    public static boolean transformRing = true;
+    /**
+     * Entity render scale for {@link PortraitMode#CHARACTER}.
+     *
+     * <p>Same units as vanilla's inventory paper doll, which fits a whole player in a 49x70 box at
+     * 30. The well is 81x75, so 28 leaves a little margin for the circular mask to bite into.
+     */
+    public static int portraitScale = 28;
+    /** Vertical framing for the character portrait, in entity heights. Vanilla centres at 0.0625. */
+    public static float portraitOffset = 0.0625f;
     public static float scale = 0.55f;
     public static boolean visible = true;
     /**
@@ -72,13 +100,20 @@ public final class XenoHudConfig {
                 data.unifiedHudRenderer = true;
                 data.configVersion = CURRENT_CONFIG_VERSION;
             }
-            x = data.x;
-            y = data.y;
+            // Older builds stored -1 as "resolve me to the top-right on first render". Nothing
+            // resolves it now, so a negative would survive as a real off-screen coordinate.
+            x = Math.max(0, data.x);
+            y = Math.max(0, data.y);
             scale = clampScale(data.scale <= 0f ? 0.55f : data.scale);
             visible = data.visible;
             legacyHudRenderer = data.legacyHudRenderer;
             legacyTechniqueRenderer = data.legacyTechniqueRenderer;
             unifiedHudRenderer = data.unifiedHudRenderer;
+            portraitMode = PortraitMode.parse(data.portraitMode);
+            portraitMask = data.portraitMask;
+            transformRing = data.transformRing;
+            portraitScale = clampPortraitScale(data.portraitScale);
+            portraitOffset = clampPortraitOffset(data.portraitOffset);
             if (migrated) save();
         } catch (IOException e) {
             XenoPixelsMod.LOGGER.warn("Failed to load HUD config", e);
@@ -95,6 +130,11 @@ public final class XenoHudConfig {
         data.legacyHudRenderer = legacyHudRenderer;
         data.legacyTechniqueRenderer = legacyTechniqueRenderer;
         data.unifiedHudRenderer = unifiedHudRenderer;
+        data.portraitMode = portraitMode.name().toLowerCase(java.util.Locale.ROOT);
+        data.portraitMask = portraitMask;
+        data.transformRing = transformRing;
+        data.portraitScale = portraitScale;
+        data.portraitOffset = portraitOffset;
         try {
             Files.createDirectories(PATH.getParent());
             try (Writer writer = Files.newBufferedWriter(PATH)) {
@@ -106,10 +146,15 @@ public final class XenoHudConfig {
     }
 
     public static void reset() {
-        x = 3;
-        y = 3;
+        x = 0;
+        y = 0;
         scale = 0.55f;
         visible = true;
+        portraitMode = PortraitMode.SKIN;
+        portraitMask = true;
+        transformRing = true;
+        portraitScale = 28;
+        portraitOffset = 0.0625f;
         save();
     }
 
@@ -120,6 +165,14 @@ public final class XenoHudConfig {
 
     public static float clampScale(float value) {
         return Math.max(MIN_SCALE, Math.min(MAX_SCALE, value));
+    }
+
+    public static int clampPortraitScale(int value) {
+        return Math.max(4, Math.min(120, value));
+    }
+
+    public static float clampPortraitOffset(float value) {
+        return Math.max(-2.0f, Math.min(2.0f, value));
     }
 
     /**
@@ -163,12 +216,17 @@ public final class XenoHudConfig {
 
     private static class Data {
         int configVersion;
-        int x = 3;
-        int y = 3;
+        int x = 0;
+        int y = 0;
         float scale = 0.55f;
         boolean visible = true;
         boolean legacyHudRenderer = false;
         boolean legacyTechniqueRenderer = true;
         boolean unifiedHudRenderer = true;
+        String portraitMode = "skin";
+        boolean portraitMask = true;
+        boolean transformRing = true;
+        int portraitScale = 28;
+        float portraitOffset = 0.0625f;
     }
 }

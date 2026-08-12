@@ -50,6 +50,7 @@ public class XenoPixelsMod {
         event.enqueueWork(() -> {
             net.bullettrain.xenopixelsmod.config.XenoServerConfig.load();
             net.bullettrain.xenopixelsmod.config.XenoPerfConfig.load();
+            net.bullettrain.xenopixelsmod.config.XenoPartyConfig.load();
             net.bullettrain.xenopixelsmod.aero.gravity.OrbitalGravityConfig.load();
             net.bullettrain.xenopixelsmod.aero.AeroConfig.load();
             net.bullettrain.xenopixelsmod.features.FeatureManager.bootstrap();
@@ -103,6 +104,7 @@ public class XenoPixelsMod {
                 net.bullettrain.xenopixelsmod.client.config.XenoHudConfig.load();
                 net.bullettrain.xenopixelsmod.client.config.XenoHotbarConfig.load();
                 net.bullettrain.xenopixelsmod.client.config.XenoCooldownHudConfig.load();
+                net.bullettrain.xenopixelsmod.client.config.XenoPartyHudConfig.load();
                 // Wire GUIs without loading client classes on dedicated server
                 net.bullettrain.xenopixelsmod.client.ClientScreens.openTargetTool = () ->
                         net.minecraft.client.Minecraft.getInstance().setScreen(
@@ -132,6 +134,12 @@ public class XenoPixelsMod {
                         net.bullettrain.xenopixelsmod.client.combat.fx.CombatFxClient::accept;
                 net.bullettrain.xenopixelsmod.client.ClientScreens.receiveParty =
                         net.bullettrain.xenopixelsmod.client.ClientParty::accept;
+                net.bullettrain.xenopixelsmod.client.ClientScreens.receivePartyPing =
+                        net.bullettrain.xenopixelsmod.client.ClientParty::acceptPing;
+                net.bullettrain.xenopixelsmod.client.ClientScreens.openParty = () ->
+                        net.minecraft.client.Minecraft.getInstance().setScreen(
+                                new net.bullettrain.xenopixelsmod.client.screen.XenoPartyScreen(
+                                        net.minecraft.client.Minecraft.getInstance().screen));
             });
         }
     }

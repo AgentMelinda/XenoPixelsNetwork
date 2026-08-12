@@ -151,6 +151,73 @@ public final class XenoHudCommands {
                                             + " (usage: /xenohud techrenderer <legacy|ldlib>)"), false);
                             return 1;
                         }))
+                .then(Commands.literal("portrait")
+                        .requires(XenoPermissions.require(XenoPermissions.XENOHUD_PORTRAIT))
+                        .then(Commands.literal("mode")
+                                .then(Commands.literal("skin")
+                                        .executes(ctx -> setPortraitMode(ctx.getSource(),
+                                                XenoHudConfig.PortraitMode.SKIN)))
+                                .then(Commands.literal("character")
+                                        .executes(ctx -> setPortraitMode(ctx.getSource(),
+                                                XenoHudConfig.PortraitMode.CHARACTER))))
+                        .then(Commands.literal("mask")
+                                .then(Commands.argument("enabled", BoolArgumentType.bool())
+                                        .executes(ctx -> {
+                                            XenoHudConfig.portraitMask =
+                                                    BoolArgumentType.getBool(ctx, "enabled");
+                                            XenoHudConfig.save();
+                                            ctx.getSource().sendSuccess(() -> Component.literal(
+                                                    "Portrait circular mask: "
+                                                            + (XenoHudConfig.portraitMask ? "on" : "off")), false);
+                                            return 1;
+                                        })))
+                        .then(Commands.literal("ring")
+                                .then(Commands.argument("enabled", BoolArgumentType.bool())
+                                        .executes(ctx -> {
+                                            XenoHudConfig.transformRing =
+                                                    BoolArgumentType.getBool(ctx, "enabled");
+                                            XenoHudConfig.save();
+                                            ctx.getSource().sendSuccess(() -> Component.literal(
+                                                    "Transform charge ring: "
+                                                            + (XenoHudConfig.transformRing ? "circular" : "box")), false);
+                                            return 1;
+                                        })))
+                        .then(Commands.literal("scale")
+                                .then(Commands.argument("value",
+                                                com.mojang.brigadier.arguments.IntegerArgumentType.integer(4, 120))
+                                        .executes(ctx -> {
+                                            XenoHudConfig.portraitScale = XenoHudConfig.clampPortraitScale(
+                                                    com.mojang.brigadier.arguments.IntegerArgumentType
+                                                            .getInteger(ctx, "value"));
+                                            XenoHudConfig.save();
+                                            ctx.getSource().sendSuccess(() -> Component.literal(
+                                                    "Portrait scale: " + XenoHudConfig.portraitScale), false);
+                                            return 1;
+                                        })))
+                        .then(Commands.literal("offset")
+                                .then(Commands.argument("value",
+                                                com.mojang.brigadier.arguments.FloatArgumentType.floatArg(-2.0f, 2.0f))
+                                        .executes(ctx -> {
+                                            XenoHudConfig.portraitOffset = XenoHudConfig.clampPortraitOffset(
+                                                    com.mojang.brigadier.arguments.FloatArgumentType
+                                                            .getFloat(ctx, "value"));
+                                            XenoHudConfig.save();
+                                            ctx.getSource().sendSuccess(() -> Component.literal(
+                                                    "Portrait offset: " + XenoHudConfig.portraitOffset), false);
+                                            return 1;
+                                        })))
+                        .executes(ctx -> {
+                            ctx.getSource().sendSuccess(() -> Component.literal(
+                                    "Portrait: mode=" + XenoHudConfig.portraitMode.name().toLowerCase()
+                                            + " mask=" + XenoHudConfig.portraitMask
+                                            + " ring=" + XenoHudConfig.transformRing
+                                            + " scale=" + XenoHudConfig.portraitScale
+                                            + " offset=" + XenoHudConfig.portraitOffset
+                                            + " (usage: /xenohud portrait mode <skin|character>"
+                                            + " | mask <true|false> | ring <true|false>"
+                                            + " | scale <4..120> | offset <-2.0..2.0>)"), false);
+                            return 1;
+                        }))
                 .then(Commands.literal("party")
                         .requires(XenoPermissions.require(XenoPermissions.XENOHUD_PARTY))
                         .then(Commands.literal("show")
@@ -315,7 +382,9 @@ public final class XenoHudCommands {
                                             + " particles=" + XenoClientConfig.bt3CombatParticles
                                             + " afterimage=" + XenoClientConfig.bt3Afterimage
                                             + " techChatHide=" + XenoClientConfig.techniqueHotbarHideInChat
-                                            + " sfx=" + XenoClientConfig.bt3CombatSfx), false);
+                                            + " sfx=" + XenoClientConfig.bt3CombatSfx
+                                            + " surge=" + XenoClientConfig.beamSurgeClient
+                                            + " surgeDebug=" + XenoClientConfig.beamSurgeDebug), false);
                             return 1;
                         }))
                 .then(Commands.literal("set")
@@ -364,14 +433,25 @@ public final class XenoHudCommands {
             case "cooldownhud", "cdhud" -> XenoClientConfig.cooldownHudEnabled = value;
             case "party" -> XenoClientConfig.partyHudEnabled = value;
             case "techchathide", "hideintechchat" -> XenoClientConfig.techniqueHotbarHideInChat = value;
+            case "surge", "beamsurge" -> XenoClientConfig.beamSurgeClient = value;
+            case "surgedebug", "beamsurgedebug" -> XenoClientConfig.beamSurgeDebug = value;
             default -> {
                 source.sendFailure(Component.literal(
-                        "Unknown key. Try: hud techbar combat vanish chase backstep charge dragon glow sfx anims chain particles afterimage cooldownhud party techchathide"));
+                        "Unknown key. Try: hud techbar combat vanish chase backstep charge dragon glow sfx anims chain particles afterimage cooldownhud party techchathide surge surgedebug"));
                 return 0;
             }
         }
         XenoClientConfig.save();
         source.sendSuccess(() -> Component.literal("Set client " + k + " = " + value), false);
+        return 1;
+    }
+
+    private static int setPortraitMode(CommandSourceStack source, XenoHudConfig.PortraitMode mode) {
+        XenoHudConfig.portraitMode = mode;
+        XenoHudConfig.save();
+        source.sendSuccess(() -> Component.literal(mode == XenoHudConfig.PortraitMode.CHARACTER
+                ? "Portrait: DragonMineZ character"
+                : "Portrait: player skin"), false);
         return 1;
     }
 }

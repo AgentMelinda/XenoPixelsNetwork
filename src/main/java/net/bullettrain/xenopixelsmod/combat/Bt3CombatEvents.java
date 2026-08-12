@@ -174,6 +174,7 @@ public final class Bt3CombatEvents {
             GUARDING.remove(id);
             COUNTER_UNTIL_TICK.remove(id);
             GUARD_STUN_UNTIL.remove(id);
+            KiDeflect.forget(id);
         }
     }
 

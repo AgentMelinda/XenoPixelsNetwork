@@ -177,6 +177,35 @@ public final class HudDraw {
         }
     }
 
+    /**
+     * Transform charge as an elliptical arc, for chrome built around a circular well.
+     *
+     * <p>The sibling {@link #transformChargeBorder} walks a rectangle's perimeter and is still what
+     * the box-framed views want; this one sweeps clockwise from twelve o'clock so the charge reads
+     * as tracing the ring. Stepped in fixed-length segments rather than per-pixel — an ellipse this
+     * small needs about forty quads to look smooth, and the count is bounded regardless of radius.
+     */
+    public static void transformChargeArc(GuiGraphics g, int cx, int cy, int rx, int ry,
+                                          int thickness, float percent) {
+        percent = Math.max(0f, Math.min(1f, percent));
+        if (percent <= 0f || rx <= 0 || ry <= 0) return;
+
+        int steps = Math.max(24, Math.min(64, (rx + ry) * 2));
+        int t = Math.max(1, thickness);
+        int lit = Math.max(1, Math.round(steps * percent));
+
+        for (int i = 0; i < steps; i++) {
+            double angle = -Math.PI / 2.0 + (i / (double) steps) * Math.PI * 2.0;
+            int px = cx + (int) Math.round(Math.cos(angle) * rx);
+            int py = cy + (int) Math.round(Math.sin(angle) * ry);
+            int color = i < lit ? CHARGE_CORE : CHARGE_TRACK;
+            g.fill(px - t / 2, py - t / 2, px - t / 2 + t, py - t / 2 + t, color);
+            if (i < lit) {
+                g.fill(px - 1, py - 1, px + 1, py + 1, CHARGE_HOT);
+            }
+        }
+    }
+
     private static void blit(GuiGraphics g, ResourceLocation atlas, int x, int y, int w, int h,
                              int u, int v, int uw, int vh) {
         g.blit(atlas, x, y, w, h, u, v, uw, vh, XenoHudLayout.ATLAS, XenoHudLayout.ATLAS);

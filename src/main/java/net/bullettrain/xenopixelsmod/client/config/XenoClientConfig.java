@@ -23,6 +23,8 @@ import java.nio.file.Path;
 public final class XenoClientConfig {
     private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
     private static final Path PATH = FMLPaths.CONFIGDIR.get().resolve("xenopixelsmod-client.json");
+    /** Version 3 restores Guard while its dedicated key keeps right-click placement vanilla. */
+    private static final int CURRENT_CONFIG_VERSION = 3;
 
     // --- UI ---
     public static boolean xenoHudEnabled = true;
@@ -73,11 +75,7 @@ public final class XenoClientConfig {
     public static float bt3ScreenShakeStrength = 1.0f;
     /** The tinted vignette flash on impact, on its own switch so it survives disabling shake. */
     public static boolean bt3ImpactFlash = true;
-    /**
-     * Ticks the guard key must be held before guard engages. A shorter press places a block or
-     * uses an item instead. Guard shares right-click with vanilla Use, and a hold threshold is
-     * what makes the two unambiguous rather than a guess.
-     */
+    /** Legacy serialized setting retained for config compatibility; dedicated-key Guard is instant. */
     public static int bt3GuardHoldTicks = 5;
     /**
      * Abbreviate HUD figures as k/M. Off shows the exact number, which is what a player
@@ -86,6 +84,8 @@ public final class XenoClientConfig {
     public static boolean hudCompactNumbers = true;
     /** Report the held fire key so a beam can be sustained. Off opts out entirely. */
     public static boolean beamSurgeClient = true;
+    /** Actionbar readout of the surge input chain: key held, wave owned, packets sent. */
+    public static boolean beamSurgeDebug = false;
     /** Radial speed lines while moving fast. Camera-adjacent, so it gets its own switch. */
     public static boolean speedLinesEnabled = true;
     /** Warm vignette while sparking. Separate switch: it is on screen for seconds. */
@@ -103,7 +103,13 @@ public final class XenoClientConfig {
         try (Reader reader = Files.newBufferedReader(PATH)) {
             Data data = GSON.fromJson(reader, Data.class);
             if (data == null) return;
+            boolean migrateGuardDefault = data.configVersion < CURRENT_CONFIG_VERSION;
             apply(data);
+            if (migrateGuardDefault) {
+                // Guard is active again; its B binding no longer intercepts vanilla Use/place.
+                bt3GuardClient = true;
+                save();
+            }
         } catch (IOException e) {
             XenoPixelsMod.LOGGER.warn("Failed to load client config", e);
         }
@@ -122,6 +128,7 @@ public final class XenoClientConfig {
 
     public static Data snapshot() {
         Data d = new Data();
+        d.configVersion = CURRENT_CONFIG_VERSION;
         d.xenoHudEnabled = xenoHudEnabled;
         d.techniqueHotbarEnabled = techniqueHotbarEnabled;
         d.titleScreenButton = titleScreenButton;
@@ -157,6 +164,7 @@ public final class XenoClientConfig {
         d.bt3GuardHoldTicks = bt3GuardHoldTicks;
         d.hudCompactNumbers = hudCompactNumbers;
         d.beamSurgeClient = beamSurgeClient;
+        d.beamSurgeDebug = beamSurgeDebug;
         d.speedLinesEnabled = speedLinesEnabled;
         d.sparkingTintEnabled = sparkingTintEnabled;
         d.techniqueHotbarHideInChat = techniqueHotbarHideInChat;
@@ -200,12 +208,14 @@ public final class XenoClientConfig {
         bt3GuardHoldTicks = Math.max(0, d.bt3GuardHoldTicks);
         hudCompactNumbers = d.hudCompactNumbers;
         beamSurgeClient = d.beamSurgeClient;
+        beamSurgeDebug = d.beamSurgeDebug;
         speedLinesEnabled = d.speedLinesEnabled;
         sparkingTintEnabled = d.sparkingTintEnabled;
         techniqueHotbarHideInChat = d.techniqueHotbarHideInChat;
     }
 
     public static class Data {
+        public int configVersion;
         public boolean xenoHudEnabled = true;
         public boolean techniqueHotbarEnabled = true;
         public boolean titleScreenButton = true;
@@ -241,6 +251,7 @@ public final class XenoClientConfig {
         public int bt3GuardHoldTicks = 5;
         public boolean hudCompactNumbers = true;
         public boolean beamSurgeClient = true;
+        public boolean beamSurgeDebug = false;
         public boolean speedLinesEnabled = true;
         public boolean sparkingTintEnabled = true;
         public boolean techniqueHotbarHideInChat = true;

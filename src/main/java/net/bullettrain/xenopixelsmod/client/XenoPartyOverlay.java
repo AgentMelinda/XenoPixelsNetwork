@@ -1,176 +1,211 @@
 package net.bullettrain.xenopixelsmod.client;
 
 import com.mojang.blaze3d.systems.RenderSystem;
+import net.bullettrain.xenopixelsmod.XenoPixelsMod;
 import net.bullettrain.xenopixelsmod.client.config.XenoClientConfig;
-import net.bullettrain.xenopixelsmod.client.hud.AnimUtil;
-import net.minecraft.client.Minecraft;
+import net.bullettrain.xenopixelsmod.client.config.XenoPartyHudConfig;
+import net.bullettrain.xenopixelsmod.network.packet.PartySyncPacket;
 import net.minecraft.client.DeltaTracker;
+import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.PlayerFaceRenderer;
+import net.minecraft.client.player.AbstractClientPlayer;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.entity.player.Player;
-import net.minecraft.world.scores.PlayerTeam;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.api.distmarker.OnlyIn;
 
 import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.Iterator;
+import java.util.Comparator;
 import java.util.List;
-import java.util.Map;
-import java.util.UUID;
 
-/**
- * Xenoverse-2-style "party" strip: compact HP/KI chips for nearby teammates
- * (same vanilla scoreboard team, per user-directed scope decision — no new
- * server-side party system was authored). Uses {@link DmzClientStats#read}
- * (widened to accept any {@link Player}) with graceful degradation: vanilla
- * HP is always shown (guaranteed synced for every entity); KI/Stamina only
- * render when DMZ data has actually synced for that player.
- *
- * <p>Purely additive — does not touch the main {@link XenoHudOverlay} or
- * {@link XenoTechniqueHotbarOverlay}. Gated by
- * {@link XenoClientConfig#partyHudEnabled}.</p>
- */
+/** Nearby-only XV-style party cards rendered from the supplied transparent PNG artwork. */
 @OnlyIn(Dist.CLIENT)
-public class XenoPartyOverlay {
-    private static final int MAX_MEMBERS = 4;
-    private static final int CHIP_W = 150;
-    private static final int CHIP_H = 30;
-    private static final int CHIP_GAP = 5;
-    private static final int PORTRAIT = 24;
-    private static final int MARGIN_X = 10;
-    private static final int MARGIN_TOP = 10;
+public final class XenoPartyOverlay {
+    private static final ResourceLocation LEFT = ResourceLocation.fromNamespaceAndPath(
+            XenoPixelsMod.MOD_ID, "textures/gui/xeno_party_member_left.png");
+    private static final int MAX_VISIBLE = 4;
+    private static final int GAP = 18;
+    private static final double NEARBY_DISTANCE_SQR = 96.0 * 96.0;
 
-    /** Per-player fade progress (0..1), keyed by UUID string, so chips ease in/out of range/team. */
-    private static final Map<UUID, Float> FADE = new HashMap<>();
-    private static final List<Player> CACHED_MEMBERS = new ArrayList<>(MAX_MEMBERS);
-    private static long lastMemberScan = Long.MIN_VALUE;
-    private static Object cachedLevel;
-
-    public void render(GuiGraphics graphics, DeltaTracker deltaTracker) {
+    public void render(GuiGraphics graphics, DeltaTracker ignored) {
         Minecraft mc = Minecraft.getInstance();
         if (mc.player == null || mc.level == null || mc.options.hideGui) return;
-        if (!XenoClientConfig.partyHudEnabled || !XenoClientConfig.xenoHudEnabled) return;
+        if (!XenoClientConfig.partyHudEnabled || !XenoClientConfig.xenoHudEnabled
+                || !XenoPartyHudConfig.visible) return;
+        renderCards(graphics, false);
+        renderPing(graphics, mc);
+    }
 
-        Player self = mc.player;
-        PlayerTeam team = self.getTeam() instanceof PlayerTeam pt ? pt : null;
-
-        long gameTime = mc.level.getGameTime();
-        if (cachedLevel != mc.level || gameTime - lastMemberScan >= 10 || gameTime < lastMemberScan) {
-            cachedLevel = mc.level;
-            lastMemberScan = gameTime;
-            CACHED_MEMBERS.clear();
-            // A real XenoPixels party wins over a scoreboard team. The team path is kept as a
-            // fallback because it is how this overlay shipped and some servers do drive their
-            // groups off teams - but it is no longer the only way to populate the strip, which
-            // is why the widget used to show nothing to anyone.
-            if (ClientParty.active()) {
-                for (Player p : mc.level.players()) {
-                    if (p != self && ClientParty.contains(p.getUUID())) CACHED_MEMBERS.add(p);
-                }
-            } else if (team != null) {
-                for (Player p : mc.level.players()) {
-                    if (p != self && p.getTeam() == team) CACHED_MEMBERS.add(p);
-                }
-            }
-            // Refresh twice per second; positions do not need an FPS-rate full sort.
-            CACHED_MEMBERS.sort((a, b) -> Double.compare(self.distanceToSqr(a), self.distanceToSqr(b)));
-            if (CACHED_MEMBERS.size() > MAX_MEMBERS) {
-                CACHED_MEMBERS.subList(MAX_MEMBERS, CACHED_MEMBERS.size()).clear();
-            }
-        }
-        List<Player> members = CACHED_MEMBERS;
-
-        // Advance fade for currently visible members and anything still easing out.
-        for (Player p : members) {
-            UUID id = p.getUUID();
-            float cur = FADE.getOrDefault(id, 0f);
-            FADE.put(id, AnimUtil.ease(cur, 1f, 0.15f));
-        }
-        Iterator<Map.Entry<UUID, Float>> fades = FADE.entrySet().iterator();
-        while (fades.hasNext()) {
-            Map.Entry<UUID, Float> entry = fades.next();
-            boolean visible = false;
-            for (Player p : members) {
-                if (p.getUUID().equals(entry.getKey())) {
-                    visible = true;
-                    break;
-                }
-            }
-            if (visible) continue;
-            float cur = AnimUtil.ease(entry.getValue(), 0f, 0.15f);
-            if (cur < 0.02f) fades.remove();
-            else entry.setValue(cur);
+    public static void renderCards(GuiGraphics graphics, boolean editing) {
+        Minecraft mc = Minecraft.getInstance();
+        if (mc.player == null || mc.level == null) return;
+        List<Entry> visible = visibleMembers(mc);
+        if (editing && visible.isEmpty()) {
+            PartySyncPacket.Member demo = new PartySyncPacket.Member(mc.player.getUUID(),
+                    "Party Member", true, true, mc.player.getId(), 45,
+                    78f, 100f, 64f, 100f, 52f, 100f, 75, "Super Form", 80f, false);
+            // A fresh list: the cache is shared with the live HUD and must not gain a fake member.
+            visible = List.of(newEntry(mc.font, demo, mc.player));
         }
 
-        if (members.isEmpty() && FADE.isEmpty()) return;
+        // Clamp for this frame only. clampToScreen writes the persisted x/y, and its bound depends
+        // on the card count, so calling it every frame silently walked the player's configured
+        // position every time the party grew or shrank.
+        int originX = clamp(XenoPartyHudConfig.x, graphics.guiWidth() - XenoPartyHudConfig.scaledWidth());
+        int originY = clamp(XenoPartyHudConfig.y,
+                graphics.guiHeight() - XenoPartyHudConfig.scaledHeight(Math.max(1, visible.size())));
 
-        Font font = mc.font;
+        var pose = graphics.pose();
+        pose.pushPose();
+        pose.translate(originX, originY, 0);
+        pose.scale(XenoPartyHudConfig.scale, XenoPartyHudConfig.scale, 1f);
         RenderSystem.enableBlend();
         RenderSystem.defaultBlendFunc();
-
-        int y = MARGIN_TOP;
-        for (Player p : members) {
-            if (p.isRemoved()) continue;
-            float fade = FADE.getOrDefault(p.getUUID(), 1f);
-            drawChip(graphics, font, p, MARGIN_X, y, fade);
-            y += CHIP_H + CHIP_GAP;
+        int y = 0;
+        for (Entry entry : visible) {
+            pose.pushPose();
+            pose.translate(0, y, 0);
+            drawCard(graphics, mc.font, entry);
+            if (editing) graphics.renderOutline(0, 0, XenoPartyHudConfig.CARD_W,
+                    XenoPartyHudConfig.CARD_H, 0xFF42A5F5);
+            pose.popPose();
+            y += XenoPartyHudConfig.CARD_H + GAP;
         }
-
-        RenderSystem.setShaderColor(1f, 1f, 1f, 1f);
+        RenderSystem.disableBlend();
+        pose.popPose();
     }
 
-    private static void drawChip(GuiGraphics g, Font font, Player p, int x, int y, float fade) {
-        int alpha = Math.round(255 * Math.max(0f, Math.min(1f, fade)));
-        if (alpha <= 2) return;
-        int a8 = alpha << 24;
+    private static int clamp(int value, int max) {
+        return Math.max(0, Math.min(Math.max(0, max), value));
+    }
 
-        g.fill(x - 1, y - 1, x + CHIP_W + 1, y + CHIP_H + 1, a8 | 0x000000);
-        g.fill(x, y, x + CHIP_W, y + CHIP_H, a8 | 0x0A1428);
+    /**
+     * Resolved cards for the current tick.
+     *
+     * <p>Rebuilt once per client tick rather than once per frame, mirroring the {@code cachedGameTime}
+     * pattern in {@link DmzClientStats} and {@link XenoHudSnapshotFactory}. At 200fps the old shape
+     * ran this ten times per tick, each run allocating a list, a record per member and a comparator,
+     * and walking every player in the level once per party member.
+     */
+    private static final List<Entry> CACHED = new ArrayList<>();
+    private static long cachedGameTime = Long.MIN_VALUE;
+    private static Comparator<Entry> byDistance;
 
-        int px = x + 3, py = y + 3, ps = PORTRAIT;
-        g.fill(px - 1, py - 1, px + ps + 1, py + ps + 1, a8 | 0x1E6BB8);
-        if (p instanceof net.minecraft.client.player.AbstractClientPlayer acp) {
-            ResourceLocation skin = acp.getSkin().texture();
-            RenderSystem.setShaderColor(1f, 1f, 1f, fade);
-            RenderSystem.setShaderTexture(0, skin);
-            PlayerFaceRenderer.draw(g, skin, px, py, ps);
-            RenderSystem.setShaderColor(1f, 1f, 1f, 1f);
+    private static List<Entry> visibleMembers(Minecraft mc) {
+        long gameTime = mc.level.getGameTime();
+        if (gameTime == cachedGameTime) return CACHED;
+        cachedGameTime = gameTime;
+        CACHED.clear();
+
+        for (PartySyncPacket.Member member : ClientParty.members()) {
+            if (member.id().equals(mc.player.getUUID())) continue;
+            // Direct UUID lookup instead of scanning level.players() once per member.
+            Player player = mc.level.getPlayerByUUID(member.id());
+            if (player != null && !player.isRemoved()
+                    && mc.player.distanceToSqr(player) <= NEARBY_DISTANCE_SQR) {
+                CACHED.add(newEntry(mc.font, member, player));
+            }
+        }
+        if (CACHED.size() > 1) {
+            if (byDistance == null) {
+                byDistance = Comparator.comparingDouble(entry ->
+                        Minecraft.getInstance().player.distanceToSqr(entry.player));
+            }
+            CACHED.sort(byDistance);
+        }
+        while (CACHED.size() > MAX_VISIBLE) CACHED.remove(CACHED.size() - 1);
+        return CACHED;
+    }
+
+    private static void drawCard(GuiGraphics g, Font font, Entry entry) {
+        PartySyncPacket.Member member = entry.member;
+        Player player = entry.player;
+        g.blit(LEFT, 0, 0, 0f, 0f, 765, 295, 765, 295);
+
+        // Live skin face stays inside the dark circular well; the supplied glow ring remains visible.
+        if (player instanceof AbstractClientPlayer clientPlayer) {
+            PlayerFaceRenderer.draw(g, clientPlayer.getSkin().texture(), 54, 66, 142);
         }
 
-        int contentX = px + ps + 6;
-        int contentW = x + CHIP_W - contentX - 4;
+        // Cover the baked demo fills, then paint live clipped gauges while retaining their chrome.
+        drawGauge(g, 315, 148, 296, 25, member.hpPercent(), 0xFF16090B,
+                member.hpPercent() < 0.25f ? 0xFFFF3D35 : 0xFFFFA000);
+        drawSegments(g, 306, 187, 302, 24, member.kiPercent(), 0xFF07182A, 0xFF19B9FF, 8);
+        drawSegments(g, 286, 225, 300, 23, member.staminaPercent(), 0xFF071F26, 0xFF18E6D2, 8);
 
-        String name = p.getName().getString();
-        if (font.width(name) > contentW) {
-            name = font.plainSubstrByWidth(name, Math.max(0, contentW - font.width(".."))) + "..";
+        g.drawString(font, entry.displayName, 270, 88, 0xFFFFFFFF, true);
+        g.drawString(font, entry.levelText, 632, 88, 0xFFFFD54F, true);
+        if (member.leader()) g.drawString(font, "★", 244, 88, 0xFFFFC107, true);
+        if (!entry.formText.isEmpty()) {
+            g.drawString(font, entry.formText, 270, 111, 0xFF80D8FF, true);
         }
-        g.drawString(font, name, contentX, y + 3, a8 | 0xFFFFFF, false);
+        if (member.sparkingActive()) g.drawString(font, "SPARKING", 625, 228, 0xFFFFC107, true);
+        else if (member.sparking() >= 99f) g.drawString(font, "READY", 642, 228, 0xFFE5B8FF, true);
 
-        float hpPct = p.getMaxHealth() > 0f ? Math.max(0f, Math.min(1f, p.getHealth() / p.getMaxHealth())) : 0f;
-        DmzClientStats.Snapshot snap = DmzClientStats.read(p);
-
-        int barY = y + 13;
-        boolean lowHp = hpPct < 0.25f;
-        int hpColor = lowHp
-                ? AnimUtil.lerpColor(0xE53935, 0xFF8A80, AnimUtil.pulse01(500L))
-                : 0xE53935;
-        drawMiniBar(g, contentX, barY, contentW, 5, hpPct, a8 | 0x330A08, a8 | (hpColor & 0xFFFFFF));
-
-        if (snap.present) {
-            int kiY = barY + 7;
-            drawMiniBar(g, contentX, kiY, contentW, 4, snap.energyPercent(), a8 | 0x2A2408, a8 | 0xFDD835);
+        if (member.hpPercent() < 0.25f) {
+            int pulse = 100 + (int) (70 * (0.5 + 0.5 * Math.sin(System.currentTimeMillis() / 130.0)));
+            g.renderOutline(18, 18, 710, 242, (pulse << 24) | 0x00FF3028);
         }
     }
 
-    private static void drawMiniBar(GuiGraphics g, int x, int y, int w, int h, float percent, int empty, int fillColor) {
-        percent = Math.max(0f, Math.min(1f, percent));
+    private static void drawGauge(GuiGraphics g, int x, int y, int w, int h, float fraction,
+                                  int empty, int fill) {
+        fraction = Math.max(0f, Math.min(1f, fraction));
         g.fill(x, y, x + w, y + h, empty);
-        int filled = Math.round(w * percent);
+        int filled = Math.round(w * fraction);
         if (filled > 0) {
-            g.fill(x, y, x + filled, y + h, fillColor);
+            g.fill(x, y, x + filled, y + h, fill);
+            g.fill(x, y, x + filled, y + Math.max(2, h / 4), 0x88FFFFFF);
         }
     }
+
+    private static void drawSegments(GuiGraphics g, int x, int y, int w, int h, float fraction,
+                                     int empty, int fill, int segments) {
+        int gap = 4;
+        int segmentW = (w - gap * (segments - 1)) / segments;
+        int lit = Math.round(Math.max(0f, Math.min(1f, fraction)) * segments);
+        for (int i = 0; i < segments; i++) {
+            int sx = x + i * (segmentW + gap);
+            g.fill(sx, y, sx + segmentW, y + h, i < lit ? fill : empty);
+            if (i < lit) g.fill(sx, y, sx + segmentW, y + 3, 0x77FFFFFF);
+        }
+    }
+
+    /** The banner text only changes when the marker does, so it is not rebuilt per frame. */
+    private static ClientParty.Ping cachedPing;
+    private static String cachedPingText = "";
+    private static int cachedPingWidth;
+
+    private static void renderPing(GuiGraphics g, Minecraft mc) {
+        ClientParty.Ping ping = ClientParty.ping(mc.level.getGameTime());
+        if (ping == null) return;
+        if (ping != cachedPing) {
+            cachedPing = ping;
+            cachedPingText = "◆ PARTY TARGET: " + ping.targetName() + "  [aim + H to lock]";
+            cachedPingWidth = mc.font.width(cachedPingText) + 16;
+        }
+        int cx = g.guiWidth() / 2;
+        String text = cachedPingText;
+        int w = cachedPingWidth;
+        g.fill(cx - w / 2, 12, cx + w / 2, 29, 0xCC071525);
+        g.renderOutline(cx - w / 2, 12, w, 17, 0xFF20BFFF);
+        g.drawCenteredString(mc.font, text, cx, 17, 0xFFB8ECFF);
+    }
+
+    /**
+     * Built once per tick alongside the roster, so the text the card draws is not re-derived on
+     * every frame. Name truncation and {@code Integer.toString} both allocate, and both produce
+     * the same answer for the whole tick.
+     */
+    private static Entry newEntry(Font font, PartySyncPacket.Member member, Player player) {
+        String name = member.name();
+        if (font.width(name) > 250) name = font.plainSubstrByWidth(name, 238) + "…";
+        String form = member.form().isBlank() ? "" : font.plainSubstrByWidth(member.form(), 170);
+        return new Entry(member, player, name, Integer.toString(member.level()), form);
+    }
+
+    private record Entry(PartySyncPacket.Member member, Player player,
+                         String displayName, String levelText, String formText) {}
 }

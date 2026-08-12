@@ -2,6 +2,8 @@ package net.bullettrain.xenopixelsmod.client;
 
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.player.LocalPlayer;
+import net.bullettrain.xenopixelsmod.client.combat.Bt3CombatClient;
+import net.bullettrain.xenopixelsmod.effect.ModEffects;
 
 /**
  * Builds a {@link XenoHudSnapshot} for the current frame. Moved out of
@@ -43,8 +45,10 @@ public final class XenoHudSnapshotFactory {
         float chargePercent = transforming ? dmz.transformChargePercent() : 0f;
 
         XenoHudSnapshot snapshot = new XenoHudSnapshot(name, dmz.present, releaseText,
+                dmz.present ? dmz.releasePercent() : 0f,
                 hp, ki, stm, curHp, maxHp, curKi, maxKi, curStm, maxStm,
-                transforming, chargePercent);
+                transforming, chargePercent, dmz.level, dmz.activeForm,
+                Bt3CombatClient.getSparkingMeter(), mc.player != null && mc.player.hasEffect(ModEffects.SPARKING));
         cachedGameTime = gameTime;
         cachedPlayerId = playerId;
         cachedSnapshot = snapshot;
