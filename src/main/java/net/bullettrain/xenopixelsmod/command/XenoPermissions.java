@@ -60,7 +60,7 @@ public final class XenoPermissions {
     public static final PermissionNode<Boolean> XENOSERVER_STATUS =
             op("xenoserver.status", "Use /xenoserver status");
     public static final PermissionNode<Boolean> XENOSERVER_SET =
-            op("xenoserver.set", "Use /xenoserver set <key> <true|false>");
+            op("xenoserver.set", "Use /xenoserver set <key> <value>");
 
     // -------------------------------------------------------------------------
     // /xenoform  (server — OP default)
@@ -69,6 +69,31 @@ public final class XenoPermissions {
             op("xenoform.status", "Use /xenoform status — view server form power scale");
     public static final PermissionNode<Boolean> XENOFORM_SET =
             op("xenoform.set", "Use /xenoform set <multiplier> — change server form power scale");
+
+    // -------------------------------------------------------------------------
+    // /xenobarrage  (server — OP default)
+    // -------------------------------------------------------------------------
+    public static final PermissionNode<Boolean> XENOBARRAGE_STATUS =
+            op("xenobarrage.status", "Use /xenobarrage status");
+    public static final PermissionNode<Boolean> XENOBARRAGE_SET =
+            op("xenobarrage.set", "Use /xenobarrage duration|cooldown <ticks>");
+
+    // -------------------------------------------------------------------------
+    // /xenochase  (server — OP default)
+    // -------------------------------------------------------------------------
+    public static final PermissionNode<Boolean> XENOCHASE_STATUS =
+            op("xenochase.status", "Use /xenochase status");
+    public static final PermissionNode<Boolean> XENOCHASE_SET =
+            op("xenochase.set", "Use /xenochase toggle|range <value>");
+
+    // -------------------------------------------------------------------------
+    // /xenopixels npcprofile  (server — OP default; also runs via NPC-mod script
+    // executeCommand, which uses command-block-equivalent permission)
+    // -------------------------------------------------------------------------
+    public static final PermissionNode<Boolean> NPCPROFILE_SET =
+            op("npcprofile.set", "Use /xenopixels npcprofile set ...");
+    public static final PermissionNode<Boolean> NPCPROFILE_KIATTACK =
+            op("npcprofile.kiattack", "Use /xenopixels npcprofile kiattack <type>");
 
     // -------------------------------------------------------------------------
     // /xenohud  (client — everyone default)
