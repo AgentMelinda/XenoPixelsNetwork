@@ -29,7 +29,20 @@ public class ConditionalMixinPlugin implements IMixinConfigPlugin {
     public boolean shouldApplyMixin(String targetClassName, String mixinClassName) {
         // Package-based gates under mixin.compat.*
         if (mixinClassName.contains(".compat.sable.")) {
+            // Contraption collider is a Create type; skip apply if Create is absent.
+            if (mixinClassName.contains("Contraption")) {
+                return isModLoaded("sable") && isModLoaded("create");
+            }
             return isModLoaded("sable");
+        }
+        if (mixinClassName.contains(".compat.simulatedcoasters.")) {
+            return isModLoaded("simulatedcoasters");
+        }
+        if (mixinClassName.contains(".compat.createpropulsion.")) {
+            return isModLoaded("createpropulsion");
+        }
+        if (mixinClassName.contains(".compat.cosmonautics.")) {
+            return isModLoaded("rocketnautics");
         }
         if (mixinClassName.contains(".compat.create.")) {
             return isModLoaded("create");
@@ -39,6 +52,17 @@ public class ConditionalMixinPlugin implements IMixinConfigPlugin {
         }
         if (mixinClassName.contains(".compat.aerostar.")) {
             return isModLoaded("aerostarcomp");
+        }
+        if (mixinClassName.contains(".compat.shared.")) {
+            // Backs redirect mixins in both .compat.customnpcs. and .compat.mynpcs. — apply
+            // whenever either mod (or both) is present.
+            return isModLoaded("customnpcs") || isModLoaded("mynpcs");
+        }
+        if (mixinClassName.contains(".compat.customnpcs.")) {
+            return isModLoaded("customnpcs");
+        }
+        if (mixinClassName.contains(".compat.mynpcs.")) {
+            return isModLoaded("mynpcs");
         }
         if (mixinClassName.contains(".compat.yawp.")) {
             // Not just "is YAWP installed" — the ki-griefing hook calls the 0.6.3 permission
@@ -82,6 +106,16 @@ public class ConditionalMixinPlugin implements IMixinConfigPlugin {
         if ("create".equals(modId)) {
             return isClassPresent("com.simibubi.create.Create");
         }
+        if ("simulatedcoasters".equals(modId)) {
+            return isClassPresent("dev.silvergold.simulatedcoasters.track.cart.CoasterCartPlotScan");
+        }
+        if ("createpropulsion".equals(modId)) {
+            return isClassPresent(
+                    "dev.propulsionteam.propulsionsimulated.particles.plasma.PlasmaParticle");
+        }
+        if ("rocketnautics".equals(modId)) {
+            return isClassPresent("dev.egg.SubLevelTemplate");
+        }
         if ("xaeroworldmap".equals(modId)) {
             return isClassPresent("xaero.map.gui.GuiMap");
         }
@@ -90,6 +124,12 @@ public class ConditionalMixinPlugin implements IMixinConfigPlugin {
         }
         if ("aerostarcomp".equals(modId)) {
             return isClassPresent("com.bega.aerostarcomp.physics.OrbitGravitySystem");
+        }
+        if ("customnpcs".equals(modId)) {
+            return isClassPresent("noppes.npcs.CustomNpcs");
+        }
+        if ("mynpcs".equals(modId)) {
+            return isClassPresent("espi.mynpcs.MyNpcs");
         }
         return false;
     }

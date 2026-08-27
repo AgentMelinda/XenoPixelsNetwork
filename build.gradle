@@ -120,6 +120,14 @@ repositories {
         url = 'https://maven.ryanhcode.dev/releases'
         content { includeGroup 'dev.ryanhcode.sable-companion' }
     }
+    maven {
+        // CurseMaven - resolves curse.maven:<slug>-<projectId>:<fileId> coordinates directly
+        // against CurseForge; used for My NPCs and CustomNPCs-Unofficial, neither of which
+        // publishes to a normal Maven repo.
+        name = 'CurseMaven'
+        url = 'https://cursemaven.com'
+        content { includeGroup 'curse.maven' }
+    }
 }
 
 // The special DMZ 1.21.1 build XenoPixels compiles against. It is not on any Maven repo, so
@@ -166,6 +174,11 @@ dependencies {
     // Yet Another World Protector - region protection. Ki griefing asks its flags before
     // breaking blocks; the mod is optional at runtime and the compat is gated on it.
     compileOnly "maven.modrinth:yawp:${yawp_version}"
+    // Jade - tooltip when looking at an entity. Its built-in health line draws one heart icon per
+    // 2 HP, which is unreadable for DMZ mobs whose health runs to millions, so we replace that line
+    // for DMZ entities only. A local jar because Gradle runs offline here and Jade is not on a
+    // configured maven; the API surface used is small and stable (@WailaPlugin, ITooltip, JadeIds).
+    compileOnly files('libs/Jade-1.21.1-NeoForge-15.10.6.jar')
     // Create - elevator ComputerCraft methods. transitive=false because Create's POM pulls a
     // runtime Flywheel and an open-ended Ponder range we do not want deciding our build; the
     // four libraries it actually needs at compile time are pinned below instead.
@@ -176,6 +189,14 @@ dependencies {
     compileOnly "com.tterrag.registrate:Registrate:${create_registrate_version}"
     compileOnly "xaero.lib:xaerolib-neoforge-1.21.1:${xaerolib_version}"
     compileOnly "xaero.map:xaeroworldmap-neoforge-1.21.1:${xaero_world_map_version}:all"
+    // My NPCs - NPC editor/scripting mod (curse.maven, package espi.mynpcs). Compat covers a
+    // MouseHandler IllegalAccessError in its own script GUI (mirrors the CustomNPCs fix below)
+    // plus the race/stats/ki-attack scripting bridge.
+    compileOnly "curse.maven:my-npcs-1569534:8686540"
+    // CustomNPCs-Unofficial (curse.maven, package noppes.npcs) - same API shape as My NPCs.
+    // Previously only string-targeted via Mixin (zero compile footprint); now also compiled
+    // against directly for the shared race/stats/ki-attack scripting bridge.
+    compileOnly "curse.maven:customnpcs-unofficial-1052708:8414335"
 
     // ---- Modern UI (1.20.1 parity: Jar-in-Jar embed) ----
     // Ships ModernUI-NeoForge inside the XenoPixels jar. Soft-dep remains in neoforge.mods.toml.

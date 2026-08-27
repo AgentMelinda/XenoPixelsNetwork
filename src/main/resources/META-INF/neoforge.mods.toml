@@ -65,6 +65,30 @@ versionRange="[1.40,)"
 ordering="AFTER"
 side="CLIENT"
 
+# CustomNPCs-Unofficial — its Model Creation GUI (and a few other components) crashes with
+# IllegalAccessError calling its own MouseHandler accessor in some multiplayer sessions (see
+# mixin/compat/customnpcs and mixin/compat/shared). Also carries the server-side race/stats/
+# ki-attack scripting bridge (see compat/npc), hence side="BOTH" rather than client-only.
+# A wide lower bound: an "optional" dependency that IS installed must still satisfy this range,
+# so a narrow bound would turn a soft compat hook into a hard boot failure on a differently-
+# versioned build.
+[[dependencies.${mod_id}]]
+modId="customnpcs"
+type="optional"
+versionRange="[1.21.1,)"
+ordering="AFTER"
+side="BOTH"
+
+# My NPCs — same MouseHandler IllegalAccessError as CustomNPCs above, in its own script GUI
+# (see mixin/compat/mynpcs and mixin/compat/shared), plus the same race/stats/ki-attack
+# scripting bridge (see compat/npc). Same wide-lower-bound rationale as CustomNPCs above.
+[[dependencies.${mod_id}]]
+modId="mynpcs"
+type="optional"
+versionRange="[1.21.1,)"
+ordering="AFTER"
+side="BOTH"
+
 # Yet Another World Protector — region protection. When present, its flags can veto
 # DragonMineZ ki griefing (see XenoServerConfig#yawpKiGriefingEnabled).
 #

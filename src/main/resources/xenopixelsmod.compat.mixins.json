@@ -6,6 +6,18 @@
   "compatibilityLevel": "JAVA_21",
   "mixins": [
     "compat.aerostar.OrbitGravitySystemMixin",
+    "compat.sable.KiBlastSableAimClipMixin",
+    "compat.sable.KiLaserSableClipMixin",
+    "compat.sable.KiProjectileSableClipMixin",
+    "compat.sable.KiWaveSableClipMixin",
+    "compat.sable.SableContraptionColliderMixin",
+    "compat.sable.SableEntityCollisionBoundsMixin",
+    "compat.sable.SableEntityGetterCullMixin",
+    "compat.cosmonautics.CosmoSixDofServerMixin",
+    "compat.cosmonautics.CosmoSixDofTravelMixin",
+    "compat.cosmonautics.CosmoSubLevelTemplateLoadMixin",
+    "compat.cosmonautics.CosmoSubLevelWarperMixin",
+    "compat.simulatedcoasters.CoasterCartPlotScanCacheMixin",
     "compat.create.ContinuousOBBColliderMixin",
     "compat.create.ContinuousSeparationManifoldMixin",
     "compat.yawp.MainGameRulesMixin",
@@ -13,7 +25,19 @@
     "compat.yawp.IFlagArgumentTypeMixin"
   ],
   "client": [
-    "compat.xaero.GuiMapWaypointPickerMixin"
+    "compat.sable.SableChunkedRenderCullMixin",
+    "compat.sable.SableVanillaBeRenderCullMixin",
+    "compat.createpropulsion.PlasmaParticleNoShipCollideMixin",
+    "compat.xaero.GuiMapWaypointPickerMixin",
+    "compat.shared.XenoMouseHandlerAccessor",
+    "compat.customnpcs.GuiCustomScrollingPanelMixin",
+    "compat.customnpcs.GuiCustomScrollNopMixin",
+    "compat.customnpcs.GuiTextAreaMixin",
+    "compat.customnpcs.GuiDialogInteractMixin",
+    "compat.mynpcs.GuiCustomScrollingPanelMixin",
+    "compat.mynpcs.GuiCustomScrollNopMixin",
+    "compat.mynpcs.GuiTextAreaMixin",
+    "compat.mynpcs.GuiDialogInteractMixin"
   ],
   "injectors": {
     "defaultRequire": 0
