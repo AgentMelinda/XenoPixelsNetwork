@@ -190,6 +190,11 @@ public final class CombatFxClient {
                 case COUNTER_FLASH -> new Profile(0.9f, 0.9f, 0xB8F1FF);
                 case VANISH_CLAP -> new Profile(0.5f, 0.35f, 0xE8E8FF);
                 case DASH_LAUNCH -> new Profile(0.35f, 0.0f, 0xFFFFFF);
+                // A wash plus a hard kick at 200% is what made overcharge look foggy.
+                // Keep a small gold edge so the tier is readable; leave the centre clear.
+                case CHARGE_PEAK -> new Profile(0.28f, 0.08f, 0xFFE08A);
+                // Slow violet flash, minimal shake -- erasure reads as final, not as a hit.
+                case HAKAI_ERASE -> new Profile(0.5f, 0.85f, 0xB266FF);
             };
         }
     }

@@ -1,6 +1,6 @@
 package net.bullettrain.xenopixelsmod.mixin.compat.xaero;
 
-import net.bullettrain.xenopixelsmod.compat.xaero.XaeroWaypointPicker;
+import net.bullettrain.xenopixelsmod.client.compat.xaero.XaeroWaypointPicker;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.world.level.Level;
 import xaero.map.element.HoveredMapElementHolder;

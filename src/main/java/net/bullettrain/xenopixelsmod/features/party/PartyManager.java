@@ -63,6 +63,16 @@ public final class PartyManager {
         return first != null && first.equals(partyOf(b));
     }
 
+    /**
+     * True if a party with this id still exists. Used to tell a live channel owner apart from a
+     * stale one (disbanded or idle-expired) — a stale authority should be releasable rather than
+     * locking its channel number forever.
+     */
+    public static boolean partyExists(MinecraftServer server, UUID partyId) {
+        if (server == null || partyId == null) return false;
+        return PartySavedData.get(server).getParty(partyId) != null;
+    }
+
     public static boolean isLeader(ServerPlayer player) {
         return player != null && com.dragonminez.common.quest.PartyManager.isPartyLeader(player);
     }

@@ -34,6 +34,51 @@ public class XenoPlayerData {
     private long dummySessionDamage;
     private int dummyHits;
 
+    /**
+     * Last values pushed to this player's client, and when.
+     *
+     * <p>Deliberately <b>not</b> serialised and not copied on respawn: they describe what the
+     * client currently believes, not player state. A fresh connection knows nothing, so starting
+     * from {@code NaN} forces the first tick to send, which is exactly right.
+     *
+     * <p>These lived as {@code @Unique} fields on a {@code Player} Mixin, which put them on every
+     * player instance in the game including client-side ones. They belong with the data they
+     * describe.
+     */
+    private transient float lastSyncedHp = Float.NaN;
+    private transient float lastSyncedMaxHp = Float.NaN;
+    private transient float lastSyncedKi = Float.NaN;
+    private transient float lastSyncedMaxKi = Float.NaN;
+    private transient float lastSyncedStm = Float.NaN;
+    private transient float lastSyncedMaxStm = Float.NaN;
+    private transient int lastSyncTick = -99999;
+
+    public int getLastSyncTick() { return lastSyncTick; }
+
+    /** True when any tracked value has drifted far enough from what the client was last told. */
+    public boolean statsDifferFrom(float hp, float maxHp, float ki, float maxKi,
+                                   float stm, float maxStm) {
+        return drifted(hp, lastSyncedHp) || drifted(maxHp, lastSyncedMaxHp)
+                || drifted(ki, lastSyncedKi) || drifted(maxKi, lastSyncedMaxKi)
+                || drifted(stm, lastSyncedStm) || drifted(maxStm, lastSyncedMaxStm);
+    }
+
+    public void markSynced(float hp, float maxHp, float ki, float maxKi,
+                           float stm, float maxStm, int tick) {
+        lastSyncedHp = hp;
+        lastSyncedMaxHp = maxHp;
+        lastSyncedKi = ki;
+        lastSyncedMaxKi = maxKi;
+        lastSyncedStm = stm;
+        lastSyncedMaxStm = maxStm;
+        lastSyncTick = tick;
+    }
+
+    /** ~0.05 absolute — HUD-visible without flooding the pipe. NaN means "never sent". */
+    private static boolean drifted(float now, float sent) {
+        return Float.isNaN(sent) || Math.abs(now - sent) > 0.05f;
+    }
+
     public float getKi() { return ki; }
     public void setKi(float ki) { this.ki = Math.max(0, Math.min(ki, maxKi)); }
     public float getMaxKi() { return maxKi; }

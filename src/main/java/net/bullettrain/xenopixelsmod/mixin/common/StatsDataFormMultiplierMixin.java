@@ -19,6 +19,10 @@ public class StatsDataFormMultiplierMixin {
     private void xenopixels$scaleFormMultiplier(String stat, CallbackInfoReturnable<Double> cir) {
         Double raw = cir.getReturnValue();
         if (raw == null) return;
+        // Bail before resolving the form key. DMZ reads form multipliers live on every stat
+        // access, and resolving allocates several strings; on a server with no form scaling
+        // configured this injection must cost nothing.
+        if (!XenoServerConfig.formScalingActive()) return;
         double scaled = XenoServerConfig.scaleFormMultiplier(raw, resolveActiveFormKey(false), stat);
         if (scaled != raw) {
             cir.setReturnValue(scaled);
@@ -29,6 +33,7 @@ public class StatsDataFormMultiplierMixin {
     private void xenopixels$scaleStackFormMultiplier(String stat, CallbackInfoReturnable<Double> cir) {
         Double raw = cir.getReturnValue();
         if (raw == null) return;
+        if (!XenoServerConfig.formScalingActive()) return;
         double scaled = XenoServerConfig.scaleFormMultiplier(raw, resolveActiveFormKey(true), stat);
         if (scaled != raw) {
             cir.setReturnValue(scaled);

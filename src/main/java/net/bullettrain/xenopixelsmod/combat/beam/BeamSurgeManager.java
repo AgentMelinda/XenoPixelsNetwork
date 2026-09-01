@@ -8,13 +8,18 @@ import com.dragonminez.common.stats.character.Resources;
 import net.bullettrain.xenopixelsmod.XenoPixelsMod;
 import net.bullettrain.xenopixelsmod.combat.fx.CombatFx;
 import net.bullettrain.xenopixelsmod.combat.fx.CombatFxKind;
+import net.bullettrain.xenopixelsmod.combat.overcharge.KiProjectileApply;
+import net.bullettrain.xenopixelsmod.combat.technique.KiGuidance;
 import net.bullettrain.xenopixelsmod.config.XenoServerConfig;
 import net.bullettrain.xenopixelsmod.features.progression.CombatSkills;
+import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.phys.AABB;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
+import net.neoforged.neoforge.event.entity.player.PlayerEvent;
+import net.neoforged.neoforge.event.server.ServerStoppingEvent;
 import net.neoforged.neoforge.event.tick.LevelTickEvent;
 
 import java.util.HashMap;
@@ -80,7 +85,19 @@ public final class BeamSurgeManager {
      */
     public static void reportFeeding(ServerPlayer player) {
         if (player == null) return;
-        FEEDING.put(player.getUUID(), player.level().getGameTime());
+        FEEDING.put(player.getUUID(), (long) serverTick(player));
+    }
+
+    /**
+     * Global monotonic server tick, shared by the feed window and its level-tick reader.
+     * {@code level.getGameTime()} is per-dimension and non-comparable across a dimension change,
+     * so a feed reported in a higher-time dimension read as "still holding" until the new
+     * dimension's clock caught up. Defensive for client callers (server null → 0).
+     */
+    private static int serverTick(ServerPlayer p) {
+        if (p == null || p.level() == null) return 0;
+        MinecraftServer server = p.level().getServer();
+        return server != null ? server.getTickCount() : 0;
     }
 
     @SubscribeEvent
@@ -91,7 +108,7 @@ public final class BeamSurgeManager {
             return;
         }
 
-        long now = level.getGameTime();
+        long now = level.getServer().getTickCount();
         String levelId = level.dimension().location().toString();
 
         for (ServerPlayer player : level.players()) {
@@ -179,12 +196,20 @@ public final class BeamSurgeManager {
 
         // Scale from the captured baseline every tick rather than multiplying the live value,
         // which would compound 20 times a second into an absurd beam within a couple of seconds.
-        beam.setSize(tracked.size * (1.0f + surge * XenoServerConfig.beamSurgeSizeGain));
-        beam.setKiDamage(tracked.damage * (1.0f + surge * XenoServerConfig.beamSurgeDamageGain));
+        float size = tracked.size * (1.0f + surge * XenoServerConfig.beamSurgeSizeGain);
+        float damage = tracked.damage * (1.0f + surge * XenoServerConfig.beamSurgeDamageGain);
+        float speed = tracked.speed * (1.0f + surge * XenoServerConfig.beamSurgeReachGain);
+        KiProjectileApply.size(beam, size);
+        KiProjectileApply.damage(beam, damage);
         // Speed is length growth per tick. Restoring it from the baseline also undoes the 0.75
         // decay DMZ applies on every entity hit, which is what otherwise starves a beam that is
-        // actually connecting with someone.
-        beam.setKiSpeed(tracked.speed * (1.0f + surge * XenoServerConfig.beamSurgeReachGain));
+        // actually connecting with someone -- so this one is rewritten whenever it differs at all,
+        // rather than being held to an epsilon.
+        KiProjectileApply.speed(beam, speed);
+
+        if (fed) {
+            KiGuidance.aimAnchoredBeam(player, beam);
+        }
 
         if (fed && state.sustainedTicks() % MASTERY_TICKS == 0) {
             CombatSkills.awardBeamProgress(player);
@@ -223,19 +248,32 @@ public final class BeamSurgeManager {
      * {@code TechniqueDispatcher} spawns a wave for WAVE techniques but a {@code KiLaserEntity} for
      * LASER and BEAM ones, so a wave-only scan silently excluded every laser and beam from surging.
      * {@code isFiring()} lives on the shared base, so one scan covers both.
+     *
+     * <p><b>Picks the youngest match, not the first.</b> A player can have more than one owned
+     * beam alive at once — an old one that has not yet hit its natural {@code explodeAndDie} sitting
+     * near a freshly fired one, since both can be within {@link XenoServerConfig#beamSurgeSearchRadius}
+     * of the player at once. {@code getEntitiesOfClass} has no defined ordering, so returning its
+     * first match could surge the stale beam instead of the one the player just fired: the moment
+     * that happens, {@link #apply} pushes its baseline back to {@code tracked.beamId} and rolls its
+     * death forward via {@code setMaxLife(tickCount + KEEP_ALIVE_TICKS)}, which both revives it
+     * (reads as the old attack "respawning") and keeps it from ever expiring on schedule for as
+     * long as the mistake keeps recurring. Preferring the lowest {@code tickCount} — the beam that
+     * has existed for the least time — always resolves to the one just fired.
      */
     private static AbstractKiProjectile findOwnedBeam(ServerLevel level, ServerPlayer player) {
         // A beam is anchored at its origin and grows outward, so it stays near its owner - a
         // modest box around the player finds it without scanning the level.
         AABB box = player.getBoundingBox().inflate(XenoServerConfig.beamSurgeSearchRadius);
+        AbstractKiProjectile youngest = null;
         for (AbstractKiProjectile beam : level.getEntitiesOfClass(AbstractKiProjectile.class, box,
                 BeamSurgeManager::surgeable)) {
             // UUID identity, the same test the client's ownsFiringWave uses. getOwner() resolves
             // lazily from a stored UUID and can hand back a stale or null reference across a
             // respawn or dimension change, which silently stops the surge applying.
-            if (beam.isOwner(player)) return beam;
+            if (!beam.isOwner(player)) continue;
+            if (youngest == null || beam.tickCount < youngest.tickCount) youngest = beam;
         }
-        return null;
+        return youngest;
     }
 
     /** Alive, firing, and a sustained beam rather than a thrown ki ball, which is not this feature. */
@@ -250,6 +288,46 @@ public final class BeamSurgeManager {
         } catch (Throwable t) {
             return null;
         }
+    }
+
+    /**
+     * Forget one player's surge.
+     *
+     * <p>{@link #onLevelTick} only removes a {@code STATES} entry while walking {@code level
+     * .players()}, so a player who disconnects mid-beam is never visited again and their entry would
+     * sit in the map for the lifetime of the server. Keyed by level id and UUID, so this clears the
+     * player out of every dimension they might have left one in.
+     */
+    public static void forget(UUID playerId) {
+        if (playerId == null) return;
+        STATES.keySet().removeIf(key -> key.owner().equals(playerId));
+        FEEDING.remove(playerId);
+    }
+
+    @SubscribeEvent
+    public static void onLogout(PlayerEvent.PlayerLoggedOutEvent event) {
+        if (event.getEntity() instanceof ServerPlayer player) {
+            forget(player.getUUID());
+        }
+    }
+
+    /**
+     * A player who changes dimension mid-beam is no longer in the old level's {@code players()},
+     * so {@link #onLevelTick} never visits their old-dimension {@code STATES} entry again and it
+     * would leak until logout. Their beam stays in the old level and runs out on its own, so it is
+     * correct to drop the surge tracking entirely.
+     */
+    @SubscribeEvent
+    public static void onDimensionChange(PlayerEvent.PlayerChangedDimensionEvent event) {
+        if (event.getEntity() instanceof ServerPlayer player) {
+            forget(player.getUUID());
+        }
+    }
+
+    /** Drop everything: nothing here outlives the server it was collected on. */
+    @SubscribeEvent
+    public static void onServerStopping(ServerStoppingEvent event) {
+        clear();
     }
 
     /** Drop everything for a level that is unloading. */

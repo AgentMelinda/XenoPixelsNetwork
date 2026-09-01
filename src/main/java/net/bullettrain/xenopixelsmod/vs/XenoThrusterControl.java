@@ -12,32 +12,51 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicLong;
 
 /** Runtime thruster controller for Sable moving sub-levels. */
 public final class XenoThrusterControl {
     private static final AtomicBoolean REGISTERED = new AtomicBoolean();
     private static final Map<UUID, XenoThrusterControl> CONTROLS = new ConcurrentHashMap<>();
+    /**
+     * Stale-sweep cadence for {@link #CONTROLS}. A control is kept while its ship is seen alive in
+     * any dimension's physics tick and dropped once it has gone unseen this long (ship
+     * disassembled, or its chunks unloaded past the window).
+     */
+    private static final AtomicLong lastSweepNanos = new AtomicLong();
+    private static final long SWEEP_INTERVAL_NANOS = 30_000_000_000L;
+    private static final long STALE_AFTER_NANOS = 300_000_000_000L;
 
     private final Map<String, ThrusterForce> thrusters = new ConcurrentHashMap<>();
     private volatile ThrusterForce[] physicsSnapshot = new ThrusterForce[0];
     private final Vector3d localImpulse = new Vector3d();
     private final Vector3d localPoint = new Vector3d();
+    /** Last physics tick this ship was seen in a loaded sub-level container; drives the sweep. */
+    private volatile long lastSeenNanos = System.nanoTime();
 
     public static void ensureRegistered() {
         if (!REGISTERED.compareAndSet(false, true)) return;
         SableEventPlatform.INSTANCE.onPhysicsTick((system, deltaSeconds) -> {
+            long now = System.nanoTime();
             for (var candidate : SubLevelContainer.getContainer(system.getLevel()).getAllSubLevels()) {
                 if (!(candidate instanceof ServerSubLevel subLevel)) continue;
                 XenoThrusterControl control = get(subLevel);
-                if (control == null || control.isEmpty()) continue;
+                if (control == null) continue;
+                // Alive in this dimension → renew. An empty control still means a live ship, so
+                // mark it seen before the isEmpty short-circuit (or an idle hull would go stale).
+                control.lastSeenNanos = now;
+                if (control.isEmpty()) continue;
                 RigidBodyHandle handle = system.getPhysicsHandle(subLevel);
                 if (handle != null && handle.isValid()) control.physicsTick(subLevel, handle, deltaSeconds);
             }
-            // No map cleanup here: this callback fires once per DIMENSION's physics system, so
-            // a removeIf against the currently ticking dimension's container wiped controls for
-            // ships in every OTHER dimension, making thrust flicker as the game thread raced to
-            // re-register it. Entries are tiny, re-created by the thruster BEs, and emptied by
-            // clearAll().
+            // Cleanup by staleness, not by diffing against THIS dimension's container: the callback
+            // fires once per dimension's physics system, so "drop anything not in this container"
+            // wiped controls for ships in every other dimension (thrust flicker). A live ship is
+            // seen by its OWN dimension's tick, so anything unseen for this long is genuinely gone.
+            if (now - lastSweepNanos.get() >= SWEEP_INTERVAL_NANOS) {
+                lastSweepNanos.set(now);
+                CONTROLS.values().removeIf(control -> now - control.lastSeenNanos > STALE_AFTER_NANOS);
+            }
         });
         XenoPixelsMod.LOGGER.info("Registered Sable thruster physics callback");
     }

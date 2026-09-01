@@ -1,5 +1,6 @@
 package net.bullettrain.xenopixelsmod.combat;
 
+import com.dragonminez.common.compat.CameraAimHelper;
 import com.dragonminez.common.init.entities.ki.AbstractKiProjectile;
 import com.dragonminez.common.stats.character.Resources;
 import net.bullettrain.xenopixelsmod.combat.fx.CombatFx;
@@ -63,20 +64,26 @@ public final class KiDeflect {
         double reach = Math.max(0.5, XenoServerConfig.kiDeflectReach);
         Vec3 eye = player.getEyePosition();
         Vec3 look = player.getLookAngle();
+        AABB punchBox = player.getBoundingBox().inflate(reach);
 
         AbstractKiProjectile best = null;
         double bestScore = -1.0;
         for (AbstractKiProjectile blast : level.getEntitiesOfClass(AbstractKiProjectile.class,
-                new AABB(eye, eye).inflate(reach), KiDeflect::deflectable)) {
+                punchBox.inflate(1.0), KiDeflect::deflectable)) {
             // Never your own shot: otherwise a player could fire and immediately punch it for a
             // free speed boost, which is not a mechanic anyone asked for. Identity by UUID, not by
             // reference — getOwner() resolves lazily and a null there would have let exactly that
             // through, and it is also what makes a blast unpunchable twice in a row.
             if (blast.isOwner(player)) continue;
 
+            AABB hit = blast.getBoundingBox().inflate(1.0);
+            boolean overlapping = punchBox.intersects(hit);
             Vec3 toBlast = blast.position().add(0.0, blast.getBbHeight() * 0.5, 0.0).subtract(eye);
             double distance = toBlast.length();
-            if (distance > reach || distance < 1.0e-3) continue;
+            if (!overlapping && (distance > reach || distance < 1.0e-3)) continue;
+            if (distance < 1.0e-3) {
+                distance = 1.0e-3;
+            }
             Vec3 toBlastDir = toBlast.scale(1.0 / distance);
 
             // Must be in front. A blast passing behind the player was already dodged, and
@@ -84,11 +91,12 @@ public final class KiDeflect {
             double facing = look.dot(toBlastDir);
             if (facing < XenoServerConfig.kiDeflectAimDot) continue;
 
-            // Must actually be coming at you. Without this, a shot already sailing past — or one
-            // someone else fired across your view — counts as deflectable, which turns a read into
-            // a vacuum that sweeps up any ki in front of the player.
-            Vec3 motion = blast.getDeltaMovement();
-            if (motion.lengthSqr() > 1.0e-6 && motion.normalize().dot(toBlastDir) > -0.1) continue;
+            // Close punches (2–3 blocks) skip the incoming-velocity test — the blast is already
+            // in the player's face. Farther shots still have to be coming toward you.
+            if (distance > 3.0) {
+                Vec3 motion = blast.getDeltaMovement();
+                if (motion.lengthSqr() > 1.0e-6 && motion.normalize().dot(toBlastDir) > -0.1) continue;
+            }
 
             // Prefer the one most directly ahead, then the nearest.
             double score = facing - distance * 0.05;
@@ -144,7 +152,17 @@ public final class KiDeflect {
 
     /** Skip anything already gone, and anything mid-clash — that is a different mechanic. */
     private static boolean deflectable(AbstractKiProjectile blast) {
-        return blast.isAlive() && !blast.isClashLocked();
+        if (blast == null || !blast.isAlive() || blast.isClashLocked()) {
+            return false;
+        }
+        try {
+            if (blast.isClashableBeam()) {
+                return false;
+            }
+        } catch (Throwable ignored) {
+            return false;
+        }
+        return true;
     }
 
     private static void deflect(ServerPlayer player, ServerLevel level, AbstractKiProjectile blast) {
@@ -159,6 +177,11 @@ public final class KiDeflect {
                 blast.getDeltaMovement().length() * XenoServerConfig.kiDeflectSpeedScale);
         blast.setDeltaMovement(aim.scale(speed));
         blast.hasImpulse = true;
+        // DMZ's clash geometry (BeamClashManager/ClashParticipant) is derived from the
+        // projectile's yaw/pitch, not its velocity. Without this, a deflected beam keeps
+        // reporting its pre-deflection facing and can be mis-tested against other beams.
+        blast.setYRot(CameraAimHelper.yaw(player, aim));
+        blast.setXRot(CameraAimHelper.pitch(aim));
 
         // Turning a shot around is worth more than surviving it, and it cost stamina to do.
         blast.setKiDamage(blast.getKiDamage() * XenoServerConfig.kiDeflectDamageScale);

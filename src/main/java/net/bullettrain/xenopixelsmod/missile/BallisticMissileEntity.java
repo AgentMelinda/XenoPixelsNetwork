@@ -87,7 +87,10 @@ public class BallisticMissileEntity extends Entity {
         m.dragCoefficient = BallisticCalculator.sanitizeDrag(dragCoefficient);
         m.boostTicksLeft = Math.max(5, boostTicks);
         m.terminalEnabled = terminal;
-        m.explosionPower = Mth.clamp(yield, 1f, 12f);
+        // Floor of 0 (not 1) so a yield-0 "inert"/practice round stays inert. The detonator only
+        // explodes when explosionPower > 0.05f; the old floor of 1.0 silently armed every round,
+        // including the default guidance yield of 0.
+        m.explosionPower = Mth.clamp(yield, 0f, 12f);
         m.ownerId = owner;
         double exitSpeed = BallisticTrajectory.boostExitSpeed(boostAccel, boostTicks);
         long eta = BallisticTrajectory.estimateEtaTicks(spawn, target, Math.max(0.25, exitSpeed * 0.5));

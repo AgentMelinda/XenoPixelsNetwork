@@ -37,5 +37,12 @@ public final class AeroCapabilities {
                 Capabilities.EnergyStorage.BLOCK,
                 ModBlockEntities.COPYCAT_GLOWSTONE.get(),
                 (CopycatGlowstoneBlockEntity be, Direction side) -> be.energy());
+        // A seat flying a small craft on its own draws power exactly as a controller does, so it
+        // needs to be a valid FE sink too.
+        event.registerBlockEntity(
+                Capabilities.EnergyStorage.BLOCK,
+                ModBlockEntities.PILOT_SEAT.get(),
+                (net.bullettrain.xenopixelsmod.block.entity.PilotSeatBlockEntity be, Direction side)
+                        -> be.aeroEnergy());
     }
 }

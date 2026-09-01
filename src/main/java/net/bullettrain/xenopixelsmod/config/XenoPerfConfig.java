@@ -56,6 +56,14 @@ public final class XenoPerfConfig {
     public static int statsSyncHeartbeatTicks = 40;
     public static boolean statsSyncOnlyWhenDirty = true;
 
+    /**
+     * Clamp Create {@code collideEntities} queries on Sable ships (any size) and
+     * skip item/XP scans. Off restores stock Sable+Create behaviour.
+     */
+    public static boolean sableContraptionCullEnabled = true;
+    /** Half-extent cap (blocks) for a rebuilt query around a Sable contraption. */
+    public static double sableContraptionMaxQueryExtent = 64.0;
+
     private XenoPerfConfig() {}
 
     public static void load() {
@@ -98,6 +106,8 @@ public final class XenoPerfConfig {
         d.statsSyncIntervalTicks = statsSyncIntervalTicks;
         d.statsSyncHeartbeatTicks = statsSyncHeartbeatTicks;
         d.statsSyncOnlyWhenDirty = statsSyncOnlyWhenDirty;
+        d.sableContraptionCullEnabled = sableContraptionCullEnabled;
+        d.sableContraptionMaxQueryExtent = sableContraptionMaxQueryExtent;
         return d;
     }
 
@@ -127,6 +137,9 @@ public final class XenoPerfConfig {
         statsSyncHeartbeatTicks = Math.max(statsSyncIntervalTicks, Math.min(200,
                 d.statsSyncHeartbeatTicks <= 0 ? 40 : d.statsSyncHeartbeatTicks));
         statsSyncOnlyWhenDirty = d.statsSyncOnlyWhenDirty;
+        sableContraptionCullEnabled = d.sableContraptionCullEnabled;
+        sableContraptionMaxQueryExtent = Math.max(16.0, Math.min(256.0,
+                d.sableContraptionMaxQueryExtent <= 0 ? 64.0 : d.sableContraptionMaxQueryExtent));
     }
 
     public static String statusLine() {
@@ -138,7 +151,9 @@ public final class XenoPerfConfig {
                 + " forceChunks=" + forceChunksEnabled
                 + " targetOnly=" + forceChunksTargetOnly
                 + " radius=" + forceChunksRadius
-                + " statsSync=" + statsSyncIntervalTicks + "t";
+                + " statsSync=" + statsSyncIntervalTicks + "t"
+                + " sableCull=" + sableContraptionCullEnabled
+                + " sableExtent=" + sableContraptionMaxQueryExtent;
     }
 
     /** Horizontal range cap in blocks, or {@link Double#MAX_VALUE} if unlimited. */
@@ -162,5 +177,7 @@ public final class XenoPerfConfig {
         public int statsSyncIntervalTicks = 10;
         public int statsSyncHeartbeatTicks = 40;
         public boolean statsSyncOnlyWhenDirty = true;
+        public boolean sableContraptionCullEnabled = true;
+        public double sableContraptionMaxQueryExtent = 64.0;
     }
 }

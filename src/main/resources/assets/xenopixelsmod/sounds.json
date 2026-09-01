@@ -8,5 +8,25 @@
         "stream": false
       }
     ]
+  },
+  "hakai_voice": {
+    "category": "player",
+    "subtitle": "subtitles.xenopixelsmod.hakai_voice",
+    "sounds": [
+      {
+        "name": "xenopixelsmod:hakai_voice",
+        "stream": false
+      }
+    ]
+  },
+  "hakai_charge": {
+    "category": "player",
+    "subtitle": "subtitles.xenopixelsmod.hakai_charge",
+    "sounds": [
+      {
+        "name": "xenopixelsmod:hakai_charge",
+        "stream": false
+      }
+    ]
   }
 }

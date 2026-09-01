@@ -27,5 +27,16 @@ public enum CombatFxKind {
     /** Vanish departure clap, paired with the existing {@code VanishShadeFx} silhouette. */
     VANISH_CLAP,
     /** Dash or chase launch. Motion cue only: a nudge and a cone of dust, no flash. */
-    DASH_LAUNCH
+    DASH_LAUNCH,
+    /**
+     * Charge-overcharge tier crossing. Appended — do not reorder earlier constants.
+     * A longer, slightly gold kick so a 400% charge reads different from a combo jab.
+     */
+    CHARGE_PEAK,
+    /**
+     * Hakai channel completes and the target is erased. Appended — do not reorder earlier
+     * constants. A slow, violet flash rather than a hard hit: the moment reads as absolute
+     * and final, not as an impact.
+     */
+    HAKAI_ERASE
 }

@@ -39,12 +39,20 @@ public final class OrbitalGravityConfig {
     /**
      * Cancel AeroStar's own orbital gravity handler when that mod is installed.
      *
-     * <p>Two systems both correcting gravity every physics tick would fight each other, and
-     * on Northstar Redux 0.6 AeroStar's handler crashes the server thread outright. Turn this
-     * off only if you are running the Redux 0.5.4 that AeroStar actually supports and would
-     * rather use its implementation than ours.
+     * <p>Two systems both correcting gravity every physics tick would fight each other, so
+     * exactly one has to own it. <b>Default is {@code false}: AeroStar owns ship gravity.</b>
+     * The {@code NorthstarDimensions} shim makes AeroStar's handler resolve and run correctly
+     * on Redux 0.6, so there is no longer a crash to avoid and its gravity is the behavior
+     * servers are already tuned around.
+     *
+     * <p>This default is deliberate and was learned the hard way. The mixin that performs the
+     * cancel silently failed to apply for a long time, so gravity was in practice always
+     * AeroStar's regardless of what this flag said. When the mixin was finally fixed, a
+     * {@code true} here flipped ownership to us for the first time and changed how every ship
+     * flew. Defaulting to {@code false} keeps the behavior that servers actually run with;
+     * turn it on to opt into our config-tunable per-dimension gravity instead.
      */
-    public static boolean overrideAeroStar = true;
+    public static boolean overrideAeroStar = false;
 
     /** Dimension id → gravity in m/s². */
     public static Map<String, Double> gravityByDimension = defaults();
@@ -127,7 +135,8 @@ public final class OrbitalGravityConfig {
 
     public static final class Data {
         public boolean enabled = true;
-        public boolean overrideAeroStar = true;
+        /** Must match {@link OrbitalGravityConfig#overrideAeroStar} — see its javadoc. */
+        public boolean overrideAeroStar = false;
         public Map<String, Double> gravityByDimension;
     }
 }

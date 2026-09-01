@@ -66,6 +66,69 @@ public final class HudDraw {
      * cluster and, because the source region is square while the cluster is wide and short,
      * also sampled well past the painted area.
      */
+    /**
+     * Stretch a standalone texture horizontally while keeping both end caps undistorted.
+     *
+     * <p>For chrome shaped {@code [cap][stretchable centre][cap]} — the Xenoverse button shells are
+     * exactly that, and the asset guide is explicit that stretching one whole distorts the angled
+     * ends and their glow.
+     *
+     * <p>Deliberately <b>not</b> {@link #blitNineSlice}: that takes a single symmetric corner inset,
+     * and these shells are not symmetric. The key pod on the left is 29% of the width while the
+     * chevron on the right is 16%, so a symmetric inset either crushes the pod or bleeds the
+     * chevron into the centre. Caps scale with height so their aspect is preserved, and are clamped
+     * so they cannot overlap on a narrow button.
+     */
+    public static void blitThreeSliceH(GuiGraphics g, ResourceLocation texture,
+                                       int x, int y, int w, int h,
+                                       int texW, int texH, float leftFrac, float rightFrac) {
+        if (w <= 0 || h <= 0 || texW <= 0 || texH <= 0) return;
+        int srcLeft = Math.max(1, Math.round(texW * leftFrac));
+        int srcRight = Math.max(1, Math.round(texW * rightFrac));
+        if (srcLeft + srcRight >= texW) {
+            g.blit(texture, x, y, w, h, 0f, 0f, texW, texH, texW, texH);
+            return;
+        }
+
+        int dstLeft = threeSliceCap(w, h, texW, texH, leftFrac, rightFrac, true);
+        int dstRight = threeSliceCap(w, h, texW, texH, leftFrac, rightFrac, false);
+        int dstCentre = Math.max(0, w - dstLeft - dstRight);
+
+        g.blit(texture, x, y, dstLeft, h, 0f, 0f, srcLeft, texH, texW, texH);
+        if (dstCentre > 0) {
+            g.blit(texture, x + dstLeft, y, dstCentre, h,
+                    srcLeft, 0f, texW - srcLeft - srcRight, texH, texW, texH);
+        }
+        g.blit(texture, x + dstLeft + dstCentre, y, dstRight, h,
+                texW - srcRight, 0f, srcRight, texH, texW, texH);
+    }
+
+    /**
+     * Width of one cap as {@link #blitThreeSliceH} will actually draw it.
+     *
+     * <p>Public because callers need to lay content out <em>inside</em> the shell — a key caption in
+     * the pod, a label in the stretched centre. The cap width is not simply {@code w * frac}: caps
+     * scale by <em>height</em> so their aspect survives, so anything positioning against them has to
+     * ask rather than recompute, or the text drifts off the chrome at some sizes.
+     */
+    public static int threeSliceCap(int w, int h, int texW, int texH,
+                                    float leftFrac, float rightFrac, boolean left) {
+        if (w <= 0 || h <= 0 || texW <= 0 || texH <= 0) return 0;
+        int srcLeft = Math.max(1, Math.round(texW * leftFrac));
+        int srcRight = Math.max(1, Math.round(texW * rightFrac));
+        if (srcLeft + srcRight >= texW) return 0;
+
+        float capScale = h / (float) texH;
+        int dstLeft = Math.max(1, Math.round(srcLeft * capScale));
+        int dstRight = Math.max(1, Math.round(srcRight * capScale));
+        if (dstLeft + dstRight > w) {
+            // No room for a centre: split what there is between the caps by their source ratio.
+            dstLeft = Math.max(1, Math.round(w * (srcLeft / (float) (srcLeft + srcRight))));
+            dstRight = Math.max(0, w - dstLeft);
+        }
+        return left ? dstLeft : dstRight;
+    }
+
     public static void blitNineSlice(GuiGraphics g, ResourceLocation atlas,
                                      XenoHudLayout.Region region, int x, int y, int w, int h,
                                      int corner) {

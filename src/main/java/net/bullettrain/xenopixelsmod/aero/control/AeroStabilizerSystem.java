@@ -156,6 +156,10 @@ public final class AeroStabilizerSystem {
             angularAcceleration.set(lastError).mul(KP).sub(
                     worldRate.x() * KD, worldRate.y() * KD, worldRate.z() * KD);
             double length = angularAcceleration.length();
+            // A NaN length fails every ">" comparison, so the clamp below would silently never
+            // fire for it — matching AeroControlSurfaceTorque.sane()'s "refuse outright" rule
+            // rather than letting a non-finite torque impulse reach Sable's rigid body at all.
+            if (!Double.isFinite(length)) return;
             if (length > MAX_ANGULAR_ACCEL) angularAcceleration.mul(MAX_ANGULAR_ACCEL / length);
 
             // Sable consumes model/body-space torque impulses.

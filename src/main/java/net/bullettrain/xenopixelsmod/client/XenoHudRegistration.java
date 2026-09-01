@@ -27,6 +27,10 @@ public final class XenoHudRegistration {
                 new net.bullettrain.xenopixelsmod.client.combat.fx.SparkingTintOverlay()::render);
         event.registerAbove(DMZ_TOP, ResourceLocation.fromNamespaceAndPath(XenoPixelsMod.MOD_ID, "xeno_speed_lines"),
                 new net.bullettrain.xenopixelsmod.client.combat.fx.SpeedLinesOverlay()::render);
+        event.registerAbove(DMZ_TOP, ResourceLocation.fromNamespaceAndPath(XenoPixelsMod.MOD_ID, "xeno_flight_hud"),
+                new net.bullettrain.xenopixelsmod.client.hud.XenoFlightHudOverlay()::render);
+        event.registerAbove(DMZ_TOP, ResourceLocation.fromNamespaceAndPath(XenoPixelsMod.MOD_ID, "xeno_crosshair_hud"),
+                new net.bullettrain.xenopixelsmod.client.hud.XenoCrosshairHudLayer()::render);
         // Last, so the impact flash washes over the HUD rather than under it — a flash the
         // health bars punch through reads as a rendering glitch instead of a hit.
         event.registerAbove(DMZ_TOP, ResourceLocation.fromNamespaceAndPath(XenoPixelsMod.MOD_ID, "xeno_combat_flash"),

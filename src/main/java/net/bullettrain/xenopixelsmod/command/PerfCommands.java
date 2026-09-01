@@ -41,6 +41,12 @@ public final class PerfCommands {
                                     "Perf config reloaded: " + XenoPerfConfig.statusLine()), true);
                             return 1;
                         }))
+                .then(Commands.literal("sablecull")
+                        .executes(ctx -> toggleSableCull(ctx.getSource()))
+                        .then(Commands.literal("status").executes(ctx -> status(ctx.getSource())))
+                        .then(Commands.literal("on").executes(ctx -> setSableCull(ctx.getSource(), true)))
+                        .then(Commands.literal("off").executes(ctx -> setSableCull(ctx.getSource(), false)))
+                        .then(Commands.literal("toggle").executes(ctx -> toggleSableCull(ctx.getSource()))))
                 .then(Commands.literal("set")
                         .then(Commands.argument("key", StringArgumentType.word())
                                 .then(Commands.argument("value", StringArgumentType.greedyString())
@@ -50,20 +56,47 @@ public final class PerfCommands {
                                                 StringArgumentType.getString(ctx, "value"))))))
                 .executes(ctx -> {
                     ctx.getSource().sendSuccess(() -> Component.literal(
-                            "Usage: /xenoperf <status|reload|set <key> <value>>\n"
+                            "Usage: /xenoperf <status|reload|sablecull [on|off|toggle]|set <key> <value>>\n"
                                     + "keys: maxrange (blocks, default 1000000=1000km, 0=unlimited),\n"
                                     + "  thrforce (default off), thralways, thrrange,\n"
                                     + "  forcechunks (default off), targetonly, radius, duration, playerange,\n"
-                                    + "  statsync, statsheartbeat, statsdirty"), false);
+                                    + "  statsync, statsheartbeat, statsdirty,\n"
+                                    + "  sablecull (true/false), sableextent (16-256 blocks)\n"
+                                    + "Client FPS: /sablecull on|off|toggle"), false);
                     return 1;
                 }));
+        d.register(Commands.literal("sablecull")
+                .requires(src -> src.hasPermission(2))
+                .then(Commands.literal("status").executes(ctx -> status(ctx.getSource())))
+                .then(Commands.literal("on").executes(ctx -> setSableCull(ctx.getSource(), true)))
+                .then(Commands.literal("off").executes(ctx -> setSableCull(ctx.getSource(), false)))
+                .then(Commands.literal("toggle").executes(ctx -> toggleSableCull(ctx.getSource())))
+                .executes(ctx -> toggleSableCull(ctx.getSource())));
     }
 
     private static int status(CommandSourceStack src) {
         src.sendSuccess(() -> Component.literal(
                 "§eXenoPixels Module Perf§r (no global VS2 ship sleep)\n"
-                        + XenoPerfConfig.statusLine()), false);
+                        + XenoPerfConfig.statusLine()
+                        + (XenoPerfConfig.sableContraptionCullEnabled
+                        ? ""
+                        : "\nsableCull off = stock server entity scan (MSPT). Client FPS uses /xenoclient set sablecull")), false);
         return 1;
+    }
+
+    private static int toggleSableCull(CommandSourceStack src) {
+        return setSableCull(src, !XenoPerfConfig.sableContraptionCullEnabled);
+    }
+
+    private static int setSableCull(CommandSourceStack src, boolean on) {
+        XenoPerfConfig.sableContraptionCullEnabled = on;
+        XenoPerfConfig.apply(XenoPerfConfig.snapshot());
+        XenoPerfConfig.save();
+        src.sendSuccess(() -> Component.literal(
+                "Server Sable ship cull: " + (on ? "ON" : "OFF")
+                        + (on ? "" : " (stock pose-exploded scan — MSPT will rise)")
+                        + ". Client FPS: /sablecull"), true);
+        return on ? 1 : 0;
     }
 
     private static int set(CommandSourceStack src, String key, String raw) {
@@ -85,6 +118,10 @@ public final class PerfCommands {
                 case "statsync", "statsyncinterval" -> XenoPerfConfig.statsSyncIntervalTicks = Integer.parseInt(raw);
                 case "statsheartbeat" -> XenoPerfConfig.statsSyncHeartbeatTicks = Integer.parseInt(raw);
                 case "statsdirty" -> XenoPerfConfig.statsSyncOnlyWhenDirty = parseBool(raw);
+                case "sablecull", "cull", "sablecontraptioncull" ->
+                        XenoPerfConfig.sableContraptionCullEnabled = parseBool(raw);
+                case "sableextent", "cullextent", "sablequeryextent" ->
+                        XenoPerfConfig.sableContraptionMaxQueryExtent = Double.parseDouble(raw.trim());
                 default -> {
                     src.sendFailure(Component.literal("Unknown key: " + key));
                     return 0;

@@ -34,6 +34,10 @@ public record AeroStateSnapshot(
         int drawFePerTick,
         int linkCount,
         int healthyLinkCount,
+        double flap,
+        double flapTarget,
+        boolean autoFlap,
+        boolean airBrake,
         String status
 ) {
     public static AeroStateSnapshot of(BlockPos pos, AeroBus bus) {
@@ -56,6 +60,10 @@ public record AeroStateSnapshot(
                 bus.drawFePerTick(),
                 bus.linkCount(),
                 bus.healthyLinkCount(),
+                bus.flap(),
+                bus.flapTarget(),
+                bus.autoFlap(),
+                bus.airBrakeEngaged(),
                 bus.status());
     }
 

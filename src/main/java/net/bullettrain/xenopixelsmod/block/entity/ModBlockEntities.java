@@ -37,6 +37,22 @@ public final class ModBlockEntities {
                     BlockEntityType.Builder.of(MissileTubeBlockEntity::new,
                             ModBlocks.MISSILE_TUBE.get()).build(null));
 
+    public static final DeferredHolder<BlockEntityType<?>, BlockEntityType<PilotSeatBlockEntity>> PILOT_SEAT =
+            BLOCK_ENTITIES.register("pilot_seat", () ->
+                    BlockEntityType.Builder.of(PilotSeatBlockEntity::new,
+                            ModBlocks.PILOT_SEAT.get()).build(null));
+
+    /** Shared by {@code WING_PANEL} and its two fixed-orientation subclasses
+     * ({@code WingFlapHorizontalBlock}/{@code WingFlapVerticalBlock}) — same block entity, same
+     * renderer (which matches on {@code instanceof WingPanelBlock}, true for all three), only
+     * where each is allowed to mount differs. */
+    public static final DeferredHolder<BlockEntityType<?>, BlockEntityType<WingPanelBlockEntity>> WING_PANEL =
+            BLOCK_ENTITIES.register("wing_panel", () ->
+                    BlockEntityType.Builder.of(WingPanelBlockEntity::new,
+                            ModBlocks.WING_PANEL.get(),
+                            ModBlocks.WING_FLAP_HORIZONTAL.get(),
+                            ModBlocks.WING_FLAP_VERTICAL.get()).build(null));
+
     private ModBlockEntities() {}
 
     public static void register(IEventBus bus) {

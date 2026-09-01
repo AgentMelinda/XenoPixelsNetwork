@@ -22,20 +22,44 @@ import java.util.concurrent.ConcurrentHashMap;
  */
 public final class XenoServerConfig {
     private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
-    private static final Path PATH = FMLPaths.CONFIGDIR.get().resolve("xenopixelsmod-server.json");
-    private static final int CURRENT_CONFIG_VERSION = 3;
+    /**
+     * Resolved on demand rather than in a static field.
+     *
+     * <p>{@code FMLPaths.CONFIGDIR} is only populated by a running FML, so resolving it at class
+     * load made merely <em>reading</em> a tuning value from this class impossible outside the game.
+     * Combat maths that reads config — {@code BeamSurgeState} — is unit-tested directly, and would
+     * otherwise die in the static initialiser before a single assertion ran.
+     */
+    private static Path path() {
+        return FMLPaths.CONFIGDIR.get().resolve("xenopixelsmod-server.json");
+    }
+    /**
+     * Bumped to 4 for the beam-surge curve keys.
+     *
+     * <p>New fields deserialize to their {@code Data} defaults in an older file, so behaviour is
+     * safe without a bump — but the file is never rewritten, so the keys stay invisible and nobody
+     * can discover or tune them. A bump is what gets them written out.
+     */
+    private static final int CURRENT_CONFIG_VERSION = 10;
 
     // --- HUD / DMZ ---
     /** When false, clients block DMZ vanilla HUD overlays. */
     public static boolean dmzHudEnabled = false;
     /** Install/patch DMZ form JSON + skill offerings on boot. */
     public static boolean dmzContentBootstrap = true;
+    /**
+     * CustomNPCs {@code npc.say()} / {@code saySurrounding}. Off mutes chat bubbles.
+     * Also silences {@code executeCommand} admin/OP feedback from NPC scripts.
+     */
+    public static boolean npcSayEnabled = true;
 
     // --- Combat master switches ---
     public static boolean bt3CombatEnabled = true;
     public static boolean bt3ComboEnabled = true;
     public static boolean bt3VanishEnabled = true;
     public static boolean bt3ChaseDashEnabled = true;
+    /** When true, chase dash flies the player to the target over several ticks instead of teleporting. */
+    public static boolean chaseFlightEnabled = true;
     public static boolean bt3BackstepEnabled = true;
     public static boolean bt3FinisherEnabled = true;
     public static boolean bt3ChargeAttackEnabled = true;
@@ -51,6 +75,21 @@ public final class XenoServerConfig {
     /** Client lock-on cycle next/prev (server flag allows the feature). */
     public static boolean bt3LockCycleEnabled = true;
     /**
+     * DMZ Z-lock acquire + persist ignore block occlusion. Synced to clients.
+     * Each client still has {@code XenoClientConfig.lockOnThroughBlocks} as a local opt-out.
+     */
+    public static boolean lockOnThroughBlocks = true;
+
+    /**
+     * A ki disk vanishes once it has landed its full hit budget.
+     *
+     * <p>DragonMineZ splits a disk's damage across {@code getMaxHits()} pulses and never removes
+     * it on contact, so a Kienzan that has already delivered everything it had keeps sitting in
+     * the target, dealing nothing and looking like it failed to despawn. Once the budget is
+     * spent the attack is finished by DMZ's own accounting, so this simply ends it there.
+     */
+    public static boolean kiDiskDespawnOnHitBudget = true;
+    /**
      * Combo string uses punch/uppercut anims only (no mixed DMZ kicks).
      * Still triggered by normal attack mash.
      */
@@ -65,6 +104,8 @@ public final class XenoServerConfig {
     public static boolean bt3UltimateEnabled = true;
     /** Sparking / limit-style meter. */
     public static boolean bt3SparkingEnabled = true;
+    /** Hakai erasure technique (Ctrl + left click). */
+    public static boolean hakaiEnabled = true;
     /** Transform impact ring when form changes. */
     public static boolean bt3TransformImpactEnabled = true;
 
@@ -123,13 +164,35 @@ public final class XenoServerConfig {
      */
     public static boolean thrusterImpulseGuardEnabled = true;
     /**
-     * Largest per-tick impulse magnitude a single thruster may apply.
+     * Largest per-tick impulse magnitude a single thruster (or, since it shares this cap, one
+     * wing panel's control-surface torque — see
+     * {@link net.bullettrain.xenopixelsmod.aero.control.AeroControlSurfaceTorque}) may apply.
      *
-     * <p>Normal full power is {@code maxForce × 1.0 × step} — with the 1,200,000 default force
-     * and a 60 Hz step that is about 20,000, so the 50,000 default leaves ample headroom for
-     * tuning while still catching a genuine runaway.
+     * <p>Normal full power is {@code maxForce × 1.0 × step} — with the current 3,000 default
+     * force (corrected down from a previous 1,200,000 that was producing ship-destroying
+     * impulses against this project's real block masses — see
+     * {@link net.bullettrain.xenopixelsmod.block.entity.ShipThrusterBlockEntity#DEFAULT_MAX_FORCE}'s
+     * own javadoc) and a 60 Hz step that is about 50, so this default leaves headroom for tuning
+     * while still catching a genuine runaway, in the same proportion the old 50,000 cap left over
+     * the old force default.
      */
-    public static double thrusterMaxImpulse = 50_000.0;
+    public static double thrusterMaxImpulse = 6_000.0;
+
+    // --- Manual-flight velocity ceiling ---
+    /**
+     * Keyboard-mode flight (see {@code AeroFlightCore.tick}'s own comment on why
+     * {@code AeroStabilizerSystem} is deliberately disabled there) has no steering assist and,
+     * before this cap existed, no ceiling at all on the ship's cumulative speed —
+     * {@code AeroControlSurfaceTorque}'s per-impulse guard only bounds a single tick's push, not
+     * what holding a key for a long time adds up to. Matches {@code AeroFlightDirector.MAX_SPEED},
+     * the autopilot's own equivalent ceiling, so manual and autopilot flight agree on "too fast."
+     */
+    public static double maxFlightSpeed = 28.0;
+    /** Same idea as {@link #maxFlightSpeed} but for spin rate, in rad/s — keyboard-mode yaw in
+     * particular has no natural aerodynamic damping ({@code AeroAeroModel} models no yaw/sideslip
+     * term), so nothing else stops an undamped spin from climbing without bound while a role
+     * panel stays deflected. */
+    public static double maxFlightAngularVelocity = 2.0;
 
     // --- Vanish shade (the black afterimage left behind on a vanish) ---
     /** Stamp a black humanoid silhouette with electric arcs where a vanish started. */
@@ -161,6 +224,14 @@ public final class XenoServerConfig {
     public static float ultimateKiCost = 35.0f;
     public static float ultimateDamageScale = 2.4f;
     public static int ultimateCooldownTicks = 200;
+    /** Ki cost to start a Hakai channel. Above Ultimate's, being the more extreme move. */
+    public static float hakaiKiCost = 60.0f;
+    /** Max distance from caster to target to start (and keep) a Hakai channel. */
+    public static double hakaiMaxRange = 15.0;
+    /** Hakai cooldown, in ticks, after a channel starts (success or cancel). */
+    public static int hakaiCooldownTicks = 600;
+    /** Ticks the Hakai channel takes to complete once started (~4s at 20 TPS). */
+    public static int hakaiChannelTicks = 80;
     public static float sparkingBuildPerHit = 6.0f;
     public static float sparkingBuildOnHurt = 3.0f;
     public static int sparkingDurationTicks = 100;
@@ -242,10 +313,25 @@ public final class XenoServerConfig {
     public static float kiOverchargeMultiplier = 1.0f;
     /** Cap on overcharge scale factor (1 + growth), e.g. 3.0 = triple max. */
     public static float kiOverchargeMaxScale = 3.0f;
+    /** Absolute synchronized limits used by DMZ technique validation and live projectiles. */
+    public static float kiProjectileMaxSize = 320.0f;
+    public static float kiProjectileMaxSpeed = 32.0f;
+    /** Runtime speed growth per release point above the overcharge threshold. */
+    public static float kiOverchargeSpeedPerPercent = 0.004f;
+    /** Opt-in: let damage/explosion growth follow visual scale instead of the legacy scale cap. */
+    public static boolean kiFullGameplayScaling = false;
+    /** Independent caps for DMZ's synchronous cubic block scans. */
+    public static float kiDestructionMaxRadius = 32.0f;
+    public static int kiDestructionBlocksPerTick = 4096;
 
     // --- Balance ---
     public static double vanishMaxRange = 7.0;
-    public static double chaseMaxRange = 14.0;
+    /** 0 = unlimited (BT3 chase after a launch). */
+    public static double chaseMaxRange = 0.0;
+    /** Chase-flight step distance per tick, in blocks. */
+    public static double chaseFlightSpeed = 1.2;
+    /** Chase-flight give-up window if the target is never reached. */
+    public static int chaseFlightTimeoutTicks = 400;
     public static double backstepMaxRange = 10.0;
     public static double chargeAttackRange = 5.0;
     public static double dragonDashRange = 16.0;
@@ -321,14 +407,13 @@ public final class XenoServerConfig {
      * to return fire loses by attrition.
      */
     public static boolean kiDeflectEnabled = true;
-    /** Reach in blocks. Slightly beyond melee, since the blast is moving toward you. */
-    public static float kiDeflectReach = 4.0f;
+    /** Reach in blocks. Punchable ki hitbox is this far from the player. */
+    public static float kiDeflectReach = 3.0f;
     /**
-     * How closely the player must be facing the blast, as a dot product. 0.55 is roughly a 57
-     * degree half-cone: generous enough to be usable at speed, tight enough that a blast passing
-     * behind you was genuinely dodged rather than punchable.
+     * How closely the player must be facing the blast, as a dot product. 0.2 is a wide cone
+     * so a blast 2–3 blocks away is still punchable without a pixel-perfect aim.
      */
-    public static float kiDeflectAimDot = 0.55f;
+    public static float kiDeflectAimDot = 0.2f;
     /** Returned speed as a multiple of the incoming speed. Above 1 rewards the read. */
     public static float kiDeflectSpeedScale = 1.15f;
     /** Floor on returned speed, so a nearly-stalled blast still travels somewhere. */
@@ -367,14 +452,95 @@ public final class XenoServerConfig {
     public static float beamSurgeStaminaPerTick = 0.5f;
     /** Extra cost at full surge, as a multiple. 1.0 means a maxed beam costs double. */
     public static float beamSurgeCostGrowth = 1.0f;
-    /** Beam thickness at full surge, as a fraction added to its baseline size. */
-    public static float beamSurgeSizeGain = 1.2f;
+    /**
+     * Beam thickness at full surge, as a fraction added to its baseline size.
+     *
+     * <p>This is the whole of what bounds a surged beam's thickness — {@link #kiProjectileMaxSize}
+     * sits far above it and never binds. Final size is
+     * {@code baseline * (1 + surge * beamSurgeSizeGain)}, and surge tops out at 1.0, so the largest
+     * a beam can ever get is {@code baseline * (1 + beamSurgeSizeGain)}. At the old 1.2 a typical
+     * baseline of 1.0 could not exceed 2.2 no matter how long it was held, which read as a hard
+     * lock rather than a tuning value. To pick a value: {@code gain = target / baseline - 1}.
+     */
+    public static float beamSurgeSizeGain = 9.0f;
     /** Damage at full surge, as a fraction added to its baseline. */
     public static float beamSurgeDamageGain = 1.5f;
     /** Length growth per tick at full surge, as a fraction added to its baseline. */
     public static float beamSurgeReachGain = 0.8f;
     /** How far from the player to look for their own wave. A wave is anchored at its origin. */
     public static float beamSurgeSearchRadius = 30.0f;
+
+    /**
+     * The surge curve: how much growth a beam can reach, and how fast it gets there.
+     *
+     * <p>The ramp is asymptotic, so these are the ceiling it approaches rather than a hard stop.
+     * A beam at zero mastery only receives {@link #beamSurgeCeiling} of the configured maxima no
+     * matter how long it is held — raise it to let unpractised players reach full growth.
+     */
+    public static float beamSurgeCeiling = 0.45f;
+    /** Extra ceiling per beam-mastery level. The total is still clamped to 1.0. */
+    public static float beamSurgeCeilingPerMastery = 0.183f;
+    /** Fraction of the remaining gap to the ceiling closed per tick at zero mastery. */
+    public static float beamSurgeRampPerTick = 0.020f;
+    /** Extra gap-closing per tick per beam-mastery level. */
+    public static float beamSurgeRampPerMastery = 0.010f;
+    /**
+     * Hard ceiling on how long any ki wave or laser may grow, in blocks. Zero or less is uncapped.
+     *
+     * <p>Neither DragonMineZ nor the surge system caps total beam length — a wave adds its speed to
+     * its length every tick for as long as it lives, so a sustained beam reaches as far as its
+     * owner can pay for. This is the server's stop.
+     */
+    public static float beamSurgeMaxLength = 192.0f;
+
+    /**
+     * Extra fire ticks on a type-9 ki volley emitter at Volley Mastery 1 / 2 / 3.
+     * Child pellets keep their own life. 0 disables that level's bonus.
+     */
+    public static int barrageExtraTicks1 = 20;
+    public static int barrageExtraTicks2 = 45;
+    public static int barrageExtraTicks3 = 80;
+    /**
+     * Base fire ticks for a barrage emitter. 0 keeps DMZ's {@code 50 × charge}.
+     * Volley Mastery then adds {@link #barrageExtraTicks1}/{@code 2}/{@code 3}.
+     */
+    public static int barrageDurationTicks = 0;
+    /**
+     * Fire window for every ki type. 0 keeps {@code TechniqueDispatcher}'s
+     * {@code base × charge}. Per-type values in {@link #kiDurationByType} win.
+     */
+    public static int kiDurationTicks = 0;
+    public static final java.util.Map<String, Integer> kiDurationByType = new java.util.LinkedHashMap<>();
+    /**
+     * Base cooldown ticks after a barrage. 0 keeps the technique's own cooldown.
+     * Volley Mastery then subtracts {@link #barrageCooldownReduce1}/{@code 2}/{@code 3}.
+     */
+    public static int barrageCooldownTicks = 0;
+    public static int barrageCooldownReduce1 = 20;
+    public static int barrageCooldownReduce2 = 40;
+    public static int barrageCooldownReduce3 = 60;
+    /**
+     * Ki drained each tick while a lengthened volley is firing. 0 = no extra cost.
+     * Running out discards the emitter the same way a beam that cannot pay stops surging.
+     */
+    public static float barrageKiPerTick = 0.4f;
+
+    /**
+     * How far your own ki may be and still accept Guidance. 0 uses
+     * {@code KiGuidanceMath} defaults (192 + 48 × level).
+     */
+    public static int guidanceControlRange = 0;
+    /**
+     * Camera-steer turn override, 0..1. 0 keeps the skill curve
+     * ({@code BASE_TURN + TURN_PER_LEVEL × level}).
+     */
+    public static float guidanceTurnRate = 0.0f;
+    /** Look-ray velocity blend per tick. 0 keeps {@code CAMERA_VEL_RATE} (0.38). */
+    public static float guidanceCameraRate = 0.38f;
+    /** Extra ticks Guidance stays armed after the hold packet. 0 keeps 8. */
+    public static int guidanceHoldGraceTicks = 8;
+    /** Minimum look-ray travel in blocks. 0 keeps 8. */
+    public static float guidanceLookRayMin = 8.0f;
 
     /**
      * The sparking aura: rising ki shell, ground debris and lightning arcs while sparking.
@@ -391,12 +557,15 @@ public final class XenoServerConfig {
      * permissions, so region owners/members are unaffected.
      * Names are YAWP flag ids as used by {@code /wp flag add}; unknown names are ignored
      * (with a warning) so a YAWP update that renames a flag cannot break ki combat.
+     *
+     * <p>Default is empty: claimed regions no longer silently starve non-owner ki just because
+     * vanilla {@code break-blocks} is denied. Operators who want that mapping can put
+     * {@code break-blocks} / {@code explosions-blocks} back in the JSON. An already-saved
+     * config that listed those flags is left unchanged.
      */
-    public static java.util.List<String> yawpPlayerKiFlags =
-            new java.util.ArrayList<>(java.util.List.of("break-blocks", "explosions-blocks"));
+    public static java.util.List<String> yawpPlayerKiFlags = new java.util.ArrayList<>();
     /** YAWP flags consulted for ki griefing caused by a mob or an unowned projectile. */
-    public static java.util.List<String> yawpMobKiFlags =
-            new java.util.ArrayList<>(java.util.List.of("mob-griefing", "explosions-blocks"));
+    public static java.util.List<String> yawpMobKiFlags = new java.util.ArrayList<>();
     /**
      * Radius in blocks around a DMZ master treated as protected by the
      * {@code ki-griefing-masters} region flag. 0 disables master-aware ki protection.
@@ -407,28 +576,121 @@ public final class XenoServerConfig {
      */
     public static double masterKiGriefRadius = 24.0;
 
+    // --- charge overcharge (hold past DMZ's 175% cap) ---
+
+    /**
+     * Let eligible players keep charging a ki technique past DragonMineZ's 175% cap.
+     *
+     * <p>This is not {@link #kiOverchargeEnabled} (power-release scaling). Instant casts
+     * stay at 100% — DMZ fires them itself.
+     */
+    public static boolean chargeOverchargeEnabled = true;
+    /** Gameplay ceiling in percent points. Hard-clamped 200–2000. */
+    public static float chargeOverchargeMaxPercent = 1000.0f;
+    /** {@code StatsData.getLevel()} gate. 0 = everyone. */
+    public static int chargeOverchargeMinLevel = 0;
+    /** Size / life / explosion growth per percent above 175. */
+    public static float chargeOverchargeSizePerPercent = 0.004f;
+    /** Speed growth per percent above 175. */
+    public static float chargeOverchargeSpeedPerPercent = 0.001f;
+    /**
+     * Soft cap on the extra damage factor applied on top of DMZ's 1.75×.
+     * Ignored when {@link #kiFullGameplayScaling} is on.
+     */
+    public static float chargeOverchargeMaxDamageScale = 4.0f;
+    /** Dampened form-size factor. Combined with {@link #chargeFormSizeLogCap}. */
+    public static float chargeFormSizeFactor = 0.25f;
+    /** {@code ln(formMult)} is capped here so a 1000× form cannot blow the projectile up. */
+    public static float chargeFormSizeLogCap = 4.0f;
+    /**
+     * Optional extra size factor per form. Keys: {@code group.form} or short form id.
+     * Missing = 1.0.
+     */
+    public static final Map<String, Float> chargeFormSizeByForm = new ConcurrentHashMap<>();
+    /**
+     * Master switch for charge craters, flying rocks, and disk slices.
+     *
+     * <p>Off by default — overcharge visuals and the 1000% cap work without breaking the world.
+     */
+    public static boolean chargeOverchargeGriefEnabled = false;
+    public static float chargeOverchargeCraterMinPercent = 250.0f;
+    public static int chargeOverchargeCraterMaxRadius = 4;
+    public static int chargeOverchargeCraterIntervalTicks = 10;
+    public static int chargeOverchargeMaxRocks = 4;
+    public static boolean chargeOverchargeDiskSliceEnabled = true;
+    public static boolean chargeOverchargeCameraEnabled = true;
+    public static boolean chargeOverchargeVoicesEnabled = false;
+
     private XenoServerConfig() {}
 
     public static void load() {
-        if (!Files.exists(PATH)) {
+        if (!Files.exists(path())) {
             save();
             return;
         }
-        try (Reader reader = Files.newBufferedReader(PATH)) {
+        try (Reader reader = Files.newBufferedReader(path())) {
             Data data = GSON.fromJson(reader, Data.class);
             if (data == null) return;
             boolean migrated = data.configVersion < CURRENT_CONFIG_VERSION;
             apply(data);
             if (migrated) {
                 // Guard stays enabled; the client now owns it on a dedicated non-Use key.
-                boolean wasDisabled = !bt3GuardEnabled;
-                bt3GuardEnabled = true;
+                // Scoped to files older than 3: this fired once, for the release that moved Guard
+                // off right-click. Every later bump would otherwise re-enable it again and undo a
+                // server owner's deliberate choice for a reason that no longer applies.
+                boolean wasDisabled = data.configVersion < 3 && !bt3GuardEnabled;
+                if (wasDisabled) bt3GuardEnabled = true;
                 if (wasDisabled) {
                     XenoPixelsMod.LOGGER.info(
                             "Config migration re-enabled bt3GuardEnabled: Guard no longer takes"
                                     + " right-click, so the reason to disable it is gone. Set it"
                                     + " back to false in xenopixelsmod-server.json if you still"
                                     + " want it off.");
+                }
+                // A file written before 4 pins the old beamSurgeSizeGain of 1.2, which capped a
+                // surged beam at 2.2x its baseline however long it was held — a hard stop rather
+                // than a tuning value. Raising only a file still sitting on exactly that old
+                // default leaves a deliberately chosen number alone.
+                if (data.configVersion < 4 && beamSurgeSizeGain == 1.2f) {
+                    beamSurgeSizeGain = 9.0f;
+                    XenoPixelsMod.LOGGER.info(
+                            "Config migration raised beamSurgeSizeGain 1.2 -> 9.0: a fully surged"
+                                    + " beam can now reach 10x its baseline thickness instead of"
+                                    + " 2.2x. Lower it in xenopixelsmod-server.json to taste.");
+                }
+                if (data.configVersion < 8) {
+                    if (data.chaseMaxRange == 14.0) {
+                        chaseMaxRange = 0.0;
+                    }
+                    if (!data.chaseFlightEnabled) {
+                        chaseFlightEnabled = true;
+                    }
+                    if (data.chaseFlightSpeed == 0.9) {
+                        chaseFlightSpeed = 1.2;
+                    }
+                    if (data.chaseFlightTimeoutTicks == 60) {
+                        chaseFlightTimeoutTicks = 400;
+                    }
+                    XenoPixelsMod.LOGGER.info(
+                            "Config migration: BT3 chase is fly-to-target, unlimited range,"
+                                    + " speed 1.2, timeout 400. Set chaseMaxRange in"
+                                    + " xenopixelsmod-server.json to cap it.");
+                }
+                if (data.configVersion < 9 && data.kiDeflectAimDot == 0.55f) {
+                    kiDeflectAimDot = 0.2f;
+                    XenoPixelsMod.LOGGER.info(
+                            "Config migration: kiDeflectAimDot 0.55 -> 0.2 so punches at 2-3"
+                                    + " blocks land on ki blasts.");
+                }
+                // The version-8 migration above set this to 3.5 (~70 blocks/sec), which resolves
+                // a normal chase gap in 1-3 ticks -- imperceptible as travel, so it looked like
+                // the old instant teleport it was meant to replace. Only reset installs still
+                // sitting on that value; a deliberate admin override is left alone.
+                if (data.configVersion < 10 && data.chaseFlightSpeed == 3.5) {
+                    chaseFlightSpeed = 1.2;
+                    XenoPixelsMod.LOGGER.info(
+                            "Config migration: chaseFlightSpeed 3.5 -> 1.2 so chase-dash reads as"
+                                    + " a glide instead of a teleport.");
                 }
                 save();
             }
@@ -438,9 +700,13 @@ public final class XenoServerConfig {
     }
 
     public static void save() {
+        // Every form-scale writer routes through here, so this is the one place the memo has to
+        // be dropped. Invalidating per-mutation instead would be one missed call away from
+        // silently serving stale multipliers.
+        invalidateFormScaleCache();
         try {
-            Files.createDirectories(PATH.getParent());
-            try (Writer writer = Files.newBufferedWriter(PATH)) {
+            Files.createDirectories(path().getParent());
+            try (Writer writer = Files.newBufferedWriter(path())) {
                 GSON.toJson(snapshot(), writer);
             }
         } catch (IOException e) {
@@ -453,10 +719,12 @@ public final class XenoServerConfig {
         d.configVersion = CURRENT_CONFIG_VERSION;
         d.dmzHudEnabled = dmzHudEnabled;
         d.dmzContentBootstrap = dmzContentBootstrap;
+        d.npcSayEnabled = npcSayEnabled;
         d.bt3CombatEnabled = bt3CombatEnabled;
         d.bt3ComboEnabled = bt3ComboEnabled;
         d.bt3VanishEnabled = bt3VanishEnabled;
         d.bt3ChaseDashEnabled = bt3ChaseDashEnabled;
+        d.chaseFlightEnabled = chaseFlightEnabled;
         d.bt3BackstepEnabled = bt3BackstepEnabled;
         d.bt3FinisherEnabled = bt3FinisherEnabled;
         d.bt3ChargeAttackEnabled = bt3ChargeAttackEnabled;
@@ -466,12 +734,19 @@ public final class XenoServerConfig {
         d.bt3KiBlastCancelEnabled = bt3KiBlastCancelEnabled;
         d.bt3ZBurstEnabled = bt3ZBurstEnabled;
         d.bt3LockCycleEnabled = bt3LockCycleEnabled;
+        d.lockOnThroughBlocks = lockOnThroughBlocks;
+        d.kiDiskDespawnOnHitBudget = kiDiskDespawnOnHitBudget;
         d.bt3ComboPunchesOnly = bt3ComboPunchesOnly;
         d.protectDmzMasters = protectDmzMasters;
         d.bt3RushChainEnabled = bt3RushChainEnabled;
         d.bt3SonicSwayEnabled = bt3SonicSwayEnabled;
         d.bt3UltimateEnabled = bt3UltimateEnabled;
         d.bt3SparkingEnabled = bt3SparkingEnabled;
+        d.hakaiEnabled = hakaiEnabled;
+        d.hakaiKiCost = hakaiKiCost;
+        d.hakaiMaxRange = hakaiMaxRange;
+        d.hakaiCooldownTicks = hakaiCooldownTicks;
+        d.hakaiChannelTicks = hakaiChannelTicks;
         d.bt3TransformImpactEnabled = bt3TransformImpactEnabled;
         d.trainingDummyEnabled = trainingDummyEnabled;
         d.parallelQuestEnabled = parallelQuestEnabled;
@@ -484,6 +759,8 @@ public final class XenoServerConfig {
         d.missileTerminalGravityCompensation = missileTerminalGravityCompensation;
         d.thrusterImpulseGuardEnabled = thrusterImpulseGuardEnabled;
         d.thrusterMaxImpulse = thrusterMaxImpulse;
+        d.maxFlightSpeed = maxFlightSpeed;
+        d.maxFlightAngularVelocity = maxFlightAngularVelocity;
         d.vanishShadeEnabled = vanishShadeEnabled;
         d.vanishShadeDensity = vanishShadeDensity;
         d.vanishThunderVolume = vanishThunderVolume;
@@ -533,8 +810,16 @@ public final class XenoServerConfig {
         d.kiOverchargeExplosionPerPercent = kiOverchargeExplosionPerPercent;
         d.kiOverchargeMultiplier = kiOverchargeMultiplier;
         d.kiOverchargeMaxScale = kiOverchargeMaxScale;
+        d.kiProjectileMaxSize = kiProjectileMaxSize;
+        d.kiProjectileMaxSpeed = kiProjectileMaxSpeed;
+        d.kiOverchargeSpeedPerPercent = kiOverchargeSpeedPerPercent;
+        d.kiFullGameplayScaling = kiFullGameplayScaling;
+        d.kiDestructionMaxRadius = kiDestructionMaxRadius;
+        d.kiDestructionBlocksPerTick = kiDestructionBlocksPerTick;
         d.vanishMaxRange = vanishMaxRange;
         d.chaseMaxRange = chaseMaxRange;
+        d.chaseFlightSpeed = chaseFlightSpeed;
+        d.chaseFlightTimeoutTicks = chaseFlightTimeoutTicks;
         d.backstepMaxRange = backstepMaxRange;
         d.chargeAttackRange = chargeAttackRange;
         d.dragonDashRange = dragonDashRange;
@@ -578,11 +863,49 @@ public final class XenoServerConfig {
         d.beamSurgeDamageGain = beamSurgeDamageGain;
         d.beamSurgeReachGain = beamSurgeReachGain;
         d.beamSurgeSearchRadius = beamSurgeSearchRadius;
+        d.beamSurgeCeiling = beamSurgeCeiling;
+        d.beamSurgeCeilingPerMastery = beamSurgeCeilingPerMastery;
+        d.beamSurgeRampPerTick = beamSurgeRampPerTick;
+        d.beamSurgeRampPerMastery = beamSurgeRampPerMastery;
+        d.beamSurgeMaxLength = beamSurgeMaxLength;
+        d.barrageExtraTicks1 = barrageExtraTicks1;
+        d.barrageExtraTicks2 = barrageExtraTicks2;
+        d.barrageExtraTicks3 = barrageExtraTicks3;
+        d.barrageDurationTicks = barrageDurationTicks;
+        d.kiDurationTicks = kiDurationTicks;
+        d.kiDurationByType = new java.util.LinkedHashMap<>(kiDurationByType);
+        d.barrageCooldownTicks = barrageCooldownTicks;
+        d.barrageCooldownReduce1 = barrageCooldownReduce1;
+        d.barrageCooldownReduce2 = barrageCooldownReduce2;
+        d.barrageCooldownReduce3 = barrageCooldownReduce3;
+        d.barrageKiPerTick = barrageKiPerTick;
+        d.guidanceControlRange = guidanceControlRange;
+        d.guidanceTurnRate = guidanceTurnRate;
+        d.guidanceCameraRate = guidanceCameraRate;
+        d.guidanceHoldGraceTicks = guidanceHoldGraceTicks;
+        d.guidanceLookRayMin = guidanceLookRayMin;
         d.sparkingAuraEnabled = sparkingAuraEnabled;
         d.sparkingAuraDensity = sparkingAuraDensity;
         d.yawpPlayerKiFlags = new java.util.ArrayList<>(yawpPlayerKiFlags);
         d.yawpMobKiFlags = new java.util.ArrayList<>(yawpMobKiFlags);
         d.masterKiGriefRadius = masterKiGriefRadius;
+        d.chargeOverchargeEnabled = chargeOverchargeEnabled;
+        d.chargeOverchargeMaxPercent = chargeOverchargeMaxPercent;
+        d.chargeOverchargeMinLevel = chargeOverchargeMinLevel;
+        d.chargeOverchargeSizePerPercent = chargeOverchargeSizePerPercent;
+        d.chargeOverchargeSpeedPerPercent = chargeOverchargeSpeedPerPercent;
+        d.chargeOverchargeMaxDamageScale = chargeOverchargeMaxDamageScale;
+        d.chargeFormSizeFactor = chargeFormSizeFactor;
+        d.chargeFormSizeLogCap = chargeFormSizeLogCap;
+        d.chargeFormSizeByForm = new LinkedHashMap<>(chargeFormSizeByForm);
+        d.chargeOverchargeGriefEnabled = chargeOverchargeGriefEnabled;
+        d.chargeOverchargeCraterMinPercent = chargeOverchargeCraterMinPercent;
+        d.chargeOverchargeCraterMaxRadius = chargeOverchargeCraterMaxRadius;
+        d.chargeOverchargeCraterIntervalTicks = chargeOverchargeCraterIntervalTicks;
+        d.chargeOverchargeMaxRocks = chargeOverchargeMaxRocks;
+        d.chargeOverchargeDiskSliceEnabled = chargeOverchargeDiskSliceEnabled;
+        d.chargeOverchargeCameraEnabled = chargeOverchargeCameraEnabled;
+        d.chargeOverchargeVoicesEnabled = chargeOverchargeVoicesEnabled;
         return d;
     }
 
@@ -590,10 +913,12 @@ public final class XenoServerConfig {
         if (d == null) return;
         dmzHudEnabled = d.dmzHudEnabled;
         dmzContentBootstrap = d.dmzContentBootstrap;
+        npcSayEnabled = d.npcSayEnabled;
         bt3CombatEnabled = d.bt3CombatEnabled;
         bt3ComboEnabled = d.bt3ComboEnabled;
         bt3VanishEnabled = d.bt3VanishEnabled;
         bt3ChaseDashEnabled = d.bt3ChaseDashEnabled;
+        chaseFlightEnabled = d.chaseFlightEnabled;
         bt3BackstepEnabled = d.bt3BackstepEnabled;
         bt3FinisherEnabled = d.bt3FinisherEnabled;
         bt3ChargeAttackEnabled = d.bt3ChargeAttackEnabled;
@@ -603,12 +928,15 @@ public final class XenoServerConfig {
         bt3KiBlastCancelEnabled = d.bt3KiBlastCancelEnabled;
         bt3ZBurstEnabled = d.bt3ZBurstEnabled;
         bt3LockCycleEnabled = d.bt3LockCycleEnabled;
+        lockOnThroughBlocks = d.lockOnThroughBlocks == null || d.lockOnThroughBlocks;
+        kiDiskDespawnOnHitBudget = d.kiDiskDespawnOnHitBudget == null || d.kiDiskDespawnOnHitBudget;
         bt3ComboPunchesOnly = d.bt3ComboPunchesOnly;
         protectDmzMasters = d.protectDmzMasters;
         bt3RushChainEnabled = d.bt3RushChainEnabled;
         bt3SonicSwayEnabled = d.bt3SonicSwayEnabled;
         bt3UltimateEnabled = d.bt3UltimateEnabled;
         bt3SparkingEnabled = d.bt3SparkingEnabled;
+        hakaiEnabled = d.hakaiEnabled;
         bt3TransformImpactEnabled = d.bt3TransformImpactEnabled;
         trainingDummyEnabled = d.trainingDummyEnabled;
         parallelQuestEnabled = d.parallelQuestEnabled;
@@ -624,7 +952,10 @@ public final class XenoServerConfig {
         missileTerminalGravityCompensation = d.missileTerminalGravityCompensation;
         thrusterImpulseGuardEnabled = d.thrusterImpulseGuardEnabled;
         // A zero or negative cap would clamp every thruster to nothing; treat it as "unset".
-        thrusterMaxImpulse = d.thrusterMaxImpulse > 0.0 ? d.thrusterMaxImpulse : 50_000.0;
+        thrusterMaxImpulse = d.thrusterMaxImpulse > 0.0 ? d.thrusterMaxImpulse : 6_000.0;
+        // Zero/negative would clamp every ship to a standstill; treat as "unset" the same way.
+        maxFlightSpeed = d.maxFlightSpeed > 0.0 ? d.maxFlightSpeed : 28.0;
+        maxFlightAngularVelocity = d.maxFlightAngularVelocity > 0.0 ? d.maxFlightAngularVelocity : 2.0;
         vanishShadeEnabled = d.vanishShadeEnabled;
         vanishShadeDensity = Math.max(0.0, Math.min(3.0, d.vanishShadeDensity));
         vanishThunderVolume = Math.max(0.0, Math.min(1.0, d.vanishThunderVolume));
@@ -641,6 +972,10 @@ public final class XenoServerConfig {
         ultimateKiCost = Math.max(0f, d.ultimateKiCost);
         ultimateDamageScale = d.ultimateDamageScale > 0f ? d.ultimateDamageScale : 2.4f;
         ultimateCooldownTicks = Math.max(40, Math.min(600, d.ultimateCooldownTicks <= 0 ? 200 : d.ultimateCooldownTicks));
+        hakaiKiCost = Math.max(0f, d.hakaiKiCost > 0f ? d.hakaiKiCost : 60.0f);
+        hakaiMaxRange = d.hakaiMaxRange > 0 ? d.hakaiMaxRange : 15.0;
+        hakaiCooldownTicks = Math.max(40, Math.min(2400, d.hakaiCooldownTicks <= 0 ? 600 : d.hakaiCooldownTicks));
+        hakaiChannelTicks = Math.max(10, Math.min(400, d.hakaiChannelTicks <= 0 ? 80 : d.hakaiChannelTicks));
         sparkingBuildPerHit = Math.max(0f, d.sparkingBuildPerHit);
         sparkingBuildOnHurt = Math.max(0f, d.sparkingBuildOnHurt);
         sparkingDurationTicks = Math.max(20, Math.min(400, d.sparkingDurationTicks <= 0 ? 100 : d.sparkingDurationTicks));
@@ -674,8 +1009,16 @@ public final class XenoServerConfig {
         kiOverchargeExplosionPerPercent = Math.max(0f, d.kiOverchargeExplosionPerPercent);
         kiOverchargeMultiplier = d.kiOverchargeMultiplier > 0f ? d.kiOverchargeMultiplier : 1f;
         kiOverchargeMaxScale = d.kiOverchargeMaxScale > 1f ? d.kiOverchargeMaxScale : 3f;
+        kiProjectileMaxSize = positiveFinite(d.kiProjectileMaxSize, 320f);
+        kiProjectileMaxSpeed = positiveFinite(d.kiProjectileMaxSpeed, 32f);
+        kiOverchargeSpeedPerPercent = nonNegativeFinite(d.kiOverchargeSpeedPerPercent, 0.004f);
+        kiFullGameplayScaling = d.kiFullGameplayScaling;
+        kiDestructionMaxRadius = positiveFinite(d.kiDestructionMaxRadius, 32f);
+        kiDestructionBlocksPerTick = Math.max(64, d.kiDestructionBlocksPerTick);
         vanishMaxRange = d.vanishMaxRange > 0 ? d.vanishMaxRange : 7.0;
-        chaseMaxRange = d.chaseMaxRange > 0 ? d.chaseMaxRange : 14.0;
+        chaseMaxRange = d.chaseMaxRange < 0 ? 0.0 : d.chaseMaxRange;
+        chaseFlightSpeed = d.chaseFlightSpeed > 0 ? d.chaseFlightSpeed : 3.5;
+        chaseFlightTimeoutTicks = d.chaseFlightTimeoutTicks > 0 ? d.chaseFlightTimeoutTicks : 400;
         backstepMaxRange = d.backstepMaxRange > 0 ? d.backstepMaxRange : 10.0;
         chargeAttackRange = d.chargeAttackRange > 0 ? d.chargeAttackRange : 5.0;
         dragonDashRange = d.dragonDashRange > 0 ? d.dragonDashRange : 16.0;
@@ -724,6 +1067,39 @@ public final class XenoServerConfig {
         beamSurgeDamageGain = Math.max(0f, d.beamSurgeDamageGain);
         beamSurgeReachGain = Math.max(0f, d.beamSurgeReachGain);
         beamSurgeSearchRadius = Math.max(2f, d.beamSurgeSearchRadius);
+        // Clamped to 0..1: the manager scales every other configured maximum against this surge,
+        // so a ceiling above 1 would silently multiply size, damage and reach past their own caps.
+        beamSurgeCeiling = clamp01(d.beamSurgeCeiling, 0.45f);
+        beamSurgeCeilingPerMastery = clamp01(d.beamSurgeCeilingPerMastery, 0.183f);
+        // A ramp of 0 would freeze surge at zero forever, so the floor is a slow but real climb.
+        beamSurgeRampPerTick = Math.min(1f, Math.max(0.001f,
+                nonNegativeFinite(d.beamSurgeRampPerTick, 0.020f)));
+        beamSurgeRampPerMastery = Math.min(1f, nonNegativeFinite(d.beamSurgeRampPerMastery, 0.010f));
+        // Negative or zero means uncapped, so this only rejects a NaN.
+        beamSurgeMaxLength = Float.isFinite(d.beamSurgeMaxLength) ? d.beamSurgeMaxLength : 192f;
+        barrageExtraTicks1 = Math.max(0, d.barrageExtraTicks1);
+        barrageExtraTicks2 = Math.max(0, d.barrageExtraTicks2);
+        barrageExtraTicks3 = Math.max(0, d.barrageExtraTicks3);
+        barrageDurationTicks = Math.max(0, d.barrageDurationTicks);
+        kiDurationTicks = Math.max(0, d.kiDurationTicks);
+        kiDurationByType.clear();
+        if (d.kiDurationByType != null) {
+            for (java.util.Map.Entry<String, Integer> e : d.kiDurationByType.entrySet()) {
+                if (e.getKey() == null || e.getValue() == null) continue;
+                kiDurationByType.put(e.getKey().toLowerCase(), clampBarrageTicks(e.getValue()));
+            }
+        }
+        barrageCooldownTicks = Math.max(0, d.barrageCooldownTicks);
+        barrageCooldownReduce1 = Math.max(0, d.barrageCooldownReduce1);
+        barrageCooldownReduce2 = Math.max(0, d.barrageCooldownReduce2);
+        barrageCooldownReduce3 = Math.max(0, d.barrageCooldownReduce3);
+        barrageKiPerTick = Math.max(0f, d.barrageKiPerTick);
+        guidanceControlRange = Math.max(0, d.guidanceControlRange);
+        guidanceTurnRate = clamp01(d.guidanceTurnRate, 0.0f);
+        guidanceCameraRate = nonNegativeFinite(d.guidanceCameraRate, 0.38f);
+        guidanceHoldGraceTicks = Math.max(0, Math.min(40, d.guidanceHoldGraceTicks));
+        guidanceLookRayMin = nonNegativeFinite(d.guidanceLookRayMin, 8.0f);
+        applyGuidanceOverrides();
         sparkingAuraEnabled = d.sparkingAuraEnabled;
         sparkingAuraDensity = Math.max(0f, Math.min(3f, d.sparkingAuraDensity));
         // A missing list means "config written before this option existed" - keep the defaults.
@@ -737,6 +1113,34 @@ public final class XenoServerConfig {
         if (d.masterKiGriefRadius != null) {
             masterKiGriefRadius = Math.max(0.0, Math.min(256.0, d.masterKiGriefRadius));
         }
+        chargeOverchargeEnabled = d.chargeOverchargeEnabled;
+        chargeOverchargeMaxPercent = clampChargeCap(d.chargeOverchargeMaxPercent);
+        chargeOverchargeMinLevel = Math.max(0, d.chargeOverchargeMinLevel);
+        chargeOverchargeSizePerPercent = nonNegativeFinite(d.chargeOverchargeSizePerPercent, 0.004f);
+        chargeOverchargeSpeedPerPercent = nonNegativeFinite(d.chargeOverchargeSpeedPerPercent, 0.001f);
+        chargeOverchargeMaxDamageScale = d.chargeOverchargeMaxDamageScale > 1.0f
+                ? d.chargeOverchargeMaxDamageScale : 4.0f;
+        chargeFormSizeFactor = nonNegativeFinite(d.chargeFormSizeFactor, 0.25f);
+        chargeFormSizeLogCap = d.chargeFormSizeLogCap > 0.0f ? d.chargeFormSizeLogCap : 4.0f;
+        chargeFormSizeByForm.clear();
+        if (d.chargeFormSizeByForm != null) {
+            for (Map.Entry<String, Float> e : d.chargeFormSizeByForm.entrySet()) {
+                if (e.getKey() == null || e.getKey().isBlank() || e.getValue() == null) continue;
+                if (!Float.isFinite(e.getValue()) || e.getValue() <= 0.0f) continue;
+                chargeFormSizeByForm.put(e.getKey(), e.getValue());
+            }
+        }
+        chargeOverchargeGriefEnabled = d.chargeOverchargeGriefEnabled;
+        chargeOverchargeCraterMinPercent = Math.max(175.0f,
+                nonNegativeFinite(d.chargeOverchargeCraterMinPercent, 250.0f));
+        chargeOverchargeCraterMaxRadius = Math.max(1, Math.min(16,
+                d.chargeOverchargeCraterMaxRadius <= 0 ? 4 : d.chargeOverchargeCraterMaxRadius));
+        chargeOverchargeCraterIntervalTicks = Math.max(2, Math.min(40,
+                d.chargeOverchargeCraterIntervalTicks <= 0 ? 10 : d.chargeOverchargeCraterIntervalTicks));
+        chargeOverchargeMaxRocks = Math.max(0, Math.min(16, d.chargeOverchargeMaxRocks));
+        chargeOverchargeDiskSliceEnabled = d.chargeOverchargeDiskSliceEnabled;
+        chargeOverchargeCameraEnabled = d.chargeOverchargeCameraEnabled;
+        chargeOverchargeVoicesEnabled = d.chargeOverchargeVoicesEnabled;
     }
 
     public static float fistReleaseStamina(float charge01) {
@@ -764,22 +1168,80 @@ public final class XenoServerConfig {
     public static float kiOverchargeSizeScale(int powerRelease) {
         float excess = kiOverchargeExcessPercent(powerRelease);
         if (excess <= 0f) return 1f;
-        float scale = 1f + excess * kiOverchargeSizePerPercent * kiOverchargeMultiplier;
-        return Math.min(kiOverchargeMaxScale, scale);
+        return 1f + excess * kiOverchargeSizePerPercent * kiOverchargeMultiplier;
+    }
+
+    public static float kiOverchargeSpeedScale(int powerRelease) {
+        float excess = kiOverchargeExcessPercent(powerRelease);
+        return excess <= 0f ? 1f : 1f + excess * kiOverchargeSpeedPerPercent * kiOverchargeMultiplier;
     }
 
     public static float kiOverchargeDamageScale(int powerRelease) {
         float excess = kiOverchargeExcessPercent(powerRelease);
         if (excess <= 0f) return 1f;
         float scale = 1f + excess * kiOverchargeDamagePerPercent * kiOverchargeMultiplier;
-        return Math.min(kiOverchargeMaxScale, scale);
+        return kiFullGameplayScaling ? scale : Math.min(kiOverchargeMaxScale, scale);
     }
 
     public static float kiOverchargeExplosionScale(int powerRelease) {
         float excess = kiOverchargeExcessPercent(powerRelease);
         if (excess <= 0f) return 1f;
         float scale = 1f + excess * kiOverchargeExplosionPerPercent * kiOverchargeMultiplier;
-        return Math.min(kiOverchargeMaxScale, scale);
+        return kiFullGameplayScaling ? scale : Math.min(kiOverchargeMaxScale, scale);
+    }
+
+    public static float clampKiSize(float value) {
+        return Float.isFinite(value) ? Math.max(0.1f, Math.min(value, kiProjectileMaxSize)) : 0.1f;
+    }
+
+    public static float clampKiSpeed(float value) {
+        return Float.isFinite(value) ? Math.max(0.1f, Math.min(value, kiProjectileMaxSpeed)) : 0.1f;
+    }
+
+    /**
+     * Hold a ki wave or laser to its configured reach.
+     *
+     * <p>A non-positive {@link #beamSurgeMaxLength} means uncapped, which is the stock behaviour:
+     * neither DMZ nor the surge system bounds total beam length on its own.
+     */
+    public static float clampBeamLength(float value) {
+        if (!Float.isFinite(value)) return 0f;
+        if (beamSurgeMaxLength <= 0f) return value;
+        return Math.min(value, beamSurgeMaxLength);
+    }
+
+    /**
+     * Hard clamp written into {@code Techniques.setTechniqueChargePercent}.
+     * Disabled feature keeps DMZ's stock 200.
+     */
+    public static float chargeOverchargeClamp() {
+        if (!chargeOverchargeEnabled) return 200.0f;
+        return clampChargeCap(chargeOverchargeMaxPercent);
+    }
+
+    public static float clampChargeCap(float value) {
+        if (!Float.isFinite(value) || value <= 200.0f) return 1000.0f;
+        return Math.min(2000.0f, value);
+    }
+
+    public static float kiDestructionRadiusLimit() {
+        // DMZ scans a (2r+1)^3 cube synchronously. Convert the configured check budget back to
+        // the largest safe radius, then apply the explicit radius ceiling too.
+        float budgetRadius = (float) (Math.cbrt(kiDestructionBlocksPerTick) - 1.0) * 0.5f;
+        return Math.max(0.5f, Math.min(kiDestructionMaxRadius, budgetRadius));
+    }
+
+    private static float positiveFinite(float value, float fallback) {
+        return Float.isFinite(value) && value > 0f ? value : fallback;
+    }
+
+    private static float nonNegativeFinite(float value, float fallback) {
+        return Float.isFinite(value) && value >= 0f ? value : fallback;
+    }
+
+    private static float clamp01(float value, float fallback) {
+        if (!Float.isFinite(value)) return fallback;
+        return Math.max(0f, Math.min(1f, value));
     }
 
     /** Wire legacy DMZ HUD config field for older code paths. */
@@ -792,6 +1254,51 @@ public final class XenoServerConfig {
         save();
     }
 
+    public static void setChaseFlightEnabled(boolean enabled) {
+        chaseFlightEnabled = enabled;
+        save();
+    }
+
+    public static void setLockOnThroughBlocks(boolean enabled) {
+        lockOnThroughBlocks = enabled;
+        save();
+    }
+
+    public static void setChaseMaxRange(double range) {
+        chaseMaxRange = range < 0 ? 0.0 : range;
+        save();
+    }
+
+    public static void setChaseFlightSpeed(double speed) {
+        chaseFlightSpeed = Math.max(0.1, speed);
+        save();
+    }
+
+    public static void setHakaiEnabled(boolean enabled) {
+        hakaiEnabled = enabled;
+        save();
+    }
+
+    public static void setHakaiKiCost(float cost) {
+        hakaiKiCost = Math.max(0f, cost);
+        save();
+    }
+
+    public static void setHakaiMaxRange(double range) {
+        hakaiMaxRange = Math.max(1.0, range);
+        save();
+    }
+
+    public static void setHakaiCooldownTicks(int ticks) {
+        hakaiCooldownTicks = Math.max(40, Math.min(2400, ticks));
+        save();
+    }
+
+    /** {@code chaseMaxRange <= 0} means no distance cap. */
+    public static boolean chaseRangeUnlimited() {
+        return chaseMaxRange <= 0.0;
+    }
+
     public static float clampFormStatMultiplier(float value) {
         if (Float.isNaN(value) || Float.isInfinite(value)) return 1.0f;
         return Math.max(FORM_STAT_MULT_MIN, Math.min(FORM_STAT_MULT_MAX, value));
@@ -800,6 +1307,7 @@ public final class XenoServerConfig {
     /** Applies global + per-form + per-stat scale maps from a config/sync payload. */
     public static void applyFormScaleMaps(Data d) {
         if (d == null) return;
+        invalidateFormScaleCache();
         if (d.formStatMultiplier != null) {
             formStatMultiplier = clampFormStatMultiplier(d.formStatMultiplier);
         }
@@ -868,6 +1376,221 @@ public final class XenoServerConfig {
     public static void setFormStatMultiplier(float value) {
         formStatMultiplier = clampFormStatMultiplier(value);
         save();
+    }
+
+    public static final int BARRAGE_TICKS_MAX = 1200;
+
+    public static int clampBarrageTicks(int ticks) {
+        return Math.max(0, Math.min(BARRAGE_TICKS_MAX, ticks));
+    }
+
+    public static void setBarrageDurationTicks(int ticks) {
+        barrageDurationTicks = clampBarrageTicks(ticks);
+        save();
+    }
+
+    public static void setKiDurationTicks(int ticks) {
+        kiDurationTicks = clampBarrageTicks(ticks);
+        save();
+    }
+
+    public static void setKiDurationForType(String type, int ticks) {
+        String key = type == null ? "" : type.trim().toLowerCase();
+        if (key.isEmpty()) return;
+        int value = clampBarrageTicks(ticks);
+        if (value <= 0) kiDurationByType.remove(key);
+        else kiDurationByType.put(key, value);
+        if ("barrage".equals(key)) barrageDurationTicks = value;
+        save();
+    }
+
+    public static void setBarrageCooldownTicks(int ticks) {
+        barrageCooldownTicks = clampBarrageTicks(ticks);
+        save();
+    }
+
+    public static final int GUIDANCE_RANGE_MAX = 1024;
+
+    public static void setGuidanceControlRange(int blocks) {
+        guidanceControlRange = Math.max(0, Math.min(GUIDANCE_RANGE_MAX, blocks));
+        applyGuidanceOverrides();
+        save();
+    }
+
+    public static void setGuidanceTurnRate(float rate) {
+        guidanceTurnRate = clamp01(rate, 0.0f);
+        applyGuidanceOverrides();
+        save();
+    }
+
+    public static void setGuidanceCameraRate(float rate) {
+        guidanceCameraRate = Math.max(0.0f, Math.min(1.0f, nonNegativeFinite(rate, 0.38f)));
+        applyGuidanceOverrides();
+        save();
+    }
+
+    public static void setGuidanceHoldGraceTicks(int ticks) {
+        guidanceHoldGraceTicks = Math.max(0, Math.min(40, ticks));
+        save();
+    }
+
+    public static void setGuidanceLookRayMin(float blocks) {
+        guidanceLookRayMin = Math.max(0.0f, Math.min(64.0f, nonNegativeFinite(blocks, 8.0f)));
+        applyGuidanceOverrides();
+        save();
+    }
+
+    public static void setChargeOverchargeEnabled(boolean enabled) {
+        chargeOverchargeEnabled = enabled;
+        save();
+    }
+
+    public static void setChargeOverchargeMaxPercent(float percent) {
+        chargeOverchargeMaxPercent = clampChargeCap(percent);
+        save();
+    }
+
+    public static void setChargeOverchargeGriefEnabled(boolean enabled) {
+        chargeOverchargeGriefEnabled = enabled;
+        save();
+    }
+
+    public static void setKiProjectileMaxSize(float size) {
+        kiProjectileMaxSize = positiveFinite(size, 320.0f);
+        save();
+    }
+
+    public static void setKiProjectileMaxSpeed(float speed) {
+        kiProjectileMaxSpeed = positiveFinite(speed, 32.0f);
+        save();
+    }
+
+    public static void setKiDestructionMaxRadius(float radius) {
+        kiDestructionMaxRadius = positiveFinite(radius, 32.0f);
+        save();
+    }
+
+    public static void setKiFullGameplayScaling(boolean enabled) {
+        kiFullGameplayScaling = enabled;
+        save();
+    }
+
+    public static void setBeamSurgeEnabled(boolean enabled) {
+        beamSurgeEnabled = enabled;
+        save();
+    }
+
+    public static void setBarrageKiPerTick(float value) {
+        barrageKiPerTick = Math.max(0.0f, value);
+        save();
+    }
+
+    public static void setBarrageExtraTicks(int level, int ticks) {
+        int value = Math.max(0, ticks);
+        switch (level) {
+            case 1 -> barrageExtraTicks1 = value;
+            case 2 -> barrageExtraTicks2 = value;
+            case 3 -> barrageExtraTicks3 = value;
+            default -> {
+                return;
+            }
+        }
+        save();
+    }
+
+    public static void setBarrageCooldownReduce(int level, int ticks) {
+        int value = Math.max(0, ticks);
+        switch (level) {
+            case 1 -> barrageCooldownReduce1 = value;
+            case 2 -> barrageCooldownReduce2 = value;
+            case 3 -> barrageCooldownReduce3 = value;
+            default -> {
+                return;
+            }
+        }
+        save();
+    }
+
+    static void applyGuidanceOverrides() {
+        net.bullettrain.xenopixelsmod.combat.technique.KiGuidanceMath.controlRangeOverride =
+                guidanceControlRange;
+        net.bullettrain.xenopixelsmod.combat.technique.KiGuidanceMath.turnRateOverride =
+                guidanceTurnRate;
+        net.bullettrain.xenopixelsmod.combat.technique.KiGuidanceMath.cameraRateOverride =
+                guidanceCameraRate;
+        net.bullettrain.xenopixelsmod.combat.technique.KiGuidanceMath.lookRayMinOverride =
+                guidanceLookRayMin;
+    }
+
+    /**
+     * Apply last-session combat fields from a sync payload without rewriting
+     * the whole config (packet Data is incomplete for missiles, YAWP, etc.).
+     */
+    public static void applySyncedKiCombat(Data d) {
+        if (d == null) return;
+        chargeOverchargeEnabled = d.chargeOverchargeEnabled;
+        chargeOverchargeMaxPercent = clampChargeCap(d.chargeOverchargeMaxPercent);
+        chargeOverchargeMinLevel = Math.max(0, d.chargeOverchargeMinLevel);
+        chargeOverchargeSizePerPercent = nonNegativeFinite(d.chargeOverchargeSizePerPercent, 0.004f);
+        chargeOverchargeSpeedPerPercent = nonNegativeFinite(d.chargeOverchargeSpeedPerPercent, 0.001f);
+        chargeOverchargeMaxDamageScale = d.chargeOverchargeMaxDamageScale > 1.0f
+                ? d.chargeOverchargeMaxDamageScale : 4.0f;
+        chargeFormSizeFactor = nonNegativeFinite(d.chargeFormSizeFactor, 0.25f);
+        chargeFormSizeLogCap = d.chargeFormSizeLogCap > 0.0f ? d.chargeFormSizeLogCap : 4.0f;
+        chargeOverchargeGriefEnabled = d.chargeOverchargeGriefEnabled;
+        chargeOverchargeCraterMinPercent = Math.max(175.0f,
+                nonNegativeFinite(d.chargeOverchargeCraterMinPercent, 250.0f));
+        chargeOverchargeCraterMaxRadius = Math.max(1, Math.min(16,
+                d.chargeOverchargeCraterMaxRadius <= 0 ? 4 : d.chargeOverchargeCraterMaxRadius));
+        chargeOverchargeCraterIntervalTicks = Math.max(2, Math.min(40,
+                d.chargeOverchargeCraterIntervalTicks <= 0 ? 10 : d.chargeOverchargeCraterIntervalTicks));
+        chargeOverchargeMaxRocks = Math.max(0, Math.min(16, d.chargeOverchargeMaxRocks));
+        chargeOverchargeDiskSliceEnabled = d.chargeOverchargeDiskSliceEnabled;
+        chargeOverchargeCameraEnabled = d.chargeOverchargeCameraEnabled;
+        chargeOverchargeVoicesEnabled = d.chargeOverchargeVoicesEnabled;
+        barrageDurationTicks = Math.max(0, d.barrageDurationTicks);
+        barrageCooldownTicks = Math.max(0, d.barrageCooldownTicks);
+        barrageExtraTicks1 = Math.max(0, d.barrageExtraTicks1);
+        barrageExtraTicks2 = Math.max(0, d.barrageExtraTicks2);
+        barrageExtraTicks3 = Math.max(0, d.barrageExtraTicks3);
+        barrageCooldownReduce1 = Math.max(0, d.barrageCooldownReduce1);
+        barrageCooldownReduce2 = Math.max(0, d.barrageCooldownReduce2);
+        barrageCooldownReduce3 = Math.max(0, d.barrageCooldownReduce3);
+        barrageKiPerTick = Math.max(0f, d.barrageKiPerTick);
+        kiDurationTicks = Math.max(0, d.kiDurationTicks);
+        kiDurationByType.clear();
+        if (d.kiDurationByType != null) {
+            for (java.util.Map.Entry<String, Integer> e : d.kiDurationByType.entrySet()) {
+                if (e.getKey() == null || e.getValue() == null) continue;
+                kiDurationByType.put(e.getKey().toLowerCase(), clampBarrageTicks(e.getValue()));
+            }
+        }
+        kiProjectileMaxSize = positiveFinite(d.kiProjectileMaxSize, 320f);
+        kiProjectileMaxSpeed = positiveFinite(d.kiProjectileMaxSpeed, 32f);
+        kiFullGameplayScaling = d.kiFullGameplayScaling;
+        kiDestructionMaxRadius = positiveFinite(d.kiDestructionMaxRadius, 32f);
+        kiDestructionBlocksPerTick = Math.max(64, d.kiDestructionBlocksPerTick);
+        beamSurgeEnabled = d.beamSurgeEnabled;
+        beamSurgeKiPerTick = Math.max(0f, d.beamSurgeKiPerTick);
+        beamSurgeStaminaPerTick = Math.max(0f, d.beamSurgeStaminaPerTick);
+        beamSurgeCostGrowth = Math.max(0f, d.beamSurgeCostGrowth);
+        beamSurgeSizeGain = Math.max(0f, d.beamSurgeSizeGain);
+        beamSurgeDamageGain = Math.max(0f, d.beamSurgeDamageGain);
+        beamSurgeReachGain = Math.max(0f, d.beamSurgeReachGain);
+        beamSurgeSearchRadius = Math.max(2f, d.beamSurgeSearchRadius);
+        beamSurgeCeiling = clamp01(d.beamSurgeCeiling, 0.45f);
+        beamSurgeCeilingPerMastery = clamp01(d.beamSurgeCeilingPerMastery, 0.183f);
+        beamSurgeRampPerTick = Math.min(1f, Math.max(0.001f,
+                nonNegativeFinite(d.beamSurgeRampPerTick, 0.020f)));
+        beamSurgeRampPerMastery = Math.min(1f, nonNegativeFinite(d.beamSurgeRampPerMastery, 0.010f));
+        beamSurgeMaxLength = Float.isFinite(d.beamSurgeMaxLength) ? d.beamSurgeMaxLength : 192f;
+        lockOnThroughBlocks = d.lockOnThroughBlocks == null || d.lockOnThroughBlocks;
+        guidanceControlRange = Math.max(0, d.guidanceControlRange);
+        guidanceTurnRate = clamp01(d.guidanceTurnRate, 0.0f);
+        guidanceCameraRate = nonNegativeFinite(d.guidanceCameraRate, 0.38f);
+        guidanceHoldGraceTicks = Math.max(0, Math.min(40, d.guidanceHoldGraceTicks));
+        guidanceLookRayMin = nonNegativeFinite(d.guidanceLookRayMin, 8.0f);
+        applyGuidanceOverrides();
     }
 
     /** Set or replace per-form overall scale. Key should be {@code group.form} or short form id. */
@@ -981,6 +1704,41 @@ public final class XenoServerConfig {
     /**
      * Overall form scale (no per-stat): exact per-form → short-id → global.
      */
+    /**
+     * Whether any form scaling is configured at all.
+     *
+     * <p>Callers on hot paths check this <em>before</em> doing any work to resolve a form key.
+     * {@link #formScaleFor(String, String)} is reached from DMZ's stat maths, which reads
+     * multipliers live on every stat access, and resolving a key allocates several strings. On a
+     * server that has not configured any scaling — the common case — this bail makes the whole
+     * thing two field reads and no allocation.
+     */
+    public static boolean formScalingActive() {
+        return Math.abs(formStatMultiplier - 1.0f) >= 1.0e-6f
+                || !formPerFormMultipliers.isEmpty()
+                || !formPerStatMultipliers.isEmpty()
+                || !formPerFormStatMultipliers.isEmpty();
+    }
+
+    /**
+     * Memo of resolved {@code (formKey, stat)} scales.
+     *
+     * <p>Resolution is not cheap: it normalises both keys, and both per-form lookups fall back to a
+     * linear scan of their map that concatenates a string per entry. Doing that on every stat read
+     * was the single largest source of garbage in the mod. The answer only changes when the config
+     * does, so it is computed once per pair.
+     *
+     * <p>Invalidated from {@link #save()} and {@link #applyData}, which between them are reached by
+     * every writer — the setters, the clear commands, config load, and the server-to-client sync.
+     * Keying invalidation off those rather than off each individual map mutation is what makes a
+     * stale entry impossible; a missed invalidation here would silently report wrong stats.
+     */
+    private static final Map<String, Float> FORM_SCALE_CACHE = new ConcurrentHashMap<>();
+
+    static void invalidateFormScaleCache() {
+        FORM_SCALE_CACHE.clear();
+    }
+
     public static float formScaleFor(String formKey) {
         if (formKey == null || formKey.isBlank()) {
             return formStatMultiplier;
@@ -995,6 +1753,10 @@ public final class XenoServerConfig {
      * overall falls back to {@link #formStatMultiplier}).
      */
     public static float formScaleFor(String formKey, String stat) {
+        String cacheKey = (formKey == null ? "" : formKey) + ' ' + (stat == null ? "" : stat);
+        Float memo = FORM_SCALE_CACHE.get(cacheKey);
+        if (memo != null) return memo;
+
         float overall = formScaleFor(formKey);
         float statScale = 1.0f;
         String s = normalizeStatKey(stat);
@@ -1007,7 +1769,9 @@ public final class XenoServerConfig {
                 if (formStat != null) statScale *= formStat;
             }
         }
-        return overall * statScale;
+        float result = overall * statScale;
+        FORM_SCALE_CACHE.put(cacheKey, result);
+        return result;
     }
 
     public static Map<String, Float> perFormMultipliersView() {
@@ -1048,10 +1812,12 @@ public final class XenoServerConfig {
         public int configVersion;
         public boolean dmzHudEnabled = false;
         public boolean dmzContentBootstrap = true;
+        public boolean npcSayEnabled = true;
         public boolean bt3CombatEnabled = true;
         public boolean bt3ComboEnabled = true;
         public boolean bt3VanishEnabled = true;
         public boolean bt3ChaseDashEnabled = true;
+        public boolean chaseFlightEnabled = true;
         public boolean bt3BackstepEnabled = true;
         public boolean bt3FinisherEnabled = true;
         public boolean bt3ChargeAttackEnabled = true;
@@ -1061,12 +1827,15 @@ public final class XenoServerConfig {
         public boolean bt3KiBlastCancelEnabled = true;
         public boolean bt3ZBurstEnabled = true;
         public boolean bt3LockCycleEnabled = true;
+        public Boolean lockOnThroughBlocks;
+        public Boolean kiDiskDespawnOnHitBudget;
         public boolean bt3ComboPunchesOnly = true;
         public boolean protectDmzMasters = true;
         public boolean bt3RushChainEnabled = true;
         public boolean bt3SonicSwayEnabled = true;
         public boolean bt3UltimateEnabled = true;
         public boolean bt3SparkingEnabled = true;
+        public boolean hakaiEnabled = true;
         public boolean bt3TransformImpactEnabled = true;
         public boolean trainingDummyEnabled = true;
         public boolean parallelQuestEnabled = true;
@@ -1078,7 +1847,9 @@ public final class XenoServerConfig {
         public double missileMaxApexY = 950.0;
         public boolean missileTerminalGravityCompensation = false;
         public boolean thrusterImpulseGuardEnabled = true;
-        public double thrusterMaxImpulse = 50_000.0;
+        public double thrusterMaxImpulse = 6_000.0;
+        public double maxFlightSpeed = 28.0;
+        public double maxFlightAngularVelocity = 2.0;
         public boolean vanishShadeEnabled = true;
         public double vanishShadeDensity = 1.0;
         public double vanishThunderVolume = 0.35;
@@ -1093,6 +1864,10 @@ public final class XenoServerConfig {
         public float ultimateKiCost = 35.0f;
         public float ultimateDamageScale = 2.4f;
         public int ultimateCooldownTicks = 200;
+        public float hakaiKiCost = 60.0f;
+        public double hakaiMaxRange = 15.0;
+        public int hakaiCooldownTicks = 600;
+        public int hakaiChannelTicks = 80;
         public float sparkingBuildPerHit = 6.0f;
         public float sparkingBuildOnHurt = 3.0f;
         public int sparkingDurationTicks = 100;
@@ -1132,8 +1907,16 @@ public final class XenoServerConfig {
         public float kiOverchargeExplosionPerPercent = 0.014f;
         public float kiOverchargeMultiplier = 1.0f;
         public float kiOverchargeMaxScale = 3.0f;
+        public float kiProjectileMaxSize = 320.0f;
+        public float kiProjectileMaxSpeed = 32.0f;
+        public float kiOverchargeSpeedPerPercent = 0.004f;
+        public boolean kiFullGameplayScaling = false;
+        public float kiDestructionMaxRadius = 32.0f;
+        public int kiDestructionBlocksPerTick = 4096;
         public double vanishMaxRange = 7.0;
-        public double chaseMaxRange = 14.0;
+        public double chaseMaxRange = 0.0;
+        public double chaseFlightSpeed = 1.2;
+        public int chaseFlightTimeoutTicks = 400;
         public double backstepMaxRange = 10.0;
         public double chargeAttackRange = 5.0;
         public double dragonDashRange = 16.0;
@@ -1162,8 +1945,8 @@ public final class XenoServerConfig {
         public boolean sneakToPickup = true;
         public boolean allowKiWithItemInHand = true;
         public boolean kiDeflectEnabled = true;
-        public float kiDeflectReach = 4.0f;
-        public float kiDeflectAimDot = 0.55f;
+        public float kiDeflectReach = 3.0f;
+        public float kiDeflectAimDot = 0.2f;
         public float kiDeflectSpeedScale = 1.15f;
         public float kiDeflectMinSpeed = 0.8f;
         public float kiDeflectDamageScale = 1.25f;
@@ -1173,10 +1956,31 @@ public final class XenoServerConfig {
         public float beamSurgeKiPerTick = 1.6f;
         public float beamSurgeStaminaPerTick = 0.5f;
         public float beamSurgeCostGrowth = 1.0f;
-        public float beamSurgeSizeGain = 1.2f;
+        public float beamSurgeSizeGain = 9.0f;
         public float beamSurgeDamageGain = 1.5f;
         public float beamSurgeReachGain = 0.8f;
         public float beamSurgeSearchRadius = 30.0f;
+        public float beamSurgeCeiling = 0.45f;
+        public float beamSurgeCeilingPerMastery = 0.183f;
+        public float beamSurgeRampPerTick = 0.020f;
+        public float beamSurgeRampPerMastery = 0.010f;
+        public float beamSurgeMaxLength = 192.0f;
+        public int barrageExtraTicks1 = 20;
+        public int barrageExtraTicks2 = 45;
+        public int barrageExtraTicks3 = 80;
+        public int barrageDurationTicks = 0;
+        public int kiDurationTicks = 0;
+        public java.util.Map<String, Integer> kiDurationByType = new java.util.LinkedHashMap<>();
+        public int barrageCooldownTicks = 0;
+        public int guidanceControlRange = 0;
+        public float guidanceTurnRate = 0.0f;
+        public float guidanceCameraRate = 0.38f;
+        public int guidanceHoldGraceTicks = 8;
+        public float guidanceLookRayMin = 8.0f;
+        public int barrageCooldownReduce1 = 20;
+        public int barrageCooldownReduce2 = 40;
+        public int barrageCooldownReduce3 = 60;
+        public float barrageKiPerTick = 0.4f;
         public boolean sparkingAuraEnabled = true;
         public float sparkingAuraDensity = 1.0f;
         // Null (absent from an older config file) means "use the defaults"; see apply().
@@ -1184,5 +1988,22 @@ public final class XenoServerConfig {
         public java.util.List<String> yawpMobKiFlags = null;
         /** Boxed so an absent key keeps the default instead of resetting to 0. */
         public Double masterKiGriefRadius = null;
+        public boolean chargeOverchargeEnabled = true;
+        public float chargeOverchargeMaxPercent = 1000.0f;
+        public int chargeOverchargeMinLevel = 0;
+        public float chargeOverchargeSizePerPercent = 0.004f;
+        public float chargeOverchargeSpeedPerPercent = 0.001f;
+        public float chargeOverchargeMaxDamageScale = 4.0f;
+        public float chargeFormSizeFactor = 0.25f;
+        public float chargeFormSizeLogCap = 4.0f;
+        public Map<String, Float> chargeFormSizeByForm = new LinkedHashMap<>();
+        public boolean chargeOverchargeGriefEnabled = false;
+        public float chargeOverchargeCraterMinPercent = 250.0f;
+        public int chargeOverchargeCraterMaxRadius = 4;
+        public int chargeOverchargeCraterIntervalTicks = 10;
+        public int chargeOverchargeMaxRocks = 4;
+        public boolean chargeOverchargeDiskSliceEnabled = true;
+        public boolean chargeOverchargeCameraEnabled = true;
+        public boolean chargeOverchargeVoicesEnabled = false;
     }
 }

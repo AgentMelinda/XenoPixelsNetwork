@@ -106,6 +106,16 @@ public final class DmzAnimHelper {
         broadcastMelee(player, anim, false, finisher ? 1.2f : 1.08f);
     }
 
+    /** Uncharged combo kick (even steps). */
+    public static void broadcastComboKick(ServerPlayer player, int step, boolean finisher) {
+        if (player == null) return;
+        String anim = step % 4 == 0 ? KICK_GUT_R : KICK_LOW_R;
+        if (step % 4 == 2) {
+            anim = KICK_GUT_L;
+        }
+        broadcastMelee(player, anim, false, finisher ? 1.2f : 1.1f);
+    }
+
     public static void broadcastMelee(ServerPlayer player, String animationName, boolean offhand, float speed) {
         try {
             MeleeAnimationS2C pkt = new MeleeAnimationS2C(player.getId(), animationName, offhand, speed);

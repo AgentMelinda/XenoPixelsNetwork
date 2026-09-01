@@ -26,7 +26,6 @@ import net.neoforged.fml.common.Mod;
  */
 @EventBusSubscriber(modid = XenoPixelsMod.MOD_ID)
 public final class XenoStatusEffectSync {
-    private static final int REFRESH = 80; // 4s — long enough that inventory doesn't flicker
     private static final String[] SOUL_EFFECT_IDS = {
             "warrior", "iron", "spark", "finisher", "balanced"
     };
@@ -52,7 +51,7 @@ public final class XenoStatusEffectSync {
             Holder<MobEffect> e = ModEffects.soulEffect(id);
             if (e == null) continue;
             if (e == wantedSoul) {
-                ensure(player, e, 0, REFRESH);
+                ensurePersistent(player, e, 0);
             } else {
                 remove(player, e);
             }
@@ -66,7 +65,7 @@ public final class XenoStatusEffectSync {
             }
         }
         if (totalLv > 0) {
-            ensure(player, ModEffects.COMBAT_TRAINING, Math.min(11, totalLv - 1), REFRESH);
+            ensurePersistent(player, ModEffects.COMBAT_TRAINING, Math.min(11, totalLv - 1));
         } else {
             remove(player, ModEffects.COMBAT_TRAINING);
         }
@@ -80,7 +79,7 @@ public final class XenoStatusEffectSync {
             } else {
                 remove(player, ModEffects.SPARKING);
                 if (Bt3SparkingSystem.getMeter(player.getUUID()) >= 99.5f) {
-                    ensure(player, ModEffects.SPARKING_READY, 0, REFRESH);
+                    ensurePersistent(player, ModEffects.SPARKING_READY, 0);
                 } else {
                     remove(player, ModEffects.SPARKING_READY);
                 }
@@ -92,15 +91,40 @@ public final class XenoStatusEffectSync {
     }
 
     /**
-     * Apply / refresh a display effect: no particles, icon visible in inventory + HUD.
+     * Apply / refresh a display effect with a real countdown.
+     *
+     * <p>Only for effects that genuinely expire on their own clock, which here means sparking. The
+     * duration is re-pushed once it has drifted from the true remaining time, so the icon counts
+     * down honestly instead of stepping.
      */
     public static void ensure(ServerPlayer player, Holder<MobEffect> effect, int amplifier, int durationTicks) {
         if (effect == null) return;
         MobEffectInstance cur = player.getEffect(effect);
         // ambient=false, visible=false (no particles), showIcon=true
-        if (cur == null || cur.getAmplifier() != amplifier || cur.getDuration() < durationTicks / 2) {
+        if (cur == null || cur.getAmplifier() != amplifier
+                || Math.abs(cur.getDuration() - durationTicks) > 20) {
             player.addEffect(new MobEffectInstance(effect, durationTicks, amplifier, false, false, true));
         }
+    }
+
+    /**
+     * Apply / refresh a display effect that lasts as long as the state behind it.
+     *
+     * <p>These mirror a condition, not a timer: a Super Soul, a trained skill total, a full sparking
+     * meter. Giving them a finite duration meant the refresh below re-applied them every time the
+     * counter passed halfway, so the tooltip visibly ran 4s → 2s → 4s forever and never expired —
+     * which reads as a broken timer rather than a permanent status.
+     *
+     * <p>An infinite duration is what vanilla itself uses for this, and the UI renders it as
+     * {@code ∞}. The icon still disappears the moment the state ends, because {@link #remove} is
+     * what clears it — the duration was never doing that job.
+     */
+    public static void ensurePersistent(ServerPlayer player, Holder<MobEffect> effect, int amplifier) {
+        if (effect == null) return;
+        MobEffectInstance cur = player.getEffect(effect);
+        if (cur != null && cur.getAmplifier() == amplifier && cur.isInfiniteDuration()) return;
+        player.addEffect(new MobEffectInstance(
+                effect, MobEffectInstance.INFINITE_DURATION, amplifier, false, false, true));
     }
 
     public static void remove(ServerPlayer player, Holder<MobEffect> effect) {

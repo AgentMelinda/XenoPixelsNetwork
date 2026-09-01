@@ -3,9 +3,12 @@ package net.bullettrain.xenopixelsmod.block.entity;
 import net.bullettrain.xenopixelsmod.aero.AeroAnimState;
 import net.bullettrain.xenopixelsmod.aero.AeroAutopilotMode;
 import net.bullettrain.xenopixelsmod.aero.AeroBus;
+import net.bullettrain.xenopixelsmod.aero.AeroConfig;
+import net.bullettrain.xenopixelsmod.aero.AeroControlHost;
 import net.bullettrain.xenopixelsmod.aero.AeroLinkManager;
 import net.bullettrain.xenopixelsmod.aero.AeroPowerBudget;
 import net.bullettrain.xenopixelsmod.aero.ControllerMode;
+import net.bullettrain.xenopixelsmod.aero.control.AeroFlightCore;
 import net.bullettrain.xenopixelsmod.aero.control.AeroStabilizerSystem;
 import net.bullettrain.xenopixelsmod.aero.control.AeroFlightDirector;
 import net.bullettrain.xenopixelsmod.aero.control.SableAttitudeMath;
@@ -69,7 +72,7 @@ import java.util.Set;
  * <p><b>Primary mode (on a VS2 ship):</b> hull is the ballistic missile via
  * {@link ShipBallisticController}. Paired thrusters provide boost scale + plume.
  */
-public class ShipVlsGuidanceBlockEntity extends BlockEntity implements GeoBlockEntity {
+public class ShipVlsGuidanceBlockEntity extends BlockEntity implements GeoBlockEntity, AeroControlHost {
     private BlockPos target;
     private boolean wasPowered;
     private int searchRadius = 8;
@@ -117,6 +120,7 @@ public class ShipVlsGuidanceBlockEntity extends BlockEntity implements GeoBlockE
     private boolean alsoFireTubes = false;
     /** Explicit thruster positions paired to this computer. */
     private final Set<BlockPos> pairedThrusters = new LinkedHashSet<>();
+    private final Set<BlockPos> linkedPanels = new LinkedHashSet<>();
     private int lastLaunchCount;
     private int lastEtaTicks = -1;
     private double lastPitchDeg;
@@ -150,6 +154,10 @@ public class ShipVlsGuidanceBlockEntity extends BlockEntity implements GeoBlockE
      */
     private transient double aeroAutoYawDeg;
     private transient double aeroAutoPitchDeg;
+    /** Shared per-tick flight maths; owns its scratch vectors so the tick allocates nothing. */
+    private final transient AeroFlightCore aeroCore = new AeroFlightCore();
+    private static final String MANUAL_STATUS = "manual flight";
+    private static final String MANUAL_STALL_STATUS = "manual flight — STALL";
     /** Client-only mirrors of runtime bus state, used purely to pick an animation. */
     private AeroBus.PowerTier clientTier = AeroBus.PowerTier.NOMINAL;
     private boolean clientEngaged;
@@ -169,8 +177,14 @@ public class ShipVlsGuidanceBlockEntity extends BlockEntity implements GeoBlockE
 
     // --- Aero flight controller ------------------------------------------------------
 
+    @Override
     public AeroBus aeroBus() {
         return aeroBus;
+    }
+
+    @Override
+    public BlockPos hostPos() {
+        return worldPosition;
     }
 
     /** True while a missile launch is in progress; mode changes are refused during one. */
@@ -198,7 +212,7 @@ public class ShipVlsGuidanceBlockEntity extends BlockEntity implements GeoBlockE
             if (aeroCommanding) {
                 VectorMixer.shutdown(level, aeroLinks);
                 ServerSubLevel ship = resolveShipCached(sl);
-                if (ship != null) AeroStabilizerSystem.clear(ship);
+                if (ship != null) AeroFlightCore.release(ship);
                 aeroCommanding = false;
             }
             return;
@@ -248,7 +262,7 @@ public class ShipVlsGuidanceBlockEntity extends BlockEntity implements GeoBlockE
         if (!active) {
             if (aeroCommanding) {
                 VectorMixer.shutdown(level, aeroLinks);
-                if (ship != null) AeroStabilizerSystem.setCommand(ship, 0, 0, 0, false);
+                if (ship != null) AeroFlightCore.release(ship);
                 aeroCommanding = false;
             }
             return;
@@ -257,6 +271,10 @@ public class ShipVlsGuidanceBlockEntity extends BlockEntity implements GeoBlockE
 
         Vector3d bodyNose = aeroBodyNose();
         Vector3d bodyUp = aeroBodyUp(bodyNose);
+        // Sampled once and reused: the autopilot branch, the flap logic and the aerodynamic
+        // model all need it, and the lookup walks Sable's sub-level state.
+        Vector3dc worldVelocity = VsShipHelper.velocity(sl, ship);
+        double airspeed = worldVelocity.length();
         double yaw = aeroBus.yawDeg();
         double pitch = aeroBus.pitchDeg();
         double roll = aeroBus.rollDeg();
@@ -268,13 +286,12 @@ public class ShipVlsGuidanceBlockEntity extends BlockEntity implements GeoBlockE
             if (target == null || route.isEmpty()) {
                 aeroBus.disengageRuntime("target lost — flight disengaged");
                 VectorMixer.shutdown(level, aeroLinks);
-                AeroStabilizerSystem.clear(ship);
+                AeroFlightCore.release(ship);
                 aeroCommanding = false;
                 syncAero();
                 return;
             }
             Vector3dc worldPosition = VsShipHelper.worldPosition(ship);
-            Vector3dc worldVelocity = VsShipHelper.velocity(sl, ship);
             ShipGravityControl gravityControl = ShipGravityControl.get(ship);
             double gravity = gravityControl == null ? ShipGravityControl.NORMAL_GRAVITY
                     : gravityControl.getGravitySi();
@@ -299,16 +316,20 @@ public class ShipVlsGuidanceBlockEntity extends BlockEntity implements GeoBlockE
             // ceiling smaller than the acceleration actually being commanded.
             throttle = Math.min(1.0, command.accelerationWorld().length()
                     / (AeroFlightDirector.MAX_ACCEL + Math.abs(gravity)));
-        } else {
+        }
+
+        boolean stalled = aeroCore.tick(aeroBus, ship, level, aeroLinks,
+                bodyNose, bodyUp, bodyThrust, yaw, pitch, roll, throttle,
+                worldVelocity, observedTickSeconds, linkedPanels);
+
+        if (aeroBus.autopilotMode() == AeroAutopilotMode.MANUAL) {
             // Track the operator's setpoints while in manual so that engaging autopilot starts
             // from the heading the ship is already holding rather than from due north.
             aeroAutoYawDeg = yaw;
             aeroAutoPitchDeg = pitch;
-            aeroBus.reportAutopilot(0, 0, 0, VsShipHelper.velocity(sl, ship).length(), "manual flight");
+            // Two constants rather than concatenation: this runs every tick.
+            aeroBus.reportAutopilot(0, 0, 0, airspeed, stalled ? MANUAL_STALL_STATUS : MANUAL_STATUS);
         }
-
-        AeroStabilizerSystem.setTargetAttitude(ship, yaw, pitch, roll, bodyNose, bodyUp, true);
-        VectorMixer.apply(level, aeroLinks, bodyThrust.x, bodyThrust.y, bodyThrust.z, throttle);
     }
 
     private Vector3d aeroBodyNose() {
@@ -411,74 +432,80 @@ public class ShipVlsGuidanceBlockEntity extends BlockEntity implements GeoBlockE
         return new ArrayList<>(pairedThrusters);
     }
 
+    @Override
+    public Set<BlockPos> getLinkedPanels() {
+        return linkedPanels;
+    }
+
+    @Override
+    public boolean linkPanel(BlockPos pos) {
+        boolean added = linkedPanels.add(pos.immutable());
+        if (added) {
+            setChanged();
+            syncAero();
+        }
+        return added;
+    }
+
+    @Override
+    public boolean unlinkPanel(BlockPos pos) {
+        boolean removed = linkedPanels.remove(pos);
+        if (removed) {
+            setChanged();
+            syncAero();
+        }
+        return removed;
+    }
+
     /**
      * Pair every thruster in {@link #searchRadius} (same ship preferred) to this computer.
+     *
+     * <p>The scan itself lives in {@link AeroLinkManager} so the pilot seat, which owns engines
+     * the same way, cannot drift from it.
+     *
      * @return number of thrusters newly paired
      */
+    @Override
     public int pairNearbyThrusters() {
-        if (level == null) return 0;
-        int added = 0;
-        int r = Math.max(searchRadius, 12);
-        long myShipId = -1L;
-        try {
-            if (level instanceof ServerLevel sl) {
-                ServerSubLevel ls = VsShipHelper.getLoadedShipAt(sl, worldPosition);
-                if (ls != null) myShipId = VsShipHelper.getShipId(ls);
-            }
-            if (myShipId < 0) {
-                SubLevelAccess s = VsShipHelper.getShipAt(level, worldPosition);
-                if (s != null) myShipId = VsShipHelper.getShipId(s);
-            }
-        } catch (Throwable ignored) {
-        }
-        for (BlockPos p : BlockPos.betweenClosed(
-                worldPosition.offset(-r, -8, -r),
-                worldPosition.offset(r, 12, r))) {
-            BlockState candidateState = level.getBlockState(p);
-            BlockEntity candidateEntity = level.getBlockEntity(p);
-            ShipThrusterBlockEntity thruster = candidateEntity instanceof ShipThrusterBlockEntity own ? own : null;
-            if (thruster == null && !ExternalThrusterCompat.isCompatible(candidateState)) continue;
-            try {
-                if (myShipId >= 0) {
-                    SubLevelAccess s = level instanceof ServerLevel sl2
-                            ? VsShipHelper.getLoadedShipAt(sl2, p)
-                            : VsShipHelper.getShipAt(level, p);
-                    if (s == null) s = VsShipHelper.getShipAt(level, p);
-                    if (s == null || VsShipHelper.getShipId(s) != myShipId) continue;
-                }
-            } catch (Throwable ignored) {
-            }
-            BlockPos ip = p.immutable();
-            if (pairedThrusters.add(ip)) {
-                if (thruster != null) thruster.setPairedGuidance(worldPosition);
-                added++;
-            } else if (thruster != null) {
-                thruster.setPairedGuidance(worldPosition);
-            }
-        }
+        int added = AeroLinkManager.pairNearby(level, worldPosition, searchRadius, pairedThrusters);
         lastStatus = "paired compatible thrusters: " + pairedThrusters.size();
         setChanged();
         sync();
         return added;
     }
 
-    public int clearPairedThrusters() {
-        int n = pairedThrusters.size();
-        for (BlockPos p : new ArrayList<>(pairedThrusters)) {
-            if (level != null && level.getBlockEntity(p) instanceof ShipThrusterBlockEntity t) {
-                if (worldPosition.equals(t.getPairedGuidance())) {
-                    t.setPairedGuidance(null);
-                    t.setGuidanceOwned(false);
-                }
-            } else if (level != null) {
-                ExternalThrusterCompat.setThrottle(level, p, 0.0);
-            }
+    @Override
+    public boolean pairOneThruster(BlockPos pos) {
+        boolean added = AeroLinkManager.pairOne(level, worldPosition, pos, pairedThrusters);
+        if (added) {
+            setChanged();
+            // Without this, VectorMixer only sees the new thruster once the periodic 40-tick
+            // refresh happens to land — up to 2 seconds of a freshly-linked engine producing no
+            // thrust at all, which reads as "linking doesn't work" even though it did.
+            refreshAeroLinks();
+            sync();
         }
-        pairedThrusters.clear();
+        return added;
+    }
+
+    @Override
+    public boolean unpairOneThruster(BlockPos pos) {
+        boolean removed = AeroLinkManager.unpairOne(level, worldPosition, pos, pairedThrusters);
+        if (removed) {
+            setChanged();
+            refreshAeroLinks();
+            sync();
+        }
+        return removed;
+    }
+
+    @Override
+    public int clearPairedThrusters() {
+        int cleared = AeroLinkManager.clearPaired(level, worldPosition, pairedThrusters);
         lastStatus = "thrusters unpaired";
         setChanged();
         sync();
-        return n;
+        return cleared;
     }
 
     public @Nullable BlockPos getTarget() {
@@ -1468,6 +1495,11 @@ public class ShipVlsGuidanceBlockEntity extends BlockEntity implements GeoBlockE
             list.add(LongTag.valueOf(p.asLong()));
         }
         tag.put("PairedThrusters", list);
+        ListTag panelList = new ListTag();
+        for (BlockPos p : linkedPanels) {
+            panelList.add(LongTag.valueOf(p.asLong()));
+        }
+        tag.put("LinkedPanels", panelList);
     }
 
     @Override
@@ -1544,6 +1576,16 @@ public class ShipVlsGuidanceBlockEntity extends BlockEntity implements GeoBlockE
                 Tag entry = list.get(i);
                 if (entry instanceof LongTag lt) {
                     pairedThrusters.add(BlockPos.of(lt.getAsLong()));
+                }
+            }
+        }
+        linkedPanels.clear();
+        if (tag.contains("LinkedPanels", Tag.TAG_LIST)) {
+            ListTag panelList = tag.getList("LinkedPanels", Tag.TAG_LONG);
+            for (int i = 0; i < panelList.size(); i++) {
+                Tag entry = panelList.get(i);
+                if (entry instanceof LongTag lt) {
+                    linkedPanels.add(BlockPos.of(lt.getAsLong()));
                 }
             }
         }

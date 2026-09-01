@@ -1,0 +1,6 @@
+{
+  "selector": "xenopixelsmod:wing_panel",
+  "properties": {
+    "sable:mass": 0.6
+  }
+}

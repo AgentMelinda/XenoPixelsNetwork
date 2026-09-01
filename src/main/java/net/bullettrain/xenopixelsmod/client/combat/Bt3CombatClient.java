@@ -16,6 +16,7 @@ import net.bullettrain.xenopixelsmod.config.XenoServerConfig;
 import net.bullettrain.xenopixelsmod.network.Bt3CombatPacket;
 import net.bullettrain.xenopixelsmod.network.ChargeAnimPacket;
 import net.bullettrain.xenopixelsmod.network.ModNetwork;
+import net.bullettrain.xenopixelsmod.network.packet.GuidanceHoldPacket;
 import net.minecraft.client.KeyMapping;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.player.LocalPlayer;
@@ -85,17 +86,22 @@ public final class Bt3CombatClient {
     /**
      * Hold while your own ki wave is firing to make it grow.
      *
-     * <p>Left Alt, because that is the key already in the player's hand. A wave is cast with DMZ's
-     * Alt+1..4 technique chord and only starts firing once that chord is released, so Alt is free
-     * for the whole firing window and pressing it again is unambiguous — DMZ's
-     * {@code SECOND_FUNCTION_KEY} is a bare modifier that does nothing without a slot key.
+     * <p>Left mouse: hold it on a firing beam and the beam keeps growing, which is the gesture
+     * players already expect from every other "pour more into it" mechanic.
      *
-     * <p>This was previously C, which was unusable: C is DMZ's {@code ki_charge}, so holding it to
-     * surge also started a ki charge. {@code migrateBeamSurgeKey} moves existing profiles off it.
+     * <p>It has been through two defaults before this. C was unusable because C is DMZ's
+     * {@code ki_charge}, so holding it to surge also started a ki charge; Left Alt worked but sat
+     * under the same hand as the Alt+1..4 technique chord that casts the wave in the first place.
+     * {@code migrateBeamSurgeKey} moves profiles off both.
+     *
+     * <p><b>Left mouse is also attack.</b> The surge polls the physical button through
+     * {@code KeyBinds.isPhysicallyDown}, which reads GLFW directly, so it registers regardless of
+     * how NeoForge resolves the conflict — but the vanilla attack binding still fires on the same
+     * press, and the controls screen will flag the clash.
      */
     public static final KeyMapping BEAM_SURGE = new KeyMapping(
             "key.xenopixelsmod.bt3_beam_surge", KeyConflictContext.IN_GAME,
-            InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_LEFT_ALT, "key.categories.xenopixelsmod");
+            InputConstants.Type.MOUSE, GLFW.GLFW_MOUSE_BUTTON_LEFT, "key.categories.xenopixelsmod");
     /** Mid-combo ki blast cancel. */
     public static final KeyMapping KI_BLAST_CANCEL = new KeyMapping(
             "key.xenopixelsmod.bt3_ki_blast_cancel", KeyConflictContext.IN_GAME,
@@ -124,6 +130,18 @@ public final class Bt3CombatClient {
     public static final KeyMapping SPARKING = new KeyMapping(
             "key.xenopixelsmod.bt3_sparking", KeyConflictContext.IN_GAME,
             InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_Y, "key.categories.xenopixelsmod");
+    /** Hold with the configured Attack binding to channel Hakai. */
+    public static final KeyMapping HAKAI = new KeyMapping(
+            "key.xenopixelsmod.bt3_hakai", KeyConflictContext.IN_GAME,
+            InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_LEFT_CONTROL, "key.categories.xenopixelsmod");
+    /** Hold to home ki on lock-on (Ki Guidance skill). */
+    public static final KeyMapping KI_GUIDANCE = new KeyMapping(
+            "key.xenopixelsmod.ki_guidance", KeyConflictContext.IN_GAME,
+            InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_RIGHT_ALT, "key.categories.xenopixelsmod");
+    /** Same hold, extra mouse button. */
+    public static final KeyMapping KI_GUIDANCE_MOUSE = new KeyMapping(
+            "key.xenopixelsmod.ki_guidance_mouse", KeyConflictContext.IN_GAME,
+            InputConstants.Type.MOUSE, GLFW.GLFW_MOUSE_BUTTON_5, "key.categories.xenopixelsmod");
 
     private static final int COMBO_WINDOW_TICKS = 18;
     private static final int MOVE_COOLDOWN_TICKS = 8;
@@ -146,6 +164,8 @@ public final class Bt3CombatClient {
     private static boolean fistWasDown, kickWasDown, dragonWasDown;
     private static boolean guardWasDown;
     private static boolean clientGuarding;
+    /** True from the moment a HAKAI_START is sent until Ctrl/click is released (or reset). */
+    private static boolean hakaiChanneling;
     private static int zBurstCd;
     private static int kiBlastCd;
     private static int counterFlashTicks;
@@ -257,6 +277,8 @@ public final class Bt3CombatClient {
     private static boolean migratedGuardBinding;
     /** One-shot per session: move Beam Surge off C, which is DMZ's ki_charge. */
     private static boolean migratedBeamSurgeBinding;
+    /** One-shot: move Ki Guidance off G onto Left Alt. */
+    private static boolean migratedGuidanceBinding;
 
     @EventBusSubscriber(modid = XenoPixelsMod.MOD_ID, bus = EventBusSubscriber.Bus.MOD, value = Dist.CLIENT)
     public static class ModBus {
@@ -279,11 +301,38 @@ public final class Bt3CombatClient {
             event.register(SONIC_SWAY_RIGHT);
             event.register(ULTIMATE);
             event.register(SPARKING);
+            event.register(HAKAI);
+            event.register(KI_GUIDANCE);
+            event.register(KI_GUIDANCE_MOUSE);
         }
     }
 
     @EventBusSubscriber(modid = XenoPixelsMod.MOD_ID, value = Dist.CLIENT)
     public static class ForgeBus {
+        /** Discard every queued ground-combat press, for the ticks combat is not the active context. */
+        private static void drainCombatKeys() {
+            while (DASH_LEFT.consumeClick()) { }
+            while (DASH_RIGHT.consumeClick()) { }
+            while (CHASE.consumeClick()) { }
+            while (BACKSTEP.consumeClick()) { }
+            while (CHARGE_FIST.consumeClick()) { }
+            while (CHARGE_KICK.consumeClick()) { }
+            while (DRAGON_DASH.consumeClick()) { }
+            while (GUARD.consumeClick()) { }
+            while (Z_BURST.consumeClick()) { }
+            while (BEAM_SURGE.consumeClick()) { }
+            while (KI_BLAST_CANCEL.consumeClick()) { }
+            while (LOCK_NEXT.consumeClick()) { }
+            while (LOCK_PREV.consumeClick()) { }
+            while (SONIC_SWAY_LEFT.consumeClick()) { }
+            while (SONIC_SWAY_RIGHT.consumeClick()) { }
+            while (ULTIMATE.consumeClick()) { }
+            while (SPARKING.consumeClick()) { }
+            while (HAKAI.consumeClick()) { }
+            while (KI_GUIDANCE.consumeClick()) { }
+            while (KI_GUIDANCE_MOUSE.consumeClick()) { }
+        }
+
         @SubscribeEvent
         public static void onClientTick(ClientTickEvent.Post event) {
             Minecraft mc = Minecraft.getInstance();
@@ -305,6 +354,11 @@ public final class Bt3CombatClient {
                 migrateBeamSurgeKey(mc);
             }
 
+            if (!migratedGuidanceBinding && mc.player != null) {
+                migratedGuidanceBinding = true;
+                migrateGuidanceKey(mc);
+            }
+
             if (mc.player == null || mc.level == null || mc.screen != null) {
                 if (clientGuarding) {
                     clientGuarding = false;
@@ -312,9 +366,32 @@ public final class Bt3CombatClient {
                             Bt3CombatPacket.Action.GUARD, -1, 0));
                 }
                 clearGuardInputState();
+                cancelHakaiIfChanneling();
                 resetCharge();
+                guidanceWasDown = false;
                 return;
             }
+            // A pilot strapped into a control chair is flying, not fighting on foot. Several
+            // cockpit bindings deliberately sit on the same keys as ground combat (lock on
+            // middle mouse vs. charge kick, clear-lock on R vs. charge fist, lead toggle on Y
+            // vs. sparking); without this both fire from one press. Ground combat yields,
+            // because the seat is the more specific context — you cannot dragon-dash out of a
+            // chair anyway. Presses are drained rather than ignored so none is banked and
+            // replayed the instant the pilot stands up.
+            if (mc.player.getVehicle() instanceof net.bullettrain.xenopixelsmod.aero.seat.XenoPilotSeatEntity) {
+                if (clientGuarding) {
+                    clientGuarding = false;
+                    ModNetwork.CHANNEL.sendToServer(new Bt3CombatPacket(
+                            Bt3CombatPacket.Action.GUARD, -1, 0));
+                }
+                clearGuardInputState();
+                cancelHakaiIfChanneling();
+                resetCharge();
+                guidanceWasDown = false;
+                drainCombatKeys();
+                return;
+            }
+            tickGuidanceHold(mc);
             if (!XenoClientConfig.bt3CombatClient || !XenoServerClientState.combat()) {
                 if (clientGuarding) {
                     clientGuarding = false;
@@ -322,6 +399,7 @@ public final class Bt3CombatClient {
                             Bt3CombatPacket.Action.GUARD, -1, 0));
                 }
                 clearGuardInputState();
+                cancelHakaiIfChanneling();
                 resetCharge();
                 return;
             }
@@ -342,6 +420,7 @@ public final class Bt3CombatClient {
             // Charge fist/kick always; dragon only while locked (see tickCharge)
             tickCharge(mc);
             tickGuard(mc);
+            tickHakai(mc);
             tickPhase1Keys(mc);
 
             LivingEntity locked = LockOnEvent.getLockedTarget();
@@ -354,8 +433,11 @@ public final class Bt3CombatClient {
             boolean forwardDown = mc.options.keyUp.isDown();
             boolean backDown = mc.options.keyDown.isDown();
 
-            // Vanish / chase / backstep: LOCK-ON ONLY
-            if (locked != null) {
+            // Dragon homing: single W after a charged-kick knockback (lock not required)
+            if (forwardDown && !forwardWasDown && DragonHomingClient.isLive()) {
+                tryDragonHoming(mc, locked);
+                lastForwardTapMs = 0;
+            } else if (locked != null) {
                 if (leftDown && !leftWasDown) {
                     if (lastLeftTapMs > 0 && now - lastLeftTapMs <= DOUBLE_TAP_MS) {
                         tryMove(mc, locked, Bt3CombatPacket.Action.VANISH, -1); // A = left vanish
@@ -398,7 +480,7 @@ public final class Bt3CombatClient {
                         lastBackTapMs = now;
                     }
                 }
-            } else {
+            } else if (!(forwardDown && DragonHomingClient.isLive())) {
                 // Not locked: clear pending double-taps so freelook walk never arms vanish
                 lastLeftTapMs = lastRightTapMs = lastForwardTapMs = lastBackTapMs = 0;
             }
@@ -469,26 +551,49 @@ public final class Bt3CombatClient {
         }
 
         /**
-         * Move Beam Surge off C, which older builds shipped as its default.
+         * Move Beam Surge onto left mouse from either default it shipped with before.
          *
-         * <p>C is DMZ's {@code ki_charge}, so holding it to grow a wave also started a ki charge
-         * and the surge never read as working. Deliberately narrow: only a binding still sitting
-         * on exactly C is moved, so anyone who rebound it on purpose is left alone.
+         * <p>C was DMZ's {@code ki_charge}, so holding it to grow a wave also started a ki charge
+         * and the surge never read as working. Left Alt replaced it and worked, but sits under the
+         * same hand as the Alt+1..4 chord that casts the wave.
+         *
+         * <p>Deliberately narrow: only a binding still sitting on exactly one of those two former
+         * defaults is moved, so anyone who rebound it on purpose is left alone.
          */
         private static void migrateBeamSurgeKey(Minecraft mc) {
             try {
                 if (BEAM_SURGE.isUnbound()) return;
                 InputConstants.Key key = BEAM_SURGE.getKey();
-                if (key.getType() != InputConstants.Type.KEYSYM || key.getValue() != GLFW.GLFW_KEY_C) {
+                if (key.getType() != InputConstants.Type.KEYSYM) return;
+                if (key.getValue() != GLFW.GLFW_KEY_C && key.getValue() != GLFW.GLFW_KEY_LEFT_ALT) {
                     return;
                 }
-                BEAM_SURGE.setKey(InputConstants.Type.KEYSYM.getOrCreate(GLFW.GLFW_KEY_LEFT_ALT));
+                String from = key.getValue() == GLFW.GLFW_KEY_C ? "C" : "Left Alt";
+                BEAM_SURGE.setKey(
+                        InputConstants.Type.MOUSE.getOrCreate(GLFW.GLFW_MOUSE_BUTTON_LEFT));
                 KeyMapping.resetMapping();
                 mc.options.save();
                 XenoPixelsMod.LOGGER.info(
-                        "Migrated Beam Surge from C to Left Alt; C stays with DragonMineZ ki_charge");
+                        "Migrated Beam Surge from {} to Left Mouse; hold it on a firing beam to grow it",
+                        from);
             } catch (Throwable t) {
                 XenoPixelsMod.LOGGER.warn("Failed to migrate Beam Surge key binding: {}", t.toString());
+            }
+        }
+
+        private static void migrateGuidanceKey(Minecraft mc) {
+            try {
+                if (KI_GUIDANCE.isUnbound()) return;
+                InputConstants.Key key = KI_GUIDANCE.getKey();
+                if (key.getType() != InputConstants.Type.KEYSYM) return;
+                if (key.getValue() != GLFW.GLFW_KEY_G && key.getValue() != GLFW.GLFW_KEY_LEFT_ALT) return;
+                String from = key.getValue() == GLFW.GLFW_KEY_G ? "G" : "Left Alt";
+                KI_GUIDANCE.setKey(InputConstants.Type.KEYSYM.getOrCreate(GLFW.GLFW_KEY_RIGHT_ALT));
+                KeyMapping.resetMapping();
+                mc.options.save();
+                XenoPixelsMod.LOGGER.info("Migrated Ki Guidance from {} to Right Alt", from);
+            } catch (Throwable t) {
+                XenoPixelsMod.LOGGER.warn("Failed to migrate Ki Guidance key binding: {}", t.toString());
             }
         }
 
@@ -500,13 +605,21 @@ public final class Bt3CombatClient {
 
         @SubscribeEvent
         public static void onAttackStart(DMZClientEvent.PlayerAttackStart event) {
-            // Combo: lock-on OR freelook (not lock-only)
             if (chargeMode != ChargeMode.NONE) return;
-            if (!XenoClientConfig.bt3CombatClient || !XenoClientConfig.bt3ComboClient) return;
-            if (!XenoServerClientState.combo()) return;
+            if (!XenoClientConfig.bt3CombatClient) return;
 
             LocalPlayer player = event.getPlayer();
             if (player == null) return;
+
+            // Hakai: its modifier + Attack is a separate move, resolved before combo owns the click.
+            if (hakaiModifierHeld()) {
+                tryStartHakai(player);
+                return;
+            }
+
+            // Combo: lock-on OR freelook (not lock-only)
+            if (!XenoClientConfig.bt3ComboClient) return;
+            if (!XenoServerClientState.combo()) return;
 
             LivingEntity target = LockOnEvent.getLockedTarget();
             if (target != null && !target.isAlive()) target = null;
@@ -528,9 +641,12 @@ public final class Bt3CombatClient {
             boolean finisher = XenoServerClientState.finisher()
                     && comboStep > 0
                     && comboStep % finisherEvery == 0;
-            // Punch-only string: force punch/uppercut poses over mixed DMZ kicks
-            if (XenoServerClientState.comboPunchesOnly() && XenoClientConfig.bt3CombatAnims) {
-                DmzAnimHelperClient.playLocalComboPunch(player, comboStep, finisher);
+            if (XenoClientConfig.bt3CombatAnims) {
+                if (comboStep % 2 == 0) {
+                    DmzAnimHelperClient.playLocalComboKick(player, comboStep, finisher);
+                } else if (XenoServerClientState.comboPunchesOnly()) {
+                    DmzAnimHelperClient.playLocalComboPunch(player, comboStep, finisher);
+                }
             }
             // No combo lunge — stay planted while mashing
             int tid = target != null ? target.getId() : -1;
@@ -549,6 +665,11 @@ public final class Bt3CombatClient {
             }
             // Guard: no vanilla attack / use (RMB place) while holding block
             if (clientGuarding && (event.isAttack() || event.isUseItem())) {
+                event.setCanceled(true);
+                event.setSwingHand(false);
+            }
+            // Hakai: modifier+Attack is redirected in onAttackStart; suppress the vanilla swing too.
+            if (event.isAttack() && hakaiModifierHeld()) {
                 event.setCanceled(true);
                 event.setSwingHand(false);
             }
@@ -602,6 +723,80 @@ public final class Bt3CombatClient {
 
     private static void clearGuardInputState() {
         guardWasDown = false;
+    }
+
+    /**
+     * Resolves the current target the same two-tier way every other lock-on-or-freelook move
+     * does (lock-on first, crosshair raycast as fallback) and sends the start packet. The
+     * server re-derives every gate (config, permission, range, ki, cooldown) itself; this is
+     * only target resolution and the initial "start channeling" flag for the release watcher.
+     */
+    private static void tryStartHakai(LocalPlayer player) {
+        LivingEntity target = LockOnEvent.getLockedTarget();
+        if (target != null && !target.isAlive()) target = null;
+        if (target == null) {
+            double range = Math.max(6.0, XenoServerClientState.get().chargeAttackRange);
+            target = findLookTarget(Minecraft.getInstance(), range);
+        }
+        if (target == null) return;
+        hakaiChanneling = true;
+        ModNetwork.CHANNEL.sendToServer(new Bt3CombatPacket(
+                Bt3CombatPacket.Action.HAKAI_START, target.getId(), 0));
+    }
+
+    /** Cancels when either configured input is released; the server enforces everything else. */
+    private static void tickHakai(Minecraft mc) {
+        if (!hakaiChanneling) return;
+        if (mc.player == null || mc.screen != null
+                || !hakaiModifierHeld() || !physicallyDown(mc.options.keyAttack)) {
+            cancelHakaiIfChanneling();
+        }
+    }
+
+    private static void cancelHakaiIfChanneling() {
+        if (hakaiChanneling) {
+            hakaiChanneling = false;
+            ModNetwork.CHANNEL.sendToServer(new Bt3CombatPacket(
+                    Bt3CombatPacket.Action.HAKAI_CANCEL, -1, 0));
+        }
+    }
+
+    private static boolean hakaiModifierHeld() {
+        return physicallyDown(HAKAI);
+    }
+
+    private static boolean guidanceWasDown;
+
+    private static void tickGuidanceHold(Minecraft mc) {
+        if (mc.player == null || mc.screen != null) {
+            guidanceWasDown = false;
+            return;
+        }
+        boolean down = guidanceKeyDown();
+        if (down) {
+            LivingEntity locked = LockOnEvent.getLockedTarget();
+            int targetId = locked != null && locked.isAlive() ? locked.getId() : -1;
+            var look = mc.gameRenderer.getMainCamera().getLookVector();
+            ModNetwork.sendToServer(new GuidanceHoldPacket(targetId, new Vec3(look.x(), look.y(), look.z())));
+        }
+        if (down && !guidanceWasDown) {
+            mc.player.displayClientMessage(Component.literal("§bKi Guidance"), true);
+        }
+        guidanceWasDown = down;
+    }
+
+    private static boolean guidanceKeyDown() {
+        if (physicallyDown(KI_GUIDANCE) || physicallyDown(KI_GUIDANCE_MOUSE)) return true;
+        long window = Minecraft.getInstance().getWindow().getWindow();
+        return InputConstants.isKeyDown(window, GLFW.GLFW_KEY_RIGHT_ALT);
+    }
+
+    private static boolean physicallyDown(KeyMapping mapping) {
+        try {
+            return KeyBinds.isPhysicallyDown(mapping);
+        } catch (Throwable t) {
+            return mapping.isDown();
+        }
     }
 
     private static void tickPhase1Keys(Minecraft mc) {
@@ -890,10 +1085,11 @@ public final class Bt3CombatClient {
                 return;
             }
         } else if (mode == ChargeMode.KICK) {
-            // Kick: freelook optional (air kick OK)
+            // Kick: freelook optional (air kick OK). Arm single-W dragon homing after launch.
             if (target == null) {
                 target = findLookTarget(mc, XenoServerClientState.get().chargeAttackRange);
             }
+            DragonHomingClient.open();
         }
 
         // W/S while charging kick → vertical launch bias (+1 up / -1 down)
@@ -998,6 +1194,20 @@ public final class Bt3CombatClient {
         backWasDown = mc.options.keyDown.isDown();
     }
 
+    /** Single W after a charged kick: fly to the launched victim. Server picks the victim. */
+    private static void tryDragonHoming(Minecraft mc, LivingEntity locked) {
+        if (moveCooldown > 0 || chargeMode != ChargeMode.NONE) return;
+        if (!XenoClientConfig.bt3ChaseDashClient || !XenoServerClientState.chase()) return;
+        LocalPlayer player = mc.player;
+        if (player == null) return;
+        DragonHomingClient.close();
+        int targetId = locked != null && locked.isAlive() ? locked.getId() : 0;
+        if (XenoClientConfig.bt3CombatSfx) playLocalIt(mc, true);
+        ModNetwork.CHANNEL.sendToServer(new Bt3CombatPacket(
+                Bt3CombatPacket.Action.CHASE_DASH, targetId, 0));
+        startMoveCooldown(Bt3CombatPacket.Action.CHASE_DASH);
+    }
+
     /**
      * @param side for VANISH only: -1 left (A), +1 right (D); ignored otherwise
      */
@@ -1033,7 +1243,7 @@ public final class Bt3CombatClient {
             player.displayClientMessage(Component.literal("§bAlready in range — attack!"), true);
             return;
         }
-        if (dist > maxRange) {
+        if (maxRange > 0 && dist > maxRange) {
             player.displayClientMessage(Component.literal("§bGet closer"), true);
             return;
         }
@@ -1056,6 +1266,10 @@ public final class Bt3CombatClient {
 
     private static void applyClientMove(LocalPlayer player, LivingEntity target,
                                         Bt3CombatPacket.Action action, int side) {
+        // Chase is a velocity fly — never snap locally.
+        if (action == Bt3CombatPacket.Action.CHASE_DASH) {
+            return;
+        }
         // Match server dest exactly; hard-stop velocity
         Vec3 dest = switch (action) {
             case VANISH -> Bt3CombatPacket.vanishBehind(player, target, side);

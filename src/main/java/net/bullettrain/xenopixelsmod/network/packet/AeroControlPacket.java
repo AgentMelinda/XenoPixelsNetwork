@@ -33,7 +33,7 @@ public class AeroControlPacket {
 
     public enum Kind {
         SET_MODE, SET_THROTTLE, SET_ATTITUDE, TOGGLE_SUBSYSTEM, LINK, EMERGENCY_STOP,
-        SET_AUTOPILOT, REQUEST_STATE
+        SET_AUTOPILOT, REQUEST_STATE, SET_FLAP, TOGGLE_AUTO_FLAP
     }
 
     private final BlockPos bePos;
@@ -85,6 +85,16 @@ public class AeroControlPacket {
 
     public static AeroControlPacket requestState(BlockPos pos) {
         return new AeroControlPacket(pos, Kind.REQUEST_STATE, 0, 0, 0);
+    }
+
+    /** Flap extension 0..1, encoded in thousandths. */
+    public static AeroControlPacket setFlap(BlockPos pos, double level) {
+        return new AeroControlPacket(pos, Kind.SET_FLAP,
+                (int) Math.round(Math.max(0.0, Math.min(1.0, level)) * 1_000.0), 0, 0);
+    }
+
+    public static AeroControlPacket toggleAutoFlap(BlockPos pos) {
+        return new AeroControlPacket(pos, Kind.TOGGLE_AUTO_FLAP, 0, 0, 0);
     }
 
     private static int encodeAngle(double degrees) {
@@ -177,6 +187,12 @@ public class AeroControlPacket {
                 AeroAutopilotMode[] modes = AeroAutopilotMode.values();
                 if (a < 0 || a >= modes.length) return null;
                 return new AeroAction.SetAutopilot(modes[a]);
+            }
+            case SET_FLAP -> {
+                return new AeroAction.SetFlap(a / 1_000.0);
+            }
+            case TOGGLE_AUTO_FLAP -> {
+                return new AeroAction.ToggleAutoFlap();
             }
             case REQUEST_STATE -> {
                 return null;

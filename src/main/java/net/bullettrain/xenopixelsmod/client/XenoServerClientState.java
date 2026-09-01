@@ -37,6 +37,10 @@ public final class XenoServerClientState {
         return data.bt3CombatEnabled && data.bt3ChaseDashEnabled;
     }
 
+    public static boolean chaseFlightEnabled() {
+        return data.chaseFlightEnabled;
+    }
+
     public static boolean backstep() {
         return data.bt3CombatEnabled && data.bt3BackstepEnabled;
     }
@@ -71,6 +75,11 @@ public final class XenoServerClientState {
 
     public static boolean lockCycle() {
         return data.bt3CombatEnabled && data.bt3LockCycleEnabled;
+    }
+
+    /** Server allows DMZ Z-lock through walls. Missing/old payloads default on. */
+    public static boolean lockOnThroughBlocks() {
+        return data.lockOnThroughBlocks == null || data.lockOnThroughBlocks;
     }
 
     public static boolean comboPunchesOnly() {

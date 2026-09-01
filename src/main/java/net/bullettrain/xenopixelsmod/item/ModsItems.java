@@ -2,6 +2,7 @@ package net.bullettrain.xenopixelsmod.item;
 
 import net.bullettrain.xenopixelsmod.XenoPixelsMod;
 import net.bullettrain.xenopixelsmod.item.custom.MetalDetectorItem;
+import net.bullettrain.xenopixelsmod.item.custom.PanelConfiguratorItem;
 import net.bullettrain.xenopixelsmod.item.custom.StrawBerrySenzuItem;
 import net.bullettrain.xenopixelsmod.item.custom.TargetToolItem;
 import net.minecraft.core.registries.Registries;
@@ -31,6 +32,10 @@ public class ModsItems {
     /** Opens the XYZ Target GUI. Used for VS2 ship teleport / waypoint targeting. */
     public static final DeferredHolder<Item, Item> TARGET_TOOL = ITEMS.register("target_tool",
             () -> new TargetToolItem(new Item.Properties().stacksTo(1)));
+
+    /** Cycles a wing panel's role (flap/pitch/roll/yaw/brake). Works while standing. */
+    public static final DeferredHolder<Item, Item> PANEL_CONFIGURATOR = ITEMS.register("panel_configurator",
+            () -> new PanelConfiguratorItem(new Item.Properties().stacksTo(1)));
 
     public static void register(IEventBus eventBus) {
         ITEMS.register(eventBus);

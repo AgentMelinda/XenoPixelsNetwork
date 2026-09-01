@@ -40,12 +40,31 @@ public final class AeroBus {
     private double yawDeg;
     private double pitchDeg;
     private double rollDeg;
+    /** Raw pitch/roll/yaw stick position, -1..1 — only meaningful in keyboard mode; see
+     * {@link #mouseAim} and {@link net.bullettrain.xenopixelsmod.aero.control.AeroFlightCore#tick}. */
+    private double pitchStick;
+    private double rollStick;
+    private double yawStick;
+    /** True in mouse-aim mode (attitude-hold PD stabilizer drives rotation, as before), false in
+     * keyboard mode (sticks deflect panels directly and the stabilizer stops driving rotation).
+     * Defaults true so every non-seat attitude source (GUI, autopilot, CC, panel) behaves exactly
+     * as it always has. */
+    private boolean mouseAim = true;
     private boolean flightEngaged;
     private AeroAutopilotMode autopilotMode = AeroAutopilotMode.MANUAL;
     private int waypointIndex;
     private int waypointCount;
     private double targetDistance;
     private double actualSpeed;
+
+    /** Current flap extension, 0..1 (live state — not persisted, see class javadoc). */
+    private double flap;
+    /** Commanded flap extension, 0..1. {@link #flap} eases toward this at {@code AeroConfig.flapSpeedPerSec}. */
+    private double flapTarget;
+    /** When true, the flight tick overrides {@link #flapTarget} from speed/approach. */
+    private boolean autoFlap;
+    /** Live air-brake state; drives BRAKE-role panels and zeroes effective thrust while held. */
+    private boolean airBrakeEngaged;
 
     private PowerTier powerTier = PowerTier.NOMINAL;
     private int storedEnergy;
@@ -102,10 +121,35 @@ public final class AeroBus {
         return rollDeg;
     }
 
+    public double pitchStick() {
+        return pitchStick;
+    }
+
+    public double rollStick() {
+        return rollStick;
+    }
+
+    public double yawStick() {
+        return yawStick;
+    }
+
+    public boolean mouseAim() {
+        return mouseAim;
+    }
+
     void setAttitude(double yaw, double pitch, double roll) {
+        setAttitude(yaw, pitch, roll, 0.0, 0.0, 0.0, true);
+    }
+
+    void setAttitude(double yaw, double pitch, double roll,
+                     double pitchStick, double rollStick, double yawStick, boolean mouseAim) {
         this.yawDeg = wrapDegrees(yaw);
         this.pitchDeg = Mth.clamp(pitch, -89.0, 89.0);
         this.rollDeg = wrapDegrees(roll);
+        this.pitchStick = Mth.clamp(pitchStick, -1.0, 1.0);
+        this.rollStick = Mth.clamp(rollStick, -1.0, 1.0);
+        this.yawStick = Mth.clamp(yawStick, -1.0, 1.0);
+        this.mouseAim = mouseAim;
     }
 
     private static double wrapDegrees(double value) {
@@ -136,6 +180,65 @@ public final class AeroBus {
     public int waypointCount() { return waypointCount; }
     public double targetDistance() { return targetDistance; }
     public double actualSpeed() { return actualSpeed; }
+
+    public double flap() { return flap; }
+    public double flapTarget() { return flapTarget; }
+    public boolean autoFlap() { return autoFlap; }
+
+    void setFlap(double value) {
+        this.flap = Mth.clamp(value, 0.0, 1.0);
+    }
+
+    void setFlapTarget(double value) {
+        this.flapTarget = Mth.clamp(value, 0.0, 1.0);
+    }
+
+    void setAutoFlap(boolean on) {
+        this.autoFlap = on;
+    }
+
+    public boolean airBrakeEngaged() { return airBrakeEngaged; }
+
+    void setAirBrakeEngaged(boolean engaged) {
+        this.airBrakeEngaged = engaged;
+    }
+
+    /**
+     * Advance live flap travel one server tick.
+     *
+     * <p>Public for the same reason {@link #reportAutopilot} is: the authoritative flight tick
+     * lives outside this package and has to move flaps, while operator <i>intent</i> still only
+     * ever arrives through {@link AeroActionDispatcher}. Flaps ease rather than snap, because a
+     * step change in lift and drag is both unrealistic and a jolt to the physics body.
+     *
+     * <p>With auto-flap on, the setpoint is derived from airspeed instead of the operator's:
+     * fully out at or below {@link AeroConfig#autoFlapExtendSpeed}, fully in at or above
+     * {@link AeroConfig#autoFlapRetractSpeed}, smoothly interpolated between.
+     *
+     * @param deltaSeconds observed server tick length
+     * @param airspeed     current speed in blocks/s; ignored unless auto-flap is on
+     */
+    public void advanceFlaps(double deltaSeconds, double airspeed) {
+        if (!Double.isFinite(deltaSeconds) || deltaSeconds <= 0.0) return;
+        // A long tick (or a debugger pause) must not teleport the flaps.
+        double step = Math.min(deltaSeconds, 0.25);
+
+        if (autoFlap && Double.isFinite(airspeed)) {
+            setFlapTarget(1.0 - smoothstep(AeroConfig.autoFlapExtendSpeed,
+                    AeroConfig.autoFlapRetractSpeed, airspeed));
+        }
+
+        double delta = flapTarget - flap;
+        double travel = AeroConfig.flapSpeedPerSec * step;
+        setFlap(Math.abs(delta) <= travel ? flapTarget : flap + Math.copySign(travel, delta));
+    }
+
+    /** Hermite smoothstep, 0 below {@code e0}, 1 above {@code e1}. */
+    private static double smoothstep(double e0, double e1, double x) {
+        if (e1 <= e0) return x < e0 ? 0.0 : 1.0;
+        double t = Mth.clamp((x - e0) / (e1 - e0), 0.0, 1.0);
+        return t * t * (3.0 - 2.0 * t);
+    }
 
     /** Server flight-director telemetry; does not alter operator configuration. */
     public void reportAutopilot(int index, int count, double distance, double speed, String message) {
@@ -203,12 +306,20 @@ public final class AeroBus {
         yawDeg = 0.0;
         pitchDeg = 0.0;
         rollDeg = 0.0;
+        pitchStick = 0.0;
+        rollStick = 0.0;
+        yawStick = 0.0;
+        mouseAim = true;
         flightEngaged = false;
         autopilotMode = AeroAutopilotMode.MANUAL;
         waypointIndex = 0;
         waypointCount = 0;
         targetDistance = 0.0;
         actualSpeed = 0.0;
+        flap = 0.0;
+        flapTarget = 0.0;
+        autoFlap = false;
+        airBrakeEngaged = false;
     }
 
     /** Saves operator configuration only — see the persistence rule in the class javadoc. */

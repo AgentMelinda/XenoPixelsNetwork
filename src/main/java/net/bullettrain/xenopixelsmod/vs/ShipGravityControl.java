@@ -11,24 +11,40 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicLong;
 
 /** Per-sub-level gravity override. Positive values pull downward. */
 public final class ShipGravityControl {
     public static final double NORMAL_GRAVITY = 10.0;
     private static final AtomicBoolean REGISTERED = new AtomicBoolean();
     private static final Map<UUID, ShipGravityControl> CONTROLS = new ConcurrentHashMap<>();
+    /**
+     * Stale-sweep cadence for {@link #CONTROLS}. Kept long enough that a ship whose chunks unload
+     * and reload within the window keeps its (possibly owner-set) gravity, yet short enough that a
+     * disassembled ship does not linger for the server's whole uptime.
+     */
+    private static final AtomicLong lastSweepNanos = new AtomicLong();
+    private static final long SWEEP_INTERVAL_NANOS = 30_000_000_000L;
+    private static final long STALE_AFTER_NANOS = 300_000_000_000L;
 
     private volatile double gravitySi = NORMAL_GRAVITY;
     private volatile boolean suppressed;
     private final Vector3d correctionImpulse = new Vector3d();
+    /** Last physics tick this ship was seen in a loaded sub-level container; drives the sweep. */
+    private volatile long lastSeenNanos = System.nanoTime();
 
     public static void ensureRegistered() {
         if (!REGISTERED.compareAndSet(false, true)) return;
         SableEventPlatform.INSTANCE.onPhysicsTick((system, deltaSeconds) -> {
+            long now = System.nanoTime();
             for (var candidate : SubLevelContainer.getContainer(system.getLevel()).getAllSubLevels()) {
                 if (!(candidate instanceof ServerSubLevel subLevel)) continue;
                 ShipGravityControl control = get(subLevel);
-                if (control == null || control.suppressed) continue;
+                if (control == null) continue;
+                // Alive in this dimension → renew. A suppressed control still belongs to a live
+                // ship, so mark it seen before the suppressed short-circuit.
+                control.lastSeenNanos = now;
+                if (control.suppressed) continue;
                 double difference = NORMAL_GRAVITY - control.gravitySi;
                 if (Math.abs(difference) < 1.0e-6) continue;
                 RigidBodyHandle handle = system.getPhysicsHandle(subLevel);
@@ -42,6 +58,13 @@ public final class ShipGravityControl {
                 // correction tilted with the hull instead of staying vertical.
                 subLevel.logicalPose().orientation().transformInverse(control.correctionImpulse);
                 handle.applyLinearImpulse(control.correctionImpulse);
+            }
+            // Cleanup by staleness, not by diffing against THIS dimension's container: the callback
+            // fires once per dimension's physics system, so a live ship is seen by its OWN
+            // dimension's tick and survives the sweep, while a disassembled ship is not.
+            if (now - lastSweepNanos.get() >= SWEEP_INTERVAL_NANOS) {
+                lastSweepNanos.set(now);
+                CONTROLS.values().removeIf(control -> now - control.lastSeenNanos > STALE_AFTER_NANOS);
             }
         });
         XenoPixelsMod.LOGGER.info("Registered Sable gravity override callback");

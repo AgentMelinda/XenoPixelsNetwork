@@ -14,7 +14,8 @@
  *   <li>{@code dmz.DmzContentBootstrap} — real custom forms into DragonMineZ</li>
  *   <li>{@code client.combat} + {@code network.Bt3CombatPacket} — BT3 combat</li>
  *   <li>{@code client.Xeno*Overlay} — HUD suite</li>
- *   <li>{@code event.KiOverchargeHandler} — KI scaling</li>
+ *   <li>{@code event.KiOverchargeHandler} — power-release KI scaling</li>
+ *   <li>{@code combat.overcharge} — charge past DMZ's 175% cap</li>
  *   <li>{@code transformation.XenoFormRegistry} — menu catalog of those forms</li>
  * </ul>
  *

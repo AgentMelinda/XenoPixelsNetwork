@@ -4,9 +4,7 @@ import com.dragonminez.client.animation.IPlayerAnimatable;
 import net.bullettrain.xenopixelsmod.client.config.XenoClientConfig;
 import net.bullettrain.xenopixelsmod.combat.DmzAnimHelper;
 import net.bullettrain.xenopixelsmod.combat.DmzAnimHelper.ChargeStyle;
-import net.minecraft.client.Minecraft;
 import net.minecraft.client.player.LocalPlayer;
-import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.world.entity.player.Player;
 
 /**
@@ -44,6 +42,11 @@ public final class DmzAnimHelperClient {
             pendingAnim = null;
             step = 0;
         }
+
+        /** True while a delayed follow-up kick/punch is queued but not yet played. */
+        public static boolean isArmed() {
+            return ticksLeft > 0 && pendingAnim != null;
+        }
     }
 
     public static void playLocalChargeStart(Player player, ChargeStyle style) {
@@ -78,6 +81,15 @@ public final class DmzAnimHelperClient {
         playLocalMelee(player, anim, false, finisher ? 1.2f : 1.08f);
     }
 
+    public static void playLocalComboKick(Player player, int step, boolean finisher) {
+        if (!XenoClientConfig.bt3CombatAnims || player == null) return;
+        String anim = step % 4 == 0 ? DmzAnimHelper.KICK_GUT_R : DmzAnimHelper.KICK_LOW_R;
+        if (step % 4 == 2) {
+            anim = DmzAnimHelper.KICK_GUT_L;
+        }
+        playLocalMelee(player, anim, false, finisher ? 1.2f : 1.1f);
+    }
+
     public static void playLocalChargeStop(Player player) {
         if (!XenoClientConfig.bt3CombatAnims) return;
         try {
@@ -105,7 +117,6 @@ public final class DmzAnimHelperClient {
     public static void playLocalChargeRelease(Player player, ChargeStyle style, boolean fullyCharged, int verticalBias) {
         playLocalChargeStop(player);
         if (!XenoClientConfig.bt3CombatAnims) {
-            spawnReleaseBurst(player, style, fullyCharged);
             return;
         }
 
@@ -125,7 +136,6 @@ public final class DmzAnimHelperClient {
                     // second delayed only; server sends third
                 }
             }
-            spawnReleaseBurst(player, style, fullyCharged);
             return;
         }
 
@@ -140,7 +150,6 @@ public final class DmzAnimHelperClient {
             if (XenoClientConfig.bt3KickChainAnims) {
                 ClientStrikeChain.arm(DmzAnimHelper.PUNCH_RIGHT, 1.15f, 5);
             }
-            spawnReleaseBurst(player, style, fullyCharged);
             return;
         }
 
@@ -149,52 +158,6 @@ public final class DmzAnimHelperClient {
         playLocalMelee(player, fire, false, speed);
         if (XenoClientConfig.bt3KickChainAnims) {
             ClientStrikeChain.arm(fullyCharged ? DmzAnimHelper.PUNCH_LEFT : DmzAnimHelper.ATTACK2, speed * 1.1f, 3);
-        }
-        spawnReleaseBurst(player, style, fullyCharged);
-    }
-
-    /** Soft impact / charge-release particles at the player. */
-    public static void spawnReleaseBurst(Player player, ChargeStyle style, boolean full) {
-        if (!XenoClientConfig.bt3CombatParticles) return;
-        if (player.level() == null) return;
-        var rand = player.getRandom();
-        float h = player.getBbHeight();
-        int count = full ? 10 : 5;
-        for (int i = 0; i < count; i++) {
-            double x = player.getX() + (rand.nextDouble() - 0.5) * 0.8;
-            double y = player.getY() + rand.nextDouble() * h * 0.9;
-            double z = player.getZ() + (rand.nextDouble() - 0.5) * 0.8;
-            if (style == ChargeStyle.KICK) {
-                player.level().addParticle(ParticleTypes.CRIT, x, y, z, 0, 0.02, 0);
-                if (full) {
-                    player.level().addParticle(ParticleTypes.ELECTRIC_SPARK, x, y, z, 0, 0.01, 0);
-                }
-            } else if (style == ChargeStyle.DRAGON) {
-                player.level().addParticle(ParticleTypes.FLAME, x, y, z, 0, 0.02, 0);
-            } else {
-                player.level().addParticle(ParticleTypes.CRIT, x, y, z, 0, 0.015, 0);
-                if (full) {
-                    player.level().addParticle(ParticleTypes.SWEEP_ATTACK, x, y + 0.2, z, 0, 0, 0);
-                }
-            }
-        }
-    }
-
-    /** Hit spark at a world position (target impact). */
-    public static void spawnHitSpark(double x, double y, double z, boolean heavy) {
-        if (!XenoClientConfig.bt3CombatParticles) return;
-        Minecraft mc = Minecraft.getInstance();
-        if (mc.level == null) return;
-        int n = heavy ? 8 : 4;
-        for (int i = 0; i < n; i++) {
-            mc.level.addParticle(ParticleTypes.CRIT,
-                    x + (mc.level.random.nextDouble() - 0.5) * 0.5,
-                    y + mc.level.random.nextDouble() * 0.4,
-                    z + (mc.level.random.nextDouble() - 0.5) * 0.5,
-                    0, 0.02, 0);
-        }
-        if (heavy) {
-            mc.level.addParticle(ParticleTypes.SWEEP_ATTACK, x, y + 0.5, z, 0, 0, 0);
         }
     }
 

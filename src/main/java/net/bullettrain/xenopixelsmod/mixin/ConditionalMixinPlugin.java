@@ -1,7 +1,9 @@
 package net.bullettrain.xenopixelsmod.mixin;
 
+import com.mojang.logging.LogUtils;
 import net.neoforged.fml.loading.FMLLoader;
 import org.objectweb.asm.tree.ClassNode;
+import org.slf4j.Logger;
 import org.spongepowered.asm.mixin.extensibility.IMixinConfigPlugin;
 import org.spongepowered.asm.mixin.extensibility.IMixinInfo;
 
@@ -13,11 +15,14 @@ import java.util.Set;
  * Uses {@link FMLLoader#getLoadingModList()} (available during mixin apply).
  */
 public class ConditionalMixinPlugin implements IMixinConfigPlugin {
+    private static final Logger LOGGER = LogUtils.getLogger();
     /** Permission API the ki-griefing compat compiles against; absent on older YAWP builds. */
     private static final String YAWP_API_CLASS = "de.z0rdak.yawp.api.permission.FlagPermissions";
 
     @Override
     public void onLoad(String mixinPackage) {
+        LOGGER.info("Loaded mixin config plugin for {} (customnpcs={})",
+                mixinPackage, isModLoaded("customnpcs"));
     }
 
     @Override
@@ -57,6 +62,9 @@ public class ConditionalMixinPlugin implements IMixinConfigPlugin {
             // Backs redirect mixins in both .compat.customnpcs. and .compat.mynpcs. — apply
             // whenever either mod (or both) is present.
             return isModLoaded("customnpcs") || isModLoaded("mynpcs");
+        }
+        if (mixinClassName.contains(".compat.cnpcgecko.")) {
+            return isModLoaded("customnpcs") && isModLoaded("cnpcgeckoaddon");
         }
         if (mixinClassName.contains(".compat.customnpcs.")) {
             return isModLoaded("customnpcs");
@@ -127,6 +135,9 @@ public class ConditionalMixinPlugin implements IMixinConfigPlugin {
         }
         if ("customnpcs".equals(modId)) {
             return isClassPresent("noppes.npcs.CustomNpcs");
+        }
+        if ("cnpcgeckoaddon".equals(modId)) {
+            return isClassPresent("com.goodbird.cnpcgeckoaddon.CNPCGeckoAddon");
         }
         if ("mynpcs".equals(modId)) {
             return isClassPresent("espi.mynpcs.MyNpcs");

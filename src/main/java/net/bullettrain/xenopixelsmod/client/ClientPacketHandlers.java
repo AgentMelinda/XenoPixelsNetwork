@@ -20,6 +20,10 @@ public final class ClientPacketHandlers {
         if (data != null) {
             // Re-apply full form scale maps (apply() on server Data may not run on client)
             XenoServerConfig.applyFormScaleMaps(data);
+            // The charge-cap mixin reads these statics on both sides when TechniqueChargeSyncS2C
+            // writes the percent. Leave them stale and a 1000% charge is clamped back to 200
+            // on the client HUD even though the server accepted it.
+            XenoServerConfig.applySyncedKiCombat(data);
         }
     }
 

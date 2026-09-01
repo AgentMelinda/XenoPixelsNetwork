@@ -108,6 +108,22 @@ public final class ShipBallisticController {
     private volatile boolean impactRequested;
     private volatile String status = "idle";
 
+    /**
+     * How long after a {@link #getStatus()} call we keep formatting the detailed status text.
+     *
+     * <p>The detail lines are built with {@code String.format} inside the Sable physics tick, once
+     * per ten ticks per missile in flight. That is rate-limited but still pure waste when nothing
+     * is reading — the common case, since a status readout only exists while a player has the
+     * guidance screen open or a computer is polling the peripheral. Three seconds is long enough
+     * that a reader polling at any sane rate never sees the text go stale.
+     */
+    private static final long STATUS_READER_WINDOW_NANOS = 3_000_000_000L;
+
+    private volatile long lastStatusReadNanos;
+    private volatile boolean statusEverRead;
+    /** Phase at the last detailed format, so a transition always produces one line. */
+    private MissilePhase lastStatusPhase;
+
     /** Loft peak world Y — climb here first. */
     private volatile double apexY;
     /** Level-cruise world Y — fly straight to target at this altitude after loft. */
@@ -240,6 +256,24 @@ public final class ShipBallisticController {
         ACTIVE_FLIGHT_DIMS.remove(shipId);
     }
 
+    /**
+     * Drop a flight whose ship is gone (disassembled mid-flight, or its dimension unloaded).
+     *
+     * <p>{@link #unregisterFlight} only clears the {@link #ACTIVE_FLIGHTS}/{@link #ACTIVE_FLIGHT_DIMS}
+     * bookkeeping, which is keyed by the numeric Sable ship id. But {@link #CONTROLLERS} is keyed by
+     * the ship's UUID, so a controller whose ship vanished mid-flight would otherwise linger there
+     * for the server's whole uptime — its flight stops being ticked, yet no {@code abort()} or
+     * {@code consumeImpact()} ever runs to remove it. The ticker calls this (rather than plain
+     * unregister) on every give-up path so the controller goes with the flight.
+     *
+     * <p>The removeIf matches on {@code activeShipId}, which is set to -1 the moment a flight ends,
+     * so it can only ever match the still-live controller for that ship.
+     */
+    public static void forgetFlight(long shipId) {
+        unregisterFlight(shipId);
+        CONTROLLERS.values().removeIf(c -> c.activeShipId == shipId);
+    }
+
     public static net.minecraft.resources.ResourceKey<net.minecraft.world.level.Level>
     activeFlightDimension(long shipId) {
         return ACTIVE_FLIGHT_DIMS.get(shipId);
@@ -254,7 +288,25 @@ public final class ShipBallisticController {
     }
 
     public String getStatus() {
+        // Reading is what makes the detailed text worth building; see STATUS_READER_WINDOW_NANOS.
+        lastStatusReadNanos = System.nanoTime();
+        statusEverRead = true;
         return status;
+    }
+
+    /**
+     * True when the detailed {@code String.format} status lines are worth building this tick.
+     *
+     * <p>Called once per physics tick from the guidance loop. Phase transitions always qualify so
+     * the last thing a reader sees is never a line from the previous phase.
+     */
+    private boolean statusWanted() {
+        if (phase != lastStatusPhase) {
+            lastStatusPhase = phase;
+            return true;
+        }
+        return statusEverRead
+                && System.nanoTime() - lastStatusReadNanos < STATUS_READER_WINDOW_NANOS;
     }
 
     public float getWarheadYield() {
@@ -710,7 +762,9 @@ public final class ShipBallisticController {
             pastApex = true;
         }
 
-        boolean logStatus = (flightAge % 10 == 0);
+        // Rate-limited AND demand-gated: formatting for a readout nobody has opened is pure work
+        // inside the physics tick, multiplied by every missile in flight.
+        boolean logStatus = (flightAge % 10 == 0) && statusWanted();
 
         double thrScale = 1.0 + Math.min(8, thrusterBonus) * 0.12;
         // Mass does not reduce accel (F∝m), but VS drag/assembly noise does — give heavies more climb authority.

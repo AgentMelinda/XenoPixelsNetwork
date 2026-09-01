@@ -11,6 +11,12 @@ import net.bullettrain.xenopixelsmod.network.packet.OpenGuidancePacket;
 import net.bullettrain.xenopixelsmod.network.packet.AeroControlPacket;
 import net.bullettrain.xenopixelsmod.network.packet.AeroStatePacket;
 import net.bullettrain.xenopixelsmod.network.packet.BeamSurgePacket;
+import net.bullettrain.xenopixelsmod.network.packet.GuidanceHoldPacket;
+import net.bullettrain.xenopixelsmod.network.packet.SeatFlightInputPacket;
+import net.bullettrain.xenopixelsmod.network.packet.SeatToggleBindPacket;
+import net.bullettrain.xenopixelsmod.network.packet.TargetLockPacket;
+import net.bullettrain.xenopixelsmod.network.packet.TargetLockStatePacket;
+import net.bullettrain.xenopixelsmod.network.packet.TargetLockErrorPacket;
 import net.bullettrain.xenopixelsmod.network.packet.CombatFxPacket;
 import net.bullettrain.xenopixelsmod.network.packet.PartySyncPacket;
 import net.bullettrain.xenopixelsmod.network.packet.PartyActionPacket;
@@ -31,6 +37,21 @@ public class ModNetwork {
     /**
      * Bump when packet set or wire format changes.
      *
+     * <p>29: appended {@code SeatToggleBindPacket}, the seated pilot's chair-bind toggle key.
+     * <p>28: {@code AeroStatePacket} carries the air-brake flag, so the flight HUD can show a
+     * control the pilot is actually holding.
+     * <p>27: appended {@code TargetLockPacket} (C2S), {@code TargetLockStatePacket} (S2C) and
+     * {@code TargetLockErrorPacket} (S2C) for seat-mounted combat lock-on.
+     * <p>26: appended {@code SeatFlightInputPacket}, the seated pilot's control stream.
+     * <p>25: AeroStatePacket carries flap extension / target / auto-flap; AeroControlPacket gains
+     * SET_FLAP and TOGGLE_AUTO_FLAP.
+     * <p>24: dropped lock-through-blocks (feature removed).
+     * <p>23: SyncServerConfigPacket carries guidance knobs, barrage extras, and beam-surge fields.
+     * <p>22: SyncServerConfigPacket carries per-type ki duration.
+     * <p>21: SyncServerConfigPacket carries barrage duration/cooldown.
+     * <p>20: GuidanceHoldPacket also carries camera aim (Sokidan-style).
+     * <p>19: GuidanceHoldPacket now carries lock-on entity id.
+     * <p>18: appended {@code GuidanceHoldPacket}, Ki Guidance key hold.
      * <p>16: expanded party state and appended action, ping, and screen-open packets.
      * <p>15: appended {@code PartySyncPacket}, the party roster.
      * <p>14: appended {@code BeamSurgePacket}, the sustained-beam feed report.
@@ -38,9 +59,33 @@ public class ModNetwork {
      * <p>12: extends Aero control/state with absolute-attitude target/route autopilot.
      * <p>11: appended {@code AeroControlPacket} and {@code AeroStatePacket} for the Aero
      * flight controller. Clients and servers must both run this build — the channel refuses
-     * a mismatched protocol, so a 10 client cannot join an 11 server or vice versa.
+     * a mismatched protocol, so differently versioned builds cannot join each other.
+     *
+     * <p>30: {@code SeatFlightInputPacket} grew two stick bytes and a mouse-aim flag bit for
+     * direct keyboard-mode flap control.
+     *
+     * <p>31: {@code SeatFlightInputPacket} grew a third stick byte (yaw), for the W/S axis remap.
+     *
+     * <p>32: appended {@code NpcAuraPacket}, CustomNPC DragonMineZ aura mesh sync.
+     *
+     * <p>33: {@code NpcAuraPacket} is keyed by entity UUID (mesh was dropped when the
+     * client received the id before the NPC existed).
+     *
+     * <p>34: {@code SyncServerConfigPacket} appended {@code lockOnThroughBlocks}.
+     *
+     * <p>35: {@code NpcAuraPacket} appended aura scale.
+     * <p>36: appended {@code NpcAppearancePacket} for CustomNPC Gecko/DMZ form appearance.
+     * <p>37: appended {@code NpcProfileSavePacket} (C2S DMZ editor tab).
+     * <p>38: {@code NpcAppearancePacket} carries DMZ hair enabled/code/color.
+     * <p>39: appended {@code NpcTransformHoldPacket} so NPC hair morphs during transform hold.
+     * <p>40: {@code NpcAppearancePacket} sends hair code in chunks (full-set codes exceed 32767).
+     * <p>42: {@code NpcAuraPacket} carries form-driven lightning state and color.
+     * <p>43: {@code NpcAppearancePacket} carries aura color and the versioned DMZ appearance profile.
+     * <p>44: {@code NpcAppearancePacket} also carries the NPC's native DMZ aura-scale multiplier.
+     * <p>45: NPC appearance/transform/aura packets carry stack-form state, layered aura styles,
+     * secondary colors, and independent visual-effect toggles.
      */
-    private static final String PROTOCOL = "16";
+    private static final String PROTOCOL = "45";
 
     public static final SimpleChannel CHANNEL = NetworkRegistry.ChannelBuilder
             .named(ResourceLocation.fromNamespaceAndPath(XenoPixelsMod.MOD_ID, "main"))
@@ -183,6 +228,72 @@ public class ModNetwork {
                 .decoder(OpenPartyScreenPacket::new)
                 .encoder(OpenPartyScreenPacket::encode)
                 .consumerMainThread(OpenPartyScreenPacket::handle)
+                .add();
+
+        CHANNEL.messageBuilder(GuidanceHoldPacket.class, id++, NetworkDirection.PLAY_TO_SERVER)
+                .decoder(GuidanceHoldPacket::new)
+                .encoder(GuidanceHoldPacket::encode)
+                .consumerMainThread(GuidanceHoldPacket::handle)
+                .add();
+
+        CHANNEL.messageBuilder(SeatFlightInputPacket.class, id++, NetworkDirection.PLAY_TO_SERVER)
+                .decoder(SeatFlightInputPacket::new)
+                .encoder(SeatFlightInputPacket::encode)
+                .consumerMainThread(SeatFlightInputPacket::handle)
+                .add();
+
+        // --- Seat combat lock-on (appended) ---
+        CHANNEL.messageBuilder(TargetLockPacket.class, id++, NetworkDirection.PLAY_TO_SERVER)
+                .decoder(TargetLockPacket::new)
+                .encoder(TargetLockPacket::encode)
+                .consumerMainThread(TargetLockPacket::handle)
+                .add();
+
+        CHANNEL.messageBuilder(TargetLockStatePacket.class, id++, NetworkDirection.PLAY_TO_CLIENT)
+                .decoder(TargetLockStatePacket::new)
+                .encoder(TargetLockStatePacket::encode)
+                .consumerMainThread(TargetLockStatePacket::handle)
+                .add();
+
+        CHANNEL.messageBuilder(TargetLockErrorPacket.class, id++, NetworkDirection.PLAY_TO_CLIENT)
+                .decoder(TargetLockErrorPacket::new)
+                .encoder(TargetLockErrorPacket::encode)
+                .consumerMainThread(TargetLockErrorPacket::handle)
+                .add();
+
+        // --- Seat chair-bind toggle (appended) ---
+        CHANNEL.messageBuilder(SeatToggleBindPacket.class, id++, NetworkDirection.PLAY_TO_SERVER)
+                .decoder(SeatToggleBindPacket::new)
+                .encoder(SeatToggleBindPacket::encode)
+                .consumerMainThread(SeatToggleBindPacket::handle)
+                .add();
+
+        CHANNEL.messageBuilder(net.bullettrain.xenopixelsmod.network.packet.NpcAuraPacket.class, id++,
+                        NetworkDirection.PLAY_TO_CLIENT)
+                .decoder(net.bullettrain.xenopixelsmod.network.packet.NpcAuraPacket::new)
+                .encoder(net.bullettrain.xenopixelsmod.network.packet.NpcAuraPacket::encode)
+                .consumerMainThread(net.bullettrain.xenopixelsmod.network.packet.NpcAuraPacket::handle)
+                .add();
+
+        CHANNEL.messageBuilder(net.bullettrain.xenopixelsmod.network.packet.NpcAppearancePacket.class, id++,
+                        NetworkDirection.PLAY_TO_CLIENT)
+                .decoder(net.bullettrain.xenopixelsmod.network.packet.NpcAppearancePacket::new)
+                .encoder(net.bullettrain.xenopixelsmod.network.packet.NpcAppearancePacket::encode)
+                .consumerMainThread(net.bullettrain.xenopixelsmod.network.packet.NpcAppearancePacket::handle)
+                .add();
+
+        CHANNEL.messageBuilder(net.bullettrain.xenopixelsmod.network.packet.NpcProfileSavePacket.class, id++,
+                        NetworkDirection.PLAY_TO_SERVER)
+                .decoder(net.bullettrain.xenopixelsmod.network.packet.NpcProfileSavePacket::new)
+                .encoder(net.bullettrain.xenopixelsmod.network.packet.NpcProfileSavePacket::encode)
+                .consumerMainThread(net.bullettrain.xenopixelsmod.network.packet.NpcProfileSavePacket::handle)
+                .add();
+
+        CHANNEL.messageBuilder(net.bullettrain.xenopixelsmod.network.packet.NpcTransformHoldPacket.class, id++,
+                        NetworkDirection.PLAY_TO_CLIENT)
+                .decoder(net.bullettrain.xenopixelsmod.network.packet.NpcTransformHoldPacket::new)
+                .encoder(net.bullettrain.xenopixelsmod.network.packet.NpcTransformHoldPacket::encode)
+                .consumerMainThread(net.bullettrain.xenopixelsmod.network.packet.NpcTransformHoldPacket::handle)
                 .add();
 
         XenoPixelsMod.LOGGER.info("ModNetwork: registered {} packet types (protocol {})", id, PROTOCOL);

@@ -4,6 +4,10 @@ import net.bullettrain.xenopixelsmod.XenoPixelsMod;
 import net.bullettrain.xenopixelsmod.block.custom.MissileChunkLoaderBlock;
 import net.bullettrain.xenopixelsmod.block.custom.CopycatGlowstoneBlock;
 import net.bullettrain.xenopixelsmod.block.custom.MissileTubeBlock;
+import net.bullettrain.xenopixelsmod.block.custom.PilotSeatBlock;
+import net.bullettrain.xenopixelsmod.block.custom.WingPanelBlock;
+import net.bullettrain.xenopixelsmod.block.custom.WingFlapHorizontalBlock;
+import net.bullettrain.xenopixelsmod.block.custom.WingFlapVerticalBlock;
 import net.bullettrain.xenopixelsmod.block.custom.ShipThrusterBlock;
 import net.bullettrain.xenopixelsmod.block.custom.ShipVlsGuidanceBlock;
 import net.bullettrain.xenopixelsmod.block.custom.SoundBlock;
@@ -114,6 +118,40 @@ public class ModBlocks {
             () -> new DropExperienceBlock(UniformInt.of(3, 6), BlockBehaviour.Properties.ofFullCopy(Blocks.END_STONE)
                             .strength(5f)
                             .requiresCorrectToolForDrops()));
+
+    /** Sit here to fly the nearest flight controller. */
+    public static final DeferredHolder<Block, PilotSeatBlock> PILOT_SEAT = registerBlock("pilot_seat",
+            () -> new PilotSeatBlock(BlockBehaviour.Properties.of()
+                    .mapColor(MapColor.COLOR_CYAN)
+                    .strength(2.5f, 6f)
+                    .sound(SoundType.METAL)
+                    .noOcclusion()));
+
+    /** Aerodynamic surface: generates lift where it is placed, via Sable's lift providers. */
+    public static final DeferredHolder<Block, WingPanelBlock> WING_PANEL = registerBlock("wing_panel",
+            () -> new WingPanelBlock(BlockBehaviour.Properties.of()
+                    .mapColor(MapColor.METAL)
+                    .strength(2.0f, 4f)
+                    .sound(SoundType.METAL)
+                    .noOcclusion()));
+
+    /** Always mounts flat (AXIS=Y) — reach for this to build a flap, elevator or aileron that is
+     * guaranteed to tilt up/down, matching Warium's own separate horizontal control surface. */
+    public static final DeferredHolder<Block, WingFlapHorizontalBlock> WING_FLAP_HORIZONTAL =
+            registerBlock("wing_flap_horizontal", () -> new WingFlapHorizontalBlock(BlockBehaviour.Properties.of()
+                    .mapColor(MapColor.METAL)
+                    .strength(2.0f, 4f)
+                    .sound(SoundType.METAL)
+                    .noOcclusion()));
+
+    /** Always mounts vertically (AXIS=Z) — reach for this to build a rudder, matching Warium's
+     * own separate vertical control surface. */
+    public static final DeferredHolder<Block, WingFlapVerticalBlock> WING_FLAP_VERTICAL =
+            registerBlock("wing_flap_vertical", () -> new WingFlapVerticalBlock(BlockBehaviour.Properties.of()
+                    .mapColor(MapColor.METAL)
+                    .strength(2.0f, 4f)
+                    .sound(SoundType.METAL)
+                    .noOcclusion()));
 
     private static <T extends Block> DeferredHolder<Block, T> registerBlock(String name, Supplier<T> block) {
         DeferredHolder<Block, T> toReturn = BLOCKS.register(name, block);

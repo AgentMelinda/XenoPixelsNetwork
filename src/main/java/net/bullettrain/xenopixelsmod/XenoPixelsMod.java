@@ -53,7 +53,20 @@ public class XenoPixelsMod {
             net.bullettrain.xenopixelsmod.config.XenoPartyConfig.load();
             net.bullettrain.xenopixelsmod.aero.gravity.OrbitalGravityConfig.load();
             net.bullettrain.xenopixelsmod.aero.AeroConfig.load();
+            net.bullettrain.xenopixelsmod.combat.targeting.LockOnConfig.load();
             net.bullettrain.xenopixelsmod.features.FeatureManager.bootstrap();
+            // CustomNPCs copies ScriptContainer.Data into every new script executor.
+            // Install the bridge only when the optional mod is present so a dedicated
+            // server without CustomNPCs keeps the same class-loading surface.
+            try {
+                if (net.neoforged.fml.ModList.get().isLoaded("customnpcs")) {
+                    Class.forName("net.bullettrain.xenopixelsmod.compat.npc.NpcXenoScriptApi")
+                            .getMethod("install").invoke(null);
+                    LOGGER.info("CustomNPCs XenoPixels scripting API installed");
+                }
+            } catch (Throwable t) {
+                LOGGER.warn("CustomNPCs XenoPixels scripting API unavailable: {}", t.toString());
+            }
             if (net.bullettrain.xenopixelsmod.config.XenoServerConfig.dmzContentBootstrap) {
                 net.bullettrain.xenopixelsmod.dmz.DmzContentBootstrap.installBundledContent();
             }
@@ -125,6 +138,9 @@ public class XenoPixelsMod {
                     }
                 };
                 net.bullettrain.xenopixelsmod.client.ClientScreens.receiveAeroState = state -> {
+                    // The seated pilot's HUD needs this snapshot with no screen open, so it is
+                    // cached as well as handed to the planner screen.
+                    net.bullettrain.xenopixelsmod.client.flight.ClientFlightState.accept(state);
                     var screen = net.minecraft.client.Minecraft.getInstance().screen;
                     if (screen instanceof net.bullettrain.xenopixelsmod.client.gui.FlightPlannerScreen planner) {
                         planner.acceptAeroState(state);

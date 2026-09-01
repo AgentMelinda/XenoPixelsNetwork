@@ -28,6 +28,11 @@ public final class ModSounds {
      */
     public static final DeferredHolder<SoundEvent, SoundEvent> VANISH = register("vanish");
 
+    /** Beerus's spoken "Hakai" line, played once when a Hakai channel starts. */
+    public static final DeferredHolder<SoundEvent, SoundEvent> HAKAI_VOICE = register("hakai_voice");
+    /** The rising purple energy hum held for the duration of the Hakai channel. */
+    public static final DeferredHolder<SoundEvent, SoundEvent> HAKAI_CHARGE = register("hakai_charge");
+
     private ModSounds() {
     }
 

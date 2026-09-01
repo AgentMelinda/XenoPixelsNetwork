@@ -1,0 +1,44 @@
+{
+  "parent": "block/block",
+  "textures": {
+    "particle": "minecraft:block/polished_deepslate",
+    "frame": "minecraft:block/polished_deepslate",
+    "cushion": "minecraft:block/cyan_terracotta"
+  },
+  "elements": [
+    {
+      "from": [2, 0, 2],
+      "to": [14, 4, 14],
+      "faces": {
+        "north": {"uv": [2, 12, 14, 16], "texture": "#frame"},
+        "east":  {"uv": [2, 12, 14, 16], "texture": "#frame"},
+        "south": {"uv": [2, 12, 14, 16], "texture": "#frame"},
+        "west":  {"uv": [2, 12, 14, 16], "texture": "#frame"},
+        "up":    {"uv": [2, 2, 14, 14], "texture": "#frame"},
+        "down":  {"uv": [2, 2, 14, 14], "texture": "#frame", "cullface": "down"}
+      }
+    },
+    {
+      "from": [2, 4, 2],
+      "to": [14, 6, 14],
+      "faces": {
+        "north": {"uv": [2, 10, 14, 12], "texture": "#cushion"},
+        "east":  {"uv": [2, 10, 14, 12], "texture": "#cushion"},
+        "south": {"uv": [2, 10, 14, 12], "texture": "#cushion"},
+        "west":  {"uv": [2, 10, 14, 12], "texture": "#cushion"},
+        "up":    {"uv": [2, 2, 14, 14], "texture": "#cushion"}
+      }
+    },
+    {
+      "from": [2, 6, 12],
+      "to": [14, 15, 14],
+      "faces": {
+        "north": {"uv": [2, 1, 14, 10], "texture": "#cushion"},
+        "east":  {"uv": [12, 1, 14, 10], "texture": "#frame"},
+        "south": {"uv": [2, 1, 14, 10], "texture": "#frame"},
+        "west":  {"uv": [12, 1, 14, 10], "texture": "#frame"},
+        "up":    {"uv": [2, 12, 14, 14], "texture": "#frame"}
+      }
+    }
+  ]
+}

@@ -5,6 +5,7 @@ import net.neoforged.fml.common.EventBusSubscriber;
 import net.bullettrain.xenopixelsmod.XenoPixelsMod;
 import net.bullettrain.xenopixelsmod.config.XenoServerConfig;
 import net.minecraft.network.chat.Component;
+import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.player.Player;
 import net.neoforged.neoforge.client.event.ClientTickEvent;
@@ -30,6 +31,18 @@ public final class Bt3SparkingSystem {
 
     private Bt3SparkingSystem() {}
 
+    /**
+     * Global monotonic server tick — the one clock every window is written, read, and pruned
+     * against. {@code player.tickCount} is per-entity and is small for a player who just joined a
+     * long-running server, so the old per-entity stamps expired on the first server-tick prune
+     * (the 100-tick buff vanished instantly for newer players). Defensive for client callers.
+     */
+    private static int serverTick(ServerPlayer p) {
+        if (p == null || p.level() == null) return 0;
+        MinecraftServer server = p.level().getServer();
+        return server != null ? server.getTickCount() : 0;
+    }
+
     public static float getMeter(UUID id) {
         return METER.getOrDefault(id, 0f);
     }
@@ -37,7 +50,7 @@ public final class Bt3SparkingSystem {
     public static boolean isSparking(ServerPlayer player) {
         if (player == null) return false;
         Integer until = ACTIVE_UNTIL.get(player.getUUID());
-        return until != null && player.tickCount < until;
+        return until != null && serverTick(player) < until;
     }
 
     /** Ticks left on active Sparking, or 0 if inactive. */
@@ -45,18 +58,18 @@ public final class Bt3SparkingSystem {
         if (player == null) return 0;
         Integer until = ACTIVE_UNTIL.get(player.getUUID());
         if (until == null) return 0;
-        return Math.max(0, until - player.tickCount);
+        return Math.max(0, until - serverTick(player));
     }
 
     public static boolean hasIFrames(ServerPlayer player) {
         if (player == null) return false;
         Integer until = IFRAMES_UNTIL.get(player.getUUID());
-        return until != null && player.tickCount < until;
+        return until != null && serverTick(player) < until;
     }
 
     public static void grantIFrames(ServerPlayer player, int ticks) {
         if (player == null) return;
-        IFRAMES_UNTIL.put(player.getUUID(), player.tickCount + Math.max(1, ticks));
+        IFRAMES_UNTIL.put(player.getUUID(), serverTick(player) + Math.max(1, ticks));
     }
 
     public static void addMeter(ServerPlayer player, float amount) {
@@ -78,7 +91,7 @@ public final class Bt3SparkingSystem {
         }
         METER.put(player.getUUID(), 0f);
         int dur = Math.max(20, XenoServerConfig.sparkingDurationTicks);
-        ACTIVE_UNTIL.put(player.getUUID(), player.tickCount + dur);
+        ACTIVE_UNTIL.put(player.getUUID(), serverTick(player) + dur);
         player.displayClientMessage(Component.literal("§6§lSPARKING!"), true);
         // Inventory (E) + HUD status icon
         try {

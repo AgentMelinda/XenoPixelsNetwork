@@ -7,7 +7,9 @@ import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.Level;
 
 import java.lang.reflect.Method;
+import java.util.Map;
 import java.util.Optional;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * Resolves which YAWP region governs a position, by reflection.
@@ -34,6 +36,20 @@ public final class YawpRegionLookup {
     private static Method getDimRegionApi;
     private static boolean resolved;
 
+    /**
+     * Per-class handle caches for the two methods reached off a concrete instance.
+     *
+     * <p>These used to be resolved on every call. {@code Class#getMethod} walks the full public
+     * method table and copies the result array each time, and this runs once per block position — a
+     * single large ki blast covers hundreds — so it was the most expensive reflection in the mod.
+     *
+     * <p>Keyed by the concrete class rather than cached in a plain field because the implementation
+     * class is not guaranteed to be the same across dimensions or YAWP versions; a different class
+     * re-resolves instead of silently invoking a handle that does not belong to it.
+     */
+    private static final Map<Class<?>, Method> INVOLVED_REGION_FOR = new ConcurrentHashMap<>();
+    private static final Map<Class<?>, Method> GET_NAME = new ConcurrentHashMap<>();
+
     private YawpRegionLookup() {
     }
 
@@ -58,13 +74,12 @@ public final class YawpRegionLookup {
 
             // Declared on the dimension API interface under both names; resolved off the
             // concrete class so the rename does not matter.
-            Method involved = api.getClass().getMethod("getInvolvedRegionFor", BlockPos.class);
-            involved.setAccessible(true);
+            Method involved = handle(INVOLVED_REGION_FOR, api.getClass(),
+                    "getInvolvedRegionFor", BlockPos.class);
             Object region = unwrap(involved.invoke(api, pos));
             if (region == null) return Optional.empty();
 
-            Method getName = region.getClass().getMethod("getName");
-            getName.setAccessible(true);
+            Method getName = handle(GET_NAME, region.getClass(), "getName");
             Object name = getName.invoke(region);
             return name instanceof String text && !text.isBlank()
                     ? Optional.of(text) : Optional.empty();
@@ -82,6 +97,22 @@ public final class YawpRegionLookup {
         getInstance = managerClass.getMethod("get");
         getDimRegionApi = managerClass.getMethod("getDimRegionApi", ResourceKey.class);
         return true;
+    }
+
+    /**
+     * Resolve a method off a concrete class once and reuse it.
+     *
+     * <p>Throws exactly as {@code getMethod} would when the method is absent, so the caller's
+     * existing {@code catch (Throwable)} still degrades gracefully on an incompatible YAWP.
+     */
+    private static Method handle(Map<Class<?>, Method> cache, Class<?> owner,
+                                 String name, Class<?>... params) throws NoSuchMethodException {
+        Method cached = cache.get(owner);
+        if (cached != null) return cached;
+        Method resolvedMethod = owner.getMethod(name, params);
+        resolvedMethod.setAccessible(true);
+        cache.put(owner, resolvedMethod);
+        return resolvedMethod;
     }
 
     private static Object unwrap(Object maybeOptional) {

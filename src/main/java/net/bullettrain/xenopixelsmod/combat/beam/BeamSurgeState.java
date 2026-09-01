@@ -1,5 +1,7 @@
 package net.bullettrain.xenopixelsmod.combat.beam;
 
+import net.bullettrain.xenopixelsmod.config.XenoServerConfig;
+
 /**
  * The surge curve for a sustained ki wave: how far a beam has grown, and how fast it gets there.
  *
@@ -18,15 +20,12 @@ package net.bullettrain.xenopixelsmod.combat.beam;
  */
 public final class BeamSurgeState {
 
-    /** Fraction of the remaining gap closed per tick at zero mastery. */
-    private static final double BASE_RAMP_PER_TICK = 0.020;
-    /** Extra gap-closing per tick per mastery level. */
-    private static final double RAMP_PER_MASTERY = 0.010;
-    /** Ceiling at zero mastery, as a fraction of the configured maximum growth. */
-    private static final double BASE_CEILING = 0.45;
-    /** Extra ceiling per mastery level. Level 3 reaches the full configured maximum. */
-    private static final double CEILING_PER_MASTERY = 0.183;
-    /** Fraction of current surge shed per tick once the player lets go. */
+    /**
+     * Fraction of current surge shed per tick once the player lets go.
+     *
+     * <p>The only part of the curve still fixed. Decay governs release rather than growth, so it is
+     * not something a server tunes to change how far a beam reaches.
+     */
     private static final double DECAY_PER_TICK = 0.12;
 
     /** Current growth, 0 (just fired) to 1 (fully surged). */
@@ -43,7 +42,8 @@ public final class BeamSurgeState {
     public void tick(boolean fed, int masteryLevel) {
         if (fed) {
             double ceiling = ceiling(masteryLevel);
-            double rate = BASE_RAMP_PER_TICK + RAMP_PER_MASTERY * Math.max(0, masteryLevel);
+            double rate = XenoServerConfig.beamSurgeRampPerTick
+                    + XenoServerConfig.beamSurgeRampPerMastery * Math.max(0, masteryLevel);
             // Close a fraction of the remaining gap: fast at first, tapering as it fills.
             surge += (ceiling - surge) * rate;
             if (surge > ceiling) surge = ceiling;
@@ -62,7 +62,8 @@ public final class BeamSurgeState {
      * maxima the manager scales against.
      */
     public static double ceiling(int masteryLevel) {
-        double raw = BASE_CEILING + CEILING_PER_MASTERY * Math.max(0, masteryLevel);
+        double raw = XenoServerConfig.beamSurgeCeiling
+                + XenoServerConfig.beamSurgeCeilingPerMastery * Math.max(0, masteryLevel);
         return Math.min(1.0, raw);
     }
 

@@ -17,8 +17,12 @@ import net.minecraft.util.Mth;
 import net.minecraft.util.RandomSource;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.phys.Vec3;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
+import dev.ryanhcode.sable.companion.ClientSubLevelAccess;
+import dev.ryanhcode.sable.companion.SableCompanion;
+import dev.ryanhcode.sable.companion.math.Pose3dc;
 import dev.ryanhcode.sable.sublevel.ServerSubLevel;
 
 /**
@@ -31,7 +35,22 @@ import dev.ryanhcode.sable.sublevel.ServerSubLevel;
  */
 public class ShipThrusterBlockEntity extends BlockEntity {
     private static final double LEGACY_DEFAULT_MAX_FORCE = 80_000.0;
-    public static final double DEFAULT_MAX_FORCE = 1_200_000.0;
+    /** A second, more recent legacy value — see the migration in {@link #loadAdditional}. */
+    private static final double PREVIOUS_DEFAULT_MAX_FORCE = 1_200_000.0;
+    /**
+     * {@link dev.ryanhcode.sable.api.physics.handle.RigidBodyHandle#applyImpulseAtPoint} is a
+     * real physics impulse (&Delta;v = impulse / mass, standard rigid-body integration) — it is
+     * not a "how strong does this feel" slider. This project's own block masses
+     * ({@code datapacks/xeno_ship_masses/}) run 0.6&ndash;3.5 per block, so a modest few-hundred-
+     * block ship has a total mass in the low hundreds. The previous default of 1,200,000 (and the
+     * 80,000 one before it) produced a velocity change of hundreds to thousands of blocks/s in a
+     * single tick against a ship that light, which is what tore ships apart. This value is sized
+     * from that same mass range against a target acceleration of roughly 10&ndash;15 blocks/s&sup2;
+     * (mass &times; accel &asymp; 1,000&ndash;4,500) — a reasoned correction grounded in this
+     * project's own numbers, not a measured/tuned final value; still expect to adjust it after
+     * flying a real ship.
+     */
+    public static final double DEFAULT_MAX_FORCE = 3_000.0;
 
     private double power;
     private double ccPower = -1; // -1 = redstone; else 0..1
@@ -47,8 +66,8 @@ public class ShipThrusterBlockEntity extends BlockEntity {
     private int shipLookupCooldown;
     private double lastPushedPower = -1;
     private int lastPushedFx, lastPushedFy, lastPushedFz;
-    /** From neighborChanged — never hasNeighborSignal on idle path. */
-    private boolean cachedRedstone;
+    /** From neighborChanged — never queried on the idle path. 0..15, vanilla redstone strength. */
+    private int cachedRedstoneStrength;
     private static final int PHYS_PUSH_INTERVAL = 3;
 
     public ShipThrusterBlockEntity(BlockPos pos, BlockState state) {
@@ -184,7 +203,9 @@ public class ShipThrusterBlockEntity extends BlockEntity {
     }
 
     public void setMaxForce(double force) {
-        this.maxForce = Mth.clamp(force, 1_000.0, 2_000_000.0);
+        // Bounds tightened alongside DEFAULT_MAX_FORCE — 2,000,000 was in the same catastrophic
+        // range that produced the old, ship-destroying default.
+        this.maxForce = Mth.clamp(force, 100.0, 50_000.0);
         setChanged();
     }
 
@@ -211,8 +232,8 @@ public class ShipThrusterBlockEntity extends BlockEntity {
     }
 
     /** Called from block neighborChanged — only place that reads redstone. */
-    public void onRedstoneChanged(boolean powered) {
-        cachedRedstone = powered;
+    public void onRedstoneChanged(int strength) {
+        cachedRedstoneStrength = Mth.clamp(strength, 0, 15);
         redstoneInited = true;
     }
 
@@ -223,7 +244,7 @@ public class ShipThrusterBlockEntity extends BlockEntity {
         super.onLoad();
         // Sync redstone once after chunk load (neighborChanged may not re-fire)
         if (level != null && !level.isClientSide && !redstoneInited) {
-            cachedRedstone = level.hasNeighborSignal(worldPosition);
+            cachedRedstoneStrength = level.getBestNeighborSignal(worldPosition);
             redstoneInited = true;
         }
     }
@@ -232,7 +253,7 @@ public class ShipThrusterBlockEntity extends BlockEntity {
         if (level == null) return;
 
         // --- Fully idle: zero work (no world queries) ---
-        if (!guidanceOwned && ccPower < 0 && !cachedRedstone) {
+        if (!guidanceOwned && ccPower < 0 && cachedRedstoneStrength == 0) {
             if (power > 0.001 || !forceCleared) {
                 power = 0;
                 forceCleared = false;
@@ -246,10 +267,11 @@ public class ShipThrusterBlockEntity extends BlockEntity {
         double desired;
         if (guidanceOwned) {
             desired = ccPower >= 0 ? ccPower : 0.0;
-        } else if (cachedRedstone) {
-            // Redstone is an unconditional full-power input even if a prior manual/CC
-            // preset remains stored on the block.
-            desired = 1.0;
+        } else if (cachedRedstoneStrength > 0) {
+            // Proportional to vanilla signal strength (1..15), like any other redstone-driven
+            // power level, rather than any signal meaning full power — a comparator or a lever
+            // through a repeater-based attenuator now actually controls how hard this fires.
+            desired = cachedRedstoneStrength / 15.0;
         } else if (ccPower >= 0) {
             desired = ccPower;
         } else {
@@ -360,26 +382,72 @@ public class ShipThrusterBlockEntity extends BlockEntity {
         }
     }
 
+    /**
+     * Plume placement, corrected for a thruster living on a moving/rotated Sable ship.
+     *
+     * <p>{@code worldPosition} is the block's position in the ship's own local/model space, not
+     * the actual place it renders in the world — the previous version of this method spawned
+     * particles straight at those raw coordinates, which is only correct for a ship sitting
+     * exactly at the world origin with no rotation. Any ship that has actually moved or turned
+     * had its exhaust plume appear in the wrong place entirely. Fixed the same way this file
+     * already resolves a ship server-side ({@code resolveShipCached}/{@code logicalPose()} in
+     * {@link #playerNear}), using the client-side equivalent verified via {@code javap} against
+     * the real Sable companion jar: {@link SableCompanion#getContainingClient(net.minecraft.world.level.block.entity.BlockEntity)}
+     * returns a {@link ClientSubLevelAccess}, whose {@link ClientSubLevelAccess#renderPose()}
+     * transforms local position/direction into the ship's current rendered world pose.
+     *
+     * <p>Particle count now scales with {@link #power} instead of a fixed one-particle cadence,
+     * so the plume reads as a denser stream near full throttle and a faint wisp near idle —
+     * learned from studying {@code create-propulsion-simulated}'s thruster (MIT-licensed,
+     * verified) density-scaling idea, but built on this project's own vanilla
+     * {@link ParticleTypes#FLAME}/{@link ParticleTypes#SMOKE} rather than that mod's custom
+     * particle types/textures, at the user's explicit request. Inheriting the ship's own velocity
+     * into the particle (which that mod also does) was not attempted here — that data is not
+     * exposed on the public {@link ClientSubLevelAccess} interface this project already uses, and
+     * reaching past it into Sable's internal client sub-level implementation would mean guessing
+     * at an unverified API rather than using one actually confirmed to exist.
+     */
     private void clientPlume() {
         if (level == null || power <= 0.05) return;
         Direction exhaust = getBlockState().getValue(ShipThrusterBlock.FACING);
         RandomSource rng = level.getRandom();
-        double ox = worldPosition.getX() + 0.5 + exhaust.getStepX() * 0.55;
-        double oy = worldPosition.getY() + 0.5 + exhaust.getStepY() * 0.55;
-        double oz = worldPosition.getZ() + 0.5 + exhaust.getStepZ() * 0.55;
+
+        Vec3 localPos = new Vec3(worldPosition.getX() + 0.5 + exhaust.getStepX() * 0.55,
+                worldPosition.getY() + 0.5 + exhaust.getStepY() * 0.55,
+                worldPosition.getZ() + 0.5 + exhaust.getStepZ() * 0.55);
+        Vec3 localDir = new Vec3(exhaust.getStepX(), exhaust.getStepY(), exhaust.getStepZ());
+
+        Vec3 worldPos = localPos;
+        Vec3 worldDir = localDir;
+        try {
+            ClientSubLevelAccess ship = SableCompanion.INSTANCE.getContainingClient(this);
+            if (ship != null) {
+                Pose3dc pose = ship.renderPose();
+                worldPos = pose.transformPosition(localPos);
+                Vec3 transformedDir = pose.transformNormal(localDir);
+                if (transformedDir.lengthSqr() > 1.0e-8) worldDir = transformedDir.normalize();
+            }
+        } catch (Throwable ignored) {
+            // A plume rendering nicety must never crash the client; fall back to the raw local
+            // pose, which is at least correct for a ship that hasn't moved from the origin.
+        }
+
         double speed = 0.12 + power * 0.35;
-        double jx = (rng.nextDouble() - 0.5) * 0.12;
-        double jy = (rng.nextDouble() - 0.5) * 0.12;
-        double jz = (rng.nextDouble() - 0.5) * 0.12;
-        level.addParticle(ParticleTypes.FLAME,
-                ox + jx, oy + jy, oz + jz,
-                exhaust.getStepX() * speed, exhaust.getStepY() * speed, exhaust.getStepZ() * speed);
+        int count = 1 + (int) (power * 2.0);
+        for (int i = 0; i < count; i++) {
+            double jx = (rng.nextDouble() - 0.5) * 0.12;
+            double jy = (rng.nextDouble() - 0.5) * 0.12;
+            double jz = (rng.nextDouble() - 0.5) * 0.12;
+            level.addParticle(ParticleTypes.FLAME,
+                    worldPos.x + jx, worldPos.y + jy, worldPos.z + jz,
+                    worldDir.x * speed, worldDir.y * speed, worldDir.z * speed);
+        }
         if (rng.nextFloat() < 0.3f * power) {
             level.addParticle(ParticleTypes.SMOKE,
-                    ox, oy, oz,
-                    exhaust.getStepX() * speed * 0.5,
-                    exhaust.getStepY() * speed * 0.5,
-                    exhaust.getStepZ() * speed * 0.5);
+                    worldPos.x, worldPos.y, worldPos.z,
+                    worldDir.x * speed * 0.5,
+                    worldDir.y * speed * 0.5,
+                    worldDir.z * speed * 0.5);
         }
     }
 
@@ -454,7 +522,12 @@ public class ShipThrusterBlockEntity extends BlockEntity {
         power = tag.getDouble("Power");
         ccPower = tag.contains("CcPower") ? tag.getDouble("CcPower") : -1;
         maxForce = tag.contains("MaxForce") ? tag.getDouble("MaxForce") : DEFAULT_MAX_FORCE;
-        if (Math.abs(maxForce - LEGACY_DEFAULT_MAX_FORCE) < 0.5) maxForce = DEFAULT_MAX_FORCE;
+        // A thruster already placed and saved at either previous ship-destroying default gets
+        // migrated to the corrected one on next load, not just newly-placed ones.
+        if (Math.abs(maxForce - LEGACY_DEFAULT_MAX_FORCE) < 0.5
+                || Math.abs(maxForce - PREVIOUS_DEFAULT_MAX_FORCE) < 0.5) {
+            maxForce = DEFAULT_MAX_FORCE;
+        }
         pairedGuidance = tag.contains("PairedG") ? BlockPos.of(tag.getLong("PairedG")) : null;
         if (tag.contains("GuidedClient")) {
             // Network update tag: retain runtime visual state on the client only.
@@ -469,7 +542,8 @@ public class ShipThrusterBlockEntity extends BlockEntity {
         }
         forceCleared = true;
         registeredForceShipId = -1L;
-        cachedRedstone = power > 0.05 && ccPower < 0;
+        // Placeholder until onLoad's real getBestNeighborSignal query lands this tick.
+        cachedRedstoneStrength = power > 0.05 && ccPower < 0 ? 15 : 0;
     }
 
     @Override

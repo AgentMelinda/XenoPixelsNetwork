@@ -48,6 +48,10 @@ public class AeroStatePacket {
                 buf.readVarInt(),
                 buf.readVarInt(),
                 buf.readVarInt(),
+                buf.readVarInt() / 1_000.0,
+                buf.readVarInt() / 1_000.0,
+                buf.readBoolean(),
+                buf.readBoolean(),
                 buf.readUtf(256));
     }
 
@@ -70,6 +74,10 @@ public class AeroStatePacket {
         buf.writeVarInt(state.drawFePerTick());
         buf.writeVarInt(state.linkCount());
         buf.writeVarInt(state.healthyLinkCount());
+        buf.writeVarInt((int) Math.round(state.flap() * 1_000.0));
+        buf.writeVarInt((int) Math.round(state.flapTarget() * 1_000.0));
+        buf.writeBoolean(state.autoFlap());
+        buf.writeBoolean(state.airBrake());
         // Truncate rather than risk exceeding the read limit on a long status string.
         String status = state.status();
         buf.writeUtf(status.length() > 256 ? status.substring(0, 256) : status, 256);

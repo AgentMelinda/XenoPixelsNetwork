@@ -81,10 +81,11 @@ public class ShipThrusterBlock extends BaseEntityBlock {
     public void neighborChanged(BlockState state, Level level, BlockPos pos, Block block,
                                 BlockPos fromPos, boolean isMoving) {
         if (level.isClientSide) return;
-        // Single redstone read on neighbor change — thruster BE never polls hasNeighborSignal
-        boolean powered = level.hasNeighborSignal(pos);
+        // Single redstone read on neighbor change — thruster BE never polls signal strength
+        // itself. Strength (0..15), not just on/off, so power scales with the signal.
+        int strength = level.getBestNeighborSignal(pos);
         if (level.getBlockEntity(pos) instanceof ShipThrusterBlockEntity be) {
-            be.onRedstoneChanged(powered);
+            be.onRedstoneChanged(strength);
         }
         // Do not flip POWERED here — BE uses POWERED for plume/lit, not raw redstone
     }

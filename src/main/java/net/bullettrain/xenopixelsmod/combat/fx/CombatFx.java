@@ -2,14 +2,10 @@ package net.bullettrain.xenopixelsmod.combat.fx;
 
 import net.bullettrain.xenopixelsmod.network.ModNetwork;
 import net.bullettrain.xenopixelsmod.network.packet.CombatFxPacket;
-import net.minecraft.core.particles.DustParticleOptions;
-import net.minecraft.core.particles.ParticleOptions;
-import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.phys.Vec3;
-import org.joml.Vector3f;
 
 /**
  * Server-side impact effects: the shockwave discs, hit sparks and camera cues that give a blow
@@ -36,18 +32,10 @@ public final class CombatFx {
     private static final double BROADCAST_RADIUS = 48.0;
     private static final double BROADCAST_RADIUS_SQ = BROADCAST_RADIUS * BROADCAST_RADIUS;
 
-    /** Hit-spark white, deliberately hotter than the ring so the contact point stays readable. */
-    private static final DustParticleOptions SPARK_CORE =
-            new DustParticleOptions(new Vector3f(1.0f, 0.98f, 0.86f), 1.1f);
-    /** Ring colour for ordinary damage. */
-    private static final DustParticleOptions RING_WHITE =
-            new DustParticleOptions(new Vector3f(0.92f, 0.95f, 1.0f), 1.3f);
-    /** Ring colour for an ultimate: gold, so the biggest hit is also the only gold one. */
-    private static final DustParticleOptions RING_GOLD =
-            new DustParticleOptions(new Vector3f(1.0f, 0.83f, 0.35f), 1.6f);
-    /** Guard cyan, matching the guard chip's accent on the combat HUD. */
-    private static final DustParticleOptions RING_CYAN =
-            new DustParticleOptions(new Vector3f(0.35f, 0.82f, 1.0f), 1.2f);
+    private static final float[] RING_WHITE = {0.92f, 0.95f, 1.0f};
+    private static final float[] RING_GOLD = {1.0f, 0.83f, 0.35f};
+    private static final float[] RING_CYAN = {0.35f, 0.82f, 1.0f};
+    private static final float[] CORE_WHITE = {1.0f, 0.98f, 0.86f};
 
     private CombatFx() {
     }
@@ -74,10 +62,10 @@ public final class CombatFx {
         private final int ringPoints;
         /** Client shake/flash scale; see CombatFxClient. */
         private final float intensity;
-        private final DustParticleOptions ring;
+        private final float[] ring;
 
         Weight(CombatFxKind kind, double radius, int ringPoints, float intensity,
-               DustParticleOptions ring) {
+               float[] ring) {
             this.kind = kind;
             this.radius = radius;
             this.ringPoints = ringPoints;
@@ -113,44 +101,39 @@ public final class CombatFx {
     }
 
     /**
-     * Flat expanding disc in the plane perpendicular to {@code dir}.
-     *
-     * <p>Spawned with {@code count = 0}, which is the vanilla convention for "one particle with
-     * this exact velocity" — the x/y/z deltas become the velocity instead of a spread. That is
-     * what makes the ring expand outward from the contact point rather than sit there as a
-     * static circle of dust.
+     * Flat disc in the plane perpendicular to {@code dir}, stamped with DMZ sparks.
+     * Punch particles take RGB in the speed slots, so these sit on the ring rather
+     * than flying out as vanilla dust.
      */
     private static void shockwave(ServerLevel level, Vec3 pos, Vec3 dir, double radius,
-                                  int points, ParticleOptions particle) {
+                                  int points, float[] rgb) {
         Vec3 right = orthogonal(dir);
         Vec3 up = dir.cross(right).normalize();
         for (int i = 0; i < points; i++) {
             double angle = (Math.PI * 2.0) * i / points;
-            double cos = Math.cos(angle);
-            double sin = Math.sin(angle);
-            Vec3 outward = right.scale(cos).add(up.scale(sin));
-            Vec3 at = pos.add(outward.scale(radius * 0.35));
-            Vec3 velocity = outward.scale(radius * 0.30);
-            level.sendParticles(particle, at.x, at.y, at.z, 0,
-                    velocity.x, velocity.y, velocity.z, 1.0);
+            Vec3 at = pos.add(right.scale(Math.cos(angle) * radius * 0.55)
+                    .add(up.scale(Math.sin(angle) * radius * 0.55)));
+            DmzHitParticles.spark(level, at.x, at.y, at.z, rgb[0], rgb[1], rgb[2]);
         }
     }
 
-    /** Hot core at the contact point plus a short spray back along the blow. */
+    /** Contact stamp plus a short spray of DMZ sparks back along the blow. */
     private static void sparks(ServerLevel level, Vec3 pos, Vec3 dir, Weight weight) {
-        int count = Math.max(2, weight.ringPoints / 4);
-        level.sendParticles(SPARK_CORE, pos.x, pos.y, pos.z, count, 0.12, 0.12, 0.12, 0.02);
-        level.sendParticles(ParticleTypes.CRIT, pos.x, pos.y, pos.z, count, 0.18, 0.18, 0.18, 0.15);
-
-        // Spray opposes the blow, the way debris comes off a struck surface.
-        Vec3 back = dir.reverse().scale(0.25);
-        level.sendParticles(ParticleTypes.ELECTRIC_SPARK,
-                pos.x, pos.y, pos.z, count / 2 + 1,
-                Math.abs(back.x) + 0.1, Math.abs(back.y) + 0.1, Math.abs(back.z) + 0.1, 0.25);
-
-        if (weight == Weight.ULTIMATE) {
-            // The only place a flash particle is affordable: an ultimate connects once.
-            level.sendParticles(ParticleTypes.FLASH, pos.x, pos.y, pos.z, 1, 0.0, 0.0, 0.0, 0.0);
+        if (weight == Weight.GUARD) {
+            DmzHitParticles.guard(level, pos.x, pos.y, pos.z,
+                    weight.ring[0], weight.ring[1], weight.ring[2]);
+        } else {
+            DmzHitParticles.punch(level, pos.x, pos.y, pos.z,
+                    CORE_WHITE[0], CORE_WHITE[1], CORE_WHITE[2]);
+        }
+        int count = Math.max(2, weight.ringPoints / 5);
+        Vec3 back = dir.reverse().scale(0.35);
+        for (int i = 0; i < count; i++) {
+            DmzHitParticles.spark(level,
+                    pos.x + back.x * i / count,
+                    pos.y + back.y * i / count,
+                    pos.z + back.z * i / count,
+                    weight.ring[0], weight.ring[1], weight.ring[2]);
         }
     }
 

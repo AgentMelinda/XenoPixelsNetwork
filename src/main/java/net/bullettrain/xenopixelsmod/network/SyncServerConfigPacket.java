@@ -25,6 +25,7 @@ public class SyncServerConfigPacket {
         buf.writeBoolean(d.bt3ComboEnabled);
         buf.writeBoolean(d.bt3VanishEnabled);
         buf.writeBoolean(d.bt3ChaseDashEnabled);
+        buf.writeBoolean(d.chaseFlightEnabled);
         buf.writeBoolean(d.bt3BackstepEnabled);
         buf.writeBoolean(d.bt3FinisherEnabled);
         buf.writeBoolean(d.bt3ChargeAttackEnabled);
@@ -80,6 +81,12 @@ public class SyncServerConfigPacket {
         buf.writeFloat(d.kiOverchargeExplosionPerPercent);
         buf.writeFloat(d.kiOverchargeMultiplier);
         buf.writeFloat(d.kiOverchargeMaxScale);
+        buf.writeFloat(d.kiProjectileMaxSize);
+        buf.writeFloat(d.kiProjectileMaxSpeed);
+        buf.writeFloat(d.kiOverchargeSpeedPerPercent);
+        buf.writeBoolean(d.kiFullGameplayScaling);
+        buf.writeFloat(d.kiDestructionMaxRadius);
+        buf.writeVarInt(d.kiDestructionBlocksPerTick);
         buf.writeDouble(d.vanishMaxRange);
         buf.writeDouble(d.chaseMaxRange);
         buf.writeDouble(d.backstepMaxRange);
@@ -108,6 +115,53 @@ public class SyncServerConfigPacket {
         buf.writeVarInt(d.chargeMaxTicks);
         buf.writeBoolean(d.kiBlastHoldToFire);
         buf.writeVarInt(Math.max(1, d.kiBlastCooldownTicks));
+        buf.writeVarInt(Math.max(0, d.barrageDurationTicks));
+        buf.writeVarInt(Math.max(0, d.barrageCooldownTicks));
+        buf.writeVarInt(Math.max(0, d.kiDurationTicks));
+        writeIntMap(buf, d.kiDurationByType);
+        buf.writeBoolean(d.chargeOverchargeEnabled);
+        buf.writeFloat(d.chargeOverchargeMaxPercent);
+        buf.writeVarInt(d.chargeOverchargeMinLevel);
+        buf.writeFloat(d.chargeOverchargeSizePerPercent);
+        buf.writeFloat(d.chargeOverchargeSpeedPerPercent);
+        buf.writeFloat(d.chargeOverchargeMaxDamageScale);
+        buf.writeFloat(d.chargeFormSizeFactor);
+        buf.writeFloat(d.chargeFormSizeLogCap);
+        writeFormMap(buf, d.chargeFormSizeByForm);
+        buf.writeBoolean(d.chargeOverchargeGriefEnabled);
+        buf.writeFloat(d.chargeOverchargeCraterMinPercent);
+        buf.writeVarInt(d.chargeOverchargeCraterMaxRadius);
+        buf.writeVarInt(d.chargeOverchargeCraterIntervalTicks);
+        buf.writeVarInt(d.chargeOverchargeMaxRocks);
+        buf.writeBoolean(d.chargeOverchargeDiskSliceEnabled);
+        buf.writeBoolean(d.chargeOverchargeCameraEnabled);
+        buf.writeBoolean(d.chargeOverchargeVoicesEnabled);
+        buf.writeVarInt(Math.max(0, d.guidanceControlRange));
+        buf.writeFloat(d.guidanceTurnRate);
+        buf.writeFloat(d.guidanceCameraRate);
+        buf.writeVarInt(Math.max(0, d.guidanceHoldGraceTicks));
+        buf.writeFloat(d.guidanceLookRayMin);
+        buf.writeVarInt(Math.max(0, d.barrageExtraTicks1));
+        buf.writeVarInt(Math.max(0, d.barrageExtraTicks2));
+        buf.writeVarInt(Math.max(0, d.barrageExtraTicks3));
+        buf.writeVarInt(Math.max(0, d.barrageCooldownReduce1));
+        buf.writeVarInt(Math.max(0, d.barrageCooldownReduce2));
+        buf.writeVarInt(Math.max(0, d.barrageCooldownReduce3));
+        buf.writeFloat(d.barrageKiPerTick);
+        buf.writeBoolean(d.beamSurgeEnabled);
+        buf.writeFloat(d.beamSurgeKiPerTick);
+        buf.writeFloat(d.beamSurgeStaminaPerTick);
+        buf.writeFloat(d.beamSurgeCostGrowth);
+        buf.writeFloat(d.beamSurgeSizeGain);
+        buf.writeFloat(d.beamSurgeDamageGain);
+        buf.writeFloat(d.beamSurgeReachGain);
+        buf.writeFloat(d.beamSurgeSearchRadius);
+        buf.writeFloat(d.beamSurgeCeiling);
+        buf.writeFloat(d.beamSurgeCeilingPerMastery);
+        buf.writeFloat(d.beamSurgeRampPerTick);
+        buf.writeFloat(d.beamSurgeRampPerMastery);
+        buf.writeFloat(d.beamSurgeMaxLength);
+        buf.writeBoolean(d.lockOnThroughBlocks == null || d.lockOnThroughBlocks);
     }
 
     public static SyncServerConfigPacket decode(FriendlyByteBuf buf) {
@@ -118,6 +172,7 @@ public class SyncServerConfigPacket {
         d.bt3ComboEnabled = buf.readBoolean();
         d.bt3VanishEnabled = buf.readBoolean();
         d.bt3ChaseDashEnabled = buf.readBoolean();
+        d.chaseFlightEnabled = buf.readBoolean();
         d.bt3BackstepEnabled = buf.readBoolean();
         d.bt3FinisherEnabled = buf.readBoolean();
         d.bt3ChargeAttackEnabled = buf.readBoolean();
@@ -173,6 +228,12 @@ public class SyncServerConfigPacket {
         d.kiOverchargeExplosionPerPercent = buf.readFloat();
         d.kiOverchargeMultiplier = buf.readFloat();
         d.kiOverchargeMaxScale = buf.readFloat();
+        d.kiProjectileMaxSize = buf.readFloat();
+        d.kiProjectileMaxSpeed = buf.readFloat();
+        d.kiOverchargeSpeedPerPercent = buf.readFloat();
+        d.kiFullGameplayScaling = buf.readBoolean();
+        d.kiDestructionMaxRadius = buf.readFloat();
+        d.kiDestructionBlocksPerTick = buf.readVarInt();
         d.vanishMaxRange = buf.readDouble();
         d.chaseMaxRange = buf.readDouble();
         d.backstepMaxRange = buf.readDouble();
@@ -201,6 +262,53 @@ public class SyncServerConfigPacket {
         d.chargeMaxTicks = buf.readVarInt();
         d.kiBlastHoldToFire = buf.readBoolean();
         d.kiBlastCooldownTicks = Math.max(1, buf.readVarInt());
+        d.barrageDurationTicks = Math.max(0, buf.readVarInt());
+        d.barrageCooldownTicks = Math.max(0, buf.readVarInt());
+        d.kiDurationTicks = Math.max(0, buf.readVarInt());
+        d.kiDurationByType = readIntMap(buf);
+        d.chargeOverchargeEnabled = buf.readBoolean();
+        d.chargeOverchargeMaxPercent = buf.readFloat();
+        d.chargeOverchargeMinLevel = buf.readVarInt();
+        d.chargeOverchargeSizePerPercent = buf.readFloat();
+        d.chargeOverchargeSpeedPerPercent = buf.readFloat();
+        d.chargeOverchargeMaxDamageScale = buf.readFloat();
+        d.chargeFormSizeFactor = buf.readFloat();
+        d.chargeFormSizeLogCap = buf.readFloat();
+        d.chargeFormSizeByForm = readFormMap(buf);
+        d.chargeOverchargeGriefEnabled = buf.readBoolean();
+        d.chargeOverchargeCraterMinPercent = buf.readFloat();
+        d.chargeOverchargeCraterMaxRadius = buf.readVarInt();
+        d.chargeOverchargeCraterIntervalTicks = buf.readVarInt();
+        d.chargeOverchargeMaxRocks = buf.readVarInt();
+        d.chargeOverchargeDiskSliceEnabled = buf.readBoolean();
+        d.chargeOverchargeCameraEnabled = buf.readBoolean();
+        d.chargeOverchargeVoicesEnabled = buf.readBoolean();
+        d.guidanceControlRange = Math.max(0, buf.readVarInt());
+        d.guidanceTurnRate = buf.readFloat();
+        d.guidanceCameraRate = buf.readFloat();
+        d.guidanceHoldGraceTicks = Math.max(0, buf.readVarInt());
+        d.guidanceLookRayMin = buf.readFloat();
+        d.barrageExtraTicks1 = Math.max(0, buf.readVarInt());
+        d.barrageExtraTicks2 = Math.max(0, buf.readVarInt());
+        d.barrageExtraTicks3 = Math.max(0, buf.readVarInt());
+        d.barrageCooldownReduce1 = Math.max(0, buf.readVarInt());
+        d.barrageCooldownReduce2 = Math.max(0, buf.readVarInt());
+        d.barrageCooldownReduce3 = Math.max(0, buf.readVarInt());
+        d.barrageKiPerTick = buf.readFloat();
+        d.beamSurgeEnabled = buf.readBoolean();
+        d.beamSurgeKiPerTick = buf.readFloat();
+        d.beamSurgeStaminaPerTick = buf.readFloat();
+        d.beamSurgeCostGrowth = buf.readFloat();
+        d.beamSurgeSizeGain = buf.readFloat();
+        d.beamSurgeDamageGain = buf.readFloat();
+        d.beamSurgeReachGain = buf.readFloat();
+        d.beamSurgeSearchRadius = buf.readFloat();
+        d.beamSurgeCeiling = buf.readFloat();
+        d.beamSurgeCeilingPerMastery = buf.readFloat();
+        d.beamSurgeRampPerTick = buf.readFloat();
+        d.beamSurgeRampPerMastery = buf.readFloat();
+        d.beamSurgeMaxLength = buf.readFloat();
+        d.lockOnThroughBlocks = buf.readBoolean();
         return new SyncServerConfigPacket(d);
     }
 
@@ -219,6 +327,29 @@ public class SyncServerConfigPacket {
             buf.writeUtf(e.getKey() != null ? e.getKey() : "", 256);
             buf.writeFloat(e.getValue() != null ? e.getValue() : 1.0f);
         }
+    }
+
+    private static void writeIntMap(FriendlyByteBuf buf, Map<String, Integer> map) {
+        if (map == null || map.isEmpty()) {
+            buf.writeVarInt(0);
+            return;
+        }
+        buf.writeVarInt(map.size());
+        for (Map.Entry<String, Integer> e : map.entrySet()) {
+            buf.writeUtf(e.getKey() != null ? e.getKey() : "", 64);
+            buf.writeVarInt(e.getValue() != null ? e.getValue() : 0);
+        }
+    }
+
+    private static Map<String, Integer> readIntMap(FriendlyByteBuf buf) {
+        int n = buf.readVarInt();
+        Map<String, Integer> map = new LinkedHashMap<>();
+        for (int i = 0; i < n; i++) {
+            String k = buf.readUtf(64);
+            int v = buf.readVarInt();
+            if (k != null && !k.isBlank()) map.put(k.toLowerCase(), v);
+        }
+        return map;
     }
 
     private static Map<String, Float> readFormMap(FriendlyByteBuf buf) {

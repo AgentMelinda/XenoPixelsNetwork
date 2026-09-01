@@ -87,13 +87,40 @@ public final class XenoPermissions {
             op("xenochase.set", "Use /xenochase toggle|range <value>");
 
     // -------------------------------------------------------------------------
+    // Hakai erasure technique (server — OP default)
+    // -------------------------------------------------------------------------
+    /** Gates actually using the Hakai ability itself, not just the admin command. */
+    public static final PermissionNode<Boolean> HAKAI_USE =
+            op("hakai.use", "Use the Hakai erasure technique");
+    public static final PermissionNode<Boolean> HAKAI_SET =
+            op("hakai.set", "Use /xenohakai toggle|kicost|range|cooldown <value>");
+
+    // -------------------------------------------------------------------------
+    // /xenolock  (server — OP default)
+    // -------------------------------------------------------------------------
+    public static final PermissionNode<Boolean> XENOLOCK_STATUS =
+            op("xenolock.status", "Use /xenolock through status");
+    public static final PermissionNode<Boolean> XENOLOCK_SET =
+            op("xenolock.set", "Use /xenolock through on|off|toggle");
+
+    public static final PermissionNode<Boolean> XENOAURA_SELF =
+            client("xenoaura.self", "Use /xenoaura on|off|toggle on yourself");
+    public static final PermissionNode<Boolean> XENOAURA_OTHERS =
+            op("xenoaura.others", "Use /xenoaura on|off|toggle <player>");
+    public static final PermissionNode<Boolean> XENOAURA_SET = XENOAURA_SELF;
+
+    // -------------------------------------------------------------------------
     // /xenopixels npcprofile  (server — OP default; also runs via NPC-mod script
     // executeCommand, which uses command-block-equivalent permission)
     // -------------------------------------------------------------------------
     public static final PermissionNode<Boolean> NPCPROFILE_SET =
-            op("npcprofile.set", "Use /xenopixels npcprofile set ...");
+            op("npcprofile.set", "Use /xenopixels npcprofile set|color|aura ...");
     public static final PermissionNode<Boolean> NPCPROFILE_KIATTACK =
-            op("npcprofile.kiattack", "Use /xenopixels npcprofile kiattack <type>");
+            op("npcprofile.kiattack", "Use /xenopixels npcprofile kiattack|charge|tech ...");
+    public static final PermissionNode<Boolean> NPCSAY_TOGGLE =
+            op("npcsay", "Use /xenopixels npcsay on|off|toggle");
+    public static final PermissionNode<Boolean> GENHAIRCODE =
+            op("genhaircode", "Use /xenopixels genhaircode <color>");
 
     // -------------------------------------------------------------------------
     // /xenohud  (client — everyone default)

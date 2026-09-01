@@ -9,6 +9,7 @@ import com.dragonminez.common.stats.character.Resources;
 import net.bullettrain.xenopixelsmod.XenoPixelsMod;
 import net.bullettrain.xenopixelsmod.config.XenoServerConfig;
 import net.minecraft.network.chat.Component;
+import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.effect.MobEffects;
@@ -39,10 +40,23 @@ public final class Bt3CombatEvents {
 
     private Bt3CombatEvents() {}
 
+    /**
+     * Global monotonic server tick. All window timestamps and prunes must use this one clock:
+     * {@code player.tickCount} is per-entity (small for a player who just joined a long-running
+     * server), so mixing it with the server-tick prune silently expired guard/counter/stun
+     * windows for newer players on the first prune. Defensive for client-side callers (server
+     * null → 0); on the client the maps are empty so these read as inactive either way.
+     */
+    private static int serverTick(LivingEntity e) {
+        if (e == null || e.level() == null) return 0;
+        MinecraftServer server = e.level().getServer();
+        return server != null ? server.getTickCount() : 0;
+    }
+
     public static void setGuarding(ServerPlayer player, boolean on) {
         if (player == null) return;
         if (on) {
-            GUARDING.put(player.getUUID(), player.level().getGameTime());
+            GUARDING.put(player.getUUID(), (long) serverTick(player));
         } else {
             GUARDING.remove(player.getUUID());
         }
@@ -55,19 +69,20 @@ public final class Bt3CombatEvents {
     public static boolean isGuardStunned(ServerPlayer player) {
         if (player == null) return false;
         Integer until = GUARD_STUN_UNTIL.get(player.getUUID());
-        return until != null && player.tickCount < until;
+        return until != null && serverTick(player) < until;
     }
 
     public static void openCounterWindow(ServerPlayer player) {
         if (player == null || !XenoServerConfig.bt3SuperCounterEnabled) return;
-        int until = player.tickCount + Math.max(4, XenoServerConfig.superCounterWindowTicks);
+        int until = serverTick(player) + Math.max(4, XenoServerConfig.superCounterWindowTicks);
         COUNTER_UNTIL_TICK.put(player.getUUID(), until);
     }
 
     public static boolean consumeCounterWindow(ServerPlayer player) {
         if (player == null) return false;
         Integer until = COUNTER_UNTIL_TICK.get(player.getUUID());
-        if (until == null || player.tickCount > until) {
+        int now = serverTick(player);
+        if (until == null || now > until) {
             COUNTER_UNTIL_TICK.remove(player.getUUID());
             return false;
         }
@@ -78,7 +93,7 @@ public final class Bt3CombatEvents {
     public static boolean hasCounterWindow(ServerPlayer player) {
         if (player == null) return false;
         Integer until = COUNTER_UNTIL_TICK.get(player.getUUID());
-        return until != null && player.tickCount <= until;
+        return until != null && serverTick(player) <= until;
     }
 
     @SubscribeEvent(priority = EventPriority.HIGH)
@@ -102,7 +117,7 @@ public final class Bt3CombatEvents {
             setGuarding(defender, false);
             DmzAnimHelper.broadcastBlockStop(defender);
             int stun = Math.max(5, XenoServerConfig.guardBreakStunTicks);
-            GUARD_STUN_UNTIL.put(defender.getUUID(), defender.tickCount + stun);
+            GUARD_STUN_UNTIL.put(defender.getUUID(), serverTick(defender) + stun);
             defender.addEffect(new MobEffectInstance(MobEffects.MOVEMENT_SLOWDOWN, stun, 2, false, true));
             defender.addEffect(new MobEffectInstance(MobEffects.WEAKNESS, stun, 0, false, true));
             defender.displayClientMessage(Component.literal("§cGUARD BREAK"), true);
@@ -142,7 +157,7 @@ public final class Bt3CombatEvents {
                     it.remove();
                     continue;
                 }
-                long now = p.level().getGameTime();
+                long now = serverTick(p);
                 long last = e.getValue();
                 if (now - last < 20) continue;
                 e.setValue(now);

@@ -1,5 +1,12 @@
 package net.bullettrain.xenopixelsmod.item.custom;
 
+import net.bullettrain.xenopixelsmod.aero.AeroControlHost;
+import net.bullettrain.xenopixelsmod.aero.seat.XenoPilotSeatEntity;
+import net.bullettrain.xenopixelsmod.block.custom.PilotSeatBlock;
+import net.bullettrain.xenopixelsmod.block.custom.WingPanelBlock;
+import net.bullettrain.xenopixelsmod.aero.AeroLinkManager;
+import net.bullettrain.xenopixelsmod.block.entity.PilotSeatBlockEntity;
+import net.bullettrain.xenopixelsmod.block.entity.ShipThrusterBlockEntity;
 import net.bullettrain.xenopixelsmod.client.ClientScreens;
 import net.bullettrain.xenopixelsmod.block.entity.ShipVlsGuidanceBlockEntity;
 import net.bullettrain.xenopixelsmod.vs.VsShipHelper;
@@ -19,12 +26,24 @@ import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.component.CustomData;
 import net.minecraft.world.level.Level;
+import net.minecraft.world.level.block.entity.BlockEntity;
+import net.minecraft.world.level.block.state.BlockState;
 
 import java.util.List;
+import org.jetbrains.annotations.Nullable;
 import dev.ryanhcode.sable.sublevel.ServerSubLevel;
 
 /**
- * Opens the XYZ target GUI on the client only.
+ * Opens the XYZ target GUI on the client only. Also doubles as the seat/panel/thruster linker:
+ * right-click a wing panel or thruster to link it to the nearest chair (or a chair you
+ * previously selected). Sitting is not required. Shift+right-click unlinks.
+ *
+ * <p><b>Shift, not Ctrl.</b> Vanilla Minecraft syncs sneaking ({@link Player#isShiftKeyDown()})
+ * to the server for exactly this kind of modifier-click, because it is continuous player state
+ * the server already needs for other mechanics. There is no equivalent for Ctrl anywhere in
+ * vanilla's client-to-server protocol — building one would mean a bespoke key listener plus a
+ * custom packet just for this one modifier, which is worse than reusing the modifier that
+ * already exists and already does the job.
  * <p>
  * Must not reference {@code net.minecraft.client.*} directly — that crashes dedicated
  * servers at item registration ({@code NoClassDefFoundError: Screen}).
@@ -33,6 +52,9 @@ public class TargetToolItem extends Item {
     private static final String TAG_HAS_TARGET = "HasTarget";
     private static final String TAG_TARGET = "Target";
     private static final String TAG_TARGET_SHIP = "TargetShipId";
+    private static final String TAG_LINKED_CHAIR = "LinkedChair";
+    /** How far from a panel/thruster the tool searches to find which chair it is linked to, for unlinking. */
+    private static final int UNLINK_SEARCH_RADIUS = 48;
 
     public TargetToolItem(Properties properties) {
         super(properties);
@@ -51,7 +73,36 @@ public class TargetToolItem extends Item {
     public InteractionResult useOn(UseOnContext context) {
         Level level = context.getLevel();
         Player player = context.getPlayer();
-        if (!(level.getBlockEntity(context.getClickedPos()) instanceof ShipVlsGuidanceBlockEntity guidance)) {
+        BlockPos clickedPos = context.getClickedPos();
+        BlockState clickedState = level.getBlockState(clickedPos);
+        BlockEntity clickedEntity = level.getBlockEntity(clickedPos);
+
+        if (clickedState.getBlock() instanceof PilotSeatBlock) {
+            if (level.isClientSide) return InteractionResult.SUCCESS;
+            if (player != null && player.isShiftKeyDown()) {
+                CustomData.update(DataComponents.CUSTOM_DATA, context.getItemInHand(),
+                        tag -> tag.remove(TAG_LINKED_CHAIR));
+                player.displayClientMessage(Component.literal(
+                        "§7Chair forgotten — next panel/thruster click will pick the nearest chair again"), true);
+                return InteractionResult.CONSUME;
+            }
+            setStoredChair(context.getItemInHand(), clickedPos);
+            AeroControlHost host = resolveHostForChair(level, clickedPos);
+            if (player != null) player.displayClientMessage(Component.literal(
+                    "§bChair selected " + linkSummary(host)
+                            + " §7— right-click a wing panel or thruster to link it"
+                            + " (shift+right-click a linked one to unlink, or shift+right-click"
+                            + " this chair to forget it)"), true);
+            return InteractionResult.CONSUME;
+        }
+        if (clickedState.getBlock() instanceof WingPanelBlock) {
+            return handlePanelLink(context, level, player, clickedPos);
+        }
+        if (clickedEntity instanceof ShipThrusterBlockEntity thruster) {
+            return handleThrusterLink(context, level, player, clickedPos, thruster);
+        }
+
+        if (!(clickedEntity instanceof ShipVlsGuidanceBlockEntity guidance)) {
             if (!(level instanceof ServerLevel server)) return InteractionResult.SUCCESS;
             ServerSubLevel ship = VsShipHelper.getLoadedShipAtFast(server, context.getClickedPos());
             if (ship == null) ship = VsShipHelper.getLoadedShipAt(server, context.getClickedPos());
@@ -90,6 +141,149 @@ public class TargetToolItem extends Item {
             }
         }
         return InteractionResult.CONSUME;
+    }
+
+    // --- Chair / panel / thruster linker ---
+
+    private InteractionResult handlePanelLink(UseOnContext context, Level level, @Nullable Player player,
+                                              BlockPos panelPos) {
+        if (level.isClientSide) return InteractionResult.SUCCESS;
+        if (player != null && player.isShiftKeyDown()) {
+            AeroControlHost host = findHostWithLinkedPanel(level, panelPos);
+            if (host != null && host.unlinkPanel(panelPos)) {
+                player.displayClientMessage(Component.literal("§7Panel unlinked " + linkSummary(host)), true);
+            } else {
+                player.displayClientMessage(Component.literal("§7That panel wasn't linked to anything"), true);
+            }
+            return InteractionResult.CONSUME;
+        }
+        AeroControlHost host = resolveLinkHost(context.getItemInHand(), level, panelPos, player);
+        if (host == null) return InteractionResult.CONSUME;
+        boolean added = host.linkPanel(panelPos);
+        if (player != null) player.displayClientMessage(Component.literal(
+                (added ? "§bPanel linked " : "§7Panel was already linked ") + linkSummary(host)), true);
+        return InteractionResult.CONSUME;
+    }
+
+    private InteractionResult handleThrusterLink(UseOnContext context, Level level, @Nullable Player player,
+                                                 BlockPos thrusterPos, ShipThrusterBlockEntity thruster) {
+        if (level.isClientSide) return InteractionResult.SUCCESS;
+        if (player != null && player.isShiftKeyDown()) {
+            BlockPos owner = thruster.getPairedGuidance();
+            AeroControlHost host = owner == null ? null : hostAt(level, owner);
+            if (host != null && host.unpairOneThruster(thrusterPos)) {
+                player.displayClientMessage(Component.literal("§7Thruster unlinked " + linkSummary(host)), true);
+            } else {
+                player.displayClientMessage(Component.literal("§7That thruster wasn't linked to anything"), true);
+            }
+            return InteractionResult.CONSUME;
+        }
+        AeroControlHost host = resolveLinkHost(context.getItemInHand(), level, thrusterPos, player);
+        if (host == null) return InteractionResult.CONSUME;
+        boolean added = host.pairOneThruster(thrusterPos);
+        if (player != null) player.displayClientMessage(Component.literal(added
+                ? "§bThruster linked " + linkSummary(host)
+                : "§cNot a compatible engine, or already linked"), true);
+        return InteractionResult.CONSUME;
+    }
+
+    /** "(N panels, M thrusters linked)" — real, current counts, not a fire-and-forget message. */
+    private static String linkSummary(@Nullable AeroControlHost host) {
+        if (host == null) return "";
+        int panels = host.getLinkedPanels().size();
+        int thrusters = host.getPairedThrusters().size();
+        return "§7(" + panels + " panel" + (panels == 1 ? "" : "s") + ", "
+                + thrusters + " thruster" + (thrusters == 1 ? "" : "s") + " linked)";
+    }
+
+    /**
+     * Host to link against: stored chair if the tool was armed, otherwise the nearest
+     * seated-control chair / flight controller. Standing is enough — sitting is not required.
+     */
+    private static @Nullable AeroControlHost resolveLinkHost(ItemStack stack, Level level,
+                                                             BlockPos near, @Nullable Player player) {
+        BlockPos chairPos = getStoredChair(stack);
+        AeroControlHost host = chairPos == null ? null : resolveHostForChair(level, chairPos);
+        if (host == null) {
+            chairPos = findNearestChair(level, near);
+            host = chairPos == null ? null : resolveHostForChair(level, chairPos);
+            if (host != null) setStoredChair(stack, chairPos);
+        }
+        if (host == null) {
+            if (player != null) player.displayClientMessage(Component.literal(
+                    "§cNo control chair nearby — place one on the hull, then click the panel again"), true);
+            return null;
+        }
+        return host;
+    }
+
+    private static final int CHAIR_SEARCH_RADIUS = 32;
+
+    private static @Nullable BlockPos findNearestChair(Level level, BlockPos origin) {
+        BlockPos[] best = new BlockPos[1];
+        double[] bestDist = {Double.MAX_VALUE};
+        // Every pilot seat has a block entity, so the chunk block-entity walk finds them all
+        // without touching the 274,625 positions a radius-32 cube sweep would have visited.
+        AeroLinkManager.forEachNearbyBlockEntity(level, origin, CHAIR_SEARCH_RADIUS,
+                (pos, blockEntity) -> {
+                    if (!(blockEntity instanceof PilotSeatBlockEntity)) return;
+                    double d = pos.distSqr(origin);
+                    if (d < bestDist[0]) {
+                        bestDist[0] = d;
+                        best[0] = pos.immutable();
+                    }
+                });
+        return best[0];
+    }
+
+    /**
+     * The control host a stored chair position actually represents — the nearby flight
+     * controller if the seat is bound to one (matching {@link XenoPilotSeatEntity}'s own
+     * bound/standalone rule exactly, so the tool never links a panel to a host the seat itself
+     * would not be flying), otherwise the seat block's own standalone host.
+     */
+    private static @Nullable AeroControlHost resolveHostForChair(Level level, BlockPos chairPos) {
+        BlockPos controllerPos = XenoPilotSeatEntity.findController(level, chairPos);
+        if (controllerPos != null
+                && level.getBlockEntity(controllerPos) instanceof ShipVlsGuidanceBlockEntity guidance) {
+            return guidance;
+        }
+        return level.getBlockEntity(chairPos) instanceof PilotSeatBlockEntity seat ? seat : null;
+    }
+
+    /** The control host at an exact position, whichever of the two host types is actually there. */
+    private static @Nullable AeroControlHost hostAt(Level level, BlockPos pos) {
+        BlockEntity be = level.getBlockEntity(pos);
+        if (be instanceof AeroControlHost host) return host;
+        return null;
+    }
+
+    /**
+     * Bounded search for whichever nearby host currently has this panel linked, for unlinking.
+     * Panels have no reverse pointer to their own linking host (unlike thrusters, which store
+     * their owner directly), so this scans a generous but bounded radius rather than the whole
+     * loaded world — only run on an explicit shift+right-click, never per tick.
+     */
+    private static @Nullable AeroControlHost findHostWithLinkedPanel(Level level, BlockPos panelPos) {
+        AeroControlHost[] found = new AeroControlHost[1];
+        AeroLinkManager.forEachNearbyBlockEntity(level, panelPos, UNLINK_SEARCH_RADIUS,
+                (pos, blockEntity) -> {
+                    if (found[0] != null) return;
+                    if (!(blockEntity instanceof AeroControlHost host)) return;
+                    if (host.getLinkedPanels().contains(panelPos)) found[0] = host;
+                });
+        return found[0];
+    }
+
+    public static void setStoredChair(ItemStack stack, BlockPos chair) {
+        if (stack == null || stack.isEmpty() || chair == null) return;
+        CustomData.update(DataComponents.CUSTOM_DATA, stack, tag -> tag.putLong(TAG_LINKED_CHAIR, chair.asLong()));
+    }
+
+    public static @Nullable BlockPos getStoredChair(ItemStack stack) {
+        if (stack == null || stack.isEmpty()) return null;
+        CompoundTag tag = stack.getOrDefault(DataComponents.CUSTOM_DATA, CustomData.EMPTY).copyTag();
+        return tag.contains(TAG_LINKED_CHAIR) ? BlockPos.of(tag.getLong(TAG_LINKED_CHAIR)) : null;
     }
 
     public static void setStoredTarget(ItemStack stack, BlockPos target) {

@@ -23,11 +23,16 @@ public class ModCreativeModTabs {
                         pOutput.accept(ModsItems.STRAWBERRY_SENZU.get());
                         pOutput.accept(ModsItems.METAL_DETECTOR.get());
                         pOutput.accept(ModsItems.TARGET_TOOL.get());
+                        pOutput.accept(ModsItems.PANEL_CONFIGURATOR.get());
 
                         pOutput.accept(ModBlocks.SHIP_VLS_GUIDANCE.get());
                         pOutput.accept(ModBlocks.MISSILE_TUBE.get());
                         pOutput.accept(ModBlocks.MISSILE_CHUNK_LOADER.get());
                         pOutput.accept(ModBlocks.SHIP_THRUSTER.get());
+                        pOutput.accept(ModBlocks.PILOT_SEAT.get());
+                        pOutput.accept(ModBlocks.WING_PANEL.get());
+                        pOutput.accept(ModBlocks.WING_FLAP_HORIZONTAL.get());
+                        pOutput.accept(ModBlocks.WING_FLAP_VERTICAL.get());
                         pOutput.accept(ModBlocks.COPYCAT_GLOWSTONE.get());
 
                         pOutput.accept(ModBlocks.JACKIETONITE_ORE_BLOCK.get());

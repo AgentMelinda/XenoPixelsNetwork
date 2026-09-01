@@ -9,6 +9,14 @@ displayName="${mod_name}"
 authors="${mod_authors}"
 description='''${mod_description}'''
 
+# NeoForge 1.21 loads mixins from here for source-set runs (runClient). The JAR
+# MANIFEST MixinConfigs attribute is not applied to the exploded Gradle classpath.
+[[mixins]]
+config="xenopixelsmod.mixins.json"
+
+[[mixins]]
+config="xenopixelsmod.compat.mixins.json"
+
 [[dependencies.${mod_id}]]
 modId="neoforge"
 type="required"
@@ -76,6 +84,14 @@ side="CLIENT"
 modId="customnpcs"
 type="optional"
 versionRange="[1.21.1,)"
+ordering="AFTER"
+side="BOTH"
+
+# CNPC-Gecko-Addon — gecko models on CustomNPCs. Optional; commands/scripts no-op if absent.
+[[dependencies.${mod_id}]]
+modId="cnpcgeckoaddon"
+type="optional"
+versionRange="[1.0,)"
 ordering="AFTER"
 side="BOTH"
 

@@ -1,18 +1,17 @@
 package net.bullettrain.xenopixelsmod.client.hud;
 
-import com.dragonminez.client.render.EntityPreviewRenderContext;
 import com.mojang.blaze3d.systems.RenderSystem;
 import net.bullettrain.xenopixelsmod.XenoPixelsMod;
 import net.bullettrain.xenopixelsmod.client.XenoHudSnapshot;
+import net.bullettrain.xenopixelsmod.client.config.XenoClientConfig;
 import net.bullettrain.xenopixelsmod.client.config.XenoHudConfig;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.player.AbstractClientPlayer;
+import net.minecraft.network.chat.Component;
+import net.minecraft.network.chat.Style;
 import net.minecraft.resources.ResourceLocation;
-import org.joml.Matrix4f;
-import org.joml.Quaternionf;
-import org.joml.Vector3f;
 
 /** Renders the supplied Xenoverse-style art with live player data layered into its wells. */
 public final class XenoModernHudView {
@@ -74,8 +73,15 @@ public final class XenoModernHudView {
 
     private static final int NAME_X = 151;
     private static final int NAME_Y = 56;
-    /** Clear of the release lane, whose top the artwork puts at panel y 77. */
-    private static final int FORM_Y = 65;
+    /**
+     * Form name, tuned visually against the artwork rather than derived.
+     *
+     * <p>It does not simply share the name's left edge: the form sits slightly inset and one pixel
+     * higher, which reads correctly against the plate's inner bevel. Dialled in with
+     * {@code /xenohud parts edit} and baked here so the stock look needs no config.
+     */
+    private static final int FORM_X_OFFSET = 5;
+    private static final int FORM_Y = 64;
     private static final int NAME_W = 177;
     private static final int LEVEL_RIGHT = 337;
 
@@ -125,34 +131,51 @@ public final class XenoModernHudView {
         // The source artwork supplies the chrome. These layers replace its demonstration data.
         drawPortrait(graphics, mc);
 
-        drawContainedBar(graphics, RELEASE, snap.releasePercent,
+        drawContainedBar(graphics, moved(RELEASE, XenoHudConfig.Part.RELEASE), snap.releasePercent,
                 0xFFFFC107, 0xFF271B08, 0xFFFFD65A);
-        drawContainedBar(graphics, HP, displayedHp,
+        drawContainedBar(graphics, moved(HP, XenoHudConfig.Part.HP), displayedHp,
                 displayedHp < 0.25f ? 0xFFFF3B30 : 0xFFFFA000,
                 0xFF180A09, 0xFFFFC247);
-        drawContainedSegments(graphics, KI, displayedKi,
+        drawContainedSegments(graphics, moved(KI, XenoHudConfig.Part.KI), displayedKi,
                 0xFF19B9FF, 0xFF071929, 0xFF55D8FF, 8);
-        drawContainedSegments(graphics, STM, displayedStm,
+        drawContainedSegments(graphics, moved(STM, XenoHudConfig.Part.STM), displayedStm,
                 0xFF18E0D2, 0xFF071E24, 0xFF62FFF0, 8);
 
         String name = snap.name == null ? "" : font.plainSubstrByWidth(snap.name, NAME_W);
         // Cover the baked "P1" badge before placing live level data. Slanted to match the badge —
         // an axis-aligned fill left a visible square notch in the chrome.
         HudDraw.fillPara(graphics, 348, 56, 38, 20, 5, 0xFF080A11);
-        graphics.drawString(font, name, NAME_X, NAME_Y, 0xFFFFFFFF, true);
+        drawPart(graphics, font, XenoHudConfig.Part.NAME, name,
+                NAME_X + px(XenoHudConfig.Part.NAME), NAME_Y + py(XenoHudConfig.Part.NAME), true);
         String level = "Lv. " + Math.max(0, snap.level);
-        graphics.drawString(font, level, LEVEL_RIGHT - font.width(level), NAME_Y, 0xFFFFD54F, true);
+        drawPart(graphics, font, XenoHudConfig.Part.LEVEL, level,
+                LEVEL_RIGHT - partWidth(font, XenoHudConfig.Part.LEVEL, level)
+                        + px(XenoHudConfig.Part.LEVEL),
+                NAME_Y + py(XenoHudConfig.Part.LEVEL), true);
         if (snap.releaseText != null) {
-            graphics.drawString(font, snap.releaseText,
-                    RELEASE.x() + RELEASE.w() - 10 - font.width(snap.releaseText), RELEASE.y() + 1,
-                    0xFFFFFFFF, true);
+            drawLaneValue(graphics, font, moved(RELEASE, XenoHudConfig.Part.RELEASE_TEXT),
+                    XenoHudConfig.Part.RELEASE_TEXT, snap.releaseText);
+        }
+        if (XenoClientConfig.hudBarNumbers) {
+            formatValues(snap);
+            drawLaneValue(graphics, font, moved(HP, XenoHudConfig.Part.HP_TEXT),
+                    XenoHudConfig.Part.HP_TEXT, valueHp);
+            drawLaneValue(graphics, font, moved(KI, XenoHudConfig.Part.KI_TEXT),
+                    XenoHudConfig.Part.KI_TEXT, valueKi);
+            drawLaneValue(graphics, font, moved(STM, XenoHudConfig.Part.STM_TEXT),
+                    XenoHudConfig.Part.STM_TEXT, valueStm);
         }
         if (!snap.activeForm.isBlank()) {
-            graphics.drawString(font, font.plainSubstrByWidth(snap.activeForm, NAME_W),
-                    NAME_X, FORM_Y, 0xFF80D8FF, true);
+            drawPart(graphics, font, XenoHudConfig.Part.FORM,
+                    font.plainSubstrByWidth(snap.activeForm, NAME_W),
+                    NAME_X + FORM_X_OFFSET + px(XenoHudConfig.Part.FORM),
+                    FORM_Y + py(XenoHudConfig.Part.FORM), true);
         }
         String sparking = snap.sparkingActive ? "SPARKING" : snap.sparking >= 99f ? "READY" : "";
-        if (!sparking.isEmpty()) graphics.drawString(font, sparking, 292, 142, 0xFFFFC107, true);
+        if (!sparking.isEmpty()) {
+            drawPart(graphics, font, XenoHudConfig.Part.SPARKING, sparking,
+                    292 + px(XenoHudConfig.Part.SPARKING), 142 + py(XenoHudConfig.Part.SPARKING), true);
+        }
 
         if (snap.transforming) {
             if (XenoHudConfig.transformRing) {
@@ -184,9 +207,109 @@ public final class XenoModernHudView {
         RenderSystem.disableBlend();
     }
 
+    /** Formatted bar values, and the snapshot they were built from. */
+    private XenoHudSnapshot formattedSnapshot;
+    private String valueHp = "";
+    private String valueKi = "";
+    private String valueStm = "";
+
+    /**
+     * Rebuild the three readouts only when the snapshot changes.
+     *
+     * <p>{@code renderContent} runs per frame but {@link XenoHudSnapshotFactory} caches the snapshot
+     * per client tick, so formatting here every frame would churn three strings for an answer that
+     * cannot have changed. Same shape {@code XenoHudOverlay} uses for its own formatted pair.
+     */
+    private void formatValues(XenoHudSnapshot snap) {
+        if (snap == formattedSnapshot) return;
+        formattedSnapshot = snap;
+        valueHp = HudNumbers.formatPair(snap.curHp, snap.maxHp);
+        valueKi = HudNumbers.formatPair(snap.curKi, snap.maxKi);
+        valueStm = HudNumbers.formatPair(snap.curStm, snap.maxStm);
+    }
+
+    /**
+     * Right-align a readout inside a lane.
+     *
+     * <p>The lane is a parallelogram: {@code x + w} is its <i>top</i>-right corner because
+     * {@code fillPara} shifts the top row right by {@code skew}. Text sits on the middle row, so its
+     * right edge is half a skew short of that — measuring from {@code x + w} alone would let the
+     * number overhang the slanted end cap.
+     */
+    private static void drawLaneValue(GuiGraphics g, Font font, Lane lane, int part, String text) {
+        if (text == null || text.isEmpty()) return;
+        int right = lane.x() + lane.w() - lane.skew() / 2 - VALUE_PAD;
+        float glyphH = font.lineHeight * XenoHudConfig.partScale(part);
+        float y = lane.y() + Math.max(0f, (lane.h() - glyphH) / 2f);
+        drawPart(g, font, part, text, right - partWidth(font, part, text), y, true);
+    }
+
+    /** Gap between a readout and its lane's right edge. */
+    private static final int VALUE_PAD = 6;
+
     private static void outlineLane(GuiGraphics g, Lane lane, int color) {
         HudDraw.borderPara(g, lane.x(), lane.y(), lane.w() - lane.skew(), lane.h(),
                 lane.skew(), color, 1);
+    }
+
+    private static int col(int part) { return XenoHudConfig.partColor(part); }
+
+    /**
+     * Draw one element's text with its own colour, scale, weight and font.
+     *
+     * <p>Everything the panel writes goes through here so a part cannot end up styleable in one
+     * place and hardcoded in another. Uses a styled {@code Component} rather than a raw String,
+     * which is what lets the font and bold flags apply — Minecraft resolves the font id through its
+     * own font manager, so any resource-pack font works without a third-party renderer.
+     */
+    private static void drawPart(GuiGraphics g, Font font, int part, String text,
+                                 float x, float y, boolean shadow) {
+        if (text == null || text.isEmpty()) return;
+        Style style = Style.EMPTY.withFont(XenoHudConfig.partFontLocation(part))
+                .withBold(XenoHudConfig.partBold[part]);
+        Component line = Component.literal(text).setStyle(style);
+        float scale = XenoHudConfig.partScale(part);
+        if (scale == 1.0f) {
+            g.drawString(font, line, Math.round(x), Math.round(y), col(part), shadow);
+            return;
+        }
+        g.pose().pushPose();
+        g.pose().translate(x, y, 0);
+        g.pose().scale(scale, scale, 1f);
+        g.drawString(font, line, 0, 0, col(part), shadow);
+        g.pose().popPose();
+    }
+
+    /** Styled width, so truncation and right-alignment account for bold and scale. */
+    private static float partWidth(Font font, int part, String text) {
+        if (text == null || text.isEmpty()) return 0f;
+        Style style = Style.EMPTY.withFont(XenoHudConfig.partFontLocation(part))
+                .withBold(XenoHudConfig.partBold[part]);
+        return font.width(Component.literal(text).setStyle(style)) * XenoHudConfig.partScale(part);
+    }
+
+    /**
+     * Where a part sits: the tuned shipped offset plus whatever the player added on top.
+     *
+     * <p>Kept as a sum rather than folding the tuned values into {@code partX} so a fresh install
+     * looks right with {@code customLayout} off, and so resetting a part returns it to the tuned
+     * position instead of the raw computed one.
+     */
+    private static int px(int part) {
+        return XenoHudConfig.defaultPartDx(part) + XenoHudConfig.partX(part);
+    }
+
+    private static int py(int part) {
+        return XenoHudConfig.defaultPartDy(part) + XenoHudConfig.partY(part);
+    }
+
+    /** A lane shifted by its part's user offset, so bar and chrome move together. */
+    private static Lane moved(Lane lane, int part) {
+        int dx = px(part);
+        int dy = py(part);
+        if (dx == 0 && dy == 0) return lane;
+        return new Lane(lane.texX() + Math.round(dx / SX), lane.texY() + Math.round(dy / SY),
+                lane.texW(), lane.texH(), lane.texSlant());
     }
 
     private static int wellCx() { return Math.round(WELL_TEX_CX * SX); }
@@ -206,8 +329,8 @@ public final class XenoModernHudView {
         if (!(mc.player instanceof AbstractClientPlayer player)) return;
         boolean masked = XenoHudConfig.portraitMask;
 
-        int x = wellCx() - wellRx();
-        int y = wellCy() - wellRy();
+        int x = wellCx() - wellRx() + px(XenoHudConfig.Part.PORTRAIT);
+        int y = wellCy() - wellRy() + py(XenoHudConfig.Part.PORTRAIT);
         int w = wellRx() * 2;
         int h = wellRy() * 2;
         if (!masked) {
@@ -253,67 +376,7 @@ public final class XenoModernHudView {
      */
     private void drawCharacter(GuiGraphics graphics, AbstractClientPlayer player,
                                int x, int y, int w, int h) {
-        float cx = x + w / 2f;
-        float cy = y + h / 2f;
-
-        Quaternionf pose = new Quaternionf().rotateZ((float) Math.PI);
-        Quaternionf camera = new Quaternionf().rotateX(0f);
-        pose.mul(camera);
-
-        // Face the viewer. These are live fields on an entity the world renderer is also drawing,
-        // so they must go back exactly as they were — hence the finally.
-        float bodyRot = player.yBodyRot;
-        float yRot = player.getYRot();
-        float xRot = player.getXRot();
-        float headRotO = player.yHeadRotO;
-        float headRot = player.yHeadRot;
-        player.yBodyRot = 180f;
-        player.setYRot(180f);
-        player.setXRot(0f);
-        player.yHeadRot = 180f;
-        player.yHeadRotO = 180f;
-
-        try {
-            // Dividing by getScale() is what keeps a Namekian or a transformed form the same
-            // apparent size in the well as a base human — DMZ scales the player entity per race.
-            float entityScale = player.getScale();
-            if (entityScale <= 0f) entityScale = 1f;
-            Vector3f translate = new Vector3f(0f,
-                    player.getBbHeight() / 2f + XenoHudConfig.portraitOffset * entityScale, 0f);
-
-            // enableScissor takes raw GUI coordinates and ignores the pose stack, but this is drawn
-            // inside the panel's translate+scale — so map the rect through the live matrix first.
-            // Without this the clip lands somewhere else entirely on screen. This is also why the
-            // vanilla renderEntityInInventoryFollowsAngle wrapper cannot be used directly: its own
-            // internal scissor has exactly that bug from in here.
-            Matrix4f matrix = graphics.pose().last().pose();
-            Vector3f topLeft = matrix.transformPosition(new Vector3f(x, y, 0f));
-            Vector3f bottomRight = matrix.transformPosition(new Vector3f(x + w, y + h, 0f));
-            graphics.enableScissor(
-                    (int) Math.floor(topLeft.x), (int) Math.floor(topLeft.y),
-                    (int) Math.ceil(bottomRight.x), (int) Math.ceil(bottomRight.y));
-            try {
-                // DMZ's own preview entry point, the one all seven of its menus use. It marks the
-                // render so DMZ's first-person-only rules (hidden head bone, suppressed hair layer)
-                // stand down — those exist for a camera sitting inside the model, not a portrait.
-                EntityPreviewRenderContext.renderEntityInInventory(graphics,
-                        Math.round(cx), Math.round(cy),
-                        Math.round(XenoHudConfig.portraitScale / entityScale),
-                        translate, pose, camera, player);
-            } finally {
-                graphics.disableScissor();
-                // The panel still draws bars and text after this and expects blend on; the entity
-                // render path makes no promise about leaving it that way.
-                RenderSystem.enableBlend();
-                RenderSystem.defaultBlendFunc();
-            }
-        } finally {
-            player.yBodyRot = bodyRot;
-            player.setYRot(yRot);
-            player.setXRot(xRot);
-            player.yHeadRotO = headRotO;
-            player.yHeadRot = headRot;
-        }
+        CharacterPortraitCache.draw(graphics, player, x, y, w, h);
     }
 
 

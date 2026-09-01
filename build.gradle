@@ -197,6 +197,11 @@ dependencies {
     // Previously only string-targeted via Mixin (zero compile footprint); now also compiled
     // against directly for the shared race/stats/ki-attack scripting bridge.
     compileOnly "curse.maven:customnpcs-unofficial-1052708:8414335"
+    // GeckoLib stays as implementation (DMZ hair / our geo blocks). CNPC-Gecko-Integration
+    // (curse.maven cnpc-gecko-addon) is a separate addon that depends on GeckoLib + CustomNPCs;
+    // runtimeOnly puts it on the runClient mods list without replacing GeckoLib or jar-in-jar.
+    compileOnly "curse.maven:cnpc-gecko-addon-970162:7272203"
+    runtimeOnly "curse.maven:cnpc-gecko-addon-970162:7272203"
 
     // ---- Modern UI (1.20.1 parity: Jar-in-Jar embed) ----
     // Ships ModernUI-NeoForge inside the XenoPixels jar. Soft-dep remains in neoforge.mods.toml.

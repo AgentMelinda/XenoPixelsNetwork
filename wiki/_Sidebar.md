@@ -67,5 +67,7 @@
 - [Elementa GUI](Advanced-03-Elementa-GUI)
 - [פתרון Mixin](Advanced-04-Mixin-Fix)
 - [Registrate (פחות JSON)](Advanced-05-Registrate)
+- [Forge Events](Advanced-06-Forge-Events)
+- [CustomNPCs + XenoPixels Scripting](Advanced-07-XenoPixels-CustomNPC-Scripting)
 
 </div>

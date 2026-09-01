@@ -8,6 +8,7 @@ import net.bullettrain.xenopixelsmod.block.custom.MissileTubeBlock;
 import net.bullettrain.xenopixelsmod.block.custom.ShipThrusterBlock;
 import net.bullettrain.xenopixelsmod.block.custom.ShipVlsGuidanceBlock;
 import net.bullettrain.xenopixelsmod.block.custom.CopycatGlowstoneBlock;
+import net.bullettrain.xenopixelsmod.block.custom.WingPanelBlock;
 import net.bullettrain.xenopixelsmod.block.entity.CopycatGlowstoneBlockEntity;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
@@ -33,7 +34,8 @@ import net.neoforged.fml.common.Mod;
  * <p>
  * When the player uses {@code create:wrench} on thruster / tube / guidance / chunk loader,
  * rotates {@code FACING} around the clicked face axis (same idea as Create's IWrenchable).
- * Sneak-wrench picks the block up like Create does for most machines.
+ * Sneak-wrench picks the block up like Create does for most machines. On a wing panel, sets its
+ * surface {@code AXIS} directly from the player's look direction instead of a facing.
  */
 @EventBusSubscriber(modid = XenoPixelsMod.MOD_ID)
 public final class CreateWrenchHandler {
@@ -64,6 +66,30 @@ public final class CreateWrenchHandler {
                         SoundSource.BLOCKS, 0.8f, 1.1f);
                 player.displayClientMessage(Component.translatable(
                         "message.xenopixelsmod.copycat_glowstone_unbound"), true);
+            }
+            event.setCancellationResult(InteractionResult.sidedSuccess(level.isClientSide));
+            event.setCanceled(true);
+            return;
+        }
+
+        if (state.getBlock() instanceof WingPanelBlock) {
+            // Sets AXIS directly from the player's own look direction — the exact same
+            // Direction.getNearest(lookAngle) construction WingPanelBlock.getStateForPlacement
+            // already uses when the panel is first placed — rather than depending on which thin
+            // edge face the raycast happened to hit. A wing panel is a 3px-thick slab; both a
+            // click-face-aware design and a click-anywhere cycle were tried first and still
+            // depend on the raycast actually registering a hit on that sliver at all. This
+            // doesn't fix a raycast miss (nothing running from inside the interaction can, since
+            // the event never fires with this block as the target), but it does mean any click
+            // that DOES land sets the axis in one step, correctly, from wherever the player is
+            // actually looking — no cycling, no face precision needed once you've hit the block.
+            Player player = event.getEntity();
+            Direction.Axis next = player != null
+                    ? Direction.getNearest(player.getLookAngle()).getAxis()
+                    : nextAxis(state.getValue(WingPanelBlock.AXIS));
+            if (!level.isClientSide) {
+                level.setBlock(pos, state.setValue(WingPanelBlock.AXIS, next), Block.UPDATE_ALL);
+                level.playSound(null, pos, SoundEvents.ITEM_FRAME_ROTATE_ITEM, SoundSource.BLOCKS, 0.7f, 1.2f);
             }
             event.setCancellationResult(InteractionResult.sidedSuccess(level.isClientSide));
             event.setCanceled(true);
@@ -119,5 +145,14 @@ public final class CreateWrenchHandler {
     /** Clockwise step of {@code dir} around {@code axis} (Create-style). */
     private static Direction rotateAround(Direction dir, Direction.Axis axis) {
         return dir.getClockWise(axis);
+    }
+
+    /** X → Y → Z → X, matching {@code PanelRole.next()}'s simple cycling. */
+    private static Direction.Axis nextAxis(Direction.Axis axis) {
+        return switch (axis) {
+            case X -> Direction.Axis.Y;
+            case Y -> Direction.Axis.Z;
+            case Z -> Direction.Axis.X;
+        };
     }
 }

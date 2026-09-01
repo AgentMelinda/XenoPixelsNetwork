@@ -36,6 +36,13 @@
       "accent": 4293212469
     },
     {
+      "id": "charge_overcharge",
+      "title": "Charge Overcharge",
+      "subtitle": "Hold past 175% up to 1000%",
+      "detail": "Eligible players can keep charging a ki technique (including custom New Skills) past DragonMineZ's 175% cap, default ceiling 1000%. Size scales with your form even on a normal charge. Waves/beams then keep using Xeno's ki-surge setters. Charge craters, flying rocks, and disk slicing are off until /xenoki grief true. OST voice lines are a work in progress; map technique ids in data/xenopixelsmod/overcharge_voices.json or config/xenopixelsmod-overcharge-voices.json. Commands: /xenoki charge true|false, /xenoki cap <201-2000>, /xenoserver get chargecap.",
+      "accent": 4293212469
+    },
+    {
       "id": "menu_join",
       "title": "Server Entry",
       "subtitle": "xpn.co.il",
@@ -217,8 +224,8 @@
     {
       "id": "chase_dash",
       "title": "Chase Dash",
-      "subtitle": "Double-tap W · 50% success",
-      "detail": "Mid-range rush-in toward lock-on (default ≤14). Costs chaseKiCost KI (12). Success chance chaseSuccessChance (default 0.50). Fail = small lunge + message. Toggle: bt3ChaseDashEnabled.",
+      "subtitle": "Double-tap W · BT3 homing streak",
+      "detail": "Fly-to-target rush (default unlimited range). Aura on during the streak, off on arrival. Costs chaseKiCost KI (12). Success chance chaseSuccessChance (default 0.50) for lock-on chase. After a charged kick, single W dragon-homes. Toggle: bt3ChaseDashEnabled / chaseFlightEnabled.",
       "accent": 4293212469
     },
     {

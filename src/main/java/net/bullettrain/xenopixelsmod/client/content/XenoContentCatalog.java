@@ -189,6 +189,9 @@ public final class XenoContentCatalog {
                 "Launch target then chase. Stamina + KI.", 0xFFFFD54F));
         c.skills.add(entry("overcharge", "KI Overcharge", "Release > 175%",
                 "Bigger size/damage/explosion per excess % release.", 0xFFFFEE58));
+        c.skills.add(entry("chargeovercharge", "Charge Overcharge", "Hold past 175% · cap 1000%",
+                "Keep charging ki techniques (including New Skills) past DMZ's cap. Form scales size. Grief off by default.",
+                0xFFFF8A80));
         c.skills.add(entry("config", "Client Config", "xenopixelsmod-client.json",
                 "Toggles: bt3CombatAnims, bt3KickChainAnims, bt3CombatParticles, bt3ChargeGlow, techniqueHotbarHideInChat, …",
                 0xFF78909C));

@@ -70,6 +70,13 @@ public final class FeatureStatus {
                 "event.KiOverchargeHandler",
                 "Scales DMZ KI projectiles when power release is high. LIVE."));
         list.add(new Entry(
+                "charge_overcharge",
+                "Charge Overcharge",
+                Tier.LIVE,
+                "combat.overcharge.ChargeOverchargeManager",
+                "Hold ki techniques past DMZ's 175% cap (default 1000%). Size scales with form. "
+                        + "Craters/disk slice opt-in. LIVE."));
+        list.add(new Entry(
                 "xeno_hud",
                 "XenoPixels HUD + Tech Hotbar",
                 Tier.LIVE,
@@ -98,7 +105,7 @@ public final class FeatureStatus {
                 "Combat Skill Tree (slim)",
                 Tier.LIVE,
                 "features.progression.CombatSkills + /xenoskill",
-                "4 skills max Lv.3 (power/guard/sparking/ultimate) via skill points. LIVE."));
+                "7 skills max Lv.3 (power/guard/sparking/ultimate/beam/barrage/guide) via skill points. LIVE."));
         list.add(new Entry(
                 "parallel_quests",
                 "Parallel Quest Lite",

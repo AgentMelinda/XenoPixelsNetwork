@@ -68,7 +68,7 @@ public final class ShipBallisticTicker {
             if (ls == null) continue;
             ShipBallisticController peek = ShipBallisticController.get(ls);
             if (peek == null || !peek.isFlying()) {
-                ShipBallisticController.unregisterFlight(shipId);
+                ShipBallisticController.forgetFlight(shipId);
                 return;
             }
             ResourceKey<Level> dim = peek.getFlightDim();
@@ -95,13 +95,13 @@ public final class ShipBallisticTicker {
         }
 
         if (loaded == null || level == null) {
-            ShipBallisticController.unregisterFlight(shipId);
+            ShipBallisticController.forgetFlight(shipId);
             return;
         }
 
         ShipBallisticController ctrl = ShipBallisticController.get(loaded);
         if (ctrl == null || !ctrl.isFlying()) {
-            ShipBallisticController.unregisterFlight(shipId);
+            ShipBallisticController.forgetFlight(shipId);
             return;
         }
 

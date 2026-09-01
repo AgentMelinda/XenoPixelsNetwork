@@ -10,9 +10,11 @@ import net.bullettrain.xenopixelsmod.client.config.XenoClientConfig;
 import net.bullettrain.xenopixelsmod.client.config.XenoCooldownHudConfig;
 import net.bullettrain.xenopixelsmod.client.config.XenoHotbarConfig;
 import net.bullettrain.xenopixelsmod.client.config.XenoHudConfig;
+import net.bullettrain.xenopixelsmod.client.screen.HudSurfaces;
 import net.bullettrain.xenopixelsmod.client.screen.XenoCooldownHudEditScreen;
 import net.bullettrain.xenopixelsmod.client.screen.XenoHotbarEditScreen;
 import net.bullettrain.xenopixelsmod.client.screen.XenoHudEditScreen;
+import net.bullettrain.xenopixelsmod.client.screen.XenoElementsEditScreen;
 import net.bullettrain.xenopixelsmod.command.XenoPermissions;
 import net.minecraft.client.Minecraft;
 import net.minecraft.commands.CommandSourceStack;
@@ -151,6 +153,37 @@ public final class XenoHudCommands {
                                             + " (usage: /xenohud techrenderer <legacy|ldlib>)"), false);
                             return 1;
                         }))
+                .then(Commands.literal("parts")
+                        .requires(XenoPermissions.require(XenoPermissions.XENOHUD_EDIT))
+                        .then(Commands.literal("on").executes(ctx -> setParts(ctx.getSource(), true)))
+                        .then(Commands.literal("off").executes(ctx -> setParts(ctx.getSource(), false)))
+                        .then(Commands.literal("reset")
+                                .executes(ctx -> {
+                                    XenoHudConfig.resetParts();
+                                    XenoHudConfig.save();
+                                    ctx.getSource().sendSuccess(() -> Component.literal(
+                                            "HUD element layout reset"), false);
+                                    return 1;
+                                }))
+                        .then(Commands.literal("edit")
+                                .executes(ctx -> {
+                                    if (!XenoClientConfig.hudEditEnabled) {
+                                        ctx.getSource().sendFailure(Component.literal(
+                                                "HUD edit disabled in client config"));
+                                        return 0;
+                                    }
+                                    Minecraft mc = Minecraft.getInstance();
+                                    mc.execute(() -> mc.setScreen(
+                                            new XenoElementsEditScreen(mc.screen, HudSurfaces.PANEL)));
+                                    return 1;
+                                }))
+                        .executes(ctx -> {
+                            ctx.getSource().sendSuccess(() -> Component.literal(
+                                    "HUD elements: custom=" + XenoHudConfig.customLayout
+                                            + "  " + XenoHudConfig.describeParts()
+                                            + " (usage: /xenohud parts <on|off|reset|edit>)"), false);
+                            return 1;
+                        }))
                 .then(Commands.literal("portrait")
                         .requires(XenoPermissions.require(XenoPermissions.XENOHUD_PORTRAIT))
                         .then(Commands.literal("mode")
@@ -252,6 +285,50 @@ public final class XenoHudCommands {
                                     mc.execute(() -> mc.setScreen(new XenoHotbarEditScreen(mc.screen)));
                                     return 1;
                                 }))
+                        .then(Commands.literal("style")
+                                .then(Commands.literal("textured")
+                                        .executes(ctx -> setMenuShell(ctx.getSource(), true)))
+                                .then(Commands.literal("classic")
+                                        .executes(ctx -> setMenuShell(ctx.getSource(), false)))
+                                .executes(ctx -> {
+                                    ctx.getSource().sendSuccess(() -> Component.literal(
+                                            "Ki menu style: "
+                                                    + (XenoHotbarConfig.xenoverseShell ? "textured" : "classic")
+                                                    + " (usage: /xenohud techhud style <textured|classic>)"), false);
+                                    return 1;
+                                }))
+                        .then(Commands.literal("parts")
+                                .then(Commands.literal("on")
+                                        .executes(ctx -> setMenuParts(ctx.getSource(), true)))
+                                .then(Commands.literal("off")
+                                        .executes(ctx -> setMenuParts(ctx.getSource(), false)))
+                                .then(Commands.literal("reset")
+                                        .executes(ctx -> {
+                                            XenoHotbarConfig.resetParts();
+                                            XenoHotbarConfig.save();
+                                            ctx.getSource().sendSuccess(() -> Component.literal(
+                                                    "Ki menu element layout reset"), false);
+                                            return 1;
+                                        }))
+                                .then(Commands.literal("edit")
+                                        .executes(ctx -> {
+                                            if (!XenoClientConfig.hudEditEnabled) {
+                                                ctx.getSource().sendFailure(Component.literal(
+                                                        "HUD edit disabled in client config"));
+                                                return 0;
+                                            }
+                                            Minecraft mc = Minecraft.getInstance();
+                                            mc.execute(() -> mc.setScreen(
+                                                    new XenoElementsEditScreen(mc.screen, HudSurfaces.KI_MENU)));
+                                            return 1;
+                                        }))
+                                .executes(ctx -> {
+                                    ctx.getSource().sendSuccess(() -> Component.literal(
+                                            "Ki menu elements: custom=" + XenoHotbarConfig.customLayout
+                                                    + "  " + XenoHotbarConfig.describeParts()
+                                                    + " (usage: /xenohud techhud parts <on|off|reset|edit>)"), false);
+                                    return 1;
+                                }))
                         .then(Commands.literal("reset")
                                 .requires(XenoPermissions.require(XenoPermissions.XENOHUD_TECHHUD_RESET))
                                 .executes(ctx -> {
@@ -300,6 +377,71 @@ public final class XenoHudCommands {
                                 .executes(ctx -> {
                                     XenoCooldownHudConfig.reset();
                                     ctx.getSource().sendSuccess(() -> Component.literal("Cooldown HUD layout reset"), false);
+                                    return 1;
+                                }))
+                        .then(Commands.literal("text")
+                                .then(Commands.literal("on")
+                                        .executes(ctx -> setTextLayout(ctx.getSource(), true)))
+                                .then(Commands.literal("off")
+                                        .executes(ctx -> setTextLayout(ctx.getSource(), false)))
+                                .then(Commands.literal("reset")
+                                        .executes(ctx -> {
+                                            XenoCooldownHudConfig.resetTextLayout();
+                                            XenoCooldownHudConfig.save();
+                                            ctx.getSource().sendSuccess(() -> Component.literal(
+                                                    "Chip text layout reset to centred defaults"), false);
+                                            return 1;
+                                        }))
+                                .then(Commands.literal("edit")
+                                        .executes(ctx -> {
+                                            if (!XenoClientConfig.hudEditEnabled) {
+                                                ctx.getSource().sendFailure(Component.literal(
+                                                        "HUD edit disabled in client config"));
+                                                return 0;
+                                            }
+                                            Minecraft mc = Minecraft.getInstance();
+                                            mc.execute(() -> mc.setScreen(
+                                                    new XenoElementsEditScreen(mc.screen, HudSurfaces.CHIPS)));
+                                            return 1;
+                                        }))
+                                .executes(ctx -> {
+                                    ctx.getSource().sendSuccess(() -> Component.literal(
+                                            "Chip text: custom=" + XenoCooldownHudConfig.textCustomLayout
+                                                    + " scale=" + XenoCooldownHudConfig.textScale
+                                                    + " " + XenoCooldownHudConfig.describeParts()
+                                                    + " (usage: /xenohud cd text <on|off|reset|edit>)"), false);
+                                    return 1;
+                                }))
+                        .then(Commands.literal("textscale")
+                                .then(Commands.argument("value",
+                                                com.mojang.brigadier.arguments.FloatArgumentType.floatArg(0.35f, 1.0f))
+                                        .executes(ctx -> {
+                                            XenoCooldownHudConfig.textScale =
+                                                    XenoCooldownHudConfig.clampTextScale(
+                                                            com.mojang.brigadier.arguments.FloatArgumentType
+                                                                    .getFloat(ctx, "value"));
+                                            XenoCooldownHudConfig.save();
+                                            ctx.getSource().sendSuccess(() -> Component.literal(
+                                                    "Cooldown chip text scale: "
+                                                            + XenoCooldownHudConfig.textScale), false);
+                                            return 1;
+                                        }))
+                                .executes(ctx -> {
+                                    ctx.getSource().sendSuccess(() -> Component.literal(
+                                            "Cooldown chip text scale: " + XenoCooldownHudConfig.textScale
+                                                    + " (usage: /xenohud cd textscale <0.35..1.0>)"), false);
+                                    return 1;
+                                }))
+                        .then(Commands.literal("style")
+                                .then(Commands.literal("textured")
+                                        .executes(ctx -> setShell(ctx.getSource(), true)))
+                                .then(Commands.literal("classic")
+                                        .executes(ctx -> setShell(ctx.getSource(), false)))
+                                .executes(ctx -> {
+                                    ctx.getSource().sendSuccess(() -> Component.literal(
+                                            "Cooldown chip style: "
+                                                    + (XenoCooldownHudConfig.xenoverseShell ? "textured" : "classic")
+                                                    + " (usage: /xenohud cd style <textured|classic>)"), false);
                                     return 1;
                                 }))
                         .then(Commands.literal("shape")
@@ -370,6 +512,10 @@ public final class XenoHudCommands {
                                             + " titleBtn=" + XenoClientConfig.titleScreenButton
                                             + " pauseBtn=" + XenoClientConfig.pauseScreenButton
                                             + " menu=" + XenoClientConfig.xenoMenuEnabled
+                                            + " deleteConfirmMs=" + XenoClientConfig.deleteConfirmMs
+                                            + " shake=" + XenoClientConfig.bt3ScreenShake
+                                            + " shakeStr=" + XenoClientConfig.bt3ScreenShakeStrength
+                                            + " dmzShake=" + XenoClientConfig.dmzCameraShake
                                             + " combat=" + XenoClientConfig.bt3CombatClient
                                             + " vanish=" + XenoClientConfig.bt3VanishClient
                                             + " chase=" + XenoClientConfig.bt3ChaseDashClient
@@ -384,25 +530,79 @@ public final class XenoHudCommands {
                                             + " techChatHide=" + XenoClientConfig.techniqueHotbarHideInChat
                                             + " sfx=" + XenoClientConfig.bt3CombatSfx
                                             + " surge=" + XenoClientConfig.beamSurgeClient
-                                            + " surgeDebug=" + XenoClientConfig.beamSurgeDebug), false);
+                                            + " surgeDebug=" + XenoClientConfig.beamSurgeDebug
+                                            + " barNumbers=" + XenoClientConfig.hudBarNumbers
+                                            + " compactNumbers=" + XenoClientConfig.hudCompactNumbers
+                                            + " sableCull=" + XenoClientConfig.sableContraptionCullClient
+                                            + " lockThrough=" + XenoClientConfig.lockOnThroughBlocks), false);
                             return 1;
                         }))
                 .then(Commands.literal("set")
                         .requires(XenoPermissions.require(XenoPermissions.XENOCLIENT_SET))
                         .then(Commands.argument("key", StringArgumentType.word())
-                                .then(Commands.argument("value", BoolArgumentType.bool())
-                                        .executes(ctx -> setFlag(
+                                .then(Commands.argument("value", StringArgumentType.word())
+                                        .executes(ctx -> setClient(
                                                 ctx.getSource(),
                                                 StringArgumentType.getString(ctx, "key"),
-                                                BoolArgumentType.getBool(ctx, "value"))))))
+                                                StringArgumentType.getString(ctx, "value"))))))
                 .executes(ctx -> {
                     ctx.getSource().sendSuccess(() -> Component.literal(
-                            "Usage: /xenoclient <reload|status|set <key> <true|false>>\n"
-                                    + "keys: hud techbar cooldownhud party title pause menu content join edit senzu "
-                                    + "combat combo vanish chase backstep charge dragon glow sfx anims chain particles afterimage techchathide"),
+                            "Usage: /xenoclient <reload|status|set <key> <value>>\n"
+                                    + "bools: hud techbar cooldownhud party surge shake dmzshake sablecull lockthrough\n"
+                                    + "nums: deleteconfirm <ms>  shakestrength <n>"),
                             false);
                     return 1;
                 }));
+    }
+
+    private static int setClient(CommandSourceStack source, String key, String raw) {
+        String k = key.toLowerCase();
+        if (k.equals("deleteconfirm") || k.equals("deleteconfirmms")) {
+            try {
+                int ms = Integer.parseInt(raw.trim());
+                XenoClientConfig.deleteConfirmMs = Math.max(0, Math.min(30_000, ms));
+                XenoClientConfig.save();
+                source.sendSuccess(() -> Component.literal(
+                        "Set client deleteconfirm = " + XenoClientConfig.deleteConfirmMs
+                                + (XenoClientConfig.deleteConfirmMs == 0 ? " (instant)" : " ms")), false);
+                return 1;
+            } catch (NumberFormatException e) {
+                source.sendFailure(Component.literal("deleteconfirm needs milliseconds (0 = instant)"));
+                return 0;
+            }
+        }
+        if (k.equals("shakestrength") || k.equals("shakestr")) {
+            try {
+                float n = Float.parseFloat(raw.trim());
+                if (!Float.isFinite(n)) {
+                    source.sendFailure(Component.literal("shakestrength must be finite"));
+                    return 0;
+                }
+                XenoClientConfig.bt3ScreenShakeStrength = Math.max(0f, Math.min(4f, n));
+                XenoClientConfig.save();
+                source.sendSuccess(() -> Component.literal(
+                        "Set client shakestrength = " + XenoClientConfig.bt3ScreenShakeStrength), false);
+                return 1;
+            } catch (NumberFormatException e) {
+                source.sendFailure(Component.literal("shakestrength needs a number"));
+                return 0;
+            }
+        }
+        Boolean parsed = parseBool(raw);
+        if (parsed == null) {
+            source.sendFailure(Component.literal("Expected true/false (or a number for deleteconfirm/shakestrength)"));
+            return 0;
+        }
+        return setFlag(source, k, parsed);
+    }
+
+    private static Boolean parseBool(String raw) {
+        if (raw == null) return null;
+        return switch (raw.trim().toLowerCase()) {
+            case "true", "on", "yes", "1" -> Boolean.TRUE;
+            case "false", "off", "no", "0" -> Boolean.FALSE;
+            default -> null;
+        };
     }
 
     private static int setFlag(CommandSourceStack source, String key, boolean value) {
@@ -435,14 +635,64 @@ public final class XenoHudCommands {
             case "techchathide", "hideintechchat" -> XenoClientConfig.techniqueHotbarHideInChat = value;
             case "surge", "beamsurge" -> XenoClientConfig.beamSurgeClient = value;
             case "surgedebug", "beamsurgedebug" -> XenoClientConfig.beamSurgeDebug = value;
+            case "barnumbers", "hudbarnumbers", "numbers" -> XenoClientConfig.hudBarNumbers = value;
+            case "compactnumbers", "hudcompactnumbers" -> XenoClientConfig.hudCompactNumbers = value;
+            case "shake", "screenshake" -> XenoClientConfig.bt3ScreenShake = value;
+            case "dmzshake", "dmzshakethird", "dmzshakefly", "dmz3pshake", "thirdpersonshake",
+                    "dmzflyshake", "flightshake" ->
+                    XenoClientConfig.dmzCameraShake = value;
+            case "sablecull", "cull", "sablecontraptioncull" ->
+                    XenoClientConfig.sableContraptionCullClient = value;
+            case "lockthrough", "lockonthrough", "lockthroughblocks" ->
+                    XenoClientConfig.lockOnThroughBlocks = value;
             default -> {
                 source.sendFailure(Component.literal(
-                        "Unknown key. Try: hud techbar combat vanish chase backstep charge dragon glow sfx anims chain particles afterimage cooldownhud party techchathide surge surgedebug"));
+                        "Unknown key. Try: hud techbar combat vanish chase backstep charge dragon glow sfx anims chain particles afterimage cooldownhud party techchathide surge surgedebug barnumbers compactnumbers shake dmzshake lockthrough"));
                 return 0;
             }
         }
         XenoClientConfig.save();
         source.sendSuccess(() -> Component.literal("Set client " + k + " = " + value), false);
+        return 1;
+    }
+
+    private static int setMenuShell(CommandSourceStack source, boolean textured) {
+        XenoHotbarConfig.xenoverseShell = textured;
+        XenoHotbarConfig.save();
+        source.sendSuccess(() -> Component.literal("Ki menu style: "
+                + (textured ? "textured (Xenoverse panel)" : "classic")), false);
+        return 1;
+    }
+
+    private static int setMenuParts(CommandSourceStack source, boolean custom) {
+        XenoHotbarConfig.customLayout = custom;
+        XenoHotbarConfig.save();
+        source.sendSuccess(() -> Component.literal("Ki menu elements: "
+                + (custom ? "custom (movable)" : "shipped default")), false);
+        return 1;
+    }
+
+    private static int setParts(CommandSourceStack source, boolean custom) {
+        XenoHudConfig.customLayout = custom;
+        XenoHudConfig.save();
+        source.sendSuccess(() -> Component.literal("HUD element layout: "
+                + (custom ? "custom (movable)" : "shipped default")), false);
+        return 1;
+    }
+
+    private static int setTextLayout(CommandSourceStack source, boolean custom) {
+        XenoCooldownHudConfig.textCustomLayout = custom;
+        XenoCooldownHudConfig.save();
+        source.sendSuccess(() -> Component.literal("Chip text layout: "
+                + (custom ? "custom (movable/resizable)" : "centred default")), false);
+        return 1;
+    }
+
+    private static int setShell(CommandSourceStack source, boolean textured) {
+        XenoCooldownHudConfig.xenoverseShell = textured;
+        XenoCooldownHudConfig.save();
+        source.sendSuccess(() -> Component.literal(
+                "Cooldown chip style: " + (textured ? "textured (Xenoverse shell)" : "classic")), false);
         return 1;
     }
 

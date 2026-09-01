@@ -1,6 +1,9 @@
 package net.bullettrain.xenopixelsmod.network.packet;
 
+import net.bullettrain.xenopixelsmod.block.entity.FleetChannelSavedData;
+import net.bullettrain.xenopixelsmod.block.entity.FleetFireControlManager;
 import net.bullettrain.xenopixelsmod.block.entity.ShipVlsGuidanceBlockEntity;
+import net.bullettrain.xenopixelsmod.features.party.PartyManager;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.network.chat.Component;
@@ -9,6 +12,7 @@ import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import com.dragonminez.compat.network.NetworkEvent;
 
+import java.util.UUID;
 import java.util.function.Supplier;
 
 /**
@@ -132,6 +136,12 @@ public class GuidanceControlPacket {
 
             switch (action) {
                 case SET -> {
+                    // On a channel this re-aims every fleet member, so it is gated to the channel
+                    // owner and their party; standalone (channel 0) stays a local computer.
+                    if (be.getFleetChannel() > 0 && !canControlChannel(level, be.getFleetChannel(), player)) {
+                        player.displayClientMessage(channelDenied(be.getFleetChannel()), true);
+                        return;
+                    }
                     // Clamp to reasonable world bounds
                     int cx = Math.max(-30_000_000, Math.min(30_000_000, x));
                     int cy = Math.max(level.getMinBuildHeight(), Math.min(level.getMaxBuildHeight(), y));
@@ -230,6 +240,20 @@ public class GuidanceControlPacket {
                 }
                 case SET_FLEET -> {
                     int channel = Math.max(0, Math.min(9_999, x));
+                    int current = be.getFleetChannel();
+                    // Joining a channel requires authority over it — the first player to join an
+                    // unowned channel becomes its owner, a party member joins their own, and
+                    // anyone else is refused.
+                    if (channel > 0 && !canControlChannel(level, channel, player)) {
+                        player.displayClientMessage(channelDenied(channel), true);
+                        return;
+                    }
+                    // Leaving a channel you don't control would pull a ship from someone else's
+                    // fleet, so it is gated on the channel being left too.
+                    if (channel != current && current > 0 && !canControlChannel(level, current, player)) {
+                        player.displayClientMessage(channelDenied(current), true);
+                        return;
+                    }
                     int interval = Math.max(1, Math.min(200, y));
                     be.setFleetChannel(channel);
                     be.setSalvoIntervalTicks(interval);
@@ -239,6 +263,10 @@ public class GuidanceControlPacket {
                             + interval + "t"), true);
                 }
                 case FLEET_SALVO -> {
+                    if (be.getFleetChannel() > 0 && !canControlChannel(level, be.getFleetChannel(), player)) {
+                        player.displayClientMessage(channelDenied(be.getFleetChannel()), true);
+                        return;
+                    }
                     if (be.getTarget() == null) {
                         player.displayClientMessage(Component.literal("§cSet a target XYZ first"), true);
                         return;
@@ -275,6 +303,52 @@ public class GuidanceControlPacket {
         if (lvl <= 12) return "heavy";
         if (lvl <= 16) return "very heavy";
         return "max / capital";
+    }
+
+    /**
+     * Co-op / party ownership of a fleet channel. The first player to join an unowned channel
+     * becomes its owner; thereafter only that owner and members of the party the owner was in at
+     * claim time may steer it. A forged client cannot claim or steer another party's channel, and
+     * a solo player's channel is usable only by that player.
+     *
+     * <p>Authority is persisted per dimension ({@link FleetFireControlManager#getChannelAuthority}),
+     * so it survives a restart. A <i>stale</i> authority — its party has been disbanded/idle-expired,
+     * or a solo owner has logged out — is released here and re-claimed by the acting player, so an
+     * abandoned fleet does not lock up its channel number.
+     *
+     * @return true (and, on first contact, records the acting player as owner) if the player may
+     * control the channel
+     */
+    private static boolean canControlChannel(ServerLevel level, int channel, ServerPlayer player) {
+        if (channel <= 0) return true;
+        UUID playerParty = PartyManager.partyOf(player);
+        FleetChannelSavedData.ChannelAuthority auth = FleetFireControlManager.getChannelAuthority(level, channel);
+        if (auth == null) {
+            FleetFireControlManager.setChannelAuthority(level, channel, player.getUUID(), playerParty);
+            return true;
+        }
+        if (player.getUUID().equals(auth.owner())) return true;
+        if (auth.party() != null && auth.party().equals(playerParty)) return true;
+        if (isStaleAuthority(level, auth)) {
+            FleetFireControlManager.clearChannelAuthority(level, channel);
+            FleetFireControlManager.setChannelAuthority(level, channel, player.getUUID(), playerParty);
+            return true;
+        }
+        return false;
+    }
+
+    /** A recorded authority is releasable once the party it belongs to is gone, or (solo) the owner is offline. */
+    private static boolean isStaleAuthority(ServerLevel level, FleetChannelSavedData.ChannelAuthority auth) {
+        if (auth.party() != null) {
+            // Party-owned channel: stale once that party has been disbanded or idle-expired.
+            return !PartyManager.partyExists(level.getServer(), auth.party());
+        }
+        // Solo claim: stale once the owner is no longer online.
+        return level.getServer().getPlayerList().getPlayer(auth.owner()) == null;
+    }
+
+    private static Component channelDenied(int channel) {
+        return Component.literal("§cChannel §f" + channel + " §cis controlled by another player or their party");
     }
 
     /**

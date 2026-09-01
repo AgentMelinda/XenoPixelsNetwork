@@ -281,6 +281,45 @@ public final class FlightPlannerScreen extends UnblurredScreen {
                         ModNetwork.sendToServer(AeroControlPacket.link(openData.computerPos(),
                                 net.bullettrain.xenopixelsmod.aero.AeroAction.Link.Op.PAIR_NEARBY)))
                 .bounds(panelX + 12, panelY + 194, 122, 18).build());
+
+        // Throttle and flaps. The server owns both values; these only ever request a change and
+        // the authoritative echo is what the telemetry text renders.
+        addRenderableWidget(Button.builder(Component.literal("Throttle −"), b -> stepThrottle(-0.1))
+                .tooltip(Tooltip.create(Component.literal("Reduce commanded thrust by 10%.")))
+                .bounds(panelX + 150, panelY + 104, 60, 18).build());
+        addRenderableWidget(Button.builder(Component.literal("Throttle +"), b -> stepThrottle(0.1))
+                .tooltip(Tooltip.create(Component.literal("Increase commanded thrust by 10%.")))
+                .bounds(panelX + 214, panelY + 104, 60, 18).build());
+
+        addRenderableWidget(Button.builder(Component.literal("Flaps −"), b -> stepFlap(-0.25))
+                .tooltip(Tooltip.create(Component.literal(
+                        "Retract one stage. Flaps add lift and drag at low speed; they travel, they do not snap.")))
+                .bounds(panelX + 150, panelY + 128, 60, 18).build());
+        addRenderableWidget(Button.builder(Component.literal("Flaps +"), b -> stepFlap(0.25))
+                .tooltip(Tooltip.create(Component.literal("Extend one stage.")))
+                .bounds(panelX + 214, panelY + 128, 60, 18).build());
+        addRenderableWidget(Button.builder(Component.literal("AUTO FLAP"), b -> {
+                    ModNetwork.sendToServer(AeroControlPacket.toggleAutoFlap(openData.computerPos()));
+                    notice = "Auto-flap toggle requested";
+                }).tooltip(Tooltip.create(Component.literal(
+                        "Let the controller extend flaps in slow flight and retract them at cruise.")))
+                .bounds(panelX + 150, panelY + 152, 124, 18).build());
+    }
+
+    /** Nudge the commanded throttle. The current value comes from the last authoritative state. */
+    private void stepThrottle(double delta) {
+        double current = aeroState == null ? 0.0 : aeroState.throttle();
+        double next = Math.max(0.0, Math.min(1.0, current + delta));
+        ModNetwork.sendToServer(AeroControlPacket.setThrottle(openData.computerPos(), next));
+        notice = String.format(Locale.ROOT, "Throttle %.0f%% requested", next * 100.0);
+    }
+
+    /** Nudge the commanded flap setting; stepping manually also turns auto-flap off server-side. */
+    private void stepFlap(double delta) {
+        double current = aeroState == null ? 0.0 : aeroState.flapTarget();
+        double next = Math.max(0.0, Math.min(1.0, current + delta));
+        ModNetwork.sendToServer(AeroControlPacket.setFlap(openData.computerPos(), next));
+        notice = String.format(Locale.ROOT, "Flaps %.0f%% requested", next * 100.0);
     }
 
     private String autoLabel(AeroAutopilotMode mode, String name) {
@@ -609,7 +648,7 @@ public final class FlightPlannerScreen extends UnblurredScreen {
     private void openXaeroWaypointPicker() {
         captureVisibleFields();
         try {
-            net.bullettrain.xenopixelsmod.compat.xaero.XaeroWaypointPicker.open(this);
+            net.bullettrain.xenopixelsmod.client.compat.xaero.XaeroWaypointPicker.open(this);
         } catch (Throwable error) {
             notice = "Xaero World Map is installed but could not be opened";
         }
@@ -1258,9 +1297,13 @@ public final class FlightPlannerScreen extends UnblurredScreen {
                 if (aeroState != null) {
                     g.drawString(font, String.format(Locale.ROOT, "Distance %.1f · speed %.1f",
                             aeroState.targetDistance(), aeroState.actualSpeed()), x, y + 26, 0xffb8d7e8, false);
+                    g.drawString(font, String.format(Locale.ROOT, "Throttle %.0f%% · flaps %.0f%%→%.0f%%%s",
+                                    aeroState.throttle() * 100.0, aeroState.flap() * 100.0,
+                                    aeroState.flapTarget() * 100.0, aeroState.autoFlap() ? " (auto)" : ""),
+                            x, y + 39, 0xffb8d7e8, false);
                     if (aeroState.waypointCount() > 0) g.drawString(font,
                             "Waypoint " + (aeroState.waypointIndex() + 1) + "/" + aeroState.waypointCount(),
-                            x, y + 39, 0xff82e89a, false);
+                            x, y + 52, 0xff82e89a, false);
                 }
             } else {
                 g.drawString(font, "EASY GUIDANCE", x, y, 0xff8ed6ff, false);

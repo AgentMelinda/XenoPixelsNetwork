@@ -15,9 +15,12 @@ import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.Mod;
 
 /**
- * Scales DMZ KI projectiles when the owner's power release is above the overcharge threshold
- * (default 175%). Size, damage, and explosion radius grow per excess percent, multiplied by
- * {@link XenoServerConfig#kiOverchargeMultiplier}.
+ * Scales DMZ KI projectiles when the owner's <em>power release</em> is above the overcharge
+ * threshold (default 175%). Size, damage, and explosion radius grow per excess percent,
+ * multiplied by {@link XenoServerConfig#kiOverchargeMultiplier}.
+ *
+ * <p>This is not the charge-cap feature. Holding a technique past DMZ's 175% charge lives in
+ * {@code combat.overcharge.ChargeOverchargeManager}.
  */
 @EventBusSubscriber(modid = XenoPixelsMod.MOD_ID)
 public final class KiOverchargeHandler {
@@ -38,16 +41,22 @@ public final class KiOverchargeHandler {
         if (release <= XenoServerConfig.kiOverchargeThreshold) return;
 
         float sizeScale = XenoServerConfig.kiOverchargeSizeScale(release);
+        float speedScale = XenoServerConfig.kiOverchargeSpeedScale(release);
         float dmgScale = XenoServerConfig.kiOverchargeDamageScale(release);
         float boomScale = XenoServerConfig.kiOverchargeExplosionScale(release);
 
-        if (sizeScale <= 1.001f && dmgScale <= 1.001f && boomScale <= 1.001f) return;
+        if (sizeScale <= 1.001f && speedScale <= 1.001f && dmgScale <= 1.001f && boomScale <= 1.001f) return;
 
         try {
-            float size = ki.getSize() * sizeScale;
+            float size = XenoServerConfig.clampKiSize(ki.getSize() * sizeScale);
+            float speed = XenoServerConfig.clampKiSpeed(ki.getKiSpeed() * speedScale);
             float dmg = ki.getKiDamage() * dmgScale;
             ki.setSize(size);
+            ki.setKiSpeed(speed);
             ki.setKiDamage(dmg);
+
+            var motion = ki.getDeltaMovement();
+            if (motion.lengthSqr() > 1.0E-8D) ki.setDeltaMovement(motion.normalize().scale(speed));
 
             if (ki instanceof KiExplosionEntity explosion) {
                 float radius = explosion.getMaxRadius() * boomScale;

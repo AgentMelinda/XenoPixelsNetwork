@@ -12,6 +12,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.PriorityQueue;
 import java.util.Set;
+import java.util.UUID;
 import java.util.WeakHashMap;
 
 /**
@@ -57,6 +58,29 @@ public final class FleetFireControlManager {
     public static void tick(ServerLevel level) {
         LevelState state = LEVELS.get(level);
         if (state != null) state.tick(level);
+    }
+
+    // --- Channel ownership (co-op / party) -------------------------------------------
+    //
+    // Separate from the live vessel registry above: the registry is rebuilt as computers load,
+    // but who is *allowed* to steer a channel is a durable fact that must survive a restart, so
+    // it lives in {@link FleetChannelSavedData} keyed by dimension.
+    // See GuidanceControlPacket for the claim / verify / release policy built on these.
+
+    public static FleetChannelSavedData.ChannelAuthority getChannelAuthority(ServerLevel level, int channel) {
+        return FleetChannelSavedData.get(level.getServer()).getAuthority(dimId(level), channel);
+    }
+
+    public static void setChannelAuthority(ServerLevel level, int channel, UUID owner, UUID party) {
+        FleetChannelSavedData.get(level.getServer()).setAuthority(dimId(level), channel, owner, party);
+    }
+
+    public static void clearChannelAuthority(ServerLevel level, int channel) {
+        FleetChannelSavedData.get(level.getServer()).clearAuthority(dimId(level), channel);
+    }
+
+    private static String dimId(ServerLevel level) {
+        return level.dimension().location().toString();
     }
 
     private static LevelState state(ServerLevel level) {

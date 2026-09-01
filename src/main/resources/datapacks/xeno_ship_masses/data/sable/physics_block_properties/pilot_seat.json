@@ -1,0 +1,6 @@
+{
+  "selector": "xenopixelsmod:pilot_seat",
+  "properties": {
+    "sable:mass": 1.5
+  }
+}

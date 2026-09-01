@@ -3,15 +3,18 @@ package net.bullettrain.xenopixelsmod.command;
 import net.neoforged.fml.common.EventBusSubscriber;
 
 import com.mojang.brigadier.CommandDispatcher;
-import com.mojang.brigadier.arguments.BoolArgumentType;
 import com.mojang.brigadier.arguments.StringArgumentType;
+import com.mojang.brigadier.suggestion.SuggestionProvider;
 import net.bullettrain.xenopixelsmod.XenoPixelsMod;
+import net.bullettrain.xenopixelsmod.combat.overcharge.OverchargeVoices;
 import net.bullettrain.xenopixelsmod.config.XenoServerConfig;
+import net.bullettrain.xenopixelsmod.config.XenoServerConfigKeys;
 import net.bullettrain.xenopixelsmod.network.ModNetwork;
 import net.bullettrain.xenopixelsmod.network.SyncDmzHudStatePacket;
 import net.bullettrain.xenopixelsmod.network.SyncServerConfigPacket;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
+import net.minecraft.commands.SharedSuggestionProvider;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
 import net.neoforged.neoforge.event.RegisterCommandsEvent;
@@ -85,6 +88,7 @@ public final class DmzHudCommands {
                         .requires(XenoPermissions.require(XenoPermissions.XENOSERVER_RELOAD))
                         .executes(ctx -> {
                             XenoServerConfig.load();
+                            OverchargeVoices.reload();
                             broadcast();
                             ctx.getSource().sendSuccess(
                                     () -> Component.literal("XenoPixels server config reloaded + synced"), true);
@@ -93,39 +97,30 @@ public final class DmzHudCommands {
                 .then(Commands.literal("status")
                         .requires(XenoPermissions.require(XenoPermissions.XENOSERVER_STATUS))
                         .executes(ctx -> {
-                            XenoServerConfig.Data d = XenoServerConfig.snapshot();
-                            ctx.getSource().sendSuccess(() -> Component.literal(
-                                    "combat=" + d.bt3CombatEnabled
-                                            + " combo=" + d.bt3ComboEnabled
-                                            + " vanish=" + d.bt3VanishEnabled
-                                            + " chase=" + d.bt3ChaseDashEnabled
-                                            + " backstep=" + d.bt3BackstepEnabled
-                                            + " finisher=" + d.bt3FinisherEnabled
-                                            + " charge=" + d.bt3ChargeAttackEnabled
-                                            + " dragon=" + d.bt3DragonDashEnabled
-                                            + " dmzHud=" + d.dmzHudEnabled
-                                            + " bootstrap=" + d.dmzContentBootstrap
-                                            + " formMult=" + d.formStatMultiplier
-                                            + " dummy=" + d.trainingDummyEnabled
-                                            + " quest=" + d.parallelQuestEnabled
-                                            + " mentor=" + d.mentorEnabled), false);
+                            ctx.getSource().sendSuccess(() -> Component.literal(serverStatus()), false);
                             return 1;
                         }))
+                .then(Commands.literal("get")
+                        .requires(XenoPermissions.require(XenoPermissions.XENOSERVER_STATUS))
+                        .then(Commands.argument("key", StringArgumentType.word())
+                                .suggests(KEY_SUGGEST)
+                                .executes(ctx -> getKey(
+                                        ctx.getSource(),
+                                        StringArgumentType.getString(ctx, "key")))))
                 .then(Commands.literal("set")
                         .requires(XenoPermissions.require(XenoPermissions.XENOSERVER_SET))
                         .then(Commands.argument("key", StringArgumentType.word())
-                                .then(Commands.argument("value", BoolArgumentType.bool())
-                                        .executes(ctx -> setFlag(
+                                .suggests(KEY_SUGGEST)
+                                .then(Commands.argument("value", StringArgumentType.word())
+                                        .executes(ctx -> setKey(
                                                 ctx.getSource(),
                                                 StringArgumentType.getString(ctx, "key"),
-                                                BoolArgumentType.getBool(ctx, "value"))))))
+                                                StringArgumentType.getString(ctx, "value"))))))
                 .executes(ctx -> {
                     ctx.getSource().sendSuccess(() -> Component.literal(
-                            "Usage: /xenoserver <reload|status|set <key> <true|false>>\n"
-                                    + "keys: combat, combo, vanish, chase, backstep, finisher, charge, dragon, "
-                                    + "guard, counter, kiblast, zburst, lockcycle, punchcombo, protectmasters,\n"
-                                    + "rush, sonic, ultimate, sparking, impact, overcharge, dmzhud, bootstrap,\n"
-                                    + "dummy, quest, mentor"),
+                            "Usage: /xenoserver <reload|status|get <key>|set <key> <value>>\n"
+                                    + "keys: " + XenoServerConfigKeys.usageKeys()
+                                    + " (tab-complete for the full list)"),
                             false);
                     return 1;
                 }));
@@ -140,44 +135,49 @@ public final class DmzHudCommands {
         return 1;
     }
 
-    private static int setFlag(CommandSourceStack source, String key, boolean value) {
-        String k = key.toLowerCase();
-        switch (k) {
-            case "combat" -> XenoServerConfig.bt3CombatEnabled = value;
-            case "combo" -> XenoServerConfig.bt3ComboEnabled = value;
-            case "vanish" -> XenoServerConfig.bt3VanishEnabled = value;
-            case "chase" -> XenoServerConfig.bt3ChaseDashEnabled = value;
-            case "backstep" -> XenoServerConfig.bt3BackstepEnabled = value;
-            case "finisher" -> XenoServerConfig.bt3FinisherEnabled = value;
-            case "charge" -> XenoServerConfig.bt3ChargeAttackEnabled = value;
-            case "dragon" -> XenoServerConfig.bt3DragonDashEnabled = value;
-            case "guard", "block" -> XenoServerConfig.bt3GuardEnabled = value;
-            case "counter", "supercounter" -> XenoServerConfig.bt3SuperCounterEnabled = value;
-            case "kiblast", "kicancel" -> XenoServerConfig.bt3KiBlastCancelEnabled = value;
-            case "zburst" -> XenoServerConfig.bt3ZBurstEnabled = value;
-            case "lockcycle", "lock" -> XenoServerConfig.bt3LockCycleEnabled = value;
-            case "punchcombo", "punchesonly", "combopunch" -> XenoServerConfig.bt3ComboPunchesOnly = value;
-            case "protectmasters", "masters" -> XenoServerConfig.protectDmzMasters = value;
-            case "rush", "rushchain" -> XenoServerConfig.bt3RushChainEnabled = value;
-            case "sonic", "sway" -> XenoServerConfig.bt3SonicSwayEnabled = value;
-            case "ultimate" -> XenoServerConfig.bt3UltimateEnabled = value;
-            case "sparking" -> XenoServerConfig.bt3SparkingEnabled = value;
-            case "transformimpact", "impact" -> XenoServerConfig.bt3TransformImpactEnabled = value;
-            case "kiovercharge", "overcharge" -> XenoServerConfig.kiOverchargeEnabled = value;
-            case "dmzhud" -> XenoServerConfig.dmzHudEnabled = value;
-            case "bootstrap" -> XenoServerConfig.dmzContentBootstrap = value;
-            case "dummy", "trainingdummy" -> XenoServerConfig.trainingDummyEnabled = value;
-            case "quest", "quests", "parallelquest" -> XenoServerConfig.parallelQuestEnabled = value;
-            case "mentor", "mentors" -> XenoServerConfig.mentorEnabled = value;
-            default -> {
-                source.sendFailure(Component.literal("Unknown key: " + key));
-                return 0;
-            }
+    private static final SuggestionProvider<CommandSourceStack> KEY_SUGGEST =
+            (ctx, builder) -> SharedSuggestionProvider.suggest(
+                    XenoServerConfigKeys.suggest(builder.getRemaining()), builder);
+
+    private static int setKey(CommandSourceStack source, String key, String value) {
+        XenoServerConfigKeys.Result result = XenoServerConfigKeys.set(key, value);
+        if (!result.ok) {
+            source.sendFailure(Component.literal(result.message));
+            return 0;
         }
         XenoServerConfig.save();
         broadcast();
-        source.sendSuccess(() -> Component.literal("Set " + k + " = " + value), true);
+        source.sendSuccess(() -> Component.literal(result.message), true);
         return 1;
+    }
+
+    private static int getKey(CommandSourceStack source, String key) {
+        XenoServerConfigKeys.Result result = XenoServerConfigKeys.get(key);
+        if (!result.ok) {
+            source.sendFailure(Component.literal(result.message));
+            return 0;
+        }
+        source.sendSuccess(() -> Component.literal(result.message), false);
+        return 1;
+    }
+
+    private static String serverStatus() {
+        return "combat=" + XenoServerConfig.bt3CombatEnabled
+                + " combo=" + XenoServerConfig.bt3ComboEnabled
+                + " vanish=" + XenoServerConfig.bt3VanishEnabled
+                + " chase=" + XenoServerConfig.bt3ChaseDashEnabled
+                + " backstep=" + XenoServerConfig.bt3BackstepEnabled
+                + " finisher=" + XenoServerConfig.bt3FinisherEnabled
+                + " charge=" + XenoServerConfig.bt3ChargeAttackEnabled
+                + " dragon=" + XenoServerConfig.bt3DragonDashEnabled
+                + " dmzHud=" + XenoServerConfig.dmzHudEnabled
+                + " bootstrap=" + XenoServerConfig.dmzContentBootstrap
+                + " formMult=" + XenoServerConfig.formStatMultiplier
+                + " dummy=" + XenoServerConfig.trainingDummyEnabled
+                + " quest=" + XenoServerConfig.parallelQuestEnabled
+                + " mentor=" + XenoServerConfig.mentorEnabled
+                + "\n" + KiDurationCommands.currentLine()
+                + "\n" + BeamSurgeCommands.currentLine();
     }
 
     public static void broadcast() {

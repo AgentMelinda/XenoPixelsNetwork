@@ -1,6 +1,7 @@
 package net.bullettrain.xenopixelsmod.missile;
 
 import net.bullettrain.xenopixelsmod.XenoPixelsMod;
+import net.bullettrain.xenopixelsmod.aero.seat.XenoPilotSeatEntity;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.MobCategory;
@@ -20,6 +21,19 @@ public final class ModEntities {
                             .updateInterval(1)
                             .fireImmune()
                             .build(XenoPixelsMod.MOD_ID + ":ballistic_missile"));
+
+    /**
+     * The rideable pilot seat. Tiny, invisible and never tracked far — it exists so a player can
+     * be "the pilot" of a flight controller, not to be seen.
+     */
+    public static final DeferredHolder<EntityType<?>, EntityType<XenoPilotSeatEntity>> PILOT_SEAT =
+            ENTITIES.register("pilot_seat", () ->
+                    EntityType.Builder.<XenoPilotSeatEntity>of(XenoPilotSeatEntity::new, MobCategory.MISC)
+                            .sized(0.5f, 0.5f)
+                            .clientTrackingRange(10)
+                            .updateInterval(2)
+                            .fireImmune()
+                            .build(XenoPixelsMod.MOD_ID + ":pilot_seat"));
 
     private ModEntities() {}
 

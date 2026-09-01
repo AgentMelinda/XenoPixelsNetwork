@@ -73,7 +73,8 @@ public final class BeamSurgeClient {
                     "§7surge key=§f" + keyDown
                             + " §7wave=§f" + (wave != null)
                             + " §7sent=§f" + sentCount
-                            + " §7size=§f" + (wave == null ? "-" : String.format("%.2f", wave.getSize()))), true);
+                            + " §7size=§f" + (wave == null ? "-" : String.format("%.2f", wave.getSize()))
+                            + " §7distance=§f" + (wave == null ? "-" : String.format("%.1f blocks", wave.getClashBeamLength()))), true);
         }
     }
 

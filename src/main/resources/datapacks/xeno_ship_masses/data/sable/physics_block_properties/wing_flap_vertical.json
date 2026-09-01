@@ -1,0 +1,6 @@
+{
+  "selector": "xenopixelsmod:wing_flap_vertical",
+  "properties": {
+    "sable:mass": 0.6
+  }
+}
