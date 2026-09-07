@@ -1,14 +1,22 @@
 package net.bullettrain.xenopixelsmod.block.entity;
 
+import net.bullettrain.xenopixelsmod.block.custom.copycat.CopycatMaterial;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
 import net.minecraft.core.HolderLookup;
+import net.minecraft.core.registries.Registries;
 import net.minecraft.nbt.CompoundTag;
+import net.minecraft.nbt.NbtUtils;
 import net.minecraft.network.protocol.Packet;
 import net.minecraft.network.protocol.game.ClientGamePacketListener;
 import net.minecraft.network.protocol.game.ClientboundBlockEntityDataPacket;
+import net.minecraft.server.level.ServerLevel;
 import net.minecraft.util.Mth;
+import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
+import net.neoforged.neoforge.client.model.data.ModelData;
+import net.neoforged.neoforge.client.model.data.ModelProperty;
 import org.jetbrains.annotations.Nullable;
 
 /**
@@ -27,7 +35,15 @@ import org.jetbrains.annotations.Nullable;
  * animating it in {@link net.bullettrain.xenopixelsmod.client.render.WingPanelBlockEntityRenderer}
  * is what makes in-between frames possible at all.
  */
-public class WingPanelBlockEntity extends BlockEntity {
+public class WingPanelBlockEntity extends BlockEntity implements CopycatMaterial {
+
+    /** Model-data key carrying the copied material to {@code CopycatWingModel}. Only the copycat
+     * wing variants ever set it; a plain wing panel leaves it absent. */
+    public static final ModelProperty<BlockState> MATERIAL_MODEL_PROPERTY = new ModelProperty<>();
+    private static final String MATERIAL_TAG = "Material";
+
+    /** The copied block state. Defaults to this block's own state == "unbound". */
+    private BlockState material;
 
     /** How much of the remaining gap to the target closes per client tick. Matches the general
      * feel of Create's {@code LerpedFloat.Chaser.EXP} default rather than any exact constant. */
@@ -57,10 +73,68 @@ public class WingPanelBlockEntity extends BlockEntity {
 
     public WingPanelBlockEntity(BlockPos pos, BlockState state) {
         super(ModBlockEntities.WING_PANEL.get(), pos, state);
+        material = state;
     }
 
     public double getTargetDeflectDeg() {
         return targetDeflectDeg;
+    }
+
+    // ---- Copycat material (used only by the copycat wing variants) ----
+
+    @Override
+    public BlockState getMaterial() {
+        return material;
+    }
+
+    @Override
+    public boolean hasCustomMaterial() {
+        return !material.is(getBlockState().getBlock());
+    }
+
+    @Override
+    public boolean applyMaterial(BlockState newMaterial) {
+        if (newMaterial == null || newMaterial.isAir() || hasCustomMaterial()) return false;
+        if (level != null) {
+            // Match Create / CopycatGlowstone: adopt an adjacent copycat's full state for the same
+            // block so directional / connected-texture state stays consistent.
+            for (Direction direction : Direction.values()) {
+                if (level.getBlockEntity(worldPosition.relative(direction)) instanceof CopycatMaterial nb
+                        && nb.getMaterial().is(newMaterial.getBlock())
+                        && nb.hasCustomMaterial()) {
+                    newMaterial = nb.getMaterial();
+                    break;
+                }
+            }
+        }
+        return setMaterial(newMaterial);
+    }
+
+    @Override
+    public boolean resetMaterial() {
+        return setMaterial(getBlockState());
+    }
+
+    private boolean setMaterial(BlockState newMaterial) {
+        if (newMaterial == null || newMaterial.equals(material)) return false;
+        material = newMaterial;
+        setChanged();
+        if (level instanceof ServerLevel serverLevel) {
+            serverLevel.getChunkSource().blockChanged(worldPosition);
+        } else if (level != null && level.isClientSide) {
+            redrawClient();
+        }
+        return true;
+    }
+
+    private void redrawClient() {
+        requestModelDataUpdate();
+        level.sendBlockUpdated(worldPosition, getBlockState(), getBlockState(), Block.UPDATE_KNOWN_SHAPE);
+    }
+
+    @Override
+    public ModelData getModelData() {
+        return hasCustomMaterial() ? ModelData.of(MATERIAL_MODEL_PROPERTY, material) : ModelData.EMPTY;
     }
 
     /**
@@ -125,6 +199,7 @@ public class WingPanelBlockEntity extends BlockEntity {
     protected void saveAdditional(CompoundTag tag, HolderLookup.Provider registries) {
         super.saveAdditional(tag, registries);
         tag.putDouble("Deflect", targetDeflectDeg);
+        if (hasCustomMaterial()) tag.put(MATERIAL_TAG, NbtUtils.writeBlockState(material));
     }
 
     @Override
@@ -135,6 +210,18 @@ public class WingPanelBlockEntity extends BlockEntity {
         // very first load. Resetting the animation state on every sync would snap on every
         // update instead of chasing smoothly — exactly the bug this whole class exists to fix.
         targetDeflectDeg = tag.contains("Deflect") ? tag.getDouble("Deflect") : 0.0;
+        BlockState previousMaterial = material;
+        material = tag.contains(MATERIAL_TAG, CompoundTag.TAG_COMPOUND)
+                ? NbtUtils.readBlockState(registries.lookupOrThrow(Registries.BLOCK), tag.getCompound(MATERIAL_TAG))
+                : getBlockState();
+        if (material == null || material.isAir()) material = getBlockState();
+        if (level != null && level.isClientSide && !material.equals(previousMaterial)) redrawClient();
+    }
+
+    @Override
+    public void onLoad() {
+        super.onLoad();
+        if (level != null && level.isClientSide) requestModelDataUpdate();
     }
 
     @Override

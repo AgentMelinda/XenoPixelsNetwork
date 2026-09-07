@@ -27,10 +27,73 @@ public final class NpcKiAim {
     public static final double LOCK_RANGE = 128.0;
 
     private static final Map<UUID, Hold> HOLDS = new ConcurrentHashMap<>();
+    /**
+     * Persistent NPC → target locks, set by scripts.
+     *
+     * <p>Separate from {@link #HOLDS}, which is a short visual cast pose on a tick budget. A
+     * hard lock never expires on its own: it survives the target leaving range, the NPC losing
+     * its CustomNPCs target, and death-and-respawn of the NPC, until a script clears it.
+     */
+    private static final Map<UUID, UUID> HARD_LOCKS = new ConcurrentHashMap<>();
 
     private record Hold(UUID targetId, int untilTick, int restoreAnim) {}
 
     private NpcKiAim() {}
+
+    /**
+     * Pins this NPC to a target until cleared. Also pushes it to CustomNPCs' own target so its
+     * native AI cooperates rather than fighting the lock.
+     */
+    public static void hardLock(LivingEntity npc, LivingEntity target) {
+        if (npc == null || target == null || npc == target) {
+            return;
+        }
+        HARD_LOCKS.put(npc.getUUID(), target.getUUID());
+        if (npc instanceof net.minecraft.world.entity.Mob mob) {
+            mob.setTarget(target);
+        }
+    }
+
+    /** Pins this NPC to a target by UUID, whether or not that entity is loaded right now. */
+    public static void hardLock(LivingEntity npc, UUID targetId) {
+        if (npc != null && targetId != null && !targetId.equals(npc.getUUID())) {
+            HARD_LOCKS.put(npc.getUUID(), targetId);
+        }
+    }
+
+    /** The live entity this NPC is hard-locked to, or null. */
+    public static LivingEntity hardLock(net.minecraft.server.MinecraftServer server, LivingEntity npc) {
+        if (server == null || npc == null) {
+            return null;
+        }
+        UUID targetId = HARD_LOCKS.get(npc.getUUID());
+        if (targetId == null) {
+            return null;
+        }
+        LivingEntity target = NpcEntityLookup.findAlive(server, targetId);
+        return target == npc ? null : target;
+    }
+
+    /** The UUID this NPC is hard-locked to, even when that entity is not loaded. */
+    public static UUID hardLockId(LivingEntity npc) {
+        return npc == null ? null : HARD_LOCKS.get(npc.getUUID());
+    }
+
+    public static boolean isHardLocked(LivingEntity npc) {
+        return npc != null && HARD_LOCKS.containsKey(npc.getUUID());
+    }
+
+    public static void clearHardLock(LivingEntity npc) {
+        if (npc != null) {
+            HARD_LOCKS.remove(npc.getUUID());
+        }
+    }
+
+    public static void clearHardLock(UUID npcId) {
+        if (npcId != null) {
+            HARD_LOCKS.remove(npcId);
+        }
+    }
 
     /** Point body + head at {@code target.getEyePosition()} (the head). */
     public static Vec3 applyPose(LivingEntity caster, LivingEntity target) {
@@ -102,6 +165,33 @@ public final class NpcKiAim {
         }
         applyLook(caster, yaw, pitch);
         applyCnpcAimPose(caster);
+    }
+
+    /**
+     * Melee swing for an NPC, choosing an airborne clip while it is flying.
+     *
+     * <p>A flying NPC has no ground melee pose: CustomNPCs drives its own animation state from
+     * {@code aiStep} and only ever picks between its configured standing/moving animations, so a
+     * punch thrown mid-flight otherwise plays nothing at all. Gecko custom models carry their own
+     * clips and are triggered through {@link NpcGeckoAnim}; classic models fall back to the
+     * vanilla swing, which is all CustomNPCs itself renders for them.
+     *
+     * <p>{@code DmzAnimHelper}'s clip constants are deliberately not used here — that helper
+     * broadcasts through DMZ's player-only animation packet.
+     */
+    public static void playMelee(LivingEntity npc) {
+        if (npc == null) {
+            return;
+        }
+        npc.swing(InteractionHand.MAIN_HAND, true);
+        if (NpcFlightBridge.isFlyingNavigation(npc)) {
+            // Prefer a flight-specific clip when the model author provided one; the configured
+            // attack clip is the fallback, and is still better than a frozen pose.
+            if (NpcGeckoAnim.play(npc, "attack_air")) {
+                return;
+            }
+        }
+        NpcGeckoAnim.playAttack(npc);
     }
 
     /**
@@ -207,12 +297,6 @@ public final class NpcKiAim {
     }
 
     private static LivingEntity findLiving(ServerTickEvent.Post event, UUID id) {
-        for (ServerLevel level : event.getServer().getAllLevels()) {
-            Entity entity = level.getEntity(id);
-            if (entity instanceof LivingEntity living && living.isAlive()) {
-                return living;
-            }
-        }
-        return null;
+        return NpcEntityLookup.findAlive(event.getServer(), id);
     }
 }

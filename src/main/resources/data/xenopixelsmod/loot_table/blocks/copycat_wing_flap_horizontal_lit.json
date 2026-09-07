@@ -1,0 +1,12 @@
+{
+  "type": "minecraft:block",
+  "pools": [
+    {
+      "bonus_rolls": 0.0,
+      "conditions": [ { "condition": "minecraft:survives_explosion" } ],
+      "entries": [ { "type": "minecraft:item", "name": "xenopixelsmod:copycat_wing_flap_horizontal_lit" } ],
+      "rolls": 1.0
+    }
+  ],
+  "random_sequence": "xenopixelsmod:blocks/copycat_wing_flap_horizontal_lit"
+}

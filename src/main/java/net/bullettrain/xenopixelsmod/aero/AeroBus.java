@@ -46,10 +46,13 @@ public final class AeroBus {
     private double rollStick;
     private double yawStick;
     /** True in mouse-aim mode (attitude-hold PD stabilizer drives rotation, as before), false in
-     * keyboard mode (sticks deflect panels directly and the stabilizer stops driving rotation).
-     * Defaults true so every non-seat attitude source (GUI, autopilot, CC, panel) behaves exactly
-     * as it always has. */
-    private boolean mouseAim = true;
+     * keyboard mode (sticks deflect panels directly and rate-only damping runs instead). Defaults
+     * false — keyboard is the default flight mode — but every non-seat attitude source (GUI,
+     * autopilot, CC, panel) calls the 3-arg {@link #setAttitude(double, double, double)}, which
+     * always passes {@code true} explicitly, so this default only affects seat flight before its
+     * first input packet arrives; from then on the seat's own {@code mouseAim} (driven by
+     * {@code XenoClientConfig.flightMouseAim}, also default false) overwrites it every tick. */
+    private boolean mouseAim = false;
     private boolean flightEngaged;
     private AeroAutopilotMode autopilotMode = AeroAutopilotMode.MANUAL;
     private int waypointIndex;
@@ -309,7 +312,7 @@ public final class AeroBus {
         pitchStick = 0.0;
         rollStick = 0.0;
         yawStick = 0.0;
-        mouseAim = true;
+        mouseAim = false;
         flightEngaged = false;
         autopilotMode = AeroAutopilotMode.MANUAL;
         waypointIndex = 0;

@@ -16,6 +16,8 @@ public final class NpcResources {
     public record Snapshot(double energy, double maxEnergy, double stamina, double maxStamina) {}
 
     public static Snapshot get(LivingEntity npc, NpcCombatProfile profile) {
+        if (npc instanceof net.bullettrain.xenopixelsmod.combat.clone.XenoCloneEntity clone)
+            return net.bullettrain.xenopixelsmod.combat.clone.CloneCombatBridge.resources(clone);
         double maxEnergy = NpcStatMath.maxEnergy(profile.energy,
                 NpcFormLookup.multiplier(profile, "ENE"));
         double maxStamina = NpcStatMath.maxStamina(profile.resistance,
@@ -34,11 +36,17 @@ public final class NpcResources {
         }
         Snapshot snapshot = new Snapshot(clamp(energy, maxEnergy), maxEnergy,
                 clamp(stamina, maxStamina), maxStamina);
-        save(npc, snapshot);
+        // Only persist when the stored values actually differ; a plain read is by far the
+        // common case and used to rewrite the tag every time.
+        if (!matches(tag, snapshot)) {
+            save(npc, snapshot);
+        }
         return snapshot;
     }
 
     public static boolean spendEnergy(LivingEntity npc, NpcCombatProfile profile, double amount) {
+        if (npc instanceof net.bullettrain.xenopixelsmod.combat.clone.XenoCloneEntity clone)
+            return net.bullettrain.xenopixelsmod.combat.clone.CloneCombatBridge.spend(clone, amount, 0);
         Snapshot now = get(npc, profile);
         double cost = Math.max(0.0, amount);
         if (now.energy() + 1.0e-6 < cost) return false;
@@ -47,6 +55,8 @@ public final class NpcResources {
     }
 
     public static boolean spendStamina(LivingEntity npc, NpcCombatProfile profile, double amount) {
+        if (npc instanceof net.bullettrain.xenopixelsmod.combat.clone.XenoCloneEntity clone)
+            return net.bullettrain.xenopixelsmod.combat.clone.CloneCombatBridge.spend(clone, 0, amount);
         Snapshot now = get(npc, profile);
         double cost = Math.max(0.0, amount);
         if (now.stamina() + 1.0e-6 < cost) return false;
@@ -56,6 +66,8 @@ public final class NpcResources {
 
     public static boolean spend(LivingEntity npc, NpcCombatProfile profile,
                                 double energyAmount, double staminaAmount) {
+        if (npc instanceof net.bullettrain.xenopixelsmod.combat.clone.XenoCloneEntity clone)
+            return net.bullettrain.xenopixelsmod.combat.clone.CloneCombatBridge.spend(clone, energyAmount, staminaAmount);
         Snapshot now = get(npc, profile);
         double energyCost = Math.max(0.0, energyAmount);
         double staminaCost = Math.max(0.0, staminaAmount);
@@ -69,6 +81,7 @@ public final class NpcResources {
     }
 
     public static void tick(LivingEntity npc, NpcCombatProfile profile) {
+        if (npc instanceof net.bullettrain.xenopixelsmod.combat.clone.XenoCloneEntity) return;
         Snapshot now = get(npc, profile);
         // DMZ's unmodified recovery is (base + governing stat) / 5 per second. ENE governs
         // energy recovery; VIT governs stamina recovery even though RES sets its capacity.
@@ -78,16 +91,24 @@ public final class NpcResources {
                 NpcFormLookup.multiplier(profile, "VIT"));
         double energy = Math.min(now.maxEnergy(), now.energy() + energyRecovery);
         double stamina = Math.min(now.maxStamina(), now.stamina() + staminaRecovery);
+        // An NPC sitting at full resources -- which is nearly all of them, nearly always --
+        // otherwise allocated and stored a fresh CompoundTag every tick to write back the
+        // values it already had.
+        if (Math.abs(energy - now.energy()) < 1.0e-9 && Math.abs(stamina - now.stamina()) < 1.0e-9) {
+            return;
+        }
         save(npc, new Snapshot(energy, now.maxEnergy(), stamina, now.maxStamina()));
     }
 
     public static void setEnergy(LivingEntity npc, NpcCombatProfile profile, double amount) {
+        if (npc instanceof net.bullettrain.xenopixelsmod.combat.clone.XenoCloneEntity) return;
         Snapshot now = get(npc, profile);
         save(npc, new Snapshot(clamp(amount, now.maxEnergy()), now.maxEnergy(),
                 now.stamina(), now.maxStamina()));
     }
 
     public static void setStamina(LivingEntity npc, NpcCombatProfile profile, double amount) {
+        if (npc instanceof net.bullettrain.xenopixelsmod.combat.clone.XenoCloneEntity) return;
         Snapshot now = get(npc, profile);
         save(npc, new Snapshot(now.energy(), now.maxEnergy(),
                 clamp(amount, now.maxStamina()), now.maxStamina()));
@@ -100,6 +121,15 @@ public final class NpcResources {
         tag.putDouble(STAMINA, value.stamina());
         tag.putDouble(MAX_STAMINA, value.maxStamina());
         npc.getPersistentData().put(NBT_KEY, tag);
+    }
+
+    private static boolean matches(CompoundTag tag, Snapshot value) {
+        return tag.contains(ENERGY) && tag.contains(STAMINA)
+                && tag.contains(MAX_ENERGY) && tag.contains(MAX_STAMINA)
+                && Math.abs(tag.getDouble(ENERGY) - value.energy()) < 1.0e-9
+                && Math.abs(tag.getDouble(STAMINA) - value.stamina()) < 1.0e-9
+                && Math.abs(tag.getDouble(MAX_ENERGY) - value.maxEnergy()) < 1.0e-9
+                && Math.abs(tag.getDouble(MAX_STAMINA) - value.maxStamina()) < 1.0e-9;
     }
 
     private static double clamp(double value, double max) {

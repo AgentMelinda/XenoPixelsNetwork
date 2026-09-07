@@ -58,6 +58,19 @@ public class SyncServerConfigPacket {
         buf.writeFloat(d.rushChainKiCost);
         buf.writeFloat(d.rushChainDamageScale);
         buf.writeDouble(d.rushChainRange);
+        buf.writeDouble(d.rushKiCost);
+        buf.writeVarInt(d.rushCooldownTicks);
+        buf.writeBoolean(d.zanzokenEnabled);
+        buf.writeFloat(d.zanzokenKiCost);
+        buf.writeVarInt(d.zanzokenWindowTicks);
+        buf.writeVarInt(d.zanzokenIFramesTicks);
+        buf.writeVarInt(d.zanzokenCooldownTicks);
+        buf.writeBoolean(d.zanzokenGhostAfterimage);
+        buf.writeVarInt(d.zanzokenRingClones);
+        buf.writeDouble(d.zanzokenRingRadius);
+        buf.writeBoolean(d.multiFormEnabled);
+        buf.writeVarInt(d.multiFormBodies);
+        buf.writeFloat(d.multiFormKiCost);
         buf.writeFloat(d.sonicSwayStaminaCost);
         buf.writeVarInt(d.sonicSwayIFramesTicks);
         buf.writeVarInt(d.sonicSwayCooldownTicks);
@@ -162,6 +175,18 @@ public class SyncServerConfigPacket {
         buf.writeFloat(d.beamSurgeRampPerMastery);
         buf.writeFloat(d.beamSurgeMaxLength);
         buf.writeBoolean(d.lockOnThroughBlocks == null || d.lockOnThroughBlocks);
+        buf.writeDouble(d.chaseStopGap);
+        buf.writeDouble(d.vanishGap);
+        buf.writeDouble(d.vanishSide);
+        buf.writeVarInt(Math.max(0, d.comboLaunchKickEvery));
+        buf.writeVarInt(Math.max(2, Math.min(20, d.comboMashIntervalTicks)));
+        buf.writeVarInt(net.bullettrain.xenopixelsmod.combat.anim.Bt3AnimationCatalog
+                .clampGeneration(d.comboAnimGeneration));
+        buf.writeDouble(d.vanishNearField);
+        buf.writeBoolean(d.vanishOpenSpotSearch);
+        buf.writeFloat(d.comboLauncherUp);
+        buf.writeFloat(d.comboLauncherHoriz);
+        buf.writeDouble(d.hakaiMaxRange);
     }
 
     public static SyncServerConfigPacket decode(FriendlyByteBuf buf) {
@@ -205,6 +230,19 @@ public class SyncServerConfigPacket {
         d.rushChainKiCost = buf.readFloat();
         d.rushChainDamageScale = buf.readFloat();
         d.rushChainRange = buf.readDouble();
+        d.rushKiCost = buf.readDouble();
+        d.rushCooldownTicks = buf.readVarInt();
+        d.zanzokenEnabled = buf.readBoolean();
+        d.zanzokenKiCost = buf.readFloat();
+        d.zanzokenWindowTicks = buf.readVarInt();
+        d.zanzokenIFramesTicks = buf.readVarInt();
+        d.zanzokenCooldownTicks = buf.readVarInt();
+        d.zanzokenGhostAfterimage = buf.readBoolean();
+        d.zanzokenRingClones = buf.readVarInt();
+        d.zanzokenRingRadius = buf.readDouble();
+        d.multiFormEnabled = buf.readBoolean();
+        d.multiFormBodies = buf.readVarInt();
+        d.multiFormKiCost = buf.readFloat();
         d.sonicSwayStaminaCost = buf.readFloat();
         d.sonicSwayIFramesTicks = buf.readVarInt();
         d.sonicSwayCooldownTicks = buf.readVarInt();
@@ -309,6 +347,18 @@ public class SyncServerConfigPacket {
         d.beamSurgeRampPerMastery = buf.readFloat();
         d.beamSurgeMaxLength = buf.readFloat();
         d.lockOnThroughBlocks = buf.readBoolean();
+        d.chaseStopGap = buf.readDouble();
+        d.vanishGap = buf.readDouble();
+        d.vanishSide = buf.readDouble();
+        d.comboLaunchKickEvery = Math.max(0, buf.readVarInt());
+        d.comboMashIntervalTicks = Math.max(2, Math.min(20, buf.readVarInt()));
+        d.comboAnimGeneration = net.bullettrain.xenopixelsmod.combat.anim.Bt3AnimationCatalog
+                .clampGeneration(buf.readVarInt());
+        d.vanishNearField = buf.readDouble();
+        d.vanishOpenSpotSearch = buf.readBoolean();
+        d.comboLauncherUp = buf.readFloat();
+        d.comboLauncherHoriz = buf.readFloat();
+        d.hakaiMaxRange = buf.readDouble();
         return new SyncServerConfigPacket(d);
     }
 

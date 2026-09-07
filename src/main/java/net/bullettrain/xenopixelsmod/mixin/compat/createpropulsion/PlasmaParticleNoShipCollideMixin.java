@@ -2,7 +2,6 @@ package net.bullettrain.xenopixelsmod.mixin.compat.createpropulsion;
 
 import net.minecraft.client.particle.Particle;
 import org.spongepowered.asm.mixin.Mixin;
-import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Redirect;
 
@@ -21,14 +20,23 @@ import org.spongepowered.asm.mixin.injection.Redirect;
         targets = "dev.propulsionteam.propulsionsimulated.particles.plasma.PlasmaParticle",
         remap = false
 )
-public abstract class PlasmaParticleNoShipCollideMixin {
+public abstract class PlasmaParticleNoShipCollideMixin extends Particle {
 
-    @Shadow
-    public double x;
-    @Shadow
-    public double y;
-    @Shadow
-    public double z;
+    /**
+     * Declared {@code extends Particle} rather than shadowing {@code x}/{@code y}/{@code z}.
+     *
+     * <p>Those fields are {@code protected} on {@code net.minecraft.client.particle.Particle}, not
+     * on {@code PlasmaParticle}, and {@code @Shadow} resolves against the target class alone — it
+     * does not walk the hierarchy. Shadowing them threw
+     * {@code InvalidMixinException: @Shadow field x was not located in the target class} on every
+     * launch, and because this config is {@code required: false} that was logged as a warning and
+     * ignored: the mixin never applied and plasma particles went on colliding with ships, silently,
+     * for as long as it has existed. Matching the real ancestry makes them inherited fields and
+     * removes the {@code remap = false} question along with the shadows.
+     */
+    protected PlasmaParticleNoShipCollideMixin() {
+        super(null, 0.0, 0.0, 0.0);
+    }
 
     @Redirect(
             method = "tick",

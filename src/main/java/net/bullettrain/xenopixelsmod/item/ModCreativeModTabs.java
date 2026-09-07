@@ -33,6 +33,12 @@ public class ModCreativeModTabs {
                         pOutput.accept(ModBlocks.WING_PANEL.get());
                         pOutput.accept(ModBlocks.WING_FLAP_HORIZONTAL.get());
                         pOutput.accept(ModBlocks.WING_FLAP_VERTICAL.get());
+                        pOutput.accept(ModBlocks.COPYCAT_WING_PANEL.get());
+                        pOutput.accept(ModBlocks.COPYCAT_WING_PANEL_LIT.get());
+                        pOutput.accept(ModBlocks.COPYCAT_WING_FLAP_HORIZONTAL.get());
+                        pOutput.accept(ModBlocks.COPYCAT_WING_FLAP_HORIZONTAL_LIT.get());
+                        pOutput.accept(ModBlocks.COPYCAT_WING_FLAP_VERTICAL.get());
+                        pOutput.accept(ModBlocks.COPYCAT_WING_FLAP_VERTICAL_LIT.get());
                         pOutput.accept(ModBlocks.COPYCAT_GLOWSTONE.get());
 
                         pOutput.accept(ModBlocks.JACKIETONITE_ORE_BLOCK.get());

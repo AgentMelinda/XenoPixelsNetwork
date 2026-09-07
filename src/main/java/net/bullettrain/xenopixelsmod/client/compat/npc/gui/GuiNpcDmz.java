@@ -1,5 +1,6 @@
 package net.bullettrain.xenopixelsmod.client.compat.npc.gui;
 
+import com.dragonminez.common.config.FormConfig;
 import net.bullettrain.xenopixelsmod.client.compat.npc.NpcAppearanceClient;
 import net.bullettrain.xenopixelsmod.compat.npc.NpcCombatProfile;
 import net.bullettrain.xenopixelsmod.compat.npc.NpcFormLookup;
@@ -48,10 +49,15 @@ public final class GuiNpcDmz extends GuiNPCInterface2 implements ITextfieldListe
     private static final int ID_DESCEND = 23;
     private static final int ID_CUSTOMIZE = 24;
     private static final int ID_STACKS = 25;
+    private static final int ID_STACK_APPLY = 26;
     private static final int ID_GROUP_PREV = 30;
     private static final int ID_GROUP_NEXT = 31;
     private static final int ID_FORM_PREV = 32;
     private static final int ID_FORM_NEXT = 33;
+    private static final int ID_STACK_GROUP_PREV = 34;
+    private static final int ID_STACK_GROUP_NEXT = 35;
+    private static final int ID_STACK_PREV = 36;
+    private static final int ID_STACK_NEXT = 37;
     private static final int PICKER_OFFSET = 500;
 
     private int colorTarget = -1;
@@ -64,9 +70,12 @@ public final class GuiNpcDmz extends GuiNPCInterface2 implements ITextfieldListe
     public void init() {
         super.init();
         NpcCombatProfile p = editorProfile();
-        // GuiNPCInterface2 shell is 420x200; keep every widget inside that.
-        int row = 18;
-        int boxH = 16;
+        ensureStackSelection(p);
+        // GuiNPCInterface2 shell is 420x200. The right column carries thirteen rows now that
+        // stack group/form sit under Group/Form, so the pitch is 16 rather than 18 and the boxes
+        // are 14 tall; at the old pitch the last two rows fell off the panel entirely.
+        int row = 16;
+        int boxH = 14;
         int labelW = 72;
         int boxW = 110;
         int left = guiLeft + 8;
@@ -82,11 +91,17 @@ public final class GuiNpcDmz extends GuiNPCInterface2 implements ITextfieldListe
         y = num(left, y, row, labelW, boxW, boxH, "PWR", ID_PWR, p.kiPower);
         y = num(left, y, row, labelW, boxW, boxH, "ENE", ID_ENE, p.energy);
 
-        addButton(new GuiButtonNop(this, ID_TRANSFORM, left, y + 2, 88, 18, "Transform"));
-        addButton(new GuiButtonNop(this, ID_DESCEND, left + 92, y + 2, 88, 18, "Descend"));
+        // Three across instead of two: Stack is Transform's counterpart for the stack rows below.
+        addButton(new GuiButtonNop(this, ID_TRANSFORM, left, y + 2, 58, 18, "Transform"));
+        addButton(new GuiButtonNop(this, ID_DESCEND, left + 61, y + 2, 58, 18, "Descend"));
+        addButton(new GuiButtonNop(this, ID_STACK_APPLY, left + 122, y + 2, 58, 18, "Stack"));
 
         y2 = cycleRow(right, y2, row, "Group", ID_GROUP_PREV, ID_GROUP_NEXT, clip(p.selectedFormGroup, 18));
         y2 = cycleRow(right, y2, row, "Form", ID_FORM_PREV, ID_FORM_NEXT, clip(p.selectedFormId, 18));
+        y2 = cycleRow(right, y2, row, "Stack Grp", ID_STACK_GROUP_PREV, ID_STACK_GROUP_NEXT,
+                clip(p.selectedStackGroup, 18));
+        y2 = cycleRow(right, y2, row, "Stack", ID_STACK_PREV, ID_STACK_NEXT,
+                clip(p.selectedStackId, 18));
         y2 = colorField(right, y2, row, labelW, boxW, boxH, "Ki color", ID_KI_COLOR,
                 p.kiColor == 0 ? "" : NpcCombatProfile.formatHex(p.kiColor), false);
         y2 = colorField(right, y2, row, labelW, boxW, boxH, "DMZ Aura", ID_AURA_COLOR,
@@ -98,10 +113,10 @@ public final class GuiNpcDmz extends GuiNPCInterface2 implements ITextfieldListe
         y2 = field(right, y2, row, labelW, boxW, boxH, "Techs", ID_TECH,
                 String.join(",", p.techniques), false);
 
-        addButton(new GuiButtonYesNo(this, ID_AURA, right, y2, 50, 16, p.auraOn));
-        addLabel(new GuiLabel(120, "Aura", right + 54, y2 + 4, 0xFFFFFF));
-        addButton(new GuiButtonYesNo(this, ID_HAIR, right + 92, y2, 50, 16, p.hairEnabled));
-        addLabel(new GuiLabel(121, "Hair", right + 146, y2 + 4, 0xFFFFFF));
+        addButton(new GuiButtonYesNo(this, ID_AURA, right, y2, 50, boxH, p.auraOn));
+        addLabel(new GuiLabel(120, "Aura", right + 54, y2 + 3, 0xFFFFFF));
+        addButton(new GuiButtonYesNo(this, ID_HAIR, right + 92, y2, 50, boxH, p.hairEnabled));
+        addLabel(new GuiLabel(121, "Hair", right + 146, y2 + 3, 0xFFFFFF));
         y2 += row;
 
         addButton(new GuiButtonNop(this, ID_CUSTOMIZE, left, y + 24, 180, 18, "Customize DMZ Appearance"));
@@ -180,9 +195,9 @@ public final class GuiNpcDmz extends GuiNPCInterface2 implements ITextfieldListe
 
     private int cycleRow(int x, int y, int row, String label, int prevId, int nextId, String value) {
         addLabel(new GuiLabel(prevId + 200, label, x, y + 3, 0xFFFFFF));
-        addButton(new GuiButtonNop(this, prevId, x + 72, y, 16, 16, "<"));
+        addButton(new GuiButtonNop(this, prevId, x + 72, y, 16, 14, "<"));
         addLabel(new GuiLabel(nextId + 200, value, x + 92, y + 3, 0xFFFFFF));
-        addButton(new GuiButtonNop(this, nextId, x + 186, y, 16, 16, ">"));
+        addButton(new GuiButtonNop(this, nextId, x + 186, y, 16, 14, ">"));
         return y + row;
     }
 
@@ -237,6 +252,7 @@ public final class GuiNpcDmz extends GuiNPCInterface2 implements ITextfieldListe
     @Override
     public void buttonEvent(GuiButtonNop button) {
         NpcCombatProfile p = pullFromFields(editorProfile());
+        ensureStackSelection(p);
         int pickerTarget = button.id - PICKER_OFFSET;
         if (pickerTarget == ID_KI_COLOR || pickerTarget == ID_AURA_COLOR
                 || pickerTarget == ID_HAIR_COLOR) {
@@ -256,19 +272,29 @@ public final class GuiNpcDmz extends GuiNPCInterface2 implements ITextfieldListe
             cycleGroup(p, button.id == ID_GROUP_NEXT ? 1 : -1);
         } else if (button.id == ID_FORM_PREV || button.id == ID_FORM_NEXT) {
             cycleForm(p, button.id == ID_FORM_NEXT ? 1 : -1);
+        } else if (button.id == ID_STACK_GROUP_PREV || button.id == ID_STACK_GROUP_NEXT) {
+            cycleStackGroup(p, button.id == ID_STACK_GROUP_NEXT ? 1 : -1);
+        } else if (button.id == ID_STACK_PREV || button.id == ID_STACK_NEXT) {
+            cycleStackForm(p, button.id == ID_STACK_NEXT ? 1 : -1);
         }
         if (button.id == ID_TRANSFORM) {
             NpcFormLookup.grantMastery(p, p.selectedFormGroup, p.selectedFormId);
+        } else if (button.id == ID_STACK_APPLY) {
+            grantStackMastery(p);
         }
         p.write(npc);
         if (button.id == ID_GROUP_PREV || button.id == ID_GROUP_NEXT
-                || button.id == ID_FORM_PREV || button.id == ID_FORM_NEXT) {
+                || button.id == ID_FORM_PREV || button.id == ID_FORM_NEXT
+                || button.id == ID_STACK_GROUP_PREV || button.id == ID_STACK_GROUP_NEXT
+                || button.id == ID_STACK_PREV || button.id == ID_STACK_NEXT) {
             send(NpcProfileSavePacket.Action.SAVE);
             init();
             return;
         }
         if (button.id == ID_TRANSFORM) {
             send(NpcProfileSavePacket.Action.TRANSFORM);
+        } else if (button.id == ID_STACK_APPLY) {
+            send(NpcProfileSavePacket.Action.STACK);
         } else if (button.id == ID_DESCEND) {
             send(NpcProfileSavePacket.Action.DESCEND);
         } else if (button.id == ID_CUSTOMIZE) {
@@ -307,6 +333,54 @@ public final class GuiNpcDmz extends GuiNPCInterface2 implements ITextfieldListe
         java.util.List<String> forms = NpcFormLookup.forms(p.raceId, p.selectedFormGroup);
         p.selectedFormId = NpcFormLookup.step(forms, p.selectedFormId, dir);
         NpcFormLookup.grantMastery(p, p.selectedFormGroup, p.selectedFormId);
+    }
+
+    private void cycleStackGroup(NpcCombatProfile p, int dir) {
+        p.selectedStackGroup = NpcFormLookup.step(NpcFormLookup.stackGroups(), p.selectedStackGroup, dir);
+        // A stack id only means anything inside its own group, so drop it and let
+        // ensureStackSelection pick the new group's first entry.
+        p.selectedStackId = "";
+        ensureStackSelection(p);
+    }
+
+    private void cycleStackForm(NpcCombatProfile p, int dir) {
+        p.selectedStackId = NpcFormLookup.step(
+                NpcFormLookup.stackForms(p.selectedStackGroup), p.selectedStackId, dir);
+        grantStackMastery(p);
+    }
+
+    /**
+     * Defaults the stack picker to the first group/stack DMZ has loaded, and clears a selection
+     * that no longer exists in the config. Same contract as {@code GuiNpcDmzStack.ensureSelection}
+     * — the two screens edit the same {@code selectedStack*} profile fields, so a stack picked in
+     * one shows up in the other.
+     */
+    private void ensureStackSelection(NpcCombatProfile p) {
+        java.util.List<String> groups = NpcFormLookup.stackGroups();
+        if (!groups.isEmpty() && !groups.contains(p.selectedStackGroup)) {
+            p.selectedStackGroup = groups.get(0);
+        }
+        java.util.List<String> forms = NpcFormLookup.stackForms(p.selectedStackGroup);
+        if (!forms.isEmpty() && !forms.contains(p.selectedStackId)) {
+            p.selectedStackId = forms.get(0);
+        }
+        grantStackMastery(p);
+    }
+
+    /**
+     * Gives the selected stack full mastery the first time it is picked. Stacks are not levelled
+     * from this tab (that is {@code GuiNpcDmzStack}'s Mastery % field), so an unmastered one would
+     * otherwise apply at zero effect; an already-mastered stack is left at whatever it holds.
+     */
+    private void grantStackMastery(NpcCombatProfile p) {
+        FormConfig.FormData data = NpcFormLookup.stackForm(p.selectedStackGroup, p.selectedStackId);
+        if (data == null) {
+            return;
+        }
+        double max = NpcFormLookup.maxMastery(data);
+        if (p.stackMasteries.getMastery(p.selectedStackGroup, p.selectedStackId) <= 0.0) {
+            p.stackMasteries.setMastery(p.selectedStackGroup, p.selectedStackId, max, max);
+        }
     }
 
     @Override

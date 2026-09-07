@@ -8,6 +8,7 @@ import com.mojang.brigadier.arguments.StringArgumentType;
 import com.mojang.brigadier.context.CommandContext;
 import com.mojang.brigadier.exceptions.CommandSyntaxException;
 import net.bullettrain.xenopixelsmod.XenoPixelsMod;
+import net.bullettrain.xenopixelsmod.compat.npc.NpcAppearanceFx;
 import net.bullettrain.xenopixelsmod.compat.npc.NpcAuraFx;
 import net.bullettrain.xenopixelsmod.compat.npc.NpcCombatProfile;
 import net.bullettrain.xenopixelsmod.compat.npc.NpcDisplayApply;
@@ -22,10 +23,13 @@ import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
 import net.minecraft.commands.arguments.EntityArgument;
 import net.minecraft.network.chat.Component;
+import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.Mob;
+import net.minecraft.world.item.ItemStack;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.neoforge.event.RegisterCommandsEvent;
@@ -166,6 +170,18 @@ public final class NpcProfileCommands {
                                 .then(Commands.literal("url")
                                         .then(Commands.argument("url", StringArgumentType.greedyString())
                                                 .executes(NpcProfileCommands::setSkinUrl))))
+                        .then(Commands.literal("model")
+                                .requires(XenoPermissions.require(XenoPermissions.NPCPROFILE_SET))
+                                .then(Commands.literal("player")
+                                        .then(Commands.literal("on")
+                                                .executes(ctx -> setPlayerModel(ctx, true)))
+                                        .then(Commands.literal("off")
+                                                .executes(ctx -> setPlayerModel(ctx, false)))))
+                        .then(Commands.literal("clothing")
+                                .requires(XenoPermissions.require(XenoPermissions.NPCPROFILE_SET))
+                                .then(Commands.literal("copy")
+                                        .then(Commands.argument("player", StringArgumentType.word())
+                                                .executes(NpcProfileCommands::copyPlayerClothing))))
                         .then(Commands.literal("hair")
                                 .requires(XenoPermissions.require(XenoPermissions.NPCPROFILE_SET))
                                 .executes(NpcProfileCommands::hairStatus)
@@ -502,6 +518,7 @@ public final class NpcProfileCommands {
         profile.write(entity);
         boolean applied = entity instanceof LivingEntity living
                 && NpcDisplayApply.applySkin(living, profile.skinPlayer, profile.skinUrl);
+        NpcAppearanceFx.sync(entity);
         npcCommandReply(ctx.getSource(), "NPC skin player set to " + profile.skinPlayer
                 + (applied ? "" : " (stored; CNPC display apply skipped)"), true);
         return 1;
@@ -517,8 +534,48 @@ public final class NpcProfileCommands {
         profile.write(entity);
         boolean applied = entity instanceof LivingEntity living
                 && NpcDisplayApply.applySkin(living, profile.skinPlayer, profile.skinUrl);
+        NpcAppearanceFx.sync(entity);
         npcCommandReply(ctx.getSource(), "NPC skin url set"
                 + (applied ? "" : " (stored; CNPC display apply skipped)"), true);
+        return 1;
+    }
+
+    private static int setPlayerModel(CommandContext<CommandSourceStack> ctx, boolean playerModel) {
+        Entity entity = profileEntity(ctx, "npcprofile model player");
+        if (entity == null) {
+            return 0;
+        }
+        if (!(entity instanceof LivingEntity living)
+                || !NpcDisplayApply.setPlayerModel(living, playerModel)) {
+            npcCommandReply(ctx.getSource(), "Player model switch not supported by this CNPC version", false);
+            return 0;
+        }
+        npcCommandReply(ctx.getSource(), "NPC player model " + (playerModel ? "ON" : "OFF"), true);
+        return 1;
+    }
+
+    private static int copyPlayerClothing(CommandContext<CommandSourceStack> ctx) {
+        Entity entity = profileEntity(ctx, "npcprofile clothing copy");
+        if (entity == null) {
+            return 0;
+        }
+        String name = StringArgumentType.getString(ctx, "player");
+        if (!(entity instanceof LivingEntity living) || !(living.level() instanceof ServerLevel serverLevel)) {
+            npcCommandReply(ctx.getSource(), "npcprofile clothing copy must be run as an entity (e.g. an NPC script)", false);
+            return 0;
+        }
+        ServerPlayer source = serverLevel.getServer().getPlayerList().getPlayerByName(name);
+        if (source == null) {
+            npcCommandReply(ctx.getSource(), "Player is not online: " + name, false);
+            return 0;
+        }
+        for (EquipmentSlot slot : new EquipmentSlot[]{
+                EquipmentSlot.HEAD, EquipmentSlot.CHEST, EquipmentSlot.LEGS, EquipmentSlot.FEET }) {
+            ItemStack item = source.getItemBySlot(slot);
+            living.setItemSlot(slot, item.isEmpty() ? ItemStack.EMPTY : item.copy());
+        }
+        npcCommandReply(ctx.getSource(), "Copied " + source.getGameProfile().getName()
+                + "'s clothing onto NPC", true);
         return 1;
     }
 

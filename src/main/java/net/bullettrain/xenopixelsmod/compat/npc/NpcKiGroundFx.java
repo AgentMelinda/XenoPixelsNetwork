@@ -3,7 +3,6 @@ package net.bullettrain.xenopixelsmod.compat.npc;
 import com.dragonminez.common.init.MainParticles;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
-import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
@@ -36,22 +35,16 @@ public final class NpcKiGroundFx {
             return;
         }
         for (UUID id : NpcAuraFx.activeIds()) {
-            LivingEntity npc = find(server, id);
-            if (npc != null && npc.isAlive() && npc.onGround()
-                    && NpcCombatProfile.read(npc).auraRocks
-                    && npc.level() instanceof ServerLevel level) {
+            LivingEntity npc = NpcEntityLookup.findLiving(server, id);
+            // Cheap state tests before the profile lookup: most aura-active NPCs on a busy
+            // server are airborne or unloaded, and neither case needs the profile at all.
+            if (npc == null || !npc.isAlive() || !npc.onGround()
+                    || !(npc.level() instanceof ServerLevel level)) {
+                continue;
+            }
+            if (NpcCombatProfile.readCached(npc).auraRocks) {
                 pulse(level, npc);
             }
         }
-    }
-
-    private static LivingEntity find(MinecraftServer server, UUID id) {
-        for (ServerLevel level : server.getAllLevels()) {
-            Entity entity = level.getEntity(id);
-            if (entity instanceof LivingEntity living) {
-                return living;
-            }
-        }
-        return null;
     }
 }

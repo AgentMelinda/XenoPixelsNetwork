@@ -70,6 +70,7 @@ public class XenoPixelsMod {
             if (net.bullettrain.xenopixelsmod.config.XenoServerConfig.dmzContentBootstrap) {
                 net.bullettrain.xenopixelsmod.dmz.DmzContentBootstrap.installBundledContent();
             }
+            net.bullettrain.xenopixelsmod.combat.technique.XenoRushTechniques.register();
             // Sable thruster + moving-sub-level ballistic controls
             try {
                 net.bullettrain.xenopixelsmod.vs.XenoThrusterControl.ensureRegistered();

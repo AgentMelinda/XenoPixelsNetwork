@@ -9,7 +9,9 @@ import net.bullettrain.xenopixelsmod.block.custom.ShipThrusterBlock;
 import net.bullettrain.xenopixelsmod.block.custom.ShipVlsGuidanceBlock;
 import net.bullettrain.xenopixelsmod.block.custom.CopycatGlowstoneBlock;
 import net.bullettrain.xenopixelsmod.block.custom.WingPanelBlock;
+import net.bullettrain.xenopixelsmod.block.custom.copycat.CopycatWing;
 import net.bullettrain.xenopixelsmod.block.entity.CopycatGlowstoneBlockEntity;
+import net.bullettrain.xenopixelsmod.block.entity.WingPanelBlockEntity;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.core.registries.BuiltInRegistries;
@@ -66,6 +68,22 @@ public final class CreateWrenchHandler {
                         SoundSource.BLOCKS, 0.8f, 1.1f);
                 player.displayClientMessage(Component.translatable(
                         "message.xenopixelsmod.copycat_glowstone_unbound"), true);
+            }
+            event.setCancellationResult(InteractionResult.sidedSuccess(level.isClientSide));
+            event.setCanceled(true);
+            return;
+        }
+
+        if (state.getBlock() instanceof CopycatWing
+                && level.getBlockEntity(pos) instanceof WingPanelBlockEntity copycatWing
+                && copycatWing.hasCustomMaterial()) {
+            // A bound copycat wing: wrench unbinds the copied skin (matches Copycat Glowstone).
+            // An unbound one falls through to the AXIS-rotate branch below like any wing.
+            if (!level.isClientSide && copycatWing.resetMaterial()) {
+                level.playSound(null, pos, SoundEvents.ITEM_FRAME_REMOVE_ITEM, SoundSource.BLOCKS, 0.8f, 1.1f);
+                Player p = event.getEntity();
+                if (p != null) p.displayClientMessage(
+                        Component.translatable("message.xenopixelsmod.copycat_unbound"), true);
             }
             event.setCancellationResult(InteractionResult.sidedSuccess(level.isClientSide));
             event.setCanceled(true);

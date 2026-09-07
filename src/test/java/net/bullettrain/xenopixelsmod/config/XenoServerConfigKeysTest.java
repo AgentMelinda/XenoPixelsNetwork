@@ -32,6 +32,25 @@ class XenoServerConfigKeysTest {
     }
 
     @Test
+    void chaseDefaultsReliableButPreservesExplicitSavedProbabilities() {
+        XenoServerConfig.Data saved = XenoServerConfig.snapshot();
+        try {
+            XenoServerConfig.Data defaults = new XenoServerConfig.Data();
+            assertEquals(1f, defaults.chaseSuccessChance);
+            XenoServerConfig.apply(defaults);
+            assertEquals(1f, XenoServerConfig.chaseSuccessChance);
+            defaults.chaseSuccessChance = 0.45f;
+            XenoServerConfig.apply(defaults);
+            assertEquals(0.45f, XenoServerConfig.chaseSuccessChance);
+            defaults.chaseSuccessChance = Float.NaN;
+            XenoServerConfig.apply(defaults);
+            assertEquals(1f, XenoServerConfig.chaseSuccessChance);
+        } finally {
+            XenoServerConfig.apply(saved);
+        }
+    }
+
+    @Test
     void chargecapSetsPercentNotEnable() {
         XenoServerConfig.chargeOverchargeEnabled = true;
         XenoServerConfigKeys.Result result = XenoServerConfigKeys.set("chargecap", "800");

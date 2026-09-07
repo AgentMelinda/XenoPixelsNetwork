@@ -37,10 +37,16 @@ public final class TechniqueSlotBind {
                 existing = i;
                 break;
             }
+
         }
         if (existing != -1 && existing != slotIndex) {
             slots[existing] = "";
         }
         slots[slotIndex] = techniqueId;
+    }
+
+    /** Clear one slot without invoking DMZ's swap semantics. */
+    public static void unbind(String[] slots, int slotIndex) {
+        place(slots, slotIndex, "");
     }
 }

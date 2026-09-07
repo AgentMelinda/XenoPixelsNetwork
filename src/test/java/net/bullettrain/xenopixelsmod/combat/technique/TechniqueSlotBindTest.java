@@ -69,4 +69,20 @@ class TechniqueSlotBindTest {
         TechniqueSlotBind.place(slots, 1, null);
         assertArrayEquals(bar("a", ""), slots);
     }
+
+    @Test
+    void unbindEmptiesOnlyThatSlotAndDoesNotRelocateTheTechnique() {
+        // DMZ's equipOrSwapTechnique would have moved "a" into the first vacant slot instead of
+        // removing it, which is why unbinding through DMZ appeared to do nothing.
+        String[] slots = bar("a", "", "b");
+        TechniqueSlotBind.unbind(slots, 0);
+        assertArrayEquals(bar("", "", "b"), slots);
+    }
+
+    @Test
+    void unbindOnAnAlreadyEmptySlotChangesNothing() {
+        String[] slots = bar("a", "", "b");
+        TechniqueSlotBind.unbind(slots, 1);
+        assertArrayEquals(bar("a", "", "b"), slots);
+    }
 }

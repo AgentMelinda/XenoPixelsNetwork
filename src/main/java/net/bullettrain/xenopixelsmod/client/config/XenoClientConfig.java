@@ -47,6 +47,25 @@ public final class XenoClientConfig {
     public static boolean bt3ComboClient = true;
     public static boolean bt3VanishClient = true;
     public static boolean bt3ChaseDashClient = true;
+    /**
+     * Hold Space to chase. Off by default: Space is also DragonMineZ's flight ascend, so every
+     * ascent with a lock-on fired a chase attempt, spent ki and rolled the chase-success chance —
+     * which is where the stream of "Chase failed" came from. Kept behind a switch rather than
+     * deleted so it can be turned back on and compared in play.
+     */
+    /**
+     * Draw copies with the fighter's real DragonMineZ body — hair, body type, race parts, form and
+     * aura — instead of a plain player model. Off falls back to the vanilla model, which is the
+     * safe path if anything about the DMZ render bridge misbehaves.
+     */
+    public static boolean cloneDmzAppearance = true;
+    public static boolean bt3ChaseSpaceGesture = false;
+    /**
+     * Double-tap then hold W to chase. Off by default: W is the movement key, so the gesture only
+     * worked behind a rising-edge gate and an arming window that existed purely to stop walking
+     * forward from launching a chase.
+     */
+    public static boolean bt3ChaseWGesture = false;
     public static boolean bt3BackstepClient = true;
     public static boolean bt3ChargeAttackClient = true;
     public static boolean bt3DragonDashClient = true;
@@ -66,10 +85,18 @@ public final class XenoClientConfig {
     public static int deleteConfirmMs = 3000;
     public static boolean bt3CombatSfx = true;
     public static boolean bt3ChargeGlow = true;
+    /** Draw the client-side DMZ-style blue combat attack/hurt boxes. */
+    public static boolean bt3CombatHitboxes = false;
     /** Client afterimage trails for vanish-style moves. */
     public static boolean bt3Afterimage = true;
     /** Local DMZ charge/punch/kick animations. */
     public static boolean bt3CombatAnims = true;
+    /**
+     * Pin the head (and the hair hanging off it) to the body for the combo window instead of
+     * letting it track the camera. Off is stock DragonMineZ look, which is the comparison to
+     * make if the head or hair ever looks wrong during a string.
+     */
+    public static boolean bt3MashHeadFollow = true;
     /** Delayed 2nd/3rd punch-kick chain anims. */
     public static boolean bt3KickChainAnims = true;
     /** Crit/spark particles on charge release and impacts. */
@@ -120,10 +147,10 @@ public final class XenoClientConfig {
     public static boolean flightHudEnabled = true;
     /**
      * Mouse-aim flight: the ship flies toward wherever you are looking, and the attitude
-     * stabilizer supplies the lag. Off leaves yaw and pitch to A/D and the throttle keys, which
-     * is what a player without a free hand for the mouse wants.
+     * stabilizer supplies the lag. Off (the default) leaves yaw/pitch/roll to the keyboard sticks,
+     * driven directly by the control surfaces with the arcade rate damper — no mouse capture.
      */
-    public static boolean flightMouseAim = true;
+    public static boolean flightMouseAim = false;
     /** Invert commanded pitch relative to the pitch stick (W/S). */
     public static boolean flightInvertPitch = false;
     /**
@@ -170,6 +197,14 @@ public final class XenoClientConfig {
     public static boolean flightAutoLevel = true;
     /** How fast auto-level rolls back toward wings-level, in degrees per second. */
     public static float flightAutoLevelRateDegPerSec = 45.0f;
+    /** How fast a WASD/QE control stick springs toward the held direction and decays back on
+     * release, in units per second (0..1). Lower = softer onset (a tap is a smaller nudge). */
+    public static float flightStickRampPerSec = 4.0f;
+    /** How fast holding the zoom-in/zoom-out keys ({@code +}/{@code -} by default) moves Sable's
+     * own sub-level-view camera zoom, in the same units per second that its scroll-to-zoom uses
+     * per notch. Only active while the camera is in that third-person view (see
+     * {@code XenoFlightControls#THIRD_PERSON_TOGGLE}). A starting guess, tune to taste. */
+    public static float flightZoomKeyRatePerSec = 4.0f;
     /** How fast the throttle keys sweep the full range, in fractions per second. */
     /** Throttle fraction added or removed per scroll-wheel click while seated. */
     public static float flightThrottleScrollStep = 0.05f;
@@ -197,6 +232,10 @@ public final class XenoClientConfig {
      * server alone decides at hit time. Tune this to whatever attack the pilot is using.
      */
     public static float leadAssistProjectileSpeed = 60.0f;
+    /** Gravity used only by the visual lead marker, in blocks per second squared. */
+    public static float leadAssistGravity = 9.8f;
+    /** Fraction of the pilot's current velocity inherited by the visual projectile model. */
+    public static float leadAssistShooterVelocityInheritance = 1.0f;
 
     private XenoClientConfig() {}
 
@@ -249,6 +288,9 @@ public final class XenoClientConfig {
         d.bt3ComboClient = bt3ComboClient;
         d.bt3VanishClient = bt3VanishClient;
         d.bt3ChaseDashClient = bt3ChaseDashClient;
+        d.cloneDmzAppearance = cloneDmzAppearance;
+        d.bt3ChaseSpaceGesture = bt3ChaseSpaceGesture;
+        d.bt3ChaseWGesture = bt3ChaseWGesture;
         d.bt3BackstepClient = bt3BackstepClient;
         d.bt3ChargeAttackClient = bt3ChargeAttackClient;
         d.bt3DragonDashClient = bt3DragonDashClient;
@@ -263,6 +305,7 @@ public final class XenoClientConfig {
         d.bt3ChargeGlow = bt3ChargeGlow;
         d.bt3Afterimage = bt3Afterimage;
         d.bt3CombatAnims = bt3CombatAnims;
+        d.bt3MashHeadFollow = bt3MashHeadFollow;
         d.bt3KickChainAnims = bt3KickChainAnims;
         d.bt3CombatParticles = bt3CombatParticles;
         d.bt3ScreenShake = bt3ScreenShake;
@@ -291,6 +334,8 @@ public final class XenoClientConfig {
         d.flightPitchRateDegPerSec = flightPitchRateDegPerSec;
         d.flightAutoLevel = flightAutoLevel;
         d.flightAutoLevelRateDegPerSec = flightAutoLevelRateDegPerSec;
+        d.flightStickRampPerSec = flightStickRampPerSec;
+        d.flightZoomKeyRatePerSec = flightZoomKeyRatePerSec;
         d.crosshairEnabled = crosshairEnabled;
         d.crosshairSize = crosshairSize;
         d.crosshairThickness = crosshairThickness;
@@ -306,6 +351,8 @@ public final class XenoClientConfig {
         d.showLeadMarker = showLeadMarker;
         d.showOffscreenArrow = showOffscreenArrow;
         d.leadAssistProjectileSpeed = leadAssistProjectileSpeed;
+        d.leadAssistGravity = leadAssistGravity;
+        d.leadAssistShooterVelocityInheritance = leadAssistShooterVelocityInheritance;
         d.flightThrottleScrollStep = flightThrottleScrollStep;
         d.flightThrottleKeyRatePerSec = flightThrottleKeyRatePerSec;
         return d;
@@ -328,6 +375,9 @@ public final class XenoClientConfig {
         bt3ComboClient = d.bt3ComboClient;
         bt3VanishClient = d.bt3VanishClient;
         bt3ChaseDashClient = d.bt3ChaseDashClient;
+        cloneDmzAppearance = d.cloneDmzAppearance;
+        bt3ChaseSpaceGesture = d.bt3ChaseSpaceGesture;
+        bt3ChaseWGesture = d.bt3ChaseWGesture;
         bt3BackstepClient = d.bt3BackstepClient;
         bt3ChargeAttackClient = d.bt3ChargeAttackClient;
         bt3DragonDashClient = d.bt3DragonDashClient;
@@ -342,6 +392,7 @@ public final class XenoClientConfig {
         bt3ChargeGlow = d.bt3ChargeGlow;
         bt3Afterimage = d.bt3Afterimage;
         bt3CombatAnims = d.bt3CombatAnims;
+        bt3MashHeadFollow = d.bt3MashHeadFollow;
         bt3KickChainAnims = d.bt3KickChainAnims;
         bt3CombatParticles = d.bt3CombatParticles;
         bt3ScreenShake = d.bt3ScreenShake;
@@ -358,7 +409,7 @@ public final class XenoClientConfig {
         techniqueHotbarHideInChat = d.techniqueHotbarHideInChat;
         sableContraptionCullClient = d.sableContraptionCullClient == null || d.sableContraptionCullClient;
         flightHudEnabled = d.flightHudEnabled == null || d.flightHudEnabled;
-        flightMouseAim = d.flightMouseAim == null || d.flightMouseAim;
+        flightMouseAim = d.flightMouseAim != null && d.flightMouseAim;
         flightInvertPitch = d.flightInvertPitch != null && d.flightInvertPitch;
         flightSuppressVanillaKeysInSeat = d.flightSuppressVanillaKeysInSeat == null
                 || d.flightSuppressVanillaKeysInSeat;
@@ -379,6 +430,10 @@ public final class XenoClientConfig {
         flightAutoLevel = d.flightAutoLevel == null || d.flightAutoLevel;
         flightAutoLevelRateDegPerSec = d.flightAutoLevelRateDegPerSec == null ? 45.0f
                 : Math.max(0.0f, Math.min(360.0f, d.flightAutoLevelRateDegPerSec));
+        flightStickRampPerSec = d.flightStickRampPerSec == null ? 4.0f
+                : Math.max(1.0f, Math.min(20.0f, d.flightStickRampPerSec));
+        flightZoomKeyRatePerSec = d.flightZoomKeyRatePerSec == null ? 4.0f
+                : Math.max(0.1f, Math.min(50.0f, d.flightZoomKeyRatePerSec));
         crosshairEnabled = d.crosshairEnabled == null || d.crosshairEnabled;
         crosshairSize = d.crosshairSize == null ? 10.0f : Math.max(2.0f, Math.min(64.0f, d.crosshairSize));
         crosshairThickness = d.crosshairThickness == null ? 1.5f
@@ -396,6 +451,10 @@ public final class XenoClientConfig {
         showOffscreenArrow = d.showOffscreenArrow == null || d.showOffscreenArrow;
         leadAssistProjectileSpeed = d.leadAssistProjectileSpeed == null ? 60.0f
                 : Math.max(1.0f, Math.min(1000.0f, d.leadAssistProjectileSpeed));
+        leadAssistGravity = d.leadAssistGravity == null ? 9.8f
+                : Math.max(0.0f, Math.min(100.0f, d.leadAssistGravity));
+        leadAssistShooterVelocityInheritance = d.leadAssistShooterVelocityInheritance == null ? 1.0f
+                : Math.max(0.0f, Math.min(1.0f, d.leadAssistShooterVelocityInheritance));
         flightThrottleScrollStep = d.flightThrottleScrollStep == null ? 0.05f
                 : Math.max(0.01f, Math.min(0.5f, d.flightThrottleScrollStep));
         flightThrottleKeyRatePerSec = d.flightThrottleKeyRatePerSec == null ? 0.6f
@@ -419,6 +478,9 @@ public final class XenoClientConfig {
         public boolean bt3ComboClient = true;
         public boolean bt3VanishClient = true;
         public boolean bt3ChaseDashClient = true;
+        public boolean cloneDmzAppearance = true;
+        public boolean bt3ChaseSpaceGesture = false;
+        public boolean bt3ChaseWGesture = false;
         public boolean bt3BackstepClient = true;
         public boolean bt3ChargeAttackClient = true;
         public boolean bt3DragonDashClient = true;
@@ -433,6 +495,7 @@ public final class XenoClientConfig {
         public boolean bt3ChargeGlow = true;
         public boolean bt3Afterimage = true;
         public boolean bt3CombatAnims = true;
+        public boolean bt3MashHeadFollow = true;
         public boolean bt3KickChainAnims = true;
         public boolean bt3CombatParticles = true;
         public boolean bt3ScreenShake = true;
@@ -461,6 +524,8 @@ public final class XenoClientConfig {
         public Float flightPitchRateDegPerSec;
         public Boolean flightAutoLevel;
         public Float flightAutoLevelRateDegPerSec;
+        public Float flightStickRampPerSec;
+        public Float flightZoomKeyRatePerSec;
         public Boolean crosshairEnabled;
         public Float crosshairSize;
         public Float crosshairThickness;
@@ -476,6 +541,8 @@ public final class XenoClientConfig {
         public Boolean showLeadMarker;
         public Boolean showOffscreenArrow;
         public Float leadAssistProjectileSpeed;
+        public Float leadAssistGravity;
+        public Float leadAssistShooterVelocityInheritance;
         public Float flightThrottleScrollStep;
         public Float flightThrottleKeyRatePerSec;
     }

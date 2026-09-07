@@ -20,7 +20,8 @@ public final class NpcAppearanceClient {
                         int strength, int strikePower, int resistance,
                         int vitality, int kiPower, int energy,
                         int auraColor, float auraScale, NpcDmzAppearance appearance,
-                        CompoundTag visualOptions) {}
+                        CompoundTag visualOptions,
+                        String skinPlayer, String skinUrl, String skinUuid) {}
     private static final Map<UUID, State> STATES = new ConcurrentHashMap<>();
 
     private NpcAppearanceClient() {}
@@ -36,13 +37,26 @@ public final class NpcAppearanceClient {
                              int vitality, int kiPower, int energy,
                              int auraColor, float auraScale, CompoundTag dmzAppearance,
                              CompoundTag visualOptions) {
+        apply(id, race, formGroup, form, hairEnabled, hairCode, hairColor,
+                strength, strikePower, resistance, vitality, kiPower, energy,
+                auraColor, auraScale, dmzAppearance, visualOptions, "", "", "");
+    }
+
+    public static void apply(UUID id, String race, String formGroup, String form,
+                             boolean hairEnabled, String hairCode, String hairColor,
+                             int strength, int strikePower, int resistance,
+                             int vitality, int kiPower, int energy,
+                             int auraColor, float auraScale, CompoundTag dmzAppearance,
+                             CompoundTag visualOptions,
+                             String skinPlayer, String skinUrl, String skinUuid) {
         if (id != null) {
             STATES.put(id, new State(safe(race), safe(formGroup), safe(form),
                     hairEnabled, safe(hairCode), safe(hairColor),
                     strength, strikePower, resistance, vitality, kiPower, energy,
                     auraColor & 0xFFFFFF, NpcCombatProfile.clampAuraScale(auraScale),
                     NpcDmzAppearance.fromTag(dmzAppearance),
-                    visualOptions == null ? new CompoundTag() : visualOptions.copy()));
+                    visualOptions == null ? new CompoundTag() : visualOptions.copy(),
+                    safe(skinPlayer), safe(skinUrl), safe(skinUuid)));
             NpcCombatProfile visual = new NpcCombatProfile();
             visual.applyVisualOptions(visualOptions);
             NpcTransformHairClient.onAppearance(id, formGroup, form,
@@ -62,7 +76,8 @@ public final class NpcAppearanceClient {
                 profile.vitality, profile.kiPower, profile.energy,
                 profile.auraColor, profile.auraScale,
                 (profile.appearance == null ? new NpcDmzAppearance() : profile.appearance).toTag(),
-                profile.visualOptionsTag());
+                profile.visualOptionsTag(),
+                profile.skinPlayer, profile.skinUrl, "");
     }
 
     @SubscribeEvent

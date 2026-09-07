@@ -83,13 +83,16 @@ public final class PartyManager {
         if (memberCount(from) >= XenoPartyConfig.maxMembers) {
             return "Your party is full (" + XenoPartyConfig.maxMembers + ")";
         }
+        boolean creatingParty = partyOf(from) == null;
         InviteRequestResult result = com.dragonminez.common.quest.PartyManager.requestInvite(from, target);
         UUID partyId = partyOf(from);
         if (result == InviteRequestResult.INVITED && partyId != null) {
             PartySavedData.PartyInstance party = PartySavedData.get(from.getServer()).getParty(partyId);
-            if (party != null && XenoPartyConfig.friendlyFireDefault != party.isPvpEnabled()) {
-                party.setPvpEnabled(XenoPartyConfig.friendlyFireDefault);
+            if (applyCreationDefaults(party, creatingParty, XenoPartyConfig.friendlyFireDefault)) {
                 PartySavedData.get(from.getServer()).setDirty();
+            }
+            if (creatingParty && party != null && from.getTeam() instanceof net.minecraft.world.scores.PlayerTeam team) {
+                team.setAllowFriendlyFire(party.isPvpEnabled());
             }
             touch(from.getServer(), partyId);
             syncParty(from.getServer(), partyId);
@@ -107,6 +110,12 @@ public final class PartyManager {
             case CANNOT_INVITE_SELF -> "You cannot invite yourself";
             case INVITED -> null;
         };
+    }
+
+    static boolean applyCreationDefaults(PartySavedData.PartyInstance party, boolean created, boolean defaultPvp) {
+        if (party == null || !created || party.isPvpEnabled() == defaultPvp) return false;
+        party.setPvpEnabled(defaultPvp);
+        return true;
     }
 
     public static String accept(ServerPlayer player, boolean confirmDifficulty) {

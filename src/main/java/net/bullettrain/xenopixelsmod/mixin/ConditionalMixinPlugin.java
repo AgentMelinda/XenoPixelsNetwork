@@ -66,6 +66,9 @@ public class ConditionalMixinPlugin implements IMixinConfigPlugin {
         if (mixinClassName.contains(".compat.cnpcgecko.")) {
             return isModLoaded("customnpcs") && isModLoaded("cnpcgeckoaddon");
         }
+        if (mixinClassName.contains(".compat.dmz.")) {
+            return isModLoaded("dragonminez");
+        }
         if (mixinClassName.contains(".compat.customnpcs.")) {
             return isModLoaded("customnpcs");
         }

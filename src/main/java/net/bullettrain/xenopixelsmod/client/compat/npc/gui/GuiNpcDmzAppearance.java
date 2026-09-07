@@ -77,6 +77,12 @@ public final class GuiNpcDmzAppearance extends GuiNPCInterface2 implements IText
     private static final int ID_SPARKING = 227;
     private static final int ID_LIGHTNING = 228;
     private static final int ID_AURA_DETAILS = 229;
+    private static final int ID_KI_WEAPON_ON = 230;
+    private static final int ID_KI_WEAPON_TYPE = 231;
+    private static final int ID_GROUND_RING = 232;
+    private static final int ID_FLY_ON = 233;
+    private static final int ID_FLY_LEVEL = 234;
+    private static final int ID_SKILLS = 235;
     private static final int PICKER_OFFSET = 500;
     private static final int PREVIEW_X = 278;
     private static final int PREVIEW_Y = 28;
@@ -158,16 +164,33 @@ public final class GuiNpcDmzAppearance extends GuiNPCInterface2 implements IText
     private void initStyle(int x, int y, NpcDmzAppearance a) {
         field(ID_HEAD_BONE, "Head parts", x, y, a.activeHeadBone, false);
         addButton(new GuiButtonNop(this, ID_AURA_DETAILS, x + 202, y, 58, 16, "Details"));
+        addButton(new GuiButtonNop(this, ID_SKILLS, x + 202, y + 18, 58, 16, "Skills"));
         colorField(ID_HAIR_COLOR, "Hair color", x, y + 20, draft.hairColor);
         colorField(ID_AURA_COLOR, "Base aura", x, y + 40,
                 draft.auraColorHex == null || draft.auraColorHex.isBlank() ? "" : draft.auraColorHex);
         field(ID_AURA_SCALE, "Aura scale", x, y + 60, Float.toString(draft.auraScale), false);
+        addLabel(new GuiLabel(908, "Ki weapon", x + 202, y + 23, 0xFFFFFF));
+        addButton(new GuiButtonYesNo(this, ID_KI_WEAPON_ON,
+                x + 202, y + 36, 58, 18, draft.kiWeaponOn));
+        addButton(new GuiButtonNop(this, ID_KI_WEAPON_TYPE,
+                x + 202, y + 58, 58, 18, kiWeaponLabel(draft.kiWeaponType)));
+        // Three toggle columns. The panel is 420x200 with Apply/Cancel occupying the bottom
+        // right from y+174 down, so nothing may sit below the y+120 row and the third column
+        // has to stay clear of x+300 -- a fourth row would render outside the background.
         toggle(ID_HAIR_BASE, "Base hair", x, y + 80, a.renderHairBase);
         toggle(ID_HALO, "Halo", x + 108, y + 80, draft.haloOn);
+        toggle(ID_GROUND_RING, "Rings", x + 202, y + 80, draft.auraGroundRing);
         toggle(ID_AURA_ON, "Aura", x, y + 100, draft.auraOn);
         toggle(ID_ROCKS, "Rocks", x + 108, y + 100, draft.auraRocks);
+        toggle(ID_FLY_ON, "Fly", x + 202, y + 100, draft.flySkillOn);
         toggle(ID_SPARKING, "Sparking", x, y + 120, draft.auraSparking);
         toggle(ID_LIGHTNING, "Lightning", x + 108, y + 120, draft.auraLightning);
+        addLabel(new GuiLabel(909, "Fly lv", x + 202, y + 125, 0xFFFFFF));
+        GuiTextFieldNop flyLevel = new GuiTextFieldNop(ID_FLY_LEVEL, this, x + 232, y + 121,
+                28, 16, Integer.toString(draft.flySkillLevel));
+        flyLevel.setNumbersOnly();
+        flyLevel.setMaxLength(2);
+        addTextField(flyLevel);
     }
 
     private void toggle(int id, String label, int x, int y, boolean value) {
@@ -218,6 +241,10 @@ public final class GuiNpcDmzAppearance extends GuiNPCInterface2 implements IText
         else if (button.id == ID_ROCKS && button instanceof GuiButtonYesNo yes) draft.auraRocks = yes.getBoolean();
         else if (button.id == ID_SPARKING && button instanceof GuiButtonYesNo yes) draft.auraSparking = yes.getBoolean();
         else if (button.id == ID_LIGHTNING && button instanceof GuiButtonYesNo yes) draft.auraLightning = yes.getBoolean();
+        else if (button.id == ID_GROUND_RING && button instanceof GuiButtonYesNo yes) draft.auraGroundRing = yes.getBoolean();
+        else if (button.id == ID_FLY_ON && button instanceof GuiButtonYesNo yes) draft.flySkillOn = yes.getBoolean();
+        else if (button.id == ID_KI_WEAPON_ON && button instanceof GuiButtonYesNo yes) draft.kiWeaponOn = yes.getBoolean();
+        else if (button.id == ID_KI_WEAPON_TYPE) draft.kiWeaponType = nextKiWeaponType(draft.kiWeaponType);
         else if (button.id == ID_BODY_PREV) a.bodyType = cycle(a.bodyType, -1, maxBodyType(a));
         else if (button.id == ID_BODY_NEXT) a.bodyType = cycle(a.bodyType, 1, maxBodyType(a));
         else if (button.id == ID_EYES_PREV) a.eyesType = cycle(a.eyesType, -1, maxEyesType());
@@ -232,6 +259,10 @@ public final class GuiNpcDmzAppearance extends GuiNPCInterface2 implements IText
         else if (button.id == ID_MOUTH_NEXT) a.mouthType = cycle(a.mouthType, 1, maxMouthType());
         else if (button.id == ID_TATTOO_PREV) a.tattooType = cycle(a.tattooType, -1, maxTattooType());
         else if (button.id == ID_TATTOO_NEXT) a.tattooType = cycle(a.tattooType, 1, maxTattooType());
+        else if (button.id == ID_SKILLS) {
+            Minecraft.getInstance().setScreen(new GuiNpcDmzSkills(npc, draft));
+            return;
+        }
         else if (button.id == ID_AURA_DETAILS) {
             Minecraft.getInstance().setScreen(new GuiNpcDmzAuraEditor(npc, draft,
                     GuiNpcDmzAuraEditor.Target.BASE));
@@ -308,7 +339,28 @@ public final class GuiNpcDmzAppearance extends GuiNPCInterface2 implements IText
         if (sparking instanceof GuiButtonYesNo yes) draft.auraSparking = yes.getBoolean();
         GuiButtonNop lightning = getButton(ID_LIGHTNING);
         if (lightning instanceof GuiButtonYesNo yes) draft.auraLightning = yes.getBoolean();
+        GuiButtonNop groundRing = getButton(ID_GROUND_RING);
+        if (groundRing instanceof GuiButtonYesNo yes) draft.auraGroundRing = yes.getBoolean();
+        GuiButtonNop fly = getButton(ID_FLY_ON);
+        if (fly instanceof GuiButtonYesNo yes) draft.flySkillOn = yes.getBoolean();
+        draft.flySkillLevel = NpcCombatProfile.clampFlySkillLevel(
+                integer(ID_FLY_LEVEL, draft.flySkillLevel));
+        GuiButtonNop kiWeapon = getButton(ID_KI_WEAPON_ON);
+        if (kiWeapon instanceof GuiButtonYesNo yes) draft.kiWeaponOn = yes.getBoolean();
+        draft.kiWeaponType = NpcCombatProfile.canonicalKiWeaponType(draft.kiWeaponType);
         normalizeChoices(a);
+    }
+
+    private static String nextKiWeaponType(String current) {
+        String canonical = NpcCombatProfile.canonicalKiWeaponType(current);
+        int index = NpcCombatProfile.KI_WEAPON_TYPES.indexOf(canonical);
+        return NpcCombatProfile.KI_WEAPON_TYPES.get(
+                (index + 1) % NpcCombatProfile.KI_WEAPON_TYPES.size());
+    }
+
+    private static String kiWeaponLabel(String type) {
+        String canonical = NpcCombatProfile.canonicalKiWeaponType(type);
+        return canonical.substring(0, 1).toUpperCase(Locale.ROOT) + canonical.substring(1);
     }
 
     private void normalizeChoices(NpcDmzAppearance a) {
@@ -366,6 +418,11 @@ public final class GuiNpcDmzAppearance extends GuiNPCInterface2 implements IText
         GuiTextFieldNop field = getTextField(id);
         if (field == null || field.getValue() == null) return fallback == null ? "" : fallback;
         return field.getValue().trim();
+    }
+
+    private int integer(int id, int fallback) {
+        try { return Integer.parseInt(text(id, Integer.toString(fallback))); }
+        catch (NumberFormatException ignored) { return fallback; }
     }
 
     private float decimal(int id, float fallback) {

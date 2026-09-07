@@ -15,15 +15,21 @@ import net.minecraft.world.phys.Vec3;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.neoforge.client.event.RenderLevelStageEvent;
 import net.neoforged.bus.api.SubscribeEvent;
-import net.neoforged.fml.common.Mod;
 import org.joml.Matrix4f;
 
 /**
- * Draws a soft aura / ring around the local player while charge-attacking.
- * Bright flash when fully charged.
+ * Ground circle the local player stands in while charging a fist or kick.
+ *
+ * <p>The old indicator was a chest-height ring plus a vertical disc. From above the disc
+ * collapsed to a line. This is one horizontal annulus on the floor, center at the feet.
  */
 @EventBusSubscriber(modid = XenoPixelsMod.MOD_ID, value = Dist.CLIENT)
 public final class ChargeAttackGlowRenderer {
+    private static final int SEGMENTS = 32;
+    /** Hole the model stands in. */
+    private static final float INNER = 0.48f;
+    private static final float FEET_Y = 0.04f;
+
     private ChargeAttackGlowRenderer() {}
 
     @SubscribeEvent
@@ -42,7 +48,7 @@ public final class ChargeAttackGlowRenderer {
 
         Vec3 cam = event.getCamera().getPosition();
         double x = Mth.lerp(partial, player.xo, player.getX()) - cam.x;
-        double y = Mth.lerp(partial, player.yo, player.getY()) - cam.y + player.getBbHeight() * 0.55;
+        double y = Mth.lerp(partial, player.yo, player.getY()) - cam.y + FEET_Y;
         double z = Mth.lerp(partial, player.zo, player.getZ()) - cam.z;
 
         PoseStack pose = event.getPoseStack();
@@ -52,7 +58,6 @@ public final class ChargeAttackGlowRenderer {
         MultiBufferSource.BufferSource buffers = mc.renderBuffers().bufferSource();
         VertexConsumer vc = buffers.getBuffer(RenderType.lightning());
 
-        // Color: fist=orange/red, kick=magenta, dragon=gold
         float r, g, b;
         if (Bt3CombatClient.isDragonCharge()) {
             r = 1.0f; g = 0.75f; b = 0.15f;
@@ -62,45 +67,39 @@ public final class ChargeAttackGlowRenderer {
             r = 1.0f; g = 0.35f; b = 0.1f;
         }
 
-        float pulse = full ? (0.75f + 0.25f * Mth.sin((player.tickCount + partial) * 0.8f)) : (0.35f + 0.45f * progress);
-        float radius = 0.55f + progress * 0.85f + (full ? 0.25f : 0f);
-        int segs = 28;
+        float pulse = full
+                ? (0.80f + 0.20f * Mth.sin((player.tickCount + partial) * 0.8f))
+                : (0.35f + 0.50f * progress);
+        float outer = 0.85f + progress * 0.55f + (full ? 0.20f : 0f);
+        float inner = Math.min(INNER, outer * 0.62f);
+        float alpha = pulse * (full ? 0.90f : 0.50f);
         Matrix4f mat = pose.last().pose();
 
-        // Horizontal ring
-        for (int i = 0; i < segs; i++) {
-            float a0 = (float) (i * Math.PI * 2.0 / segs);
-            float a1 = (float) ((i + 1) * Math.PI * 2.0 / segs);
-            float x0 = Mth.cos(a0) * radius;
-            float z0 = Mth.sin(a0) * radius;
-            float x1 = Mth.cos(a1) * radius;
-            float z1 = Mth.sin(a1) * radius;
-            float alpha = pulse * (full ? 0.95f : 0.55f);
-            vc.addVertex(mat, x0, 0, z0).setColor(r, g, b, alpha);
-            vc.addVertex(mat, x1, 0, z1).setColor(r, g, b, alpha);
-            vc.addVertex(mat, x1 * 0.7f, 0.05f, z1 * 0.7f).setColor(r, g, b, alpha * 0.3f);
-            vc.addVertex(mat, x0 * 0.7f, 0.05f, z0 * 0.7f).setColor(r, g, b, alpha * 0.3f);
-        }
-
-        // Vertical halo when fully charged
-        if (full) {
-            float hr = radius * 0.9f;
-            for (int i = 0; i < segs; i++) {
-                float a0 = (float) (i * Math.PI * 2.0 / segs);
-                float a1 = (float) ((i + 1) * Math.PI * 2.0 / segs);
-                float y0 = Mth.cos(a0) * hr * 0.7f;
-                float z0 = Mth.sin(a0) * hr;
-                float y1 = Mth.cos(a1) * hr * 0.7f;
-                float z1 = Mth.sin(a1) * hr;
-                float alpha = 0.45f * pulse;
-                vc.addVertex(mat, 0.02f, y0, z0).setColor(r, g, b, alpha);
-                vc.addVertex(mat, 0.02f, y1, z1).setColor(r, g, b, alpha);
-                vc.addVertex(mat, -0.02f, y1, z1).setColor(r, g, b, alpha * 0.4f);
-                vc.addVertex(mat, -0.02f, y0, z0).setColor(r, g, b, alpha * 0.4f);
-            }
-        }
+        ring(vc, mat, inner, outer, r, g, b, alpha);
+        // Opposite winding so the disc reads from above and below.
+        ring(vc, mat, outer, inner, r, g, b, alpha * 0.85f);
 
         buffers.endBatch(RenderType.lightning());
         pose.popPose();
+    }
+
+    private static void ring(VertexConsumer vc, Matrix4f mat, float inner, float outer,
+                             float r, float g, float b, float alpha) {
+        for (int i = 0; i < SEGMENTS; i++) {
+            float a0 = (float) (i * Math.PI * 2.0 / SEGMENTS);
+            float a1 = (float) ((i + 1) * Math.PI * 2.0 / SEGMENTS);
+            float ox0 = Mth.cos(a0) * outer;
+            float oz0 = Mth.sin(a0) * outer;
+            float ox1 = Mth.cos(a1) * outer;
+            float oz1 = Mth.sin(a1) * outer;
+            float ix0 = Mth.cos(a0) * inner;
+            float iz0 = Mth.sin(a0) * inner;
+            float ix1 = Mth.cos(a1) * inner;
+            float iz1 = Mth.sin(a1) * inner;
+            vc.addVertex(mat, ox0, 0, oz0).setColor(r, g, b, alpha);
+            vc.addVertex(mat, ox1, 0, oz1).setColor(r, g, b, alpha);
+            vc.addVertex(mat, ix1, 0, iz1).setColor(r, g, b, alpha * 0.35f);
+            vc.addVertex(mat, ix0, 0, iz0).setColor(r, g, b, alpha * 0.35f);
+        }
     }
 }

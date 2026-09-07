@@ -36,6 +36,7 @@ public final class NpcProfileLifecycle {
         if (entity instanceof LivingEntity living && !entity.level().isClientSide()
                 && NpcCombatProfile.hasProfile(entity)) {
             PROFILED.put(entity.getUUID(), living);
+            NpcEntityLookup.remember(entity);
         }
     }
 
@@ -56,19 +57,31 @@ public final class NpcProfileLifecycle {
     public static void onJoin(EntityJoinLevelEvent event) {
         if (!event.getLevel().isClientSide()) {
             Entity entity = event.getEntity();
+            if (entity instanceof net.minecraft.world.entity.player.Player) {
+                NpcNegativeEffectPersistence.discard(entity);
+            } else {
+                NpcNegativeEffectPersistence.restore(entity);
+            }
             repairAi(entity);
             if (NpcCombatProfile.hasProfile(entity)) {
                 track(entity);
                 NpcCombatProfile profile = NpcCombatProfile.read(entity);
-                NpcVitalitySync.apply(entity, profile);
+                NpcCounterpartSync.force(entity, profile);
                 if (entity instanceof LivingEntity living) NpcFormAttributeSync.apply(living, profile);
             }
+
         }
+    }
+
+    @SubscribeEvent
+    public static void onPlayerClone(net.neoforged.neoforge.event.entity.player.PlayerEvent.Clone event) {
+        NpcNegativeEffectPersistence.copyOnClone(event.getOriginal(), event.getEntity());
     }
 
     @SubscribeEvent
     public static void onDeath(LivingDeathEvent event) {
         LivingEntity npc = event.getEntity();
+        if (!npc.level().isClientSide()) NpcNegativeEffectPersistence.capture(npc);
         if (npc.level().isClientSide() || !NpcCombatProfile.hasProfile(npc) || !isCustomNpc(npc)) {
             return;
         }
@@ -92,12 +105,21 @@ public final class NpcProfileLifecycle {
         }
         Entity entity = event.getEntity();
         if (entity instanceof LivingEntity living) {
+            NpcNegativeEffectPersistence.beforeSave(living);
             NpcKiAim.cancel(living);
         } else {
             NpcKiAim.cancel(entity.getUUID());
         }
         NpcTransformSystem.cancel(entity.getUUID());
         NpcStrikeDispatcher.cancel(entity.getUUID());
+        NpcFlightBridge.forget(entity.getUUID());
+        NpcAggroBridge.forget(entity.getUUID());
+        NpcTargetKeeper.forget(entity.getUUID());
+        NpcCombatMoves.forget(entity.getUUID());
+        NpcCombatBrain.forget(entity.getUUID());
+        NpcMeleeDamage.clearAnimation(entity.getUUID());
+        NpcKiAim.clearHardLock(entity.getUUID());
+        NpcEntityLookup.forget(entity.getUUID());
         PROFILED.remove(entity.getUUID());
         Entity.RemovalReason reason = entity.getRemovalReason();
         if (reason != Entity.RemovalReason.UNLOADED_TO_CHUNK
@@ -116,10 +138,29 @@ public final class NpcProfileLifecycle {
             LivingEntity npc = entry.getValue();
             if (npc == null || npc.isRemoved()) return true;
             if (npc.isAlive()) {
-                NpcCombatProfile profile = NpcCombatProfile.read(npc);
+                // readCached, not read: none of these three mutate the profile, and read()
+                // rebuilt every mastery/aura-style/technique/hair structure twice per NPC per
+                // tick. The cache reparses whenever the stored tag is replaced, so the
+                // second call still sees a descend triggered by the drain tick.
+                NpcCombatProfile profile = NpcCombatProfile.readCached(npc);
                 NpcFormDrainSystem.tick(npc, profile, serverTick);
-                profile = NpcCombatProfile.read(npc);
+                profile = NpcCombatProfile.readCached(npc);
+                // Both of these already no-op or only matter over many ticks, so stagger them
+                // by entity id the way the aura sync below already is.
+                if (serverTick % 4 == Math.floorMod(npc.getId(), 4)) {
+                    NpcCounterpartSync.apply(npc, profile, false);
+                }
                 NpcResources.tick(npc, profile);
+                NpcNegativeEffectPersistence.capture(npc);
+                // Target retention and autonomous combat are the two most expensive things
+                // here, so they run on their own staggered slot rather than every tick.
+                if (serverTick % 10 == Math.floorMod(npc.getId(), 10)) {
+                    LivingEntity victim = NpcTargetKeeper.tick(
+                            event.getServer(), npc, serverTick);
+                    if (profile.combatBrain) {
+                        NpcCombatBrain.tick(event.getServer(), npc, profile, victim, serverTick);
+                    }
+                }
                 if (serverTick % 40 == Math.floorMod(npc.getId(), 40)) {
                     NpcAuraFx.sync(npc);
                 }
@@ -151,36 +192,35 @@ public final class NpcProfileLifecycle {
                 continue;
             }
             repairAi(npc);
+            NpcNegativeEffectPersistence.restore(npc);
+            NpcCounterpartSync.force(npc, NpcCombatProfile.read(npc));
             NpcAuraFx.sync(npc);
             it.remove();
         }
     }
 
     private static LivingEntity find(MinecraftServer server, UUID id) {
-        for (ServerLevel level : server.getAllLevels()) {
-            Entity entity = level.getEntity(id);
-            if (entity instanceof LivingEntity living) {
-                return living;
-            }
-        }
-        return null;
+        return NpcEntityLookup.findLiving(server, id);
     }
 
     private static boolean isCustomNpc(Entity entity) {
-        try {
-            return Class.forName("noppes.npcs.entity.EntityNPCInterface").isInstance(entity);
-        } catch (ClassNotFoundException ignored) {
-            return false;
-        }
+        return NpcCounterpartSync.isCustomNpc(entity);
     }
 
     private static Object stats(LivingEntity npc) {
-        try {
-            Field field = Class.forName("noppes.npcs.entity.EntityNPCInterface").getField("stats");
-            return field.get(npc);
-        } catch (ReflectiveOperationException ignored) {
-            return null;
+        for (String className : new String[] {
+                "espi.mynpcs.entity.EntityNPCInterface",
+                "noppes.npcs.entity.EntityNPCInterface"}) {
+            try {
+                Class<?> npcClass = Class.forName(className);
+                if (npcClass.isInstance(npc)) {
+                    return npcClass.getField("stats").get(npc);
+                }
+            } catch (ReflectiveOperationException ignored) {
+                // Try the other supported namespace.
+            }
         }
+        return null;
     }
 
     private static int respawnType(LivingEntity npc) {
@@ -208,12 +248,19 @@ public final class NpcProfileLifecycle {
     }
 
     private static boolean invokeReset(LivingEntity npc) {
-        try {
-            Method reset = Class.forName("noppes.npcs.entity.EntityNPCInterface").getMethod("reset");
-            reset.invoke(npc);
-            return true;
-        } catch (ReflectiveOperationException ignored) {
-            return false;
+        for (String className : new String[] {
+                "espi.mynpcs.entity.EntityNPCInterface",
+                "noppes.npcs.entity.EntityNPCInterface"}) {
+            try {
+                Class<?> npcClass = Class.forName(className);
+                if (npcClass.isInstance(npc)) {
+                    npcClass.getMethod("reset").invoke(npc);
+                    return true;
+                }
+            } catch (ReflectiveOperationException ignored) {
+                // Try the other supported namespace.
+            }
         }
+        return false;
     }
 }

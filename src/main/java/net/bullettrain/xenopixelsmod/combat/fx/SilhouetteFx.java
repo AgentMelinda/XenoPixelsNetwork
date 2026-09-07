@@ -74,9 +74,21 @@ public final class SilhouetteFx {
     public static void stamp(ServerLevel level, Vec3 origin, double yawDeg,
                              float height, float width, double density,
                              Vector3f body, Vector3f rim, float scale) {
+        stamp(level, origin, yawDeg, height, width, density, body, rim, scale, 1.0f);
+    }
+
+    /**
+     * @param keepBelowYFrac 1 = full figure, 0 = none. Head is ~0.97, feet ~0.02, so
+     *                       lowering this erases from the head down.
+     */
+    public static void stamp(ServerLevel level, Vec3 origin, double yawDeg,
+                             float height, float width, double density,
+                             Vector3f body, Vector3f rim, float scale, float keepBelowYFrac) {
         if (level == null || origin == null) return;
         double clamped = Math.max(0.0, Math.min(1.0, density));
         if (clamped <= 0.0) return;
+        float cutoff = Math.max(0.0f, Math.min(1.0f, keepBelowYFrac));
+        if (cutoff <= 0.0f) return;
 
         double yaw = Math.toRadians(yawDeg);
         double sin = Math.sin(-yaw);
@@ -86,6 +98,7 @@ public final class SilhouetteFx {
         for (int i = 0; i < BODY.length; i++) {
             if (clamped < 1.0 && (i % keep) != 0) continue;
             float[] point = BODY[i];
+            if (point[1] > cutoff) continue;
             double lx = point[0] * width * 2.0;
             double x = origin.x + lx * cos;
             double z = origin.z + lx * sin;

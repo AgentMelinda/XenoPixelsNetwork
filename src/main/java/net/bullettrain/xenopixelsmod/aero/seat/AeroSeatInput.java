@@ -27,7 +27,7 @@ public final class AeroSeatInput {
     private double pitchStick;
     private double rollStick;
     private double yawStick;
-    private boolean mouseAim = true;
+    private boolean mouseAim = false;
     private double flap;
     private boolean airBrake;
     private boolean autoLevel;
@@ -125,7 +125,7 @@ public final class AeroSeatInput {
         pitchStick = 0.0;
         rollStick = 0.0;
         yawStick = 0.0;
-        mouseAim = true;
+        mouseAim = false;
         flap = 0.0;
         airBrake = false;
         autoLevel = false;

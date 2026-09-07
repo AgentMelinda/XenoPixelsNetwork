@@ -231,8 +231,8 @@
     {
       "id": "charge_fist",
       "title": "Charge Fist",
-      "subtitle": "Hold R → release",
-      "detail": "Hold to charge (DMZ charge_light/heavy punch anim + orange glow at max). Release spends fistChargeStaminaCost stamina (scales with charge %). Needs a target. Toggle: bt3ChargeAttackEnabled.",
+      "subtitle": "Hold R · tap then hold to charge",
+      "detail": "Hold R to mash the 13-hit string. Tap R, then press and hold R to charge a punch (no target needed). Toggle: bt3ComboEnabled / bt3ChargeAttackEnabled.",
       "accent": 4293212469
     },
     {

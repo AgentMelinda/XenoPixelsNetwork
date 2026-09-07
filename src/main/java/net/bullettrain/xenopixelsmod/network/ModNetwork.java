@@ -4,6 +4,8 @@ import net.bullettrain.xenopixelsmod.XenoPixelsMod;
 import net.bullettrain.xenopixelsmod.network.packet.GuidanceControlPacket;
 import net.bullettrain.xenopixelsmod.network.packet.TeleportShipPacket;
 import net.bullettrain.xenopixelsmod.network.packet.SetTargetToolPacket;
+import net.bullettrain.xenopixelsmod.network.packet.UnbindTechniqueSlotPacket;
+import net.bullettrain.xenopixelsmod.network.packet.AfterimageGhostPacket;
 import net.bullettrain.xenopixelsmod.network.packet.FlightPlanRequestPacket;
 import net.bullettrain.xenopixelsmod.network.packet.FlightPlanResultPacket;
 import net.bullettrain.xenopixelsmod.network.packet.BodyCalibrationPacket;
@@ -18,6 +20,7 @@ import net.bullettrain.xenopixelsmod.network.packet.TargetLockPacket;
 import net.bullettrain.xenopixelsmod.network.packet.TargetLockStatePacket;
 import net.bullettrain.xenopixelsmod.network.packet.TargetLockErrorPacket;
 import net.bullettrain.xenopixelsmod.network.packet.CombatFxPacket;
+import net.bullettrain.xenopixelsmod.network.packet.ChaseFlightStatePacket;
 import net.bullettrain.xenopixelsmod.network.packet.PartySyncPacket;
 import net.bullettrain.xenopixelsmod.network.packet.PartyActionPacket;
 import net.bullettrain.xenopixelsmod.network.packet.PartyPingPacket;
@@ -84,8 +87,30 @@ public class ModNetwork {
      * <p>44: {@code NpcAppearancePacket} also carries the NPC's native DMZ aura-scale multiplier.
      * <p>45: NPC appearance/transform/aura packets carry stack-form state, layered aura styles,
      * secondary colors, and independent visual-effect toggles.
+     * <p>46: NPC appearance visual options carry the Ki Weapon enabled state and model type.
+     * <p>47: {@code NpcAuraPacket} carries the ground-ring toggle; NPC visual options carry the
+     * DMZ skill map (fly included); appended {@code DmzLockOnPacket} for scripted player lock-on.
+     * <p>48: {@code Bt3AnimIntentPacket} carries the BT3 combo beat the server accepted, so every
+     * client renders the same choreography step instead of deriving one from the combo counter.
+     * <p>49: appended spin-then-strike intents; SyncServerConfigPacket carries chaseStopGap,
+     * vanishGap, vanishSide.
+     * <p>50: {@code Bt3CombatPacket} appended the mash style byte, so a held strafe key can pin
+     * the combo to a punch or uppercut cycle server-side instead of the authored route.
+     * <p>51: {@code SyncServerConfigPacket} carries comboMashIntervalTicks (the held-mash beat, and
+     * with it every mash clip's playback speed) and vanishNearField.
+     * <p>52: {@code SyncServerConfigPacket} carries vanishOpenSpotSearch. Both it and
+     * vanishNearField now default off, so vanish ships with its original landing geometry and the
+     * two reworks stay available to switch on.
+     * <p>53: {@code SyncServerConfigPacket} carries comboAnimGeneration, which picks between the
+     * three authored generations of the combat clips; appended {@code NpcAnimationPacket} so an NPC
+     * can be told to play one of them.
+     * <p>54: comboAnimGeneration accepts generation 4, whose names and semantics are unknown to
+     * older clients even though the serialized field remains an integer.
+     * <p>55: generation 4's ordinary jab pair now resolves to Xeno-owned copies of DMZ's exact
+     * left/right one-handed punches.
+     * <p>56: appended {@code ChaseFlightStatePacket} to arbitrate DMZ and Xeno flight movement.
      */
-    private static final String PROTOCOL = "45";
+    private static final String PROTOCOL = "59";
 
     public static final SimpleChannel CHANNEL = NetworkRegistry.ChannelBuilder
             .named(ResourceLocation.fromNamespaceAndPath(XenoPixelsMod.MOD_ID, "main"))
@@ -143,6 +168,18 @@ public class ModNetwork {
                 .decoder(GuidanceControlPacket::new)
                 .encoder(GuidanceControlPacket::encode)
                 .consumerMainThread(GuidanceControlPacket::handle)
+                .add();
+
+        CHANNEL.messageBuilder(AfterimageGhostPacket.class, id++, NetworkDirection.PLAY_TO_CLIENT)
+                .decoder(AfterimageGhostPacket::new)
+                .encoder(AfterimageGhostPacket::encode)
+                .consumerMainThread(AfterimageGhostPacket::handle)
+                .add();
+
+        CHANNEL.messageBuilder(UnbindTechniqueSlotPacket.class, id++, NetworkDirection.PLAY_TO_SERVER)
+                .decoder(UnbindTechniqueSlotPacket::new)
+                .encoder(UnbindTechniqueSlotPacket::encode)
+                .consumerMainThread(UnbindTechniqueSlotPacket::handle)
                 .add();
 
         CHANNEL.messageBuilder(SetTargetToolPacket.class, id++, NetworkDirection.PLAY_TO_SERVER)
@@ -236,6 +273,14 @@ public class ModNetwork {
                 .consumerMainThread(GuidanceHoldPacket::handle)
                 .add();
 
+        // --- Clone lock-on target sync (client → server) ---
+        CHANNEL.messageBuilder(net.bullettrain.xenopixelsmod.network.packet.CloneTargetPacket.class, id++,
+                        NetworkDirection.PLAY_TO_SERVER)
+                .decoder(net.bullettrain.xenopixelsmod.network.packet.CloneTargetPacket::new)
+                .encoder(net.bullettrain.xenopixelsmod.network.packet.CloneTargetPacket::encode)
+                .consumerMainThread(net.bullettrain.xenopixelsmod.network.packet.CloneTargetPacket::handle)
+                .add();
+
         CHANNEL.messageBuilder(SeatFlightInputPacket.class, id++, NetworkDirection.PLAY_TO_SERVER)
                 .decoder(SeatFlightInputPacket::new)
                 .encoder(SeatFlightInputPacket::encode)
@@ -296,7 +341,39 @@ public class ModNetwork {
                 .consumerMainThread(net.bullettrain.xenopixelsmod.network.packet.NpcTransformHoldPacket::handle)
                 .add();
 
+        CHANNEL.messageBuilder(net.bullettrain.xenopixelsmod.network.packet.NpcAnimationPacket.class, id++,
+                        NetworkDirection.PLAY_TO_CLIENT)
+                .decoder(net.bullettrain.xenopixelsmod.network.packet.NpcAnimationPacket::new)
+                .encoder(net.bullettrain.xenopixelsmod.network.packet.NpcAnimationPacket::encode)
+                .consumerMainThread(net.bullettrain.xenopixelsmod.network.packet.NpcAnimationPacket::handle)
+                .add();
+
+        CHANNEL.messageBuilder(net.bullettrain.xenopixelsmod.network.packet.DmzLockOnPacket.class, id++,
+                        NetworkDirection.PLAY_TO_CLIENT)
+                .decoder(net.bullettrain.xenopixelsmod.network.packet.DmzLockOnPacket::new)
+                .encoder(net.bullettrain.xenopixelsmod.network.packet.DmzLockOnPacket::encode)
+                .consumerMainThread(net.bullettrain.xenopixelsmod.network.packet.DmzLockOnPacket::handle)
+                .add();
+
+        CHANNEL.messageBuilder(net.bullettrain.xenopixelsmod.network.packet.Bt3AnimIntentPacket.class, id++,
+                        NetworkDirection.PLAY_TO_CLIENT)
+                .decoder(net.bullettrain.xenopixelsmod.network.packet.Bt3AnimIntentPacket::decode)
+                .encoder(net.bullettrain.xenopixelsmod.network.packet.Bt3AnimIntentPacket::encode)
+                .consumerMainThread(net.bullettrain.xenopixelsmod.network.packet.Bt3AnimIntentPacket::handle)
+                .add();
+
+        CHANNEL.messageBuilder(ChaseFlightStatePacket.class, id++, NetworkDirection.PLAY_TO_CLIENT)
+                .decoder(ChaseFlightStatePacket::new)
+                .encoder(ChaseFlightStatePacket::encode)
+                .consumerMainThread(ChaseFlightStatePacket::handle)
+                .add();
+
         XenoPixelsMod.LOGGER.info("ModNetwork: registered {} packet types (protocol {})", id, PROTOCOL);
+    }
+
+    /** Everyone who can see the entity, including the entity itself when it is a player. */
+    public static void sendToTrackingAndSelf(net.minecraft.world.entity.Entity entity, Object msg) {
+        CHANNEL.sendToTrackingEntityAndSelf(msg, entity);
     }
 
     public static void sendToServer(Object msg) {

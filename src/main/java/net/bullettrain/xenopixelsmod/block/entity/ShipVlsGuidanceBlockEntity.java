@@ -9,7 +9,6 @@ import net.bullettrain.xenopixelsmod.aero.AeroLinkManager;
 import net.bullettrain.xenopixelsmod.aero.AeroPowerBudget;
 import net.bullettrain.xenopixelsmod.aero.ControllerMode;
 import net.bullettrain.xenopixelsmod.aero.control.AeroFlightCore;
-import net.bullettrain.xenopixelsmod.aero.control.AeroStabilizerSystem;
 import net.bullettrain.xenopixelsmod.aero.control.AeroFlightDirector;
 import net.bullettrain.xenopixelsmod.aero.control.SableAttitudeMath;
 import net.bullettrain.xenopixelsmod.aero.control.VectorMixer;
@@ -1043,6 +1042,7 @@ public class ShipVlsGuidanceBlockEntity extends BlockEntity implements GeoBlockE
                 lastStatus = "moving target lost — SEARCH/HOLD " + (movingTargetMissingTicks / 20) + "s/300s";
                 if (movingTargetMissingTicks >= 20 * 60 * 5) {
                     controller.abort();
+                    restoreShipGravity(missile);
                     commandingFlight = false;
                     releaseThrusters();
                     lastStatus = "safe abort — moving target unavailable for five minutes";
@@ -1232,9 +1232,8 @@ public class ShipVlsGuidanceBlockEntity extends BlockEntity implements GeoBlockE
             // force=true: never treat ship-cache cooldown as "flight over"
             ServerSubLevel loaded = resolveShipCached(sl, true);
             if (loaded == null) {
-                // Ship unloaded / gone — end guidance ownership only
+                // Keep guidance ownership and retry: gravity may still be suppressed on the ship.
                 releaseThrusters();
-                commandingFlight = false;
                 lastSyncedPhase = null;
                 lastSyncedThrottle = -1;
                 lastStatus = "ship lost mid-flight";
@@ -1596,7 +1595,7 @@ public class ShipVlsGuidanceBlockEntity extends BlockEntity implements GeoBlockE
         FleetFireControlManager.unregister(this);
         if (level instanceof ServerLevel sl) {
             ServerSubLevel ship = resolveShipCached(sl);
-            if (ship != null) AeroStabilizerSystem.clear(ship);
+            if (ship != null) AeroFlightCore.release(ship);
             VectorMixer.shutdown(level, aeroLinks);
         }
         super.setRemoved();

@@ -27,6 +27,13 @@ import java.util.concurrent.ConcurrentHashMap;
 public final class NpcAuraFx {
     private static final Map<UUID, Boolean> ACTIVE = new ConcurrentHashMap<>();
     private static final double SYNC_RANGE_SQ = 128.0 * 128.0;
+    /**
+     * Last state broadcast per NPC, so the periodic re-sync only sends when something actually
+     * changed. The tick loop re-synced every profiled NPC every 40 ticks regardless; combined
+     * with the range gate below that meant a player near the 128-block boundary received a
+     * fresh aura packet every two seconds, restarting the client-side fade each time.
+     */
+    private static final Map<UUID, Integer> LAST_SENT = new ConcurrentHashMap<>();
 
     private NpcAuraFx() {}
 
@@ -68,11 +75,25 @@ public final class NpcAuraFx {
         syncState(living, false, NpcCombatProfile.read(living));
     }
 
+    /** Forces the next {@link #sync} for this NPC to send even if nothing changed. */
+    public static void invalidate(LivingEntity living) {
+        if (living != null) {
+            LAST_SENT.remove(living.getUUID());
+        }
+    }
+
     private static void syncState(LivingEntity living, boolean on, NpcCombatProfile profile) {
         if (!(living.level() instanceof ServerLevel level)) {
             return;
         }
         NpcAuraResolver.Resolved resolved = NpcAuraResolver.resolve(profile);
+        int fingerprint = java.util.Objects.hash(on, resolved.layers(), resolved.lightning(),
+                resolved.lightningRgb(), resolved.sparking(), resolved.groundRing(),
+                NpcCombatProfile.clampAuraScale(profile.auraScale));
+        Integer previous = LAST_SENT.put(living.getUUID(), fingerprint);
+        if (previous != null && previous == fingerprint) {
+            return;
+        }
         NpcAuraPacket packet = new NpcAuraPacket(living.getUUID(), on,
                 NpcCombatProfile.clampAuraScale(profile.auraScale), resolved);
         for (ServerPlayer viewer : level.players()) {
@@ -133,6 +154,7 @@ public final class NpcAuraFx {
             return;
         }
         Entity entity = event.getEntity();
+        LAST_SENT.remove(entity.getUUID());
         Entity.RemovalReason reason = entity.getRemovalReason();
         if (reason == Entity.RemovalReason.UNLOADED_TO_CHUNK
                 || reason == Entity.RemovalReason.UNLOADED_WITH_PLAYER

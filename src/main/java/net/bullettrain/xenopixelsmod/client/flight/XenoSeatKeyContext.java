@@ -10,7 +10,7 @@ import net.neoforged.neoforge.client.settings.IKeyConflictContext;
  *
  * <p><b>Why this exists.</b> The seat bindings deliberately sit on keys a pilot expects — Q/E
  * for roll, G for flaps, middle mouse to lock — and several of those are already spoken for by
- * this mod's own ground-combat bindings (charge fist on R, charge kick on middle mouse,
+ * this mod's own ground-combat bindings (charge fist on left click, charge kick on middle mouse,
  * sparking on Y). With every binding in {@link net.neoforged.neoforge.client.settings.KeyConflictContext#IN_GAME}
  * those pairs are live at the same time, so one key press fires both actions and the Controls
  * screen flags them as conflicting even though the two can never sensibly be used together.

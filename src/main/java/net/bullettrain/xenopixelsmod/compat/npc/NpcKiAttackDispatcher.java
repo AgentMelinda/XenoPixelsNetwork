@@ -8,7 +8,10 @@ import com.dragonminez.common.init.entities.ki.KiExplosionEntity;
 import com.dragonminez.common.init.entities.ki.KiLaserEntity;
 import com.dragonminez.common.init.entities.ki.KiWaveEntity;
 import com.dragonminez.common.stats.techniques.KiAttackData;
+import net.bullettrain.xenopixelsmod.combat.targeting.LeadCalculator;
+import net.bullettrain.xenopixelsmod.combat.targeting.TargetMotionEstimator;
 import net.bullettrain.xenopixelsmod.combat.technique.KiFixedAim;
+import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.phys.Vec3;
@@ -98,8 +101,23 @@ public final class NpcKiAttackDispatcher {
      * {@code setup*} method that matches that id (or the {@code *Player} + {@code fireHability}
      * pair when DMZ has no non-player overload).
      */
+    public static boolean supportsPredefinedTechnique(String id) {
+        if (id == null) return false;
+        return switch (id.toLowerCase(java.util.Locale.ROOT)) {
+            case "kamehameha", "galick_gun", "final_flash", "masenko", "sokidan", "burning_attack",
+                    "big_bang", "spiritbomb", "supernova", "ki_barrage", "taiyoken", "kienzan",
+                    "kienzan_doble", "death_beam", "emperor_death_beam", "makkanko", "final_explosion",
+                    "soul_punisher", "fake_moon", "supernova_cooler" -> true;
+            default -> false;
+        };
+    }
+
     public static boolean firePredefinedTechnique(String id, LivingEntity caster, NpcCombatProfile profile,
                                                   int durationTicks, LivingEntity aimAt, int colorOverride) {
+        // Reject unsupported registry entries before charging, and use the same canonical id in
+        // lookup and dispatch (lookup has always been case-insensitive).
+        if (!supportsPredefinedTechnique(id) || caster == null || profile == null) return false;
+        id = id.toLowerCase(java.util.Locale.ROOT);
         KiAttackData data = PredefinedTechniqueLookup.find(id);
         if (data == null) {
             return false;
@@ -286,16 +304,16 @@ public final class NpcKiAttackDispatcher {
         if (projectile == null || caster == null) {
             return;
         }
-        Vec3 dir = desiredAim(projectile.position(), caster, target);
-        if (dir.lengthSqr() < 1.0E-8) {
-            return;
-        }
-        dir = dir.normalize();
         double moving = projectile.getDeltaMovement().length();
         float speed = moving > 1.0E-4 ? (float) moving : projectile.getKiSpeed();
         if (speed <= 0f) {
             speed = 1.0f;
         }
+        Vec3 dir = desiredAim(projectile.position(), caster, target, speed);
+        if (dir.lengthSqr() < 1.0E-8) {
+            return;
+        }
+        dir = dir.normalize();
         projectile.setHomingTarget(-1);
         projectile.setDeltaMovement(dir.scale(speed));
         float yaw = CameraAimHelper.yaw(dir);
@@ -316,8 +334,24 @@ public final class NpcKiAttackDispatcher {
      * a flyer or someone below is not shot on a flat line.
      */
     static Vec3 desiredAim(Vec3 from, LivingEntity caster, LivingEntity target) {
+        return desiredAim(from, caster, target, 0.0f);
+    }
+
+    /**
+     * As above, but leading a moving target when {@code projectileSpeed} is known.
+     *
+     * <p>Aiming at {@code getEyePosition()} alone fires at where the target <em>is</em>, so
+     * anything strafing is missed by construction. This solves the intercept with the same
+     * {@link LeadCalculator} the player-facing lead marker uses, then blends between "no lead"
+     * and "full lead" by the NPC's own {@code aimAccuracy}, so a weak NPC can be authored to
+     * miss on purpose.
+     *
+     * <p>{@code speed} arrives in blocks/tick (it is a delta-movement length), while the
+     * intercept solver works in blocks/second, hence the scale.
+     */
+    static Vec3 desiredAim(Vec3 from, LivingEntity caster, LivingEntity target, float projectileSpeed) {
         if (from != null && target != null && target.isAlive() && target != caster) {
-            Vec3 to = target.getEyePosition();
+            Vec3 to = leadPoint(from, caster, target, projectileSpeed);
             Vec3 dir = to.subtract(from);
             if (dir.lengthSqr() > 1.0E-8) {
                 return dir.normalize();
@@ -325,6 +359,30 @@ public final class NpcKiAttackDispatcher {
         }
         Vec3 look = caster != null ? caster.getLookAngle() : Vec3.ZERO;
         return look.lengthSqr() > 1.0E-8 ? look.normalize() : look;
+    }
+
+    /** World point to shoot at: the target's eyes, pulled toward the intercept by accuracy. */
+    private static Vec3 leadPoint(Vec3 from, LivingEntity caster, LivingEntity target,
+                                  float projectileSpeed) {
+        Vec3 eyes = target.getEyePosition();
+        if (projectileSpeed <= 0.0f || !(caster.level() instanceof ServerLevel level)) {
+            return eyes;
+        }
+        float accuracy = NpcCombatProfile.clampAimAccuracy(
+                NpcCombatProfile.readCached(caster).aimAccuracy);
+        if (accuracy <= 0.0f) {
+            return eyes;
+        }
+        Vec3 velocity = TargetMotionEstimator.velocityOf(level, target);
+        if (velocity.lengthSqr() < 1.0E-6) {
+            return eyes;
+        }
+        LeadCalculator.LeadResult lead =
+                LeadCalculator.linear(from, eyes, velocity, projectileSpeed * 20.0);
+        if (!lead.solvable()) {
+            return eyes;
+        }
+        return eyes.add(lead.aimPoint().subtract(eyes).scale(accuracy));
     }
 
     /**

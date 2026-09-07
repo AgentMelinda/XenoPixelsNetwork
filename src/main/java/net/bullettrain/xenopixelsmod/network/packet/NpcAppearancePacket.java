@@ -28,10 +28,13 @@ public final class NpcAppearancePacket {
     private final float auraScale;
     private final CompoundTag dmzAppearance;
     private final CompoundTag visualOptions;
+    private final String skinPlayer;
+    private final String skinUrl;
+    private final String skinUuid;
 
     public NpcAppearancePacket(UUID entityUuid, String race, String formGroup, String form) {
         this(entityUuid, race, formGroup, form, false, "", "", 0, 0, 0, 0, 0, 0,
-                0, 1.0f, new CompoundTag(), new CompoundTag());
+                0, 1.0f, new CompoundTag(), new CompoundTag(), "", "", "");
     }
 
     public NpcAppearancePacket(UUID entityUuid, String race, String formGroup, String form,
@@ -40,6 +43,18 @@ public final class NpcAppearancePacket {
                                int vitality, int kiPower, int energy,
                                int auraColor, float auraScale, CompoundTag dmzAppearance,
                                CompoundTag visualOptions) {
+        this(entityUuid, race, formGroup, form, hairEnabled, hairCode, hairColor,
+                strength, strikePower, resistance, vitality, kiPower, energy,
+                auraColor, auraScale, dmzAppearance, visualOptions, "", "", "");
+    }
+
+    public NpcAppearancePacket(UUID entityUuid, String race, String formGroup, String form,
+                               boolean hairEnabled, String hairCode, String hairColor,
+                               int strength, int strikePower, int resistance,
+                               int vitality, int kiPower, int energy,
+                               int auraColor, float auraScale, CompoundTag dmzAppearance,
+                               CompoundTag visualOptions,
+                               String skinPlayer, String skinUrl, String skinUuid) {
         this.entityUuid = entityUuid;
         this.race = safe(race);
         this.formGroup = safe(formGroup);
@@ -57,6 +72,9 @@ public final class NpcAppearancePacket {
         this.auraScale = NpcCombatProfile.clampAuraScale(auraScale);
         this.dmzAppearance = dmzAppearance == null ? new CompoundTag() : dmzAppearance.copy();
         this.visualOptions = visualOptions == null ? new CompoundTag() : visualOptions.copy();
+        this.skinPlayer = safe(skinPlayer);
+        this.skinUrl = safe(skinUrl);
+        this.skinUuid = safe(skinUuid);
     }
 
     public NpcAppearancePacket(FriendlyByteBuf buf) {
@@ -79,6 +97,9 @@ public final class NpcAppearancePacket {
         dmzAppearance = appearance == null ? new CompoundTag() : appearance;
         CompoundTag options = buf.readNbt();
         visualOptions = options == null ? new CompoundTag() : options;
+        skinPlayer = buf.readUtf();
+        skinUrl = buf.readUtf();
+        skinUuid = buf.readUtf();
     }
 
     public void encode(FriendlyByteBuf buf) {
@@ -99,6 +120,9 @@ public final class NpcAppearancePacket {
         buf.writeFloat(auraScale);
         buf.writeNbt(dmzAppearance);
         buf.writeNbt(visualOptions);
+        buf.writeUtf(skinPlayer);
+        buf.writeUtf(skinUrl);
+        buf.writeUtf(skinUuid);
     }
 
     public static void handle(NpcAppearancePacket msg, Supplier<NetworkEvent.Context> ctx) {
@@ -108,7 +132,8 @@ public final class NpcAppearancePacket {
                         msg.hairEnabled, msg.hairCode, msg.hairColor,
                         msg.strength, msg.strikePower, msg.resistance,
                         msg.vitality, msg.kiPower, msg.energy,
-                        msg.auraColor, msg.auraScale, msg.dmzAppearance, msg.visualOptions));
+                        msg.auraColor, msg.auraScale, msg.dmzAppearance, msg.visualOptions,
+                        msg.skinPlayer, msg.skinUrl, msg.skinUuid));
         ctx.get().setPacketHandled(true);
     }
 

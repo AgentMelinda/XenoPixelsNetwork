@@ -26,6 +26,7 @@ public final class XenoThrusterControl {
     private static final AtomicLong lastSweepNanos = new AtomicLong();
     private static final long SWEEP_INTERVAL_NANOS = 30_000_000_000L;
     private static final long STALE_AFTER_NANOS = 300_000_000_000L;
+    private static final long THRUSTER_STALE_AFTER_NANOS = 60_000_000_000L;
 
     private final Map<String, ThrusterForce> thrusters = new ConcurrentHashMap<>();
     private volatile ThrusterForce[] physicsSnapshot = new ThrusterForce[0];
@@ -55,7 +56,10 @@ public final class XenoThrusterControl {
             // seen by its OWN dimension's tick, so anything unseen for this long is genuinely gone.
             if (now - lastSweepNanos.get() >= SWEEP_INTERVAL_NANOS) {
                 lastSweepNanos.set(now);
-                CONTROLS.values().removeIf(control -> now - control.lastSeenNanos > STALE_AFTER_NANOS);
+                CONTROLS.values().removeIf(control -> {
+                    control.removeStaleThrusters(now);
+                    return now - control.lastSeenNanos > STALE_AFTER_NANOS;
+                });
             }
         });
         XenoPixelsMod.LOGGER.info("Registered Sable thruster physics callback");
@@ -76,12 +80,15 @@ public final class XenoThrusterControl {
             removeThruster(key);
             return;
         }
+        long now = System.nanoTime();
         ThrusterForce force = thrusters.get(key);
         if (force != null) {
             force.state = new ForceState(posX, posY, posZ, forceX, forceY, forceZ, power);
+            force.lastPublishedNanos = now;
             return;
         }
-        thrusters.put(key, new ThrusterForce(new ForceState(posX, posY, posZ, forceX, forceY, forceZ, power)));
+        thrusters.put(key, new ThrusterForce(
+                new ForceState(posX, posY, posZ, forceX, forceY, forceZ, power), now));
         rebuildSnapshot();
     }
 
@@ -100,6 +107,12 @@ public final class XenoThrusterControl {
 
     private void rebuildSnapshot() {
         physicsSnapshot = thrusters.values().toArray(ThrusterForce[]::new);
+    }
+
+    private void removeStaleThrusters(long now) {
+        boolean changed = thrusters.entrySet().removeIf(
+                entry -> now - entry.getValue().lastPublishedNanos > THRUSTER_STALE_AFTER_NANOS);
+        if (changed) rebuildSnapshot();
     }
 
     private void physicsTick(ServerSubLevel subLevel, RigidBodyHandle handle, double deltaSeconds) {
@@ -162,7 +175,12 @@ public final class XenoThrusterControl {
 
     private static final class ThrusterForce {
         private volatile ForceState state;
-        private ThrusterForce(ForceState state) { this.state = state; }
+        private volatile long lastPublishedNanos;
+
+        private ThrusterForce(ForceState state, long lastPublishedNanos) {
+            this.state = state;
+            this.lastPublishedNanos = lastPublishedNanos;
+        }
     }
 
     private record ForceState(double posX, double posY, double posZ,

@@ -36,7 +36,7 @@ public final class CombatSkills {
         DEFS.put(GUIDE, new SkillDef(GUIDE, "Ki Guidance",
                 "Hold Left Alt (or Mouse 5) to home lock-on ki, barrages, and surged beams", 1, 3));
         DEFS.put(HAKAI, new SkillDef(HAKAI, "Hakai",
-                "Unlocks the Hakai erasure technique (Ctrl + left click)", 3, 1));
+                "Unlocks Hakai (hold J, or /xenohakai use)", 3, 1));
     }
 
     private CombatSkills() {}

@@ -25,6 +25,7 @@ public class XenoPlayerData {
     private final Map<String, Integer> skillLevels = new HashMap<>();
     /** Points spent on skills (earned via quests / dummy milestones). */
     private int skillPoints = 0;
+    private int multiFormMastery;
     private UUID mentorUuid;
     private String mentorName = "";
     private String questId = "";
@@ -91,6 +92,25 @@ public class XenoPlayerData {
 
     public String getSuperSoulId() { return superSoulId == null ? "" : superSoulId; }
     public void setSuperSoulId(String id) { this.superSoulId = id == null ? "" : id; }
+
+    /**
+     * Shi Shin No Ken mastery, 0 to {@code CloneFormation.PERFECT_MASTERY}. Accrues while divided
+     * and closes the power split it normally costs; at the cap the division is free.
+     *
+     * <p>A usage counter rather than one of the point-buy skill levels above, which are capped at
+     * three and spent from skill points — neither of which can express a thousand-step ramp.
+     */
+    public int getMultiFormMastery() { return multiFormMastery; }
+
+    public void setMultiFormMastery(int value) {
+        this.multiFormMastery = Math.max(0, Math.min(
+                net.bullettrain.xenopixelsmod.combat.clone.CloneFormation.PERFECT_MASTERY, value));
+    }
+
+    public void addMultiFormMastery(int amount) {
+        if (amount > 0) setMultiFormMastery(multiFormMastery + Math.min(amount,
+                net.bullettrain.xenopixelsmod.combat.clone.CloneFormation.PERFECT_MASTERY));
+    }
 
     public int getSkillPoints() { return skillPoints; }
     public void setSkillPoints(int points) { this.skillPoints = Math.max(0, points); }
@@ -168,6 +188,7 @@ public class XenoPlayerData {
         this.maxStamina = other.maxStamina;
         this.superSoulId = other.superSoulId;
         this.skillPoints = other.skillPoints;
+        setMultiFormMastery(other.multiFormMastery);
         this.skillLevels.clear();
         this.skillLevels.putAll(other.skillLevels);
         this.mentorUuid = other.mentorUuid;
@@ -187,6 +208,7 @@ public class XenoPlayerData {
         tag.putFloat("MaxStamina", maxStamina);
         tag.putString("SuperSoul", getSuperSoulId());
         tag.putInt("SkillPoints", skillPoints);
+        tag.putInt("MultiFormMastery", multiFormMastery);
         CompoundTag skills = new CompoundTag();
         for (Map.Entry<String, Integer> e : skillLevels.entrySet()) {
             skills.putInt(e.getKey(), e.getValue());
@@ -211,6 +233,7 @@ public class XenoPlayerData {
         maxStamina = tag.getFloat("MaxStamina");
         superSoulId = tag.contains("SuperSoul") ? tag.getString("SuperSoul") : "";
         skillPoints = tag.getInt("SkillPoints");
+        setMultiFormMastery(tag.getInt("MultiFormMastery"));
         skillLevels.clear();
         if (tag.contains("Skills", Tag.TAG_COMPOUND)) {
             CompoundTag skills = tag.getCompound("Skills");

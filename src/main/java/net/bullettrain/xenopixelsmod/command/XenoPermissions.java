@@ -91,7 +91,10 @@ public final class XenoPermissions {
     // -------------------------------------------------------------------------
     /** Gates actually using the Hakai ability itself, not just the admin command. */
     public static final PermissionNode<Boolean> HAKAI_USE =
-            op("hakai.use", "Use the Hakai erasure technique");
+            everyone("hakai.use", "Use the Hakai erasure technique");
+    /** Allows Xeno rush techniques without changing DMZ's cost, cooldown, or target checks. */
+    public static final PermissionNode<Boolean> BT3_RUSH_UNLOCK_BYPASS =
+            op("bt3.rush.unlock_bypass", "Use Xeno rush techniques without DMZ unlock requirements");
     public static final PermissionNode<Boolean> HAKAI_SET =
             op("hakai.set", "Use /xenohakai toggle|kicost|range|cooldown <value>");
 
@@ -176,6 +179,10 @@ public final class XenoPermissions {
     }
 
     private static PermissionNode<Boolean> client(String nodeId, String description) {
+        return register(nodeId, description, XenoPermissions::everyoneDefault, true);
+    }
+
+    private static PermissionNode<Boolean> everyone(String nodeId, String description) {
         return register(nodeId, description, XenoPermissions::everyoneDefault, true);
     }
 

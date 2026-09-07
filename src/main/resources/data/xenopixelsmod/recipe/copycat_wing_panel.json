@@ -1,0 +1,10 @@
+{
+  "type": "minecraft:crafting_shapeless",
+  "category": "building",
+  "ingredients": [
+    { "item": "xenopixelsmod:wing_panel" },
+    { "item": "minecraft:glass" }
+  ],
+  "result": { "id": "xenopixelsmod:copycat_wing_panel", "count": 1 },
+  "show_notification": true
+}

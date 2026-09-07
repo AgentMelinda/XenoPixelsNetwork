@@ -1,5 +1,17 @@
 # Third-party notices
 
+## DragonMineZ integration
+
+The locally resolved `libs/dragonminez-2.1.3.jar` declares version 2.1.3 and
+`license="GNU General Public License v3.0"` in `META-INF/neoforge.mods.toml`.
+The clone combat policy and executor are original XenoPixels implementations using verified
+public dependency APIs; no decompiled `SagasCombatBrain` or `CombatContext` source was ported.
+Dependency inspection was used to establish signatures, resource spending and damage attribution.
+
+This notice does not relicense XenoPixels, grant permission to copy DragonMineZ implementation,
+or resolve GPL linking/distribution obligations for this All Rights Reserved project. Any
+source-port or distribution decision requiring permission/licensing review remains pending.
+
 ## Create
 
 The copycat model-data, appearance, and redraw implementation is adapted from the Create

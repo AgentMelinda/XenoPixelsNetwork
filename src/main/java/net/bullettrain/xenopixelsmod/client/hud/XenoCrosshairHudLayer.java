@@ -196,8 +196,12 @@ public final class XenoCrosshairHudLayer {
         Vec3 velocity = ClientLockState.velocity();
         if (velocity == null || mc.player == null) return;
 
-        LeadCalculator.LeadResult lead = LeadCalculator.linear(mc.player.getEyePosition(),
-                targetAimPoint, velocity, XenoClientConfig.leadAssistProjectileSpeed);
+        Vec3 shooterVelocity = mc.player.getDeltaMovement()
+                .scale(XenoClientConfig.leadAssistShooterVelocityInheritance);
+        LeadCalculator.LeadResult lead = LeadCalculator.withGravityDrop(mc.player.getEyePosition(),
+                targetAimPoint, velocity, shooterVelocity,
+                XenoClientConfig.leadAssistProjectileSpeed,
+                XenoClientConfig.leadAssistGravity);
         if (!lead.solvable()) return;
 
         WorldToScreenCache.ScreenPoint screen = WorldToScreenCache.project(lead.aimPoint(),

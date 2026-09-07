@@ -29,6 +29,8 @@ public final class ChaseFlightAuraFx {
     private static final Vector3f AURA_CORE = new Vector3f(0.55f, 0.80f, 1.0f);
     /** Near-white edge so the shell has depth. */
     private static final Vector3f AURA_EDGE = new Vector3f(0.85f, 0.95f, 1.0f);
+    private static final DustParticleOptions CORE_DUST = new DustParticleOptions(AURA_CORE, 1.4f);
+    private static final DustParticleOptions EDGE_DUST = new DustParticleOptions(AURA_EDGE, 1.1f);
 
     private static final int RING_POINTS = 3;
     private static final double RING_SCALE = 0.85;
@@ -70,9 +72,7 @@ public final class ChaseFlightAuraFx {
             double z = player.getZ() + Math.sin(angle) * radius;
             double y = player.getY() + height * 0.1;
 
-            boolean core = (i & 1) == 0;
-            DustParticleOptions dust =
-                    new DustParticleOptions(core ? AURA_CORE : AURA_EDGE, core ? 1.4f : 1.1f);
+            DustParticleOptions dust = (i & 1) == 0 ? CORE_DUST : EDGE_DUST;
             level.sendParticles(dust, x, y, z, 0, 0.0, 0.55, 0.0, 1.0);
         }
 

@@ -1,0 +1,6 @@
+{
+  "selector": "xenopixelsmod:copycat_wing_flap_horizontal_lit",
+  "properties": {
+    "sable:mass": 0.6
+  }
+}

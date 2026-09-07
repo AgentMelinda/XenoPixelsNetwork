@@ -14,14 +14,17 @@ import com.dragonminez.common.stats.character.Character;
 import com.dragonminez.common.stats.extras.ActionMode;
 import com.mojang.authlib.GameProfile;
 import com.mojang.blaze3d.vertex.PoseStack;
+import net.bullettrain.xenopixelsmod.XenoPixelsMod;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 import net.bullettrain.xenopixelsmod.compat.npc.NpcCombatProfile;
+import net.bullettrain.xenopixelsmod.compat.npc.NpcSkillSet;
 import net.bullettrain.xenopixelsmod.compat.npc.NpcDisplayApply;
 import net.bullettrain.xenopixelsmod.compat.npc.NpcDmzAppearance;
 import net.bullettrain.xenopixelsmod.compat.npc.NpcAuraResolver;
 import net.bullettrain.xenopixelsmod.compat.npc.NpcFormLookup;
 import net.minecraft.client.multiplayer.ClientLevel;
+import net.minecraft.world.entity.player.Player;
 import net.minecraft.client.player.AbstractClientPlayer;
 import net.minecraft.client.renderer.MultiBufferSource;
 import net.minecraft.world.entity.EquipmentSlot;
@@ -39,6 +42,7 @@ import java.util.Objects;
 import java.util.UUID;
 import java.util.WeakHashMap;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 
 /** Renders a CustomNPC through DragonMineZ's actual player renderer in FULL mode. */
@@ -53,6 +57,7 @@ public final class NpcFullDmzRenderer {
     private static final Map<UUID, NpcAuraResolver.Resolved> NATIVE_AURAS = new ConcurrentHashMap<>();
     /** Active only while a synthetic NPC proxy is inside DMZ's renderer. */
     private static final ThreadLocal<RenderContext> RENDER_CONTEXT = new ThreadLocal<>();
+    private static final AtomicBoolean ANIMATION_DELIVERY_FAILURE_LOGGED = new AtomicBoolean();
 
     private record RenderContext(StatsData stats, Character character,
                                  FormConfig.FormData activeForm,
@@ -67,6 +72,13 @@ public final class NpcFullDmzRenderer {
     private static final class ProxyPlayer extends AbstractClientPlayer {
         LivingEntity owner;
         String syncedHairCode;
+        String syncedSkinName = "";
+        int lastCopyStatsTick = Integer.MIN_VALUE;
+
+        @Override
+        public net.minecraft.client.resources.PlayerSkin getSkin() {
+            return owner instanceof AbstractClientPlayer player ? player.getSkin() : super.getSkin();
+        }
 
         ProxyPlayer(ClientLevel level, GameProfile profile) {
             super(level, profile);
@@ -94,9 +106,10 @@ public final class NpcFullDmzRenderer {
         NpcAppearanceClient.State state = NpcAppearanceClient.get(owner.getUUID());
         if (state == null) return false;
 
-        ProxyPlayer proxy = worldProxy(owner, level);
+        ProxyPlayer proxy = worldProxy(owner, level, state);
         proxy.owner = owner;
         syncWorldEntity(proxy, owner);
+        playPendingAnimation(proxy, owner);
         StatsData stats = StatsProvider.get(StatsCapability.INSTANCE, proxy).orElse(null);
         if (stats == null) return false;
         syncCharacter(proxy, stats.getCharacter(), state);
@@ -108,6 +121,9 @@ public final class NpcFullDmzRenderer {
         NpcCombatProfile visual = visualProfile(state);
         NATIVE_AURAS.put(owner.getUUID(), NpcAuraResolver.resolve(visual));
         stats.getStatus().setForceHalo(visual.haloOn);
+        stats.getSkills().removeAllSkills();
+        syncKiWeapon(stats, visual);
+        syncFlySkill(stats, visual);
         TransformSnapshot transform = syncTransformHold(stats, owner, state, partialTick);
         FormConfig.FormData activeForm = resolveActiveForm(state);
         FormConfig.FormData activeStack = resolveActiveStackForm(visual);
@@ -141,7 +157,7 @@ public final class NpcFullDmzRenderer {
         NpcAppearanceClient.State state = NpcAppearanceClient.get(owner.getUUID());
         if (state == null) return false;
 
-        ProxyPlayer proxy = previewProxy(owner, level);
+        ProxyPlayer proxy = previewProxy(owner, level, state);
         proxy.owner = owner;
         syncPreviewEntity(proxy, owner);
         StatsData stats = StatsProvider.get(StatsCapability.INSTANCE, proxy).orElse(null);
@@ -152,8 +168,12 @@ public final class NpcFullDmzRenderer {
         stats.getStatus().setActionCharging(false);
         stats.getStatus().setAuraActive(false);
         stats.getStatus().setPermanentAura(false);
-        stats.getStatus().setForceHalo(visualProfile(state).haloOn);
-        NATIVE_AURAS.put(proxy.getUUID(), NpcAuraResolver.resolve(visualProfile(state)));
+        NpcCombatProfile visual = visualProfile(state);
+        stats.getStatus().setForceHalo(visual.haloOn);
+        stats.getSkills().removeAllSkills();
+        syncKiWeapon(stats, visual);
+        syncFlySkill(stats, visual);
+        NATIVE_AURAS.put(proxy.getUUID(), NpcAuraResolver.resolve(visual));
         AURA_FACTORS.put(stats, state.auraScale());
 
         float oldBody = proxy.yBodyRot;
@@ -186,7 +206,6 @@ public final class NpcFullDmzRenderer {
         graphics.pose().translate(0.0, 0.0, 320.0);
         int eyebrow = NpcDmzAppearance.sanitizeEyebrowType(
                 state.appearance().eyebrowsType, state.appearance().eyesType);
-        NpcCombatProfile visual = visualProfile(state);
         RENDER_CONTEXT.set(new RenderContext(stats, stats.getCharacter(), resolveActiveForm(state),
                 resolveActiveStackForm(visual), null, Float.NaN, eyebrow,
                 tailColor(state.appearance())));
@@ -215,6 +234,50 @@ public final class NpcFullDmzRenderer {
             proxy.yHeadRotO = oldHeadO;
         }
         return true;
+    }
+
+    private static void syncKiWeapon(StatsData stats, NpcCombatProfile visual) {
+        stats.getSkills().registerDefaultSkill("kimanipulation", 1);
+        stats.getSkills().setSkillActive("kimanipulation", visual.kiWeaponOn);
+        stats.getStatus().setKiWeaponType(
+                NpcCombatProfile.canonicalKiWeaponType(visual.kiWeaponType));
+    }
+
+    /**
+     * Mirrors {@link #syncKiWeapon}'s contract for DMZ's fly skill. {@code Skills.setSkillActive}
+     * silently no-ops when the skill was never registered on this Skills instance, and a
+     * synthetic proxy never went through DMZ's login registration, so registerDefaultSkill has
+     * to come first. It is idempotent -- an existing entry keeps its level and active flag and
+     * only has maxLevel rewritten.
+     *
+     * <p>What this buys: {@code DMZPlayerRenderer.render} applies DMZ's flight pitch/roll pose
+     * when {@code FlySkillEvent.isFlyingFast} is true, which for a non-local player is exactly
+     * "fly skill active, flight mode != 1, and moving faster than 0.55 blocks/tick".
+     */
+    private static void syncFlySkill(StatsData stats, NpcCombatProfile visual) {
+        // Fly keeps its own dedicated fields as well as living in the skill map, because it
+        // also drives CustomNPCs' navigator through NpcFlightBridge.
+        applySkill(stats, NpcSkillSet.FLY, visual.flySkillOn,
+                NpcCombatProfile.clampFlySkillLevel(visual.flySkillLevel));
+        for (java.util.Map.Entry<String, NpcSkillSet.Entry> entry : visual.skills.entries().entrySet()) {
+            if (NpcSkillSet.FLY.equals(entry.getKey())) {
+                continue; // handled above, and the dedicated fields win
+            }
+            applySkill(stats, entry.getKey(), entry.getValue().active(), entry.getValue().level());
+        }
+    }
+
+    /**
+     * Registers a DMZ skill before touching it. {@code Skills.setSkillActive} looks the skill up
+     * in an internal map and silently no-ops when it is absent, and a synthetic NPC proxy never
+     * went through DMZ's login-time registration. {@code registerDefaultSkill} is idempotent
+     * -- an existing entry keeps its level and active flag and only has maxLevel rewritten.
+     */
+    private static void applySkill(StatsData stats, String id, boolean active, int level) {
+        int maxLevel = Math.max(1, NpcSkillSet.maxLevelOf(id));
+        stats.getSkills().registerDefaultSkill(id, maxLevel);
+        stats.getSkills().setSkillLevel(id, Math.max(1, Math.min(maxLevel, level)));
+        stats.getSkills().setSkillActive(id, active);
     }
 
     /** Called only by the AuraRenderer mixin; ordinary DMZ players have no registered factor. */
@@ -319,28 +382,215 @@ public final class NpcFullDmzRenderer {
 
     static void clearCache() {
         WORLD_PROXIES.clear();
+        for (UUID id : java.util.List.copyOf(COPY_PROXIES.keySet())) forgetCopy(id);
         PREVIEW_PROXIES.clear();
         AURA_FACTORS.clear();
         NATIVE_AURAS.clear();
         RENDER_CONTEXT.remove();
     }
 
-    private static ProxyPlayer worldProxy(LivingEntity owner, ClientLevel level) {
+    private static ProxyPlayer worldProxy(LivingEntity owner, ClientLevel level,
+                                          NpcAppearanceClient.State state) {
+        String skinName = skinName(state);
         return WORLD_PROXIES.compute(owner.getUUID(), (id, current) -> {
-            if (current != null && current.level() == level) return current;
-            return new ProxyPlayer(level, new GameProfile(id, owner.getName().getString()));
+            // GameProfile is fixed at construction; rebuild when the scripted skin changes.
+            if (current != null && current.level() == level
+                    && Objects.equals(current.syncedSkinName, skinName)) return current;
+            GameProfile skin = skinProfile(state);
+            ProxyPlayer created = new ProxyPlayer(level,
+                    skin != null ? skin : new GameProfile(id, owner.getName().getString()));
+            created.syncedSkinName = skinName;
+            return created;
         });
     }
 
-    private static ProxyPlayer previewProxy(LivingEntity owner, ClientLevel level) {
+    private static ProxyPlayer previewProxy(LivingEntity owner, ClientLevel level,
+                                            NpcAppearanceClient.State state) {
+        String skinName = skinName(state);
         return PREVIEW_PROXIES.compute(owner.getUUID(), (id, current) -> {
-            if (current != null && current.level() == level) return current;
-            UUID previewUuid = UUID.nameUUIDFromBytes(
-                    ("xenopixels:dmz-preview:" + id).getBytes(StandardCharsets.UTF_8));
-            ProxyPlayer created = new ProxyPlayer(level, new GameProfile(previewUuid, "NPC Preview"));
+            if (current != null && current.level() == level
+                    && Objects.equals(current.syncedSkinName, skinName)) return current;
+            GameProfile skin = skinProfile(state);
+            if (skin == null) {
+                UUID previewUuid = UUID.nameUUIDFromBytes(
+                        ("xenopixels:dmz-preview:" + id).getBytes(StandardCharsets.UTF_8));
+                skin = new GameProfile(previewUuid, "NPC Preview");
+            }
+            ProxyPlayer created = new ProxyPlayer(level, skin);
+            created.syncedSkinName = skinName;
             created.setId(NEXT_PREVIEW_ID.getAndDecrement());
             return created;
         });
+    }
+
+    /** Scripted player-skin name, blank when the NPC keeps its own profile. */
+    private static String skinName(NpcAppearanceClient.State state) {
+        String name = state == null ? null : state.skinPlayer();
+        return name == null ? "" : name.trim();
+    }
+
+    /** GameProfile for the scripted skin, or null to keep the NPC's own profile. */
+    private static GameProfile skinProfile(NpcAppearanceClient.State state) {
+        String name = skinName(state);
+        if (name.isBlank()) {
+            return null;
+        }
+        UUID uuid = null;
+        String uuidText = state.skinUuid();
+        if (uuidText != null && !uuidText.isBlank()) {
+            try {
+                uuid = UUID.fromString(uuidText);
+            } catch (IllegalArgumentException ignored) {
+            }
+        }
+        if (uuid == null) {
+            // Deterministic placeholder until the server resolves the real UUID.
+            uuid = UUID.nameUUIDFromBytes(
+                    ("xenopixels:npc-skin:" + name).getBytes(StandardCharsets.UTF_8));
+        }
+        return new GameProfile(uuid, name);
+    }
+
+    /**
+     * Hands the proxy any clip the server queued for this NPC.
+     *
+     * <p>Exactly once per delivery. DragonMineZ reads {@code dragonminez$currentMeleeAnim}, calls
+     * {@code forceAnimationReset()} and clears it, so re-setting the same clip every frame would
+     * restart the animation every frame and the NPC would never get past its first pose - which
+     * is precisely the bug that made the player's own mash flicker.
+     */
+    private static void playPendingAnimation(AbstractClientPlayer proxy, LivingEntity owner) {
+        NpcAnimationClient.Pending pending = NpcAnimationClient.peek(owner.getUUID());
+        if (pending == null) {
+            return;
+        }
+        try {
+            // Declared as AbstractClientPlayer rather than ProxyPlayer on purpose: DragonMineZ adds
+            // IPlayerAnimatable by mixin, so javac can prove a final class does not implement it and
+            // rejects the instanceof outright.
+            if (proxy instanceof com.dragonminez.client.animation.IPlayerAnimatable animatable) {
+                animatable.dragonminez$playMeleeAnimation(pending.animation(), false, pending.speed());
+                NpcAnimationClient.consume(owner.getUUID(), pending);
+            } else if (ANIMATION_DELIVERY_FAILURE_LOGGED.compareAndSet(false, true)) {
+                XenoPixelsMod.LOGGER.warn(
+                        "Full DMZ NPC proxy does not implement IPlayerAnimatable; retaining {} for retry",
+                        pending.animation());
+            }
+        } catch (Throwable failure) {
+            if (ANIMATION_DELIVERY_FAILURE_LOGGED.compareAndSet(false, true)) {
+                XenoPixelsMod.LOGGER.warn(
+                        "Could not deliver Full DMZ NPC animation {}; retaining it for retry",
+                        pending.animation(), failure);
+            }
+        }
+    }
+
+    /**
+     * Renders {@code copy} — a Shi Shin No Ken body or a Zanzoken image — wearing {@code owner}'s
+     * real DragonMineZ appearance.
+     *
+     * <p>Far simpler than the NPC path above, and for one reason: an NPC has no DragonMineZ
+     * character, so {@code syncCharacter} has to invent one field by field. A copy's owner is a
+     * player who already has the real thing, so the proxy is handed the owner's whole
+     * {@code StatsData} and inherits hair, body type, race parts, colours, form and aura state in
+     * a single call.
+     *
+     * <p>The proxy is keyed on the <em>copy's</em> UUID, not the owner's, and takes the copy's
+     * entity id in {@link #syncWorldEntity}. That is what makes four bodies four identities:
+     * DragonMineZ's deferred aura queue de-duplicates by entity id and GeckoLib keys animation
+     * state per instance, so sharing one identity would collapse them into a single aura and a
+     * single frozen pose — which is exactly what happened when copies were drawn by re-rendering
+     * the owner.
+     *
+     * <p>Deliberately sets no {@link #RENDER_CONTEXT} and writes no entry to {@link #NATIVE_AURAS}
+     * or {@link #AURA_FACTORS}: those override appearance for NPCs that have no real data, and a
+     * copy has real data, so the native player path should apply.
+     *
+     * @return true when the copy was drawn; false means the caller should fall back
+     */
+    @SuppressWarnings({"rawtypes", "unchecked"})
+    public static boolean renderPlayerCopy(Player owner, LivingEntity copy, float entityYaw,
+                                           float partialTick, PoseStack pose,
+                                           MultiBufferSource buffers, int packedLight) {
+        if (owner == null || copy == null || !(copy.level() instanceof ClientLevel level)) return false;
+
+        StatsData ownerStats = StatsProvider.get(StatsCapability.INSTANCE, owner).orElse(null);
+        if (ownerStats == null) return false;
+
+        ProxyPlayer proxy = copyProxy(owner, copy, level);
+        proxy.owner = owner;
+
+        StatsData stats = StatsProvider.get(StatsCapability.INSTANCE, proxy).orElse(null);
+        if (stats == null) return false;
+        // Whole-stats copy rather than field-by-field. Throttled because doing it per copy per
+        // frame is pure waste — appearance changes on transform, not on every frame.
+        if (copyStatsRefreshDue(copy.tickCount, proxy.lastCopyStatsTick)) {
+            stats.copyFrom(ownerStats);
+            proxy.lastCopyStatsTick = copy.tickCount;
+        }
+        stats.getStatus().setAlive(copy.isAlive());
+
+        syncWorldEntity(proxy, copy);
+        syncArmor(proxy, owner);
+        playPendingAnimation(proxy, copy);
+
+        DMZPlayerRenderer renderer = DMZRendererCache.getTPRenderer(proxy);
+        if (renderer == null) return false;
+        try {
+            renderer.render(proxy, entityYaw, partialTick, copyRenderPose(pose), buffers, packedLight);
+        } catch (Throwable t) {
+            // Isolating the stack also protects fallback rendering after an unbalanced failure.
+            return false;
+        }
+        return true;
+    }
+
+    static PoseStack copyRenderPose(PoseStack source) {
+        PoseStack isolated = new PoseStack();
+        isolated.mulPose(source.last().pose());
+        isolated.last().normal().set(source.last().normal());
+        return isolated;
+    }
+
+    /** How often a copy's appearance is re-read from its owner. */
+    private static final int COPY_STATS_REFRESH_TICKS = 20;
+
+    static boolean copyStatsRefreshDue(int tick, int previous) {
+        return previous == Integer.MIN_VALUE || tick < previous
+                || (long) tick - previous >= COPY_STATS_REFRESH_TICKS;
+    }
+
+    /** Proxies for player copies, keyed on the copy so each body is its own identity. */
+    private static final Map<UUID, ProxyPlayer> COPY_PROXIES = new ConcurrentHashMap<>();
+
+    private static ProxyPlayer copyProxy(Player owner, LivingEntity copy, ClientLevel level) {
+        return COPY_PROXIES.compute(copy.getUUID(), (id, current) -> {
+            if (current != null && current.level() == level) return current;
+            if (current != null) evictCopyRenderer(id);
+            // Render UUID belongs to the copy; getSkin delegates to the actual skin owner.
+            GameProfile profile = new GameProfile(id, owner.getGameProfile().getName());
+            profile.getProperties().putAll(owner.getGameProfile().getProperties());
+            return new ProxyPlayer(level, profile);
+        });
+    }
+
+    /** Drops a copy's proxy once that body is gone. */
+    public static void forgetCopy(UUID copyId) {
+        if (copyId != null && COPY_PROXIES.remove(copyId) != null) evictCopyRenderer(copyId);
+    }
+
+    private static final AtomicBoolean COPY_EVICTION_FAILURE_LOGGED = new AtomicBoolean();
+
+    private static void evictCopyRenderer(UUID id) {
+        // DMZ 2.1.3 has no per-identity eviction API. Never clear unrelated player renderers.
+        try {
+            var field = DMZRendererCache.class.getDeclaredField("TP_RENDERERS");
+            field.setAccessible(true);
+            if (field.get(null) instanceof Map<?, ?> cache) cache.remove(id);
+        } catch (ReflectiveOperationException | RuntimeException failure) {
+            if (COPY_EVICTION_FAILURE_LOGGED.compareAndSet(false, true))
+                XenoPixelsMod.LOGGER.warn("Could not evict DMZ copy renderer; reload clears the dependency cache", failure);
+        }
     }
 
     private static void syncWorldEntity(ProxyPlayer to, LivingEntity from) {
@@ -364,8 +614,21 @@ public final class NpcFullDmzRenderer {
         to.setSwimming(from.isSwimming());
         to.setShiftKeyDown(from.isShiftKeyDown());
         to.setOnGround(from.onGround());
+        // Swing state, or the proxy never animates an attack. DragonMineZ decides whether to play
+        // an attack clip with exactly `attackAnim > 0 || swinging || swingTime > 0`
+        // (PlayerGeoAnimatableMixin#attackPredicate); all three are permanently zero on a freshly
+        // built proxy, so a Full-mode NPC landed hits with its arms hanging still. The NPC's own
+        // client entity has the live values already - vanilla broadcasts swing() and
+        // updateSwingTime() runs in its tick - they were simply never read across.
+        to.attackAnim = from.attackAnim;
+        to.oAttackAnim = from.oAttackAnim;
+        to.swinging = from.swinging;
+        to.swingTime = from.swingTime;
+        to.swingingArm = from.swingingArm;
+        syncArmor(to, from);
     }
 
+    /** Deliberately no swing state: the appearance preview should stand still and pose. */
     private static void syncPreviewEntity(ProxyPlayer to, LivingEntity from) {
         to.setPos(from.getX(), from.getY(), from.getZ());
         to.xo = from.getX();
@@ -377,6 +640,20 @@ public final class NpcFullDmzRenderer {
         to.setSwimming(false);
         to.setShiftKeyDown(false);
         to.setOnGround(true);
+        syncArmor(to, from);
+    }
+
+    /**
+     * DMZ's armor layer reads {@code AbstractClientPlayer.getInventory().armor} directly
+     * rather than {@code getItemBySlot}, so {@link ProxyPlayer}'s read-only override is
+     * never consulted for rendering. Mirror the NPC's real armor into the proxy's own
+     * inventory every sync so equipped items actually show.
+     */
+    private static void syncArmor(ProxyPlayer to, LivingEntity from) {
+        to.setItemSlot(EquipmentSlot.HEAD, from.getItemBySlot(EquipmentSlot.HEAD));
+        to.setItemSlot(EquipmentSlot.CHEST, from.getItemBySlot(EquipmentSlot.CHEST));
+        to.setItemSlot(EquipmentSlot.LEGS, from.getItemBySlot(EquipmentSlot.LEGS));
+        to.setItemSlot(EquipmentSlot.FEET, from.getItemBySlot(EquipmentSlot.FEET));
     }
 
     private static void syncCharacter(ProxyPlayer proxy, Character character,
@@ -401,6 +678,7 @@ public final class NpcFullDmzRenderer {
         character.setActiveHeadBone(a.activeHeadBone);
         character.setHasSaiyanTail(a.saiyanTail);
         character.setRenderHairBase(a.renderHairBase);
+        character.setArmored(true);
 
         String hairCode = state.hairCode() == null ? "" : state.hairCode().trim();
         if (!Objects.equals(proxy.syncedHairCode, hairCode)) {

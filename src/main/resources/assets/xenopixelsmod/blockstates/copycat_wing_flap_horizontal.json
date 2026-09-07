@@ -1,0 +1,27 @@
+{
+  "variants": {
+    "axis=y,role=none": { "model": "xenopixelsmod:block/wing_panel", "x": 180 },
+    "axis=z,role=none": { "model": "xenopixelsmod:block/wing_panel", "x": 270 },
+    "axis=x,role=none": { "model": "xenopixelsmod:block/wing_panel", "x": 270, "y": 90 },
+
+    "axis=y,role=flap": { "model": "xenopixelsmod:block/wing_panel" },
+    "axis=z,role=flap": { "model": "xenopixelsmod:block/wing_panel" },
+    "axis=x,role=flap": { "model": "xenopixelsmod:block/wing_panel" },
+
+    "axis=y,role=pitch": { "model": "xenopixelsmod:block/wing_panel" },
+    "axis=z,role=pitch": { "model": "xenopixelsmod:block/wing_panel" },
+    "axis=x,role=pitch": { "model": "xenopixelsmod:block/wing_panel" },
+
+    "axis=y,role=roll": { "model": "xenopixelsmod:block/wing_panel" },
+    "axis=z,role=roll": { "model": "xenopixelsmod:block/wing_panel" },
+    "axis=x,role=roll": { "model": "xenopixelsmod:block/wing_panel" },
+
+    "axis=y,role=yaw": { "model": "xenopixelsmod:block/wing_panel" },
+    "axis=z,role=yaw": { "model": "xenopixelsmod:block/wing_panel" },
+    "axis=x,role=yaw": { "model": "xenopixelsmod:block/wing_panel" },
+
+    "axis=y,role=brake": { "model": "xenopixelsmod:block/wing_panel" },
+    "axis=z,role=brake": { "model": "xenopixelsmod:block/wing_panel" },
+    "axis=x,role=brake": { "model": "xenopixelsmod:block/wing_panel" }
+  }
+}

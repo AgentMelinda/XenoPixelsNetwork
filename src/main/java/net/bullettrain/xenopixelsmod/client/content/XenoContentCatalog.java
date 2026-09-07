@@ -183,8 +183,8 @@ public final class XenoContentCatalog {
                 "Free-running counter; finisher every maxComboSteps. No auto pull.", 0xFFEF5350));
         c.skills.add(entry("kick", "Charge Kick", "Hold Middle Mouse",
                 "Chain kicks + particles. W=up / S=down bias. No self lunge.", 0xFFFF69B4));
-        c.skills.add(entry("fist", "Charge Fist", "Hold R",
-                "Charge punch chain + particles. No self lunge.", 0xFFFFB74D));
+        c.skills.add(entry("fist", "Charge Fist", "Hold Left Click · tap then hold",
+                "Hold mashes the 13-hit string. Tap Left Click, then hold it to charge a punch.", 0xFFFFB74D));
         c.skills.add(entry("dragon", "Dragon Dash", "Hold N · lock-on",
                 "Launch target then chase. Stamina + KI.", 0xFFFFD54F));
         c.skills.add(entry("overcharge", "KI Overcharge", "Release > 175%",

@@ -4,6 +4,9 @@
   "refmap": "mixins.xenopixelsmod.refmap.json",
   "compatibilityLevel": "JAVA_21",
   "mixins": [
+    "common.EntityEffectSaveMixin",
+    "common.PredefinedTechniquesStrikeMixin",
+    "common.StrikeAttackCostMixin",
     "common.DeleteTechniqueC2SAccessor",
     "common.KiBlastC2SMixin",
     "common.KiAttackDataLimitsMixin",
@@ -32,10 +35,16 @@
     "common.VanillaCombatAttributeCapMixin"
   ],
   "client": [
+    "client.MinecraftFistOwnershipMixin",
+    "client.PlayerAttackHelperGateMixin",
     "client.ClientStatsEventsMixin",
     "client.DeleteTechniqueConfirmMixin",
     "client.DmzCameraShakeViewMixin",
     "client.DmzFirstPersonCamOnControlMixin",
+    "client.DmzFlyPoseOnSeatMixin",
+    "client.DmzFlyMovementDuringChaseMixin",
+    "client.DmzCombatFlyMovementDuringChaseMixin",
+    "client.DmzLockOnAccessor",
     "client.DmzLockOnNpcMixin",
     "client.DmzLockOnLosMixin",
     "client.DmzLockOnLosEventMixin",

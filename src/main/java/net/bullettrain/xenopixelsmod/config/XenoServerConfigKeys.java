@@ -77,6 +77,20 @@ public final class XenoServerConfigKeys {
                 () -> XenoServerConfig.hakaiEnabled,
                 v -> XenoServerConfig.hakaiEnabled = v,
                 "hakai");
+        bool("hakaiTargetGlow", "Outline the Hakai target while the channel runs",
+                () -> XenoServerConfig.hakaiTargetGlow,
+                v -> XenoServerConfig.hakaiTargetGlow = v,
+                "hakaiglow");
+        flt("hakaiPoiseFraction", "Damage a Hakai channel survives (fraction of max HP)",
+                () -> XenoServerConfig.hakaiPoiseFraction,
+                v -> XenoServerConfig.hakaiPoiseFraction = Math.max(0f, Math.min(1f, v)),
+                "hakaipoise");
+        // Registered as a float even though the field is a double: there is no DOUBLE Kind, and
+        // an interrupt distance in blocks needs nowhere near double precision.
+        flt("hakaiMoveInterruptDistance", "Blocks a Hakai caster may drift before it breaks",
+                () -> (float) XenoServerConfig.hakaiMoveInterruptDistance,
+                v -> XenoServerConfig.hakaiMoveInterruptDistance = Math.max(0.5, Math.min(32.0, v)),
+                "hakaimove");
         bool("bt3ChaseDashEnabled", "Chase dash",
                 () -> XenoServerConfig.bt3ChaseDashEnabled,
                 v -> XenoServerConfig.bt3ChaseDashEnabled = v,
@@ -85,6 +99,83 @@ public final class XenoServerConfigKeys {
                 () -> XenoServerConfig.chaseFlightEnabled,
                 v -> XenoServerConfig.chaseFlightEnabled = v,
                 "chaseflight");
+        flt("chaseFlightSpeed", "Chase fly speed in blocks/tick",
+                () -> (float) XenoServerConfig.chaseFlightSpeed,
+                v -> XenoServerConfig.chaseFlightSpeed = Math.max(0.1, Math.min(20.0, v)),
+                "chasespeed", "chaseflightspeed");
+        flt("chaseMaxRange", "Chase start range in blocks (0 = unlimited)",
+                () -> (float) XenoServerConfig.chaseMaxRange,
+                v -> XenoServerConfig.chaseMaxRange = Math.max(0.0, v),
+                "chaserange", "chasemaxrange");
+        integer("chaseFlightTimeoutTicks", "Chase fly timeout in ticks",
+                () -> XenoServerConfig.chaseFlightTimeoutTicks,
+                v -> XenoServerConfig.chaseFlightTimeoutTicks = Math.max(40, Math.min(12000, v)),
+                "chasetimeout");
+        flt("vanishMaxRange", "Vanish max range",
+                () -> (float) XenoServerConfig.vanishMaxRange,
+                v -> XenoServerConfig.vanishMaxRange = Math.max(1.0, v),
+                "vanishrange");
+        flt("hakaiKiCost", "Hakai KI cost",
+                () -> XenoServerConfig.hakaiKiCost,
+                v -> XenoServerConfig.hakaiKiCost = Math.max(0f, v),
+                "hakaiki");
+        flt("hakaiMaxRange", "Hakai range in blocks",
+                () -> (float) XenoServerConfig.hakaiMaxRange,
+                v -> XenoServerConfig.hakaiMaxRange = Math.max(1.0, Math.min(64.0, v)),
+                "hakairange");
+        integer("hakaiCooldownTicks", "Hakai cooldown ticks",
+                () -> XenoServerConfig.hakaiCooldownTicks,
+                v -> XenoServerConfig.hakaiCooldownTicks = Math.max(0, Math.min(2400, v)),
+                "hakaicd");
+        integer("hakaiChannelTicks", "Hakai channel length ticks",
+                () -> XenoServerConfig.hakaiChannelTicks,
+                v -> XenoServerConfig.hakaiChannelTicks = Math.max(10, Math.min(400, v)),
+                "hakaichannel");
+        flt("chaseStopGap", "Blocks short of the target where chase stops (0 = on them)",
+                () -> (float) XenoServerConfig.chaseStopGap,
+                v -> XenoServerConfig.chaseStopGap = Math.max(0.0, Math.min(8.0, v)),
+                "chasestop", "chasestopgap");
+        flt("vanishGap", "Blocks behind the target a vanish lands",
+                () -> (float) XenoServerConfig.vanishGap,
+                v -> XenoServerConfig.vanishGap = Math.max(0.0, Math.min(16.0, v)),
+                "vanishdistance", "vanishgap");
+        bool("vanishOpenSpotSearch", "Move a vanish landing off solid blocks (off = original)",
+                () -> XenoServerConfig.vanishOpenSpotSearch,
+                v -> XenoServerConfig.vanishOpenSpotSearch = v,
+                "vanishopenspot", "vanishunstick");
+        flt("vanishNearField", "Range under which vanish uses the target's own back (0 = off)",
+                () -> (float) XenoServerConfig.vanishNearField,
+                v -> XenoServerConfig.vanishNearField = Math.max(0.0, Math.min(8.0, v)),
+                "vanishnear", "vanishnearfield");
+        flt("vanishSide", "Left/right vanish offset",
+                () -> (float) XenoServerConfig.vanishSide,
+                v -> XenoServerConfig.vanishSide = Math.max(0.0, Math.min(8.0, v)),
+                "vanishside");
+        flt("kickKnockbackScale", "Kick knockback distance scale",
+                () -> XenoServerConfig.kickKnockbackScale,
+                v -> XenoServerConfig.kickKnockbackScale = Math.max(0.1f, Math.min(8f, v)),
+                "kickkb", "kickknockback");
+        integer("comboAnimGeneration", "Combat animation generation: 1 original, 2 twins, 3 BT3, 4 centred BT3 rush",
+                () -> XenoServerConfig.comboAnimGeneration,
+                v -> XenoServerConfig.comboAnimGeneration =
+                        net.bullettrain.xenopixelsmod.combat.anim.Bt3AnimationCatalog.clampGeneration(v),
+                "comboanimgen", "animgen");
+        integer("comboMashIntervalTicks", "Ticks between beats of a held mash (also sets clip speed)",
+                () -> XenoServerConfig.comboMashIntervalTicks,
+                v -> XenoServerConfig.comboMashIntervalTicks = Math.max(2, Math.min(20, v)),
+                "mashinterval", "combobeat");
+        integer("comboLaunchKickEvery", "Every Nth mash beat is a charge-kick knockback (0 = off)",
+                () -> XenoServerConfig.comboLaunchKickEvery,
+                v -> XenoServerConfig.comboLaunchKickEvery = Math.max(0, Math.min(32, v)),
+                "launchkickevery", "combokickevery");
+        flt("comboLauncherUp", "Mash/charge launcher Y (off the floor)",
+                () -> XenoServerConfig.comboLauncherUp,
+                v -> XenoServerConfig.comboLauncherUp = Math.max(0.2f, Math.min(6f, v)),
+                "launcherup", "kickup");
+        flt("comboLauncherHoriz", "Mash/charge launcher away (diagonal)",
+                () -> XenoServerConfig.comboLauncherHoriz,
+                v -> XenoServerConfig.comboLauncherHoriz = Math.max(0.05f, Math.min(4f, v)),
+                "launcherhoriz", "kickdiag");
         bool("bt3BackstepEnabled", "Backstep",
                 () -> XenoServerConfig.bt3BackstepEnabled,
                 v -> XenoServerConfig.bt3BackstepEnabled = v,
@@ -136,6 +227,58 @@ public final class XenoServerConfigKeys {
                 () -> XenoServerConfig.bt3RushChainEnabled,
                 v -> XenoServerConfig.bt3RushChainEnabled = v,
                 "rush", "rushchain");
+        flt("rushKiCost", "Ki cost of a Xeno rush strike",
+                () -> (float) XenoServerConfig.rushKiCost,
+                v -> XenoServerConfig.rushKiCost = Math.max(0.0, v),
+                "rushkicost", "rushcost");
+        integer("rushCooldownTicks", "Cooldown of a Xeno rush strike in ticks",
+                () -> XenoServerConfig.rushCooldownTicks,
+                v -> XenoServerConfig.rushCooldownTicks = Math.max(1, v),
+                "rushcooldown", "rushcd");
+        bool("zanzokenEnabled", "Zanzoken afterimage dodge",
+                () -> XenoServerConfig.zanzokenEnabled,
+                v -> XenoServerConfig.zanzokenEnabled = v,
+                "zanzoken");
+        flt("zanzokenKiCost", "Ki spent per Zanzoken press",
+                () -> XenoServerConfig.zanzokenKiCost,
+                v -> XenoServerConfig.zanzokenKiCost = Math.max(0f, v),
+                "zanzokencost");
+        integer("zanzokenWindowTicks", "How long a Zanzoken press stays live, in ticks",
+                () -> XenoServerConfig.zanzokenWindowTicks,
+                v -> XenoServerConfig.zanzokenWindowTicks = Math.max(1, v),
+                "zanzokenwindow");
+        integer("zanzokenIFramesTicks", "Invulnerability after a landed Zanzoken, in ticks",
+                () -> XenoServerConfig.zanzokenIFramesTicks,
+                v -> XenoServerConfig.zanzokenIFramesTicks = Math.max(0, v),
+                "zanzokeniframes");
+        integer("zanzokenCooldownTicks", "Zanzoken cooldown in ticks",
+                () -> XenoServerConfig.zanzokenCooldownTicks,
+                v -> XenoServerConfig.zanzokenCooldownTicks = Math.max(0, v),
+                "zanzokencooldown", "zanzokencd");
+        bool("zanzokenGhostAfterimage", "Zanzoken leaves a rendered body copy instead of the dust silhouette",
+                () -> XenoServerConfig.zanzokenGhostAfterimage,
+                v -> XenoServerConfig.zanzokenGhostAfterimage = v,
+                "zanzokenghost");
+        integer("zanzokenRingClones", "Copies in the ring Zanzoken throws around the attacker",
+                () -> XenoServerConfig.zanzokenRingClones,
+                v -> XenoServerConfig.zanzokenRingClones = Math.max(1, Math.min(16, v)),
+                "zanzokenring");
+        flt("zanzokenRingRadius", "Radius of the Zanzoken ring in blocks",
+                () -> (float) XenoServerConfig.zanzokenRingRadius,
+                v -> XenoServerConfig.zanzokenRingRadius = Math.max(0.5, Math.min(12.0, v)),
+                "zanzokenringradius");
+        bool("multiFormEnabled", "Shi Shin No Ken multi-form",
+                () -> XenoServerConfig.multiFormEnabled,
+                v -> XenoServerConfig.multiFormEnabled = v,
+                "multiform", "shishin");
+        integer("multiFormBodies", "Bodies a fighter divides into, counting their own",
+                () -> XenoServerConfig.multiFormBodies,
+                v -> XenoServerConfig.multiFormBodies = Math.max(2, Math.min(8, v)),
+                "multiformbodies");
+        flt("multiFormKiCost", "Ki spent dividing into multi-form",
+                () -> XenoServerConfig.multiFormKiCost,
+                v -> XenoServerConfig.multiFormKiCost = Math.max(0f, v),
+                "multiformcost");
         bool("bt3SonicSwayEnabled", "Sonic sway",
                 () -> XenoServerConfig.bt3SonicSwayEnabled,
                 v -> XenoServerConfig.bt3SonicSwayEnabled = v,
@@ -208,6 +351,18 @@ public final class XenoServerConfigKeys {
                 () -> XenoServerConfig.npcSayEnabled,
                 v -> XenoServerConfig.npcSayEnabled = v,
                 "npcsay", "npcsayenabled", "npcsaychat");
+        integer("dmzStructureY", "Absolute Y for /xenostructure place (0 = terrain)",
+                () -> XenoServerConfig.dmzStructureY,
+                v -> XenoServerConfig.dmzStructureY = v,
+                "structurey");
+        integer("dmzStructureYOffset", "Y offset added when placing a DMZ structure",
+                () -> XenoServerConfig.dmzStructureYOffset,
+                v -> XenoServerConfig.dmzStructureYOffset = v,
+                "structureyoffset");
+        bool("dmzStructureMaster", "Summon matching master after /xenostructure place",
+                () -> XenoServerConfig.dmzStructureMaster,
+                v -> XenoServerConfig.dmzStructureMaster = v,
+                "structuremaster");
         bool("lockOnThroughBlocks", "DMZ Z-lock acquire and hold through walls",
                 () -> XenoServerConfig.lockOnThroughBlocks,
                 v -> XenoServerConfig.lockOnThroughBlocks = v,

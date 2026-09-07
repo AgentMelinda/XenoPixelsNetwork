@@ -68,6 +68,7 @@ public final class XenoHudCommands {
                                 ctx.getSource().sendFailure(Component.literal("HUD edit disabled in client config"));
                                 return 0;
                             }
+
                             Minecraft mc = Minecraft.getInstance();
                             mc.execute(() -> mc.setScreen(new XenoHudEditScreen(mc.screen)));
                             return 1;
@@ -524,6 +525,7 @@ public final class XenoHudCommands {
                                             + " dragon=" + XenoClientConfig.bt3DragonDashClient
                                             + " glow=" + XenoClientConfig.bt3ChargeGlow
                                             + " anims=" + XenoClientConfig.bt3CombatAnims
+                                            + " headfollow=" + XenoClientConfig.bt3MashHeadFollow
                                             + " chain=" + XenoClientConfig.bt3KickChainAnims
                                             + " particles=" + XenoClientConfig.bt3CombatParticles
                                             + " afterimage=" + XenoClientConfig.bt3Afterimage
@@ -627,6 +629,7 @@ public final class XenoHudCommands {
             case "glow" -> XenoClientConfig.bt3ChargeGlow = value;
             case "sfx" -> XenoClientConfig.bt3CombatSfx = value;
             case "anims", "animations" -> XenoClientConfig.bt3CombatAnims = value;
+            case "headfollow", "mashhead" -> XenoClientConfig.bt3MashHeadFollow = value;
             case "chain", "kickchain" -> XenoClientConfig.bt3KickChainAnims = value;
             case "particles", "fx" -> XenoClientConfig.bt3CombatParticles = value;
             case "afterimage" -> XenoClientConfig.bt3Afterimage = value;
@@ -645,6 +648,7 @@ public final class XenoHudCommands {
                     XenoClientConfig.sableContraptionCullClient = value;
             case "lockthrough", "lockonthrough", "lockthroughblocks" ->
                     XenoClientConfig.lockOnThroughBlocks = value;
+            case "hitboxes", "combatboxes" -> XenoClientConfig.bt3CombatHitboxes = value;
             default -> {
                 source.sendFailure(Component.literal(
                         "Unknown key. Try: hud techbar combat vanish chase backstep charge dragon glow sfx anims chain particles afterimage cooldownhud party techchathide surge surgedebug barnumbers compactnumbers shake dmzshake lockthrough"));

@@ -11,8 +11,9 @@ import org.jetbrains.annotations.Nullable;
  * A {@link WingPanelBlock} that always mounts vertically ({@code AXIS=Z}), matching Warium's own
  * separate vertical control-surface block. A vertical surface is already full-height, so it can
  * only ever swing sideways or rock fore/aft, never tilt up/down — the same reason a real rudder
- * cannot be reshaped into an elevator by turning it (see {@link PanelRole#needsHorizontalMount()}
- * for the fuller version of this). This is the block to reach for a rudder (YAW role).
+ * cannot be reshaped into an elevator by turning it. This is the block to reach for a rudder
+ * (YAW role). Its render orientation is tuned separately from the plain block — see
+ * {@code /xenowing orient vertical}.
  *
  * <p>Everything else is inherited unchanged from {@link WingPanelBlock}; only where it is allowed
  * to point differs.

@@ -73,4 +73,24 @@ class LeadCalculatorTest {
                 Vec3.ZERO, new Vec3(15, 3, 0), Vec3.ZERO, 25.0, 0.0);
         assertEquals(flat.aimPoint().y, dropped.aimPoint().y, 1.0e-9);
     }
+
+    @Test
+    void inheritedShooterVelocityChangesFlightTimeButNotTargetWorldMotion() {
+        LeadCalculator.LeadResult lead = LeadCalculator.withGravityDrop(
+                Vec3.ZERO, new Vec3(60, 0, 0), new Vec3(0, 0, 10),
+                new Vec3(0, 0, 10), 30.0, 0.0);
+        assertTrue(lead.solvable());
+        assertEquals(2.0, lead.interceptTime(), 1.0e-6);
+        assertEquals(20.0, lead.aimPoint().z, 1.0e-6);
+    }
+
+    @Test
+    void gravityCompensationUsesInheritedFlightTime() {
+        LeadCalculator.LeadResult lead = LeadCalculator.withGravityDrop(
+                Vec3.ZERO, new Vec3(60, 0, 0), Vec3.ZERO,
+                new Vec3(0, 0, 10), 30.0, 10.0);
+        assertTrue(lead.solvable());
+        assertEquals(0.5 * 10.0 * lead.interceptTime() * lead.interceptTime(),
+                lead.aimPoint().y, 1.0e-6);
+    }
 }

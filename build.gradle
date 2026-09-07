@@ -65,6 +65,12 @@ neoForge {
     }
 }
 
+configurations {
+    // Dev-only mod jars that have to be installed into run/mods rather than put on a run's
+    // classpath. See the Iris comment in dependencies {} for why that distinction exists.
+    devShaderMods
+}
+
 repositories {
     mavenCentral()
     maven {
@@ -203,6 +209,26 @@ dependencies {
     compileOnly "curse.maven:cnpc-gecko-addon-970162:7272203"
     runtimeOnly "curse.maven:cnpc-gecko-addon-970162:7272203"
 
+    // Development-only shader runtime for reproducing and validating Iris compatibility.
+    // Neither mod is bundled or required by XenoPixels, and the two arrive by different routes.
+    //
+    // Sodium goes on the client run's own additionalRuntimeClasspath rather than runtimeOnly:
+    // testRuntimeOnly extends runtimeOnly, and neoForge.unitTest boots the real FML mod loader over
+    // testRuntimeClasspath, so a runtimeOnly shader runtime makes ':test' fail on Sable/Veil's
+    // Sodium version check before a single test class runs. See gradle.properties for the version
+    // floor Veil imposes. Sodium is then *discovered* from that classpath because it ships a
+    // META-INF/services/net.neoforged.neoforgespi.locating.IModFileCandidateLocator - that service
+    // is what registers it as a mod in a dev run.
+    //
+    // Iris ships no such locator service, so a classpath entry for it is inert: FML never scans it,
+    // never loads it, and never says so - which is exactly how it went unnoticed. It is installed
+    // into run/mods instead, by installDevShaderMods below.
+    add(neoForge.runs.getByName('client').additionalRuntimeClasspathConfiguration.name,
+            "maven.modrinth:AANobbMI:${sodium_version_id}")
+    // transitive=false because Modrinth's POM would pull Sodium in behind Iris, and Sodium is
+    // already on the client classpath above - FML refuses a mod supplied twice.
+    devShaderMods("maven.modrinth:YL57xq9U:${iris_version_id}") { transitive = false }
+
     // ---- Modern UI (1.20.1 parity: Jar-in-Jar embed) ----
     // Ships ModernUI-NeoForge inside the XenoPixels jar. Soft-dep remains in neoforge.mods.toml.
     // MDG 2.x JarJar uses the version {} DSL (not ForgeGradle jarJar.ranged/pin).
@@ -272,11 +298,11 @@ tasks.named('jar', Jar).configure {
     }
 }
 
-// Jar-in-Jar output embeds ModernUI under META-INF/jarjar/. jarJar depends on :jar already.
-// Default client distribution: empty classifier with ModernUI nested (jarJar).
+// ModDevGradle jarJar stages ModernUI under META-INF/jarjar/; :jar consumes that output.
+// Default client distribution: empty-classifier :jar with ModernUI nested.
 // Server/slim distribution: no ModernUI — use for dedicated servers and CI that
 // must not pull client UI deps. Filename matches:
-//   xenopixelsmod-Server-0.1.8-1.21.1.jar
+//   xenopixelsmod-Server-<mod_version>.jar
 tasks.register('serverJar', Jar) {
     group = 'build'
     description = 'Server/slim jar without embedded Modern UI (no META-INF/jarjar).'
@@ -306,6 +332,36 @@ tasks.named('build').configure {
 tasks.named('assemble').configure {
     dependsOn tasks.named('serverJar')
 }
+
+// Iris has to be a jar in the run directory's mods folder to be discovered at all (see the
+// dependencies block). run/ is git-ignored, so this is the reproducible way to keep the dev client
+// carrying the Iris version gradle.properties actually names.
+def installDevShaderMods = tasks.register('installDevShaderMods', Copy) {
+    group = 'neoforge runs'
+    description = 'Installs the development-only Iris build into run/mods for the dev client.'
+    from configurations.devShaderMods
+    into layout.projectDirectory.dir('run/mods')
+    // A stable filename, so bumping iris_version_id replaces this jar instead of leaving the old
+    // one beside it for FML to find and reject as a duplicate mod.
+    rename { 'iris-dev.jar' }
+}
+
+// Iris is a CLIENT mod, but every non-data run shares gameDirectory = run/, so a jar left in
+// run/mods is also picked up by the dedicated server - where Iris's client mixins fail to apply
+// and RuntimeDistCleaner logs an ERROR for every client class they touch. That noise buries real
+// server errors, which is the opposite of what this shader runtime is for. So the folder is
+// prepared for whichever run is actually starting: installed for the client, removed for the
+// servers. The runs are never launched concurrently, so this stays deterministic.
+def uninstallDevShaderMods = tasks.register('uninstallDevShaderMods', Delete) {
+    group = 'neoforge runs'
+    description = 'Removes the client-only Iris build from run/mods before a dedicated-server run.'
+    delete layout.projectDirectory.file('run/mods/iris-dev.jar')
+}
+
+// RunModel.taskBefore is MDG's own hook for work a run depends on.
+neoForge.runs.getByName('client').taskBefore(installDevShaderMods)
+neoForge.runs.getByName('server').taskBefore(uninstallDevShaderMods)
+neoForge.runs.getByName('gameTestServer').taskBefore(uninstallDevShaderMods)
 
 publishing {
     publications {

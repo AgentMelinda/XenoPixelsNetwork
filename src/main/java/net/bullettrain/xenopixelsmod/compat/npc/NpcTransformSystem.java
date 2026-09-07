@@ -17,6 +17,7 @@ import net.minecraft.sounds.SoundEvent;
 import net.minecraft.sounds.SoundEvents;
 import net.minecraft.sounds.SoundSource;
 import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.Mob;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
@@ -57,6 +58,8 @@ public final class NpcTransformSystem {
 
     public static void cancel(UUID npcId) {
         if (npcId != null) {
+            // No live entity here, so nothing to unfreeze -- dropping the hold is enough, and
+            // the per-tick freeze stops with it.
             HOLDS.remove(npcId);
         }
     }
@@ -65,7 +68,9 @@ public final class NpcTransformSystem {
         if (npc == null) {
             return;
         }
-        HOLDS.remove(npc.getUUID());
+        if (HOLDS.remove(npc.getUUID()) != null) {
+            unfreeze(npc);
+        }
         syncHold(npc);
     }
 
@@ -174,6 +179,7 @@ public final class NpcTransformSystem {
             npc.hasImpulse = true;
             npc.hurtMarked = true;
         }
+        freeze(npc);
         return true;
     }
 
@@ -181,7 +187,9 @@ public final class NpcTransformSystem {
         if (npc == null) {
             return false;
         }
-        HOLDS.remove(npc.getUUID());
+        if (HOLDS.remove(npc.getUUID()) != null) {
+            unfreeze(npc);
+        }
         syncHold(npc);
         NpcCombatProfile profile = NpcCombatProfile.read(npc);
         profile.formGroup = "";
@@ -203,7 +211,9 @@ public final class NpcTransformSystem {
     public static boolean unstack(LivingEntity npc) {
         if (npc == null) return false;
         Hold hold = HOLDS.get(npc.getUUID());
-        if (hold != null && hold.stack()) HOLDS.remove(npc.getUUID());
+        if (hold != null && hold.stack() && HOLDS.remove(npc.getUUID()) != null) {
+            unfreeze(npc);
+        }
         syncHold(npc);
         NpcCombatProfile profile = NpcCombatProfile.read(npc);
         boolean changed = !profile.stackGroup.isBlank() || !profile.stackId.isBlank();
@@ -216,6 +226,38 @@ public final class NpcTransformSystem {
     }
 
     public static boolean isHolding(UUID id) { return id != null && HOLDS.containsKey(id); }
+
+    /**
+     * Pins an NPC in place for the duration of a transformation.
+     *
+     * <p>Must be re-applied every tick, not once at the start: CustomNPCs' own
+     * {@code EntityAIAttackTarget} declares {@code requiresUpdateEveryTick()} and re-issues
+     * {@code navigation.moveTo} from its {@code tick()}, so a single {@code stop()} is undone on
+     * the very next tick and the NPC walks through its own transformation.
+     *
+     * <p>Deliberately not {@code setNoAi(true)}: {@code EntityNPCInterface.aiStep} early-returns
+     * on {@code isNoAi()} (so the animation tick dies with it), and a crash or unclean shutdown
+     * mid-hold would leave the flag stuck in saved NBT -- the exact failure
+     * {@code NpcProfileLifecycle.repairAi} exists to undo.
+     *
+     * <p>Vertical motion is preserved so the launch impulse and gravity still read correctly.
+     */
+    private static void freeze(LivingEntity npc) {
+        if (npc instanceof Mob mob) {
+            mob.getNavigation().stop();
+            mob.getMoveControl().setWantedPosition(mob.getX(), mob.getY(), mob.getZ(), 0.0);
+        }
+        Vec3 motion = npc.getDeltaMovement();
+        npc.setDeltaMovement(0.0, motion.y, 0.0);
+        npc.hurtMarked = true;
+    }
+
+    /** Lets the NPC path again once its hold ends, however it ended. */
+    private static void unfreeze(LivingEntity npc) {
+        if (npc instanceof Mob mob) {
+            mob.getNavigation().stop();
+        }
+    }
 
     /** Descends one configured prerequisite (SSJ3 -> SSJ2 -> SSJ1 -> base). */
     public static boolean descendOne(LivingEntity npc, int ticks) {
@@ -252,6 +294,7 @@ public final class NpcTransformSystem {
                 continue;
             }
             Hold hold = entry.getValue();
+            freeze(npc);
             if (now % 4 == 0) {
                 swirl(level, npc, hold.lightnings(), hold.auraColor());
                 NpcCombatProfile profile = NpcCombatProfile.read(npc);
@@ -261,6 +304,7 @@ public final class NpcTransformSystem {
             }
             if (level.getGameTime() >= hold.untilGameTime()) {
                 it.remove();
+                unfreeze(npc);
                 commit(npc, hold);
             }
         }

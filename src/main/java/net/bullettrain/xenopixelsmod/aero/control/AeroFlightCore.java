@@ -88,14 +88,16 @@ public final class AeroFlightCore {
         updatePanelDeflections(bus, ship, level, bodyNose, bodyUp, linkedPanels);
         boolean stalled = applyAeroModel(bus, ship, worldVelocity, bodyNose);
 
-        // The PD attitude-hold auto-pilot only drives rotation in mouse-aim mode. In keyboard
-        // mode the sticks deflect panels directly instead (see updatePanelDeflections/deflectFor)
-        // and AeroControlSurfaceTorque's real per-panel torque is the only thing that turns the
-        // ship — enabled=false leaves this entry idle rather than fighting that with a second,
-        // separate torque toward a target attitude nobody is actually commanding by feel anymore.
+        // The PD attitude-hold auto-pilot only steers in mouse-aim mode (FULL_PD). In keyboard
+        // mode the sticks deflect panels directly (see updatePanelDeflections/deflectFor) and
+        // AeroControlSurfaceTorque's per-panel torque is what turns the ship, so the stabilizer
+        // runs DAMP_ONLY: it no longer chases a target attitude nobody is commanding, but it DOES
+        // still damp angular rate. That damping is the only thing that bleeds off an uncommanded
+        // rotation — with it idle, any input spins the ship up and it simply keeps circling.
         // Every non-seat attitude source (GUI, autopilot, CC, panel) always has mouseAim()==true
-        // (AeroBus's own default), so this is unchanged for them.
-        AeroStabilizerSystem.setTargetAttitude(ship, yawDeg, pitchDeg, rollDeg, bodyNose, bodyUp, bus.mouseAim());
+        // (AeroBus's own default), so FULL_PD is unchanged for them.
+        AeroStabilizerSystem.setTargetAttitude(ship, yawDeg, pitchDeg, rollDeg, bodyNose, bodyUp,
+                bus.mouseAim() ? AeroStabilizerSystem.Mode.FULL_PD : AeroStabilizerSystem.Mode.DAMP_ONLY);
         VectorMixer.apply(level, links, bodyThrust.x(), bodyThrust.y(), bodyThrust.z(), throttle);
         return stalled;
     }
@@ -285,22 +287,44 @@ public final class AeroFlightCore {
     /**
      * In mouse-aim mode, PITCH/ROLL/YAW read attitude error exactly as before (the PD
      * stabilizer is what's actually flying the ship there, and these visualize/apply torque
-     * from the same error it's correcting). In keyboard mode there is no attitude-hold error to
-     * read — {@link #tick} disables the stabilizer entirely — so PITCH/ROLL/YAW instead read the
-     * pilot's raw stick position directly (A/D, Q/E, W/S respectively — see
-     * {@code XenoFlightControls}), proportional like a real control surface, rather than
-     * commanding any absolute attitude at all.
+     * from the same error it's correcting). In keyboard mode PITCH/ROLL/YAW read the pilot's raw
+     * stick position directly (A/D, Q/E, W/S respectively — see {@code XenoFlightControls}),
+     * shaped by {@link #shapeStick} (deadzone + expo) so small inputs are gentle, then treated
+     * proportionally like a real control surface rather than commanding any absolute attitude.
+     * Keyboard-mode rotational stability comes from {@link AeroStabilizerSystem}'s
+     * {@code DAMP_ONLY} rate damping, not from an attitude hold.
      */
     private static double deflectFor(PanelRole role, AeroBus bus, boolean mouseAim,
                                      double pitchErr, double rollErr, double yawErr) {
+        double dz = AeroConfig.stickDeadzone;
+        double ex = AeroConfig.stickExpo;
         return switch (role) {
             case NONE -> 0.0;
             case FLAP -> bus.flap() * MAX_DEFLECT_DEG;
-            case PITCH -> mouseAim ? fromError(pitchErr) : bus.pitchStick() * MAX_DEFLECT_DEG;
-            case ROLL -> mouseAim ? fromError(rollErr) : bus.rollStick() * MAX_DEFLECT_DEG;
-            case YAW -> mouseAim ? fromError(yawErr) : bus.yawStick() * MAX_DEFLECT_DEG;
+            case PITCH -> mouseAim ? fromError(pitchErr) : shapeStick(bus.pitchStick(), dz, ex) * MAX_DEFLECT_DEG;
+            case ROLL -> mouseAim ? fromError(rollErr) : shapeStick(bus.rollStick(), dz, ex) * MAX_DEFLECT_DEG;
+            case YAW -> mouseAim ? fromError(yawErr) : shapeStick(bus.yawStick(), dz, ex) * MAX_DEFLECT_DEG;
             case BRAKE -> bus.airBrakeEngaged() ? MAX_DEFLECT_DEG : 0.0;
         };
+    }
+
+    /**
+     * Deadzone + expo shaping for a raw keyboard stick value in [-1, 1]. Below {@code deadzone}
+     * (magnitude) the stick reads centered; past it the remaining travel is renormalized to
+     * [0, 1] and blended between linear ({@code expo == 0}) and cubic ({@code expo == 1}), so the
+     * response is soft near center and reaches full authority near the stops. Sign preserved.
+     *
+     * <p>Without this a key press jumps straight to full deflection, which is what makes keyboard
+     * flight feel like an on/off switch rather than a control surface — and it is what
+     * {@code stickDeadzone} / {@code stickExpo} exist to tune.
+     */
+    static double shapeStick(double raw, double deadzone, double expo) {
+        double a = Math.abs(raw);
+        if (a <= deadzone) return 0.0;
+        double span = Math.max(1.0e-6, 1.0 - deadzone);
+        double t = Mth.clamp((a - deadzone) / span, 0.0, 1.0);
+        double shaped = t * ((1.0 - expo) + expo * t * t);
+        return Math.copySign(shaped, raw);
     }
 
     /** Maps error magnitude onto a continuous deflection, centered inside the deadband and

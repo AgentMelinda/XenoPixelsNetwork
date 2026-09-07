@@ -80,10 +80,32 @@ public final class LeadCalculator {
      */
     public static LeadResult withGravityDrop(Vec3 shooterPos, Vec3 targetPos, Vec3 targetVel,
                                               double projectileSpeed, double gravityBlocksPerSecSqr) {
-        LeadResult flat = linear(shooterPos, targetPos, targetVel, projectileSpeed);
-        if (!flat.solvable() || gravityBlocksPerSecSqr <= 0.0) return flat;
-        double drop = 0.5 * gravityBlocksPerSecSqr * flat.interceptTime() * flat.interceptTime();
-        return new LeadResult(flat.aimPoint().add(0.0, drop, 0.0), flat.interceptTime(), true);
+        return withGravityDrop(shooterPos, targetPos, targetVel, Vec3.ZERO,
+                projectileSpeed, gravityBlocksPerSecSqr);
+    }
+
+    /**
+     * Mode C: ballistic lead while inheriting a fraction of the shooter's velocity.
+     *
+     * <p>The intercept solve uses relative target velocity because the projectile begins with the
+     * shooter's motion, but the returned aim point remains in world space and therefore advances
+     * with the target's actual velocity. This keeps the marker useful for a moving aircraft rather
+     * than accidentally subtracting the pilot's motion from the point they should shoot at.
+     */
+    public static LeadResult withGravityDrop(Vec3 shooterPos, Vec3 targetPos, Vec3 targetVel,
+                                              Vec3 shooterVel, double projectileSpeed,
+                                              double gravityBlocksPerSecSqr) {
+        Vec3 relativeTargetVel = targetVel.subtract(shooterVel);
+        LeadResult relative = linear(shooterPos, targetPos, relativeTargetVel, projectileSpeed);
+        if (!relative.solvable()) return LeadResult.none(targetPos);
+
+        Vec3 aimPoint = targetPos.add(targetVel.scale(relative.interceptTime()));
+        if (gravityBlocksPerSecSqr > 0.0) {
+            double drop = 0.5 * gravityBlocksPerSecSqr * relative.interceptTime()
+                    * relative.interceptTime();
+            aimPoint = aimPoint.add(0.0, drop, 0.0);
+        }
+        return new LeadResult(aimPoint, relative.interceptTime(), true);
     }
 
     private static double smallestNonNegative(double t1, double t2) {

@@ -144,6 +144,9 @@ public final class CharacterPortraitCache {
             main.bindWrite(true);
             if (projectionBackedUp) RenderSystem.restoreProjectionMatrix();
             RenderSystem.viewport(0, 0, main.viewWidth, main.viewHeight);
+            // Offscreen DMZ/aura renderers may leave a tint in the global RenderSystem state.
+            // Always return the pipeline to the neutral color before the HUD/world resumes.
+            RenderSystem.setShaderColor(1f, 1f, 1f, 1f);
             RenderSystem.enableBlend();
             RenderSystem.defaultBlendFunc();
         }

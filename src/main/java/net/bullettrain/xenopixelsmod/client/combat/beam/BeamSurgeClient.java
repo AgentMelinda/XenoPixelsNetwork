@@ -57,6 +57,7 @@ public final class BeamSurgeClient {
         if (player.tickCount % SEND_INTERVAL_TICKS != 0) return;
 
         boolean keyDown = surgeKeyDown();
+        if (!XenoClientConfig.beamSurgeDebug && (!keyDown || minecraft.screen != null)) return;
         AbstractKiProjectile wave = findOwnedWave(player);
         if (keyDown && minecraft.screen == null && wave != null) {
             sentCount++;

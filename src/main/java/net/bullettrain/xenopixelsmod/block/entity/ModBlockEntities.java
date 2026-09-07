@@ -51,7 +51,13 @@ public final class ModBlockEntities {
                     BlockEntityType.Builder.of(WingPanelBlockEntity::new,
                             ModBlocks.WING_PANEL.get(),
                             ModBlocks.WING_FLAP_HORIZONTAL.get(),
-                            ModBlocks.WING_FLAP_VERTICAL.get()).build(null));
+                            ModBlocks.WING_FLAP_VERTICAL.get(),
+                            ModBlocks.COPYCAT_WING_PANEL.get(),
+                            ModBlocks.COPYCAT_WING_PANEL_LIT.get(),
+                            ModBlocks.COPYCAT_WING_FLAP_HORIZONTAL.get(),
+                            ModBlocks.COPYCAT_WING_FLAP_HORIZONTAL_LIT.get(),
+                            ModBlocks.COPYCAT_WING_FLAP_VERTICAL.get(),
+                            ModBlocks.COPYCAT_WING_FLAP_VERTICAL_LIT.get()).build(null));
 
     private ModBlockEntities() {}
 

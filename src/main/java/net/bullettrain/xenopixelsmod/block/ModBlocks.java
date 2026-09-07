@@ -8,6 +8,9 @@ import net.bullettrain.xenopixelsmod.block.custom.PilotSeatBlock;
 import net.bullettrain.xenopixelsmod.block.custom.WingPanelBlock;
 import net.bullettrain.xenopixelsmod.block.custom.WingFlapHorizontalBlock;
 import net.bullettrain.xenopixelsmod.block.custom.WingFlapVerticalBlock;
+import net.bullettrain.xenopixelsmod.block.custom.CopycatWingPanelBlock;
+import net.bullettrain.xenopixelsmod.block.custom.CopycatWingFlapHorizontalBlock;
+import net.bullettrain.xenopixelsmod.block.custom.CopycatWingFlapVerticalBlock;
 import net.bullettrain.xenopixelsmod.block.custom.ShipThrusterBlock;
 import net.bullettrain.xenopixelsmod.block.custom.ShipVlsGuidanceBlock;
 import net.bullettrain.xenopixelsmod.block.custom.SoundBlock;
@@ -152,6 +155,29 @@ public class ModBlocks {
                     .strength(2.0f, 4f)
                     .sound(SoundType.METAL)
                     .noOcclusion()));
+
+    // ---- Copycat wings: same control surfaces, skin inherited from a right-clicked block ----
+
+    private static BlockBehaviour.Properties copycatWingProps(boolean lit) {
+        BlockBehaviour.Properties p = BlockBehaviour.Properties.of()
+                .mapColor(MapColor.METAL).strength(2.0f, 4f).sound(SoundType.METAL).noOcclusion();
+        return lit ? p.lightLevel(state -> 15) : p;
+    }
+
+    public static final DeferredHolder<Block, CopycatWingPanelBlock> COPYCAT_WING_PANEL =
+            registerBlock("copycat_wing_panel", () -> new CopycatWingPanelBlock(copycatWingProps(false)));
+    public static final DeferredHolder<Block, CopycatWingPanelBlock> COPYCAT_WING_PANEL_LIT =
+            registerBlock("copycat_wing_panel_lit", () -> new CopycatWingPanelBlock(copycatWingProps(true)));
+
+    public static final DeferredHolder<Block, CopycatWingFlapHorizontalBlock> COPYCAT_WING_FLAP_HORIZONTAL =
+            registerBlock("copycat_wing_flap_horizontal", () -> new CopycatWingFlapHorizontalBlock(copycatWingProps(false)));
+    public static final DeferredHolder<Block, CopycatWingFlapHorizontalBlock> COPYCAT_WING_FLAP_HORIZONTAL_LIT =
+            registerBlock("copycat_wing_flap_horizontal_lit", () -> new CopycatWingFlapHorizontalBlock(copycatWingProps(true)));
+
+    public static final DeferredHolder<Block, CopycatWingFlapVerticalBlock> COPYCAT_WING_FLAP_VERTICAL =
+            registerBlock("copycat_wing_flap_vertical", () -> new CopycatWingFlapVerticalBlock(copycatWingProps(false)));
+    public static final DeferredHolder<Block, CopycatWingFlapVerticalBlock> COPYCAT_WING_FLAP_VERTICAL_LIT =
+            registerBlock("copycat_wing_flap_vertical_lit", () -> new CopycatWingFlapVerticalBlock(copycatWingProps(true)));
 
     private static <T extends Block> DeferredHolder<Block, T> registerBlock(String name, Supplier<T> block) {
         DeferredHolder<Block, T> toReturn = BLOCKS.register(name, block);

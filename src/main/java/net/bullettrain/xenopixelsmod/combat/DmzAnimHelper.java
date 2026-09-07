@@ -31,6 +31,10 @@ public final class DmzAnimHelper {
     public static final String DASH_FRONT = "base.dash_front";
     public static final String ATTACK1 = "base.attack1";
     public static final String ATTACK2 = "base.attack2";
+    /** Looping palm-out Hakai channel (our clip, not DMZ's). */
+    public static final String HAKAI_HOLD = "combat.xeno_hakai_hold";
+    /** Short palm snap on Hakai commit. */
+    public static final String HAKAI_FIRE = "combat.xeno_hakai_fire";
 
     private DmzAnimHelper() {}
 
@@ -88,6 +92,39 @@ public final class DmzAnimHelper {
     }
 
     public static void broadcastBlockStop(ServerPlayer player) {
+        broadcastChargeStop(player);
+    }
+
+    /** Looping palm-out for the caster and everyone tracking them. */
+    public static void broadcastHakaiHold(ServerPlayer player) {
+        try {
+            TriggerAnimationS2C pkt = new TriggerAnimationS2C(
+                    player.getUUID(),
+                    TriggerAnimationS2C.AnimationType.KI_ANIMATION,
+                    0,
+                    player.getId(),
+                    HAKAI_HOLD);
+            NetworkHandler.sendToTrackingEntityAndSelf(pkt, player);
+        } catch (Throwable ignored) {
+            try {
+                NetworkHandler.sendToTrackingEntity(new TriggerAnimationS2C(
+                        player.getUUID(),
+                        TriggerAnimationS2C.AnimationType.KI_ANIMATION,
+                        0,
+                        player.getId(),
+                        HAKAI_HOLD), player);
+            } catch (Throwable ignored2) {
+            }
+        }
+        broadcastMelee(player, HAKAI_HOLD, false, 1.0f);
+    }
+
+    public static void broadcastHakaiFire(ServerPlayer player) {
+        broadcastChargeStop(player);
+        broadcastMelee(player, HAKAI_FIRE, false, 1.15f);
+    }
+
+    public static void broadcastHakaiStop(ServerPlayer player) {
         broadcastChargeStop(player);
     }
 

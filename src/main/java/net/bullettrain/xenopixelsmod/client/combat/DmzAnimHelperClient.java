@@ -69,6 +69,22 @@ public final class DmzAnimHelperClient {
         playLocalChargeStop(player);
     }
 
+    public static void playLocalHakaiHold(Player player) {
+        if (!XenoClientConfig.bt3CombatAnims || player == null) return;
+        tryPlayKi(player, DmzAnimHelper.HAKAI_HOLD, true);
+        playLocalMelee(player, DmzAnimHelper.HAKAI_HOLD, false, 1.0f);
+    }
+
+    public static void playLocalHakaiFire(Player player) {
+        if (!XenoClientConfig.bt3CombatAnims || player == null) return;
+        playLocalChargeStop(player);
+        playLocalMelee(player, DmzAnimHelper.HAKAI_FIRE, false, 1.15f);
+    }
+
+    public static void playLocalHakaiStop(Player player) {
+        playLocalChargeStop(player);
+    }
+
     /** Punch-only combo flash (overrides mixed DMZ kick strings when enabled). */
     public static void playLocalComboPunch(Player player, int step, boolean finisher) {
         if (!XenoClientConfig.bt3CombatAnims || player == null) return;

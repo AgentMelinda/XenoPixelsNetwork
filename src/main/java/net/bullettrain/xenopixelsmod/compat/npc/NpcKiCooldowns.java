@@ -48,6 +48,7 @@ public final class NpcKiCooldowns {
     }
 
     public static void tick() {
+        if (ACTIVE.isEmpty()) return;
         ACTIVE.entrySet().removeIf(entry -> {
             entry.getValue().replaceAll((ignored, ticks) -> ticks - 1);
             entry.getValue().entrySet().removeIf(cooldown -> cooldown.getValue() <= 0);

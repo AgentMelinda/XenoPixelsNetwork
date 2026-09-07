@@ -40,22 +40,4 @@ public enum PanelRole implements StringRepresentable {
         PanelRole[] values = values();
         return values[(ordinal() + 1) % values.length];
     }
-
-    /**
-     * Whether this role needs a flat, {@code AXIS=Y} panel to move the way it is supposed to.
-     *
-     * <p>A wing panel's shape is thin along whichever axis it is mounted on and full along the
-     * other two ({@link WingPanelBlock#getShape}). Deflection rotates that shape about a fixed
-     * local axis; the direction that produces (up/down vs. sideways vs. fore/aft) is a
-     * consequence of which two dimensions are "full" at the moment it happens, not a choice the
-     * renderer makes per role. A flap, elevator or aileron needs the trailing edge to visibly rise
-     * and fall, which only the flat (thin-Y, full-X/Z) shape can do — mounted on its edge
-     * (AXIS=X/Z, already full-height) there is no "more up" position left for it to move toward,
-     * the same reason a real vertical fin cannot be reshaped into a horizontal stabilizer just by
-     * rotating it. A rudder is the opposite: it is supposed to swing, so it is the one role this
-     * returns {@code false} for.
-     */
-    public boolean needsHorizontalMount() {
-        return this != NONE && this != YAW;
-    }
 }

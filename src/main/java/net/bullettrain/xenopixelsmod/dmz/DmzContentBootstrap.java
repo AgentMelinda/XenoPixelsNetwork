@@ -102,6 +102,13 @@ public final class DmzContentBootstrap {
             "races/saiyan/forms/supersaiyan_legend.json"
     };
 
+    private static final int[] VANILLA_SAIYAN_SUPERFORM_PRICES = {
+            13000, 21000, 31000, 42000, 52000, 65000, 78000, 104000
+    };
+    private static final int[] LEGACY_XENO_SUPERFORM_PRICES = {
+            120000, 145000, 175000, 210000, 250000, 300000
+    };
+
     private DmzContentBootstrap() {}
 
     public static void installBundledContent() {
@@ -203,8 +210,10 @@ public final class DmzContentBootstrap {
             // Saiyan-only repair: older bad patch left Ikari on legendaryforms
             if (characterJson.toString().replace('\\', '/').contains("/saiyan/")) {
                 repairLegendaryFormsPrices(costs);
-                // Do not extend vanilla superforms ladder for Xeno legend forms
-                stripSupersaiyanLegendSuperformsPrices(costs);
+                if (repairLegacySuperforms(costs)) {
+                    XenoPixelsMod.LOGGER.info(
+                            "Restored vanilla Saiyan superforms registration and 8-level price ladder");
+                }
             }
             // Never leave buyFromMaster false for our skills
             for (String skill : XENO_FORM_SKILLS) {
@@ -413,24 +422,51 @@ public final class DmzContentBootstrap {
         }
     }
 
-    /**
-     * Older installs padded superforms with 14 TP slots for supersaiyan_legend.
-     * Legend forms now live on xenopixels_fan_ss (Beerus/Whis only) — trim back if needed.
-     */
-    private static void stripSupersaiyanLegendSuperformsPrices(JsonObject costs) {
-        if (!costs.has("superforms") || !costs.get("superforms").isJsonObject()) return;
-        JsonObject sf = costs.getAsJsonObject("superforms");
-        if (!sf.has("prices") || !sf.get("prices").isJsonArray()) return;
-        JsonArray prices = sf.getAsJsonArray("prices");
-        // Vanilla superforms is 8 levels; we only strip if we clearly over-extended to 14
-        if (prices.size() >= 14) {
-            JsonArray trimmed = new JsonArray();
-            for (int i = 0; i < 8 && i < prices.size(); i++) {
-                trimmed.add(prices.get(i));
-            }
-            sf.add("prices", trimmed);
-            XenoPixelsMod.LOGGER.info("Trimmed superforms prices back to 8 levels (legend moved to xenopixels_fan_ss)");
+    /** Repairs only the exact Saiyan superforms shapes written by older XenoPixels releases. */
+    static boolean repairLegacySuperforms(JsonObject costs) {
+        if (!costs.has("superforms") || !costs.get("superforms").isJsonObject()) return false;
+        JsonObject superforms = costs.getAsJsonObject("superforms");
+        if (!superforms.has("buyFromMaster")
+                || !superforms.get("buyFromMaster").isJsonPrimitive()
+                || !superforms.getAsJsonPrimitive("buyFromMaster").isBoolean()
+                || !superforms.get("buyFromMaster").getAsBoolean()
+                || !superforms.has("prices")
+                || !superforms.get("prices").isJsonArray()) {
+            return false;
         }
+
+        JsonArray prices = superforms.getAsJsonArray("prices");
+        boolean trimmedLegacy = prices.size() == VANILLA_SAIYAN_SUPERFORM_PRICES.length;
+        boolean extendedLegacy = prices.size() == VANILLA_SAIYAN_SUPERFORM_PRICES.length
+                + LEGACY_XENO_SUPERFORM_PRICES.length;
+        if ((!trimmedLegacy && !extendedLegacy)
+                || !matchesPrices(prices, 0, VANILLA_SAIYAN_SUPERFORM_PRICES)
+                || (extendedLegacy && !matchesPrices(prices,
+                        VANILLA_SAIYAN_SUPERFORM_PRICES.length,
+                        LEGACY_XENO_SUPERFORM_PRICES))) {
+            return false;
+        }
+
+        if (extendedLegacy) {
+            JsonArray trimmed = new JsonArray();
+            for (int price : VANILLA_SAIYAN_SUPERFORM_PRICES) {
+                trimmed.add(price);
+            }
+            superforms.add("prices", trimmed);
+        }
+        superforms.addProperty("buyFromMaster", false);
+        return true;
+    }
+
+    private static boolean matchesPrices(JsonArray prices, int offset, int[] expected) {
+        for (int i = 0; i < expected.length; i++) {
+            JsonElement value = prices.get(offset + i);
+            if (!value.isJsonPrimitive() || !value.getAsJsonPrimitive().isNumber()
+                    || value.getAsInt() != expected[i]) {
+                return false;
+            }
+        }
+        return true;
     }
 
     /**

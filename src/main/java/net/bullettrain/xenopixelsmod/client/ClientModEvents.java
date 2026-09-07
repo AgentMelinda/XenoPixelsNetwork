@@ -3,7 +3,10 @@ package net.bullettrain.xenopixelsmod.client;
 import net.bullettrain.xenopixelsmod.block.ModBlocks;
 import net.bullettrain.xenopixelsmod.block.entity.CopycatGlowstoneBlockEntity;
 import net.bullettrain.xenopixelsmod.client.model.CopycatGlowstoneModel;
+import net.bullettrain.xenopixelsmod.client.model.CopycatWingModel;
 import net.minecraft.client.renderer.block.BlockModelShaper;
+import net.minecraft.client.resources.model.ModelResourceLocation;
+import net.minecraft.resources.ResourceLocation;
 import net.neoforged.fml.common.EventBusSubscriber;
 
 import net.bullettrain.xenopixelsmod.XenoPixelsMod;
@@ -26,6 +29,9 @@ public final class ClientModEvents {
         // The pilot seat is deliberately invisible — the seat block is what you see — but every
         // registered entity type still needs a renderer or the client fails on first spawn.
         event.registerEntityRenderer(ModEntities.PILOT_SEAT.get(), PilotSeatRenderer::new);
+        // Copies draw as their owner, so this renderer carries no model of its own.
+        event.registerEntityRenderer(ModEntities.CLONE.get(),
+                net.bullettrain.xenopixelsmod.client.combat.XenoCloneRenderer::new);
         // Only role-assigned wing panels are ENTITYBLOCK_ANIMATED and reach this renderer;
         // structural panels stay baked in the chunk mesh. Without this registration the
         // renderer existed but was never resolved, so control surfaces could not animate at all.
@@ -75,6 +81,16 @@ public final class ClientModEvents {
             models.computeIfPresent(BlockModelShaper.stateToModelLocation(state),
                     (ignored, bakedModel) -> bakedModel instanceof CopycatGlowstoneModel
                             ? bakedModel : new CopycatGlowstoneModel(bakedModel));
+        }
+        // The copycat wing panels reuse the wing BER's two standalone models (wing_panel_base /
+        // wing_panel_flap). Wrapping them lets the BER hand a copied material through ModelData and
+        // get the wing quads re-textured onto that block's sprite; a plain wing passes no material
+        // and the wrapper is a pass-through.
+        for (String path : new String[] {"block/wing_panel_base", "block/wing_panel_flap"}) {
+            models.computeIfPresent(
+                    ModelResourceLocation.standalone(ResourceLocation.fromNamespaceAndPath(XenoPixelsMod.MOD_ID, path)),
+                    (ignored, bakedModel) -> bakedModel instanceof CopycatWingModel
+                            ? bakedModel : new CopycatWingModel(bakedModel));
         }
     }
 

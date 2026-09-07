@@ -29,12 +29,14 @@ public final class NpcStrikeDispatcher {
 
     public static boolean fire(String id, LivingEntity caster, NpcCombatProfile profile,
                                LivingEntity target) {
-        StrikeAttackData data = PredefinedTechniqueLookup.findStrike(id);
+        StrikeAttackData data = strikeData(caster, id);
         if (data == null || caster == null || profile == null || !valid(caster, target)
                 || !NpcKiCooldowns.ready(caster, data.getId())) {
             return false;
         }
-        double cost = NpcTechniqueMath.strikeCost(profile, data);
+        double cost = caster instanceof net.bullettrain.xenopixelsmod.combat.clone.XenoCloneEntity clone
+                ? net.bullettrain.xenopixelsmod.combat.clone.CloneCombatBridge.strikeCost(clone, data)
+                : NpcTechniqueMath.strikeCost(profile, data);
         if (!NpcResources.spend(caster, profile, cost,
                 Math.max(1.0, profile.strikeDamage() * 0.1))) {
             return false;
@@ -58,6 +60,7 @@ public final class NpcStrikeDispatcher {
 
     @SubscribeEvent
     public static void tick(ServerTickEvent.Post event) {
+        if (PENDING.isEmpty()) return;
         Iterator<Map.Entry<UUID, Pending>> it = PENDING.entrySet().iterator();
         while (it.hasNext()) {
             Map.Entry<UUID, Pending> entry = it.next();
@@ -72,7 +75,7 @@ public final class NpcStrikeDispatcher {
             Entity raw = caster.level() instanceof ServerLevel level
                     ? level.getEntity(pending.target()) : null;
             if (!(raw instanceof LivingEntity target) || !valid(caster, target)) continue;
-            StrikeAttackData data = PredefinedTechniqueLookup.findStrike(pending.technique());
+            StrikeAttackData data = strikeData(caster, pending.technique());
             if (data == null) continue;
             NpcCombatProfile profile = NpcCombatProfile.read(caster);
             double configDamage = Math.max(0.0, ConfigManager.getTechniqueConfig()
@@ -85,7 +88,19 @@ public final class NpcStrikeDispatcher {
         }
     }
 
+    private static StrikeAttackData strikeData(LivingEntity caster, String id) {
+        return caster instanceof net.bullettrain.xenopixelsmod.combat.clone.XenoCloneEntity clone
+                ? net.bullettrain.xenopixelsmod.combat.clone.CloneCombatBridge.strike(clone, id)
+                : PredefinedTechniqueLookup.findStrike(id);
+    }
+
     private static boolean valid(LivingEntity caster, LivingEntity target) {
+        if (caster instanceof net.bullettrain.xenopixelsmod.combat.clone.XenoCloneEntity clone
+                && (!net.bullettrain.xenopixelsmod.combat.clone.CloneCombatBridge.active(clone)
+                || !net.bullettrain.xenopixelsmod.combat.clone.CloneCombatBridge.validTarget(
+                        net.bullettrain.xenopixelsmod.combat.clone.CloneCombatBridge.owner(clone), target)
+                || net.bullettrain.xenopixelsmod.combat.clone.XenoCloneSystem.lockedTarget(
+                        net.bullettrain.xenopixelsmod.combat.clone.CloneCombatBridge.owner(clone)) != target)) return false;
         return target != null && target != caster && target.isAlive()
                 && target.level() == caster.level()
                 && caster.distanceToSqr(target) <= MAX_RANGE_SQ
@@ -93,10 +108,6 @@ public final class NpcStrikeDispatcher {
     }
 
     private static LivingEntity find(ServerTickEvent.Post event, UUID id) {
-        for (ServerLevel level : event.getServer().getAllLevels()) {
-            Entity raw = level.getEntity(id);
-            if (raw instanceof LivingEntity living) return living;
-        }
-        return null;
+        return NpcEntityLookup.findLiving(event.getServer(), id);
     }
 }

@@ -127,10 +127,18 @@ public final class AeroControlSurfaceTorque {
         Vector3dc velocity = handle.getLinearVelocity();
         if (velocity == null) return;
         double speed = velocity.length();
+        // Authority stops growing past AeroConfig.controlAuthoritySpeed. Dynamic pressure scales
+        // with speed SQUARED, so without this cap a fast ship gets a wildly sharper roll/pitch
+        // rate than a slow one — at 128 blocks/s against an 18 blocks/s cap that is over fifty
+        // times the control force, which no amount of rate damping can absorb and which reads
+        // in play as the hull spinning up and circling on the lightest input. An arcade-flight
+        // property, deliberately not physical: the lift/drag model still uses true speed for
+        // everything else.
+        double effectiveSpeed = Math.min(speed, AeroConfig.controlAuthoritySpeed);
         // Same q shape AeroAeroModel already uses (AeroAeroModel.java): airDensity * speed^2,
         // no separate area term here — controlSurfaceTorqueScale is this system's own area/gain
         // stand-in, since a per-panel area isn't tracked anywhere.
-        double dynamicPressure = AeroConfig.airDensity * speed * speed;
+        double dynamicPressure = AeroConfig.airDensity * effectiveSpeed * effectiveSpeed;
         if (dynamicPressure < 1.0e-6) return;
 
         for (PanelState state : snapshot) {

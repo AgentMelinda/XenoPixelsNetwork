@@ -200,6 +200,90 @@ XenoPixels.clearTechniqueCooldown(event.npc, "kamehameha");
 XenoPixels.removeTechnique(event.npc, "kamehameha");
 ```
 
+## Combat animations
+
+An NPC can play any of this mod's DragonMineZ combat clips - the same ones a player's held-mash
+string uses.
+
+```js
+function timer(event) {
+    var npc = event.npc;
+
+    XenoPixels.playAnimation(npc, "combat.xeno_spin_kick_right_v3");
+    XenoPixels.playAnimation(npc, "combat.xeno_heavy_finish_v3", 1.5);  // 1.5x playback
+
+    XenoPixels.playComboBeat(npc, 3);   // beat 3 of the BT3 rush string
+
+    var names = XenoPixels.listAnimations();   // every name playAnimation accepts
+}
+```
+
+**Only NPCs set to the Full DragonMineZ appearance can show these.** That mode draws the NPC
+through a synthetic player, which is the only thing DragonMineZ's animation system will pose. A
+humanoid ("Steve") or Gecko custom-model NPC returns `false` and keeps using its own model's
+animations. An unknown clip name also returns `false`, so a typo is visible rather than silent.
+
+Three generations of the clips ship side by side and the server config `comboAnimGeneration`
+picks which one `playComboBeat` uses: `1` is the original set, `2` the yaw-scaled twins, `3` the
+set posed for Budokai Tenkaichi 3 and authored to fit one mash beat. `playAnimation` takes a full
+name, so it can reach any generation regardless of that setting.
+
+A Full-appearance NPC also throws alternating left and right punch clips on its own ordinary melee
+attacks, with no script involved.
+
+`speed` is clamped to 0.15-4.0. Calling `playAnimation` again before the previous clip finishes
+restarts it, so pace the calls rather than firing one every tick.
+
+## Movement moves: vanish, chase, backstep, Z-Burst
+
+These give a scripted NPC the same repositioning moves a player gets from the BT3 combat
+bindings. They are server-side and take the NPC plus a target entity.
+
+```js
+function timer(event) {
+    var npc = event.npc;
+    var target = npc.getAttackTarget();
+    if (target == null) return;
+
+    XenoPixels.vanishBehind(npc, target);   // teleport to the target's back
+    XenoPixels.vanishLeft(npc, target);     // back-left  (player double-tap A)
+    XenoPixels.vanishRight(npc, target);    // back-right (player double-tap D)
+
+    XenoPixels.chase(npc, target);          // high-speed dash in from mid range
+    XenoPixels.backstep(npc, target);       // step away, still facing them
+    XenoPixels.zBurst(npc, target);         // burst step-in
+}
+```
+
+`vanish(npc, target)` is the same as `vanishBehind`. The raw form `vanish(npc, target, side)`
+takes the side as a number and only looks at its sign: negative is back-left, `0` is directly
+behind, positive is back-right.
+
+**Every one of these returns a boolean, and `false` is normal.** A move is refused when:
+
+- its cooldown is still running (vanish is 40 ticks, so roughly two seconds),
+- the NPC cannot pay the move's energy cost — check `getCurrentEnergy(npc)` first,
+- the target is further away than the server's `vanishMaxRange`.
+
+So drive them from the return value rather than assuming they fired:
+
+```js
+if (!XenoPixels.vanishRight(npc, target)) {
+    XenoPixels.zBurst(npc, target);   // fall back to something with its own cooldown
+}
+```
+
+Guard state is separate and has no cooldown:
+
+```js
+XenoPixels.setGuard(npc, true);
+var blocking = XenoPixels.isGuarding(npc);
+```
+
+If you would rather the NPC pick these moves on its own, turn on the built-in brain with
+`XenoPixels.setCombatBrain(npc, true)` instead of scripting them — it is off by default so a
+scripted NPC does exactly what its script says.
+
 ## Complete public method reference
 
 ```text
@@ -249,6 +333,17 @@ fireTechnique(npc, id, target, durationTicks, hex)
 getTechniqueCooldown(npc, id)
 isTechniqueReady(npc, id)
 clearTechniqueCooldown(npc, id)
+vanish(npc, target)
+vanish(npc, target, side)
+vanishBehind(npc, target)
+vanishLeft(npc, target)
+vanishRight(npc, target)
+chase(npc, target)
+backstep(npc, target)
+zBurst(npc, target)
+setGuard(npc, on)
+isGuarding(npc)
+setCombatBrain(npc, on)
 getCurrentEnergy(npc)
 getMaxEnergy(npc)
 getCurrentStamina(npc)

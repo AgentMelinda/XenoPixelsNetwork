@@ -37,6 +37,11 @@ public final class Bt3CombatEvents {
     private static final Map<UUID, Long> GUARDING = new HashMap<>();
     private static final Map<UUID, Integer> COUNTER_UNTIL_TICK = new HashMap<>();
     private static final Map<UUID, Integer> GUARD_STUN_UNTIL = new HashMap<>();
+    /** Zanzoken press windows and cooldowns, keyed the same way the counter window is. */
+    private static final Map<UUID, Integer> ZANZOKEN_UNTIL_TICK = new HashMap<>();
+    private static final Map<UUID, Integer> ZANZOKEN_READY_TICK = new HashMap<>();
+    /** Grace after a chase drops the fighter mid-air, so the landing does not kill them. */
+    private static final Map<UUID, Integer> FALL_GRACE_UNTIL = new HashMap<>();
 
     private Bt3CombatEvents() {}
 
@@ -90,6 +95,82 @@ public final class Bt3CombatEvents {
         return true;
     }
 
+    /** Opens a Zanzoken read. Returns false when the technique is still cooling down. */
+    public static boolean openDodgeWindow(ServerPlayer player) {
+        if (player == null || !XenoServerConfig.zanzokenEnabled) return false;
+        int now = serverTick(player);
+        if (!ZanzokenWindow.ready(now, ZANZOKEN_READY_TICK.get(player.getUUID()))) return false;
+        ZANZOKEN_UNTIL_TICK.put(player.getUUID(),
+                now + Math.max(1, XenoServerConfig.zanzokenWindowTicks));
+        ZANZOKEN_READY_TICK.put(player.getUUID(),
+                now + Math.max(0, XenoServerConfig.zanzokenCooldownTicks));
+        return true;
+    }
+
+    /** True once, for a hit that arrived inside a live window. Closes the window either way. */
+    public static boolean consumeDodgeWindow(ServerPlayer player) {
+        if (player == null) return false;
+        boolean armed = ZanzokenWindow.armed(serverTick(player),
+                ZANZOKEN_UNTIL_TICK.get(player.getUUID()));
+        ZANZOKEN_UNTIL_TICK.remove(player.getUUID());
+        return armed;
+    }
+
+    /**
+     * Every map in this class is keyed on {@code MinecraftServer.getTickCount()}, which restarts
+     * at zero on each world load, while the maps themselves are static and outlive the server in a
+     * single-player client. A cooldown stamped late in one session therefore sat far ahead of the
+     * next session's clock and refused the technique until the new server caught up — Zanzoken
+     * reported "not ready" for as long as the previous session had run. Super-counter windows and
+     * guard stuns are stamped from the same clock and had the same latent fault.
+     */
+    @SubscribeEvent
+    public static void onServerStopping(net.neoforged.neoforge.event.server.ServerStoppingEvent event) {
+        GUARDING.clear();
+        COUNTER_UNTIL_TICK.clear();
+        GUARD_STUN_UNTIL.clear();
+        ZANZOKEN_UNTIL_TICK.clear();
+        ZANZOKEN_READY_TICK.clear();
+        FALL_GRACE_UNTIL.clear();
+    }
+
+    /** A rejoin inside one server's life starts clean too. */
+    @SubscribeEvent
+    public static void onLoggedOut(net.neoforged.neoforge.event.entity.player.PlayerEvent.PlayerLoggedOutEvent event) {
+        UUID id = event.getEntity().getUUID();
+        GUARDING.remove(id);
+        COUNTER_UNTIL_TICK.remove(id);
+        GUARD_STUN_UNTIL.remove(id);
+        ZANZOKEN_UNTIL_TICK.remove(id);
+        ZANZOKEN_READY_TICK.remove(id);
+        FALL_GRACE_UNTIL.remove(id);
+    }
+
+    /**
+     * Waives fall damage briefly.
+     *
+     * <p>A chase ends wherever it ends, often high above the ground: gravity comes straight back
+     * and the fighter drops from altitude with nothing between them and the floor. Players were
+     * dying to the landing rather than to anything in the fight, which is not how any of this is
+     * supposed to read — fighters in this genre do not die to the ground.
+     */
+    public static void grantFallGrace(ServerPlayer player, int ticks) {
+        if (player == null || ticks <= 0) return;
+        FALL_GRACE_UNTIL.put(player.getUUID(), serverTick(player) + ticks);
+    }
+
+    private static boolean hasFallGrace(ServerPlayer player) {
+        Integer until = FALL_GRACE_UNTIL.get(player.getUUID());
+        if (until == null) return false;
+        int now = serverTick(player);
+        // Same staleness guard the Zanzoken window uses: the tick clock restarts on world load.
+        if (ZanzokenWindow.stale(now, until)) {
+            FALL_GRACE_UNTIL.remove(player.getUUID());
+            return false;
+        }
+        return now <= until;
+    }
+
     public static boolean hasCounterWindow(ServerPlayer player) {
         if (player == null) return false;
         Integer until = COUNTER_UNTIL_TICK.get(player.getUUID());
@@ -104,6 +185,26 @@ public final class Bt3CombatEvents {
         // Super-counter window after any hit (if enabled)
         if (XenoServerConfig.bt3SuperCounterEnabled && event.getNewDamage() > 0.05f) {
             openCounterWindow(defender);
+        }
+
+        if (event.getSource().is(net.minecraft.tags.DamageTypeTags.IS_FALL) && hasFallGrace(defender)) {
+            FALL_GRACE_UNTIL.remove(defender.getUUID());
+            event.setNewDamage(0f);
+            return;
+        }
+
+        // Zanzoken resolves before guard: an image cannot be blocked through, and a fighter who
+        // read the swing correctly should not also be charged stamina for a block.
+        if (ZanzokenWindow.dodges(XenoServerConfig.zanzokenEnabled,
+                ZanzokenWindow.armed(serverTick(defender), ZANZOKEN_UNTIL_TICK.get(defender.getUUID())),
+                event.getSource().getEntity() instanceof LivingEntity,
+                event.getNewDamage() > 0.05f)) {
+            consumeDodgeWindow(defender);
+            event.setNewDamage(0f);
+            if (event.getSource().getEntity() instanceof LivingEntity attacker) {
+                net.bullettrain.xenopixelsmod.network.Bt3CombatPacket.performZanzoken(defender, attacker);
+            }
+            return;
         }
 
         if (!XenoServerConfig.bt3GuardEnabled || !isGuarding(defender)) return;

@@ -1,0 +1,10 @@
+{
+  "type": "minecraft:crafting_shapeless",
+  "category": "building",
+  "ingredients": [
+    { "item": "xenopixelsmod:copycat_wing_flap_horizontal" },
+    { "item": "minecraft:glowstone" }
+  ],
+  "result": { "id": "xenopixelsmod:copycat_wing_flap_horizontal_lit", "count": 1 },
+  "show_notification": true
+}

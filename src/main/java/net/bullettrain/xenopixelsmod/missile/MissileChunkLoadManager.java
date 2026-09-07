@@ -63,13 +63,21 @@ public final class MissileChunkLoadManager {
         int until = level.getServer().getTickCount() + Math.max(40, durationTicks);
         Integer previous = ACTIVE.get(key);
         if (previous == null) {
+            // Vanilla forced chunks have no per-caller ownership. Do not later release an
+            // administrator's existing /forceload entry when this missile ticket expires.
             try {
-                level.setChunkForced(chunkX, chunkZ, true);
+                if (!acquireTicket(level.getForcedChunks().contains(ChunkPos.asLong(chunkX, chunkZ)),
+                        () -> level.setChunkForced(chunkX, chunkZ, true))) return;
             } catch (RuntimeException exception) {
                 XenoPixelsMod.LOGGER.debug("Unable to force missile chunk {}, {}", chunkX, chunkZ, exception);
+                return;
             }
         }
         if (previous == null || previous < until) ACTIVE.put(key, until);
+    }
+
+    static boolean acquireTicket(boolean alreadyForced, java.util.function.BooleanSupplier force) {
+        return !alreadyForced && force.getAsBoolean();
     }
 
     public static void trackMissile(ServerLevel level, Vec3 position, BlockPos target) {

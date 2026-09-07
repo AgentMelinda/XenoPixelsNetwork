@@ -36,6 +36,8 @@ public final class SparkingAuraFx {
     private static final Vector3f AURA_CORE = new Vector3f(1.0f, 0.86f, 0.38f);
     /** Aura edge, cooler so the shell has depth rather than reading as a flat gold cylinder. */
     private static final Vector3f AURA_EDGE = new Vector3f(1.0f, 0.55f, 0.16f);
+    private static final DustParticleOptions CORE_DUST = new DustParticleOptions(AURA_CORE, 1.4f);
+    private static final DustParticleOptions EDGE_DUST = new DustParticleOptions(AURA_EDGE, 1.1f);
 
     /** Particles placed around the ring each tick. Deliberately small; see the class note. */
     private static final int RING_POINTS = 3;
@@ -87,9 +89,7 @@ public final class SparkingAuraFx {
             // body, so the motion matters more than the placement.
             double y = player.getY() + height * 0.1;
 
-            boolean core = (i & 1) == 0;
-            DustParticleOptions dust =
-                    new DustParticleOptions(core ? AURA_CORE : AURA_EDGE, core ? 1.4f : 1.1f);
+            DustParticleOptions dust = (i & 1) == 0 ? CORE_DUST : EDGE_DUST;
             level.sendParticles(dust, x, y, z, 0, 0.0, 0.55, 0.0, 1.0);
         }
 

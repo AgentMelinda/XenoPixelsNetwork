@@ -107,6 +107,7 @@ public final class BeamSurgeManager {
             if (!STATES.isEmpty()) STATES.clear();
             return;
         }
+        if (FEEDING.isEmpty() && STATES.isEmpty()) return;
 
         long now = level.getServer().getTickCount();
         String levelId = level.dimension().location().toString();

@@ -207,6 +207,7 @@ public class ShipThrusterBlockEntity extends BlockEntity {
         // range that produced the old, ship-destroying default.
         this.maxForce = Mth.clamp(force, 100.0, 50_000.0);
         setChanged();
+        sync();
     }
 
     public boolean isActive() {

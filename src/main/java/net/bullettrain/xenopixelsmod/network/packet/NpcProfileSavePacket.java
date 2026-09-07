@@ -3,6 +3,7 @@ package net.bullettrain.xenopixelsmod.network.packet;
 import com.dragonminez.compat.network.NetworkEvent;
 import net.bullettrain.xenopixelsmod.compat.npc.NpcAuraFx;
 import net.bullettrain.xenopixelsmod.compat.npc.NpcCombatProfile;
+import net.bullettrain.xenopixelsmod.compat.npc.NpcCounterpartSync;
 import net.bullettrain.xenopixelsmod.compat.npc.NpcTransformSystem;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.FriendlyByteBuf;
@@ -62,7 +63,9 @@ public final class NpcProfileSavePacket {
                 return;
             }
             Entity raw = level.getEntity(msg.entityId);
-            if (!(raw instanceof LivingEntity living) || !living.isAlive()) {
+            if (!(raw instanceof LivingEntity living) || !living.isAlive()
+                    || !NpcCounterpartSync.isCustomNpc(living)
+                    || !player.hasPermissions(2)) {
                 return;
             }
             if (player.distanceToSqr(living) > 64.0 * 64.0) {

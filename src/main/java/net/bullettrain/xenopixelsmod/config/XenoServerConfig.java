@@ -40,7 +40,7 @@ public final class XenoServerConfig {
      * safe without a bump — but the file is never rewritten, so the keys stay invisible and nobody
      * can discover or tune them. A bump is what gets them written out.
      */
-    private static final int CURRENT_CONFIG_VERSION = 10;
+    private static final int CURRENT_CONFIG_VERSION = 11;
 
     // --- HUD / DMZ ---
     /** When false, clients block DMZ vanilla HUD overlays. */
@@ -106,6 +106,11 @@ public final class XenoServerConfig {
     public static boolean bt3SparkingEnabled = true;
     /** Hakai erasure technique (Ctrl + left click). */
     public static boolean hakaiEnabled = true;
+    /**
+     * Outline the Hakai target for the length of the channel. Vanilla entity glow, so it reads
+     * through walls; the colour is the target's scoreboard team colour, or white when it has none.
+     */
+    public static boolean hakaiTargetGlow = true;
     /** Transform impact ring when form changes. */
     public static boolean bt3TransformImpactEnabled = true;
 
@@ -164,9 +169,12 @@ public final class XenoServerConfig {
      */
     public static boolean thrusterImpulseGuardEnabled = true;
     /**
-     * Largest per-tick impulse magnitude a single thruster (or, since it shares this cap, one
-     * wing panel's control-surface torque — see
-     * {@link net.bullettrain.xenopixelsmod.aero.control.AeroControlSurfaceTorque}) may apply.
+     * Largest per-tick impulse magnitude a single thruster may apply.
+     *
+     * <p>Wing panels used to share this cap, back when a control surface rotated the hull through a
+     * fabricated impulse. They no longer apply impulses at all: a deflected panel now changes the
+     * normal Sable's own lift pass reads, and the resulting force is bounded by the aerodynamic
+     * model itself (see {@code WingPanelBlock.sable$contributeLiftAndDrag}).
      *
      * <p>Normal full power is {@code maxForce × 1.0 × step} — with the current 3,000 default
      * force (corrected down from a previous 1,200,000 that was producing ship-destroying
@@ -182,9 +190,9 @@ public final class XenoServerConfig {
     /**
      * Keyboard-mode flight (see {@code AeroFlightCore.tick}'s own comment on why
      * {@code AeroStabilizerSystem} is deliberately disabled there) has no steering assist and,
-     * before this cap existed, no ceiling at all on the ship's cumulative speed —
-     * {@code AeroControlSurfaceTorque}'s per-impulse guard only bounds a single tick's push, not
-     * what holding a key for a long time adds up to. Matches {@code AeroFlightDirector.MAX_SPEED},
+     * before this cap existed, no ceiling at all on the ship's cumulative speed — aerodynamic
+     * forces bound what any single tick contributes, not what holding a key for a long time adds up
+     * to. Enforced by {@code AeroControlSurfaceTorque}. Matches {@code AeroFlightDirector.MAX_SPEED},
      * the autopilot's own equivalent ceiling, so manual and autopilot flight agree on "too fast."
      */
     public static double maxFlightSpeed = 28.0;
@@ -218,6 +226,29 @@ public final class XenoServerConfig {
     public static float rushChainKiCost = 10.0f;
     public static float rushChainDamageScale = 0.9f;
     public static double rushChainRange = 16.0;
+    /** Ki a Xeno rush strike costs. DMZ derives strike cost from the caster's own damage,
+     * which reached thousands of ki at high power and made rush unusable. */
+    public static double rushKiCost = 25.0;
+    /** Cooldown in ticks for a Xeno rush strike, replacing DMZ's per-id config lookup. */
+    public static int rushCooldownTicks = 40;
+    /** Zanzoken: the afterimage dodge. */
+    public static boolean zanzokenEnabled = true;
+    /** Ki spent on the press, whether or not the dodge lands. */
+    public static float zanzokenKiCost = 20.0f;
+    /** How long a press stays live. Short on purpose: this is a read, not a stance. */
+    public static int zanzokenWindowTicks = 8;
+    /** Invulnerability granted after a successful dodge, so a combo cannot re-hit. */
+    public static int zanzokenIFramesTicks = 10;
+    public static int zanzokenCooldownTicks = 40;
+    /** True renders a copy of the fighter with their DMZ appearance; false uses the dust silhouette. */
+    public static boolean zanzokenGhostAfterimage = true;
+    /** Copies in the ring Zanzoken throws around the attacker. */
+    public static int zanzokenRingClones = 6;
+    public static double zanzokenRingRadius = 3.0;
+    /** Shi Shin No Ken: bodies the fighter divides into, counting their own. */
+    public static boolean multiFormEnabled = true;
+    public static int multiFormBodies = 4;
+    public static float multiFormKiCost = 60.0f;
     public static float sonicSwayStaminaCost = 6.0f;
     public static int sonicSwayIFramesTicks = 8;
     public static int sonicSwayCooldownTicks = 18;
@@ -230,8 +261,21 @@ public final class XenoServerConfig {
     public static double hakaiMaxRange = 15.0;
     /** Hakai cooldown, in ticks, after a channel starts (success or cancel). */
     public static int hakaiCooldownTicks = 600;
-    /** Ticks the Hakai channel takes to complete once started (~4s at 20 TPS). */
-    public static int hakaiChannelTicks = 80;
+    /** Ticks the Hakai channel takes to complete once started (~2s at 20 TPS). */
+    public static int hakaiChannelTicks = 40;
+    /**
+     * Damage a caster may absorb across one Hakai channel, as a fraction of their max health,
+     * before it breaks. Any hit at all used to cancel it, which meant Hakai could never be
+     * landed on anything that fights back -- a mob's first chip hit ended the channel. 0
+     * restores that strict behaviour; 1 makes the channel uninterruptible by damage.
+     */
+    public static float hakaiPoiseFraction = 0.35f;
+    /**
+     * How far the caster may drift from where they started before the channel breaks, in blocks.
+     * Knockback from being hit mid-channel counts against this too, so it has to be wider than
+     * a single knockback impulse or the damage allowance above is meaningless.
+     */
+    public static double hakaiMoveInterruptDistance = 3.0;
     public static float sparkingBuildPerHit = 6.0f;
     public static float sparkingBuildOnHurt = 3.0f;
     public static int sparkingDurationTicks = 100;
@@ -240,9 +284,9 @@ public final class XenoServerConfig {
     public static float transformImpactKnock = 0.45f;
     /**
      * Chance (0..1) that chase dash / dragon-dash chase phase succeeds.
-     * Default 0.50 (50%). Set 0.45 for 45%.
+     * Default 1.0 (reliable). Explicit lower probabilities retain pay-on-attempt behavior.
      */
-    public static float chaseSuccessChance = 0.50f;
+    public static float chaseSuccessChance = 1.0f;
 
     // --- Phase-1 combat balance ---
     public static float guardDamageReduction = 0.55f;
@@ -331,7 +375,7 @@ public final class XenoServerConfig {
     /** Chase-flight step distance per tick, in blocks. */
     public static double chaseFlightSpeed = 1.2;
     /** Chase-flight give-up window if the target is never reached. */
-    public static int chaseFlightTimeoutTicks = 400;
+    public static int chaseFlightTimeoutTicks = 2400;
     public static double backstepMaxRange = 10.0;
     public static double chargeAttackRange = 5.0;
     public static double dragonDashRange = 16.0;
@@ -368,6 +412,64 @@ public final class XenoServerConfig {
     public static float kickDownLaunch = 1.15f;
     /** Extra reach (blocks) for charged kick while holding S. */
     public static float kickDownRangeBonus = 4.0f;
+    /** Horizontal kick launch multiplier (mash + charged). */
+    public static float kickKnockbackScale = 1.0f;
+    /**
+     * Every Nth hold-R mash beat is a charged-kick knockback. {@code 0} disables.
+     * W-tap launcher still works.
+     */
+    public static int comboLaunchKickEvery = 5;
+    /** Launcher Y — steep diagonal off the floor (mash W-tap and charged kick + W). */
+    public static float comboLauncherUp = 1.85f;
+    /** Launcher away — enough to read as diagonal, not a 90° pop-up. */
+    public static float comboLauncherHoriz = 0.55f;
+    /**
+     * Ticks between beats of a held mash. Also the divisor every mash clip's playback speed is
+     * derived from, so raising it slows the string and lets each swing read; lowering it speeds
+     * the clips up to match. Must stay above the server's four-tick anti-spam floor, or beats land
+     * on the rejection boundary and the client's prediction desyncs from the confirmation.
+     */
+    public static int comboMashIntervalTicks = 6;
+    /**
+     * Which authored generation of the combat clips to play: 1 original, 2 yaw-scaled twins,
+     * 3 the first BT3 pass, and 4 the forward-centred BT3 rush set. All generations ship.
+     */
+    public static int comboAnimGeneration =
+            net.bullettrain.xenopixelsmod.combat.anim.Bt3AnimationCatalog.GEN_DEFAULT;
+    /** Blocks past the target for vanish (behind them). */
+    public static double vanishGap = 1.35;
+    /** Left/right vanish offset. */
+    public static double vanishSide = 1.05;
+    /**
+     * Below this horizontal separation, a vanish measures "behind" from the target's own body
+     * facing instead of from the line you approached on. That line is only a few centimetres long
+     * at point-blank, so its direction is noise: it flips frame to frame, and the client and the
+     * server - a hundred milliseconds apart on where both bodies are - can pick opposite sides.
+     *
+     * <p><b>Off by default.</b> It played worse than the plain approach line, so the original
+     * behaviour is what ships; the near-field code stays here behind this number rather than being
+     * torn out, so the two can be compared again without a rebuild. {@code 0} is the old
+     * behaviour at every range, byte for byte - {@code Bt3VanishGeometryTest} pins that.
+     */
+    public static double vanishNearField = 0.0;
+    /**
+     * Move a vanish landing off anything solid instead of teleporting into it. Also off by
+     * default: the search can decide a legal spot is blocked - {@code noCollision} counts entities,
+     * and a vanish lands right next to a body - and then shuffle the fighter sideways or leave
+     * them standing, which reads as the vanish misfiring. Kept switchable for the same reason.
+     */
+    public static boolean vanishOpenSpotSearch = false;
+    /** Blocks short of the target where chase flight stops. 0 = on the target. */
+    public static double chaseStopGap = 0.0;
+    /**
+     * Absolute Y for {@code /xenostructure place}. {@code 0} means use terrain height
+     * plus {@link #dmzStructureYOffset}.
+     */
+    public static int dmzStructureY = 0;
+    /** Added on top of terrain (or {@link #dmzStructureY}) when placing a DMZ structure. */
+    public static int dmzStructureYOffset = 0;
+    /** Summon the matching master NPC after {@code /xenostructure place}. */
+    public static boolean dmzStructureMaster = true;
     public static int maxComboSteps = 5;
     /** Ticks to reach full charge (20 = 1s). */
     public static int chargeMaxTicks = 28;
@@ -692,6 +794,11 @@ public final class XenoServerConfig {
                             "Config migration: chaseFlightSpeed 3.5 -> 1.2 so chase-dash reads as"
                                     + " a glide instead of a teleport.");
                 }
+                if (data.configVersion < 11 && data.hakaiChannelTicks == 80) {
+                    hakaiChannelTicks = 40;
+                    XenoPixelsMod.LOGGER.info(
+                            "Config migration: hakaiChannelTicks 80 -> 40 (DBS-length channel).");
+                }
                 save();
             }
         } catch (IOException e) {
@@ -743,10 +850,13 @@ public final class XenoServerConfig {
         d.bt3UltimateEnabled = bt3UltimateEnabled;
         d.bt3SparkingEnabled = bt3SparkingEnabled;
         d.hakaiEnabled = hakaiEnabled;
+        d.hakaiTargetGlow = hakaiTargetGlow;
         d.hakaiKiCost = hakaiKiCost;
         d.hakaiMaxRange = hakaiMaxRange;
         d.hakaiCooldownTicks = hakaiCooldownTicks;
         d.hakaiChannelTicks = hakaiChannelTicks;
+        d.hakaiPoiseFraction = hakaiPoiseFraction;
+        d.hakaiMoveInterruptDistance = hakaiMoveInterruptDistance;
         d.bt3TransformImpactEnabled = bt3TransformImpactEnabled;
         d.trainingDummyEnabled = trainingDummyEnabled;
         d.parallelQuestEnabled = parallelQuestEnabled;
@@ -769,6 +879,19 @@ public final class XenoServerConfig {
         d.rushChainKiCost = rushChainKiCost;
         d.rushChainDamageScale = rushChainDamageScale;
         d.rushChainRange = rushChainRange;
+        d.rushKiCost = rushKiCost;
+        d.rushCooldownTicks = rushCooldownTicks;
+        d.zanzokenEnabled = zanzokenEnabled;
+        d.zanzokenKiCost = zanzokenKiCost;
+        d.zanzokenWindowTicks = zanzokenWindowTicks;
+        d.zanzokenIFramesTicks = zanzokenIFramesTicks;
+        d.zanzokenCooldownTicks = zanzokenCooldownTicks;
+        d.zanzokenGhostAfterimage = zanzokenGhostAfterimage;
+        d.zanzokenRingClones = zanzokenRingClones;
+        d.zanzokenRingRadius = zanzokenRingRadius;
+        d.multiFormEnabled = multiFormEnabled;
+        d.multiFormBodies = multiFormBodies;
+        d.multiFormKiCost = multiFormKiCost;
         d.sonicSwayStaminaCost = sonicSwayStaminaCost;
         d.sonicSwayIFramesTicks = sonicSwayIFramesTicks;
         d.sonicSwayCooldownTicks = sonicSwayCooldownTicks;
@@ -842,6 +965,20 @@ public final class XenoServerConfig {
         d.kickUpLaunch = kickUpLaunch;
         d.kickDownLaunch = kickDownLaunch;
         d.kickDownRangeBonus = kickDownRangeBonus;
+        d.kickKnockbackScale = kickKnockbackScale;
+        d.comboLaunchKickEvery = comboLaunchKickEvery;
+        d.comboMashIntervalTicks = comboMashIntervalTicks;
+        d.comboAnimGeneration = comboAnimGeneration;
+        d.vanishNearField = vanishNearField;
+        d.vanishOpenSpotSearch = vanishOpenSpotSearch;
+        d.comboLauncherUp = comboLauncherUp;
+        d.comboLauncherHoriz = comboLauncherHoriz;
+        d.vanishGap = vanishGap;
+        d.vanishSide = vanishSide;
+        d.chaseStopGap = chaseStopGap;
+        d.dmzStructureY = dmzStructureY;
+        d.dmzStructureYOffset = dmzStructureYOffset;
+        d.dmzStructureMaster = dmzStructureMaster;
         d.maxComboSteps = maxComboSteps;
         d.chargeMaxTicks = chargeMaxTicks;
         d.yawpKiGriefingEnabled = yawpKiGriefingEnabled;
@@ -937,6 +1074,7 @@ public final class XenoServerConfig {
         bt3UltimateEnabled = d.bt3UltimateEnabled;
         bt3SparkingEnabled = d.bt3SparkingEnabled;
         hakaiEnabled = d.hakaiEnabled;
+        hakaiTargetGlow = d.hakaiTargetGlow;
         bt3TransformImpactEnabled = d.bt3TransformImpactEnabled;
         trainingDummyEnabled = d.trainingDummyEnabled;
         parallelQuestEnabled = d.parallelQuestEnabled;
@@ -966,6 +1104,19 @@ public final class XenoServerConfig {
         rushChainKiCost = Math.max(0f, d.rushChainKiCost);
         rushChainDamageScale = d.rushChainDamageScale > 0f ? d.rushChainDamageScale : 0.9f;
         rushChainRange = d.rushChainRange > 0 ? d.rushChainRange : 16.0;
+        rushKiCost = d.rushKiCost >= 0 ? d.rushKiCost : 25.0;
+        rushCooldownTicks = Math.max(1, d.rushCooldownTicks);
+        zanzokenEnabled = d.zanzokenEnabled;
+        zanzokenKiCost = Math.max(0f, d.zanzokenKiCost);
+        zanzokenWindowTicks = Math.max(1, d.zanzokenWindowTicks);
+        zanzokenIFramesTicks = Math.max(0, d.zanzokenIFramesTicks);
+        zanzokenCooldownTicks = Math.max(0, d.zanzokenCooldownTicks);
+        zanzokenGhostAfterimage = d.zanzokenGhostAfterimage;
+        zanzokenRingClones = Math.max(1, Math.min(16, d.zanzokenRingClones));
+        zanzokenRingRadius = d.zanzokenRingRadius > 0 ? Math.min(12.0, d.zanzokenRingRadius) : 3.0;
+        multiFormEnabled = d.multiFormEnabled;
+        multiFormBodies = Math.max(2, Math.min(8, d.multiFormBodies));
+        multiFormKiCost = Math.max(0f, d.multiFormKiCost);
         sonicSwayStaminaCost = Math.max(0f, d.sonicSwayStaminaCost);
         sonicSwayIFramesTicks = Math.max(2, Math.min(40, d.sonicSwayIFramesTicks <= 0 ? 8 : d.sonicSwayIFramesTicks));
         sonicSwayCooldownTicks = Math.max(5, Math.min(80, d.sonicSwayCooldownTicks <= 0 ? 18 : d.sonicSwayCooldownTicks));
@@ -975,14 +1126,19 @@ public final class XenoServerConfig {
         hakaiKiCost = Math.max(0f, d.hakaiKiCost > 0f ? d.hakaiKiCost : 60.0f);
         hakaiMaxRange = d.hakaiMaxRange > 0 ? d.hakaiMaxRange : 15.0;
         hakaiCooldownTicks = Math.max(40, Math.min(2400, d.hakaiCooldownTicks <= 0 ? 600 : d.hakaiCooldownTicks));
-        hakaiChannelTicks = Math.max(10, Math.min(400, d.hakaiChannelTicks <= 0 ? 80 : d.hakaiChannelTicks));
+        hakaiChannelTicks = Math.max(10, Math.min(400, d.hakaiChannelTicks <= 0 ? 40 : d.hakaiChannelTicks));
+        hakaiPoiseFraction = d.hakaiPoiseFraction == null ? 0.35f
+                : Math.max(0f, Math.min(1f, d.hakaiPoiseFraction));
+        hakaiMoveInterruptDistance = d.hakaiMoveInterruptDistance == null ? 3.0
+                : Math.max(0.5, Math.min(32.0, d.hakaiMoveInterruptDistance));
         sparkingBuildPerHit = Math.max(0f, d.sparkingBuildPerHit);
         sparkingBuildOnHurt = Math.max(0f, d.sparkingBuildOnHurt);
         sparkingDurationTicks = Math.max(20, Math.min(400, d.sparkingDurationTicks <= 0 ? 100 : d.sparkingDurationTicks));
         sparkingDamageMult = d.sparkingDamageMult > 1f ? d.sparkingDamageMult : 1.35f;
         transformImpactRadius = d.transformImpactRadius > 0f ? d.transformImpactRadius : 3.5f;
         transformImpactKnock = Math.max(0f, d.transformImpactKnock);
-        chaseSuccessChance = d.chaseSuccessChance < 0f ? 0.50f : Math.max(0f, Math.min(1f, d.chaseSuccessChance));
+        chaseSuccessChance = !Float.isFinite(d.chaseSuccessChance) || d.chaseSuccessChance < 0f
+                ? 1.0f : Math.max(0f, Math.min(1f, d.chaseSuccessChance));
         guardDamageReduction = d.guardDamageReduction > 0f ? Math.min(0.95f, d.guardDamageReduction) : 0.55f;
         guardStaminaPerHit = Math.max(0f, d.guardStaminaPerHit);
         guardStaminaPerSec = Math.max(0f, d.guardStaminaPerSec);
@@ -1018,7 +1174,7 @@ public final class XenoServerConfig {
         vanishMaxRange = d.vanishMaxRange > 0 ? d.vanishMaxRange : 7.0;
         chaseMaxRange = d.chaseMaxRange < 0 ? 0.0 : d.chaseMaxRange;
         chaseFlightSpeed = d.chaseFlightSpeed > 0 ? d.chaseFlightSpeed : 3.5;
-        chaseFlightTimeoutTicks = d.chaseFlightTimeoutTicks > 0 ? d.chaseFlightTimeoutTicks : 400;
+        chaseFlightTimeoutTicks = d.chaseFlightTimeoutTicks > 0 ? d.chaseFlightTimeoutTicks : 2400;
         backstepMaxRange = d.backstepMaxRange > 0 ? d.backstepMaxRange : 10.0;
         chargeAttackRange = d.chargeAttackRange > 0 ? d.chargeAttackRange : 5.0;
         dragonDashRange = d.dragonDashRange > 0 ? d.dragonDashRange : 16.0;
@@ -1045,6 +1201,26 @@ public final class XenoServerConfig {
         kickUpLaunch = d.kickUpLaunch > 0 ? d.kickUpLaunch : 1.35f;
         kickDownLaunch = d.kickDownLaunch > 0 ? d.kickDownLaunch : 1.15f;
         kickDownRangeBonus = Math.max(0f, d.kickDownRangeBonus);
+        kickKnockbackScale = d.kickKnockbackScale > 0f
+                ? Math.max(0.1f, Math.min(8f, d.kickKnockbackScale)) : 1.0f;
+        comboLaunchKickEvery = Math.max(0, Math.min(32, d.comboLaunchKickEvery));
+        comboMashIntervalTicks = Math.max(2, Math.min(20,
+                d.comboMashIntervalTicks <= 0 ? 6 : d.comboMashIntervalTicks));
+        comboAnimGeneration =
+                net.bullettrain.xenopixelsmod.combat.anim.Bt3AnimationCatalog.clampGeneration(
+                        d.comboAnimGeneration);
+        vanishNearField = d.vanishNearField >= 0 ? Math.min(8.0, d.vanishNearField) : 0.0;
+        vanishOpenSpotSearch = d.vanishOpenSpotSearch;
+        comboLauncherUp = d.comboLauncherUp > 0f
+                ? Math.max(0.2f, Math.min(6f, d.comboLauncherUp)) : 1.85f;
+        comboLauncherHoriz = d.comboLauncherHoriz > 0f
+                ? Math.max(0.05f, Math.min(4f, d.comboLauncherHoriz)) : 0.55f;
+        vanishGap = d.vanishGap >= 0 ? Math.min(16.0, d.vanishGap) : 1.35;
+        vanishSide = d.vanishSide >= 0 ? Math.min(8.0, d.vanishSide) : 1.05;
+        chaseStopGap = d.chaseStopGap >= 0 ? Math.min(8.0, d.chaseStopGap) : 0.0;
+        dmzStructureY = d.dmzStructureY;
+        dmzStructureYOffset = d.dmzStructureYOffset;
+        dmzStructureMaster = d.dmzStructureMaster;
         maxComboSteps = Math.max(1, Math.min(8, d.maxComboSteps <= 0 ? 5 : d.maxComboSteps));
         chargeMaxTicks = Math.max(10, Math.min(80, d.chargeMaxTicks <= 0 ? 28 : d.chargeMaxTicks));
 
@@ -1585,6 +1761,17 @@ public final class XenoServerConfig {
         beamSurgeRampPerMastery = Math.min(1f, nonNegativeFinite(d.beamSurgeRampPerMastery, 0.010f));
         beamSurgeMaxLength = Float.isFinite(d.beamSurgeMaxLength) ? d.beamSurgeMaxLength : 192f;
         lockOnThroughBlocks = d.lockOnThroughBlocks == null || d.lockOnThroughBlocks;
+        vanishGap = d.vanishGap >= 0 ? Math.min(16.0, d.vanishGap) : 1.35;
+        vanishSide = d.vanishSide >= 0 ? Math.min(8.0, d.vanishSide) : 1.05;
+        // The attacking client predicts its own vanish landing from these three, so an operator's
+        // tuning has to reach the client statics too or the prediction disagrees with the server
+        // on every vanish rather than only the close ones.
+        vanishNearField = d.vanishNearField >= 0 ? Math.min(8.0, d.vanishNearField) : 0.0;
+        vanishOpenSpotSearch = d.vanishOpenSpotSearch;
+        comboAnimGeneration =
+                net.bullettrain.xenopixelsmod.combat.anim.Bt3AnimationCatalog.clampGeneration(
+                        d.comboAnimGeneration);
+        chaseStopGap = d.chaseStopGap >= 0 ? Math.min(8.0, d.chaseStopGap) : 0.0;
         guidanceControlRange = Math.max(0, d.guidanceControlRange);
         guidanceTurnRate = clamp01(d.guidanceTurnRate, 0.0f);
         guidanceCameraRate = nonNegativeFinite(d.guidanceCameraRate, 0.38f);
@@ -1836,6 +2023,7 @@ public final class XenoServerConfig {
         public boolean bt3UltimateEnabled = true;
         public boolean bt3SparkingEnabled = true;
         public boolean hakaiEnabled = true;
+        public boolean hakaiTargetGlow = true;
         public boolean bt3TransformImpactEnabled = true;
         public boolean trainingDummyEnabled = true;
         public boolean parallelQuestEnabled = true;
@@ -1858,6 +2046,19 @@ public final class XenoServerConfig {
         public float rushChainKiCost = 10.0f;
         public float rushChainDamageScale = 0.9f;
         public double rushChainRange = 16.0;
+        public double rushKiCost = 25.0;
+        public int rushCooldownTicks = 40;
+        public boolean zanzokenEnabled = true;
+        public float zanzokenKiCost = 20.0f;
+        public int zanzokenWindowTicks = 8;
+        public int zanzokenIFramesTicks = 10;
+        public int zanzokenCooldownTicks = 40;
+        public boolean zanzokenGhostAfterimage = true;
+        public int zanzokenRingClones = 6;
+        public double zanzokenRingRadius = 3.0;
+        public boolean multiFormEnabled = true;
+        public int multiFormBodies = 4;
+        public float multiFormKiCost = 60.0f;
         public float sonicSwayStaminaCost = 6.0f;
         public int sonicSwayIFramesTicks = 8;
         public int sonicSwayCooldownTicks = 18;
@@ -1867,14 +2068,16 @@ public final class XenoServerConfig {
         public float hakaiKiCost = 60.0f;
         public double hakaiMaxRange = 15.0;
         public int hakaiCooldownTicks = 600;
-        public int hakaiChannelTicks = 80;
+        public int hakaiChannelTicks = 40;
+        public Float hakaiPoiseFraction;
+        public Double hakaiMoveInterruptDistance;
         public float sparkingBuildPerHit = 6.0f;
         public float sparkingBuildOnHurt = 3.0f;
         public int sparkingDurationTicks = 100;
         public float sparkingDamageMult = 1.35f;
         public float transformImpactRadius = 3.5f;
         public float transformImpactKnock = 0.45f;
-        public float chaseSuccessChance = 0.50f;
+        public float chaseSuccessChance = 1.0f;
         public float guardDamageReduction = 0.55f;
         public float guardStaminaPerHit = 8.0f;
         public float guardStaminaPerSec = 3.0f;
@@ -1939,6 +2142,20 @@ public final class XenoServerConfig {
         public float kickUpLaunch = 1.35f;
         public float kickDownLaunch = 1.15f;
         public float kickDownRangeBonus = 4.0f;
+        public float kickKnockbackScale = 1.0f;
+        public int comboLaunchKickEvery = 5;
+        public int comboMashIntervalTicks = 6;
+        public int comboAnimGeneration = 4;
+        public double vanishNearField = 0.0;
+        public boolean vanishOpenSpotSearch = false;
+        public float comboLauncherUp = 1.85f;
+        public float comboLauncherHoriz = 0.55f;
+        public double vanishGap = 1.35;
+        public double vanishSide = 1.05;
+        public double chaseStopGap = 0.0;
+        public int dmzStructureY = 0;
+        public int dmzStructureYOffset = 0;
+        public boolean dmzStructureMaster = true;
         public int maxComboSteps = 5;
         public int chargeMaxTicks = 28;
         public boolean yawpKiGriefingEnabled = true;

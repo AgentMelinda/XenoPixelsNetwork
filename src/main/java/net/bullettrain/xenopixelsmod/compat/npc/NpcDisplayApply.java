@@ -44,6 +44,45 @@ public final class NpcDisplayApply {
         }
     }
 
+    /**
+     * Switches the CNPC display model type to/from the player model via reflection on
+     * the {@code modelType} enum field of {@code DataDisplay}. Returns false when the
+     * field or the expected enum constant does not exist in the loaded CNPC version.
+     */
+    public static boolean setPlayerModel(LivingEntity npc, boolean playerModel) {
+        Object display = displayOf(npc);
+        if (display == null) {
+            return false;
+        }
+        try {
+            java.lang.reflect.Field field = display.getClass().getField("modelType");
+            Class<?> enumType = field.getType();
+            if (!enumType.isEnum()) {
+                return false;
+            }
+            String wanted = playerModel ? "PLAYER" : "CUSTOM";
+            Object target = null;
+            for (Object constant : enumType.getEnumConstants()) {
+                if (wanted.equals(((Enum<?>) constant).name())) {
+                    target = constant;
+                    break;
+                }
+            }
+            if (target == null) {
+                return false;
+            }
+            field.set(display, target);
+            try {
+                Class.forName("noppes.npcs.entity.EntityNPCInterface")
+                        .getField("updateClient").setBoolean(npc, true);
+            } catch (Throwable ignored) {
+            }
+            return true;
+        } catch (Throwable ignored) {
+            return false;
+        }
+    }
+
     public static int getSize(LivingEntity npc) {
         Object display = displayOf(npc);
         if (display == null) {

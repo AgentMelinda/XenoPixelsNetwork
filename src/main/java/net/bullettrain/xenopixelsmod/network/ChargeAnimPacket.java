@@ -37,8 +37,17 @@ public class ChargeAnimPacket {
     public static void handle(ChargeAnimPacket msg, Supplier<NetworkEvent.Context> ctx) {
         ctx.get().enqueueWork(() -> {
             ServerPlayer player = ctx.get().getSender();
-            if (player == null || !XenoServerConfig.bt3CombatEnabled) return;
+            if (player == null) return;
+            if (msg.phase == Phase.CANCEL) {
+                DmzAnimHelper.broadcastChargeStop(player);
+                return;
+            }
+            if (!XenoServerConfig.bt3CombatEnabled) return;
             if (msg.phase == Phase.START) {
+                if ((msg.style == DmzAnimHelper.ChargeStyle.FIST_LIGHT || msg.style == DmzAnimHelper.ChargeStyle.FIST_HEAVY)
+                        && !net.bullettrain.xenopixelsmod.combat.FistInputPolicy.emptyHands(
+                                player.getMainHandItem().isEmpty(), player.getOffhandItem().isEmpty(),
+                                com.dragonminez.common.combat.logic.player.PlayerAttackHelper.isKiWeaponActive(player))) return;
                 if (msg.style == DmzAnimHelper.ChargeStyle.DRAGON && !XenoServerConfig.bt3DragonDashEnabled) return;
                 if (msg.style != DmzAnimHelper.ChargeStyle.DRAGON && !XenoServerConfig.bt3ChargeAttackEnabled) return;
                 DmzAnimHelper.broadcastChargeStart(player, msg.style);

@@ -12,6 +12,20 @@ import software.bernie.geckolib.animation.RawAnimation;
 public final class NpcGeckoAnim {
     private NpcGeckoAnim() {}
 
+    /** True when this NPC is currently rendered by CNPC Gecko Addon's custom-model path. */
+    public static boolean canAnimate(LivingEntity npc) {
+        if (npc == null || !ModList.get().isLoaded("cnpcgeckoaddon")) {
+            return false;
+        }
+        try {
+            Object display = Class.forName("noppes.npcs.entity.EntityNPCInterface")
+                    .getField("display").get(npc);
+            return display instanceof IDataDisplay addon && addon.hasCustomModel();
+        } catch (ReflectiveOperationException | LinkageError | RuntimeException e) {
+            return false;
+        }
+    }
+
     public static boolean play(LivingEntity npc, String animation) {
         if (npc == null || animation == null || animation.isBlank()
                 || !ModList.get().isLoaded("cnpcgeckoaddon")) {
@@ -43,8 +57,11 @@ public final class NpcGeckoAnim {
             return false;
         }
         try {
-            Object display = Class.forName("noppes.npcs.entity.EntityNPCInterface")
-                    .getField("display").get(npc);
+            Class<?> npcClass = Class.forName("noppes.npcs.entity.EntityNPCInterface");
+            if (!npcClass.isInstance(npc)) {
+                return false;
+            }
+            Object display = npcClass.getField("display").get(npc);
             if (!(display instanceof IDataDisplay addon) || !addon.hasCustomModel()) {
                 return false;
             }

@@ -5,6 +5,7 @@ import dev.ryanhcode.sable.api.sublevel.SubLevelContainer;
 import dev.ryanhcode.sable.platform.SableEventPlatform;
 import dev.ryanhcode.sable.sublevel.ServerSubLevel;
 import net.bullettrain.xenopixelsmod.XenoPixelsMod;
+import net.bullettrain.xenopixelsmod.aero.AeroConfig;
 import org.joml.Vector3d;
 import org.joml.Vector3dc;
 import org.joml.Quaterniond;
@@ -15,18 +16,27 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
- * Attitude stabilization for Aero-controlled ships.
+ * Attitude stabilization and angular-rate damping for Aero-controlled ships.
  *
  * <p>Runs inside Sable's physics tick, like {@code XenoThrusterControl} and
  * {@code ShipGravityControl}, because impulses must be applied there rather than on the game
  * thread.
  *
- * <p>Commands are absolute world attitudes. Quaternion proportional feedback supplies the
- * shortest rotation and world angular-velocity feedback damps it. The requested world angular
- * acceleration is transformed back into body axes before applying Sable's body inertia tensor.
+ * <p>Two levels of authority, chosen per tick by {@link AeroFlightCore}:
+ * <ul>
+ *   <li>{@link Mode#DAMP_ONLY} — keyboard flight. Only the angular-rate damping term runs
+ *       ({@code -ω · AeroConfig.arcadeAngularDamping}): the ship is not steered toward any target,
+ *       it is only stopped from spinning on its own. This is the "arcade instructor" — without it
+ *       keyboard flight had no rotational damping at all and any control-surface input spun the
+ *       ship up to the hard angular-velocity wall and kept it there.</li>
+ *   <li>{@link Mode#FULL_PD} — mouse-aim / autopilot / GUI. The damping term plus quaternion
+ *       proportional feedback ({@code +error · AeroConfig.stabilizerKp}) toward the commanded
+ *       absolute world attitude.</li>
+ * </ul>
  *
- * <p>Torque is scaled by the ship's inertia tensor so that heavy hulls get proportionally more
- * authority — without it, gains tuned on a small ship do nothing on a capital hull.
+ * <p>The commanded angular acceleration is clamped to {@link AeroConfig#stabilizerMaxAngularAccel},
+ * transformed into body axes and multiplied by the ship inertia tensor, so gains tuned on a small
+ * ship still bite on a capital hull.
  */
 public final class AeroStabilizerSystem {
     private static final AtomicBoolean REGISTERED = new AtomicBoolean();
@@ -37,9 +47,15 @@ public final class AeroStabilizerSystem {
     private static final long SWEEP_INTERVAL_NANOS = 30L * 1_000_000_000L;
     private static final long STALE_AFTER_NANOS = 60L * 1_000_000_000L;
 
-    private static final double KP = 5.0;
-    private static final double KD = 3.2;
-    private static final double MAX_ANGULAR_ACCEL = 5.0;
+    /** How much of the stabilizer runs this tick. */
+    public enum Mode {
+        /** Idle — no torque at all. */
+        OFF,
+        /** Rate damping only — bleed off rotation, do not steer. Keyboard flight. */
+        DAMP_ONLY,
+        /** Rate damping plus proportional attitude hold toward the commanded angles. */
+        FULL_PD
+    }
 
     private AeroStabilizerSystem() {
     }
@@ -55,7 +71,7 @@ public final class AeroStabilizerSystem {
                     Entry entry = ENTRIES.get(subLevel.getUniqueId());
                     if (entry == null) continue;
                     entry.lastSeenNanos = now;
-                    if (!entry.enabled) continue;
+                    if (entry.mode == Mode.OFF) continue;
                     RigidBodyHandle handle = system.getPhysicsHandle(subLevel);
                     if (handle == null || !handle.isValid()) continue;
                     entry.tick(subLevel, handle, deltaSeconds);
@@ -76,10 +92,10 @@ public final class AeroStabilizerSystem {
         XenoPixelsMod.LOGGER.info("Registered Aero attitude stabilizer");
     }
 
-    /** Command an absolute Minecraft-world attitude in degrees. */
+    /** Command an absolute Minecraft-world attitude in degrees, at the given authority level. */
     public static void setTargetAttitude(ServerSubLevel subLevel, double yawDeg, double pitchDeg,
                                          double rollDeg, Vector3dc bodyNose, Vector3dc bodyUp,
-                                         boolean enabled) {
+                                         Mode mode) {
         if (subLevel == null) return;
         ensureRegistered();
         Entry entry = ENTRIES.computeIfAbsent(subLevel.getUniqueId(), ignored -> new Entry());
@@ -92,7 +108,7 @@ public final class AeroStabilizerSystem {
         if (bodyUp != null) {
             entry.bodyUpX = bodyUp.x(); entry.bodyUpY = bodyUp.y(); entry.bodyUpZ = bodyUp.z();
         }
-        entry.enabled = enabled;
+        entry.mode = mode == null ? Mode.OFF : mode;
     }
 
     /** Compatibility shutdown entry point for old call sites. */
@@ -109,7 +125,7 @@ public final class AeroStabilizerSystem {
         ENTRIES.clear();
     }
 
-    /** Latest per-axis error, for the diagnostics tab. */
+    /** Latest per-axis error, for the diagnostics tab. Zero in {@link Mode#DAMP_ONLY}. */
     public static double[] lastError(ServerSubLevel subLevel) {
         Entry entry = subLevel == null ? null : ENTRIES.get(subLevel.getUniqueId());
         if (entry == null) return new double[] {0, 0, 0};
@@ -120,7 +136,7 @@ public final class AeroStabilizerSystem {
         private volatile double targetYawDeg;
         private volatile double targetPitchDeg;
         private volatile double targetRollDeg;
-        private volatile boolean enabled;
+        private volatile Mode mode = Mode.OFF;
 
         private volatile double bodyNoseX, bodyNoseY = 1.0, bodyNoseZ;
         private volatile double bodyUpX, bodyUpY, bodyUpZ = -1.0;
@@ -145,22 +161,35 @@ public final class AeroStabilizerSystem {
             double step = Math.max(0.0, Math.min(deltaSeconds, 0.1));
             if (step <= 0.0) return;
             current.set(subLevel.logicalPose().orientation()).normalize();
-            Quaterniond desired = SableAttitudeMath.desiredOrientation(
-                    targetYawDeg, targetPitchDeg, targetRollDeg,
-                    sampledNose.set(bodyNoseX, bodyNoseY, bodyNoseZ),
-                    sampledUp.set(bodyUpX, bodyUpY, bodyUpZ));
-            SableAttitudeMath.errorVectorWorld(current, desired, lastError);
-            errorX = lastError.x;
-            errorY = lastError.y;
-            errorZ = lastError.z;
-            angularAcceleration.set(lastError).mul(KP).sub(
-                    worldRate.x() * KD, worldRate.y() * KD, worldRate.z() * KD);
+
+            // Rate damping — the "instructor". Runs in every non-OFF mode.
+            double kd = AeroConfig.arcadeAngularDamping;
+            angularAcceleration.set(worldRate.x() * -kd, worldRate.y() * -kd, worldRate.z() * -kd);
+
+            if (mode == Mode.FULL_PD) {
+                Quaterniond desired = SableAttitudeMath.desiredOrientation(
+                        targetYawDeg, targetPitchDeg, targetRollDeg,
+                        sampledNose.set(bodyNoseX, bodyNoseY, bodyNoseZ),
+                        sampledUp.set(bodyUpX, bodyUpY, bodyUpZ));
+                SableAttitudeMath.errorVectorWorld(current, desired, lastError);
+                errorX = lastError.x;
+                errorY = lastError.y;
+                errorZ = lastError.z;
+                double kp = AeroConfig.stabilizerKp;
+                angularAcceleration.add(lastError.x * kp, lastError.y * kp, lastError.z * kp);
+            } else {
+                errorX = 0.0;
+                errorY = 0.0;
+                errorZ = 0.0;
+            }
+
             double length = angularAcceleration.length();
             // A NaN length fails every ">" comparison, so the clamp below would silently never
-            // fire for it — matching AeroControlSurfaceTorque.sane()'s "refuse outright" rule
+            // fire for it — taking the "refuse outright" rule rather than clamping a value
             // rather than letting a non-finite torque impulse reach Sable's rigid body at all.
             if (!Double.isFinite(length)) return;
-            if (length > MAX_ANGULAR_ACCEL) angularAcceleration.mul(MAX_ANGULAR_ACCEL / length);
+            double maxAccel = AeroConfig.stabilizerMaxAngularAccel;
+            if (length > maxAccel) angularAcceleration.mul(maxAccel / length);
 
             // Sable consumes model/body-space torque impulses.
             torque.set(angularAcceleration);

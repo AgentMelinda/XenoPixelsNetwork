@@ -21,6 +21,7 @@ public final class NpcAuraPacket {
     private final boolean lightnings;
     private final int lightningRgb;
     private final boolean sparking;
+    private final boolean groundRing;
     private final List<NpcAuraResolver.Layer> layers;
 
     public NpcAuraPacket(UUID entityUuid, boolean on, int rgb) {
@@ -35,7 +36,7 @@ public final class NpcAuraPacket {
                          boolean lightnings, int lightningRgb) {
         this(entityUuid, on, scale, new NpcAuraResolver.Resolved(
                 List.of(new NpcAuraResolver.Layer("kakarot", 0, rgb & 0xFFFFFF)),
-                lightnings, lightningRgb, true, true));
+                lightnings, lightningRgb, true, true, true));
     }
 
     public NpcAuraPacket(UUID entityUuid, boolean on, float scale, NpcAuraResolver.Resolved resolved) {
@@ -47,6 +48,7 @@ public final class NpcAuraPacket {
         this.lightnings = resolved != null && resolved.lightning();
         this.lightningRgb = resolved == null ? 0xD9F4FF : resolved.lightningRgb() & 0xFFFFFF;
         this.sparking = resolved == null || resolved.sparking();
+        this.groundRing = resolved == null || resolved.groundRing();
     }
 
     public NpcAuraPacket(FriendlyByteBuf buf) {
@@ -57,6 +59,7 @@ public final class NpcAuraPacket {
         this.lightnings = buf.readBoolean();
         this.lightningRgb = buf.readInt() & 0xFFFFFF;
         this.sparking = buf.readBoolean();
+        this.groundRing = buf.readBoolean();
         int count = Math.max(0, Math.min(16, buf.readVarInt()));
         List<NpcAuraResolver.Layer> read = new ArrayList<>(count);
         for (int i = 0; i < count; i++) {
@@ -73,6 +76,7 @@ public final class NpcAuraPacket {
         buf.writeBoolean(lightnings);
         buf.writeInt(lightningRgb);
         buf.writeBoolean(sparking);
+        buf.writeBoolean(groundRing);
         buf.writeVarInt(layers.size());
         for (NpcAuraResolver.Layer layer : layers) {
             buf.writeUtf(layer.type(), 64);
@@ -85,7 +89,8 @@ public final class NpcAuraPacket {
         ctx.get().enqueueWork(() ->
                 net.bullettrain.xenopixelsmod.client.compat.npc.NpcAuraClient.apply(
                         msg.entityUuid, msg.on, msg.rgb, msg.scale,
-                        msg.lightnings, msg.lightningRgb, msg.sparking, msg.layers));
+                        msg.lightnings, msg.lightningRgb, msg.sparking, msg.groundRing,
+                        msg.layers));
         ctx.get().setPacketHandled(true);
     }
 }

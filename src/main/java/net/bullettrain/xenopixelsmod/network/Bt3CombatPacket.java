@@ -62,14 +62,23 @@ public class Bt3CombatPacket {
         /** Start a Hakai erasure channel on the target (Ctrl + left click). */
         HAKAI_START,
         /** Ctrl or the mouse button was released: stop channeling, no penalty. */
-        HAKAI_CANCEL
+        HAKAI_CANCEL,
+        /** Release chase hold: stop mid-flight. Appended — do not reorder. */
+        CHASE_STOP,
+        /** Open a Zanzoken read. Appended — do not reorder. */
+        ZANZOKEN,
+        /** Shi Shin No Ken: divide into several bodies, or reunite. Appended — do not reorder. */
+        MULTIFORM,
+        /** Sync ki charge percent to clones (0-100). Appended — do not reorder. */
+        SYNC_KI_CHARGE
     }
 
-    /** Distance past the target (behind them on approach line). */
+    /** Fallback when config has not loaded yet. Prefer {@link XenoServerConfig#vanishGap}. */
     public static final double VANISH_GAP = 1.35;
     /** Left/right offset for A vs D vanish. */
     public static final double VANISH_SIDE = 1.05;
-    public static final double CHASE_GAP = 1.35;
+    /** Fallback; live chase stop uses {@link XenoServerConfig#chaseStopGap}. */
+    public static final double CHASE_GAP = 0.0;
     public static final double BACKSTEP_DIST = 3.2;
     public static final double DRAGON_LAUNCH = 6.5;
 
@@ -80,6 +89,13 @@ public class Bt3CombatPacket {
     private final int chargePercent;
     /** Kick vertical bias: +1 hold W (up), -1 hold S (down), 0 neutral. */
     private final int verticalBias;
+    /**
+     * COMBO_HIT only: which held direction key was down, as a
+     * {@code Bt3ComboChoreography.MASH_STYLE_*} constant. The client cannot be trusted for the
+     * combo step, but it is the only side that knows which key is held, so the style rides along
+     * and the server applies it to the step it owns.
+     */
+    private final int mashStyle;
 
     public Bt3CombatPacket(Action action, int targetId, int comboStep) {
         this(action, targetId, comboStep, 0, 0);
@@ -90,11 +106,18 @@ public class Bt3CombatPacket {
     }
 
     public Bt3CombatPacket(Action action, int targetId, int comboStep, int chargePercent, int verticalBias) {
+        this(action, targetId, comboStep, chargePercent, verticalBias,
+                net.bullettrain.xenopixelsmod.combat.Bt3ComboChoreography.MASH_STYLE_ROUTE);
+    }
+
+    public Bt3CombatPacket(Action action, int targetId, int comboStep, int chargePercent, int verticalBias,
+                           int mashStyle) {
         this.action = action;
         this.targetId = targetId;
         this.comboStep = comboStep;
         this.chargePercent = Math.max(0, Math.min(100, chargePercent));
         this.verticalBias = verticalBias < 0 ? -1 : (verticalBias > 0 ? 1 : 0);
+        this.mashStyle = Math.max(0, Math.min(2, mashStyle));
     }
 
     public static void encode(Bt3CombatPacket msg, FriendlyByteBuf buf) {
@@ -103,6 +126,7 @@ public class Bt3CombatPacket {
         buf.writeVarInt(msg.comboStep);
         buf.writeVarInt(msg.chargePercent);
         buf.writeByte(msg.verticalBias);
+        buf.writeByte(msg.mashStyle);
     }
 
     public static Bt3CombatPacket decode(FriendlyByteBuf buf) {
@@ -111,6 +135,7 @@ public class Bt3CombatPacket {
                 buf.readVarInt(),
                 buf.readVarInt(),
                 buf.readVarInt(),
+                buf.readByte(),
                 buf.readByte());
     }
 
@@ -118,177 +143,220 @@ public class Bt3CombatPacket {
         ctx.get().enqueueWork(() -> {
             ServerPlayer player = ctx.get().getSender();
             if (player == null) return;
-            if (!XenoServerConfig.bt3CombatEnabled) return;
+            if (msg.action == Action.CHASE_STOP) {
+                ChaseFlightSystem.stopChase(player);
+                return;
+            }
+            if (msg.action == Action.ZANZOKEN) {
+                handleZanzoken(player);
+                return;
+            }
+            if (msg.action == Action.MULTIFORM) {
+                handleMultiForm(player);
+                return;
+            }
+            if (msg.action == Action.HAKAI_CANCEL) {
+                net.bullettrain.xenopixelsmod.combat.HakaiChannelSystem.cancel(player, null);
+                return;
+            }
+            if (msg.action == Action.GUARD && msg.comboStep == 0) {
+                net.bullettrain.xenopixelsmod.combat.Bt3CombatEvents.setGuarding(player, false);
+                DmzAnimHelper.broadcastBlockStop(player);
+                return;
+            }
+            try {
+                if (!XenoServerConfig.bt3CombatEnabled || !player.isAlive() || player.isSpectator()
+                        || player.getVehicle() instanceof net.bullettrain.xenopixelsmod.aero.seat.XenoPilotSeatEntity) return;
+                if ((msg.action == Action.COMBO_HIT || msg.action == Action.CHARGE_FIST)
+                        && !net.bullettrain.xenopixelsmod.combat.FistInputPolicy.emptyHands(
+                                player.getMainHandItem().isEmpty(), player.getOffhandItem().isEmpty(),
+                                com.dragonminez.common.combat.logic.player.PlayerAttackHelper.isKiWeaponActive(player))) return;
 
-            LivingEntity target = null;
-            if (msg.targetId > 0) {
-                Entity raw = player.level().getEntity(msg.targetId);
-                if (raw instanceof LivingEntity living && living.isAlive()) {
-                    target = living;
+                LivingEntity target = null;
+                if (msg.targetId > 0) {
+                    Entity raw = player.level().getEntity(msg.targetId);
+                    if (raw instanceof LivingEntity living && living.isAlive()) {
+                        target = living;
+                    }
                 }
-            }
-            if (msg.action == Action.CHASE_DASH) {
-                LivingEntity homingVictim = DragonHoming.victim(player);
-                if (homingVictim != null) {
-                    target = homingVictim;
+                if (msg.action == Action.CHASE_DASH) {
+                    LivingEntity homingVictim = DragonHoming.victim(player);
+                    if (homingVictim != null) {
+                        target = homingVictim;
+                    }
                 }
-            }
 
-            // Combo / kick / guard / ki-blast may run without a target.
-            if (target == null
-                    && msg.action != Action.CHARGE_KICK
-                    && msg.action != Action.COMBO_HIT
-                    && msg.action != Action.GUARD
-                    && msg.action != Action.KI_BLAST_CANCEL
-                    && msg.action != Action.SONIC_SWAY
-                    && msg.action != Action.SPARKING
-                    && msg.action != Action.ULTIMATE
-                    && msg.action != Action.HAKAI_CANCEL) {
-                return;
-            }
-            // Never let BT3 tools hit DMZ masters
-            if (target != null && net.bullettrain.xenopixelsmod.event.DmzMasterProtection.isDmzMaster(target)
-                    && msg.action != Action.GUARD && msg.action != Action.SPARKING
-                    && msg.action != Action.HAKAI_CANCEL) {
-                player.displayClientMessage(
-                        net.minecraft.network.chat.Component.literal("§7Masters cannot be attacked"), true);
-                return;
-            }
+                // Combo / kick / guard / ki-blast may run without a target.
+                if (target == null
+                        && msg.action != Action.CHARGE_FIST
+                        && msg.action != Action.CHARGE_KICK
+                        && msg.action != Action.COMBO_HIT
+                        && msg.action != Action.GUARD
+                        && msg.action != Action.KI_BLAST_CANCEL
+                        && msg.action != Action.SONIC_SWAY
+                        && msg.action != Action.SPARKING
+                        && msg.action != Action.ULTIMATE
+                        && msg.action != Action.HAKAI_CANCEL
+                        && msg.action != Action.HAKAI_START
+                        && msg.action != Action.CHASE_STOP) {
+                    return;
+                }
+                // Never let BT3 tools hit DMZ masters
+                if (target != null && net.bullettrain.xenopixelsmod.event.DmzMasterProtection.isDmzMaster(target)
+                        && msg.action != Action.GUARD && msg.action != Action.SPARKING
+                        && msg.action != Action.HAKAI_CANCEL) {
+                    player.displayClientMessage(
+                            net.minecraft.network.chat.Component.literal("§7Masters cannot be attacked"), true);
+                    return;
+                }
 
-            LazyOptional<StatsData> opt = StatsProvider.get(StatsCapability.INSTANCE, player);
-            StatsData data = opt.orElse(null);
-            Resources res = data != null ? data.getResources() : null;
+                LazyOptional<StatsData> opt = StatsProvider.get(StatsCapability.INSTANCE, player);
+                StatsData data = opt.orElse(null);
+                Resources res = data != null ? data.getResources() : null;
 
-            // Server-authoritative pacing: cooldowns, costs, and the combo step are never taken
-            // from the client. A forged client replays these packets at network speed; this
-            // rejects anything faster than a human can swing. GUARD is a hold toggle and SPARKING
-            // is meter-gated, so both are exempt from the general action floor.
-            if (msg.action != Action.GUARD && msg.action != Action.SPARKING
-                    && msg.action != Action.HAKAI_CANCEL
-                    && !net.bullettrain.xenopixelsmod.combat.Bt3CombatLimiter.canAct(player)) {
-                return;
-            }
+                // Server-authoritative pacing: cooldowns, costs, and the combo step are never taken
+                // from the client. A forged client replays these packets at network speed; this
+                // rejects anything faster than a human can swing. GUARD is a hold toggle and SPARKING
+                // is meter-gated, so both are exempt from the general action floor.
+                if (msg.action != Action.GUARD && msg.action != Action.SPARKING
+                        && msg.action != Action.HAKAI_CANCEL
+                        && msg.action != Action.HAKAI_START
+                        && msg.action != Action.CHASE_STOP
+                        && !net.bullettrain.xenopixelsmod.combat.Bt3CombatLimiter.canAct(player)) {
+                    return;
+                }
 
-            switch (msg.action) {
-                case VANISH -> {
-                    // Lock-on only (client); comboStep encodes side: -1 left (A), +1 right (D)
-                    // If counter window is open, upgrade to super-counter
-                    if (target == null) return;
-                    if (XenoServerConfig.bt3SuperCounterEnabled
-                            && net.bullettrain.xenopixelsmod.combat.Bt3CombatEvents.consumeCounterWindow(player)) {
+                switch (msg.action) {
+                    case VANISH -> {
+                        // Lock-on only (client); comboStep encodes side: -1 left (A), +1 right (D)
+                        // If counter window is open, upgrade to super-counter
+                        if (target == null) return;
+                        if (XenoServerConfig.bt3SuperCounterEnabled
+                                && net.bullettrain.xenopixelsmod.combat.Bt3CombatEvents.consumeCounterWindow(player)) {
+                            handleSuperCounter(player, target, res, data, msg.comboStep);
+                            return;
+                        }
+                        if (!XenoServerConfig.bt3VanishEnabled) return;
+                        int side = msg.comboStep < 0 ? -1 : (msg.comboStep > 0 ? 1 : 0);
+                        handleVanish(player, target, res, side);
+                    }
+                    case CHASE_DASH -> {
+                        if (!XenoServerConfig.bt3ChaseDashEnabled || target == null) return;
+                        handleChase(player, target, res);
+                    }
+                    case CHASE_STOP -> ChaseFlightSystem.stopChase(player);
+                    case BACKSTEP -> {
+                        if (!XenoServerConfig.bt3BackstepEnabled || target == null) return;
+                        handleBackstep(player, target, res);
+                    }
+                    case COMBO_HIT -> {
+                        // Freelook or lock-on — target optional for counter advance
+                        if (!XenoServerConfig.bt3ComboEnabled) return;
+                        if (target != null && player.distanceTo(target) > 48.0) return;
+                        handleCombo(player, target, res, data, msg.verticalBias, msg.mashStyle);
+                    }
+                    case CHARGE_FIST -> {
+                        // Punch: lock-on / freelook if in range, otherwise swing into empty space
+                        if (!XenoServerConfig.bt3ChargeAttackEnabled) return;
+                        if (target != null && target.isAlive()
+                                && player.distanceTo(target) <= XenoServerConfig.chargeAttackRange + 1.5) {
+                            handleChargeAttack(player, target, res, data, false, msg.chargePercent, 0);
+                        } else {
+                            handleUntargetedCharge(player, res, data, false, msg.chargePercent, 0);
+                        }
+                    }
+                    case CHARGE_KICK -> {
+                        // Kick: freelook or air
+                        if (!XenoServerConfig.bt3ChargeAttackEnabled) return;
+                        if (target != null) {
+                            handleChargeAttack(player, target, res, data, true, msg.chargePercent, msg.verticalBias);
+                        } else {
+                            handleUntargetedCharge(player, res, data, true, msg.chargePercent, msg.verticalBias);
+                        }
+                    }
+                    case SYNC_KI_CHARGE -> {
+                        // Broadcast charge percent to all active clones
+                        net.bullettrain.xenopixelsmod.combat.clone.XenoCloneSystem.broadcastKiCharge(player, msg.chargePercent);
+                    }
+                    case DRAGON_DASH -> {
+                        // Lock-on only (client); server requires target
+                        if (!XenoServerConfig.bt3DragonDashEnabled || target == null) return;
+                        handleDragonDash(player, target, res, data, msg.chargePercent);
+                    }
+                    case GUARD -> {
+                        if (!XenoServerConfig.bt3GuardEnabled) return;
+                        boolean hold = msg.comboStep != 0;
+                        if (net.bullettrain.xenopixelsmod.combat.Bt3CombatEvents.isGuardStunned(player)) {
+                            hold = false;
+                        }
+                        boolean was = net.bullettrain.xenopixelsmod.combat.Bt3CombatEvents.isGuarding(player);
+                        net.bullettrain.xenopixelsmod.combat.Bt3CombatEvents.setGuarding(player, hold);
+                        // DMZ-style block hold pose for nearby players
+                        if (hold && !was) {
+                            DmzAnimHelper.broadcastBlockStart(player);
+                        } else if (!hold && was) {
+                            DmzAnimHelper.broadcastBlockStop(player);
+                        }
+                    }
+                    case SUPER_COUNTER -> {
+                        if (!XenoServerConfig.bt3SuperCounterEnabled || target == null) return;
+                        if (!net.bullettrain.xenopixelsmod.combat.Bt3CombatEvents.consumeCounterWindow(player)) return;
                         handleSuperCounter(player, target, res, data, msg.comboStep);
-                        return;
                     }
-                    if (!XenoServerConfig.bt3VanishEnabled) return;
-                    int side = msg.comboStep < 0 ? -1 : (msg.comboStep > 0 ? 1 : 0);
-                    handleVanish(player, target, res, side);
-                }
-                case CHASE_DASH -> {
-                    if (!XenoServerConfig.bt3ChaseDashEnabled || target == null) return;
-                    handleChase(player, target, res);
-                }
-                case BACKSTEP -> {
-                    if (!XenoServerConfig.bt3BackstepEnabled || target == null) return;
-                    handleBackstep(player, target, res);
-                }
-                case COMBO_HIT -> {
-                    // Freelook or lock-on — target optional for counter advance
-                    if (!XenoServerConfig.bt3ComboEnabled) return;
-                    if (target != null && player.distanceTo(target) > 48.0) return;
-                    handleCombo(player, target, res, data);
-                }
-                case CHARGE_FIST -> {
-                    // Punch: freelook or lock-on, needs a target
-                    if (!XenoServerConfig.bt3ChargeAttackEnabled || target == null) return;
-                    handleChargeAttack(player, target, res, data, false, msg.chargePercent, 0);
-                }
-                case CHARGE_KICK -> {
-                    // Kick: freelook or air
-                    if (!XenoServerConfig.bt3ChargeAttackEnabled) return;
-                    if (target != null) {
-                        handleChargeAttack(player, target, res, data, true, msg.chargePercent, msg.verticalBias);
-                    } else {
-                        handleAerialKick(player, res, data, msg.chargePercent, msg.verticalBias);
+                    case KI_BLAST_CANCEL -> {
+                        if (!XenoServerConfig.bt3KiBlastCancelEnabled) return;
+                        handleKiBlastCancel(player, target, res, data);
                     }
-                }
-                case DRAGON_DASH -> {
-                    // Lock-on only (client); server requires target
-                    if (!XenoServerConfig.bt3DragonDashEnabled || target == null) return;
-                    handleDragonDash(player, target, res, data, msg.chargePercent);
-                }
-                case GUARD -> {
-                    if (!XenoServerConfig.bt3GuardEnabled) return;
-                    boolean hold = msg.comboStep != 0;
-                    if (net.bullettrain.xenopixelsmod.combat.Bt3CombatEvents.isGuardStunned(player)) {
-                        hold = false;
+                    case Z_BURST -> {
+                        if (!XenoServerConfig.bt3ZBurstEnabled || target == null) return;
+                        handleZBurst(player, target, res, data);
                     }
-                    boolean was = net.bullettrain.xenopixelsmod.combat.Bt3CombatEvents.isGuarding(player);
-                    net.bullettrain.xenopixelsmod.combat.Bt3CombatEvents.setGuarding(player, hold);
-                    // DMZ-style block hold pose for nearby players
-                    if (hold && !was) {
-                        DmzAnimHelper.broadcastBlockStart(player);
-                    } else if (!hold && was) {
-                        DmzAnimHelper.broadcastBlockStop(player);
+                    case RUSH_CHAIN -> {
+                        if (!XenoServerConfig.bt3RushChainEnabled || target == null) return;
+                        handleRushChain(player, target, res, data);
                     }
-                }
-                case SUPER_COUNTER -> {
-                    if (!XenoServerConfig.bt3SuperCounterEnabled || target == null) return;
-                    if (!net.bullettrain.xenopixelsmod.combat.Bt3CombatEvents.consumeCounterWindow(player)) return;
-                    handleSuperCounter(player, target, res, data, msg.comboStep);
-                }
-                case KI_BLAST_CANCEL -> {
-                    if (!XenoServerConfig.bt3KiBlastCancelEnabled) return;
-                    handleKiBlastCancel(player, target, res, data);
-                }
-                case Z_BURST -> {
-                    if (!XenoServerConfig.bt3ZBurstEnabled || target == null) return;
-                    handleZBurst(player, target, res, data);
-                }
-                case RUSH_CHAIN -> {
-                    if (!XenoServerConfig.bt3RushChainEnabled || target == null) return;
-                    handleRushChain(player, target, res, data);
-                }
-                case SONIC_SWAY -> {
-                    if (!XenoServerConfig.bt3SonicSwayEnabled) return;
-                    // Server-side cooldown: the client-side one is decorative.
-                    if (!net.bullettrain.xenopixelsmod.combat.Bt3CombatLimiter.canSonicSway(player)) return;
-                    handleSonicSway(player, res, msg.comboStep);
-                }
-                case ULTIMATE -> {
-                    if (!XenoServerConfig.bt3UltimateEnabled) return;
-                    // Server-side cooldown: the client-side one is decorative.
-                    if (!net.bullettrain.xenopixelsmod.combat.Bt3CombatLimiter.canUltimate(player)) return;
-                    handleUltimate(player, target, res, data);
-                }
-                case SPARKING -> {
-                    if (!XenoServerConfig.bt3SparkingEnabled) return;
-                    net.bullettrain.xenopixelsmod.combat.Bt3SparkingSystem.tryActivate(player);
-                }
-                case HAKAI_START -> {
-                    if (target == null) return;
-                    if (!XenoServerConfig.hakaiEnabled) return;
-                    if (!net.bullettrain.xenopixelsmod.command.XenoPermissions.hasPermission(
-                            player.createCommandSourceStack(),
-                            net.bullettrain.xenopixelsmod.command.XenoPermissions.HAKAI_USE)) {
-                        player.displayClientMessage(
-                                net.minecraft.network.chat.Component.literal(
-                                        "§7You do not have permission to use Hakai"), true);
-                        return;
+                    case SONIC_SWAY -> {
+                        if (!XenoServerConfig.bt3SonicSwayEnabled) return;
+                        // Server-side cooldown: the client-side one is decorative.
+                        if (!net.bullettrain.xenopixelsmod.combat.Bt3CombatLimiter.canSonicSway(player)) return;
+                        handleSonicSway(player, res, msg.comboStep);
                     }
-                    if (!net.bullettrain.xenopixelsmod.features.progression.CombatSkills.hakaiUnlocked(player)) {
-                        player.displayClientMessage(
-                                net.minecraft.network.chat.Component.literal(
-                                        "§7Hakai is not unlocked -- /xenoskill unlock hakai"), true);
-                        return;
+                    case ULTIMATE -> {
+                        if (!XenoServerConfig.bt3UltimateEnabled) return;
+                        // Server-side cooldown: the client-side one is decorative.
+                        if (!net.bullettrain.xenopixelsmod.combat.Bt3CombatLimiter.canUltimate(player)) return;
+                        handleUltimate(player, target, res, data);
                     }
-                    if (player.distanceTo(target) > XenoServerConfig.hakaiMaxRange) return;
-                    // Cooldown before cost, matching ULTIMATE's order -- a blocked attempt must
-                    // never drain ki for nothing.
-                    if (!net.bullettrain.xenopixelsmod.combat.Bt3CombatLimiter.canHakai(player)) return;
-                    if (!trySpendKi(res, XenoServerConfig.hakaiKiCost)) return;
-                    net.bullettrain.xenopixelsmod.combat.HakaiChannelSystem.start(player, target);
+                    case SPARKING -> {
+                        if (!XenoServerConfig.bt3SparkingEnabled) return;
+                        net.bullettrain.xenopixelsmod.combat.Bt3SparkingSystem.tryActivate(player);
+                    }
+                    case HAKAI_START -> {
+                        if (net.bullettrain.xenopixelsmod.combat.HakaiChannelSystem.isChanneling(player)) {
+                            return;
+                        }
+                        if (target == null) {
+                            target = net.bullettrain.xenopixelsmod.combat.HakaiChannelSystem.findLookTarget(
+                                    player, XenoServerConfig.hakaiMaxRange);
+                        }
+                        if (target == null) {
+                            hakaiFail(player, "Hakai: look at a living entity (or lock on)");
+                            return;
+                        }
+                        if (!XenoServerConfig.hakaiEnabled) {
+                            hakaiFail(player, "Hakai is disabled");
+                            return;
+                        }
+                        if (player.distanceTo(target) > XenoServerConfig.hakaiMaxRange) {
+                            hakaiFail(player, "Hakai: too far");
+                            return;
+                        }
+                        net.bullettrain.xenopixelsmod.combat.HakaiChannelSystem.start(player, target, true);
+                    }
+                    case HAKAI_CANCEL -> net.bullettrain.xenopixelsmod.combat.HakaiChannelSystem.cancel(player, null);
                 }
-                case HAKAI_CANCEL -> net.bullettrain.xenopixelsmod.combat.HakaiChannelSystem.cancel(player, null);
+            } finally {
+                if (msg.action == Action.CHASE_DASH) ChaseFlightSystem.syncState(player);
             }
         });
         ctx.get().setPacketHandled(true);
@@ -304,7 +372,7 @@ public class Bt3CombatPacket {
         Vec3 from = player.position();
         playItSound(player, from.x, from.y, from.z, true);
 
-        Vec3 dest = vanishBehind(player, target, side);
+        Vec3 dest = vanishLanding(player, target, side);
         // Face-on teleport: syncs camera + kills residual flight (teleportTo alone desyncs DMZ flight)
         teleportFacing(player, dest, target);
         playItSound(player, dest.x, dest.y, dest.z, false);
@@ -315,6 +383,7 @@ net.bullettrain.xenopixelsmod.combat.VanishShadeFx.spawn(player, from);
     }
 
     private static void handleChase(ServerPlayer player, LivingEntity target, Resources res) {
+        if (ChaseFlightSystem.isChasing(player, target)) return;
         boolean homing = DragonHoming.isLive(player, target);
         double dist = player.distanceTo(target);
         if (!XenoServerConfig.chaseRangeUnlimited()) {
@@ -368,17 +437,22 @@ net.bullettrain.xenopixelsmod.combat.VanishShadeFx.spawn(player, from);
     }
 
     /**
-     * Free-form aerial / no-target kick: animation + look-direction boost.
-     * Still hits anything in a short cone in front.
+     * Charge punch or kick with no lock-on: play the release anim and hit a short cone ahead.
+     * Stay planted; only entities in the cone take knockback.
      */
-    private static void handleAerialKick(ServerPlayer player, Resources res, StatsData data,
-                                         int chargePercent, int verticalBias) {
+    private static void handleUntargetedCharge(ServerPlayer player, Resources res, StatsData data,
+                                               boolean kick, int chargePercent, int verticalBias) {
         float charge = Math.max(0.25f, Math.min(1f, chargePercent / 100f));
-        float stamCost = XenoServerConfig.kickReleaseStamina(charge, verticalBias);
+        float stamCost = kick
+                ? XenoServerConfig.kickReleaseStamina(charge, verticalBias)
+                : XenoServerConfig.fistReleaseStamina(charge);
         if (!trySpendStamina(res, stamCost)) return;
 
         boolean full = charge >= 0.95f;
-        DmzAnimHelper.playChargeRelease(player, DmzAnimHelper.ChargeStyle.KICK, full);
+        DmzAnimHelper.ChargeStyle style = kick
+                ? DmzAnimHelper.ChargeStyle.KICK
+                : (full ? DmzAnimHelper.ChargeStyle.FIST_HEAVY : DmzAnimHelper.ChargeStyle.FIST_LIGHT);
+        DmzAnimHelper.playChargeRelease(player, style, full, kick ? verticalBias : 0, true);
 
         Vec3 look = player.getLookAngle();
         Vec3 flat = new Vec3(look.x, 0, look.z);
@@ -387,17 +461,16 @@ net.bullettrain.xenopixelsmod.combat.VanishShadeFx.spawn(player, from);
         }
         flat = flat.normalize();
 
-        double range = kickHitRange(charge, verticalBias);
-        // No self-boost on air kick either — stay put; only targets get launch
-
+        double range = kick ? kickHitRange(charge, verticalBias) : 5.0;
         float base = (float) Math.max(2.0, player.getAttackStrengthScale(0.5f) * 5.0f);
         if (data != null) {
             base = (float) Math.max(base, data.getMeleeDamage() * 0.45);
         }
-        float mult = XenoServerConfig.chargeDamageScale * XenoServerConfig.kickDamageScale * (0.55f + 0.7f * charge);
+        float mult = XenoServerConfig.chargeDamageScale * (0.55f + 0.7f * charge);
+        if (kick) mult *= XenoServerConfig.kickDamageScale;
 
         boolean anyHit = false;
-        double inflate = verticalBias < 0 ? 1.85 : 1.35;
+        double inflate = kick && verticalBias < 0 ? 1.85 : 1.35;
         var box = player.getBoundingBox().expandTowards(flat.scale(range)).inflate(inflate);
         for (LivingEntity living : player.level().getEntitiesOfClass(LivingEntity.class, box,
                 e -> e != player && e.isAlive())) {
@@ -409,20 +482,23 @@ net.bullettrain.xenopixelsmod.combat.VanishShadeFx.spawn(player, from);
             if (flat.dot(flatTo.normalize()) < 0.25) continue;
 
             living.hurt(player.damageSources().playerAttack(player), base * mult);
-            living.setDeltaMovement(kickTargetLaunch(flat, charge, verticalBias));
+            if (kick) {
+                living.setDeltaMovement(kickTargetLaunch(flat, charge, verticalBias));
+                playKickHitSound(player, living, full);
+                DragonHoming.open(player, living);
+            } else {
+                double kb = 0.85 * (0.6 + charge);
+                double up = 0.18 + charge * 0.15;
+                living.setDeltaMovement(living.getDeltaMovement().add(flat.scale(kb).add(0, up, 0)));
+                playHitSound(player, living, full);
+            }
             living.hurtMarked = true;
             living.hasImpulse = true;
-            playKickHitSound(player, living, full);
-            DragonHoming.open(player, living);
+            CombatFx.impact(player.serverLevel(), living, flat,
+                    full ? CombatFx.Weight.HEAVY : CombatFx.Weight.LIGHT);
             anyHit = true;
         }
 
-        // Swing whoosh always; impact already played per hit
-        player.level().playSound(null, player.getX(), player.getY(), player.getZ(),
-                anyHit
-                        ? (full ? SoundEvents.PLAYER_ATTACK_CRIT : SoundEvents.PLAYER_ATTACK_STRONG)
-                        : SoundEvents.PLAYER_ATTACK_SWEEP,
-                SoundSource.PLAYERS, anyHit ? 1.0f : 0.7f, full ? 0.8f : 1.05f);
     }
 
     private static void handleChargeAttack(ServerPlayer player, LivingEntity target, Resources res, StatsData data,
@@ -443,7 +519,7 @@ net.bullettrain.xenopixelsmod.combat.VanishShadeFx.spawn(player, from);
         DmzAnimHelper.playChargeRelease(player, style, full, verticalBias, true);
 
         // No player lunge — stay put; only target takes KB
-        faceTarget(player, target);
+        faceBodyToLook(player);
 
         double hitRange = kick ? engageRange : 5.0;
         if (player.distanceTo(target) > hitRange) return;
@@ -462,7 +538,11 @@ net.bullettrain.xenopixelsmod.combat.VanishShadeFx.spawn(player, from);
             kbFlat = kbFlat.normalize();
             if (kick) {
                 target.setDeltaMovement(kickTargetLaunch(kbFlat, charge, verticalBias));
-                DragonHoming.open(player, target);
+                if (verticalBias == 0) {
+                    startAutomaticBallChase(player, target);
+                } else {
+                    DragonHoming.open(player, target);
+                }
             } else {
                 double kb = 0.85 * (0.6 + charge);
                 double up = 0.18 + charge * 0.15;
@@ -472,17 +552,14 @@ net.bullettrain.xenopixelsmod.combat.VanishShadeFx.spawn(player, from);
             target.hasImpulse = true;
         }
 
-        // Impact SFX + particles at target
         if (kick) {
             playKickHitSound(player, target, full);
         } else {
             playHitSound(player, target, full);
-            if (full) {
-                player.level().playSound(null, target.getX(), target.getY(), target.getZ(),
-                        SoundEvents.PLAYER_ATTACK_CRIT, SoundSource.PLAYERS, 1.0f, 0.9f);
-            }
         }
-        // Hit VFX is DMZ StrikeAttackHandler (punch_particle + sparks), same as 1.20.1.
+        Vec3 blow = kbFlat.lengthSqr() > 1.0e-4 ? kbFlat : player.getLookAngle();
+        CombatFx.impact(player.serverLevel(), target, blow,
+                full ? CombatFx.Weight.HEAVY : CombatFx.Weight.LIGHT);
     }
 
     /** Hit reach for charged kicks; S-hold extends range. */
@@ -498,18 +575,34 @@ net.bullettrain.xenopixelsmod.combat.VanishShadeFx.spawn(player, from);
      * +1 W = launch target upward, -1 S = smash downward, 0 = default arc.
      */
     private static Vec3 kickTargetLaunch(Vec3 awayFlat, float charge, int verticalBias) {
-        double horiz = (0.9 + charge) * (verticalBias == 0 ? 1.0 : 0.55);
+        double horiz = (0.9 + charge) * (verticalBias == 0 ? 1.0 : 0.55)
+                * Math.max(0.1, XenoServerConfig.kickKnockbackScale);
         double up;
         if (verticalBias > 0) {
-            up = XenoServerConfig.kickUpLaunch * (0.85 + charge * 0.9);
-            horiz *= 0.45;
+            double scale = Math.max(0.1, XenoServerConfig.kickKnockbackScale);
+            double[] d = net.bullettrain.xenopixelsmod.combat.Bt3ComboChoreography.launcherDelta(
+                    awayFlat.x, awayFlat.z,
+                    XenoServerConfig.comboLauncherHoriz * scale,
+                    XenoServerConfig.comboLauncherUp);
+            return new Vec3(d[0], d[1], d[2]);
         } else if (verticalBias < 0) {
             up = -XenoServerConfig.kickDownLaunch * (0.7 + charge * 0.8);
             horiz *= 0.65;
         } else {
-            up = 0.35 + charge * 0.25;
+            return ballArcLaunch(awayFlat, charge);
         }
         return awayFlat.normalize().scale(horiz).add(0, up, 0);
+    }
+
+    /** Ballistic hang-time arc for kicks (mash + charged). */
+    private static Vec3 ballArcLaunch(Vec3 awayFlat, float charge) {
+        float c = Math.max(0.25f, Math.min(1.0f, charge));
+        double scale = Math.max(0.1, XenoServerConfig.kickKnockbackScale);
+        double horiz = Math.max(0.7, XenoServerConfig.comboLauncherHoriz * 1.5) * scale * (0.75 + 0.4 * c);
+        double up = Math.max(1.5, XenoServerConfig.comboLauncherUp * 0.95) * (0.8 + 0.35 * c);
+        double[] d = net.bullettrain.xenopixelsmod.combat.Bt3ComboChoreography.launcherDelta(
+                awayFlat.x, awayFlat.z, horiz, up);
+        return new Vec3(d[0], d[1], d[2]);
     }
 
     private static double kickVerticalImpulse(ServerPlayer player, float charge, int verticalBias, boolean aerialSelf) {
@@ -589,16 +682,17 @@ net.bullettrain.xenopixelsmod.combat.VanishShadeFx.spawn(player, from);
         player.hasImpulse = true;
         faceTarget(player, target);
         playItSound(player, chasePos.x, chasePos.y, chasePos.z, false);
-        player.level().playSound(null, chasePos.x, chasePos.y, chasePos.z,
-                SoundEvents.PLAYER_ATTACK_SWEEP, SoundSource.PLAYERS, 1.0f, 0.7f);
     }
 
     /** Returns true if chase succeeds based on {@link XenoServerConfig#chaseSuccessChance}. */
     private static boolean rollChaseSuccess(ServerPlayer player) {
-        float chance = XenoServerConfig.chaseSuccessChance;
+        return rollChaseSuccess(XenoServerConfig.chaseSuccessChance, () -> player.getRandom().nextFloat());
+    }
+
+    static boolean rollChaseSuccess(float chance, java.util.function.DoubleSupplier roll) {
         if (chance >= 1f) return true;
-        if (chance <= 0f) return false;
-        return player.getRandom().nextFloat() < chance;
+        if (!Float.isFinite(chance) || chance <= 0f) return false;
+        return roll.getAsDouble() < chance;
     }
 
     private static void handleSuperCounter(ServerPlayer player, LivingEntity target, Resources res, StatsData data,
@@ -611,7 +705,7 @@ net.bullettrain.xenopixelsmod.combat.VanishShadeFx.spawn(player, from);
         Vec3 from = player.position();
         playItSound(player, from.x, from.y, from.z, true);
         int s = side < 0 ? -1 : (side > 0 ? 1 : 0);
-        Vec3 dest = vanishBehind(player, target, s);
+        Vec3 dest = vanishLanding(player, target, s);
         teleportFacing(player, dest, target);
         playItSound(player, dest.x, dest.y, dest.z, false);
         // A super counter is a vanish, so it leaves the same shade behind.
@@ -682,26 +776,35 @@ net.bullettrain.xenopixelsmod.combat.VanishShadeFx.spawn(player, from);
     }
 
     private static void handleRushChain(ServerPlayer player, LivingEntity target, Resources res, StatsData data) {
-        if (player.distanceTo(target) > XenoServerConfig.rushChainRange) return;
-        // Prefer air targets; still allow if recently knocked (high Y or not on ground)
-        boolean airborne = !target.onGround() || target.getDeltaMovement().y > 0.08;
-        if (!airborne && target.getY() - player.getY() < 0.8) {
+        if (player.distanceTo(target) > XenoServerConfig.rushChainRange) {
             player.displayClientMessage(
-                    net.minecraft.network.chat.Component.literal("§7Rush: target must be airborne"), true);
+                    net.minecraft.network.chat.Component.literal("§7Too far for rush — chase instead"), true);
+            return;
+        }
+        boolean launched = !target.onGround()
+                || target.getDeltaMovement().y > 0.08
+                || target.getDeltaMovement().horizontalDistanceSqr() > 0.0064
+                || target.getY() - player.getY() > 0.8
+                // An airborne attacker may enter a rush from above as a downward dive, even
+                // when the victim is standing on the ground.
+                || (!player.onGround() && player.getY() - target.getY() > 1.5);
+        if (!launched) {
+            player.displayClientMessage(
+                    net.minecraft.network.chat.Component.literal("§7Rush: knock them first"), true);
             return;
         }
         if (!trySpendKi(res, XenoServerConfig.rushChainKiCost)) return;
 
+        int rushStep = net.bullettrain.xenopixelsmod.combat.Bt3CombatLimiter.nextRushStep(player);
+        net.bullettrain.xenopixelsmod.combat.anim.Bt3AnimationIntent rushIntent =
+                net.bullettrain.xenopixelsmod.combat.technique.XenoRushTechniques
+                        .animationForRushStep(rushStep);
+        net.bullettrain.xenopixelsmod.network.ModNetwork.sendToTrackingAndSelf(player,
+                new net.bullettrain.xenopixelsmod.network.packet.Bt3AnimIntentPacket(
+                        player.getId(), rushIntent));
         Vec3 from = player.position();
         playItSound(player, from.x, from.y, from.z, true);
-        Vec3 land = new Vec3(target.getX(), target.getY(), target.getZ())
-                .add(target.getDeltaMovement().scale(2.0));
-        // Stay near them in the air
-        Vec3 flat = new Vec3(target.getX() - player.getX(), 0, target.getZ() - player.getZ());
-        if (flat.lengthSqr() > 1.0e-4) {
-            flat = flat.normalize().scale(-1.1);
-            land = land.add(flat);
-        }
+        Vec3 land = vanishLanding(player, target, 0).add(target.getDeltaMovement().scale(0.35));
         teleportFacing(player, land, target);
         playItSound(player, land.x, land.y, land.z, false);
         DmzAnimHelper.broadcastDash(player, 0);
@@ -712,11 +815,129 @@ net.bullettrain.xenopixelsmod.combat.VanishShadeFx.spawn(player, from);
             float mult = XenoServerConfig.rushChainDamageScale
                     * net.bullettrain.xenopixelsmod.combat.Bt3SparkingSystem.damageMult(player);
             target.hurt(player.damageSources().playerAttack(player), base * mult);
-            target.setDeltaMovement(target.getDeltaMovement().add(0, 0.15, 0));
+            boolean breaker = rushStep % 4 == 3;
+            boolean finisher = rushStep % 4 == 0;
+            target.setDeltaMovement(target.getDeltaMovement().add(
+                    0, breaker ? 0.85 : (finisher ? 0.55 : 0.15), 0));
+            if (finisher) {
+                Vec3 away = target.position().subtract(player.position());
+                Vec3 flat = new Vec3(away.x, 0, away.z);
+                if (flat.lengthSqr() > 1.0e-4) {
+                    target.setDeltaMovement(target.getDeltaMovement().add(flat.normalize().scale(1.35)));
+                }
+            }
             target.hurtMarked = true;
             playHitSound(player, target, false);
+            CombatFx.impact(player.serverLevel(), target,
+                    target.position().subtract(player.position()), CombatFx.Weight.LIGHT);
         }
         player.displayClientMessage(net.minecraft.network.chat.Component.literal("§dRUSH CHAIN"), true);
+    }
+
+
+    /**
+     * Opens a Zanzoken read. The ki is spent on the press, not on the dodge — reading the swing
+     * wrong is supposed to cost something, or the move is just a better block.
+     */
+    private static void handleZanzoken(ServerPlayer player) {
+        // Three different refusals used to look like one message or like nothing at all, which is
+        // what made a stuck cooldown so hard to tell apart from a technique that was not wired up.
+        if (!XenoServerConfig.zanzokenEnabled) {
+            player.displayClientMessage(
+                    net.minecraft.network.chat.Component.literal("§7Zanzoken is disabled here"), true);
+            return;
+        }
+        StatsData data = StatsProvider.get(StatsCapability.INSTANCE, player).orElse(null);
+        Resources res = data != null ? data.getResources() : null;
+        if (res == null || res.getCurrentEnergy() < XenoServerConfig.zanzokenKiCost) {
+            player.displayClientMessage(
+                    net.minecraft.network.chat.Component.literal("§7Zanzoken: not enough KI"), true);
+            return;
+        }
+        if (!net.bullettrain.xenopixelsmod.combat.Bt3CombatEvents.openDodgeWindow(player)) {
+            player.displayClientMessage(
+                    net.minecraft.network.chat.Component.literal("§7Zanzoken: cooling down"), true);
+            return;
+        }
+        trySpendKi(res, XenoServerConfig.zanzokenKiCost);
+        playZanzoken(player, player.position());
+        // Without this a press that simply had nothing to dodge is indistinguishable from a
+        // technique that is not working at all.
+        player.displayClientMessage(
+                net.minecraft.network.chat.Component.literal("§bZanzoken: reading…"), true);
+    }
+
+    /**
+     * A read that landed: leave the image where the body was, then reappear behind the attacker.
+     *
+     * <p>Called from the damage hook rather than the packet handler, because the technique only
+     * resolves at the moment something actually swings.
+     */
+    public static void performZanzoken(ServerPlayer player, LivingEntity attacker) {
+        if (player == null || attacker == null) return;
+        Vec3 from = player.position();
+
+        net.bullettrain.xenopixelsmod.combat.Bt3SparkingSystem.grantIFrames(
+                player, XenoServerConfig.zanzokenIFramesTicks);
+
+        // The read is not "he stepped aside" — it is that he is suddenly everywhere you could
+        // turn. A closed ring of bodies around the attacker, each looking inward at them.
+        if (XenoServerConfig.zanzokenGhostAfterimage) {
+            net.bullettrain.xenopixelsmod.combat.clone.XenoCloneSystem.encircle(player, attacker,
+                    XenoServerConfig.zanzokenRingClones, XenoServerConfig.zanzokenRingRadius,
+                    Math.max(10, XenoServerConfig.zanzokenIFramesTicks * 3));
+        } else {
+            net.bullettrain.xenopixelsmod.combat.VanishShadeFx.spawn(player, from);
+        }
+
+        // Behind the attacker, using the same landing the vanish family already uses so the
+        // reposition reads identically wherever it comes from.
+        Vec3 dest = vanishLanding(player, attacker, 0);
+        teleportFacing(player, dest, attacker);
+        playZanzoken(player, dest);
+        player.displayClientMessage(
+                net.minecraft.network.chat.Component.literal("§b§lZANZOKEN!"), true);
+        try {
+            net.bullettrain.xenopixelsmod.combat.AfterimageFx.spawnTrailServer(player, from, dest, 6);
+        } catch (Throwable ignored) {
+        }
+        if (player.level() instanceof net.minecraft.server.level.ServerLevel level) {
+            net.bullettrain.xenopixelsmod.combat.fx.CombatFx.cue(level, from,
+                    net.bullettrain.xenopixelsmod.combat.fx.CombatFxKind.VANISH_CLAP, 1.0f);
+        }
+    }
+
+    /** DragonMineZ ships the afterimage sound; fall back to the generic evade cue if it is gone. */
+    private static void playZanzoken(ServerPlayer player, Vec3 at) {
+        SoundEvent sound = BuiltInRegistries.SOUND_EVENT.get(
+                ResourceLocation.fromNamespaceAndPath("dragonminez", "zanzoken"));
+        if (sound == null) {
+            playItSound(player, at.x, at.y, at.z, true);
+            return;
+        }
+        player.level().playSound(null, at.x, at.y, at.z, sound, SoundSource.PLAYERS, 1.0f, 1.0f);
+    }
+
+    /**
+     * Shi Shin No Ken. Toggles the split, charging ki only when dividing — reuniting is free,
+     * because a fighter should never be stranded in four weak bodies by an empty bar.
+     */
+    private static void handleMultiForm(ServerPlayer player) {
+        if (!XenoServerConfig.multiFormEnabled) return;
+        if (net.bullettrain.xenopixelsmod.combat.clone.XenoCloneSystem.isSplit(player)) {
+            net.bullettrain.xenopixelsmod.combat.clone.XenoCloneSystem.reunite(player);
+            return;
+        }
+        StatsData data = StatsProvider.get(StatsCapability.INSTANCE, player).orElse(null);
+        Resources res = data != null ? data.getResources() : null;
+        if (res == null || res.getCurrentEnergy() < XenoServerConfig.multiFormKiCost) {
+            player.displayClientMessage(
+                    net.minecraft.network.chat.Component.literal("§7Not enough KI to divide"), true);
+            return;
+        }
+        if (!net.bullettrain.xenopixelsmod.combat.clone.XenoCloneSystem.toggleSplit(player)) return;
+        trySpendKi(res, XenoServerConfig.multiFormKiCost);
+        playZanzoken(player, player.position());
     }
 
     private static void handleSonicSway(ServerPlayer player, Resources res, int side) {
@@ -813,11 +1034,10 @@ net.bullettrain.xenopixelsmod.combat.VanishShadeFx.spawn(player, from);
                     base * XenoServerConfig.zBurstDamageScale);
             playHitSound(player, target, false);
         }
-        player.level().playSound(null, land.x, land.y, land.z,
-                SoundEvents.PLAYER_ATTACK_SWEEP, SoundSource.PLAYERS, 0.85f, 1.25f);
     }
 
-    private static void handleCombo(ServerPlayer player, LivingEntity target, Resources res, StatsData data) {
+    private static void handleCombo(ServerPlayer player, LivingEntity target, Resources res, StatsData data,
+                                    int verticalBias, int mashStyle) {
         // Deflection first, and it consumes the swing. Checked here rather than on a key of its
         // own because this runs on every attack press including a whiff, which is exactly when a
         // player is punching at an incoming blast rather than at a body.
@@ -826,34 +1046,55 @@ net.bullettrain.xenopixelsmod.combat.VanishShadeFx.spawn(player, from);
         // Server-side combo step: the string is earned on the server (advance per hit, decay on
         // a gap), not taken from the client where a forged step could force the finisher every
         // swing. maxComboSteps = finisher every N hits.
-        int step = net.bullettrain.xenopixelsmod.combat.Bt3CombatLimiter.nextComboStep(player);
+        int step = net.bullettrain.xenopixelsmod.combat.Bt3CombatLimiter.nextComboStep(player, target);
         int finisherEvery = Math.max(1, XenoServerConfig.maxComboSteps);
-        boolean finisher = XenoServerConfig.bt3FinisherEnabled && step % finisherEvery == 0;
         int scaleStep = Math.min(step, finisherEvery * 4);
-
+        boolean launcher = verticalBias > 0;
+        // Precedence: an explicit W tap beats a held direction, which beats the authored route.
+        // The client ran this same chain to predict the beat, so the two agree and the
+        // confirmation broadcast below is a no-op on the attacker's own screen.
+        net.bullettrain.xenopixelsmod.combat.anim.Bt3AnimationIntent styled = launcher
+                ? null
+                : net.bullettrain.xenopixelsmod.combat.Bt3ComboChoreography.styled(mashStyle, step);
+        net.bullettrain.xenopixelsmod.combat.anim.Bt3AnimationIntent intent;
+        if (styled != null) {
+            intent = styled;
+        } else {
+            net.bullettrain.xenopixelsmod.combat.anim.Bt3AnimationIntent authored =
+                    net.bullettrain.xenopixelsmod.combat.Bt3ComboChoreography.resolve(
+                            net.bullettrain.xenopixelsmod.combat.Bt3CombatLimiter.comboRoute(player),
+                            step,
+                            false,
+                            net.bullettrain.xenopixelsmod.combat.Bt3CombatLimiter.comboAirborne(player));
+            intent = net.bullettrain.xenopixelsmod.combat.Bt3ComboChoreography.overlay(
+                    authored, launcher ? 1 : 0);
+        }
+        net.bullettrain.xenopixelsmod.combat.Bt3ComboBeat beat =
+                net.bullettrain.xenopixelsmod.combat.Bt3ComboChoreography.beat(
+                        intent, step, mashStyle, verticalBias);
+        boolean finisher = XenoServerConfig.bt3FinisherEnabled && beat.finisher();
         float cost = finisher ? XenoServerConfig.finisherKiCost : XenoServerConfig.comboKiCost;
         // Hard gate: a swing you cannot pay for does not land. Previously this was a soft spend
         // that let a low-ki finisher hit for free; the combo step is server-side now, so this is
         // safe and no longer enables free finishers.
         if (!trySpendKi(res, cost)) return;
 
-        // Air string / freelook miss: counter still advances, no hit
+        net.bullettrain.xenopixelsmod.network.ModNetwork.sendToTrackingAndSelf(player,
+                new net.bullettrain.xenopixelsmod.network.packet.Bt3AnimIntentPacket(
+                        player.getId(), intent));
+
+        // Air string / freelook miss: counter and pose still advance, no hit
         if (target == null || !target.isAlive()) {
+            net.bullettrain.xenopixelsmod.combat.Bt3CombatLimiter.resetCombo(player);
             return;
         }
 
-        boolean kick = step % 2 == 0;
-        if (kick) {
-            DmzAnimHelper.broadcastComboKick(player, step, finisher);
-        } else if (XenoServerConfig.bt3ComboPunchesOnly) {
-            DmzAnimHelper.broadcastComboPunch(player, step, finisher);
-        }
-
-        // No player lunge, step-in, or forced face — lock-on or freelook, stay put
+        faceBodyToLook(player);
         if (player.distanceTo(target) <= 4.5) {
             float base = (float) Math.max(1.0, player.getAttackStrengthScale(0.5f) * 4.0f);
             float mult = (1.0f + scaleStep * 0.12f) * XenoServerConfig.comboDamageScale;
             if (finisher) mult *= XenoServerConfig.finisherDamageScale;
+            if (launcher) mult *= XenoServerConfig.kickDamageScale;
             if (data != null) {
                 base = (float) Math.max(base, data.getMeleeDamage() * 0.35);
             }
@@ -861,21 +1102,53 @@ net.bullettrain.xenopixelsmod.combat.VanishShadeFx.spawn(player, from);
 
             Vec3 kbDir = target.position().subtract(player.position());
             Vec3 kbFlat = new Vec3(kbDir.x, 0, kbDir.z);
+            if (kbFlat.lengthSqr() < 1.0e-4) {
+                Vec3 look = player.getLookAngle();
+                kbFlat = new Vec3(look.x, 0, look.z);
+            }
             if (kbFlat.lengthSqr() > 1.0e-4) {
                 kbFlat = kbFlat.normalize();
-                if (kick) {
-                    target.setDeltaMovement(kbFlat.scale(0.85).add(0.0, 0.55, 0.0));
+                if (beat.launcher()) {
+                    target.setDeltaMovement(ballArcLaunch(kbFlat, 1.0f));
+                    startAutomaticBallChase(player, target);
+                } else if (intent.isKick()) {
+                    target.setDeltaMovement(ballArcLaunch(kbFlat, 0.7f));
+                    if (beat.chase()) {
+                        startAutomaticBallChase(player, target);
+                    }
                 } else {
-                    double kb = finisher ? 1.65 : 0.25 + Math.min(scaleStep, 8) * 0.08;
-                    double up = finisher ? 0.55 : 0.12;
-                    target.setDeltaMovement(target.getDeltaMovement().add(kbFlat.scale(kb).add(0, up, 0)));
+                    // Ordinary punches are contact hits, not launchers. Keep the heavy finisher's
+                    // authored impact, but prevent the regular jab/cross string from sliding the
+                    // victim away on every beat.
+                    if (finisher) {
+                        target.setDeltaMovement(target.getDeltaMovement().add(
+                                kbFlat.scale(1.65).add(0, 0.55, 0)));
+                    }
+                }
+                if (beat.guardBreak()) {
+                    target.setDeltaMovement(target.getDeltaMovement().add(kbFlat.scale(0.35).add(0, 0.18, 0)));
                 }
                 target.hurtMarked = true;
                 target.hasImpulse = true;
             }
 
-            playHitSound(player, target, finisher);
+            if (launcher) {
+                playKickHitSound(player, target, true);
+            } else {
+                playHitSound(player, target, finisher);
+            }
+            Vec3 blow = kbFlat.lengthSqr() > 1.0e-4 ? kbFlat : player.getLookAngle();
+            CombatFx.impact(player.serverLevel(), target, blow,
+                    launcher || finisher ? CombatFx.Weight.HEAVY : CombatFx.Weight.LIGHT);
+            if (beat.finisher()) {
+                    net.bullettrain.xenopixelsmod.combat.Bt3CombatLimiter.resetCombo(player);
+            }
         }
+    }
+
+    private static void startAutomaticBallChase(ServerPlayer player, LivingEntity target) {
+        DragonHoming.close(player);
+        ChaseFlightSystem.startAutomatic(player, target);
     }
 
     /**
@@ -884,6 +1157,10 @@ net.bullettrain.xenopixelsmod.combat.VanishShadeFx.spawn(player, from);
      * player mid-join data race (or a forged state) while they still dealt fallback damage.
      * Zero-cost actions are always allowed regardless.
      */
+    private static void hakaiFail(ServerPlayer player, String reason) {
+        player.displayClientMessage(net.minecraft.network.chat.Component.literal("§c" + reason), true);
+    }
+
     private static boolean trySpendKi(Resources res, float cost) {
         if (cost <= 0f) return true;
         if (res == null) return false;
@@ -952,26 +1229,128 @@ net.bullettrain.xenopixelsmod.combat.VanishShadeFx.spawn(player, from);
     }
 
     public static Vec3 vanishBehind(Entity player, LivingEntity target, int side) {
-        Vec3 toEnemy = new Vec3(target.getX() - player.getX(), 0, target.getZ() - player.getZ());
-        if (toEnemy.lengthSqr() < 1.0e-4) {
-            // Fallback: opposite of target look (stand at their back)
-            Vec3 look = target.getLookAngle();
-            toEnemy = new Vec3(-look.x, 0, -look.z);
-            if (toEnemy.lengthSqr() < 1.0e-4) {
-                toEnemy = new Vec3(0, 0, 1);
-            }
-        }
-        Vec3 toward = toEnemy.normalize(); // player → enemy; +toward past enemy = behind them
-        Vec3 right = new Vec3(-toward.z, 0, toward.x);
-        double s = side < 0 ? -VANISH_SIDE : (side > 0 ? VANISH_SIDE : 0.0);
-        // Behind + side; Y locked to target so aerial combat lands next to them
-        return new Vec3(
-                target.getX() + toward.x * VANISH_GAP + right.x * s,
-                target.getY(),
-                target.getZ() + toward.z * VANISH_GAP + right.z * s);
+        return vanishPoint(
+                player.getX(), player.getZ(),
+                target.getX(), target.getY(), target.getZ(),
+                target.yBodyRot, side,
+                Math.max(0.0, XenoServerConfig.vanishGap),
+                Math.max(0.0, XenoServerConfig.vanishSide),
+                Math.max(0.0, XenoServerConfig.vanishNearField));
     }
 
-    /** Land short of target on the approach line (in front of them), at their height. */
+    /**
+     * The vanish landing point, as pure geometry.
+     *
+     * <p>At range the landing direction is the line you came in on, so you end up past the target
+     * on the far side from where you stood — the original behaviour, reproduced exactly once
+     * {@code sep >= nearField}.
+     *
+     * <p>Up close that line stops meaning anything. It used to be trusted down to a hundredth of a
+     * block, and a vector that short is noise: it flips between frames, and the client — which
+     * predicts this same landing from positions roughly a hundred milliseconds behind the
+     * server's — could compute a direction opposite to the one the server picked and get yanked
+     * across the target. Hovering directly above or below someone made it worse still, because the
+     * horizontal separation there is near zero while the fight is very much close range. So the
+     * closer you are, the more the direction comes from the target's own body facing, which is
+     * both the spot a vanish is supposed to land on and a value that is synchronised between
+     * client and server in a way a sub-block position delta is not. The two blend, so there is no
+     * snap as you cross the boundary, and {@code nearField} of zero disables the near-field
+     * behaviour entirely.
+     *
+     * @param targetBodyYawDeg the target's {@code yBodyRot}
+     * @param side             -1 left, +1 right, 0 centre-behind
+     */
+    public static Vec3 vanishPoint(double px, double pz, double tx, double ty, double tz,
+                                   float targetBodyYawDeg, int side,
+                                   double gap, double sideOff, double nearField) {
+        double yaw = Math.toRadians(targetBodyYawDeg);
+        // Minecraft yaw: facing = (-sin, cos), so the target's back is the negation of that.
+        double backX = Math.sin(yaw);
+        double backZ = -Math.cos(yaw);
+
+        double ax = tx - px;
+        double az = tz - pz;
+        double sep = Math.sqrt(ax * ax + az * az);
+
+        double dirX;
+        double dirZ;
+        if (sep < 1.0e-6) {
+            dirX = backX;
+            dirZ = backZ;
+        } else {
+            double t = nearField <= 0.0 ? 1.0 : Math.min(1.0, sep / nearField);
+            double bx = ax / sep * t + backX * (1.0 - t);
+            double bz = az / sep * t + backZ * (1.0 - t);
+            double len = Math.sqrt(bx * bx + bz * bz);
+            if (len < 1.0e-6) {
+                // Approach and back point opposite ways and cancelled: you are already standing at
+                // their back while they face you, and their back is the answer anyway.
+                dirX = backX;
+                dirZ = backZ;
+            } else {
+                dirX = bx / len;
+                dirZ = bz / len;
+            }
+        }
+
+        double rightX = -dirZ;
+        double rightZ = dirX;
+        double s = side < 0 ? -sideOff : (side > 0 ? sideOff : 0.0);
+        return new Vec3(
+                tx + dirX * gap + rightX * s,
+                ty,
+                tz + dirZ * gap + rightZ * s);
+    }
+
+    /**
+     * {@link #vanishBehind} moved off anything solid.
+     *
+     * <p>Nothing on the vanish path used to check this, so a vanish aimed into terrain teleported
+     * the fighter into the terrain. The candidates are a fixed list rather than a search, because
+     * the attacking client runs this too in order to predict its own landing and any difference in
+     * the order the two sides try spots shows up as a rubber-band. A vanish with nowhere to go
+     * leaves the fighter standing where they were, which is a wasted move rather than a
+     * suffocation.
+     */
+    public static Vec3 vanishLanding(Entity player, LivingEntity target, int side) {
+        Vec3 preferred = vanishBehind(player, target, side);
+        if (!XenoServerConfig.vanishOpenSpotSearch || isSpotOpen(player, preferred)) {
+            return preferred;
+        }
+        Vec3 centre = vanishBehind(player, target, 0);
+        double dirX = centre.x - target.getX();
+        double dirZ = centre.z - target.getZ();
+        double len = Math.sqrt(dirX * dirX + dirZ * dirZ);
+        if (len > 1.0e-6) {
+            double rightX = -dirZ / len;
+            double rightZ = dirX / len;
+            for (double lateral : new double[]{0.75, -0.75, 1.5, -1.5}) {
+                Vec3 candidate = new Vec3(
+                        preferred.x + rightX * lateral, preferred.y, preferred.z + rightZ * lateral);
+                if (isSpotOpen(player, candidate)) {
+                    return candidate;
+                }
+            }
+            for (double shrink : new double[]{0.75, 0.5}) {
+                Vec3 candidate = new Vec3(
+                        target.getX() + (preferred.x - target.getX()) * shrink,
+                        preferred.y,
+                        target.getZ() + (preferred.z - target.getZ()) * shrink);
+                if (isSpotOpen(player, candidate)) {
+                    return candidate;
+                }
+            }
+        }
+        if (side != 0) {
+            Vec3 mirrored = vanishBehind(player, target, -side);
+            if (isSpotOpen(player, mirrored)) {
+                return mirrored;
+            }
+        }
+        return player.position();
+    }
+
+    /** Land on the target (or {@link XenoServerConfig#chaseStopGap} short), at their height. */
     public static Vec3 chaseLanding(Entity player, LivingEntity target) {
         Vec3 flat = new Vec3(target.getX() - player.getX(), 0, target.getZ() - player.getZ());
         if (flat.lengthSqr() < 1.0e-4) {
@@ -979,10 +1358,11 @@ net.bullettrain.xenopixelsmod.combat.VanishShadeFx.spawn(player, from);
         } else {
             flat = flat.normalize();
         }
+        double gap = Math.max(0.0, XenoServerConfig.chaseStopGap);
         return new Vec3(
-                target.getX() - flat.x * CHASE_GAP,
+                target.getX() - flat.x * gap,
                 target.getY(),
-                target.getZ() - flat.z * CHASE_GAP);
+                target.getZ() - flat.z * gap);
     }
 
     /** Step away from target horizontally; keep player Y for air combat. */
@@ -1049,55 +1429,78 @@ net.bullettrain.xenopixelsmod.combat.VanishShadeFx.spawn(player, from);
     }
 
     private static void playHitSound(ServerPlayer player, LivingEntity target, boolean finisher) {
-        SoundEvent punch = BuiltInRegistries.SOUND_EVENT.get(ResourceLocation.fromNamespaceAndPath("dragonminez", "fist_punch"));
-        SoundEvent knock = BuiltInRegistries.SOUND_EVENT.get(ResourceLocation.fromNamespaceAndPath("dragonminez", "knockback_character"));
-        if (finisher) {
-            if (knock != null) {
-                player.level().playSound(null, target.getX(), target.getY(), target.getZ(),
-                        knock, SoundSource.PLAYERS, 1.0f, 0.95f);
-            }
-            player.level().playSound(null, target.getX(), target.getY(), target.getZ(),
-                    SoundEvents.PLAYER_ATTACK_CRIT, SoundSource.PLAYERS, 1.0f, 0.85f);
-        } else if (punch != null) {
-            player.level().playSound(null, target.getX(), target.getY(), target.getZ(),
-                    punch, SoundSource.PLAYERS, 0.85f, 1.05f);
-        } else {
-            player.level().playSound(null, target.getX(), target.getY(), target.getZ(),
-                    SoundEvents.PLAYER_ATTACK_STRONG, SoundSource.PLAYERS, 0.9f, 1.1f);
-        }
+        playDmzConnect(player, target, finisher);
     }
 
-    /** Always plays a clear impact at the target when a kick connects. */
     private static void playKickHitSound(ServerPlayer player, LivingEntity target, boolean fullCharge) {
+        playDmzConnect(player, target, fullCharge);
+    }
+
+    /** DMZ unarmed pack only — never vanilla strong/crit/sweep. */
+    private static void playDmzConnect(ServerPlayer player, LivingEntity target, boolean heavy) {
         double x = target.getX();
         double y = target.getY() + target.getBbHeight() * 0.4;
         double z = target.getZ();
-
-        SoundEvent punch = BuiltInRegistries.SOUND_EVENT.get(ResourceLocation.fromNamespaceAndPath("dragonminez", "fist_punch"));
-        SoundEvent knock = BuiltInRegistries.SOUND_EVENT.get(ResourceLocation.fromNamespaceAndPath("dragonminez", "knockback_character"));
-
-        // DMZ impact if available
-        if (punch != null) {
-            player.level().playSound(null, x, y, z, punch, SoundSource.PLAYERS, 1.15f, fullCharge ? 0.85f : 1.0f);
+        SoundEvent hit = dmzHitEvent(player, heavy);
+        if (hit != null) {
+            player.level().playSound(null, x, y, z, hit, SoundSource.PLAYERS, heavy ? 1.15f : 0.95f,
+                    heavy ? 0.9f : 1.05f);
         }
-        if (fullCharge && knock != null) {
-            player.level().playSound(null, x, y, z, knock, SoundSource.PLAYERS, 1.0f, 0.9f);
+        if (heavy) {
+            SoundEvent knock = dmzEvent(com.dragonminez.common.init.MainSounds.KNOCKBACK_CHARACTER);
+            if (knock != null) {
+                player.level().playSound(null, x, y, z, knock, SoundSource.PLAYERS, 1.0f, 0.95f);
+            }
         }
+    }
 
-        // Always play vanilla impact so hit is never silent
-        player.level().playSound(null, x, y, z,
-                fullCharge ? SoundEvents.PLAYER_ATTACK_CRIT : SoundEvents.PLAYER_ATTACK_STRONG,
-                SoundSource.PLAYERS, 1.15f, fullCharge ? 0.75f : 0.95f);
-        player.level().playSound(null, x, y, z,
-                SoundEvents.PLAYER_ATTACK_KNOCKBACK, SoundSource.PLAYERS, 0.85f, 1.1f);
+    private static SoundEvent dmzHitEvent(ServerPlayer player, boolean heavy) {
+        try {
+            if (heavy) {
+                return ((player.tickCount & 1) == 0)
+                        ? com.dragonminez.common.init.MainSounds.CRITICO1.get()
+                        : com.dragonminez.common.init.MainSounds.CRITICO2.get();
+            }
+            return switch (Math.floorMod(player.tickCount, 6)) {
+                case 1 -> com.dragonminez.common.init.MainSounds.GOLPE2.get();
+                case 2 -> com.dragonminez.common.init.MainSounds.GOLPE3.get();
+                case 3 -> com.dragonminez.common.init.MainSounds.GOLPE4.get();
+                case 4 -> com.dragonminez.common.init.MainSounds.GOLPE5.get();
+                case 5 -> com.dragonminez.common.init.MainSounds.GOLPE6.get();
+                default -> com.dragonminez.common.init.MainSounds.GOLPE1.get();
+            };
+        } catch (Throwable t) {
+            return null;
+        }
+    }
+
+    private static SoundEvent dmzEvent(
+            net.neoforged.neoforge.registries.DeferredHolder<SoundEvent, ? extends SoundEvent> holder) {
+        try {
+            return holder.get();
+        } catch (Throwable t) {
+            return null;
+        }
     }
 
     private static void faceTarget(ServerPlayer player, LivingEntity target) {
-        double dx = target.getX() - player.getX();
-        double dz = target.getZ() - player.getZ();
-        float yaw = (float) (Mth.atan2(dz, dx) * (180F / Math.PI)) - 90F;
+        float yaw = yawToward(player, target);
         player.setYRot(yaw);
         player.setYHeadRot(yaw);
         player.yBodyRot = yaw;
+        player.yBodyRotO = yaw;
+    }
+
+    /** Keep GeckoLib attacks aligned with DMZ's synced camera/crosshair yaw. */
+    private static void faceBodyToLook(ServerPlayer player) {
+        float yaw = player.getYRot();
+        player.yBodyRot = yaw;
+        player.yBodyRotO = yaw;
+    }
+
+    private static float yawToward(net.minecraft.world.entity.Entity from, LivingEntity target) {
+        double dx = target.getX() - from.getX();
+        double dz = target.getZ() - from.getZ();
+        return (float) (Mth.atan2(dz, dx) * (180F / Math.PI)) - 90F;
     }
 }

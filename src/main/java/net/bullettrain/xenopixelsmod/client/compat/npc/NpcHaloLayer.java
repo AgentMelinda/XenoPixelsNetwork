@@ -5,6 +5,7 @@ import com.mojang.blaze3d.vertex.VertexConsumer;
 import net.bullettrain.xenopixelsmod.compat.npc.NpcCombatProfile;
 import net.minecraft.client.model.EntityModel;
 import net.minecraft.client.model.HeadedModel;
+import net.minecraft.client.model.geom.ModelPart;
 import net.minecraft.client.renderer.MultiBufferSource;
 import net.minecraft.client.renderer.RenderType;
 import net.minecraft.client.renderer.entity.RenderLayerParent;
@@ -27,7 +28,14 @@ public final class NpcHaloLayer<T extends LivingEntity, M extends EntityModel<T>
         visual.applyVisualOptions(state.visualOptions());
         if (!visual.haloOn) return;
         pose.pushPose();
-        getParentModel().getHead().translateAndRotate(pose);
+        // Translate to the head pivot but do NOT take its rotation. ModelPart.translateAndRotate
+        // applies both, which left the halo pitching and swinging with wherever the NPC was
+        // looking instead of hanging level above its head -- the "wrong looking halo" on plain
+        // humanoid NPCs. A halo is world-up, not head-relative. {@link NpcGeckoHaloLayer} already
+        // gets this right via RenderUtil.translateToPivotPoint, which is translation only; this is
+        // the same thing spelled out for a vanilla ModelPart, whose coordinates are 16 per block.
+        ModelPart head = getParentModel().getHead();
+        pose.translate(head.x / 16.0f, head.y / 16.0f, head.z / 16.0f);
         // DMZ's raceparts halo sits 12 model pixels above the player head pivot
         // (the head top is 8px above it, followed by a 4px air gap). Vanilla model
         // coordinates use 16px per block and negative Y for "up", so -12/16 is

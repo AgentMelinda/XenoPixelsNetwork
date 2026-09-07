@@ -68,17 +68,20 @@ public final class NpcVitalitySync {
     }
 
     private static Object customNpcStats(Entity entity) throws ReflectiveOperationException {
-        Class<?> npcClass;
-        try {
-            npcClass = Class.forName("noppes.npcs.entity.EntityNPCInterface");
-        } catch (ClassNotFoundException ignored) {
-            return null;
+        for (String className : new String[] {
+                "espi.mynpcs.entity.EntityNPCInterface",
+                "noppes.npcs.entity.EntityNPCInterface"}) {
+            try {
+                Class<?> npcClass = Class.forName(className);
+                if (npcClass.isInstance(entity)) {
+                    Field statsField = npcClass.getField("stats");
+                    return statsField.get(entity);
+                }
+            } catch (ClassNotFoundException ignored) {
+                // The other supported CustomNPC namespace may be installed instead.
+            }
         }
-        if (!npcClass.isInstance(entity)) {
-            return null;
-        }
-        Field statsField = npcClass.getField("stats");
-        return statsField.get(entity);
+        return null;
     }
 
     private static double vitalityMultiplier(NpcCombatProfile profile) {

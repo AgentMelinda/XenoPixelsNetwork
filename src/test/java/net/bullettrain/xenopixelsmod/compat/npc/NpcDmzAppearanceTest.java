@@ -140,14 +140,17 @@ class NpcDmzAppearanceTest {
         assertEquals(0x3366FF, profile.auraColor);
         assertEquals("#FFD700", profile.hairColor);
         assertTrue(profile.hairEnabled);
-        assertEquals(1.0f, profile.auraScale, 1.0e-6f);
+        // No AuraScale key: schema-0 default 1.7 is normalized to 1.0 by the legacy rule,
+        // then the schema-7 default migration promotes it back to the new default.
+        assertEquals(1.7f, profile.auraScale, 1.0e-6f);
     }
 
     @Test
-    void migratesOnlyTheOldFixedAuraDefaultAndWritesSchema() {
+    void migratesTheOldAuraDefaultsOnceEachAndWritesSchema() {
+        // Legacy baked 1.7 -> 1.0 (AURA_SCHEMA rule), then 1.0 -> 1.7 (schema-7 default change).
         CompoundTag legacyDefault = new CompoundTag();
         legacyDefault.putFloat("AuraScale", 1.7f);
-        assertEquals(1.0f, NpcCombatProfile.fromTag(legacyDefault).auraScale, 1.0e-6f);
+        assertEquals(1.7f, NpcCombatProfile.fromTag(legacyDefault).auraScale, 1.0e-6f);
 
         CompoundTag legacyCustom = new CompoundTag();
         legacyCustom.putFloat("AuraScale", 1.3f);
@@ -156,7 +159,99 @@ class NpcDmzAppearanceTest {
         NpcCombatProfile current = new NpcCombatProfile();
         current.auraScale = 1.7f;
         CompoundTag encoded = current.toTag();
-        assertEquals(4, encoded.getInt("Schema"));
+        assertEquals(9, encoded.getInt("Schema"));
         assertEquals(1.7f, NpcCombatProfile.fromTag(encoded).auraScale, 1.0e-6f);
+    }
+
+    @Test
+    void groundRingAndFlySkillRoundTripThroughBothTagForms() {
+        NpcCombatProfile source = new NpcCombatProfile();
+        source.auraGroundRing = false;
+        source.flySkillOn = true;
+        source.flySkillLevel = 6;
+
+        NpcCombatProfile full = NpcCombatProfile.fromTag(source.toTag());
+        assertFalse(full.auraGroundRing);
+        assertTrue(full.flySkillOn);
+        assertEquals(6, full.flySkillLevel);
+
+        // The compact visual-options subset is what actually reaches nearby clients, and both
+        // the ring toggle and the fly pose are read on the client, so they must survive it too.
+        NpcCombatProfile visual = new NpcCombatProfile();
+        visual.applyVisualOptions(source.visualOptionsTag());
+        assertFalse(visual.auraGroundRing);
+        assertTrue(visual.flySkillOn);
+        assertEquals(6, visual.flySkillLevel);
+    }
+
+    @Test
+    void groundRingDefaultsOnAndFlySkillDefaultsOffForOlderProfiles() {
+        // A pre-schema-8 save has neither key. Rings were unconditional before the toggle
+        // existed, so absent must read as on; flight is new behavior and must stay off.
+        CompoundTag legacy = new CompoundTag();
+        legacy.putInt("Schema", 7);
+
+        NpcCombatProfile decoded = NpcCombatProfile.fromTag(legacy);
+        assertTrue(decoded.auraGroundRing);
+        assertFalse(decoded.flySkillOn);
+        assertEquals(1, decoded.flySkillLevel);
+    }
+
+    @Test
+    void aggroMultiplierAndAimAccuracyRoundTripAndClamp() {
+        NpcCombatProfile source = new NpcCombatProfile();
+        source.aggroMultiplier = 3.5f;
+        source.aimAccuracy = 0.25f;
+        source.combatBrain = true;
+
+        NpcCombatProfile decoded = NpcCombatProfile.fromTag(source.toTag());
+        assertEquals(3.5f, decoded.aggroMultiplier, 1.0e-6f);
+        assertEquals(0.25f, decoded.aimAccuracy, 1.0e-6f);
+        assertTrue(decoded.combatBrain);
+
+        // Both are clamped rather than rejected, so a bad script value degrades to a sane one.
+        assertEquals(0.25f, NpcCombatProfile.clampAggroMultiplier(-4.0f), 1.0e-6f);
+        assertEquals(8.0f, NpcCombatProfile.clampAggroMultiplier(999.0f), 1.0e-6f);
+        assertEquals(2.0f, NpcCombatProfile.clampAggroMultiplier(Float.NaN), 1.0e-6f);
+        assertEquals(0.0f, NpcCombatProfile.clampAimAccuracy(-1.0f), 1.0e-6f);
+        assertEquals(1.0f, NpcCombatProfile.clampAimAccuracy(4.0f), 1.0e-6f);
+        assertEquals(0.85f, NpcCombatProfile.clampAimAccuracy(Float.NaN), 1.0e-6f);
+    }
+
+    @Test
+    void aggroDefaultsToDoubleAndBrainDefaultsOff() {
+        // "Double the aggro limit" is the shipped default, and autonomous combat must stay off
+        // so an existing scripted NPC is untouched by the upgrade.
+        NpcCombatProfile defaults = NpcCombatProfile.fromTag(new CompoundTag());
+        assertEquals(2.0f, defaults.aggroMultiplier, 1.0e-6f);
+        assertFalse(defaults.combatBrain);
+    }
+
+    @Test
+    void preSchemaNineFlyStateMigratesIntoTheSkillMap() {
+        // Schema 9 generalized the single fly toggle into a full skill map; a profile configured
+        // to fly under schema 8 must still fly afterwards.
+        CompoundTag legacy = new CompoundTag();
+        legacy.putInt("Schema", 8);
+        legacy.putBoolean("FlySkillOn", true);
+        legacy.putInt("FlySkillLevel", 7);
+
+        NpcCombatProfile decoded = NpcCombatProfile.fromTag(legacy);
+        assertTrue(decoded.flySkillOn);
+        assertTrue(decoded.skills.isActive("fly"));
+        assertEquals(7, decoded.skills.level("fly"));
+    }
+
+    @Test
+    void flySkillLevelIsClampedToDmzUsableRange() {
+        assertEquals(1, NpcCombatProfile.clampFlySkillLevel(0));
+        assertEquals(1, NpcCombatProfile.clampFlySkillLevel(-4));
+        assertEquals(10, NpcCombatProfile.clampFlySkillLevel(99));
+        assertEquals(5, NpcCombatProfile.clampFlySkillLevel(5));
+
+        CompoundTag tag = new CompoundTag();
+        tag.putInt("Schema", 8);
+        tag.putInt("FlySkillLevel", 250);
+        assertEquals(10, NpcCombatProfile.fromTag(tag).flySkillLevel);
     }
 }

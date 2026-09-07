@@ -28,6 +28,12 @@ import java.util.Map;
 public final class AeroConfig {
     private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
     private static final Path PATH = FMLPaths.CONFIGDIR.get().resolve("xenopixelsmod-aero.json");
+    /**
+     * Config-file schema. Schema 1 introduced the stabilizer/stick tuning block and set the
+     * damping default to 20; files written before it are migrated on load and re-saved, so a
+     * user-tuned schema-1 file is never re-migrated afterwards.
+     */
+    private static final int SCHEMA = 1;
 
     /**
      * Master switch for the power requirement.
@@ -100,7 +106,41 @@ public final class AeroConfig {
      * javadoc), this was cut by the same ratio. Still a tunable game-feel constant, not a derived
      * physical value; expect to adjust it against how a real ship actually rolls/pitches in play.
      */
-    public static double controlSurfaceTorqueScale = 125.0;
+    public static double controlSurfaceTorqueScale = 60.0;
+
+    /**
+     * Speed (blocks/s) past which control-surface authority stops growing with speed. Dynamic
+     * pressure scales with speed², so above this the commanded angle is trimmed by the inverse
+     * square of the overspeed, holding the resulting moment roughly flat — a fast ship does not
+     * get a runaway roll/pitch/yaw rate compared with a slow one. {@code /xenoaerotune authspeed}.
+     */
+    public static double controlAuthoritySpeed = 18.0;
+
+    /**
+     * Angular-rate damping gain ("instructor"), rad/s² of corrective angular acceleration per
+     * rad/s of rotation, applied every physics tick by {@code AeroStabilizerSystem} in <b>both</b>
+     * keyboard and mouse-aim modes. This is the single knob that decides how quickly an
+     * uncommanded rotation bleeds off — higher is a heavier, more forgiving arcade feel. Before
+     * this existed, keyboard-mode flight had zero rotational damping and any input spun the ship
+     * up to the hard angular-velocity wall and left it circling there.
+     * {@code /xenoaerotune damping <value>}.
+     */
+    public static double arcadeAngularDamping = 20.0;
+
+    /** Attitude-hold proportional gain (mouse-aim mode only). {@code /xenoaerotune kp <value>}. */
+    public static double stabilizerKp = 5.0;
+
+    /** Clamp on the angular acceleration the stabilizer may command in a tick (rad/s²), both
+     * modes. {@code /xenoaerotune maxaccel <value>}. */
+    public static double stabilizerMaxAngularAccel = 40.0;
+
+    /** Keyboard control-stick deadzone (0..0.5): input below this magnitude reads as centered.
+     * {@code /xenoaerotune deadzone <value>}. */
+    public static double stickDeadzone = 0.06;
+
+    /** Keyboard control-stick expo (0..1): 0 = linear stick→deflection, 1 = cubic (gentle around
+     * center, full authority near the stops). {@code /xenoaerotune expo <value>}. */
+    public static double stickExpo = 0.5;
 
     /**
      * Keep the lumped hull lift even on a craft built with real wing panels.
@@ -171,12 +211,24 @@ public final class AeroConfig {
             maxAeroAccel = Math.max(0.0, data.maxAeroAccel);
             flapSpeedPerSec = Math.max(0.05, data.flapSpeedPerSec);
             controlSurfaceTorqueScale = Math.max(0.0, data.controlSurfaceTorqueScale);
+            controlAuthoritySpeed = Math.max(1.0, data.controlAuthoritySpeed);
+            arcadeAngularDamping = Math.max(0.0, data.arcadeAngularDamping);
+            stabilizerKp = Math.max(0.0, data.stabilizerKp);
+            stabilizerMaxAngularAccel = Math.max(0.1, data.stabilizerMaxAngularAccel);
+            stickDeadzone = Math.max(0.0, Math.min(0.5, data.stickDeadzone));
+            stickExpo = Math.max(0.0, Math.min(1.0, data.stickExpo));
             aeroModelBaseLiftWithWings = data.aeroModelBaseLiftWithWings;
             autoFlapExtendSpeed = Math.max(0.0, data.autoFlapExtendSpeed);
             // Retract must sit above extend or the interpolation between them inverts.
             autoFlapRetractSpeed = Math.max(autoFlapExtendSpeed + 0.5, data.autoFlapRetractSpeed);
             if (data.subsystemDraw != null && !data.subsystemDraw.isEmpty()) {
                 subsystemDraw = new LinkedHashMap<>(data.subsystemDraw);
+            }
+            // Schema migration: a pre-schema-1 file has no stabilizer/stick keys at all, so Gson
+            // leaves them at their Data defaults. Persist once so the new keys become visible and
+            // tunable, stamping schema = SCHEMA so this never re-runs over hand-tuned values.
+            if (data.schema < SCHEMA) {
+                save();
             }
         } catch (Exception e) {
             // A malformed file must never stop the server booting.
@@ -189,6 +241,7 @@ public final class AeroConfig {
             Files.createDirectories(PATH.getParent());
             try (Writer writer = Files.newBufferedWriter(PATH)) {
                 Data data = new Data();
+                data.schema = SCHEMA;
                 data.requirePower = requirePower;
                 data.energyCapacity = energyCapacity;
                 data.maxReceiveFePerTick = maxReceiveFePerTick;
@@ -208,6 +261,12 @@ public final class AeroConfig {
                 data.maxAeroAccel = maxAeroAccel;
                 data.flapSpeedPerSec = flapSpeedPerSec;
                 data.controlSurfaceTorqueScale = controlSurfaceTorqueScale;
+                data.controlAuthoritySpeed = controlAuthoritySpeed;
+                data.arcadeAngularDamping = arcadeAngularDamping;
+                data.stabilizerKp = stabilizerKp;
+                data.stabilizerMaxAngularAccel = stabilizerMaxAngularAccel;
+                data.stickDeadzone = stickDeadzone;
+                data.stickExpo = stickExpo;
                 data.aeroModelBaseLiftWithWings = aeroModelBaseLiftWithWings;
                 data.autoFlapExtendSpeed = autoFlapExtendSpeed;
                 data.autoFlapRetractSpeed = autoFlapRetractSpeed;
@@ -220,6 +279,8 @@ public final class AeroConfig {
     }
 
     public static final class Data {
+        /** Absent in older files; Gson then leaves this at 0, which triggers migration. */
+        public int schema = 0;
         public boolean requirePower = false;
         public int energyCapacity = 5_000_000;
         public int maxReceiveFePerTick = 12_000;
@@ -238,7 +299,13 @@ public final class AeroConfig {
         public double stallDropDeg = 8.0;
         public double maxAeroAccel = 40.0;
         public double flapSpeedPerSec = 0.6;
-        public double controlSurfaceTorqueScale = 125.0;
+        public double controlSurfaceTorqueScale = 60.0;
+        public double controlAuthoritySpeed = 18.0;
+        public double arcadeAngularDamping = 20.0;
+        public double stabilizerKp = 5.0;
+        public double stabilizerMaxAngularAccel = 40.0;
+        public double stickDeadzone = 0.06;
+        public double stickExpo = 0.5;
         public boolean aeroModelBaseLiftWithWings = false;
         public double autoFlapExtendSpeed = 8.0;
         public double autoFlapRetractSpeed = 20.0;

@@ -2,9 +2,11 @@ package net.bullettrain.xenopixelsmod.client.flight;
 
 import com.mojang.blaze3d.platform.InputConstants;
 import dev.ryanhcode.sable.mixinhelpers.camera.new_camera_types.SableCameraTypes;
+import dev.ryanhcode.sable.mixinterface.camera.camera_zoom.CameraZoomExtension;
 import net.bullettrain.xenopixelsmod.XenoPixelsMod;
 import net.bullettrain.xenopixelsmod.aero.seat.XenoPilotSeatEntity;
 import net.bullettrain.xenopixelsmod.client.config.XenoClientConfig;
+import net.bullettrain.xenopixelsmod.client.combat.DmzAnimHelperClient;
 import net.bullettrain.xenopixelsmod.network.ModNetwork;
 import net.bullettrain.xenopixelsmod.network.packet.SeatFlightInputPacket;
 import net.bullettrain.xenopixelsmod.network.packet.SeatToggleBindPacket;
@@ -107,6 +109,18 @@ public final class XenoFlightControls {
      */
     public static final KeyMapping THIRD_PERSON_TOGGLE = new KeyMapping("key.xenopixelsmod.flight_third_person",
             XenoSeatKeyContext.INSTANCE, InputConstants.UNKNOWN, CATEGORY);
+    /**
+     * Hold to zoom Sable's own sub-level-view camera in/out — the same
+     * {@link dev.ryanhcode.sable.mixinterface.camera.camera_zoom.CameraZoomExtension} its own
+     * scroll-to-zoom mixin drives (see {@link #updateZoomKeys}), so this is an alternate control
+     * for exactly the same zoom, not a second implementation of it. Only does anything while the
+     * camera is actually in {@link SableCameraTypes#SUB_LEVEL_VIEW} /
+     * {@code SUB_LEVEL_VIEW_UNLOCKED} — i.e. after {@link #THIRD_PERSON_TOGGLE}.
+     */
+    public static final KeyMapping ZOOM_IN = new KeyMapping("key.xenopixelsmod.flight_zoom_in",
+            XenoSeatKeyContext.INSTANCE, InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_KP_ADD, CATEGORY);
+    public static final KeyMapping ZOOM_OUT = new KeyMapping("key.xenopixelsmod.flight_zoom_out",
+            XenoSeatKeyContext.INSTANCE, InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_KP_SUBTRACT, CATEGORY);
 
     /** Flap stages, in the order the flap key walks them. */
     private static final double[] FLAP_STAGES = {0.0, 0.25, 0.5, 0.75, 1.0};
@@ -115,14 +129,13 @@ public final class XenoFlightControls {
     private static final int KEEPALIVE_TICKS = 5;
     /** Floor on send spacing: 10 frames a second is plenty for a control surface. */
     private static final int MIN_SEND_INTERVAL_TICKS = 2;
-    private static final double AXIS_EPSILON = 0.01;
-    private static final double ANGLE_EPSILON = 0.5;
     /** Off-boresight span the response curve normalizes against; see {@link MouseResponseCurve}. */
     private static final double MOUSE_CURVE_SPAN_DEG = 60.0;
     /** Tracking rate at sensitivity 1.0 and the curve's full multiplier. */
     private static final double MOUSE_BASE_RATE_DEG_PER_SEC = 220.0;
-    /** How fast the WASD stick springs toward the held direction (units per second, 0..1). */
-    private static final double STICK_CATCH_PER_SEC = 6.0;
+    /** Fallback spring rate for the WASD stick if the config value is somehow unreadable
+     * (units per second, 0..1). The live value is {@code XenoClientConfig.flightStickRampPerSec}. */
+    private static final double STICK_CATCH_PER_SEC_FALLBACK = 4.0;
     /** Extra pitch W/S trims on top of the mouse-derived aim, at full stick. */
     private static final double STICK_PITCH_TRIM_DEG = 20.0;
     /** Commanded pitch is held short of vertical: straight up is a singularity for the solver. */
@@ -157,13 +170,10 @@ public final class XenoFlightControls {
     private static boolean thirdPersonActive;
 
     private static boolean wasSeated;
+    /** True after this client entered a seat; lets dismount cleanup run once and remain idempotent. */
+    private static boolean seatVisualStateActive;
     private static int ticksSinceSend = KEEPALIVE_TICKS;
-    private static double sentThrottle = -1;
-    private static double sentRoll;
-    private static double sentYaw;
-    private static double sentPitch;
-    private static double sentFlap = -1;
-    private static boolean sentAirBrake;
+    private static FlightInputChanges.Frame sentFrame;
 
     private XenoFlightControls() {
     }
@@ -182,6 +192,8 @@ public final class XenoFlightControls {
             event.register(THROTTLE_DOWN);
             event.register(TOGGLE_BINDING);
             event.register(THIRD_PERSON_TOGGLE);
+            event.register(ZOOM_IN);
+            event.register(ZOOM_OUT);
         }
     }
 
@@ -208,7 +220,10 @@ public final class XenoFlightControls {
             // Not flying: drain the queues so a press made out of the seat is not banked and
             // replayed the moment the player sits down.
             drain();
-            if (wasSeated) reset();
+            if (wasSeated || seatVisualStateActive) {
+                cleanupSeatVisualState(player);
+                reset();
+            }
             wasSeated = false;
             restoreFirstPersonIfOurs(mc);
             return;
@@ -218,6 +233,7 @@ public final class XenoFlightControls {
         // 0,0 instead of responding at once, so that one frame snaps directly.
         boolean justMounted = !wasSeated;
         wasSeated = true;
+        if (justMounted) seatVisualStateActive = true;
 
         // With a screen open the controls are frozen but the stream keeps running. Reading keys
         // here would make typing in chat fly the ship; stopping the stream instead would let the
@@ -235,6 +251,7 @@ public final class XenoFlightControls {
             updateThrottleKeys(dt);
             updateWasdStick(mc, dt);
             updateAttitude(player, mc, dt, justMounted);
+            updateZoomKeys(mc, dt);
         }
 
         boolean airBrake = !frozen && AIR_BRAKE.isDown();
@@ -272,9 +289,27 @@ public final class XenoFlightControls {
             } else {
                 mc.options.setCameraType(SableCameraTypes.SUB_LEVEL_VIEW);
                 thirdPersonActive = true;
-                actionBar(mc, "Third-person view — scroll to zoom");
+                actionBar(mc, "Third-person view — scroll or +/- to zoom");
             }
         }
+    }
+
+    /**
+     * Hold {@link #ZOOM_IN}/{@link #ZOOM_OUT} to nudge Sable's own sub-level-view camera zoom, the
+     * exact same {@code sable$zoomAmount} its scroll-to-zoom mixin
+     * ({@code dev.ryanhcode.sable.mixin.camera.camera_zoom.MouseHandlerMixin}) adjusts — smaller
+     * is closer/zoomed-in, matching "scroll up = zoom in". Sable's own per-tick clamp
+     * ({@code CameraMixin.sable$clampZoom}) keeps whatever value is set here in range, so no
+     * bounds are needed here. A no-op outside that camera view, and outside the seat.
+     */
+    private static void updateZoomKeys(Minecraft mc, double dt) {
+        if (!ZOOM_IN.isDown() && !ZOOM_OUT.isDown()) return;
+        CameraType type = mc.options.getCameraType();
+        if (type != SableCameraTypes.SUB_LEVEL_VIEW && type != SableCameraTypes.SUB_LEVEL_VIEW_UNLOCKED) return;
+        if (!(mc.gameRenderer.getMainCamera() instanceof CameraZoomExtension zoom)) return;
+        float delta = (float) (XenoClientConfig.flightZoomKeyRatePerSec * dt);
+        if (ZOOM_IN.isDown()) zoom.sable$setZoomAmount(zoom.sable$getZoomAmount() - delta);
+        if (ZOOM_OUT.isDown()) zoom.sable$setZoomAmount(zoom.sable$getZoomAmount() + delta);
     }
 
     /** Only undoes our own {@link #THIRD_PERSON_TOGGLE}; leaves any other camera type alone. */
@@ -301,7 +336,9 @@ public final class XenoFlightControls {
         if (ROLL_RIGHT.isDown()) wantRoll += 1.0;
         if (mc.options.keyUp.isDown()) wantYaw += 1.0;
         if (mc.options.keyDown.isDown()) wantYaw -= 1.0;
-        double step = STICK_CATCH_PER_SEC * dt;
+        double rampPerSec = XenoClientConfig.flightStickRampPerSec > 0.0f
+                ? XenoClientConfig.flightStickRampPerSec : STICK_CATCH_PER_SEC_FALLBACK;
+        double step = rampPerSec * dt;
         stickPitch = approach(stickPitch, Mth.clamp(wantPitch, -1.0, 1.0), step);
         stickRoll = approach(stickRoll, Mth.clamp(wantRoll, -1.0, 1.0), step);
         stickYaw = approach(stickYaw, Mth.clamp(wantYaw, -1.0, 1.0), step);
@@ -471,13 +508,10 @@ public final class XenoFlightControls {
     private static void maybeSend(int seatEntityId, boolean airBrake, boolean flapCommanded) {
         ticksSinceSend++;
         double flap = FLAP_STAGES[flapStage];
-        boolean changed = Math.abs(throttle - sentThrottle) > AXIS_EPSILON
-                || Math.abs(flap - sentFlap) > AXIS_EPSILON
-                || Math.abs(Mth.degreesDifference((float) sentYaw, (float) yawDeg)) > ANGLE_EPSILON
-                || Math.abs(pitchDeg - sentPitch) > ANGLE_EPSILON
-                || Math.abs(Mth.degreesDifference((float) sentRoll, (float) rollDeg)) > ANGLE_EPSILON
-                || airBrake != sentAirBrake
-                || flapCommanded;
+        FlightInputChanges.Frame frame = new FlightInputChanges.Frame(seatEntityId, throttle, flap,
+                yawDeg, pitchDeg, rollDeg, stickPitch, stickRoll, stickYaw,
+                XenoClientConfig.flightMouseAim, airBrake, XenoClientConfig.flightAutoLevel);
+        boolean changed = frame.differs(sentFrame) || flapCommanded;
 
         if (!changed && ticksSinceSend < KEEPALIVE_TICKS) return;
         if (ticksSinceSend < MIN_SEND_INTERVAL_TICKS) return;
@@ -486,12 +520,7 @@ public final class XenoFlightControls {
                 stickPitch, stickRoll, stickYaw, XenoClientConfig.flightMouseAim,
                 throttle, flap, airBrake, XenoClientConfig.flightAutoLevel, flapCommanded));
         ticksSinceSend = 0;
-        sentThrottle = throttle;
-        sentYaw = yawDeg;
-        sentPitch = pitchDeg;
-        sentRoll = rollDeg;
-        sentFlap = flap;
-        sentAirBrake = airBrake;
+        sentFrame = frame;
     }
 
     /** Ramps throttle while a throttle key is held, alongside (not instead of) the scroll wheel. */
@@ -514,6 +543,15 @@ public final class XenoFlightControls {
         while (THIRD_PERSON_TOGGLE.consumeClick()) { }
     }
 
+    /** Clears only animation state this cockpit may have started; held items and player visibility stay untouched. */
+    private static void cleanupSeatVisualState(LocalPlayer player) {
+        if (player != null) {
+            DmzAnimHelperClient.playLocalChargeStop(player);
+        }
+        DmzAnimHelperClient.ClientStrikeChain.clear();
+        seatVisualStateActive = false;
+    }
+
     /** Forget the whole control position. Leaving the seat must not carry throttle into the next one. */
     public static void reset() {
         throttle = 0.0;
@@ -527,12 +565,7 @@ public final class XenoFlightControls {
         stickYaw = 0.0;
         pitchAimDeg = 0.0;
         ticksSinceSend = KEEPALIVE_TICKS;
-        sentThrottle = -1;
-        sentYaw = 0.0;
-        sentPitch = 0.0;
-        sentRoll = 0.0;
-        sentFlap = -1;
-        sentAirBrake = false;
+        sentFrame = null;
     }
 
     private static void actionBar(Minecraft mc, String message) {

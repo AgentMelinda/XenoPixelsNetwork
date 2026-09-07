@@ -14,7 +14,7 @@ import java.util.Map;
 public final class NpcAuraResolver {
     public record Layer(String type, int index, int rgb) {}
     public record Resolved(List<Layer> layers, boolean lightning, int lightningRgb,
-                           boolean rocks, boolean sparking) {
+                           boolean rocks, boolean sparking, boolean groundRing) {
         public int particleRgb() {
             return layers.isEmpty() ? 0xFFFFFF : layers.get(layers.size() - 1).rgb();
         }
@@ -55,7 +55,7 @@ public final class NpcAuraResolver {
         ordered.sort(Comparator.comparingInt(Layer::index));
         Lightning lightning = resolveLightning(profile, normal, normalStyle, stack, stackStyle, baseStyle);
         return new Resolved(List.copyOf(ordered), profile.auraLightning && lightning.enabled,
-                lightning.rgb, profile.auraRocks, profile.auraSparking);
+                lightning.rgb, profile.auraRocks, profile.auraSparking, profile.auraGroundRing);
     }
 
     public static int baseRgb(NpcCombatProfile profile) {

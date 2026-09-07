@@ -162,6 +162,10 @@ public class SeatFlightInputPacket {
         if (LAST_INPUT_TICK.size() > 64) {
             LAST_INPUT_TICK.entrySet().removeIf(entry -> now - entry.getValue() > PRUNE_AFTER_TICKS);
         }
-        return previous != null && now - previous < MIN_INTERVAL_TICKS;
+        return rateLimitedAt(now, previous);
+    }
+
+    static boolean rateLimitedAt(int now, Integer previous) {
+        return previous != null && now >= previous && (long) now - previous < MIN_INTERVAL_TICKS;
     }
 }

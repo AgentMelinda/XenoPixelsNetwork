@@ -7,6 +7,7 @@ import com.mojang.blaze3d.vertex.VertexConsumer;
 import net.bullettrain.xenopixelsmod.client.compat.npc.NpcFullDmzRenderer;
 import net.bullettrain.xenopixelsmod.client.compat.npc.NpcGeckoOwner;
 import net.bullettrain.xenopixelsmod.client.compat.npc.NpcDmzHairLayer;
+import net.bullettrain.xenopixelsmod.client.compat.npc.NpcGeckoHaloLayer;
 import net.minecraft.client.renderer.MultiBufferSource;
 import net.minecraft.client.renderer.RenderType;
 import net.minecraft.world.entity.LivingEntity;
@@ -24,6 +25,9 @@ public abstract class RenderCustomModelHairMixin {
     private void xenopixels$addDmzHairLayer(EntityRendererProvider.Context context, CallbackInfo ci) {
         RenderCustomModel renderer = (RenderCustomModel) (Object) this;
         renderer.addRenderLayer(new NpcDmzHairLayer((GeoRenderer<EntityCustomModel>) renderer));
+        // Halo: NpcHaloLayer is a vanilla RenderLayer and only reaches CustomNPCs' humanoid
+        // renderer, so a custom-model NPC could not show one at all until this.
+        renderer.addRenderLayer(new NpcGeckoHaloLayer((GeoRenderer<EntityCustomModel>) renderer));
     }
 
     @Inject(method = "defaultRender(Lcom/mojang/blaze3d/vertex/PoseStack;Lcom/goodbird/cnpcgeckoaddon/entity/EntityCustomModel;Lnet/minecraft/client/renderer/MultiBufferSource;Lnet/minecraft/client/renderer/RenderType;Lcom/mojang/blaze3d/vertex/VertexConsumer;FFI)V",

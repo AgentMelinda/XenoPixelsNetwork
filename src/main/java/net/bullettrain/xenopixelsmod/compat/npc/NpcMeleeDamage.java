@@ -21,7 +21,78 @@ import net.neoforged.neoforge.event.entity.living.LivingDamageEvent;
  */
 @EventBusSubscriber(modid = XenoPixelsMod.MOD_ID)
 public final class NpcMeleeDamage {
+    /** Fraction of damage a guarding NPC still takes. */
+    private static final double GUARD_DAMAGE_MULTIPLIER = 0.35;
+
+    /** Alternates the punching hand per NPC, so a flurry does not throw the same arm twice. */
+    private static final java.util.Map<java.util.UUID, Boolean> NEXT_IS_RIGHT =
+            new java.util.concurrent.ConcurrentHashMap<>();
+
+    private enum AnimationKind { DMZ, GECKO }
+
+    private record MeleeAnimation(AnimationKind kind, String name) {}
+
+    /** Script-selected animation used only when this NPC's real melee damage lands. */
+    private static final java.util.Map<java.util.UUID, MeleeAnimation> MELEE_ANIMATIONS =
+            new java.util.concurrent.ConcurrentHashMap<>();
+
     private NpcMeleeDamage() {
+    }
+
+    /** Selects a renderer-valid clip for subsequent real CustomNPCs melee hits. */
+    public static boolean setAnimation(LivingEntity attacker, String animation) {
+        if (attacker == null || animation == null || animation.isBlank()) {
+            return false;
+        }
+        String name = animation.trim();
+        if (NpcDmzAnim.canAnimate(attacker)) {
+            if (!net.bullettrain.xenopixelsmod.combat.anim.Bt3AnimationCatalog.isPlayable(name)) {
+                return false;
+            }
+            MELEE_ANIMATIONS.put(attacker.getUUID(), new MeleeAnimation(AnimationKind.DMZ, name));
+            return true;
+        }
+        if (NpcGeckoAnim.canAnimate(attacker)) {
+            MELEE_ANIMATIONS.put(attacker.getUUID(), new MeleeAnimation(AnimationKind.GECKO, name));
+            return true;
+        }
+        return false;
+    }
+
+    public static void clearAnimation(java.util.UUID npcId) {
+        if (npcId != null) {
+            MELEE_ANIMATIONS.remove(npcId);
+            NEXT_IS_RIGHT.remove(npcId);
+        }
+    }
+
+    /**
+     * Plays the selected clip, or the configured-generation fallback, when CustomNPCs commits a
+     * native melee attempt. Called from the CustomNPCs attack path after its meleeAttack script
+     * event and cancellation check, but before it invokes {@code hurt} on the target.
+     */
+    public static void onMeleeAttempt(LivingEntity attacker) {
+        if (attacker == null || attacker.level().isClientSide
+                || !attacker.isAlive() || !NpcCombatProfile.hasProfile(attacker)) {
+            return;
+        }
+        MeleeAnimation selected = MELEE_ANIMATIONS.get(attacker.getUUID());
+        if (selected != null) {
+            boolean played = selected.kind() == AnimationKind.DMZ
+                    ? NpcDmzAnim.play(attacker, selected.name())
+                    : NpcGeckoAnim.play(attacker, selected.name());
+            if (played) {
+                return;
+            }
+        }
+        if (!NpcDmzAnim.canAnimate(attacker)) {
+            NpcGeckoAnim.playAttack(attacker);
+            return;
+        }
+        boolean right = NEXT_IS_RIGHT.merge(attacker.getUUID(), true, (old, ignored) -> !old);
+        NpcDmzAnim.play(attacker, right
+                ? net.bullettrain.xenopixelsmod.combat.anim.Bt3AnimationIntent.BODY_PUNCH_RIGHT
+                : net.bullettrain.xenopixelsmod.combat.anim.Bt3AnimationIntent.BODY_PUNCH_LEFT);
     }
 
     @SubscribeEvent
@@ -48,6 +119,12 @@ public final class NpcMeleeDamage {
                     * combat.getDefenseReductionScale());
             double mitigated = NpcStatMath.mitigate(event.getNewDamage(), defense, scale,
                     combat.getBaseDamageReductionCap());
+            // A guarding NPC takes the same kind of flat reduction a guarding player does.
+            // Guard is this mod's own concept (NpcCombatMoves) -- CustomNPCs has no equivalent
+            // state -- and is set either by a script or by the combat brain.
+            if (NpcCombatMoves.isGuarding(event.getEntity())) {
+                mitigated *= GUARD_DAMAGE_MULTIPLIER;
+            }
             event.setNewDamage((float) mitigated);
         }
     }

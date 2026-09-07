@@ -290,9 +290,10 @@ public final class KiGuidance {
                 return living;
             }
         }
-        if (level >= 2) {
-            return lookTarget(player, player.level(), KiGuidanceMath.controlRange(level), false);
-        }
+        // No look-cone scan. Guidance follows the crosshair unless the player has deliberately
+        // locked on: auto-acquiring whatever happened to be near the aim meant a blast bent away
+        // from where it was pointed. With nothing locked the caller falls through to
+        // applyCameraSteer, which is the crosshair itself.
         return null;
     }
 
@@ -328,8 +329,10 @@ public final class KiGuidance {
         }
         if (!(owner instanceof ServerPlayer player)) return already;
         if (guideLevel(player) < 2 || !isArmed(player)) return already;
-        boolean heal = data.getEffectiveUtility() == KiAttackData.Utility.HEAL;
-        LivingEntity looked = lookTarget(player, level, KiGuidanceMath.controlRange(2), heal);
+        // Healing still seeks a friendly under the crosshair — there is nothing to steer a heal
+        // toward otherwise. Offensive ki does not auto-acquire; it follows where the player aims.
+        if (data.getEffectiveUtility() != KiAttackData.Utility.HEAL) return already;
+        LivingEntity looked = lookTarget(player, level, KiGuidanceMath.controlRange(2), true);
         return looked != null ? looked : already;
     }
 

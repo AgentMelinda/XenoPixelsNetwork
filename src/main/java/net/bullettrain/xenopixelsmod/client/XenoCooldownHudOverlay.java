@@ -175,7 +175,13 @@ public class XenoCooldownHudOverlay {
      * <p>Resolved in {@code buildChips}, which is rebuilt once per client tick rather than per
      * frame, so the string work never lands on the render path.
      */
+    private static String leftClickLabel() {
+        return "LMB";
+    }
+
     private static String keyName(net.minecraft.client.KeyMapping mapping) {
+        // Fist and combo own left click even though vanilla Attack is deliberately unbound.
+        if (mapping == Bt3CombatClient.CHARGE_FIST) return leftClickLabel();
         if (mapping == null || mapping.isUnbound()) return "-";
         com.mojang.blaze3d.platform.InputConstants.Key key = mapping.getKey();
 
@@ -416,6 +422,7 @@ public class XenoCooldownHudOverlay {
     }
 
     public static void drawModernChip(GuiGraphics g, Font font, int x, int y, Chip chip) {
+        ensureCombatKeyLabel(chip);
         ResourceLocation plate;
         int sourceW;
         int sourceH;
@@ -547,6 +554,7 @@ public class XenoCooldownHudOverlay {
     }
 
     private static void drawChip(GuiGraphics g, Font font, int x, int y, Chip chip) {
+        ensureCombatKeyLabel(chip);
         int cSkew = chipSkew();
         int mSkew = meterSkew();
 
@@ -718,7 +726,7 @@ public class XenoCooldownHudOverlay {
             int step = editing ? 3 : Bt3CombatClient.getComboStep();
             // Highlight whenever a combo is active (step > 0), not just while window meter is full
             boolean busy = editing || step > 0 || comboFrac > 0f;
-            list.add(chip("Combo", "Cmb", keyName(chipMc.options.keyAttack), 0xFFEF5350,
+            list.add(chip("Combo", "Cmb", leftClickLabel(), 0xFFEF5350,
                     busy, comboFrac, "",
                     MeterMode.COMBO, step,
                     XenoClientConfig.bt3ComboClient && XenoServerClientState.combo(),
@@ -792,7 +800,8 @@ public class XenoCooldownHudOverlay {
             } else {
                 name = "Charge";
                 shortN = "Chg";
-                key = keyPair(Bt3CombatClient.CHARGE_FIST, Bt3CombatClient.CHARGE_KICK);
+                // Fist owns left click; do not render the charge-kick mapping as a second key.
+                key = leftClickLabel();
                 accent = 0xFFFFB74D;
             }
 
@@ -836,6 +845,13 @@ public class XenoCooldownHudOverlay {
         return a == Bt3CombatPacket.Action.CHARGE_FIST
                 || a == Bt3CombatPacket.Action.CHARGE_KICK
                 || a == Bt3CombatPacket.Action.DRAGON_DASH;
+    }
+
+    private static void ensureCombatKeyLabel(Chip chip) {
+        if (("Combo".equals(chip.name) || "Fist".equals(chip.name) || "Charge".equals(chip.name))
+                && (chip.key == null || chip.key.isBlank())) {
+            chip.key = leftClickLabel();
+        }
     }
 
     private static Chip chip(

@@ -36,7 +36,8 @@ import dev.ryanhcode.sable.sublevel.ServerSubLevel;
 /**
  * Opens the XYZ target GUI on the client only. Also doubles as the seat/panel/thruster linker:
  * right-click a wing panel or thruster to link it to the nearest chair (or a chair you
- * previously selected). Sitting is not required. Shift+right-click unlinks.
+ * previously selected). Sitting is not required. Clicking a thruster toggles its link;
+ * shift does not change the tool's behavior.
  *
  * <p><b>Shift, not Ctrl.</b> Vanilla Minecraft syncs sneaking ({@link Player#isShiftKeyDown()})
  * to the server for exactly this kind of modifier-click, because it is continuous player state
@@ -91,7 +92,7 @@ public class TargetToolItem extends Item {
             if (player != null) player.displayClientMessage(Component.literal(
                     "§bChair selected " + linkSummary(host)
                             + " §7— right-click a wing panel or thruster to link it"
-                            + " (shift+right-click a linked one to unlink, or shift+right-click"
+                            + " (click a thruster to toggle its link, or shift+right-click"
                             + " this chair to forget it)"), true);
             return InteractionResult.CONSUME;
         }
@@ -168,18 +169,26 @@ public class TargetToolItem extends Item {
     private InteractionResult handleThrusterLink(UseOnContext context, Level level, @Nullable Player player,
                                                  BlockPos thrusterPos, ShipThrusterBlockEntity thruster) {
         if (level.isClientSide) return InteractionResult.SUCCESS;
-        if (player != null && player.isShiftKeyDown()) {
-            BlockPos owner = thruster.getPairedGuidance();
-            AeroControlHost host = owner == null ? null : hostAt(level, owner);
-            if (host != null && host.unpairOneThruster(thrusterPos)) {
-                player.displayClientMessage(Component.literal("§7Thruster unlinked " + linkSummary(host)), true);
-            } else {
-                player.displayClientMessage(Component.literal("§7That thruster wasn't linked to anything"), true);
+        BlockPos owner = thruster.getPairedGuidance();
+        AeroControlHost host = resolveLinkHost(context.getItemInHand(), level, thrusterPos, player);
+        if (host == null) return InteractionResult.CONSUME;
+
+        if (owner != null) {
+            if (!owner.equals(host.hostPos())) {
+                if (player != null) player.displayClientMessage(Component.literal(
+                        "§cThat thruster is already linked to another control host"), true);
+                return InteractionResult.CONSUME;
+            }
+            if (host.unpairOneThruster(thrusterPos)) {
+                if (player != null) player.displayClientMessage(Component.literal(
+                        "§7Thruster unlinked " + linkSummary(host)), true);
+            } else if (player != null) {
+                player.displayClientMessage(Component.literal(
+                        "§cThat thruster is not registered with its control host"), true);
             }
             return InteractionResult.CONSUME;
         }
-        AeroControlHost host = resolveLinkHost(context.getItemInHand(), level, thrusterPos, player);
-        if (host == null) return InteractionResult.CONSUME;
+
         boolean added = host.pairOneThruster(thrusterPos);
         if (player != null) player.displayClientMessage(Component.literal(added
                 ? "§bThruster linked " + linkSummary(host)
@@ -249,13 +258,6 @@ public class TargetToolItem extends Item {
             return guidance;
         }
         return level.getBlockEntity(chairPos) instanceof PilotSeatBlockEntity seat ? seat : null;
-    }
-
-    /** The control host at an exact position, whichever of the two host types is actually there. */
-    private static @Nullable AeroControlHost hostAt(Level level, BlockPos pos) {
-        BlockEntity be = level.getBlockEntity(pos);
-        if (be instanceof AeroControlHost host) return host;
-        return null;
     }
 
     /**
