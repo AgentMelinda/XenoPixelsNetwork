@@ -119,23 +119,31 @@ repositories {
         url = 'https://maven.ithundxr.dev/snapshots'
         content { includeGroup 'com.tterrag.registrate' }
     }
-    maven {
-        name = 'Modrinth'
-        url = 'https://api.modrinth.com/maven/'
-        content { includeGroup 'maven.modrinth' }
+    exclusiveContent {
+        forRepository {
+            maven {
+                name = 'Modrinth'
+                url = 'https://api.modrinth.com/maven/'
+            }
+        }
+        filter { includeGroup 'maven.modrinth' }
     }
     maven {
         name = 'Sable Companion'
         url = 'https://maven.ryanhcode.dev/releases'
         content { includeGroup 'dev.ryanhcode.sable-companion' }
     }
-    maven {
-        // CurseMaven - resolves curse.maven:<slug>-<projectId>:<fileId> coordinates directly
-        // against CurseForge; used for My NPCs and CustomNPCs-Unofficial, neither of which
-        // publishes to a normal Maven repo.
-        name = 'CurseMaven'
-        url = 'https://cursemaven.com'
-        content { includeGroup 'curse.maven' }
+    exclusiveContent {
+        forRepository {
+            maven {
+                // CurseMaven - resolves curse.maven:<slug>-<projectId>:<fileId> coordinates directly
+                // against CurseForge; used for My NPCs and CustomNPCs-Unofficial, neither of which
+                // publishes to a normal Maven repo.
+                name = 'CurseMaven'
+                url = 'https://cursemaven.com'
+            }
+        }
+        filter { includeGroup 'curse.maven' }
     }
 }
 
