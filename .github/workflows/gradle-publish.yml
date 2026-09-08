@@ -47,7 +47,7 @@ jobs:
           ls -la libs
 
       - name: Build with Gradle
-        run: ./gradlew build jarJar --no-daemon
+        run: ./gradlew build --no-daemon
 
       - name: Upload build artifacts
         uses: actions/upload-artifact@v4
