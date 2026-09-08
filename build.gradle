@@ -141,8 +141,8 @@ repositories {
 
 // The special DMZ 1.21.1 build XenoPixels compiles against. It is not on any Maven repo, so
 // resolve it from, in order: an explicit -PdmzJar / $DMZ_JAR path, the sibling DragonMineZ
-// checkout's build output (the normal local dev layout), or this project's libs/ folder (how CI
-// gets it - the workflows download the jar from the DragonMineZ release).
+// checkout's build output (the normal local dev layout), or this project's libs/ folder. CI uses
+// the checked-in custom jar because the public DragonMineZ release does not expose the same API.
 def dragonMineZJar = {
     def explicit = findProperty('dmzJar') ?: System.getenv('DMZ_JAR')
     def candidates = []
