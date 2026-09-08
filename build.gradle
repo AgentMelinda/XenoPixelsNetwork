@@ -74,20 +74,36 @@ configurations {
     devPadMods
 }
 
+// Whether to override net.neoforged:minecraft-dependencies with the descriptor vendored under
+// gradle/minecraft-metadata. On by default in CI (GitHub Actions sets CI=true) and available
+// anywhere via -PofflineMcMeta; off otherwise. Same findProperty/getenv idiom as the DMZ jar
+// resolution further down.
+def useVendoredMcMeta = findProperty('offlineMcMeta') != null || System.getenv('CI') != null
+
 repositories {
     mavenCentral()
-    exclusiveContent {
-        forRepository {
-            maven {
-                name = 'Vendored Minecraft 1.21.1 Metadata'
-                url = layout.projectDirectory.dir('gradle/minecraft-metadata')
-                metadataSources { mavenPom() }
+    if (useVendoredMcMeta) {
+        exclusiveContent {
+            forRepository {
+                maven {
+                    name = 'Vendored Minecraft 1.21.1 Metadata'
+                    url = layout.projectDirectory.dir('gradle/minecraft-metadata')
+                    metadataSources { mavenPom() }
+                }
             }
+            // NeoForge normally generates this dependency-only module through its mojang-meta
+            // service. Keeping the fixed 1.21.1 descriptor locally makes CI independent of that
+            // service returning 502 while all actual library jars still come from their normal
+            // repositories.
+            //
+            // It is deliberately NOT the default. The generated module carries nine variants —
+            // separate client and server distributions plus clientWindowsNatives /
+            // clientOsxNatives / clientLinuxNatives — and a flat POM can only express one flat
+            // list. The vendored list matches the real clientCompileDependencies entry for
+            // entry, which is enough for `build jarJar` and the unit tests, but a run task
+            // would get no LWJGL natives from it.
+            filter { includeModule 'net.neoforged', 'minecraft-dependencies' }
         }
-        // NeoForge normally generates this dependency-only module through its mojang-meta
-        // service. Keeping the fixed 1.21.1 descriptor locally makes CI independent of that
-        // service returning 502 while all actual library jars still come from their normal repos.
-        filter { includeModule 'net.neoforged', 'minecraft-dependencies' }
     }
     exclusiveContent {
         forRepository {
