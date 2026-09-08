@@ -223,6 +223,10 @@ public final class XenoServerConfigKeys {
                 () -> XenoServerConfig.protectDmzMasters,
                 v -> XenoServerConfig.protectDmzMasters = v,
                 "protectmasters", "masters");
+        bool("dmzSagaSpawnCompat", "Recover missing DMZ saga quest enemies",
+                () -> XenoServerConfig.dmzSagaSpawnCompat,
+                v -> XenoServerConfig.dmzSagaSpawnCompat = v,
+                "sagaspawn", "dmzquestspawn");
         bool("bt3RushChainEnabled", "Rush chain",
                 () -> XenoServerConfig.bt3RushChainEnabled,
                 v -> XenoServerConfig.bt3RushChainEnabled = v,
@@ -267,6 +271,10 @@ public final class XenoServerConfigKeys {
                 () -> (float) XenoServerConfig.zanzokenRingRadius,
                 v -> XenoServerConfig.zanzokenRingRadius = Math.max(0.5, Math.min(12.0, v)),
                 "zanzokenringradius");
+        integer("zanzokenRingTicks", "How long a Zanzoken ring stands, in ticks",
+                () -> XenoServerConfig.zanzokenRingTicks,
+                v -> XenoServerConfig.zanzokenRingTicks = Math.max(20, Math.min(1200, v)),
+                "zanzokenringticks");
         bool("multiFormEnabled", "Shi Shin No Ken multi-form",
                 () -> XenoServerConfig.multiFormEnabled,
                 v -> XenoServerConfig.multiFormEnabled = v,

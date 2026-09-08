@@ -157,11 +157,7 @@ public final class CloneCombatBridge {
             }
             if (!strike) cooldown = 20;
         } else if (action == CloneCombatPolicy.Action.RANGED) {
-            int kiPct = clone.getKiChargePercent();
-            if (kiPct > 0 && current.kiDamage() > 0 && spend(clone, Math.max(1, current.kiDamage() * 0.1), 0)) {
-                int duration = Math.max(20, kiPct * 40 / 100);
-                NpcKiAttackDispatcher.fireKiWave(clone, current, duration, target, 0);
-            } else if (current.kiDamage() > 0 && spend(clone, Math.max(1, current.kiDamage() * 0.1), 0)) {
+            if (current.kiDamage() > 0 && spend(clone, Math.max(1, current.kiDamage() * 0.1), 0)) {
                 NpcKiAttackDispatcher.fireKiBlast(clone, current, 40, target, 0);
             }
             cooldown = 30;

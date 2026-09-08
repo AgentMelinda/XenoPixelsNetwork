@@ -110,7 +110,7 @@ public class ModNetwork {
      * left/right one-handed punches.
      * <p>56: appended {@code ChaseFlightStatePacket} to arbitrate DMZ and Xeno flight movement.
      */
-    private static final String PROTOCOL = "59";
+    private static final String PROTOCOL = "60";
 
     public static final SimpleChannel CHANNEL = NetworkRegistry.ChannelBuilder
             .named(ResourceLocation.fromNamespaceAndPath(XenoPixelsMod.MOD_ID, "main"))

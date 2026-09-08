@@ -35,30 +35,6 @@ public final class XenoRushTechniques {
     }
 
     /**
-     * Optional explicit slot helper. It is never called during login or data loading, so rush
-     * attacks do not silently register themselves in or occupy the player's DMZ bars.
-     */
-    public static void syncNativeSlots(ServerPlayer player) {
-        if (player == null) {
-            return;
-        }
-        StatsData data = StatsProvider.get(StatsCapability.INSTANCE, player).orElse(null);
-        if (data == null || data.getTechniques() == null) {
-            return;
-        }
-        var techniques = data.getTechniques();
-        var unlocked = techniques.getUnlockedTechniques();
-        String[] slots = techniques.getEquippedSlots();
-        if (slots == null || slots.length < 6) {
-            return;
-        }
-        bindIfUnlocked(unlocked, slots, 0, RUSH_LEFT);
-        bindIfUnlocked(unlocked, slots, 1, RUSH_RIGHT);
-        bindIfUnlocked(unlocked, slots, 4, RUSH_BREAKER);
-        bindIfUnlocked(unlocked, slots, 5, RUSH_FINISHER);
-    }
-
-    /**
      * Grants the four registered rush definitions to every player.
      *
      * <p>These strikes are Xeno entries injected into DMZ's predefined strike registry, so no DMZ
@@ -82,7 +58,6 @@ public final class XenoRushTechniques {
                 techniques.unlockTechnique(strike);
             }
         }
-        syncNativeSlots(player);
     }
 
     private static final String[] RUSH_IDS = {
@@ -118,13 +93,6 @@ public final class XenoRushTechniques {
         if (RUSH_BREAKER.equals(id)) return 4;
         if (RUSH_FINISHER.equals(id)) return 5;
         return -1;
-    }
-
-    private static void bindIfUnlocked(java.util.Map<String, ?> unlocked, String[] slots,
-                                       int slot, String id) {
-        if (unlocked.containsKey(id) && (slots[slot] == null || slots[slot].isEmpty())) {
-            TechniqueSlotBind.place(slots, slot, id);
-        }
     }
 
     private static void register(String id, String name, String animation, float damage, int duration) {

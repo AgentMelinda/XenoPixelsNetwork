@@ -6,6 +6,8 @@ import com.dragonminez.common.init.entities.MastersEntity;
 import net.bullettrain.xenopixelsmod.XenoPixelsMod;
 import net.bullettrain.xenopixelsmod.config.XenoServerConfig;
 import net.minecraft.network.chat.Component;
+import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
@@ -27,13 +29,23 @@ public final class DmzMasterProtection {
 
     public static boolean isDmzMaster(Entity entity) {
         if (entity == null) return false;
+        ResourceLocation typeId = BuiltInRegistries.ENTITY_TYPE.getKey(entity.getType());
+        if (typeId != null) {
+            String id = typeId.toString();
+            if (id.startsWith("dragonminez:saga_")) return false;
+            if (isDmzMasterTypeId(id)) return true;
+        }
         try {
             return entity instanceof MastersEntity;
         } catch (Throwable t) {
-            // Class missing if DMZ not loaded
-            String n = entity.getClass().getName();
-            return n.contains("Master") && n.contains("dragonminez");
+            String className = entity.getClass().getName();
+            return className.startsWith("com.dragonminez.") && className.contains("Master");
         }
+    }
+
+    public static boolean isDmzMasterTypeId(String typeId) {
+        if (typeId == null) return false;
+        return typeId.startsWith("dragonminez:master_");
     }
 
     @SubscribeEvent(priority = EventPriority.HIGHEST)

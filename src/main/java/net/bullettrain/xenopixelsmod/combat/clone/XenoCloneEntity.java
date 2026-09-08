@@ -66,7 +66,6 @@ public class XenoCloneEntity extends LivingEntity {
     private int travelTicks;
     /** Counts down while a body is flying home to be reabsorbed; it is discarded on arrival. */
     private int recallTicks;
-    private int kiChargePercent;
     private UUID ownerUuid;
     private int formationBodies = 1;
     private float healthCapacity;
@@ -327,5 +326,4 @@ public class XenoCloneEntity extends LivingEntity {
         tag.putInt("XenoCloneAge", this.age);
     }
 
-    public int getKiChargePercent() { return kiChargePercent; }
-    public void setKiChargePercent(int pct) { this.kiChargePercent = Math.max(0, Math.min(100, pct)); }}
+}

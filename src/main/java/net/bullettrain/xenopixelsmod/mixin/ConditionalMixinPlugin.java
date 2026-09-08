@@ -46,6 +46,9 @@ public class ConditionalMixinPlugin implements IMixinConfigPlugin {
         if (mixinClassName.contains(".compat.createpropulsion.")) {
             return isModLoaded("createpropulsion");
         }
+        if (mixinClassName.contains(".compat.controlify.")) {
+            return isModLoaded("controlify");
+        }
         if (mixinClassName.contains(".compat.cosmonautics.")) {
             return isModLoaded("rocketnautics");
         }
@@ -123,6 +126,9 @@ public class ConditionalMixinPlugin implements IMixinConfigPlugin {
         if ("createpropulsion".equals(modId)) {
             return isClassPresent(
                     "dev.propulsionteam.propulsionsimulated.particles.plasma.PlasmaParticle");
+        }
+        if ("controlify".equals(modId)) {
+            return isClassPresent("dev.isxander.controlify.api.ControlifyApi");
         }
         if ("rocketnautics".equals(modId)) {
             return isClassPresent("dev.egg.SubLevelTemplate");

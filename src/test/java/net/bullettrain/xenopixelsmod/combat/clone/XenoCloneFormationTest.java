@@ -6,42 +6,67 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * The ring geometry, checked without a level. Both techniques place bodies on a circle, and a
- * circle that is not evenly divided stops reading as an encirclement.
+ * Zanzoken ring geometry, checked against the real {@link CloneFormation#ringOffset}.
+ *
+ * <p>This used to assert against a copy of the formula written inside the test, which guards
+ * nothing: the shipped code could drift and the test would still pass. It now calls the same
+ * function the technique does.
  */
 class XenoCloneFormationTest {
 
-    /** Mirrors the angle step XenoCloneSystem.encircle uses, so a change there fails here. */
-    private static double[] ringPoint(double cx, double cz, int index, int count, double radius) {
-        double angle = (2.0 * Math.PI * index) / Math.max(1, count);
-        return new double[]{cx + Math.cos(angle) * radius, cz + Math.sin(angle) * radius};
-    }
-
     @Test
-    void ringPointsSitOnTheCircleAtTheGivenRadius() {
-        for (int i = 0; i < 6; i++) {
-            double[] p = ringPoint(10.0, -4.0, i, 6, 3.0);
-            double dx = p[0] - 10.0;
-            double dz = p[1] + 4.0;
-            assertEquals(3.0, Math.sqrt(dx * dx + dz * dz), 1.0e-9,
-                    "copy " + i + " must stand exactly on the ring");
+    void everySlotSitsOnTheCircleAtTheGivenRadius() {
+        for (int i = 0; i < 7; i++) {
+            double[] p = CloneFormation.ringOffset(i, 7, 3.0);
+            assertEquals(3.0, Math.hypot(p[0], p[1]), 1.0e-9, "slot " + i + " must be on the ring");
         }
     }
 
     @Test
-    void ringIsEvenlySpacedAndCloses() {
+    void slotsAreEvenlySpacedAndTheRingCloses() {
         int count = 6;
-        double[] a = ringPoint(0, 0, 0, count, 3.0);
-        double[] b = ringPoint(0, 0, 1, count, 3.0);
-        assertEquals(2.0 * Math.PI / count, Math.atan2(b[1], b[0]) - Math.atan2(a[1], a[0]), 1.0e-9);
-        double[] wrapped = ringPoint(0, 0, count, count, 3.0);
+        double[] a = CloneFormation.ringOffset(0, count, 3.0);
+        double[] b = CloneFormation.ringOffset(1, count, 3.0);
+        assertEquals(2.0 * Math.PI / count,
+                Math.atan2(b[1], b[0]) - Math.atan2(a[1], a[0]), 1.0e-9);
+        // Stepping a full turn returns to the start, so the ring has no seam.
+        double[] wrapped = CloneFormation.ringOffset(count, count, 3.0);
         assertEquals(a[0], wrapped[0], 1.0e-9);
         assertEquals(a[1], wrapped[1], 1.0e-9);
     }
 
     @Test
-    void aSingleCopyIsStillPlacedOnTheCircle() {
-        double[] p = ringPoint(0, 0, 0, 1, 3.0);
-        assertTrue(Math.abs(Math.hypot(p[0], p[1]) - 3.0) < 1.0e-9);
+    void anIndexOutsideTheRingWrapsRatherThanEscapingIt() {
+        double[] wrapped = CloneFormation.ringOffset(-1, 4, 3.0);
+        double[] equivalent = CloneFormation.ringOffset(3, 4, 3.0);
+        assertEquals(equivalent[0], wrapped[0], 1.0e-9);
+        assertEquals(equivalent[1], wrapped[1], 1.0e-9);
+    }
+
+    @Test
+    void theDodgersSlotIsOneOfTheRingSlots() {
+        // The whole disguise rests on this: the real body must be placed by the same maths as the
+        // images, or its position alone identifies it.
+        int slots = 7;
+        for (int mine = 0; mine < slots; mine++) {
+            double[] dodger = CloneFormation.ringOffset(mine, slots, 3.0);
+            assertEquals(3.0, Math.hypot(dodger[0], dodger[1]), 1.0e-9);
+            int occupied = 0;
+            for (int i = 0; i < slots; i++) {
+                if (i == mine) continue;
+                double[] image = CloneFormation.ringOffset(i, slots, 3.0);
+                // No image may share the dodger's slot.
+                assertTrue(Math.hypot(image[0] - dodger[0], image[1] - dodger[1]) > 1.0e-6,
+                        "image " + i + " collided with the dodger's slot");
+                occupied++;
+            }
+            assertEquals(slots - 1, occupied, "one slot is the dodger's, the rest are images");
+        }
+    }
+
+    @Test
+    void aSingleSlotStillLandsOnTheCircle() {
+        double[] p = CloneFormation.ringOffset(0, 1, 3.0);
+        assertEquals(3.0, Math.hypot(p[0], p[1]), 1.0e-9);
     }
 }

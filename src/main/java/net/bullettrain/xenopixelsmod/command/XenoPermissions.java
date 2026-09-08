@@ -77,6 +77,8 @@ public final class XenoPermissions {
             op("xenobarrage.status", "Use /xenobarrage status");
     public static final PermissionNode<Boolean> XENOBARRAGE_SET =
             op("xenobarrage.set", "Use /xenobarrage duration|cooldown <ticks>");
+    public static final PermissionNode<Boolean> XENOKI_CLEAR =
+            op("xenoki.clear", "Use /xenoki clear all|radius <blocks>");
 
     // -------------------------------------------------------------------------
     // /xenochase  (server — OP default)

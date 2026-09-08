@@ -21,7 +21,53 @@ build
 eclipse
 run
 run-data
-libs
+libs/*
+!libs/dragonminez-*.jar
+!libs/Jade-*.jar
+
+# local editors and AI-agent state
+/.agents/
+/.ai/
+/.claude/
+/.commandcode/
+/.continue/
+/.junie/
+/.kilo/
+/.vscode/
+/wiki/.kilo/
+
+# scratch, extracted, and reverse-engineering workspaces
+/com/
+/new/
+/New folder/
+/nikedemos/
+/noppes/
+/plans/
+/META-INF/
+/data/customnpcs/
+
+# root-only debug artifacts and design exports
+/images/
+/logs/
+/*.png
+/*.pdf
+/*.zip
+/*.bbmodel
+/*.ecma
+/*.emca
+/customnpcs.*
+/fabric.mod.json
+/mcmod.info
+/pack.mcmeta
+/template.jinja
+/gradleerror
+/testo.txt
+/servermods.txt
+/stuff to make for aero
+/skills-lock.json
+/*crash*.txt
+/last_crash_report.txt
+/xenopixelsmod-Server-*.jar
 
 # build/compile transcripts written to the repo root while iterating
 *.log

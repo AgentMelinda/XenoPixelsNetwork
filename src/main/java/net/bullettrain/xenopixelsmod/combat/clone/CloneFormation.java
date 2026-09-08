@@ -40,6 +40,23 @@ public final class CloneFormation {
     }
 
     /**
+     * A slot on a ring centred on some other entity, used by Zanzoken.
+     *
+     * <p>Distinct from {@link #slotOffset}, which orbits the fighter in their own facing frame.
+     * Here the ring surrounds the attacker and the dodger stands in it alongside their images, so
+     * the offsets are in world space and every slot — including the one the dodger takes — comes
+     * from this one function. That is the whole point: if the real body were placed by different
+     * maths it would sit differently, and position alone would give the technique away.
+     *
+     * @return {@code {x, z}} offset from the ring's centre, in blocks
+     */
+    public static double[] ringOffset(int index, int count, double radius) {
+        int n = Math.max(1, count);
+        double angle = (2.0 * Math.PI * Math.floorMod(index, n)) / n;
+        return new double[]{Math.cos(angle) * radius, Math.sin(angle) * radius};
+    }
+
+    /**
      * The slot the fighter's own body takes: directly behind their facing.
      *
      * <p>Standing at the back is the whole point of the swap. An opponent in front sees the copies

@@ -2,6 +2,8 @@ package net.bullettrain.xenopixelsmod.compat.npc;
 
 import noppes.npcs.api.entity.ICustomNpc;
 import noppes.npcs.api.entity.IEntity;
+import noppes.npcs.api.entity.IPlayer;
+import net.bullettrain.xenopixelsmod.command.XenoPointsCommands;
 import net.bullettrain.xenopixelsmod.network.ModNetwork;
 import net.bullettrain.xenopixelsmod.network.packet.DmzLockOnPacket;
 import noppes.npcs.controllers.ScriptContainer;
@@ -18,7 +20,7 @@ import java.util.Map;
 /** Explicit, server-side XenoPixels bridge exposed to CustomNPCs scripts as {@code XenoPixels}. */
 public final class NpcXenoScriptApi {
     public static final NpcXenoScriptApi INSTANCE = new NpcXenoScriptApi();
-    private static final String VERSION = "13";
+    private static final String VERSION = "14";
     private static final EquipmentSlot[] ARMOR_SLOTS = {
             EquipmentSlot.HEAD, EquipmentSlot.CHEST, EquipmentSlot.LEGS, EquipmentSlot.FEET };
 
@@ -29,6 +31,13 @@ public final class NpcXenoScriptApi {
     }
 
     public String getVersion() { return VERSION; }
+
+    /** Adds real DragonMineZ training points and immediately synchronizes the player's HUD. */
+    public boolean addDmzPoints(IPlayer<?> player, int amount) {
+        if (player == null || amount <= 0) return false;
+        ServerPlayer serverPlayer = player.getMCEntity();
+        return XenoPointsCommands.addPoints(serverPlayer, amount);
+    }
 
     public boolean hasProfile(ICustomNpc npc) { return entity(npc) != null && NpcCombatProfile.hasProfile(entity(npc)); }
 

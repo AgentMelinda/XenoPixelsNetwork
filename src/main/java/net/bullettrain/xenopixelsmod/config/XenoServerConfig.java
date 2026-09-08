@@ -40,13 +40,15 @@ public final class XenoServerConfig {
      * safe without a bump — but the file is never rewritten, so the keys stay invisible and nobody
      * can discover or tune them. A bump is what gets them written out.
      */
-    private static final int CURRENT_CONFIG_VERSION = 11;
+    private static final int CURRENT_CONFIG_VERSION = 12;
 
     // --- HUD / DMZ ---
     /** When false, clients block DMZ vanilla HUD overlays. */
     public static boolean dmzHudEnabled = false;
     /** Install/patch DMZ form JSON + skill offerings on boot. */
     public static boolean dmzContentBootstrap = true;
+    /** Recover quest-spawned DMZ saga enemies when the stock spawn silently fails. */
+    public static boolean dmzSagaSpawnCompat = true;
     /**
      * CustomNPCs {@code npc.say()} / {@code saySurrounding}. Off mutes chat bubbles.
      * Also silences {@code executeCommand} admin/OP feedback from NPC scripts.
@@ -231,6 +233,20 @@ public final class XenoServerConfig {
     public static double rushKiCost = 25.0;
     /** Cooldown in ticks for a Xeno rush strike, replacing DMZ's per-id config lookup. */
     public static int rushCooldownTicks = 40;
+    /**
+     * Grant the four Xeno rush strikes to every player on login.
+     *
+     * <p>On by default, and it has to be: these strikes are injected into DMZ's predefined strike
+     * registry rather than declared by it, so no DMZ progression path can ever unlock them. Turn
+     * this off and they cannot be equipped at all, which removes the moves rather than gating
+     * them. Players who already have them keep them - the unlock was written to their saved stats.
+     */
+    public static boolean rushAutoUnlock = true;
+    /**
+     * Legacy serialized setting retained for config compatibility. Rush techniques are never
+     * auto-equipped because an empty slot may represent an explicit player unbind.
+     */
+    public static boolean rushAutoEquipSlots = false;
     /** Zanzoken: the afterimage dodge. */
     public static boolean zanzokenEnabled = true;
     /** Ki spent on the press, whether or not the dodge lands. */
@@ -245,6 +261,9 @@ public final class XenoServerConfig {
     /** Copies in the ring Zanzoken throws around the attacker. */
     public static int zanzokenRingClones = 6;
     public static double zanzokenRingRadius = 3.0;
+    /** How long a Zanzoken ring stands. Long enough that an opponent must guess and commit;
+     * striking any image disperses the rest early. */
+    public static int zanzokenRingTicks = 200;
     /** Shi Shin No Ken: bodies the fighter divides into, counting their own. */
     public static boolean multiFormEnabled = true;
     public static int multiFormBodies = 4;
@@ -826,6 +845,7 @@ public final class XenoServerConfig {
         d.configVersion = CURRENT_CONFIG_VERSION;
         d.dmzHudEnabled = dmzHudEnabled;
         d.dmzContentBootstrap = dmzContentBootstrap;
+        d.dmzSagaSpawnCompat = dmzSagaSpawnCompat;
         d.npcSayEnabled = npcSayEnabled;
         d.bt3CombatEnabled = bt3CombatEnabled;
         d.bt3ComboEnabled = bt3ComboEnabled;
@@ -881,6 +901,8 @@ public final class XenoServerConfig {
         d.rushChainRange = rushChainRange;
         d.rushKiCost = rushKiCost;
         d.rushCooldownTicks = rushCooldownTicks;
+        d.rushAutoUnlock = rushAutoUnlock;
+        d.rushAutoEquipSlots = rushAutoEquipSlots;
         d.zanzokenEnabled = zanzokenEnabled;
         d.zanzokenKiCost = zanzokenKiCost;
         d.zanzokenWindowTicks = zanzokenWindowTicks;
@@ -889,6 +911,7 @@ public final class XenoServerConfig {
         d.zanzokenGhostAfterimage = zanzokenGhostAfterimage;
         d.zanzokenRingClones = zanzokenRingClones;
         d.zanzokenRingRadius = zanzokenRingRadius;
+        d.zanzokenRingTicks = zanzokenRingTicks;
         d.multiFormEnabled = multiFormEnabled;
         d.multiFormBodies = multiFormBodies;
         d.multiFormKiCost = multiFormKiCost;
@@ -1050,6 +1073,7 @@ public final class XenoServerConfig {
         if (d == null) return;
         dmzHudEnabled = d.dmzHudEnabled;
         dmzContentBootstrap = d.dmzContentBootstrap;
+        dmzSagaSpawnCompat = d.dmzSagaSpawnCompat;
         npcSayEnabled = d.npcSayEnabled;
         bt3CombatEnabled = d.bt3CombatEnabled;
         bt3ComboEnabled = d.bt3ComboEnabled;
@@ -1106,6 +1130,8 @@ public final class XenoServerConfig {
         rushChainRange = d.rushChainRange > 0 ? d.rushChainRange : 16.0;
         rushKiCost = d.rushKiCost >= 0 ? d.rushKiCost : 25.0;
         rushCooldownTicks = Math.max(1, d.rushCooldownTicks);
+        rushAutoUnlock = d.rushAutoUnlock;
+        rushAutoEquipSlots = d.rushAutoEquipSlots;
         zanzokenEnabled = d.zanzokenEnabled;
         zanzokenKiCost = Math.max(0f, d.zanzokenKiCost);
         zanzokenWindowTicks = Math.max(1, d.zanzokenWindowTicks);
@@ -1114,6 +1140,7 @@ public final class XenoServerConfig {
         zanzokenGhostAfterimage = d.zanzokenGhostAfterimage;
         zanzokenRingClones = Math.max(1, Math.min(16, d.zanzokenRingClones));
         zanzokenRingRadius = d.zanzokenRingRadius > 0 ? Math.min(12.0, d.zanzokenRingRadius) : 3.0;
+        zanzokenRingTicks = Math.max(20, Math.min(1200, d.zanzokenRingTicks));
         multiFormEnabled = d.multiFormEnabled;
         multiFormBodies = Math.max(2, Math.min(8, d.multiFormBodies));
         multiFormKiCost = Math.max(0f, d.multiFormKiCost);
@@ -1999,6 +2026,7 @@ public final class XenoServerConfig {
         public int configVersion;
         public boolean dmzHudEnabled = false;
         public boolean dmzContentBootstrap = true;
+        public boolean dmzSagaSpawnCompat = true;
         public boolean npcSayEnabled = true;
         public boolean bt3CombatEnabled = true;
         public boolean bt3ComboEnabled = true;
@@ -2048,6 +2076,8 @@ public final class XenoServerConfig {
         public double rushChainRange = 16.0;
         public double rushKiCost = 25.0;
         public int rushCooldownTicks = 40;
+        public boolean rushAutoUnlock = true;
+        public boolean rushAutoEquipSlots = false;
         public boolean zanzokenEnabled = true;
         public float zanzokenKiCost = 20.0f;
         public int zanzokenWindowTicks = 8;
@@ -2056,6 +2086,7 @@ public final class XenoServerConfig {
         public boolean zanzokenGhostAfterimage = true;
         public int zanzokenRingClones = 6;
         public double zanzokenRingRadius = 3.0;
+        public int zanzokenRingTicks = 200;
         public boolean multiFormEnabled = true;
         public int multiFormBodies = 4;
         public float multiFormKiCost = 60.0f;

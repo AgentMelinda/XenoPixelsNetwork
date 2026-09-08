@@ -143,6 +143,11 @@ public class Bt3CombatPacket {
         ctx.get().enqueueWork(() -> {
             ServerPlayer player = ctx.get().getSender();
             if (player == null) return;
+            if (msg.action == Action.SYNC_KI_CHARGE) {
+                // Protocol compatibility only. Older clients may still send this obsolete
+                // melee-charge message; it must not enter target validation or consume pacing.
+                return;
+            }
             if (msg.action == Action.CHASE_STOP) {
                 ChaseFlightSystem.stopChase(player);
                 return;
@@ -274,10 +279,7 @@ public class Bt3CombatPacket {
                             handleUntargetedCharge(player, res, data, true, msg.chargePercent, msg.verticalBias);
                         }
                     }
-                    case SYNC_KI_CHARGE -> {
-                        // Broadcast charge percent to all active clones
-                        net.bullettrain.xenopixelsmod.combat.clone.XenoCloneSystem.broadcastKiCharge(player, msg.chargePercent);
-                    }
+                    case SYNC_KI_CHARGE -> { }
                     case DRAGON_DASH -> {
                         // Lock-on only (client); server requires target
                         if (!XenoServerConfig.bt3DragonDashEnabled || target == null) return;
@@ -882,17 +884,27 @@ net.bullettrain.xenopixelsmod.combat.VanishShadeFx.spawn(player, from);
 
         // The read is not "he stepped aside" — it is that he is suddenly everywhere you could
         // turn. A closed ring of bodies around the attacker, each looking inward at them.
+        //
+        // The dodger stands in that ring. Teleporting them somewhere else, as this used to, left
+        // the one body that had moved plainly identifiable and made the images decoration.
+        Vec3 dest;
         if (XenoServerConfig.zanzokenGhostAfterimage) {
-            net.bullettrain.xenopixelsmod.combat.clone.XenoCloneSystem.encircle(player, attacker,
-                    XenoServerConfig.zanzokenRingClones, XenoServerConfig.zanzokenRingRadius,
-                    Math.max(10, XenoServerConfig.zanzokenIFramesTicks * 3));
+            int slots = Math.max(2, XenoServerConfig.zanzokenRingClones + 1);
+            int mine = player.getRandom().nextInt(slots);
+            double radius = XenoServerConfig.zanzokenRingRadius;
+
+            java.util.List<net.bullettrain.xenopixelsmod.combat.clone.XenoCloneEntity> images =
+                    net.bullettrain.xenopixelsmod.combat.clone.XenoCloneSystem.encircle(
+                            player, attacker, slots, radius,
+                            Math.max(20, XenoServerConfig.zanzokenRingTicks), mine);
+
+            dest = openRingLanding(player, attacker, mine, slots, radius);
+            redirectLockToImage(player, attacker, images);
         } else {
             net.bullettrain.xenopixelsmod.combat.VanishShadeFx.spawn(player, from);
+            dest = vanishLanding(player, attacker, 0);
         }
 
-        // Behind the attacker, using the same landing the vanish family already uses so the
-        // reposition reads identically wherever it comes from.
-        Vec3 dest = vanishLanding(player, attacker, 0);
         teleportFacing(player, dest, attacker);
         playZanzoken(player, dest);
         player.displayClientMessage(
@@ -904,6 +916,32 @@ net.bullettrain.xenopixelsmod.combat.VanishShadeFx.spawn(player, from);
         if (player.level() instanceof net.minecraft.server.level.ServerLevel level) {
             net.bullettrain.xenopixelsmod.combat.fx.CombatFx.cue(level, from,
                     net.bullettrain.xenopixelsmod.combat.fx.CombatFxKind.VANISH_CLAP, 1.0f);
+        }
+    }
+
+    /**
+     * Points the attacker's lock-on at one of the images.
+     *
+     * <p>DragonMineZ's lock marker follows the real entity, so without this it names the dodger
+     * outright and the ring is decoration. Redirecting rather than clearing matters: a lock that
+     * simply drops announces the dodge, while a lock resting on an image actively misleads, and it
+     * breaks on its own when that image is struck.
+     *
+     * <p>Only touched when the attacker actually had the dodger locked. A lock aimed at someone
+     * else is none of this technique's business.
+     */
+    private static void redirectLockToImage(
+            ServerPlayer player, LivingEntity attacker,
+            java.util.List<net.bullettrain.xenopixelsmod.combat.clone.XenoCloneEntity> images) {
+        if (images == null || images.isEmpty() || !(attacker instanceof ServerPlayer hunter)) return;
+        try {
+            StatsData data = StatsProvider.get(StatsCapability.INSTANCE, hunter).orElse(null);
+            if (data == null || data.getTechniques() == null) return;
+            if (data.getTechniques().getHomingTargetId() != player.getId()) return;
+            data.getTechniques().setHomingTargetId(
+                    images.get(player.getRandom().nextInt(images.size())).getId());
+        } catch (Throwable ignored) {
+            // A lock that cannot be moved only costs the disguise, never the dodge.
         }
     }
 
@@ -1346,6 +1384,18 @@ net.bullettrain.xenopixelsmod.combat.VanishShadeFx.spawn(player, from);
             if (isSpotOpen(player, mirrored)) {
                 return mirrored;
             }
+        }
+        return player.position();
+    }
+
+    private static Vec3 openRingLanding(Entity player, LivingEntity target, int preferred,
+                                        int slots, double radius) {
+        for (int step = 0; step < slots; step++) {
+            int slot = Math.floorMod(preferred + step, slots);
+            double[] off = net.bullettrain.xenopixelsmod.combat.clone.CloneFormation
+                    .ringOffset(slot, slots, radius);
+            Vec3 candidate = new Vec3(target.getX() + off[0], target.getY(), target.getZ() + off[1]);
+            if (isSpotOpen(player, candidate)) return candidate;
         }
         return player.position();
     }

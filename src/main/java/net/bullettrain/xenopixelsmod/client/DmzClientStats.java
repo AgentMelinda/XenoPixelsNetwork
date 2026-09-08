@@ -24,7 +24,8 @@ public final class DmzClientStats {
     private static final Int2ObjectOpenHashMap<Snapshot> TICK_CACHE = new Int2ObjectOpenHashMap<>();
     private static long cacheGameTime = Long.MIN_VALUE;
     private static final Snapshot EMPTY = new Snapshot(
-            false, 0, 100, 0f, 0f, 0f, 0f, 0f, 0, 0, false, null, 0, "");
+            false, 0, 100, 0f, 0f, 0f, 0f, 0f, 0, 0, false, null,
+            false, Status.FLIGHT_SEARCH, 0, "");
 
     private DmzClientStats() {}
 
@@ -43,13 +44,15 @@ public final class DmzClientStats {
         public final int displayActionCharge;
         public final boolean actionCharging;
         public final ActionMode selectedAction;
+        public final boolean flyActive;
+        public final int flightMode;
         public final int level;
         public final String activeForm;
 
         private Snapshot(boolean present, int powerRelease, int releaseLimit,
                          float energy, float maxEnergy, float stamina, float maxStamina, float maxHealth,
                          int actionCharge, int displayActionCharge, boolean actionCharging, ActionMode selectedAction,
-                         int level, String activeForm) {
+                         boolean flyActive, int flightMode, int level, String activeForm) {
             this.present = present;
             this.powerRelease = powerRelease;
             this.releaseLimit = releaseLimit;
@@ -62,6 +65,8 @@ public final class DmzClientStats {
             this.displayActionCharge = displayActionCharge;
             this.actionCharging = actionCharging;
             this.selectedAction = selectedAction;
+            this.flyActive = flyActive;
+            this.flightMode = flightMode;
             this.level = level;
             this.activeForm = activeForm == null ? "" : activeForm;
         }
@@ -149,11 +154,15 @@ public final class DmzClientStats {
 
             boolean charging = false;
             ActionMode mode = null;
+            boolean flyActive = false;
+            int flightMode = Status.FLIGHT_SEARCH;
             Status status = data.getStatus();
             if (status != null) {
                 charging = status.isActionCharging();
                 mode = status.getSelectedAction();
+                flightMode = status.getFlightMode();
             }
+            if (data.getSkills() != null) flyActive = data.getSkills().isSkillActive("fly");
 
             return new Snapshot(
                     true,
@@ -168,6 +177,8 @@ public final class DmzClientStats {
                     displayCharge,
                     charging,
                     mode,
+                    flyActive,
+                    flightMode,
                     data.getLevel(),
                     data.getCharacter() == null ? "" : data.getCharacter().getActiveForm()
             );

@@ -2,7 +2,7 @@
 
 # 🎯 מתקדם 06 — מערכת האירועים (Events) של Forge
 
-> מדריך מעשי למוד שלנו: [`AgentMelinda/forge-1.20.1-tutorial`](https://github.com/AgentMelinda/forge-1.20.1-tutorial)
+> מדריך מעשי למוד שלנו: [`AgentMelinda/XenoPixelsNetwork`](https://github.com/AgentMelinda/XenoPixelsNetwork)
 > (`net.bullettrain.tutorialmod`).
 >
 > המטרה: להבין איך "לתפוס" רגע מסוים במשחק (שחקן משתמש בפריט, שרת עולה, וכו')

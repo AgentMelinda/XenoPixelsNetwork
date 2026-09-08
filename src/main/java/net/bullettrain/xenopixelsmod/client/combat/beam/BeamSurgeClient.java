@@ -91,6 +91,9 @@ public final class BeamSurgeClient {
      */
     private static boolean surgeKeyDown() {
         KeyMapping surge = net.bullettrain.xenopixelsmod.client.combat.Bt3CombatClient.BEAM_SURGE;
+        // The pad is a second source, not a replacement - a gamepad press moves no physical key,
+        // so the window poll below can never see it.
+        if (net.bullettrain.xenopixelsmod.client.pad.XenoPadInput.held(surge)) return true;
         try {
             return KeyBinds.isPhysicallyDown(surge);
         } catch (Throwable t) {

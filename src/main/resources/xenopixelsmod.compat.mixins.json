@@ -26,6 +26,7 @@
     "compat.yawp.RegionFlagMixin",
     "compat.yawp.IFlagArgumentTypeMixin",
     "compat.customnpcs.EntityNpcSayMixin",
+    "compat.customnpcs.QuestCompletionCommandMixin",
     "compat.customnpcs.EntityNpcMeleeAnimationMixin",
     "compat.customnpcs.EntityWrapperLegacyApiMixin",
     "compat.customnpcs.EntityLivingBaseWrapperLegacyApiMixin",
@@ -36,6 +37,7 @@
     "compat.cnpcgecko.NetworkWrapperRegisterMixin"
   ],
   "client": [
+    "compat.controlify.ControlifyBt3ModeMixin",
     "compat.sable.SableChunkedRenderCullMixin",
     "compat.sable.SableVanillaBeRenderCullMixin",
     "compat.createpropulsion.PlasmaParticleNoShipCollideMixin",

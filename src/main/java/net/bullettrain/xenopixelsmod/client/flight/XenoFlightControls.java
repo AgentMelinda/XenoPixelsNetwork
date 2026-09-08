@@ -6,6 +6,7 @@ import dev.ryanhcode.sable.mixinterface.camera.camera_zoom.CameraZoomExtension;
 import net.bullettrain.xenopixelsmod.XenoPixelsMod;
 import net.bullettrain.xenopixelsmod.aero.seat.XenoPilotSeatEntity;
 import net.bullettrain.xenopixelsmod.client.config.XenoClientConfig;
+import net.bullettrain.xenopixelsmod.client.pad.XenoPadInput;
 import net.bullettrain.xenopixelsmod.client.combat.DmzAnimHelperClient;
 import net.bullettrain.xenopixelsmod.network.ModNetwork;
 import net.bullettrain.xenopixelsmod.network.packet.SeatFlightInputPacket;
@@ -339,8 +340,24 @@ public final class XenoFlightControls {
         double rampPerSec = XenoClientConfig.flightStickRampPerSec > 0.0f
                 ? XenoClientConfig.flightStickRampPerSec : STICK_CATCH_PER_SEC_FALLBACK;
         double step = rampPerSec * dt;
-        stickPitch = approach(stickPitch, Mth.clamp(wantPitch, -1.0, 1.0), step);
-        stickRoll = approach(stickRoll, Mth.clamp(wantRoll, -1.0, 1.0), step);
+
+        // A gamepad's left stick is already a stick: its position *is* the command, so it is
+        // assigned rather than ramped. The ramp exists only to turn an on/off key into something
+        // that can be held part way, and running a real axis through it would add lag and cost the
+        // stick its fine control near centre. Deflection wins over the keyboard while it lasts and
+        // hands control straight back on release, so both can be used in the same flight.
+        double padPitch = XenoPadInput.flightPitch();
+        double padRoll = XenoPadInput.flightRoll();
+        if (padPitch != 0.0) {
+            stickPitch = Mth.clamp(padPitch, -1.0, 1.0);
+        } else {
+            stickPitch = approach(stickPitch, Mth.clamp(wantPitch, -1.0, 1.0), step);
+        }
+        if (padRoll != 0.0) {
+            stickRoll = Mth.clamp(padRoll, -1.0, 1.0);
+        } else {
+            stickRoll = approach(stickRoll, Mth.clamp(wantRoll, -1.0, 1.0), step);
+        }
         stickYaw = approach(stickYaw, Mth.clamp(wantYaw, -1.0, 1.0), step);
     }
 

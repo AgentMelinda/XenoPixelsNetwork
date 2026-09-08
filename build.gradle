@@ -69,6 +69,9 @@ configurations {
     // Dev-only mod jars that have to be installed into run/mods rather than put on a run's
     // classpath. See the Iris comment in dependencies {} for why that distinction exists.
     devShaderMods
+    // Controlify + YetAnotherConfigLib for dev runs. Same reasoning as devShaderMods: Controlify
+    // ships no META-INF/services IModFileCandidateLocator, so a classpath entry would be inert.
+    devPadMods
 }
 
 repositories {
@@ -208,6 +211,17 @@ dependencies {
     // runtimeOnly puts it on the runClient mods list without replacing GeckoLib or jar-in-jar.
     compileOnly "curse.maven:cnpc-gecko-addon-970162:7272203"
     runtimeOnly "curse.maven:cnpc-gecko-addon-970162:7272203"
+
+    // Controlify - gamepad support. Only its public `dev.isxander.controlify.api` surface is
+    // compiled against, plus dev.isxander.controlify.rumble for vibration (see the caveat in
+    // client/pad/XenoPadRumble.java). Optional at runtime: everything that touches Controlify
+    // lives in client/pad and is reached only through Controlify's own ServiceLoader entrypoint,
+    // so with Controlify absent none of those classes is ever loaded.
+    compileOnly "maven.modrinth:${controlify_project_id}:${controlify_version_id}"
+    // transitive=false so Modrinth's POM does not drag YACL onto the compile classpath; the dev
+    // runtime copy below pulls it in deliberately and separately.
+    devPadMods("maven.modrinth:${controlify_project_id}:${controlify_version_id}") { transitive = false }
+    devPadMods("maven.modrinth:${yacl_project_id}:${yacl_version_id}") { transitive = false }
 
     // Development-only shader runtime for reproducing and validating Iris compatibility.
     // Neither mod is bundled or required by XenoPixels, and the two arrive by different routes.
@@ -352,6 +366,25 @@ def installDevShaderMods = tasks.register('installDevShaderMods', Copy) {
 // server errors, which is the opposite of what this shader runtime is for. So the folder is
 // prepared for whichever run is actually starting: installed for the client, removed for the
 // servers. The runs are never launched concurrently, so this stays deterministic.
+def installDevPadMods = tasks.register('installDevPadMods', Copy) {
+    group = 'neoforge runs'
+    description = 'Installs Controlify and YetAnotherConfigLib into run/mods for the dev client.'
+    from configurations.devPadMods
+    into layout.projectDirectory.dir('run/mods')
+    // Stable filenames for the same reason Iris gets one: bumping a version id should replace the
+    // jar rather than leave the old one beside it for FML to reject as a duplicate mod.
+    // The Modrinth maven serves these as "<projectId>-<versionId>.jar", not by mod name, so the
+    // project id is what identifies which jar this is.
+    rename { name ->
+        name.startsWith(controlify_project_id) ? 'controlify-dev.jar' : 'yacl-dev.jar'
+    }
+}
+def uninstallDevPadMods = tasks.register('uninstallDevPadMods', Delete) {
+    group = 'neoforge runs'
+    description = 'Removes the client-only Controlify and YACL builds before a dedicated-server run.'
+    delete layout.projectDirectory.file('run/mods/controlify-dev.jar'),
+            layout.projectDirectory.file('run/mods/yacl-dev.jar')
+}
 def uninstallDevShaderMods = tasks.register('uninstallDevShaderMods', Delete) {
     group = 'neoforge runs'
     description = 'Removes the client-only Iris build from run/mods before a dedicated-server run.'
@@ -360,8 +393,11 @@ def uninstallDevShaderMods = tasks.register('uninstallDevShaderMods', Delete) {
 
 // RunModel.taskBefore is MDG's own hook for work a run depends on.
 neoForge.runs.getByName('client').taskBefore(installDevShaderMods)
+neoForge.runs.getByName('client').taskBefore(installDevPadMods)
 neoForge.runs.getByName('server').taskBefore(uninstallDevShaderMods)
+neoForge.runs.getByName('server').taskBefore(uninstallDevPadMods)
 neoForge.runs.getByName('gameTestServer').taskBefore(uninstallDevShaderMods)
+neoForge.runs.getByName('gameTestServer').taskBefore(uninstallDevPadMods)
 
 publishing {
     publications {

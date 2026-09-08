@@ -3,6 +3,7 @@ package net.bullettrain.xenopixelsmod.client.config;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import net.bullettrain.xenopixelsmod.XenoPixelsMod;
+import net.bullettrain.xenopixelsmod.client.pad.PadMode;
 import net.neoforged.fml.loading.FMLPaths;
 
 import java.io.IOException;
@@ -24,7 +25,7 @@ public final class XenoClientConfig {
     private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
     private static final Path PATH = FMLPaths.CONFIGDIR.get().resolve("xenopixelsmod-client.json");
     /** Version 3 restores Guard while its dedicated key keeps right-click placement vanilla. */
-    private static final int CURRENT_CONFIG_VERSION = 3;
+    private static final int CURRENT_CONFIG_VERSION = 4;
 
     // --- UI ---
     public static boolean xenoHudEnabled = true;
@@ -66,6 +67,18 @@ public final class XenoClientConfig {
      * forward from launching a chase.
      */
     public static boolean bt3ChaseWGesture = false;
+
+    /**
+     * Whether gamepad input is consulted at all. On by default, but it only does anything when
+     * Controlify is installed and a controller is connected.
+     *
+     * <p>Worth a switch of its own because pad support adds a second input source to readers that
+     * previously had one, and being able to take it away without uninstalling Controlify is the
+     * fastest way to tell whether the pad is behind some odd combat behaviour.
+     */
+    public static boolean padEnabled = true;
+    /** Controller gameplay layer; BT3 is the first-install default and the last choice is saved. */
+    public static PadMode padMode = PadMode.BT3;
     public static boolean bt3BackstepClient = true;
     public static boolean bt3ChargeAttackClient = true;
     public static boolean bt3DragonDashClient = true;
@@ -247,13 +260,14 @@ public final class XenoClientConfig {
         try (Reader reader = Files.newBufferedReader(PATH)) {
             Data data = GSON.fromJson(reader, Data.class);
             if (data == null) return;
-            boolean migrateGuardDefault = data.configVersion < CURRENT_CONFIG_VERSION;
+            boolean migrateConfig = data.configVersion < CURRENT_CONFIG_VERSION;
+            boolean migrateGuardDefault = data.configVersion < 3;
             apply(data);
             if (migrateGuardDefault) {
                 // Guard is active again; its B binding no longer intercepts vanilla Use/place.
                 bt3GuardClient = true;
-                save();
             }
+            if (migrateConfig) save();
         } catch (IOException e) {
             XenoPixelsMod.LOGGER.warn("Failed to load client config", e);
         }
@@ -291,6 +305,8 @@ public final class XenoClientConfig {
         d.cloneDmzAppearance = cloneDmzAppearance;
         d.bt3ChaseSpaceGesture = bt3ChaseSpaceGesture;
         d.bt3ChaseWGesture = bt3ChaseWGesture;
+        d.padEnabled = padEnabled;
+        d.padMode = padMode.name();
         d.bt3BackstepClient = bt3BackstepClient;
         d.bt3ChargeAttackClient = bt3ChargeAttackClient;
         d.bt3DragonDashClient = bt3DragonDashClient;
@@ -378,6 +394,8 @@ public final class XenoClientConfig {
         cloneDmzAppearance = d.cloneDmzAppearance;
         bt3ChaseSpaceGesture = d.bt3ChaseSpaceGesture;
         bt3ChaseWGesture = d.bt3ChaseWGesture;
+        padEnabled = d.padEnabled == null || d.padEnabled;
+        padMode = PadMode.parse(d.padMode);
         bt3BackstepClient = d.bt3BackstepClient;
         bt3ChargeAttackClient = d.bt3ChargeAttackClient;
         bt3DragonDashClient = d.bt3DragonDashClient;
@@ -481,6 +499,8 @@ public final class XenoClientConfig {
         public boolean cloneDmzAppearance = true;
         public boolean bt3ChaseSpaceGesture = false;
         public boolean bt3ChaseWGesture = false;
+        public Boolean padEnabled;
+        public String padMode;
         public boolean bt3BackstepClient = true;
         public boolean bt3ChargeAttackClient = true;
         public boolean bt3DragonDashClient = true;

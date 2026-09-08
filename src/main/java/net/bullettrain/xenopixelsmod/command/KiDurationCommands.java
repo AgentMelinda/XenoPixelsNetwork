@@ -6,15 +6,24 @@ import com.mojang.brigadier.arguments.FloatArgumentType;
 import com.mojang.brigadier.arguments.IntegerArgumentType;
 import com.mojang.brigadier.arguments.StringArgumentType;
 import com.mojang.brigadier.suggestion.SuggestionProvider;
+import com.dragonminez.common.init.entities.ki.AbstractKiProjectile;
+import com.dragonminez.common.init.entities.ki.KiExplosionVisualEntity;
 import net.bullettrain.xenopixelsmod.combat.technique.KiDuration;
 import net.bullettrain.xenopixelsmod.config.XenoServerConfig;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
 import net.minecraft.commands.SharedSuggestionProvider;
 import net.minecraft.network.chat.Component;
+import net.minecraft.server.level.ServerLevel;
+import net.minecraft.world.entity.Entity;
+import net.minecraft.world.phys.AABB;
+import net.minecraft.world.phys.Vec3;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.neoforge.event.RegisterCommandsEvent;
+
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * Last-session ki knobs.
@@ -25,10 +34,13 @@ import net.neoforged.neoforge.event.RegisterCommandsEvent;
  * /xenoki cap &lt;percent&gt;
  * /xenoki grief &lt;true|false&gt;
  * /xenoki maxsize|maxspeed|destruction &lt;n&gt;
+ * /xenoki clear all | /xenoki clear radius &lt;blocks&gt;
  * </pre>
  */
 @EventBusSubscriber(modid = net.bullettrain.xenopixelsmod.XenoPixelsMod.MOD_ID)
 public final class KiDurationCommands {
+
+    private static final int MAX_CLEAR_RADIUS = 4096;
 
     private static final SuggestionProvider<CommandSourceStack> TYPE_SUGGEST =
             (ctx, builder) -> SharedSuggestionProvider.suggest(KiDuration.TYPE_KEYS, builder);
@@ -71,6 +83,15 @@ public final class KiDurationCommands {
                         .then(Commands.argument("enabled", BoolArgumentType.bool())
                                 .executes(ctx -> setBool(ctx.getSource(), "chargeOverchargeGriefEnabled",
                                         BoolArgumentType.getBool(ctx, "enabled")))))
+                .then(Commands.literal("clear")
+                        .requires(XenoPermissions.require(XenoPermissions.XENOKI_CLEAR))
+                        .then(Commands.literal("all")
+                                .executes(ctx -> clearAll(ctx.getSource())))
+                        .then(Commands.literal("radius")
+                                .then(Commands.argument("blocks",
+                                                IntegerArgumentType.integer(1, MAX_CLEAR_RADIUS))
+                                        .executes(ctx -> clearRadius(ctx.getSource(),
+                                                IntegerArgumentType.getInteger(ctx, "blocks"))))))
                 .then(Commands.literal("maxsize")
                         .requires(XenoPermissions.require(XenoPermissions.XENOSERVER_SET))
                         .then(Commands.argument("size", FloatArgumentType.floatArg(0.1f))
@@ -90,6 +111,7 @@ public final class KiDurationCommands {
                     ctx.getSource().sendSuccess(() -> Component.literal(
                             "Usage: /xenoki duration <ticks> | /xenoki duration <type> <ticks>\n"
                                     + "       /xenoki charge|grief <true|false>\n"
+                                    + "       /xenoki clear all | clear radius <blocks>\n"
                                     + "       /xenoki cap <201-2000> | maxsize|maxspeed|destruction <n>\n"
                                     + "types: " + String.join(" ", KiDuration.TYPE_KEYS) + "\n"
                                     + "0 duration = stock DMZ (base × charge). 20 ticks = 1 second.\n"
@@ -101,6 +123,73 @@ public final class KiDurationCommands {
     private static int status(CommandSourceStack source) {
         source.sendSuccess(() -> Component.literal(currentLine()), false);
         return 1;
+    }
+
+    private static int clearAll(CommandSourceStack source) {
+        CleanupCount total = CleanupCount.ZERO;
+        for (ServerLevel level : source.getServer().getAllLevels()) {
+            total = total.add(discardLoadedKi(level));
+        }
+        sendCleanupResult(source, total, "all loaded dimensions");
+        return total.total();
+    }
+
+    private static int clearRadius(CommandSourceStack source, int radius) {
+        ServerLevel level = source.getLevel();
+        Vec3 center = source.getPosition();
+        double radiusSquared = (double) radius * radius;
+        AABB search = new AABB(center, center).inflate(radius);
+
+        List<AbstractKiProjectile> projectiles = level.getEntitiesOfClass(
+                AbstractKiProjectile.class, search,
+                entity -> entity.distanceToSqr(center) <= radiusSquared);
+        List<KiExplosionVisualEntity> visuals = level.getEntitiesOfClass(
+                KiExplosionVisualEntity.class, search,
+                entity -> entity.distanceToSqr(center) <= radiusSquared);
+
+        projectiles.forEach(Entity::discard);
+        visuals.forEach(Entity::discard);
+
+        CleanupCount total = new CleanupCount(projectiles.size(), visuals.size());
+        sendCleanupResult(source, total, radius + " blocks");
+        return total.total();
+    }
+
+    private static CleanupCount discardLoadedKi(ServerLevel level) {
+        List<Entity> found = new ArrayList<>();
+        for (Entity entity : level.getAllEntities()) {
+            if (entity instanceof AbstractKiProjectile
+                    || entity instanceof KiExplosionVisualEntity) {
+                found.add(entity);
+            }
+        }
+
+        int projectiles = 0;
+        int visuals = 0;
+        for (Entity entity : found) {
+            if (entity instanceof AbstractKiProjectile) projectiles++;
+            else visuals++;
+            entity.discard();
+        }
+        return new CleanupCount(projectiles, visuals);
+    }
+
+    private static void sendCleanupResult(CommandSourceStack source, CleanupCount count, String scope) {
+        source.sendSuccess(() -> Component.literal(String.format(
+                "§aCleared §f%d §aKI attack(s) and §f%d §aorphaned visual(s) within §f%s§a.",
+                count.projectiles(), count.visuals(), scope)), true);
+    }
+
+    private record CleanupCount(int projectiles, int visuals) {
+        private static final CleanupCount ZERO = new CleanupCount(0, 0);
+
+        private CleanupCount add(CleanupCount other) {
+            return new CleanupCount(projectiles + other.projectiles, visuals + other.visuals);
+        }
+
+        private int total() {
+            return projectiles + visuals;
+        }
     }
 
     private static int setAll(CommandSourceStack source, int ticks) {

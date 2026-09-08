@@ -11,6 +11,7 @@ import net.bullettrain.xenopixelsmod.XenoPixelsMod;
 import net.bullettrain.xenopixelsmod.client.DmzClientStats;
 import net.bullettrain.xenopixelsmod.client.XenoServerClientState;
 import net.bullettrain.xenopixelsmod.client.config.XenoClientConfig;
+import net.bullettrain.xenopixelsmod.client.pad.XenoPadInput;
 import net.bullettrain.xenopixelsmod.combat.DmzAnimHelper;
 import net.bullettrain.xenopixelsmod.client.combat.DmzAnimHelperClient;
 import net.bullettrain.xenopixelsmod.config.XenoServerConfig;
@@ -485,6 +486,7 @@ public final class Bt3CombatClient {
 
         @SubscribeEvent
         public static void onClientTick(ClientTickEvent.Post event) {
+            XenoPadInput.tick();
             Minecraft mc = Minecraft.getInstance();
 
             if (inputLevel != mc.level) {
@@ -529,7 +531,7 @@ public final class Bt3CombatClient {
                 stopClientChase(mc.getConnection() != null);
                 if (clientGuarding) {
                     clientGuarding = false;
-                    ModNetwork.CHANNEL.sendToServer(new Bt3CombatPacket(
+                    send(new Bt3CombatPacket(
                             Bt3CombatPacket.Action.GUARD, -1, 0));
                 }
                 clearGuardInputState();
@@ -550,7 +552,7 @@ public final class Bt3CombatClient {
                 stopClientChase(true);
                 if (clientGuarding) {
                     clientGuarding = false;
-                    ModNetwork.CHANNEL.sendToServer(new Bt3CombatPacket(
+                    send(new Bt3CombatPacket(
                             Bt3CombatPacket.Action.GUARD, -1, 0));
                 }
                 clearGuardInputState();
@@ -567,7 +569,7 @@ public final class Bt3CombatClient {
                 stopClientChase(true);
                 if (clientGuarding) {
                     clientGuarding = false;
-                    ModNetwork.CHANNEL.sendToServer(new Bt3CombatPacket(
+                    send(new Bt3CombatPacket(
                             Bt3CombatPacket.Action.GUARD, -1, 0));
                 }
                 clearGuardInputState();
@@ -609,6 +611,11 @@ public final class Bt3CombatClient {
 
             LivingEntity locked = LockOnEvent.getLockedTarget();
             if (locked != null && !locked.isAlive()) locked = null;
+
+            int padVanishSide = XenoPadInput.consumeVanishSide();
+            if (locked != null && padVanishSide != 0) {
+                tryMove(mc, locked, Bt3CombatPacket.Action.VANISH, padVanishSide);
+            }
 
             long now = System.currentTimeMillis();
             // Vanilla move keys only — never dual combat KeyMappings on WASD
@@ -893,14 +900,14 @@ public final class Bt3CombatClient {
         LocalPlayer local = mc.player;
         if (want && !guardWasDown) {
             clientGuarding = true;
-            ModNetwork.CHANNEL.sendToServer(new Bt3CombatPacket(Bt3CombatPacket.Action.GUARD, -1, 1));
+            send(new Bt3CombatPacket(Bt3CombatPacket.Action.GUARD, -1, 1));
             // Local DMZ block pose (base.block) — same family as DMZ hold animations
             if (local != null) {
                 DmzAnimHelperClient.playLocalBlockStart(local);
             }
         } else if (!want && guardWasDown && clientGuarding) {
             clientGuarding = false;
-            ModNetwork.CHANNEL.sendToServer(new Bt3CombatPacket(Bt3CombatPacket.Action.GUARD, -1, 0));
+            send(new Bt3CombatPacket(Bt3CombatPacket.Action.GUARD, -1, 0));
             if (local != null) {
                 DmzAnimHelperClient.playLocalBlockStop(local);
             }
@@ -944,7 +951,7 @@ public final class Bt3CombatClient {
         hakaiSentThisHold = true;
         player.displayClientMessage(Component.literal("§dHakai"), true);
         DmzAnimHelperClient.playLocalHakaiHold(player);
-        ModNetwork.CHANNEL.sendToServer(new Bt3CombatPacket(
+        send(new Bt3CombatPacket(
                 Bt3CombatPacket.Action.HAKAI_START, target.getId(), 0));
     }
 
@@ -959,7 +966,7 @@ public final class Bt3CombatClient {
                 if (mc.player != null) {
                     DmzAnimHelperClient.playLocalHakaiStop(mc.player);
                 }
-                ModNetwork.CHANNEL.sendToServer(new Bt3CombatPacket(
+                send(new Bt3CombatPacket(
                         Bt3CombatPacket.Action.HAKAI_CANCEL, -1, 0));
             }
             while (HAKAI.consumeClick()) { }
@@ -1028,7 +1035,7 @@ public final class Bt3CombatClient {
             LivingEntity locked = LockOnEvent.getLockedTarget();
             int targetId = locked != null && locked.isAlive() ? locked.getId() : -1;
             var look = mc.gameRenderer.getMainCamera().getLookVector();
-            ModNetwork.sendToServer(new GuidanceHoldPacket(targetId, new Vec3(look.x(), look.y(), look.z())));
+            send(new GuidanceHoldPacket(targetId, new Vec3(look.x(), look.y(), look.z())));
         }
         if (down && !guidanceWasDown) {
             mc.player.displayClientMessage(Component.literal("§bKi Guidance"), true);
@@ -1043,6 +1050,13 @@ public final class Bt3CombatClient {
     }
 
     private static boolean physicallyDown(KeyMapping mapping) {
+        // A gamepad press moves no physical key, so the pad is an additional source here, never a
+        // replacement: the device read below is untouched and keyboard and pad work at once. This
+        // one method is the choke point for the whole class - heldNow, guidanceKeyDown and
+        // chordDown all come through here - which is why the pad only has to be wired in once.
+        // Screen-gated to match Controlify's own key emulation, which stands down while a screen
+        // is open; the keyboard path keeps leaving that judgement to its callers, as before.
+        if (Minecraft.getInstance().screen == null && XenoPadInput.held(mapping)) return true;
         try {
             return KeyBinds.isPhysicallyDown(mapping);
         } catch (Throwable t) {
@@ -1098,7 +1112,7 @@ public final class Bt3CombatClient {
                 continue;
             }
             if (zBurstCd > 0 || moveCooldown > 0) continue;
-            ModNetwork.CHANNEL.sendToServer(new Bt3CombatPacket(
+            send(new Bt3CombatPacket(
                     Bt3CombatPacket.Action.Z_BURST, locked.getId(), comboStep));
             zBurstCd = 12;
             startMoveCooldown(Bt3CombatPacket.Action.Z_BURST);
@@ -1118,7 +1132,7 @@ public final class Bt3CombatClient {
             }
             if (kiBlastCd > 0) continue;
             int tid = locked != null ? locked.getId() : -1;
-            ModNetwork.CHANNEL.sendToServer(new Bt3CombatPacket(
+            send(new Bt3CombatPacket(
                     Bt3CombatPacket.Action.KI_BLAST_CANCEL, tid, comboStep));
             kiBlastCd = 10;
             // Cancel string
@@ -1145,7 +1159,7 @@ public final class Bt3CombatClient {
                 LivingEntity look = findLookTarget(mc, 10.0);
                 tid = look != null ? look.getId() : -1;
             }
-            ModNetwork.CHANNEL.sendToServer(new Bt3CombatPacket(
+            send(new Bt3CombatPacket(
                     Bt3CombatPacket.Action.ULTIMATE, tid, 0));
             ultimateCd = Math.max(40, XenoServerClientState.get().ultimateCooldownTicks);
             startMoveCooldown(Bt3CombatPacket.Action.ULTIMATE);
@@ -1155,7 +1169,7 @@ public final class Bt3CombatClient {
         // Sparking activate
         while (SPARKING.consumeClick()) {
             if (!XenoServerClientState.get().bt3SparkingEnabled) continue;
-            ModNetwork.CHANNEL.sendToServer(new Bt3CombatPacket(
+            send(new Bt3CombatPacket(
                     Bt3CombatPacket.Action.SPARKING, -1, 0));
             // Optimistic full-meter clear for HUD; server is authority
             if (clientSparkingMeter >= 99f) clientSparkingMeter = 0f;
@@ -1169,7 +1183,7 @@ public final class Bt3CombatClient {
         LocalPlayer p = mc.player;
         if (p == null) return;
         Vec3 from = p.position();
-        ModNetwork.CHANNEL.sendToServer(new Bt3CombatPacket(
+        send(new Bt3CombatPacket(
                 Bt3CombatPacket.Action.SONIC_SWAY, -1, side));
         sonicCd = Math.max(8, XenoServerClientState.get().sonicSwayCooldownTicks);
         startMoveCooldown(Bt3CombatPacket.Action.SONIC_SWAY);
@@ -1192,7 +1206,7 @@ public final class Bt3CombatClient {
         // The caller already steered the view this tick. Steering again here applied the ease
         // twice in one tick, which is what made the rush camera jerk.
         rushSequenceStep = Math.floorMod(rushSequenceStep, 4) + 1;
-        ModNetwork.CHANNEL.sendToServer(new Bt3CombatPacket(
+        send(new Bt3CombatPacket(
                 Bt3CombatPacket.Action.RUSH_CHAIN, locked.getId(), rushSequenceStep));
         startMoveCooldown(Bt3CombatPacket.Action.RUSH_CHAIN);
         comboTicksLeft = COMBO_WINDOW_TICKS;
@@ -1333,7 +1347,7 @@ public final class Bt3CombatClient {
                     player, lastMashIntent);
         }
         int tid = target != null ? target.getId() : -1;
-        ModNetwork.CHANNEL.sendToServer(new Bt3CombatPacket(
+        send(new Bt3CombatPacket(
                 Bt3CombatPacket.Action.COMBO_HIT, tid, comboStep, 0, verticalBias, mashStyle));
         clientSparkingMeter = Math.min(100f, clientSparkingMeter
                 + Math.max(1f, XenoServerClientState.get().sparkingBuildPerHit * 0.5f));
@@ -1342,7 +1356,7 @@ public final class Bt3CombatClient {
         // near-range guard and the success roll — so this reads as one continuous move rather than
         // a hit followed by a coin flip.
         if (pursue && target != null && moveCooldown <= 0) {
-            ModNetwork.CHANNEL.sendToServer(new Bt3CombatPacket(
+            send(new Bt3CombatPacket(
                     Bt3CombatPacket.Action.CHASE_DASH, target.getId(), 0));
             ClientChaseFlightState.request();
             chaseInput = ChaseInput.COMBO_PURSUE;
@@ -1434,7 +1448,7 @@ public final class Bt3CombatClient {
         }
         if (!pressed) return;
         if (!XenoClientConfig.bt3CombatClient || !XenoServerClientState.combat()) return;
-        ModNetwork.CHANNEL.sendToServer(new Bt3CombatPacket(Bt3CombatPacket.Action.ZANZOKEN, -1, 0));
+        send(new Bt3CombatPacket(Bt3CombatPacket.Action.ZANZOKEN, -1, 0));
     }
 
     /** One toggle per press: the server owns whether the fighter is currently divided. */
@@ -1446,7 +1460,7 @@ public final class Bt3CombatClient {
         }
         if (!pressed) return;
         if (!XenoClientConfig.bt3CombatClient || !XenoServerClientState.combat()) return;
-        ModNetwork.CHANNEL.sendToServer(new Bt3CombatPacket(Bt3CombatPacket.Action.MULTIFORM, -1, 0));
+        send(new Bt3CombatPacket(Bt3CombatPacket.Action.MULTIFORM, -1, 0));
     }
 
     /** One-shot per session, so turning the gestures off cannot leave chase silently dead. */
@@ -1467,7 +1481,7 @@ public final class Bt3CombatClient {
 
     private static void stopClientChase(boolean notifyServer) {
         if (notifyServer && (ClientChaseFlightState.isActive() || ClientChaseFlightState.isPending())) {
-            ModNetwork.CHANNEL.sendToServer(new Bt3CombatPacket(
+            send(new Bt3CombatPacket(
                     Bt3CombatPacket.Action.CHASE_STOP, -1, 0));
         }
         ClientChaseFlightState.reset();
@@ -1725,11 +1739,6 @@ public final class Bt3CombatClient {
                 int max = Math.max(1, XenoServerClientState.get().chargeMaxTicks);
                 if (chargeTicks < max) {
                     chargeTicks++;
-                    // Sync ki charge percent to clones every 5 ticks
-                    if (chargeTicks % 5 == 0) {
-                        int pct = Math.round(getChargeProgress() * 100f);
-                        ModNetwork.CHANNEL.sendToServer(new Bt3CombatPacket(Bt3CombatPacket.Action.SYNC_KI_CHARGE, 0, 0, pct));
-                    }
                     // Soft client stamina preview drain message only — server spends on release
                     if (chargeTicks % 10 == 0) {
                         DmzClientStats.Snapshot snap = DmzClientStats.read(player);
@@ -1759,8 +1768,6 @@ public final class Bt3CombatClient {
 
     private static void beginCharge(ChargeMode mode) {
         chargeMode = mode;
-        // Reset clone ki charge sync
-        ModNetwork.CHANNEL.sendToServer(new Bt3CombatPacket(Bt3CombatPacket.Action.SYNC_KI_CHARGE, 0, 0, 0));
         chargeTicks = 0;
         chargeFullyGlowed = false;
 
@@ -1769,7 +1776,7 @@ public final class Bt3CombatClient {
         if (mc.player != null) {
             DmzAnimHelperClient.playLocalChargeStart(mc.player, style);
         }
-        ModNetwork.CHANNEL.sendToServer(new ChargeAnimPacket(ChargeAnimPacket.Phase.START, style));
+        send(new ChargeAnimPacket(ChargeAnimPacket.Phase.START, style));
     }
 
     private static DmzAnimHelper.ChargeStyle toStyle(ChargeMode mode, boolean fullyCharged) {
@@ -1797,7 +1804,7 @@ public final class Bt3CombatClient {
 
         // Stop hold pose for everyone
         DmzAnimHelperClient.playLocalChargeStop(player);
-        ModNetwork.CHANNEL.sendToServer(new ChargeAnimPacket(ChargeAnimPacket.Phase.CANCEL, style));
+        send(new ChargeAnimPacket(ChargeAnimPacket.Phase.CANCEL, style));
         resetCharge();
 
         if (percent < 20) {
@@ -1872,7 +1879,7 @@ public final class Bt3CombatClient {
         // KICK / FIST: intentionally no setDeltaMovement toward target
 
         int tid = target != null ? target.getId() : -1;
-        ModNetwork.CHANNEL.sendToServer(new Bt3CombatPacket(action, tid, 0, percent, verticalBias));
+        send(new Bt3CombatPacket(action, tid, 0, percent, verticalBias));
         startMoveCooldown(action);
     }
 
@@ -1905,19 +1912,32 @@ public final class Bt3CombatClient {
         return best;
     }
 
+    /**
+     * Every packet this class sends goes through here.
+     *
+     * <p>{@code PacketDistributor.sendToServer} calls {@code Objects.requireNonNull} on the
+     * connection and throws if there is none. Several of these paths run from the client tick's
+     * bail-out branch, which fires <em>every tick at the title screen</em> — where there is no
+     * connection at all — so an unguarded send there crashes the game before the menu is usable.
+     * Dropping the packet is always the right answer: with no server there is no server state to
+     * correct.
+     */
+    private static void send(Object packet) {
+        if (Minecraft.getInstance().getConnection() == null) return;
+        ModNetwork.CHANNEL.sendToServer(packet);
+    }
+
     private static void resetCharge() {
         if (chargeMode != ChargeMode.NONE) {
             Minecraft mc = Minecraft.getInstance();
             if (mc.getConnection() != null) {
-                ModNetwork.CHANNEL.sendToServer(new ChargeAnimPacket(ChargeAnimPacket.Phase.CANCEL, toStyle(chargeMode, false)));
+                send(new ChargeAnimPacket(ChargeAnimPacket.Phase.CANCEL, toStyle(chargeMode, false)));
             }
             if (mc.player != null) {
                 DmzAnimHelperClient.playLocalChargeStop(mc.player);
             }
         }
         chargeMode = ChargeMode.NONE;
-        // Reset clone ki charge sync
-        ModNetwork.CHANNEL.sendToServer(new Bt3CombatPacket(Bt3CombatPacket.Action.SYNC_KI_CHARGE, 0, 0, 0));
         chargeTicks = 0;
         chargeFullyGlowed = false;
     }
@@ -1938,7 +1958,7 @@ public final class Bt3CombatClient {
         DragonHomingClient.close();
         int targetId = locked != null && locked.isAlive() ? locked.getId() : 0;
         if (XenoClientConfig.bt3CombatSfx) playLocalIt(mc, true);
-        ModNetwork.CHANNEL.sendToServer(new Bt3CombatPacket(
+        send(new Bt3CombatPacket(
                 Bt3CombatPacket.Action.CHASE_DASH, targetId, 0));
         startMoveCooldown(Bt3CombatPacket.Action.CHASE_DASH);
     }
@@ -1996,7 +2016,7 @@ public final class Bt3CombatClient {
 
         // comboStep carries vanish side for the server
         int payload = action == Bt3CombatPacket.Action.VANISH ? side : 0;
-        ModNetwork.CHANNEL.sendToServer(new Bt3CombatPacket(action, locked.getId(), payload));
+        send(new Bt3CombatPacket(action, locked.getId(), payload));
         startMoveCooldown(action);
         return true;
     }

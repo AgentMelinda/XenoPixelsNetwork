@@ -71,15 +71,34 @@ public final class NpcKiAttackDispatcher {
     public static void fireKiWave(LivingEntity caster, NpcCombatProfile profile, int durationTicks,
                                   LivingEntity aimAt, int colorOverride) {
         float charge = profile.chargeFactor();
-        float damage = profile.kiDamage() * charge;
-        float speed = (1.5f + profile.kiPower * 0.02f) * Math.min(2.0f, charge);
-        float size = (0.6f + profile.kiPower * 0.015f) * charge;
+        fireKiWave(caster, profile.kiDamage() * charge,
+                (1.5f + profile.kiPower * 0.02f) * Math.min(2.0f, charge),
+                (0.6f + profile.kiPower * 0.015f) * charge, DEFAULT_CAST_TIME,
+                durationTicks, aimAt, resolveColor(profile, colorOverride, 0));
+    }
+
+    /** Mirrors the exact charge and tunable values of a successfully released player wave. */
+    public static void fireMirroredWave(LivingEntity caster, NpcCombatProfile profile,
+                                        KiAttackData data, float chargeMultiplier,
+                                        LivingEntity aimAt) {
+        if (caster == null || profile == null || data == null
+                || data.getKiType() != KiAttackData.KiType.WAVE) return;
+        float charge = Math.max(0.5f, Math.min(2.0f, chargeMultiplier));
+        float damage = profile.kiDamage() * data.getDamageMultiplier()
+                * data.getConfiguredDamageMultiplier() * data.getOutputMultiplier() * charge;
+        fireKiWave(caster, damage, data.getActualSpeed() * Math.min(2.0f, charge),
+                data.getActualSize() * charge, data.getActualCastTime(),
+                NO_DURATION_OVERRIDE, aimAt, data.getColorInterior());
+    }
+
+    private static void fireKiWave(LivingEntity caster, float damage, float speed, float size,
+                                   int castTime, int durationTicks, LivingEntity aimAt, int color) {
         KiWaveEntity wave = new KiWaveEntity(caster.level(), caster);
         poseCaster(caster, aimAt);
-        wave.setupKiHame(caster, damage, speed, size, DEFAULT_CAST_TIME);
+        wave.setupKiHame(caster, damage, speed, size, castTime);
         rescaleSpawnHeight(wave, caster);
         applyDuration(wave, durationTicks);
-        applyKiColor(wave, resolveColor(profile, colorOverride, 0));
+        applyKiColor(wave, color);
         aimAlongLook(wave, caster, aimAt);
     }
 

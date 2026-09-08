@@ -1,1235 +1,428 @@
-# XenoPixels LDLib HUD Migration Plan
-
-> Repository: `https://github.com/AgentMelinda/forge-1.20.1-tutorial`
->
-> Target branch assessed: `new1`
->
-> Minecraft: `1.20.1`
->
-> Mod loader: Forge `47.4.10`
->
-> Java: `17`
->
-> XenoPixels mod ID: `xenopixelsmod`
->
-> UI library target: **LDLib 1.0.52 for Forge 1.20.1**
-
----
-
-## 1. Mission
-
-Replace ModernUI as the UI/rendering dependency used by XenoPixels and migrate the existing HUD rendering layer to LDLib while preserving the mod's current gameplay, DragonMineZ integration, networking, configuration, HUD editing, and overlay ordering.
-
-The finished HUD should support a Dragon Ball Xenoverse 2-inspired presentation, including:
-
-- Player portrait and frame
-- Animated health bar
-- Animated Ki bar
-- Segmented stamina diamonds or cells
-- Transformation/charge indicators
-- Player badge and status decorations
-- Technique slots, cooldowns, key hints, and selected-slot state
-- Resolution-independent positioning and scaling
-- HUD editor preview and drag positioning
-
-This is a **rendering migration**, not a gameplay rewrite.
-
----
-
-## 2. Current Repository Assessment
-
-The repository already has the important foundations:
-
-- `XenoHudOverlay` implements Forge `IGuiOverlay`.
-- `XenoHudRegistration` registers overlays through `RegisterGuiOverlaysEvent`.
-- The Xeno HUD is registered above DragonMineZ's `dragonminez:beam_clash_hud`, with a vanilla hotbar fallback.
-- `DmzClientStats` reads live DragonMineZ player values.
-- `XenoClientData` supplies fallback client values.
-- `XenoHudConfig` and `XenoClientConfig` control visibility, position, scale, and enablement.
-- `XenoHudEditScreen` previews and edits the HUD.
-- `XenoTechniqueHotbarOverlay` separately renders techniques and cooldown state.
-- `DmzHudOverlayBlocker` suppresses selected original DragonMineZ overlays.
-- ModernUI dependencies are currently placed on the run classpath and bundled with Forge Jar-in-Jar.
-
-### Existing files that must be inspected before editing
-
-```text
-build.gradle
-gradle.properties
-src/main/resources/META-INF/mods.toml
-src/main/java/net/bullettrain/xenopixelsmod/client/XenoHudOverlay.java
-src/main/java/net/bullettrain/xenopixelsmod/client/XenoHudRegistration.java
-src/main/java/net/bullettrain/xenopixelsmod/client/XenoTechniqueHotbarOverlay.java
-src/main/java/net/bullettrain/xenopixelsmod/client/DmzClientStats.java
-src/main/java/net/bullettrain/xenopixelsmod/client/DmzHudClientState.java
-src/main/java/net/bullettrain/xenopixelsmod/client/DmzHudOverlayBlocker.java
-src/main/java/net/bullettrain/xenopixelsmod/client/XenoClientData.java
-src/main/java/net/bullettrain/xenopixelsmod/config/XenoHudConfig.java
-src/main/java/net/bullettrain/xenopixelsmod/config/XenoClientConfig.java
-src/main/java/net/bullettrain/xenopixelsmod/client/screen/XenoHudEditScreen.java
-src/main/java/net/bullettrain/xenopixelsmod/client/screen/XenoMenuScreen.java
-src/main/java/net/bullettrain/xenopixelsmod/client/screen/XenoContentListScreen.java
-```
-
-The AI must locate the actual paths if any class has moved. Do not create duplicate replacement classes under guessed packages.
-
----
-
-## 3. Non-Negotiable AI Instructions
-
-The coding AI must obey all instructions in this section.
-
-### 3.1 Inspect before changing
-
-1. Read every file listed in the current repository assessment.
-2. Search the entire repository before removing ModernUI:
-
-```bash
-rg -n "icyllis\\.modernui|ModernUI|modernui_|jarJar|configurations\\.library|\\blibrary\\(" .
-```
-
-3. Search all HUD entry points and direct render calls:
-
-```bash
-rg -n "XenoHudOverlay|XenoTechniqueHotbarOverlay|renderHud|IGuiOverlay|RegisterGuiOverlaysEvent|RenderGuiOverlayEvent" src/main/java
-```
-
-4. Record the baseline build result before making changes.
-5. Do not assume the README's abbreviated file tree is complete; the source tree is authoritative.
-
-### 3.2 Never hallucinate the LDLib API
-
-LDLib's Forge 1.20.1 documentation is limited. The AI must **not invent constructors, callback names, render methods, lifecycle hooks, or texture methods**.
-
-After Gradle resolves LDLib, inspect one of these sources before writing integration code:
-
-- The dependency source JAR in the Gradle cache
-- IntelliJ's attached sources
-- The official `Low-Drag-MC/LDLib-MultiLoader` repository on branch `1.20.1`
-
-At minimum, inspect the exact 1.0.52 definitions of:
-
-```text
-com.lowdragmc.lowdraglib.gui.widget.Widget
-com.lowdragmc.lowdraglib.gui.widget.WidgetGroup
-com.lowdragmc.lowdraglib.gui.widget.ImageWidget
-com.lowdragmc.lowdraglib.gui.widget.LabelWidget
-com.lowdragmc.lowdraglib.gui.widget.ProgressWidget
-com.lowdragmc.lowdraglib.gui.widget.DraggableWidgetGroup
-com.lowdragmc.lowdraglib.gui.texture.IGuiTexture
-com.lowdragmc.lowdraglib.gui.texture.ResourceTexture
-com.lowdragmc.lowdraglib.gui.texture.ProgressTexture
-com.lowdragmc.lowdraglib.gui.texture.TransformTexture
-com.lowdragmc.lowdraglib.gui.texture.GuiTextureGroup
-```
-
-Create a temporary implementation note such as `docs/ldlib-api-notes.md` containing the verified signatures actually used. Delete it only if the final code and comments make those details obvious.
-
-### 3.3 Preserve Forge as the overlay owner
-
-LDLib should provide reusable widgets and texture/rendering primitives. Forge must continue to own:
-
-- Overlay registration
-- Overlay order
-- Per-frame HUD invocation
-- GUI visibility checks
-- Client-only lifecycle
-
-Do **not** replace `RegisterGuiOverlaysEvent` with a screen-only LDLib system. The HUD must remain visible during normal gameplay without opening a menu.
-
-### 3.4 Preserve gameplay and data flow
-
-Do not rewrite or relocate DragonMineZ gameplay logic merely to support the HUD.
-
-Preserve:
-
-- `DmzClientStats` as the primary DragonMineZ read adapter
-- `XenoClientData` fallback behavior
-- Vanilla-health fallback behavior where currently used
-- Technique slot, cooldown, and key-state behavior
-- Existing network packets and capability synchronization
-- Existing DragonMineZ HUD suppression behavior
-- Existing config values and saved user positions whenever practical
-
-No new packet should be added unless the required HUD value does not already exist on the client.
-
-### 3.5 Keep client classes client-only
-
-Any class importing Minecraft client, Forge client, or LDLib GUI/rendering types must remain under client-only initialization and must not be referenced from common static initialization that can load on a dedicated server.
-
-Do not introduce dedicated-server crashes through classloading.
-
-### 3.6 No unnecessary mixins
-
-Do not add a mixin for normal HUD rendering, input polling, positioning, or overlay ordering. The repository already has the required Forge APIs.
-
-A mixin is allowed only when a concrete, documented incompatibility cannot be solved through Forge events or existing mod adapters. Explain and isolate any such mixin before adding it.
-
-### 3.7 Work in small compiling phases
-
-After each phase:
-
-```bash
-./gradlew compileJava
-```
-
-On Windows:
-
-```powershell
-gradlew.bat compileJava
-```
-
-Do not combine dependency removal, data refactoring, editor replacement, and visual redesign into one untestable patch.
-
-### 3.8 Do not disturb unrelated dependencies
-
-Do not update or remove these as part of this task:
-
-- DragonMineZ
-- Valkyrien Skies
-- GeckoLib
-- TerraBlender
-- Curios
-- KotlinForForge
-- MixinExtras
-
-Only change an unrelated dependency when it directly blocks the LDLib migration and the reason is documented.
-
----
-
-## 4. Dependency Strategy
-
-### 4.1 Use the verified Forge 1.20.1 build
-
-Use LDLib release:
-
-```text
-mc1.20.1-1.0.52-forge
-```
-
-Verified Modrinth Maven coordinates:
-
-```text
-maven.modrinth:B1CBVXHX:NzNZILgs
-```
-
-Use the exact version ID initially to keep the build reproducible.
-
-### 4.2 Add properties
-
-In `gradle.properties`, remove the ModernUI version properties only after all ModernUI imports have been migrated.
-
-Add:
-
-```properties
-# LDLib Forge 1.20.1
-ldlib_version=1.0.52
-ldlib_modrinth_project=B1CBVXHX
-ldlib_modrinth_version=NzNZILgs
-```
-
-`ldlib_version` is for readable metadata and dependency ranges. The Modrinth project/version IDs are used for Gradle resolution.
-
-### 4.3 Add the Modrinth Maven repository
-
-In `build.gradle`, add an exclusive Modrinth repository. ForgeGradle must also be included in the exclusive repository mapping:
-
-```gradle
-exclusiveContent {
-    forRepository {
-        maven {
-            name = 'Modrinth'
-            url = 'https://api.modrinth.com/maven'
-        }
-    }
-    forRepositories(fg.repository)
-    filter {
-        includeGroup 'maven.modrinth'
-    }
-}
-```
-
-Place this inside the existing `repositories` block.
-
-### 4.4 Add LDLib to dependencies
-
-Use ForgeGradle deobfuscation:
-
-```gradle
-implementation fg.deobf(
-    "maven.modrinth:${ldlib_modrinth_project}:${ldlib_modrinth_version}"
-)
-```
-
-First run:
-
-```bash
-./gradlew --refresh-dependencies compileJava
-```
-
-If Gradle rejects the coordinate wrapper, inspect the resolved artifact and ForgeGradle error before changing syntax. Do not guess repeatedly.
-
-### 4.5 Do not Jar-in-Jar LDLib by default
-
-Recommended distribution model:
-
-- XenoPixels declares LDLib as a required external mod dependency.
-- The user/server pack installs the matching LDLib Forge JAR separately.
-- XenoPixels does not embed LDLib inside its own JAR.
-
-Reasons:
-
-- It avoids duplicate nested copies when another mod already ships or requires LDLib.
-- It makes dependency versions visible to pack maintainers.
-- It avoids taking on bundling/license obligations before the library's current distribution license has been reviewed.
-- It reduces the chance that two independently embedded LDLib versions load together.
-
-Do not add LDLib to the existing `library` or `jarJar` configurations unless the maintainer explicitly chooses bundling after testing and license review.
-
-### 4.6 Add `mods.toml` dependency
-
-Remove the old ModernUI dependency block after ModernUI has been removed.
-
-Add:
-
-```toml
-[[dependencies.${mod_id}]]
-modId="ldlib"
-mandatory=true
-versionRange="[1.0.52,1.1)"
-ordering="AFTER"
-side="BOTH"
-```
-
-LDLib identifies itself as a client-and-server library. Keep `side="BOTH"` unless the exact installed release's metadata and dedicated-server test prove that XenoPixels can safely declare it client-only.
-
-### 4.7 License verification gate
-
-Before distributing a build:
-
-1. Read the license file packaged with the exact LDLib 1.0.52 artifact.
-2. Read the official repository license for the checked-out `1.20.1` revision.
-3. Resolve any discrepancy between distribution-page metadata and repository metadata.
-4. Add required notices to XenoPixels documentation or distribution files.
-5. Do not embed or redistribute LDLib until this check is complete.
-
-External dependency installation is preferred for the first implementation.
-
----
-
-## 5. Target Architecture
-
-Use a model-view-bridge structure.
-
-```text
-DragonMineZ / Xeno client data
-              │
-              ▼
-       XenoHudSnapshot
-       immutable frame data
-              │
-              ▼
-         XenoHudView
-    LDLib widget composition
-              │
-              ▼
-       XenoHudOverlay
- Forge IGuiOverlay lifecycle bridge
-```
-
-### 5.1 Data model: `XenoHudSnapshot`
-
-Create an immutable client-side record or final class containing only the values needed to draw one frame.
-
-Suggested fields:
+# Handoff: DMZ Ki Weapons — Iris/shader compat + NPC toggle support
+
+> Written for: Codex (or whichever agent picks this up next)
+> Repository: `XenoPixelsNetwork_qwen` (branch `new2`), Minecraft 1.21.1, NeoForge 21.1.238
+> Everything below is either (a) confirmed by decompiling/reading the actual class files this
+> session (Vineflower / `javap -p -c -s` against `libs/dragonminez-2.1.3.jar` and the NeoForge
+> sources jar, or a full `Read` of this mod's own source), or (b) explicitly marked **UNCONFIRMED /
+> NEEDS LIVE TESTING**. Nothing below is guessed from naming conventions. Do not add code that
+> calls a method or reads a field that isn't cited with a file path (or class + `javap` signature)
+> somewhere in this document — if you need a capability that isn't here, decompile/verify it first,
+> the same way this document was built.
+
+## 1. What's being asked for
+
+Two related asks from the user, in this order:
+
+1. **"add ki weapons iris compat to our xenopixels it aint working with shaders"** — DragonMineZ
+   (DMZ) has an existing player mechanic called **Ki Weapons**: with the `kimanipulation` skill
+   active, a player can materialize an energy blade/claw-lance/scythe in their main hand. The user
+   reports this doesn't render correctly when a shader pack (Iris) is active. **This mod
+   (XenoPixelsMod) currently has zero code touching ki weapons at all** — confirmed by grepping
+   the whole `src/main/java` tree for `kiweapon`/`kimanipulation` (case-insensitive): zero matches.
+   So this is a from-scratch compat feature, not a regression in existing code.
+2. **"add a way to use and toggle ki weapons and ki weapon types on npcs please"** — extend this
+   mod's CustomNPC ↔ DMZ integration (the `FULL` appearance mode, where an NPC is rendered through
+   a synthetic DMZ player proxy) so an NPC can also materialize a ki weapon, toggleable and
+   type-selectable from both the in-game appearance editor GUI and the CustomNPCs Nashorn script
+   API — following the same patterns already used for aura/halo/hair.
+3. Follow-up from the user: **the ki weapon's position on an NPC will likely need the same kind of
+   fix the aura and hair needed** (NPC-size-aware scale/pivot correction). This has **not been
+   observed yet** — no NPC ki-weapon rendering exists yet to observe — see §6.
+
+Asking the user for the exact shader-side symptom (invisible? black/unlit? flickering?) got
+**"not sure — apply the same fix pattern used for the aura."** Important caveat spelled out in
+§4: the aura's fix and the ki-weapon's likely fix are probably **not** the same code path — verify
+before assuming.
+
+## 2. DMZ's Ki Weapon system — confirmed API (decompiled from `libs/dragonminez-2.1.3.jar`)
+
+### 2.1 Entry points off `StatsData`
 
 ```java
-public record XenoHudSnapshot(
-    float health,
-    float maxHealth,
-    float healthRatio,
-    float ki,
-    float maxKi,
-    float kiRatio,
-    float stamina,
-    float maxStamina,
-    float staminaRatio,
-    int staminaSegments,
-    int filledStaminaSegments,
-    boolean charging,
-    boolean transformed,
-    boolean alive,
-    String displayName,
-    ResourceLocation portraitTexture
-) {}
+public com.dragonminez.common.stats.character.Status getStatus();   // StatsData
+public com.dragonminez.common.stats.skills.Skills getSkills();      // StatsData
+public com.dragonminez.common.stats.character.Character getCharacter(); // StatsData
 ```
+(`Skills` lives in package `com.dragonminez.common.stats.skills`, not `.stats.extras`.)
 
-The exact fields must follow current XenoPixels/DragonMineZ data availability. Do not add networking solely to match this suggested shape.
-
-Add a factory/adapter such as:
-
-```text
-XenoHudSnapshotFactory.capture(Minecraft minecraft)
-```
-
-Responsibilities:
-
-- Read `DmzClientStats` once per frame.
-- Apply existing fallback rules once.
-- Clamp ratios to `0.0F..1.0F`.
-- Prevent division by zero.
-- Return a stable snapshot consumed by all widgets for that frame.
-- Avoid reflection or capability lookup in each widget.
-
-### 5.2 View: `XenoHudView`
-
-Create a reusable LDLib-backed root view that owns the HUD's visual hierarchy.
-
-Conceptual tree:
-
-```text
-XenoHudView / root WidgetGroup
-├── background frame ImageWidget
-├── PortraitWidget
-├── health frame ImageWidget
-├── health ProgressWidget or custom textured bar
-├── health damage-delay layer
-├── ki frame ImageWidget
-├── ki ProgressWidget or custom textured bar
-├── stamina SegmentedStaminaWidget
-├── player badge ImageWidget
-├── status/charge indicator
-└── optional labels/debug values
-```
-
-The exact API calls must come from LDLib 1.0.52 source inspection.
-
-The view should expose a small XenoPixels-owned interface, for example:
+### 2.2 `com.dragonminez.common.stats.skills.Skills` (backed by inner/sibling class `Skill`)
 
 ```java
-public final class XenoHudView {
-    public void setSnapshot(XenoHudSnapshot snapshot);
-    public void setBounds(int x, int y, int width, int height, float scale);
-    public void setEditorMode(boolean editorMode);
-    public void render(GuiGraphics graphics, float partialTick);
-    public void resetAnimationState();
-}
+public boolean hasSkill(String name);
+public boolean isSkillActive(String name);
+public void setSkillActive(String name, boolean active);
+public void toggleSkillActive(String name);
+public void registerDefaultSkill(String name, int maxLevel);
+public int getSkillLevel(String name);
+public void setSkillLevel(String name, int level);
+// + save/load/toBytes/fromBytes/copyFrom, not relevant here
 ```
 
-These are XenoPixels APIs; their internals may delegate to LDLib widgets using the actual verified LDLib methods.
+**Critical, bytecode-confirmed gotcha:** `isSkillActive`/`setSkillActive` look the skill up by
+lower-cased name in an internal `Map<String, Skill> skillMap`. If the entry isn't present:
+- `isSkillActive` returns `false` (not an exception).
+- `setSkillActive` **silently no-ops** (`ifnull → return`).
 
-### 5.3 Bridge: existing `XenoHudOverlay`
+A synthetic NPC proxy's `StatsData`/`Skills` never went through DMZ's normal player-login skill
+registration, so `"kimanipulation"` will **not** be in its `skillMap` by default.
+`registerDefaultSkill(String, int)` creates the entry if missing (confirmed idempotent — if the
+skill already exists it only touches `maxLevel`, leaving `level`/`isActive` alone, so it's safe to
+call every render frame). **You must call `registerDefaultSkill("kimanipulation", <maxLevel>)`
+before `setSkillActive("kimanipulation", true)`** or the toggle will do nothing.
 
-Keep `XenoHudOverlay implements IGuiOverlay` as the Forge bridge.
+The only existing use of `getSkills()` anywhere in this mod's source is
+`src/main/java/net/bullettrain/xenopixelsmod/client/combat/TechniqueSlotAssist.java:143` — reads
+a real player's `"kicontrol"` skill level for UI gating. It never activates anything and is
+unrelated to NPCs. No prior NPC-side skill activation exists anywhere in this codebase.
 
-It should be reduced to lifecycle work:
-
-1. Validate client/player state.
-2. Respect `Minecraft.options.hideGui`.
-3. Respect `XenoClientConfig.xenoHudEnabled`.
-4. Respect `XenoHudConfig.visible`.
-5. Capture one `XenoHudSnapshot`.
-6. Calculate configured position and scale.
-7. Update the view.
-8. Render the view.
-9. Restore any pose/render state in `finally` when needed.
-
-Do not move overlay registration into the view.
-
-### 5.4 Texture registry/constants
-
-Create a central class such as:
-
-```text
-client/hud/XenoHudTextures.java
-```
-
-It should hold:
-
-- `ResourceLocation` constants
-- Atlas regions or UV descriptions
-- Frame and fill textures
-- Portrait mask/ring
-- Stamina segment textures
-- Badge and selection art
-- Technique slot art
-
-Avoid scattering resource paths and UV numbers across widget classes.
-
-### 5.5 Custom widgets only where necessary
-
-Prefer stock LDLib widgets for normal images, labels, groups, and simple progress bars.
-
-Create custom XenoPixels widgets for behavior specific to the Xenoverse-style HUD:
-
-```text
-PortraitWidget
-LayeredBarWidget
-SegmentedStaminaWidget
-ChargePulseWidget
-TechniqueSlotWidget
-CooldownSweepWidget
-```
-
-Do not create a custom widget merely to wrap one `ImageWidget` without adding behavior.
-
----
-
-## 6. Rendering and Animation Design
-
-### 6.1 Frame-rate-independent animation
-
-Never use “add N per rendered frame.” Use elapsed time or partial-tick-aware interpolation.
-
-Suggested animation state:
-
-- `displayedHealthRatio`
-- `delayedHealthRatio`
-- `displayedKiRatio`
-- `displayedStaminaRatio`
-- `pulseTime`
-- `lastGameTime` or monotonic timestamp
-
-Recommended behavior:
-
-- Health fill responds quickly.
-- A delayed damage layer trails health loss.
-- Ki fill interpolates smoothly but remains readable during rapid charging.
-- Stamina segments animate individually when spent/restored.
-- Selected technique slot uses a restrained pulse or scale effect.
-
-Reset animation state when:
-
-- The player instance changes.
-- The world unloads.
-- The player respawns.
-- Values become invalid.
-- Resources are reloaded if texture state is cached.
-
-### 6.2 Ratio safety
-
-Every normalized value must use a helper equivalent to:
+### 2.3 `com.dragonminez.common.stats.character.Status`
 
 ```java
-private static float safeRatio(float value, float maximum) {
-    if (!Float.isFinite(value) || !Float.isFinite(maximum) || maximum <= 0.0F) {
-        return 0.0F;
-    }
-    return Mth.clamp(value / maximum, 0.0F, 1.0F);
-}
+private String kiWeaponType;              // no-arg ctor default: "blade" (verified: ldc "blade"; putfield)
+public String getKiWeaponType();          // trivial getter
+public void setKiWeaponType(String);      // trivial setter — no validation, no lower-casing
+public void validateKiWeaponType();       // see below
 ```
-
-### 6.3 GUI scale and anchor system
-
-Use logical GUI pixels, not raw framebuffer pixels.
-
-Preserve the existing configuration semantics:
-
-- `x`
-- `y`
-- `scale`
-- `visible`
-
-Define one base design size, for example:
-
-```text
-Base HUD width: 220 logical pixels
-Base HUD height: 72 logical pixels
+There is **no `"none"` sentinel written anywhere in `Status` or `KiWeaponHelper`** — `"none"` as
+an off-state is purely `DMZWeaponsLayer`'s own rendering convention layered on top of this raw
+string (see §2.5, gate #5). `validateKiWeaponType()`:
+```java
+List<String> types = ConfigManager.getCombatConfig().getKiWeaponTypes();
+if (types.isEmpty()) return;
+if (kiWeaponType == null || !types.contains(kiWeaponType.toLowerCase()))
+    kiWeaponType = types.get(0);   // falls back to the first configured type
 ```
-
-The actual dimensions should match the final texture atlas.
-
-All child widgets should be positioned relative to the root, so moving/scaling the root cannot desynchronize its parts.
-
-### 6.4 Render-state discipline
-
-The AI must verify that rendering does not leak:
-
-- Pose stack transforms
-- Shader color
-- Blend state
-- Depth state
-- Scissor state
-- Stencil state
-
-Use push/pop or LDLib's verified state-management utilities. Always restore manually changed Minecraft render state.
-
-This is especially important when testing with Embeddium/Oculus/shaders.
-
----
-
-## 7. Texture and Asset Plan
-
-### 7.1 Create a dedicated atlas
-
-Recommended resource path:
-
-```text
-src/main/resources/assets/xenopixelsmod/textures/gui/xeno_hud_ldlib.png
-```
-
-Keep the current `xeno_hud.png` during migration for visual comparison and rollback.
-
-Suggested atlas regions:
-
-```text
-frame/background
-portrait ring
-portrait mask/background
-health frame
-health fill
-health delayed-damage fill
-ki frame
-ki fill
-stamina empty segment
-stamina full segment
-stamina recovering segment
-P1/player badge
-charge glow
-technique frame
-technique selected frame
-cooldown mask/overlay
-key-cap backgrounds
-```
-
-### 7.2 Avoid copyrighted asset copying
-
-Create original XenoPixels art inspired by the information hierarchy and energetic style of Xenoverse 2. Do not extract or redistribute Xenoverse 2 textures, fonts, portraits, or icons.
-
-### 7.3 Texture requirements
-
-- Use power-of-two atlas dimensions where practical.
-- Keep hard pixel edges where required.
-- Leave transparent padding around glowing elements to avoid atlas bleeding.
-- Document region coordinates in `XenoHudTextures`.
-- Verify behavior with resource packs and resource reload (`F3+T`).
-
----
-
-## 8. Implementation Phases
-
-## Phase 0 — Baseline and safety checkpoint
-
-### Tasks
-
-1. Checkout the intended branch.
-2. Ensure the working tree is clean or commit current work.
-3. Run:
-
-```bash
-./gradlew clean compileJava
-./gradlew build
-```
-
-4. Launch the current client and capture screenshots at:
-   - GUI scale 2
-   - GUI scale 3 or Auto
-   - Windowed 1280×720
-   - 1920×1080 or native display
-5. Record current HUD coordinates and config file values.
-6. Test the current HUD editor and technique hotbar.
-7. Record current suppression of DragonMineZ HUD elements.
-
-### Acceptance criteria
-
-- Baseline build status is known.
-- Existing unrelated warnings are documented.
-- Before/after screenshots are available.
-- A rollback commit or branch exists.
-
----
-
-## Phase 1 — Resolve LDLib without removing ModernUI
-
-### Tasks
-
-1. Add the LDLib properties.
-2. Add the exclusive Modrinth Maven repository.
-3. Add the LDLib dependency.
-4. Keep ModernUI temporarily so current screens still compile.
-5. Run dependency and compile checks:
-
-```bash
-./gradlew --refresh-dependencies compileJava
-./gradlew dependencies
-```
-
-6. Confirm only one LDLib version is present in the runtime dependency graph.
-7. Start `runClient` and verify the title screen loads.
-8. Start `runServer` or a dedicated-server configuration to detect client classloading problems.
-
-### Acceptance criteria
-
-- LDLib 1.0.52 resolves.
-- Current XenoPixels code still compiles.
-- Client launches.
-- Dedicated server reaches normal startup.
-- No duplicate-LDLib warning appears.
-
----
-
-## Phase 2 — LDLib API verification spike
-
-### Tasks
-
-1. Inspect the LDLib 1.0.52 source JAR.
-2. Identify the exact supported method for rendering a `Widget`/`WidgetGroup` outside a normal LDLib menu.
-3. Determine whether a modular UI container is mandatory or whether widget background/foreground methods can be safely driven by the Forge overlay bridge.
-4. Verify how LDLib passes:
-   - `GuiGraphics`
-   - mouse coordinates
-   - partial ticks
-   - position and size
-   - visibility
-   - progress values
-   - textures
-5. Create a temporary proof-of-concept overlay containing:
-   - one LDLib image
-   - one progress bar
-   - one text label
-6. Register it under a temporary debug config flag or render it inside the current HUD.
-7. Remove the spike once the integration route is proven.
-
-### Decision rule
-
-If LDLib widgets cannot be safely rendered as a normal persistent Forge overlay without constructing an inappropriate menu/screen lifecycle, use LDLib's verified texture/rendering primitives behind XenoPixels-owned overlay components rather than forcing its full screen framework into the HUD.
-
-The objective is reliable gameplay HUD rendering, not maximum use of library classes.
-
-### Acceptance criteria
-
-- The exact LDLib rendering path is documented.
-- A live Forge overlay successfully renders an LDLib-backed image and progress value.
-- No invented API remains in code.
-- No render state leak is observed.
-
----
-
-## Phase 3 — Extract a stable HUD snapshot
-
-### Tasks
-
-1. Add `XenoHudSnapshot`.
-2. Add `XenoHudSnapshotFactory` or equivalent adapter.
-3. Move live-value selection and fallback logic out of low-level drawing code.
-4. Keep current visual rendering unchanged temporarily.
-5. Make `XenoHudOverlay` render the old graphics using the snapshot.
-6. Add focused unit tests for pure math/helpers when the project test setup permits:
-   - ratio clamping
-   - zero maximum
-   - negative values
-   - values above maximum
-   - NaN/infinity
-   - stamina segment calculation
-
-### Acceptance criteria
-
-- The old HUD looks and behaves the same.
-- DragonMineZ values are read once per frame, not once per widget.
-- Drawing code no longer performs scattered fallback decisions.
-- Invalid values cannot create NaN geometry.
-
----
-
-## Phase 4 — Build the LDLib-backed main HUD view
-
-### Tasks
-
-1. Add `XenoHudView`.
-2. Add `XenoHudTextures`.
-3. Build the root group and static frame.
-4. Implement portrait rendering.
-5. Implement health and delayed-damage layers.
-6. Implement Ki.
-7. Implement segmented stamina.
-8. Add badge and status indicators.
-9. Feed the view from `XenoHudSnapshot`.
-10. Add a temporary config toggle:
-
-```text
-legacyHudRenderer=true/false
-```
-
-This toggle is for migration testing only and should be removed after sign-off.
-
-### Acceptance criteria
-
-- Both legacy and LDLib renderers can be compared with the same snapshot.
-- All major values match the old renderer.
-- Position and scale settings still work.
-- `hideGui` and visibility config work.
-- The HUD survives GUI scale changes and window resize.
-
----
-
-## Phase 5 — Migrate the HUD editor
-
-### Tasks
-
-1. Inspect how `XenoHudEditScreen` currently calls `XenoHudOverlay.renderHud`.
-2. Preserve one shared render path between gameplay and editor preview.
-3. Do not maintain a second visual implementation for the editor.
-4. Use either:
-   - the same `XenoHudView` in editor mode, or
-   - a thin preview host that delegates to it.
-5. Preserve drag behavior and config writes.
-6. Preserve reset/default controls.
-7. If LDLib's `DraggableWidgetGroup` is suitable after source inspection, use it. Otherwise retain current screen drag input and only delegate rendering.
-8. Keep the editor's drag bounds in logical GUI coordinates.
-
-### Acceptance criteria
-
-- Editor preview exactly matches gameplay HUD.
-- Dragging changes the existing `XenoHudConfig.x/y` values.
-- Scale changes are previewed immediately.
-- Reset restores documented defaults.
-- Closing/reopening the game preserves settings.
-
----
-
-## Phase 6 — Migrate the technique hotbar
-
-### Tasks
-
-1. Keep `XenoTechniqueHotbarOverlay` registered separately initially.
-2. Create reusable `TechniqueSlotWidget` and `CooldownSweepWidget` only after main HUD stability.
-3. Preserve:
-   - DragonMineZ equipped slots
-   - cooldown values
-   - disabled/unavailable states
-   - selected slot
-   - modifier-key hints
-   - current hotbar placement logic
-4. Reuse `XenoHudTextures` or create `XenoTechniqueTextures` when the atlas becomes too large.
-5. Avoid per-frame allocation of widget trees or texture objects.
-
-### Acceptance criteria
-
-- Every slot displays the same technique as before.
-- Selection and cooldown behavior remain accurate.
-- Modifier keys behave exactly as before.
-- Empty and unavailable slots are visually distinct.
-- No noticeable frame-time regression occurs.
-
----
-
-## Phase 7 — Remove ModernUI safely
-
-### Tasks
-
-1. Run the ModernUI search again.
-2. Migrate or rewrite all remaining ModernUI-dependent screens.
-3. Only after zero source imports remain, remove from `build.gradle`:
-   - ModernUI Core
-   - ModernUI Markflow
-   - ModernUI Forge
-   - ModernUI-specific excludes
-   - ModernUI Jar-in-Jar entries
-4. Determine whether the custom `library` configuration and `jarJar.enable()` are used by anything else.
-5. Remove `library`/Jar-in-Jar infrastructure only if nothing else requires it.
-6. Remove from `gradle.properties`:
-
-```properties
-modernui_version=...
-modernui_core_version=...
-```
-
-7. Remove the ModernUI `mods.toml` dependency.
-8. Run:
-
-```bash
-rg -n "icyllis\\.modernui|ModernUI|modernui_" .
-./gradlew clean build
-```
-
-### Acceptance criteria
-
-- Search returns no active ModernUI code or properties.
-- XenoPixels builds from a clean Gradle cache.
-- Produced JAR contains no nested ModernUI artifacts.
-- Menu, content list, HUD editor, gameplay HUD, and technique hotbar all open/render.
-
----
-
-## Phase 8 — Finalize metadata and documentation
-
-### Tasks
-
-1. Add the LDLib dependency to `mods.toml`.
-2. Update README requirements/install instructions.
-3. State the required LDLib version.
-4. Add asset and license notices.
-5. Remove temporary legacy renderer and migration toggle.
-6. Delete dead procedural render helpers only after no call sites remain.
-7. Keep generally useful helpers only when they have tests or clear users.
-8. Generate a release build.
-
-### Acceptance criteria
-
-- Fresh installation fails clearly when LDLib is absent.
-- Fresh installation launches when LDLib 1.0.52 is present.
-- No ModernUI dependency remains.
-- No temporary debug flags or spike classes remain.
-- README accurately lists required mods.
-
----
-
-## 9. Suggested Source Layout
-
-Use the existing package root and avoid broad package churn.
-
-```text
-src/main/java/net/bullettrain/xenopixelsmod/client/
-├── XenoHudRegistration.java
-├── DmzClientStats.java
-├── DmzHudClientState.java
-├── DmzHudOverlayBlocker.java
-├── XenoClientData.java
-├── hud/
-│   ├── XenoHudOverlay.java
-│   ├── XenoHudSnapshot.java
-│   ├── XenoHudSnapshotFactory.java
-│   ├── XenoHudView.java
-│   ├── XenoHudTextures.java
-│   ├── animation/
-│   │   ├── HudAnimationState.java
-│   │   └── Interpolation.java
-│   └── widget/
-│       ├── PortraitWidget.java
-│       ├── LayeredBarWidget.java
-│       ├── SegmentedStaminaWidget.java
-│       └── ChargePulseWidget.java
-└── technique/
-    ├── XenoTechniqueHotbarOverlay.java
-    ├── TechniqueHotbarView.java
-    ├── TechniqueSlotWidget.java
-    └── CooldownSweepWidget.java
-```
-
-Moving the existing overlay classes into subpackages is optional. If moving them creates noisy import churn or risks event registration, keep their current paths and add only new support classes under `client/hud` and `client/technique`.
-
----
-
-## 10. Forge Overlay Bridge Pseudocode
-
-This block describes responsibilities only. It is **not compile-ready LDLib code**.
+**UNCONFIRMED:** where/when `validateKiWeaponType()` is actually invoked (on load? on tick? on
+network sync?) was not located this session. Don't assume it self-corrects an invalid type string
+automatically — verify by tracing `StatsData`'s load/tick path, or just always pass a known-valid
+lower-cased type string and avoid relying on this method at all.
+
+### 2.4 `com.dragonminez.common.combat.logic.weapon.KiWeaponHelper`
 
 ```java
-public final class XenoHudOverlay implements IGuiOverlay {
-    private final XenoHudView view = new XenoHudView();
+public static float[] resolveColorForType(String type, float[] fallback);
+public static float[] resolveColor(String hexOrNull, float[] fallback);
+```
+`resolveColorForType` looks up `ConfigManager.getCombatConfig().getKiWeaponConfig(type)`, reads
+its `getForcedColor()`, and calls `resolveColor(forcedColor, fallback)`. `resolveColor` returns
+`fallback` if the hex is null/blank/`#FFFFFF`, otherwise parses `#RRGGBB` into a `float[3]`.
+**No type whitelist exists in code** — the whitelist is data-driven, see §2.5.
 
-    @Override
-    public void render(
-        ForgeGui forgeGui,
-        GuiGraphics graphics,
-        float partialTick,
-        int screenWidth,
-        int screenHeight
-    ) {
-        Minecraft minecraft = Minecraft.getInstance();
+### 2.5 `com.dragonminez.common.config.CombatConfig` / `CombatConfig$KiWeaponConfig`
 
-        if (minecraft.player == null || minecraft.level == null) return;
-        if (minecraft.options.hideGui) return;
-        if (!XenoClientConfig.xenoHudEnabled.get()) return;
-        if (!XenoHudConfig.visible()) return;
+```java
+private Map<String, CombatConfig$KiWeaponConfig> kiWeaponsConfig;
+public CombatConfig$KiWeaponConfig getKiWeaponConfig(String);
+public List<String> getKiWeaponTypes();   // keySet() of kiWeaponsConfig
+```
+Default shipped config (`data/dragonminez/previousConfigs/combat.json`, key `kiWeaponsConfig`)
+defines exactly `scythe`, `clawlance`, `blade`, all with `forcedColor: "#FFFFFF"` (meaning: by
+default, no forced tint — the weapon uses the character's ki/aura color).
 
-        XenoHudSnapshot snapshot = XenoHudSnapshotFactory.capture(minecraft);
+**Separately, and this is the part to double check before building a type picker:** the jar
+physically only ships matching render assets (geo model + texture) for these three:
+```
+assets/dragonminez/geo/weapons/kiweapon_blade.geo.json
+assets/dragonminez/geo/weapons/kiweapon_clawlance.geo.json
+assets/dragonminez/geo/weapons/kiweapon_scythe.geo.json
+assets/dragonminez/textures/entity/weapons/kiweapon_{blade,clawlance,scythe}.png
+```
+`CombatConfig`'s constant pool also references additional keys like `coral_blade`/`twin_blade`
+(damage-balance config entries) that do **not** have a matching geo/texture pair in the jar.
+**UNCONFIRMED** whether those are pure damage-formula aliases with no visual asset, or map onto
+one of the three existing models under an alias. Whatever type value you expose in the NPC GUI
+cycle button / script API, constrain it to `blade` / `clawlance` / `scythe` unless you've confirmed
+otherwise — anything else will silently render nothing (see gate #8 below, no crash either way).
 
-        int x = XenoHudConfig.x();
-        int y = XenoHudConfig.y();
-        float scale = XenoHudConfig.scale();
+### 2.6 Real player activation flow — `com.dragonminez.common.network.C2S.SelectKiWeaponC2S`
 
-        graphics.pose().pushPose();
-        try {
-            graphics.pose().translate(x, y, 0.0F);
-            graphics.pose().scale(scale, scale, 1.0F);
+Reconstructed verbatim from bytecode (`handle` → two lambdas):
+```java
+// server receives SelectKiWeaponC2S(String type):
+ServerPlayer sender = ctx.getSender();
+if (sender == null) return;
+if (sender.hasEffect(MainEffects.STUN)) return;
+StatsData stats = StatsProvider.get(StatsCapability.INSTANCE, sender).orElse(null); // via .ifPresent
+if (stats == null) return;
 
-            view.setSnapshot(snapshot);
-            view.setEditorMode(false);
-            view.setBounds(0, 0, BASE_WIDTH, BASE_HEIGHT, scale);
-            view.render(graphics, partialTick);
-        } finally {
-            graphics.pose().popPose();
-            // Restore any other explicitly modified state.
-        }
-    }
+if (!stats.getSkills().hasSkill("kimanipulation")) return;      // skill must already be unlocked
+List<String> validTypes = ConfigManager.getCombatConfig().getKiWeaponTypes();
+if (!type.isEmpty() && !validTypes.contains(type.toLowerCase())) return;
+
+boolean wasActive = stats.getSkills().isSkillActive("kimanipulation");
+String currentType = stats.getStatus().getKiWeaponType();
+if (wasActive && currentType != null && currentType.equalsIgnoreCase(type)) {
+    stats.getSkills().setSkillActive("kimanipulation", false);   // re-selecting same type = toggle OFF
+} else {
+    stats.getStatus().setKiWeaponType(type.toLowerCase());
+    if (!wasActive) stats.getSkills().setSkillActive("kimanipulation", true);
 }
+sender.refreshDimensions();
+NetworkHandler.sendToTrackingEntityAndSelf(new StatsSyncS2C(sender), sender);
 ```
+This is what a *real player* does. It's a useful reference for expected semantics (re-picking the
+active type turns it off), but the NPC path doesn't need to replicate this packet — it should just
+call `Skills.registerDefaultSkill` + `setSkillActive` + `Status.setKiWeaponType` directly on the
+proxy's `StatsData` inside `NpcFullDmzRenderer` (see §5.4).
 
-Replace config accessors with the repository's actual API. Preserve the current overlay registration instance pattern.
+There is **no dedicated `KiManipulation` class** anywhere in the jar — `"kimanipulation"` is a pure
+data-driven skill id defined in `data/dragonminez/previousConfigs/skills.json`, with no per-tick
+server logic, no separate level-requirement class. Level gating (if any) is purely
+`Skill.level`/`Skill.isActive`, and `isSkillActive` only checks the boolean flag, not level.
 
----
+### 2.7 The actual render gate — `com.dragonminez.client.render.layer.DMZWeaponsLayer.renderForBone(...)`
 
-## 11. Performance Rules
+Full decompiled source was produced this session
+(`com/dragonminez/client/render/layer/DMZWeaponsLayer.class` → Vineflower). Gate, in exact order:
 
-The implementation must not:
+1. Bone name must be `"right_arm"` or `"left_arm"`, else skip entirely (this layer never touches
+   any other bone).
+2. `animatable.isSpectator()` → skip if true.
+3. `StatsProvider.get(StatsCapability.INSTANCE, animatable)` must resolve non-null `StatsData`.
+4. `stats.getSkills().isSkillActive("kimanipulation")` must be `true`.
+5. `stats.getStatus().getKiWeaponType()` must be non-null and not `equalsIgnoreCase("none")`.
+6. **`animatable.getMainHandItem().isEmpty()` must be `true`.** If the entity is holding *any*
+   item in its main hand, the ki weapon does not render — same as a real player. Since
+   `ProxyPlayer.getItemBySlot(EquipmentSlot)`
+   (`src/main/java/net/bullettrain/xenopixelsmod/client/compat/npc/NpcFullDmzRenderer.java:76-78`)
+   forwards to `owner.getItemBySlot(slot)`, **a CustomNPC's real held main-hand item will suppress
+   its ki weapon**, exactly like a player. Decide/ask whether NPCs with `kiWeaponOn` should have
+   their configured held item forced empty, or whether this exclusivity should just be documented
+   as expected (matching real player behavior) — not something to silently "fix" without a product
+   decision.
+7. `animatable.getMainArm() == HumanoidArm.RIGHT` is compared against which bone is being
+   processed, so the model only attaches to the matching arm.
+8. Model/texture are resolved via `ResourceLocation`s built from `type.toLowerCase()`:
+   `dragonminez:geo/weapons/kiweapon_<type>.geo.json` /
+   `dragonminez:textures/entity/weapons/kiweapon_<type>.png`, existence-checked through
+   `Minecraft.getResourceManager().getResource(...)`. Missing either → silent no-render, no crash.
+   The bone name inside that baked model is `kiweapon_<type>`.
+9. Arm-pivot math for regular vs. Oozaru bodies (relevant to §6):
+   ```java
+   private static final float[] HUMAN_ARM_RIGHT = {-5.0F, 22.0F, 0.0F};
+   private static final float[] HUMAN_ARM_LEFT  = { 5.0F, 22.0F, 0.0F};
+   private static final float[] OOZARU_ARM_RIGHT = {-12.0F, 74.0F, 0.0F};
+   private static final float[] OOZARU_ARM_LEFT  = { 21.0F, 74.0F, 0.0F};
+   // if isOozaru: translate to oozaruPivot/16, scale by 3.8, translate back by -humanPivot/16
+   ```
+10. Rendering itself: `bufferSource.getBuffer(ModRenderTypes.energy2(texture))`, then
+    `this.getRenderer().renderRecursively(poseStack, animatable, targetBone, weaponRenderType,
+    bufferSource, vertexConsumer, true, partialTick, packedLight, OverlayTexture.NO_OVERLAY,
+    ARGB32.colorFromFloat(0.65F, r, g, b))` — the standard GeckoLib recursive-bone render call,
+    using the **same `poseStack`/`bufferSource` the rest of the player model renders with.**
 
-- Build a new widget tree every frame.
-- Create new `ResourceLocation` objects every frame.
-- Reload textures every frame.
-- Repeatedly reflect into DragonMineZ per child widget.
-- Allocate lists for stamina segments every frame.
-- Log every frame.
-- Recalculate static UV regions every frame.
+### 2.8 The render pipeline for the glow itself — `com.dragonminez.client.render.util.ModRenderTypes.energy2(...)`
 
-Recommended lifecycle:
-
-- Construct widget tree once.
-- Update scalar values each frame.
-- Rebuild only when layout/theme/resource state changes.
-- Cache static texture objects.
-- Keep snapshot allocation minimal; a single small immutable record per frame is acceptable, but a mutable reusable frame model may be used if profiling shows allocation pressure.
-
-Profile before introducing complicated caches.
-
----
-
-## 12. Compatibility Test Matrix
-
-### Core environments
-
-- Forge client with required mods
-- Integrated single-player server
-- Dedicated Forge server
-- Multiplayer client connection
-
-### Display cases
-
-- 1280×720 window
-- 1920×1080 window
-- Ultrawide window if available
-- GUI scale 1
-- GUI scale 2
-- GUI scale 3
-- GUI scale Auto
-- Fullscreen toggle during play
-- Window resize during play
-
-### Player states
-
-- Fresh join before all data packets arrive
-- Normal combat
-- Taking damage rapidly
-- Healing
-- Ki charging and draining
-- Stamina spending and recovery
-- Transformation state changes
-- Death screen and respawn
-- Spectator mode where applicable
-- Dimension change
-- Logout to title and reconnect
-
-### HUD behavior
-
-- F1/hide GUI
-- Xeno HUD enabled/disabled
-- HUD visible/hidden config
-- Position editing
-- Scale editing
-- Reset to defaults
-- Technique selection
-- Technique cooldown
-- Modifier-key states
-- DragonMineZ original HUD suppression
-- Resource reload with `F3+T`
-
-### Rendering compatibility
-
-- Vanilla rendering
-- Embeddium if present in the pack
-- Oculus without shader
-- Oculus with the pack's supported shader configuration
-- No clipping, stencil corruption, or overlay depth leakage
-
-Document any shader combination that cannot be supported rather than hiding the issue.
-
----
-
-## 13. Build and Validation Commands
-
-Use the repository wrapper.
-
-### Linux/macOS
-
-```bash
-./gradlew clean compileJava
-./gradlew runClient
-./gradlew runServer
-./gradlew build
+Decompiled fully this session. `energy2` is:
+```java
+create("energy2", DefaultVertexFormat.NEW_ENTITY, Mode.QUADS, 256, false, true,
+   CompositeState.builder()
+      .setShaderState(RenderStateShard.RENDERTYPE_EYES_SHADER)   // a VANILLA shader (enderman eyes)
+      .setTextureState(new TextureStateShard(texture, true, true))
+      .setTransparencyState(TRANSLUCENT_TRANSPARENCY)
+      .setCullState(NO_CULL)
+      .setWriteMaskState(COLOR_DEPTH_WRITE)
+      .setOverlayState(OVERLAY)
+      .createCompositeState(false));
 ```
+This is a **normal `RenderType` fed through the standard `MultiBufferSource` pipeline**, using a
+vanilla-shipped shader Iris already ships a gbuffer program for by convention (spider/enderman
+eyes). This is structurally **different** from how the aura is drawn.
 
-### Windows
+Also checked `com.dragonminez.client.render.util.IrisCompat` (decompiled fully): it is **only**
+an `isShaderPackInUse()` detector via reflection against `IrisApi` — no RenderType registration
+helpers, no other Iris-specific compat surface exists in DMZ anywhere.
 
-```powershell
-gradlew.bat clean compileJava
-gradlew.bat runClient
-gradlew.bat runServer
-gradlew.bat build
-```
+## 3. Why the aura's fix does NOT obviously transfer here — read before touching Iris code
 
-### Useful searches
+For contrast, the aura fix already shipped in this mod
+(`src/main/java/net/bullettrain/xenopixelsmod/client/compat/npc/NpcAuraClient.java`) works around
+a completely different problem: it does a **raw `VertexBuffer.drawWithShader(...)` call inside a
+`RenderLevelStageEvent.AFTER_LEVEL` handler**, entirely outside the normal entity-render
+`MultiBufferSource` pipeline. That needed:
+- `mc.getMainRenderTarget().bindWrite(false)` before drawing, because a shader pack's own passes
+  between `AFTER_ENTITIES` and `AFTER_LEVEL` can leave a different render target bound (line 125).
+- Reconstructing the camera pose manually from `camera.getXRot()/getYRot()` instead of trusting
+  `event.getModelViewMatrix()`, **gated behind `IrisCompat.isShaderPackInUse()`** (lines 156-163),
+  because Iris replaces/transforms that matrix in a way that broke the naive approach.
 
-```bash
-rg -n "icyllis\\.modernui|ModernUI|modernui_" .
-rg -n "com\\.lowdragmc\\.lowdraglib" src/main/java
-rg -n "XenoHudOverlay|XenoTechniqueHotbarOverlay|renderHud" src/main/java
-rg -n "dragonminez:beam_clash_hud|registerAbove|registerAboveAll" src/main/java
-```
+**Ki weapons render inside the normal GeckoLib entity-render pass** (§2.7 point 10 — standard
+`poseStack`/`bufferSource`, not a separate `RenderLevelStageEvent` draw). There is no evidence yet
+that the same render-target-rebind or camera-matrix-reconstruction problem applies here — that
+class of bug is specific to code that manually bypasses the normal pipeline, which `DMZWeaponsLayer`
+does not do.
 
-### JAR inspection
+**Do not port the aura's fix mechanically.** Instead:
+1. Get a real player (or an NPC, once §5 is done) with `kimanipulation` active and a valid
+   `kiWeaponType` set, load an actual Iris shader pack, and **observe the real symptom** —
+   invisible? black/unlit? wrong color? actually fine already? (Nobody has observed this yet this
+   session — the user said "not sure" when asked.)
+2. Only once the actual failure mode is known, decide the fix. Plausible causes worth checking,
+   roughly in order of how well they fit a vanilla-shader + GeoRenderLayer render path: (a) some
+   shader packs override `gbuffers_spidereye`/similar vanilla-shader gbuffer programs in a way that
+   assumes the standard `Entity`/`Player` bone hierarchy and doesn't expect this to run on a
+   synthetic/aliased player proxy or GeckoLib's animation stack; (b) an ordering issue between
+   GeckoLib's render layers and Iris's shadow/gbuffer pass; (c) something entirely unrelated to
+   Iris and actually a `DMZWeaponsLayer` bug that just happens to be more visible/less visible with
+   shaders on (e.g. lighting-dependent). Don't commit to a hypothesis without observing first.
 
-```bash
-jar tf build/libs/*.jar | sort
-```
+## 4. Confirmed integration points in this mod's NPC pipeline (for the toggle feature)
 
-Confirm that:
+All of the following comes from a fresh, full read of each file this session — file paths and
+line numbers are accurate as of this handoff, but re-read before editing since other agents may
+have touched these files since.
 
-- XenoPixels classes and assets are present.
-- ModernUI is not nested after migration.
-- LDLib is not nested unless bundling was explicitly approved.
-- No development-only source or debug artifact is included.
+### 4.1 `NpcCombatProfile.java` (563 lines) — where the new fields go
 
----
+Combat-adjacent visual toggles live directly on this class (parallel to `haloOn`, `auraOn`), **not**
+on `NpcDmzAppearance` — that class's own javadoc (lines 8-9) states it's a "player-independent
+subset" of purely cosmetic/body-shape data and that "combat/form history deliberately stays in
+`NpcCombatProfile`." Add:
+- Two new fields, e.g. `boolean kiWeaponOn` and `String kiWeaponType` (default `"blade"` to match
+  DMZ's own `Status` default, §2.3), following the exact existing convention: a `TAG_KI_WEAPON_ON`
+  / `TAG_KI_WEAPON_TYPE` constant each (pattern at lines 33-74), a read line in `fromTag()` (151-244)
+  with a `tag.contains(...)` guard, a write line in `writeTag()` (268-321).
+- **Also add both to `visualOptionsTag()` (486-505) / `applyVisualOptions()` (507-527)** — this is
+  the *compact* NBT subset that actually reaches every nearby client via
+  `NpcAppearancePacket`/`NpcAppearanceFx` (see §4.2). It already carries `auraOn`/`haloOn`/rocks/
+  sparking/lightning — a ki-weapon toggle is the same category of live combat-visual state and
+  belongs there, not just in the full-profile NBT used only by the editor's save/load.
+- Bump `CURRENT_SCHEMA` from `4` to `5` (line 31) — this repo's established convention whenever a
+  new persisted field is added (see existing schema-gated branches at lines 174, 220).
 
-## 14. AI Reporting Format After Each Phase
+### 4.2 Client sync — no wire-format changes needed
 
-The coding AI must report:
+- `NpcAppearancePacket.java` carries `visualOptions` as an **opaque `CompoundTag`**
+  (`buf.writeNbt`/`readNbt`, lines ~78-81/100-101) — it's exactly `NpcCombatProfile.
+  visualOptionsTag()`. Adding fields to that tag requires **zero changes** to the packet's
+  constructor, `encode()`, or wire format.
+- `NpcAppearanceClient.java`'s `State` record already carries the whole `CompoundTag
+  visualOptions()` verbatim (no per-field unpacking) — no changes needed here either.
+- `NpcAppearanceFx.java`'s `packet(LivingEntity)` builds the packet straight from
+  `NpcCombatProfile.read(living).visualOptionsTag()` — automatically includes new tags.
+- `ModNetwork.java`: `PROTOCOL` is currently `"45"`. **Convention in this repo (see its own
+  javadoc changelog) is to bump `PROTOCOL` and add a changelog line even for NBT-content-only
+  changes**, despite no encoder/decoder method changing. Bump to `"46"` with a new changelog line
+  describing the ki-weapon toggle addition.
 
-```markdown
-## Phase N Result
+### 4.3 `NpcFullDmzRenderer.java` (492 lines) — where to drive the proxy's `StatsData`
 
-### Files changed
-- path/to/file: concise reason
+- In `render()` (lines 91-134): right next to the existing
+  `stats.getStatus().setForceHalo(visual.haloOn);` (line 110), after `visual` (a `NpcCombatProfile`
+  from `visualProfile(state)`, line 108) is available, add:
+  ```java
+  stats.getSkills().registerDefaultSkill("kimanipulation", 1); // must exist before setSkillActive works (§2.2)
+  stats.getSkills().setSkillActive("kimanipulation", visual.kiWeaponOn);
+  if (visual.kiWeaponOn) stats.getStatus().setKiWeaponType(
+          visual.kiWeaponType.isBlank() ? "blade" : visual.kiWeaponType.toLowerCase());
+  ```
+  (Pick the actual `maxLevel` argument deliberately — `registerDefaultSkill`'s second argument only
+  affects `Skill.maxLevel`, which nothing in the render-gate checks per §2.7, so any positive value
+  works; `1` is the safe minimal choice unless something else reads `getMaxSkillLevel`.)
+- Same pattern in `renderPreview()` (lines 137-218), next to
+  `stats.getStatus().setForceHalo(visualProfile(state).haloOn);` (line 155), so the appearance
+  editor's live preview shows the weapon too.
+- `visualProfile(NpcAppearanceClient.State)` (lines 438-456; calls `applyVisualOptions`, line 441)
+  will expose `visual.kiWeaponOn`/`visual.kiWeaponType` automatically once §4.1 is done.
+- Remember §2.7 gate #6: the NPC's real held main-hand item (forwarded through
+  `ProxyPlayer.getItemBySlot`) will suppress the weapon exactly like a player — decide the product
+  behavior here (see §2.7).
 
-### Behavior preserved
-- item
+### 4.4 `GuiNpcDmzAppearance.java` (475 lines) — GUI widget
 
-### Behavior added
-- item
+Add a new block inside `initStyle(...)` (lines 158-171), alongside the existing halo/aura-rocks/
+sparking/lightning toggles:
+- Reuse `toggle(id, label, x, y, boolean value)` (lines 173-176) for `kiWeaponOn` — same helper
+  already used for `ID_HALO`/`ID_AURA_ON`/`ID_ROCKS`/`ID_SPARKING`/`ID_LIGHTNING`.
+- For `kiWeaponType`, reuse the same single-button-cycle pattern `ID_MODE` already uses for
+  `NpcDmzAppearance.Mode.next()` (button relabeled to the current enum name, handled in
+  `buttonEvent`, line 211) — either add a tiny enum or just cycle a fixed `String[]{"blade",
+  "clawlance", "scythe"}` index, per §2.5's asset-backed whitelist.
+- New `ID_*` constants go in the existing block (lines 73-79); wire into `buttonEvent(...)`
+  (205-262, mutate `draft` then fall through to `preview(draft); init();`) and into `pull()`
+  (287-312, read widget state back into `draft` before each click/blur) exactly like the existing
+  toggles.
+- `ID_APPLY` (249-254) already sends the full profile via `NpcProfileSavePacket` — no change needed
+  there beyond the new fields existing on `NpcCombatProfile`.
 
-### Commands run
-- command: PASS/FAIL
+### 4.5 `NpcXenoScriptApi.java` (254 lines) — script API
 
-### Manual tests
-- test: PASS/FAIL/NOT RUN
+- `VERSION` is currently `"5"` (line 15) — bump to `"6"` following the same convention as
+  `ModNetwork.PROTOCOL`.
+- Add `setKiWeaponOn(ICustomNpc npc, boolean on)` using the existing `mutate(ICustomNpc, ProfileEdit)`
+  helper (lines 227-228), the exact one-liner pattern already used for `setHalo`/`setAuraRocks`/
+  `setAuraSparking`/`setAuraLightning` (lines 75-78):
+  ```java
+  public boolean setKiWeaponOn(ICustomNpc npc, boolean on) {
+      return mutate(npc, p -> p.kiWeaponOn = on);
+  }
+  ```
+- Add `setKiWeaponType(ICustomNpc npc, String type)` — validate against the asset-backed whitelist
+  (`blade`/`clawlance`/`scythe`, §2.5) before mutating and return `false` on rejection, following
+  `setTailColor`'s validate-then-reject-on-bad-input style (lines 81-87), rather than
+  `setHairCode`'s no-validation style (lines 223-225) — an invalid ki-weapon type silently renders
+  nothing client-side (§2.7 point 8), so failing loudly in the script API is more useful to script
+  authors than accepting garbage.
+- Add `kiWeaponOn`/`kiWeaponType` entries to `getProfile(ICustomNpc npc)`'s read-side map dump
+  (lines 27-50), parity with the existing `out.put("halo", p.haloOn)` (line 39).
 
-### Known issues
-- issue or "None"
+## 5. Suggested implementation order
 
-### Next phase
-- exact next task
-```
+1. `NpcCombatProfile.java`: add the two fields + NBT plumbing + schema bump (§4.1).
+2. `ModNetwork.java`: bump `PROTOCOL` + changelog line (§4.2 — purely a version/documentation bump,
+   no wire-format code changes needed elsewhere).
+3. `NpcFullDmzRenderer.java`: drive the proxy's `Skills`/`Status` in `render()`/`renderPreview()`
+   (§4.3). Compile and get an NPC's DMZ profile toggled on via a temporary hardcoded value or a
+   quick script call, and **observe whether it renders and where it's positioned** before writing
+   any GUI/script plumbing — this is the step that will surface the position/scale question in §6
+   for real, instead of guessing at it.
+4. `GuiNpcDmzAppearance.java`: GUI toggle + type cycle (§4.4).
+5. `NpcXenoScriptApi.java`: script API methods + version bump (§4.5).
+6. Only after step 3 shows real in-game rendering: load an actual Iris shader pack and observe
+   whether ki weapons (on a player first — simpler repro, no NPC plumbing needed — then on an NPC)
+   actually have a shader problem at all, and what it looks like, before writing any Iris-specific
+   code (§3).
 
-Do not claim a launch or visual test passed unless it was actually run.
+## 6. Ki-weapon position/scale on NPCs — not yet observed, don't guess
 
----
+The user expects the ki weapon will need the same kind of NPC-size-aware correction the aura and
+hair needed. Relevant facts, but **no conclusion yet** since nothing has rendered on an NPC so far:
 
-## 15. Ready-to-Use Coding-Agent Prompt
+- `NpcFullDmzRenderer.render()` (line ~126-128) already scales the **entire** pose before handing
+  off to DMZ's renderer: `float npcScale = Math.max(0.05f, NpcDisplayApply.getSize(owner) /
+  5.0f); pose.scale(npcScale, npcScale, npcScale);` — since `DMZWeaponsLayer.renderForBone` runs
+  *inside* that same already-scaled `poseStack`/render tree (§2.7 point 10), the weapon may well
+  inherit correct NPC scaling "for free," unlike the aura (a separate raw draw call in a totally
+  different event, which is why it needed its own explicit size math in `NpcAuraClient.
+  cnpcSizeMul()`) or the hair (which hit a *different* bug entirely — a vanilla `scale(-1,-1,1)`
+  mirror quirk in `LivingEntityRenderer.setupRotations()` that GeckoLib doesn't replicate).
+- The Oozaru-specific pivot correction in `DMZWeaponsLayer` (§2.7 point 9,
+  `HUMAN_ARM_RIGHT/LEFT` vs `OOZARU_ARM_RIGHT/LEFT`) is keyed off `character.isOozaruCached()` —
+  this should already work for an NPC in an Oozaru form the same way it works for a player, since
+  it reads off the same synced `Character` object (`syncCharacter()` already sets `character.
+  setRace`/form data every frame).
+- **Do the implementation in §5 step 3 first, then look at an actual NPC with a ki weapon
+  materialized in-game.** If it's already positioned correctly, there's nothing to fix here and
+  this section can be closed out as "not a bug." If it's off, diagnose the actual observed
+  displacement (too high/low/wrong scale/detached from the hand) against the pivot math in §2.7
+  point 9 and `NpcDisplayApply.getSize()`'s actual value range, rather than assuming it needs the
+  same billboard-style fix the aura did — that fix targeted a structurally different rendering
+  path.
 
-Copy the following prompt into the coding AI while it has the repository open:
+## 7. Verification checklist
 
-```text
-You are implementing the XenoPixels LDLib HUD migration described in plan.md.
-
-Work only on the next incomplete phase. Read plan.md completely before editing.
-Inspect the current repository and exact dependency source before writing code.
-Never invent LDLib 1.0.52 methods or constructors; verify every API against the
-resolved source JAR or the official LDLib-MultiLoader 1.20.1 source.
-
-Preserve Forge IGuiOverlay registration and ordering, DragonMineZ stat adapters,
-networking, fallback behavior, HUD configuration, HUD editor behavior, technique
-hotbar behavior, and DragonMineZ HUD suppression. This is a rendering migration,
-not a gameplay rewrite.
-
-Keep all Minecraft client and LDLib GUI classes client-only. Do not add mixins
-unless a documented blocker makes Forge events insufficient. Do not update
-unrelated dependency versions.
-
-Before editing:
-1. Show the relevant existing files and summarize their current responsibilities.
-2. Run or report the current compile status.
-3. State the smallest patch for this phase.
-
-While editing:
-1. Make minimal coherent changes.
-2. Reuse the existing package root net.bullettrain.xenopixelsmod.
-3. Avoid duplicate replacement classes.
-4. Do not build widgets or ResourceLocations every frame.
-5. Keep one shared render path for gameplay and editor preview.
-6. Preserve existing configuration keys when possible.
-
-After editing:
-1. Run compileJava.
-2. Run build when the phase changes dependencies or metadata.
-3. Run the relevant client/server smoke test when available.
-4. Search for stale imports or dependency references.
-5. Report results using the phase reporting format in plan.md.
-6. Be explicit about tests that were not run.
-
-Stop after the current phase is complete and compiling. Do not silently continue
-into the next phase.
-```
-
----
-
-## 16. Definition of Done
-
-The migration is complete only when all of the following are true:
-
-- XenoPixels uses LDLib 1.0.52 for the new HUD rendering/component layer.
-- Forge still registers and invokes the persistent gameplay overlays.
-- Health, Ki, stamina, portrait, status, and technique UI work with live DragonMineZ data.
-- Existing fallback behavior remains functional during delayed/missing sync.
-- HUD position, scale, visibility, and editor workflow remain functional.
-- DragonMineZ overlay suppression still works.
-- ModernUI source imports, Gradle properties, dependencies, metadata, and nested artifacts are removed.
-- Clean client and dedicated-server builds pass.
-- The HUD works across tested GUI scales and resolutions.
-- Render state is restored after each overlay render.
-- No new per-frame logging or obvious avoidable allocation remains.
-- Required LDLib installation and version are documented.
-- LDLib license/notice requirements have been reviewed for the chosen distribution model.
-- No copied Xenoverse 2 assets are distributed.
-
----
-
-## 17. Rollback Plan
-
-If the LDLib view cannot be made stable:
-
-1. Keep `XenoHudSnapshot` and its tests; this separation benefits the legacy renderer.
-2. Restore the legacy procedural `XenoHudOverlay` as the active renderer.
-3. Remove the LDLib dependency and `mods.toml` entry.
-4. Restore ModernUI only for screens that still require it.
-5. Keep the migration work on a feature branch for later investigation.
-6. Do not ship a partially migrated build with two active HUDs or duplicate library versions.
-
----
-
-## 18. Verified Reference Points
-
-These references were used to prepare this plan:
-
-- XenoPixels repository and `new1` branch:
-  `https://github.com/AgentMelinda/forge-1.20.1-tutorial/tree/new1`
-- XenoPixels build configuration:
-  `https://github.com/AgentMelinda/forge-1.20.1-tutorial/blob/new1/build.gradle`
-- XenoPixels Gradle properties:
-  `https://github.com/AgentMelinda/forge-1.20.1-tutorial/blob/new1/gradle.properties`
-- XenoPixels mod metadata:
-  `https://github.com/AgentMelinda/forge-1.20.1-tutorial/blob/new1/src/main/resources/META-INF/mods.toml`
-- Current Xeno HUD overlay:
-  `https://github.com/AgentMelinda/forge-1.20.1-tutorial/blob/new1/src/main/java/net/bullettrain/xenopixelsmod/client/XenoHudOverlay.java`
-- Current overlay registration:
-  `https://github.com/AgentMelinda/forge-1.20.1-tutorial/blob/new1/src/main/java/net/bullettrain/xenopixelsmod/client/XenoHudRegistration.java`
-- Current technique hotbar overlay:
-  `https://github.com/AgentMelinda/forge-1.20.1-tutorial/blob/new1/src/main/java/net/bullettrain/xenopixelsmod/client/XenoTechniqueHotbarOverlay.java`
-- LDLib 1.20.1 source branch:
-  `https://github.com/Low-Drag-MC/LDLib-MultiLoader/tree/1.20.1`
-- LDLib version/project properties:
-  `https://github.com/Low-Drag-MC/LDLib-MultiLoader/blob/1.20.1/gradle.properties`
-- LDLib Forge build configuration:
-  `https://github.com/Low-Drag-MC/LDLib-MultiLoader/blob/1.20.1/forge/build.gradle`
-- LDLib 1.0.52 Forge distribution and Maven coordinates:
-  `https://modrinth.com/mod/ldlib/version/mc1.20.1-1.0.52-forge`
-
+- `gradlew build --offline` (or `compileJava --offline`) compiles clean after each numbered step
+  in §5.
+- Give a player (or NPC once wired up) the `kimanipulation` skill and a valid `kiWeaponType`;
+  confirm the weapon renders in-hand with an empty main-hand item, and disappears if a real item is
+  placed in that hand (§2.7 gate #6 — expected DMZ behavior, not a bug).
+- Toggle `kiWeaponOn`/cycle `kiWeaponType` from the new GUI section on an NPC in FULL DMZ mode;
+  confirm it updates live in the appearance-editor preview (`renderPreview`) and on the world NPC
+  (`render`), and persists across a relog (NBT round-trip through §4.1).
+- Call the new script methods (`setKiWeaponOn`, `setKiWeaponType`) from a CustomNPCs script and
+  confirm `getProfile(npc)` reflects the change.
+- With an Iris shader pack loaded: observe the real symptom on a player first (§3/§5 step 6)
+  before writing any fix, then re-check on an NPC.
+- Visually confirm ki-weapon position/scale on at least one differently-sized NPC (`NpcDisplayApply.
+  getSize()` != default) and one Oozaru-form NPC, per §6.

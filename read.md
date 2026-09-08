@@ -166,15 +166,15 @@ plan.md
 
 ...
 
-1222   `https://github.com/AgentMelinda/forge-1.20.1-tutorial/blob/new1/src/main/java/net/bullettrain/xenopixelsmod/client/XenoHudOverlay.java`
+1222   `https://github.com/AgentMelinda/XenoPixelsNetwork/blob/1.21.1/src/main/java/net/bullettrain/xenopixelsmod/client/XenoHudOverlay.java`
 
 ...
 
-1224   `https://github.com/AgentMelinda/forge-1.20.1-tutorial/blob/new1/src/main/java/net/bullettrain/xenopixelsmod/client/XenoHudRegistration.java`
+1224   `https://github.com/AgentMelinda/XenoPixelsNetwork/blob/1.21.1/src/main/java/net/bullettrain/xenopixelsmod/client/XenoHudRegistration.java`
 
 ...
 
-1226   `https://github.com/AgentMelinda/forge-1.20.1-tutorial/blob/new1/src/main/java/net/bullettrain/xenopixelsmod/client/XenoTechniqueHotbarOverlay.java`
+1226   `https://github.com/AgentMelinda/XenoPixelsNetwork/blob/1.21.1/src/main/java/net/bullettrain/xenopixelsmod/client/XenoTechniqueHotbarOverlay.java`
 
 README.md
 

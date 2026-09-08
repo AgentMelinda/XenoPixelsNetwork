@@ -59,6 +59,9 @@ public final class CombatFxClient {
     private static float flash;
     private static int flashColor = 0xFFFFFF;
 
+    /** Length of the impact buzz. Short: a hit is a thump, not a hum. */
+    private static final int RUMBLE_TICKS = 4;
+
     private CombatFxClient() {
     }
 
@@ -78,6 +81,12 @@ public final class CombatFxClient {
         Profile profile = Profile.of(packet.kind());
         addShake(strength * profile.shake, packet.dir());
         addFlash(strength * profile.flash, profile.color);
+        // The controller gets the same cue as the screen. This is the right place for it: the
+        // distance falloff above has already been applied, so a fight across the arena buzzes
+        // faintly and one in your face lands properly, with no second notion of "how hard" to
+        // keep in step with the shake and the flash.
+        net.bullettrain.xenopixelsmod.client.pad.XenoPadInput.rumbleImpact(
+                strength * profile.shake, RUMBLE_TICKS);
     }
 
     /**

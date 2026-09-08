@@ -81,6 +81,16 @@ side="CLIENT"
 # so a narrow bound would turn a soft compat hook into a hard boot failure on a differently-
 # versioned build.
 [[dependencies.${mod_id}]]
+# Gamepad support. Optional: everything that touches Controlify lives in client/pad and is reached
+# only through Controlify's own ServiceLoader entrypoint, so with Controlify absent none of those
+# classes is loaded and input behaves exactly as it did before.
+modId="controlify"
+type="optional"
+versionRange="[3.0,)"
+ordering="NONE"
+side="CLIENT"
+
+[[dependencies.${mod_id}]]
 modId="customnpcs"
 type="optional"
 versionRange="[1.21.1,)"
@@ -101,7 +111,7 @@ side="BOTH"
 [[dependencies.${mod_id}]]
 modId="mynpcs"
 type="optional"
-versionRange="[1.21.1,)"
+versionRange="[1.5.0,)"
 ordering="AFTER"
 side="BOTH"
 

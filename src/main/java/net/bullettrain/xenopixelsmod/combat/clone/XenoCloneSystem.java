@@ -36,6 +36,8 @@ public final class XenoCloneSystem {
     /** Live copies per fighter, in formation-slot order. */
     private static final Map<UUID, CloneSplitState<XenoCloneEntity>> SPLIT = new HashMap<>();
     private static final Map<UUID, Set<XenoCloneEntity>> OWNED = new HashMap<>();
+    /** Zanzoken rings, tracked as a group so striking one image disperses the rest. */
+    private static final Map<UUID, List<XenoCloneEntity>> RINGS = new HashMap<>();
 
     /** Server-side lock-on target tracker; receives client sync via CloneTargetPacket. */
     public static final CloneTargetTracker<net.minecraft.world.entity.LivingEntity> TARGET_TRACKER =
@@ -175,6 +177,24 @@ public final class XenoCloneSystem {
         }
     }
 
+    /** Fires clone-owned waves on the same server return as a successful owner wave release. */
+    public static void mirrorKiWave(ServerPlayer owner,
+                                    com.dragonminez.common.stats.techniques.KiAttackData attack,
+                                    float chargeMultiplier) {
+        if (owner == null || attack == null || attack.getKiType()
+                != com.dragonminez.common.stats.techniques.KiAttackData.KiType.WAVE) return;
+        net.minecraft.world.entity.LivingEntity target = lockedTarget(owner);
+        for (XenoCloneEntity clone : List.copyOf(clonesOf(owner))) {
+            if (!CloneCombatBridge.active(clone)) continue;
+            if (target != null && (!CloneCombatBridge.validTarget(owner, target)
+                    || owner.distanceToSqr(target) > CloneCombatPolicy.LEASH * CloneCombatPolicy.LEASH)) {
+                target = null;
+            }
+            net.bullettrain.xenopixelsmod.compat.npc.NpcKiAttackDispatcher.fireMirroredWave(
+                    clone, clone.combatProfile(), attack, chargeMultiplier, target);
+        }
+    }
+
     /** This fighter's mastery of the technique, 0 to {@link CloneFormation#PERFECT_MASTERY}. */
     public static int mastery(ServerPlayer player) {
         if (player == null) return 0;
@@ -227,31 +247,63 @@ public final class XenoCloneSystem {
      *
      * @return how many copies were actually placed
      */
-    public static int encircle(ServerPlayer owner, Entity target, int count, double radius,
-                               int lifetimeTicks) {
-        if (owner == null || target == null || !(owner.level() instanceof ServerLevel level)) return 0;
-        int placed = 0;
-        for (int i = 0; i < Math.max(1, count); i++) {
-            double angle = (2.0 * Math.PI * i) / Math.max(1, count);
-            double x = target.getX() + Math.cos(angle) * radius;
-            double z = target.getZ() + Math.sin(angle) * radius;
+    public static List<XenoCloneEntity> encircle(ServerPlayer owner, Entity target, int count,
+                                                 double radius, int lifetimeTicks, int skipSlot) {
+        List<XenoCloneEntity> placed = new ArrayList<>();
+        if (owner == null || target == null || !(owner.level() instanceof ServerLevel level)) {
+            return placed;
+        }
+        int slots = Math.max(1, count);
+        for (int i = 0; i < slots; i++) {
+            // The dodger stands in one slot themselves, so no image is placed there.
+            if (i == skipSlot) continue;
+            double[] off = CloneFormation.ringOffset(i, slots, radius);
+            double x = target.getX() + off[0];
+            double z = target.getZ() + off[1];
             XenoCloneEntity clone = ModEntities.CLONE.get().create(level);
             if (clone == null) continue;
             // Face the middle of the ring, so every copy is looking at whoever is trapped in it.
-            float yaw = (float) (Math.toDegrees(Math.atan2(target.getZ() - z, target.getX() - x)) - 90.0);
+            float yaw = ringFacing(target, x, z);
             clone.moveTo(x, target.getY(), z, yaw, 0f);
             clone.configure(owner, XenoCloneEntity.SLOT_STATIONARY, lifetimeTicks, 1.0f);
             if (level.addFreshEntity(clone)) {
                 track(clone);
-                placed++;
+                placed.add(clone);
             }
         }
+        if (!placed.isEmpty()) {
+            disperseRing(owner.getUUID());
+            RINGS.put(owner.getUUID(), new ArrayList<>(placed));
+        }
         return placed;
+    }
+
+    /** Yaw that points from a ring slot at whoever is standing in the middle of it. */
+    public static float ringFacing(Entity target, double x, double z) {
+        return (float) (Math.toDegrees(Math.atan2(target.getZ() - z, target.getX() - x)) - 90.0);
+    }
+
+    /**
+     * Drops the whole ring at once.
+     *
+     * <p>Called when any single image is struck: the attacker has committed and guessed, so the
+     * trick has resolved either way and leaving the rest standing would only look like a bug.
+     */
+    public static void disperseRing(UUID ownerId) {
+        List<XenoCloneEntity> ring = RINGS.remove(ownerId);
+        if (ring == null) return;
+        for (XenoCloneEntity clone : ring) {
+            if (clone.isAlive()) clone.discard();
+        }
     }
 
     /** Death and all other removals forfeit the body's remaining health. */
     public static void onClonePopped(XenoCloneEntity clone) {
         if (clone == null || clone.level().isClientSide()) return;
+        List<XenoCloneEntity> ring = RINGS.get(clone.ownerUuid());
+        if (ring != null && ring.remove(clone)) {
+            disperseRing(clone.ownerUuid());
+        }
         CloneSplitState<XenoCloneEntity> state = SPLIT.get(clone.ownerUuid());
         if (state != null) {
             state.remove(clone);
@@ -349,6 +401,7 @@ public final class XenoCloneSystem {
     public static void onServerStopping(net.neoforged.neoforge.event.server.ServerStoppingEvent event) {
         List<XenoCloneEntity> copies = OWNED.values().stream().flatMap(Set::stream).toList();
         SPLIT.clear();
+        RINGS.clear();
         OWNED.clear();
         LAST_MASTERY.clear();
         TARGET_TRACKER.clear();
@@ -360,14 +413,10 @@ public final class XenoCloneSystem {
         if (player == null) return;
         TARGET_TRACKER.forget(player.getUUID());
         SPLIT.remove(player.getUUID());
+        RINGS.remove(player.getUUID());
         LAST_MASTERY.remove(player.getUUID());
         Set<XenoCloneEntity> copies = OWNED.remove(player.getUUID());
         if (copies != null) for (XenoCloneEntity clone : copies) clone.discard();
     }
 
-    /** Broadcasts ki charge percent to all active clones of the given player. */
-    public static void broadcastKiCharge(net.minecraft.server.level.ServerPlayer player, int percent) {
-        for (XenoCloneEntity clone : clonesOf(player)) {
-            clone.setKiChargePercent(percent);
-        }
-    }}
+}

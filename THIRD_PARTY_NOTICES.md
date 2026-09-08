@@ -51,3 +51,19 @@ carries an MPL header, and their source — including our modifications — is d
 this project. The remainder of XenoPixels Network is unaffected and keeps its own licence.
 
 A copy of the MPL-2.0 is available at https://mozilla.org/MPL/2.0/.
+
+## Controlify
+
+`client/pad/` compiles against Controlify (https://modrinth.com/mod/controlify) by isXander to
+provide gamepad support. Only Controlify's public `dev.isxander.controlify.api` surface is used,
+plus `dev.isxander.controlify.rumble` for controller vibration.
+
+Controlify is licensed under the **LGPL-3.0-or-later**. No Controlify code is copied into this
+project and no Controlify binary is bundled or redistributed with it: the dependency is
+compile-only, Controlify is an optional runtime dependency the player installs themselves, and
+the copy staged into `run/mods` by the `installDevPadMods` Gradle task exists only for local
+development. Because XenoPixels merely links against the library and does not incorporate or
+modify it, the LGPL's requirements on derived works are not engaged; the remainder of XenoPixels
+Network keeps its own licence.
+
+A copy of the LGPL-3.0 is available at https://www.gnu.org/licenses/lgpl-3.0.html.

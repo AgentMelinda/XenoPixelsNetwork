@@ -9,7 +9,7 @@
 עם הקוד המלא, טבלאות מושגים והסברים על *למה* עושים כל דבר — ולא רק *איך*.
 
 > 💡 הקוד בדוגמאות תואם את המוד שלנו:
-> [AgentMelinda/forge-1.20.1-tutorial](https://github.com/AgentMelinda/forge-1.20.1-tutorial)
+> [AgentMelinda/XenoPixelsNetwork](https://github.com/AgentMelinda/XenoPixelsNetwork)
 > — package: `net.bullettrain.tutorialmod`, מחלקת פריטים: **`ModsItems`**, MOD_ID: `tutorialmod`.
 >
 > המבנה מבוסס על [Forge Tutorial 1.20.X של Kaupenjoe](https://github.com/Tutorials-By-Kaupenjoe/Forge-Tutorial-1.20.X),
@@ -126,7 +126,7 @@
 
 <div dir="ltr">
 
-Based on our mod [AgentMelinda/forge-1.20.1-tutorial](https://github.com/AgentMelinda/forge-1.20.1-tutorial) · structure from [Forge-Tutorial-1.20.X by Kaupenjoe](https://github.com/Tutorials-By-Kaupenjoe/Forge-Tutorial-1.20.X)
+Based on our mod [AgentMelinda/XenoPixelsNetwork](https://github.com/AgentMelinda/XenoPixelsNetwork) · structure from [Forge-Tutorial-1.20.X by Kaupenjoe](https://github.com/Tutorials-By-Kaupenjoe/Forge-Tutorial-1.20.X)
 
 </div>
 

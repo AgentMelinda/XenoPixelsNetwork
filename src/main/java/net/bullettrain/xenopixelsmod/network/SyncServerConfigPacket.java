@@ -68,6 +68,7 @@ public class SyncServerConfigPacket {
         buf.writeBoolean(d.zanzokenGhostAfterimage);
         buf.writeVarInt(d.zanzokenRingClones);
         buf.writeDouble(d.zanzokenRingRadius);
+        buf.writeVarInt(d.zanzokenRingTicks);
         buf.writeBoolean(d.multiFormEnabled);
         buf.writeVarInt(d.multiFormBodies);
         buf.writeFloat(d.multiFormKiCost);
@@ -240,6 +241,7 @@ public class SyncServerConfigPacket {
         d.zanzokenGhostAfterimage = buf.readBoolean();
         d.zanzokenRingClones = buf.readVarInt();
         d.zanzokenRingRadius = buf.readDouble();
+        d.zanzokenRingTicks = buf.readVarInt();
         d.multiFormEnabled = buf.readBoolean();
         d.multiFormBodies = buf.readVarInt();
         d.multiFormKiCost = buf.readFloat();

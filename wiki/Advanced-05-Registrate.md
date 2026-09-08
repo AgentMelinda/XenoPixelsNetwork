@@ -2,7 +2,7 @@
 
 # 🛠️ מתקדם 05 — מעבר ל-Registrate (פחות JSON ידני)
 
-> מדריך מעשי למוד שלנו: [`AgentMelinda/forge-1.20.1-tutorial`](https://github.com/AgentMelinda/forge-1.20.1-tutorial)
+> מדריך מעשי למוד שלנו: [`AgentMelinda/XenoPixelsNetwork`](https://github.com/AgentMelinda/XenoPixelsNetwork)
 > (`net.bullettrain.tutorialmod`, `ModsItems`).
 >
 > מבוסס על [tterrag1098/Registrate · branch 1.20](https://github.com/tterrag1098/Registrate/tree/1.20).
@@ -674,7 +674,7 @@ public static final ItemEntry<MetalDetectorItem> METAL_DETECTOR =
 - קוד: [github.com/tterrag1098/Registrate/tree/1.20](https://github.com/tterrag1098/Registrate/tree/1.20)
 - Maven: [maven.tterrag.com — Registrate](https://maven.tterrag.com/com/tterrag/registrate/Registrate/)
 - Wiki רשמי (WIP): [Registrate Wiki](https://github.com/tterrag1098/Registrate/wiki)
-- המוד שלנו: [AgentMelinda/forge-1.20.1-tutorial](https://github.com/AgentMelinda/forge-1.20.1-tutorial)
+- המוד שלנו: [AgentMelinda/XenoPixelsNetwork](https://github.com/AgentMelinda/XenoPixelsNetwork)
 
 ---
 
