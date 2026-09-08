@@ -76,48 +76,93 @@ configurations {
 
 repositories {
     mavenCentral()
-    maven {
-        name = 'GeckoLib'
-        url = 'https://dl.cloudsmith.io/public/geckolib3/geckolib/maven/'
-        content { includeGroupByRegex 'software\\.bernie.*' }
+    exclusiveContent {
+        forRepository {
+            maven {
+                name = 'Vendored Minecraft 1.21.1 Metadata'
+                url = layout.projectDirectory.dir('gradle/minecraft-metadata')
+                metadataSources { mavenPom() }
+            }
+        }
+        // NeoForge normally generates this dependency-only module through its mojang-meta
+        // service. Keeping the fixed 1.21.1 descriptor locally makes CI independent of that
+        // service returning 502 while all actual library jars still come from their normal repos.
+        filter { includeModule 'net.neoforged', 'minecraft-dependencies' }
     }
-    maven {
-        name = 'TerraBlender'
-        url = 'https://maven.minecraftforge.net/'
-        content { includeGroup 'com.github.glitchfiend' }
+    exclusiveContent {
+        forRepository {
+            maven {
+                name = 'GeckoLib'
+                url = 'https://dl.cloudsmith.io/public/geckolib3/geckolib/maven/'
+            }
+        }
+        filter { includeGroupByRegex 'software\\.bernie.*' }
     }
-    maven {
-        name = 'Curios'
-        url = 'https://maven.theillusivec4.top/'
+    exclusiveContent {
+        forRepository {
+            maven {
+                name = 'TerraBlender'
+                url = 'https://maven.minecraftforge.net/'
+            }
+        }
+        filter { includeGroup 'com.github.glitchfiend' }
     }
-    maven {
-        name = 'CC Tweaked'
-        url = 'https://maven.squiddev.cc/'
-        content { includeGroup 'cc.tweaked' }
+    exclusiveContent {
+        forRepository {
+            maven {
+                name = 'Curios'
+                url = 'https://maven.theillusivec4.top/'
+            }
+        }
+        filter { includeGroup 'top.theillusivec4.curios' }
     }
-    maven {
-        name = 'Xaero'
-        url = 'https://chocolateminecraft.com/maven/'
-        content {
+    exclusiveContent {
+        forRepository {
+            maven {
+                name = 'CC Tweaked'
+                url = 'https://maven.squiddev.cc/'
+            }
+        }
+        filter {
+            includeGroup 'cc.tweaked'
+            includeGroup 'org.squiddev'
+        }
+    }
+    exclusiveContent {
+        forRepository {
+            maven {
+                name = 'Xaero'
+                url = 'https://chocolateminecraft.com/maven/'
+            }
+        }
+        filter {
             includeGroup 'xaero.map'
             includeGroup 'xaero.lib'
         }
     }
-    maven {
-        name = 'Create'
-        url = 'https://maven.createmod.net'
-        content {
+    exclusiveContent {
+        forRepository {
+            maven {
+                name = 'Create'
+                url = 'https://maven.createmod.net'
+            }
+        }
+        filter {
             includeGroup 'com.simibubi.create'
             includeGroup 'net.createmod.ponder'
             includeGroup 'net.createmod.catnip'
             includeGroup 'dev.engine-room.flywheel'
         }
     }
-    maven {
-        // Registrate is not on Create's own maven; this is where Create itself resolves it.
-        name = 'Registrate'
-        url = 'https://maven.ithundxr.dev/snapshots'
-        content { includeGroup 'com.tterrag.registrate' }
+    exclusiveContent {
+        forRepository {
+            maven {
+                // Registrate is not on Create's own maven; this is where Create itself resolves it.
+                name = 'Registrate'
+                url = 'https://maven.ithundxr.dev/snapshots'
+            }
+        }
+        filter { includeGroup 'com.tterrag.registrate' }
     }
     exclusiveContent {
         forRepository {
@@ -128,10 +173,14 @@ repositories {
         }
         filter { includeGroup 'maven.modrinth' }
     }
-    maven {
-        name = 'Sable Companion'
-        url = 'https://maven.ryanhcode.dev/releases'
-        content { includeGroup 'dev.ryanhcode.sable-companion' }
+    exclusiveContent {
+        forRepository {
+            maven {
+                name = 'Sable Companion'
+                url = 'https://maven.ryanhcode.dev/releases'
+            }
+        }
+        filter { includeGroup 'dev.ryanhcode.sable-companion' }
     }
     exclusiveContent {
         forRepository {
