@@ -21,9 +21,6 @@ build
 eclipse
 run
 run-data
-libs/*
-!libs/dragonminez-*.jar
-!libs/Jade-*.jar
 
 # local editors and AI-agent state
 /.agents/
