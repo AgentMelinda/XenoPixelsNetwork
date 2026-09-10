@@ -13,8 +13,12 @@ import net.bullettrain.xenopixelsmod.api.event.StrikeInterceptEvent;
 import net.bullettrain.xenopixelsmod.api.event.ZanzokenEvent;
 import net.bullettrain.xenopixelsmod.api.registry.Bt3RushDefinition;
 import net.bullettrain.xenopixelsmod.api.registry.RushRegistry;
+import net.bullettrain.xenopixelsmod.api.network.AddonNetwork;
+import net.bullettrain.xenopixelsmod.api.network.AddonPacketDirection;
 import net.minecraft.commands.Commands;
+import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.network.chat.Component;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
 import net.neoforged.neoforge.common.NeoForge;
 import net.neoforged.neoforge.event.RegisterCommandsEvent;
@@ -32,6 +36,21 @@ public final class ApiExampleAddon {
     private static final Map<String, AtomicInteger> COUNTS = new ConcurrentHashMap<>();
 
     public ApiExampleAddon() {
+        AddonNetwork.register(
+                ResourceLocation.fromNamespaceAndPath(MOD_ID, "ping"),
+                ExamplePingPacket.class,
+                AddonPacketDirection.SERVERBOUND,
+                ExamplePingPacket::encode,
+                ExamplePingPacket::decode,
+                ApiExampleAddon::handlePing);
+        AddonNetwork.register(
+                ResourceLocation.fromNamespaceAndPath(MOD_ID, "pong"),
+                ExamplePongPacket.class,
+                AddonPacketDirection.CLIENTBOUND,
+                ExamplePongPacket::encode,
+                ExamplePongPacket::decode,
+                ApiExampleAddon::handlePong);
+
         RushRegistry.registerForm(
                 Bt3RushDefinition.standard("api_example_rush", "api_example_rush"),
                 RushRegistry.Precedence.BEFORE_BUILT_INS,
@@ -137,5 +156,38 @@ public final class ApiExampleAddon {
     private static void observed(String key, String detail) {
         int count = COUNTS.computeIfAbsent(key, ignored -> new AtomicInteger()).incrementAndGet();
         LOGGER.info("[xeno-api-example] {} count={} detail={}", key, count, detail);
+    }
+
+    private static void handlePing(ExamplePingPacket packet,
+            net.bullettrain.xenopixelsmod.api.network.AddonPacketContext context) {
+        context.enqueueWork(() -> context.sender().ifPresent(player -> {
+            observed("network.ping", Long.toString(packet.nonce()));
+            AddonNetwork.sendToPlayer(player, new ExamplePongPacket(packet.nonce()));
+        }));
+    }
+
+    private static void handlePong(ExamplePongPacket packet,
+            net.bullettrain.xenopixelsmod.api.network.AddonPacketContext context) {
+        context.enqueueWork(() -> observed("network.pong", Long.toString(packet.nonce())));
+    }
+
+    public record ExamplePingPacket(long nonce) {
+        static ExamplePingPacket decode(FriendlyByteBuf buffer) {
+            return new ExamplePingPacket(buffer.readLong());
+        }
+
+        void encode(FriendlyByteBuf buffer) {
+            buffer.writeLong(nonce);
+        }
+    }
+
+    public record ExamplePongPacket(long nonce) {
+        static ExamplePongPacket decode(FriendlyByteBuf buffer) {
+            return new ExamplePongPacket(buffer.readLong());
+        }
+
+        void encode(FriendlyByteBuf buffer) {
+            buffer.writeLong(nonce);
+        }
     }
 }

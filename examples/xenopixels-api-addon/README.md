@@ -19,6 +19,9 @@ The install task copies only `xenopixels-api-addon-*.jar` into `run/mods`.
 Start a fresh client after installation. The log must contain
 `XenoPixels API example loaded against API version 1`.
 
+On login the client sends `xenopixels_api_example:ping`; the server replies with
+`xenopixels_api_example:pong`. Both sides log their observed packet counter.
+
 Use `/xenoapitest` to display DMZ readiness, race/form reads, available form groups, and counters
 for events observed through real XenoPixels hooks. The addon never reposts those events itself.
 

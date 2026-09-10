@@ -34,5 +34,10 @@
  * {@code com.dragonminez.common.events.DMZEvent}. That is the correct place to hook DragonMineZ
  * itself - this API does not re-fire those events. The {@link net.bullettrain.xenopixelsmod.api.dmz}
  * package only adds the small amount that is genuinely missing.
+ *
+ * <h2>Addon networking</h2>
+ *
+ * <p>The {@link net.bullettrain.xenopixelsmod.api.network} package provides a separate,
+ * namespaced packet registry. Addons must not add packets to XenoPixels' main sequential channel.
  */
 package net.bullettrain.xenopixelsmod.api;

@@ -39,6 +39,8 @@ package net.bullettrain.xenopixelsmod.api;
  *
  * <p>{@code net.bullettrain.xenopixelsmod.api.registry.RushRegistry} takes cinematic rushes for a
  * form or a race. Read its notes on substring matching before choosing your aliases.
+ * Addons that need packets use {@code net.bullettrain.xenopixelsmod.api.network.AddonNetwork}; it
+ * owns a separate protocol and collision-safe namespaced registrations.
  *
  * <h2>Working with DragonMineZ</h2>
  *

@@ -502,7 +502,7 @@ def packagedClientJar = layout.buildDirectory.file("libs/${mod_id}-${mod_version
 tasks.register('buildApiExampleAddon', Exec) {
     group = 'verification'
     description = 'Builds the standalone developer API example against the packaged XenoPixels jar.'
-    dependsOn tasks.named('jarJar')
+    dependsOn tasks.named('jar')
 
     doFirst {
         def wrapper = System.getProperty('os.name').toLowerCase(Locale.ROOT).contains('windows')
