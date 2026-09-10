@@ -1,8 +1,14 @@
-package net.bullettrain.xenopixelsmod.combat;
+package net.bullettrain.xenopixelsmod.api.registry;
 
 import java.util.Arrays;
 
-/** Immutable timing and animation contract for one automatic cinematic rush. */
+/**
+ * Immutable timing and animation contract for one automatic cinematic rush.
+ *
+ * <p>Register instances through {@link RushRegistry}. The constructor validates that impact ticks
+ * are strictly ascending and fall inside the duration, so a malformed definition fails loudly at
+ * registration rather than midway through a rush.
+ */
 public record Bt3RushDefinition(
         String id,
         String animation,

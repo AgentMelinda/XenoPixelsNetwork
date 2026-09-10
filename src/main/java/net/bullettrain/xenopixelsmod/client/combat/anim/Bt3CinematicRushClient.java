@@ -1,7 +1,7 @@
 package net.bullettrain.xenopixelsmod.client.combat.anim;
 
 import net.bullettrain.xenopixelsmod.client.combat.DmzAnimHelperClient;
-import net.bullettrain.xenopixelsmod.combat.Bt3RushDefinition;
+import net.bullettrain.xenopixelsmod.api.registry.Bt3RushDefinition;
 import net.bullettrain.xenopixelsmod.combat.Bt3RushResolver;
 import net.bullettrain.xenopixelsmod.network.packet.Bt3RushStatePacket;
 import net.minecraft.client.Minecraft;

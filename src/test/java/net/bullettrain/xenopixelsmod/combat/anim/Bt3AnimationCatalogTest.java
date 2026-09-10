@@ -2,7 +2,8 @@ package net.bullettrain.xenopixelsmod.combat.anim;
 
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
-import net.bullettrain.xenopixelsmod.combat.Bt3RushDefinition;
+import net.bullettrain.xenopixelsmod.api.registry.Bt3RushDefinition;
+import net.bullettrain.xenopixelsmod.api.registry.RushRegistry;
 import net.bullettrain.xenopixelsmod.combat.Bt3RushResolver;
 import org.junit.jupiter.api.Test;
 
@@ -243,7 +244,7 @@ class Bt3AnimationCatalogTest {
     void cinematicRushProfilesShipWithServerAlignedCosmeticKeyframes() throws IOException {
         JsonObject animations = animations();
         Set<String> expectedTimes = Set.of("0.25", "0.5", "0.8", "1.15");
-        for (Bt3RushDefinition definition : Bt3RushResolver.all()) {
+        for (Bt3RushDefinition definition : RushRegistry.builtIns()) {
             JsonObject animation = animations.getAsJsonObject(definition.animation());
             assertNotNull(animation, definition.animation());
             assertEquals(definition.durationTicks() / 20.0,

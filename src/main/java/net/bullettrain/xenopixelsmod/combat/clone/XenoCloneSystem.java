@@ -9,6 +9,8 @@ import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.phys.Vec3;
+import net.bullettrain.xenopixelsmod.api.event.CloneEvent;
+import net.neoforged.neoforge.common.NeoForge;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.neoforge.event.entity.living.LivingDamageEvent;
@@ -103,6 +105,7 @@ public final class XenoCloneSystem {
         if (!(player.level() instanceof ServerLevel level) || !player.isAlive()) return false;
         int bodies = bodyCount();
         if (bodies <= 1) return false;
+        if (NeoForge.EVENT_BUS.post(new CloneEvent.Split(player, bodies)).isCanceled()) return false;
 
         // Every body starts inside the fighter and travels out to its slot, so the split reads as
         // one person coming apart rather than three copies blinking into existence beside them.
@@ -208,6 +211,7 @@ public final class XenoCloneSystem {
         List<XenoCloneEntity> copies = clonesOf(player);
         CloneSplitState<XenoCloneEntity> state = SPLIT.get(player.getUUID());
         if (state == null || !state.beginRecall()) return;
+        NeoForge.EVENT_BUS.post(new CloneEvent.Reunite(player));
         for (XenoCloneEntity clone : copies) clone.recall();
         player.displayClientMessage(Component.literal("§7Reuniting"), true);
     }

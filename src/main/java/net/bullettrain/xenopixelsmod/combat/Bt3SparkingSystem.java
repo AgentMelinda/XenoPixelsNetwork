@@ -25,6 +25,8 @@ import net.neoforged.neoforge.event.tick.PlayerTickEvent;
 import net.neoforged.neoforge.event.tick.ServerTickEvent;
 import net.neoforged.neoforge.event.entity.living.LivingDamageEvent;
 import net.neoforged.neoforge.event.entity.player.PlayerEvent;
+import net.bullettrain.xenopixelsmod.api.event.SparkingEvent;
+import net.neoforged.neoforge.common.NeoForge;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.Mod;
 
@@ -138,7 +140,11 @@ public final class Bt3SparkingSystem {
         if (player == null || !XenoServerConfig.bt3SparkingEnabled) return;
         if (amount <= 0f) return;
         float cur = getMeter(player.getUUID());
-        METER.put(player.getUUID(), Math.min(100f, cur + amount));
+        float next = Math.min(100f, cur + amount);
+        METER.put(player.getUUID(), next);
+        if (next != cur) {
+            NeoForge.EVENT_BUS.post(new SparkingEvent.MeterChanged(player, cur, next));
+        }
     }
 
     /** @return true if activated */
@@ -189,6 +195,11 @@ public final class Bt3SparkingSystem {
             return false;
         }
         int dur = Math.min(KI_MODE_MAX_TICKS, Math.max(20, durationTicks));
+        // Posted here rather than in tryActivate so the ki-charge route is covered too - this is
+        // the one funnel both activation paths reach, and every check has already passed.
+        SparkingEvent.Activate activation = new SparkingEvent.Activate(player, dur);
+        if (NeoForge.EVENT_BUS.post(activation).isCanceled()) return false;
+        dur = activation.getDurationTicks();
         liftRelease(player);
         applySpeed(player);
         ACTIVE_UNTIL.put(player.getUUID(), serverTick(player) + dur);
@@ -223,6 +234,7 @@ public final class Bt3SparkingSystem {
                     player, net.bullettrain.xenopixelsmod.effect.ModEffects.SPARKING);
         } catch (Throwable ignored) {
         }
+        NeoForge.EVENT_BUS.post(new SparkingEvent.Deactivate(player));
     }
 
     /**

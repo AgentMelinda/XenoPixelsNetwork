@@ -20,6 +20,8 @@ import net.neoforged.neoforge.event.tick.ServerTickEvent;
 import net.neoforged.neoforge.event.entity.living.LivingDamageEvent;
 import net.neoforged.neoforge.event.entity.player.PlayerEvent;
 import net.neoforged.bus.api.EventPriority;
+import net.bullettrain.xenopixelsmod.api.event.ZanzokenEvent;
+import net.neoforged.neoforge.common.NeoForge;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.Mod;
 
@@ -243,12 +245,20 @@ public final class Bt3CombatEvents {
                 ZanzokenWindow.armed(serverTick(defender), ZANZOKEN_UNTIL_TICK.get(defender.getUUID())),
                 event.getSource().getEntity() instanceof LivingEntity,
                 event.getNewDamage() > 0.05f)) {
-            consumeDodgeWindow(defender);
-            event.setNewDamage(0f);
-            if (event.getSource().getEntity() instanceof LivingEntity attacker) {
-                net.bullettrain.xenopixelsmod.network.Bt3CombatPacket.performZanzoken(defender, attacker);
+            LivingEntity dodgedAttacker =
+                    event.getSource().getEntity() instanceof LivingEntity le ? le : null;
+            ZanzokenEvent.Dodge dodge =
+                    new ZanzokenEvent.Dodge(defender, dodgedAttacker, event.getNewDamage());
+            // A cancelled dodge leaves the window armed and falls through to guarding below, so the
+            // blow can still be blocked rather than simply landing clean.
+            if (!NeoForge.EVENT_BUS.post(dodge).isCanceled()) {
+                consumeDodgeWindow(defender);
+                event.setNewDamage(0f);
+                if (dodgedAttacker != null) {
+                    net.bullettrain.xenopixelsmod.network.Bt3CombatPacket.performZanzoken(defender, dodgedAttacker);
+                }
+                return;
             }
-            return;
         }
 
         if (!XenoServerConfig.bt3GuardEnabled || !isGuarding(defender)) return;

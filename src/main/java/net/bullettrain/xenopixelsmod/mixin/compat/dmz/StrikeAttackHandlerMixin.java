@@ -4,7 +4,9 @@ import com.dragonminez.common.stats.StatsCapability;
 import com.dragonminez.common.stats.StatsData;
 import com.dragonminez.common.stats.StatsProvider;
 import com.dragonminez.common.stats.techniques.Techniques;
+import net.bullettrain.xenopixelsmod.api.event.StrikeInterceptEvent;
 import net.bullettrain.xenopixelsmod.combat.technique.XenoSlotTechniques;
+import net.neoforged.neoforge.common.NeoForge;
 import net.minecraft.server.level.ServerPlayer;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
@@ -20,9 +22,10 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
  * resolving the player's stats, so cancelling at HEAD skips targeting, the dash, damage, the ki
  * cost and the cooldown, all of which each Xeno move already owns for itself.
  *
- * <p>An interception rather than an event because {@code DMZEvent.StrikeAttackCastEvent} and
+ * <p>An interception rather than a DMZ event because {@code DMZEvent.StrikeAttackCastEvent} and
  * {@code StrikeAttackFireEvent} are plain {@code Event} subclasses with no cancellation, so
- * listening to either would run the Xeno move <em>and</em> DMZ's strike.
+ * listening to either would run the Xeno move <em>and</em> DMZ's strike. Addons that want a
+ * say here get {@code StrikeInterceptEvent}, which is cancellable and posted just below.
  *
  * <p>{@code require = 0}: if a DMZ version renames this method the slot route quietly stops
  * diverting rather than the mod refusing to load, and the moves stay reachable through their own
@@ -43,6 +46,11 @@ public abstract class StrikeAttackHandlerMixin {
 
         String id = slots[slotIndex];
         if (!XenoSlotTechniques.isSlotTechniqueId(id)) return;
+
+        // Returning without cancelling hands the slot back to DragonMineZ, which is precisely what
+        // a cancelled interception should mean.
+        StrikeInterceptEvent intercept = new StrikeInterceptEvent(player, slotIndex, id);
+        if (NeoForge.EVENT_BUS.post(intercept).isCanceled()) return;
 
         if (XenoSlotTechniques.cast(player, id)) {
             ci.cancel();

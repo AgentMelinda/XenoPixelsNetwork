@@ -16,6 +16,9 @@ import net.minecraft.sounds.SoundSource;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.phys.Vec3;
+import net.bullettrain.xenopixelsmod.api.event.RushEvent;
+import net.bullettrain.xenopixelsmod.api.registry.Bt3RushDefinition;
+import net.neoforged.neoforge.common.NeoForge;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.neoforge.event.entity.living.LivingDamageEvent;
@@ -63,6 +66,10 @@ public final class Bt3CinematicRushSystem {
         if (player.distanceTo(target) > MAX_START_RANGE) return false;
 
         Bt3RushDefinition definition = resolve(player);
+        // The follow-up gate was already consumed above, so cancelling here costs the player their
+        // armed window as though the rush had been attempted - which it was.
+        RushEvent.Start start = new RushEvent.Start(player, target, definition.id());
+        if (NeoForge.EVENT_BUS.post(start).isCanceled()) return false;
         int sequenceId = nextSequenceId++;
         if (nextSequenceId <= 0) nextSequenceId = 1;
         ACTIVE.put(player.getUUID(), new ActiveRush(target.getUUID(), definition, now, sequenceId));
@@ -77,7 +84,12 @@ public final class Bt3CinematicRushSystem {
         if (player == null) return;
         FOLLOWUPS.remove(player.getUUID());
         ActiveRush active = ACTIVE.remove(player.getUUID());
-        if (active != null) sendCancel(player, active);
+        if (active != null) {
+            sendCancel(player, active);
+            Entity raw = player.serverLevel().getEntity(active.targetId());
+            NeoForge.EVENT_BUS.post(new RushEvent.Interrupt(player,
+                    raw instanceof LivingEntity living ? living : null, active.definition().id()));
+        }
     }
 
     @SubscribeEvent
@@ -144,7 +156,10 @@ public final class Bt3CinematicRushSystem {
         float comboStepScale = 1.0f + (4 + index) * 0.12f;
         float multiplier = comboStepScale * XenoServerConfig.comboDamageScale;
         if (finisher) multiplier *= XenoServerConfig.finisherDamageScale;
-        if (!target.hurt(player.damageSources().playerAttack(player), base * multiplier)) return false;
+        float dealt = base * multiplier;
+        if (!target.hurt(player.damageSources().playerAttack(player), dealt)) return false;
+        NeoForge.EVENT_BUS.post(new RushEvent.Impact(
+                player, target, active.definition().id(), index, dealt, finisher));
 
         Vec3 away = target.position().subtract(player.position());
         Vec3 flat = new Vec3(away.x, 0, away.z);
