@@ -1,0 +1,28 @@
+{
+  "formSkillsAdd": [
+    "api_example_forms"
+  ],
+  "skillOfferings": {
+    "whis": [
+      "api_example_forms"
+    ]
+  },
+  "exclusiveFormSkills": {
+    "api_example_forms": [
+      "whis"
+    ]
+  },
+  "skillCosts": {
+    "api_example_forms": {
+      "costs": [
+        1
+      ],
+      "allowedRaces": []
+    }
+  },
+  "nonFormSkillOfferings": {
+    "goku": [
+      "fly"
+    ]
+  }
+}

@@ -63,9 +63,6 @@ public class XenoPixelsMod {
             // both present is a misconfiguration rather than a supported setup.
             installScriptApi("mynpcs", "compat.npc.mynpcs.NpcXenoScriptApi", "My NPCs");
             installScriptApi("customnpcs", "compat.npc.NpcXenoScriptApi", "CustomNPCs");
-            if (net.bullettrain.xenopixelsmod.config.XenoServerConfig.dmzContentBootstrap) {
-                net.bullettrain.xenopixelsmod.dmz.DmzContentBootstrap.installBundledContent();
-            }
             net.bullettrain.xenopixelsmod.combat.technique.XenoRushTechniques.register();
             net.bullettrain.xenopixelsmod.combat.technique.XenoSlotTechniques.register();
             // Sable thruster + moving-sub-level ballistic controls

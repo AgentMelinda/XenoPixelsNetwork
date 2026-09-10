@@ -24,6 +24,10 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -153,7 +157,58 @@ public final class DmzContentBootstrap {
 
     @SubscribeEvent(priority = EventPriority.HIGH)
     public static void onServerStarting(ServerStartingEvent event) {
-        installBundledContent(true);
+        if (!net.bullettrain.xenopixelsmod.config.XenoServerConfig.dmzContentBootstrap) return;
+
+        List<DmzAddonPatchLoader.PatchDocument> addonPatches;
+        try {
+            addonPatches = DmzAddonPatchLoader.discover(event.getServer().getResourceManager());
+        } catch (RuntimeException invalidPatch) {
+            XenoPixelsMod.LOGGER.error("Refusing to modify DragonMineZ config because an addon patch is invalid", invalidPatch);
+            return;
+        }
+
+        Path root = FMLPaths.CONFIGDIR.get().resolve("dragonminez");
+        if (!addonPatches.isEmpty()) {
+            try {
+                backupAffectedFiles(root);
+            } catch (IOException backupFailure) {
+                XenoPixelsMod.LOGGER.error("Refusing addon DMZ patches because the safety backup failed", backupFailure);
+                return;
+            }
+        }
+
+        installBundledContent(false);
+        try {
+            DmzAddonPatchLoader.apply(root.resolve("skills.json"), addonPatches);
+        } catch (RuntimeException | IOException patchFailure) {
+            XenoPixelsMod.LOGGER.error("Addon DMZ patches were not applied; restore from .xenopixels-backups if needed", patchFailure);
+            return;
+        }
+        reloadDmzConfigs();
+    }
+
+    static void backupAffectedFiles(Path root) throws IOException {
+        String stamp = DateTimeFormatter.ofPattern("yyyyMMdd-HHmmss").format(LocalDateTime.now());
+        Path backupRoot = root.resolve(".xenopixels-backups").resolve(stamp);
+        List<Path> affected = new ArrayList<>();
+        affected.add(root.resolve("skills.json"));
+        affected.add(root.resolve("races/saiyan/character.json"));
+        affected.add(root.resolve("races/frostdemon/character.json"));
+        for (String relative : BUNDLED_FORMS) affected.add(root.resolve(relative));
+        for (String relative : OBSOLETE_FORM_FILES) affected.add(root.resolve(relative));
+
+        boolean copied = false;
+        for (Path source : affected) {
+            if (!Files.isRegularFile(source)) continue;
+            Path relative = root.relativize(source);
+            Path target = backupRoot.resolve(relative);
+            Files.createDirectories(target.getParent());
+            Files.copy(source, target, StandardCopyOption.COPY_ATTRIBUTES);
+            copied = true;
+        }
+        if (copied) {
+            XenoPixelsMod.LOGGER.info("Backed up DragonMineZ files before addon patches: {}", backupRoot);
+        }
     }
 
     private static void reloadDmzConfigs() {
