@@ -31,6 +31,12 @@ neoForge {
             gameDirectory = file('run')
             systemProperty 'neoforge.enabledGameTestNamespaces', mod_id
         }
+        apiTestClient {
+            client()
+            gameDirectory = file('run')
+            programArguments.addAll '--quickPlaySingleplayer', 'New World (7)'
+            systemProperty 'neoforge.enabledGameTestNamespaces', mod_id
+        }
         server {
             server()
             gameDirectory = file('run')
@@ -320,6 +326,8 @@ dependencies {
     // into run/mods instead, by installDevShaderMods below.
     add(neoForge.runs.getByName('client').additionalRuntimeClasspathConfiguration.name,
             "maven.modrinth:AANobbMI:${sodium_version_id}")
+    add(neoForge.runs.getByName('apiTestClient').additionalRuntimeClasspathConfiguration.name,
+            "maven.modrinth:AANobbMI:${sodium_version_id}")
     // transitive=false because Modrinth's POM would pull Sodium in behind Iris, and Sodium is
     // already on the client classpath above - FML refuses a mod supplied twice.
     devShaderMods("maven.modrinth:YL57xq9U:${iris_version_id}") { transitive = false }
@@ -524,3 +532,7 @@ tasks.register('installApiExampleAddon', Copy) {
     include 'xenopixels-api-addon-*.jar'
     into layout.projectDirectory.dir('run/mods')
 }
+
+neoForge.runs.getByName('apiTestClient').taskBefore(tasks.named('installDevShaderMods'))
+neoForge.runs.getByName('apiTestClient').taskBefore(tasks.named('installDevPadMods'))
+neoForge.runs.getByName('apiTestClient').taskBefore(tasks.named('installApiExampleAddon'))

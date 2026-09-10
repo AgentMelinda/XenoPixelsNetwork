@@ -10,9 +10,12 @@ From the repository root:
 ```
 ./gradlew buildApiExampleAddon -PofflineMcMeta
 ./gradlew installApiExampleAddon -PofflineMcMeta
+./gradlew runApiTestClient
 ```
 
 The install task copies only `xenopixels-api-addon-*.jar` into `run/mods`.
+`runApiTestClient` installs the addon and client-only development dependencies, then quick-joins
+`New World (7)` so the login ping/pong and server-start patch path can be checked from a fresh log.
 
 ## Runtime verification
 
