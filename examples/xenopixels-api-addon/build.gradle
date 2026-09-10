@@ -1,0 +1,49 @@
+plugins {
+    id 'java'
+    id 'net.neoforged.moddev' version '2.0.143'
+}
+
+group = 'net.bullettrain.xenopixels.example'
+version = '1.0.0'
+
+base {
+    archivesName = 'xenopixels-api-addon'
+}
+
+java {
+    toolchain.languageVersion = JavaLanguageVersion.of(21)
+}
+
+neoForge {
+    version = '21.1.248'
+
+    parchment {
+        minecraftVersion = '1.21.1'
+        mappingsVersion = '2024.11.17'
+    }
+
+    mods {
+        xenopixels_api_example {
+            sourceSet sourceSets.main
+        }
+    }
+}
+
+def xenoPixelsJar = providers.gradleProperty('xenoPixelsJar').map { file(it) }
+def dmzJar = providers.gradleProperty('dmzJar').map { file(it) }
+
+dependencies {
+    compileOnly files(xenoPixelsJar)
+    compileOnly files(dmzJar)
+}
+
+tasks.named('compileJava').configure {
+    doFirst {
+        if (!xenoPixelsJar.get().isFile()) {
+            throw new GradleException("Packaged XenoPixels jar not found: ${xenoPixelsJar.get()}")
+        }
+        if (!dmzJar.get().isFile()) {
+            throw new GradleException("DragonMineZ jar not found: ${dmzJar.get()}")
+        }
+    }
+}

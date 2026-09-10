@@ -495,3 +495,32 @@ publishing {
         maven { url = layout.buildDirectory.dir('repo') }
     }
 }
+
+def apiExampleProjectDir = layout.projectDirectory.dir('examples/xenopixels-api-addon')
+def packagedClientJar = layout.buildDirectory.file("libs/${mod_id}-${mod_version}.jar")
+
+tasks.register('buildApiExampleAddon', Exec) {
+    group = 'verification'
+    description = 'Builds the standalone developer API example against the packaged XenoPixels jar.'
+    dependsOn tasks.named('jarJar')
+
+    doFirst {
+        def wrapper = System.getProperty('os.name').toLowerCase(Locale.ROOT).contains('windows')
+                ? layout.projectDirectory.file('gradlew.bat').asFile.absolutePath
+                : layout.projectDirectory.file('gradlew').asFile.absolutePath
+        commandLine wrapper,
+                '-p', apiExampleProjectDir.asFile.absolutePath,
+                'build',
+                "-PxenoPixelsJar=${packagedClientJar.get().asFile.absolutePath}",
+                "-PdmzJar=${dragonMineZJar.absolutePath}"
+    }
+}
+
+tasks.register('installApiExampleAddon', Copy) {
+    group = 'verification'
+    description = 'Builds and copies the developer API example into run/mods for runtime checks.'
+    dependsOn tasks.named('buildApiExampleAddon')
+    from apiExampleProjectDir.dir('build/libs')
+    include 'xenopixels-api-addon-*.jar'
+    into layout.projectDirectory.dir('run/mods')
+}

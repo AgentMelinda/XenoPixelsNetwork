@@ -1,0 +1,38 @@
+modLoader="javafml"
+loaderVersion="[4,)"
+license="All Rights Reserved"
+
+[[mods]]
+modId="xenopixels_api_example"
+version="1.0.0"
+displayName="XenoPixels API Example"
+authors="XenoPixels Network"
+description='''Runtime verification addon for the XenoPixels developer API.'''
+
+[[dependencies.xenopixels_api_example]]
+modId="neoforge"
+type="required"
+versionRange="[21.1.233,)"
+ordering="NONE"
+side="BOTH"
+
+[[dependencies.xenopixels_api_example]]
+modId="minecraft"
+type="required"
+versionRange="[1.21.1,1.22)"
+ordering="NONE"
+side="BOTH"
+
+[[dependencies.xenopixels_api_example]]
+modId="xenopixelsmod"
+type="required"
+versionRange="[0.3.5-1.21.1,)"
+ordering="AFTER"
+side="BOTH"
+
+[[dependencies.xenopixels_api_example]]
+modId="dragonminez"
+type="required"
+versionRange="[2.1.3,)"
+ordering="AFTER"
+side="BOTH"
