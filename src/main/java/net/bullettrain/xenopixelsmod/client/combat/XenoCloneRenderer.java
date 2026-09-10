@@ -1,6 +1,7 @@
 package net.bullettrain.xenopixelsmod.client.combat;
 
 import net.bullettrain.xenopixelsmod.combat.clone.XenoCloneEntity;
+import net.bullettrain.xenopixelsmod.config.XenoServerConfig;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.model.PlayerModel;
 import net.minecraft.client.model.geom.ModelLayers;
@@ -42,17 +43,33 @@ public class XenoCloneRenderer extends LivingEntityRenderer<XenoCloneEntity, Pla
         // The fighter's real DragonMineZ body, drawn through their own renderer against a proxy
         // identity of this copy's own. Falls straight back to the vanilla model below if the
         // bridge declines, so a copy is never invisible and the frame is never at risk.
+        float alpha = clone.slot() == XenoCloneEntity.SLOT_STATIONARY
+                ? AfterimageFade.alpha(XenoServerConfig.zanzokenGhostFadeMode,
+                        XenoServerConfig.zanzokenGhostAlpha,
+                        clone.tickCount + partialTick, clone.lifetimeTicks())
+                : 1.0f;
+        net.minecraft.client.renderer.MultiBufferSource fadedBuffers = alpha < 0.999f
+                ? new AlphaMultiBufferSource(buffers, alpha) : buffers;
         if (net.bullettrain.xenopixelsmod.client.config.XenoClientConfig.cloneDmzAppearance) {
             Minecraft mc = Minecraft.getInstance();
             Entity owner = mc.level == null ? null : mc.level.getEntity(clone.ownerId());
             if (owner instanceof net.minecraft.world.entity.player.Player player
                     && net.bullettrain.xenopixelsmod.client.compat.npc.NpcFullDmzRenderer
                             .renderPlayerCopy(player, clone, entityYaw, partialTick, pose,
-                                    buffers, packedLight)) {
+                                    fadedBuffers, packedLight)) {
                 return;
             }
         }
-        super.render(clone, entityYaw, partialTick, pose, buffers, packedLight);
+        super.render(clone, entityYaw, partialTick, pose, fadedBuffers, packedLight);
+    }
+
+    @Override
+    protected net.minecraft.client.renderer.RenderType getRenderType(
+            XenoCloneEntity clone, boolean bodyVisible, boolean translucent, boolean glowing) {
+        if (clone.slot() == XenoCloneEntity.SLOT_STATIONARY) {
+            return net.minecraft.client.renderer.RenderType.entityTranslucent(getTextureLocation(clone));
+        }
+        return super.getRenderType(clone, bodyVisible, translucent, glowing);
     }
 
     @Override

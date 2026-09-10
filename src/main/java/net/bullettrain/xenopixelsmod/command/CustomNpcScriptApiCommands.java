@@ -1,5 +1,6 @@
 package net.bullettrain.xenopixelsmod.command;
 
+import net.bullettrain.xenopixelsmod.compat.npc.NpcTypes;
 import com.mojang.brigadier.CommandDispatcher;
 import com.mojang.brigadier.arguments.IntegerArgumentType;
 import com.mojang.brigadier.arguments.StringArgumentType;
@@ -62,14 +63,30 @@ public final class CustomNpcScriptApiCommands {
         return to - from;
     }
 
+    /** The NPC mod whose jar the catalog is read from, and the API path inside it. */
+    private record ApiJar(String modId, String apiPath) {}
+
+    private static final ApiJar[] API_JARS = {
+            new ApiJar("mynpcs", "espi/mynpcs/api/"),
+            new ApiJar("customnpcs", "noppes/npcs/api/"),
+    };
+
     private static List<String> classes(String query) {
+        for (ApiJar candidate : API_JARS) {
+            List<String> found = classes(query, candidate);
+            if (!found.isEmpty()) return found;
+        }
+        return new ArrayList<>();
+    }
+
+    private static List<String> classes(String query, ApiJar source) {
         List<String> out = new ArrayList<>();
         try {
-            var info = FMLLoader.getLoadingModList().getModFileById("customnpcs");
+            var info = FMLLoader.getLoadingModList().getModFileById(source.modId());
             if (info == null) return out;
             Path jar = info.getFile().getFilePath();
             try (ZipFile zip = new ZipFile(jar.toFile())) {
-                zip.stream().filter(e -> e.getName().startsWith("noppes/npcs/api/") && e.getName().endsWith(".class") && !e.getName().contains("$"))
+                zip.stream().filter(e -> e.getName().startsWith(source.apiPath()) && e.getName().endsWith(".class") && !e.getName().contains("$"))
                         .map(e -> e.getName().substring(0, e.getName().length() - 6).replace('/', '.'))
                         .sorted().forEach(name -> {
                             if (query.isBlank() || name.toLowerCase(Locale.ROOT).contains(query.toLowerCase(Locale.ROOT))) out.add("class " + name);
@@ -96,10 +113,20 @@ public final class CustomNpcScriptApiCommands {
     }
 
     private static int show(CommandSourceStack source, String requested, int page) {
-        String name = requested.startsWith("noppes.") ? requested : "noppes.npcs.api." + requested;
+        // A bare name such as "entity.IPlayer" is looked up under whichever NPC mod is installed;
+        // a fully-qualified one is taken as given, so either spelling still works if someone has it
+        // written down from before the fork.
+        String name = requested.startsWith("noppes.") || requested.startsWith("espi.")
+                ? requested : null;
         List<String> rows = new ArrayList<>();
         try {
-            Class<?> type = Class.forName(name, false, Thread.currentThread().getContextClassLoader());
+            Class<?> type = name == null
+                    ? NpcTypes.find("api." + requested)
+                    : Class.forName(name, false, Thread.currentThread().getContextClassLoader());
+            if (type == null) {
+                source.sendFailure(Component.literal("No NPC API class named " + requested));
+                return 0;
+            }
             for (var field : type.getFields()) {
                 if (Modifier.isPublic(field.getModifiers())) rows.add("field " + field.getName() + " : " + field.getType().getTypeName());
             }

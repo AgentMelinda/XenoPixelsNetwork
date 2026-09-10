@@ -1,0 +1,31 @@
+package com.dragonminez.common.network.C2S;
+
+import com.dragonminez.common.quest.PartyManager;
+import com.dragonminez.compat.network.NetworkEvent;
+import java.util.function.Supplier;
+import net.minecraft.network.FriendlyByteBuf;
+import net.minecraft.server.level.ServerPlayer;
+
+public class CreatePartyC2S {
+   public CreatePartyC2S() {
+   }
+
+   public CreatePartyC2S(FriendlyByteBuf ignored) {
+   }
+
+   public void encode(FriendlyByteBuf ignored) {
+   }
+
+   public void handle(Supplier<NetworkEvent.Context> contextSupplier) {
+      NetworkEvent.Context context = contextSupplier.get();
+      context.enqueueWork(() -> {
+         ServerPlayer player = context.getSender();
+         if (player != null) {
+            if (PartyManager.canInvitePlayers(player)) {
+               PartyManager.getOrCreateParty(player);
+            }
+         }
+      });
+      context.setPacketHandled(true);
+   }
+}

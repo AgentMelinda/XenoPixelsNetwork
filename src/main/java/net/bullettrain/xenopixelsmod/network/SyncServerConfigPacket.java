@@ -2,6 +2,7 @@ package net.bullettrain.xenopixelsmod.network;
 
 import net.bullettrain.xenopixelsmod.client.ClientPacketHandlers;
 import net.bullettrain.xenopixelsmod.config.XenoServerConfig;
+import net.bullettrain.xenopixelsmod.util.XenoIdentifierDiagnostics;
 import net.minecraft.network.FriendlyByteBuf;
 import net.neoforged.api.distmarker.Dist;
 import com.dragonminez.compat.network.NetworkEvent;
@@ -23,6 +24,7 @@ public class SyncServerConfigPacket {
         buf.writeBoolean(d.dmzContentBootstrap);
         buf.writeBoolean(d.bt3CombatEnabled);
         buf.writeBoolean(d.bt3ComboEnabled);
+        buf.writeBoolean(d.bt3CinematicRushEnabled);
         buf.writeBoolean(d.bt3VanishEnabled);
         buf.writeBoolean(d.bt3ChaseDashEnabled);
         buf.writeBoolean(d.chaseFlightEnabled);
@@ -37,6 +39,10 @@ public class SyncServerConfigPacket {
         buf.writeBoolean(d.bt3LockCycleEnabled);
         buf.writeBoolean(d.bt3ComboPunchesOnly);
         buf.writeBoolean(d.protectDmzMasters);
+        buf.writeBoolean(d.protectMastersFromCombatKnockback);
+        buf.writeBoolean(d.migrateCustomNpcsWorldData);
+        buf.writeBoolean(d.npcDmzStatsAuthoritative == null || d.npcDmzStatsAuthoritative);
+        buf.writeVarInt(d.npcScriptTickInterval == null ? 1 : d.npcScriptTickInterval);
         buf.writeBoolean(d.bt3RushChainEnabled);
         buf.writeBoolean(d.bt3SonicSwayEnabled);
         buf.writeBoolean(d.bt3UltimateEnabled);
@@ -66,6 +72,8 @@ public class SyncServerConfigPacket {
         buf.writeVarInt(d.zanzokenIFramesTicks);
         buf.writeVarInt(d.zanzokenCooldownTicks);
         buf.writeBoolean(d.zanzokenGhostAfterimage);
+        buf.writeVarInt(d.zanzokenGhostFadeMode == null ? 2 : d.zanzokenGhostFadeMode);
+        buf.writeFloat(d.zanzokenGhostAlpha == null ? 0.55f : d.zanzokenGhostAlpha);
         buf.writeVarInt(d.zanzokenRingClones);
         buf.writeDouble(d.zanzokenRingRadius);
         buf.writeVarInt(d.zanzokenRingTicks);
@@ -81,6 +89,8 @@ public class SyncServerConfigPacket {
         buf.writeFloat(d.sparkingBuildPerHit);
         buf.writeFloat(d.sparkingBuildOnHurt);
         buf.writeVarInt(d.sparkingDurationTicks);
+        buf.writeVarInt(d.sparkingChargeTicks);
+        buf.writeVarInt(d.sparkingCooldownTicks);
         buf.writeFloat(d.sparkingDamageMult);
         buf.writeFloat(d.transformImpactRadius);
         buf.writeFloat(d.transformImpactKnock);
@@ -196,6 +206,7 @@ public class SyncServerConfigPacket {
         d.dmzContentBootstrap = buf.readBoolean();
         d.bt3CombatEnabled = buf.readBoolean();
         d.bt3ComboEnabled = buf.readBoolean();
+        d.bt3CinematicRushEnabled = buf.readBoolean();
         d.bt3VanishEnabled = buf.readBoolean();
         d.bt3ChaseDashEnabled = buf.readBoolean();
         d.chaseFlightEnabled = buf.readBoolean();
@@ -210,6 +221,10 @@ public class SyncServerConfigPacket {
         d.bt3LockCycleEnabled = buf.readBoolean();
         d.bt3ComboPunchesOnly = buf.readBoolean();
         d.protectDmzMasters = buf.readBoolean();
+        d.protectMastersFromCombatKnockback = buf.readBoolean();
+        d.migrateCustomNpcsWorldData = buf.readBoolean();
+        d.npcDmzStatsAuthoritative = buf.readBoolean();
+        d.npcScriptTickInterval = buf.readVarInt();
         d.bt3RushChainEnabled = buf.readBoolean();
         d.bt3SonicSwayEnabled = buf.readBoolean();
         d.bt3UltimateEnabled = buf.readBoolean();
@@ -239,6 +254,8 @@ public class SyncServerConfigPacket {
         d.zanzokenIFramesTicks = buf.readVarInt();
         d.zanzokenCooldownTicks = buf.readVarInt();
         d.zanzokenGhostAfterimage = buf.readBoolean();
+        d.zanzokenGhostFadeMode = buf.readVarInt();
+        d.zanzokenGhostAlpha = buf.readFloat();
         d.zanzokenRingClones = buf.readVarInt();
         d.zanzokenRingRadius = buf.readDouble();
         d.zanzokenRingTicks = buf.readVarInt();
@@ -254,6 +271,8 @@ public class SyncServerConfigPacket {
         d.sparkingBuildPerHit = buf.readFloat();
         d.sparkingBuildOnHurt = buf.readFloat();
         d.sparkingDurationTicks = buf.readVarInt();
+        d.sparkingChargeTicks = buf.readVarInt();
+        d.sparkingCooldownTicks = buf.readVarInt();
         d.sparkingDamageMult = buf.readFloat();
         d.transformImpactRadius = buf.readFloat();
         d.transformImpactKnock = buf.readFloat();
@@ -399,6 +418,10 @@ public class SyncServerConfigPacket {
         for (int i = 0; i < n; i++) {
             String k = buf.readUtf(64);
             int v = buf.readVarInt();
+            if (k == null || k.isBlank()) {
+                XenoIdentifierDiagnostics.reportIfMalformed(k,
+                        "SyncServerConfigPacket intMap key index=" + i);
+            }
             if (k != null && !k.isBlank()) map.put(k.toLowerCase(), v);
         }
         return map;
@@ -410,6 +433,10 @@ public class SyncServerConfigPacket {
         for (int i = 0; i < n; i++) {
             String k = buf.readUtf(256);
             float v = buf.readFloat();
+            if (k == null || k.isBlank()) {
+                XenoIdentifierDiagnostics.reportIfMalformed(k,
+                        "SyncServerConfigPacket formMap key index=" + i);
+            }
             if (k != null && !k.isBlank()) {
                 map.put(k, v);
             }
@@ -435,6 +462,10 @@ public class SyncServerConfigPacket {
         for (int i = 0; i < n; i++) {
             String k = buf.readUtf(256);
             Map<String, Float> inner = readFormMap(buf);
+            if (k == null || k.isBlank()) {
+                XenoIdentifierDiagnostics.reportIfMalformed(k,
+                        "SyncServerConfigPacket nestedFormMap key index=" + i);
+            }
             if (k != null && !k.isBlank()) {
                 map.put(k, inner);
             }

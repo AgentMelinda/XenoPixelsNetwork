@@ -1,0 +1,16 @@
+{
+  "asset_definition": "earth_radar",
+  "ball_set": "earth",
+  "dimensions": [
+    "minecraft:overworld"
+  ],
+  "display_name": "Dragon Radar",
+  "id": "earth_radar",
+  "item_registry_name": "dball_radar",
+  "ranges": [
+    150,
+    300
+  ],
+  "recipe_definition": "earth_radar_recipe",
+  "tooltip_key": "item.dragonminez.dball_radar.tooltip"
+}

@@ -1,0 +1,15 @@
+package com.dragonminez.common.util.lists;
+
+public class FrostDemonForms {
+   public static final String BASE = "";
+   public static final String GROUP_EVOLUTIONFORMS = "evolutionforms";
+   public static final String SECOND_FORM = "second";
+   public static final String THIRD_FORM = "third";
+   public static final String FINAL_FORM = "final";
+   public static final String FULLPOWER = "fullpower";
+   public static final String FIFTH_FORM = "fifth";
+   public static final String GROUP_LEGENDARYFORMS = "legendaryforms";
+   public static final String MECHA = "mecha";
+   public static final String METAL = "metal";
+   public static final String METAL_CORE = "metalcore";
+}

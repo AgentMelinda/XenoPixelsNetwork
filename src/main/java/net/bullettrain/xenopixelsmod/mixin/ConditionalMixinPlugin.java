@@ -21,8 +21,8 @@ public class ConditionalMixinPlugin implements IMixinConfigPlugin {
 
     @Override
     public void onLoad(String mixinPackage) {
-        LOGGER.info("Loaded mixin config plugin for {} (customnpcs={})",
-                mixinPackage, isModLoaded("customnpcs"));
+        LOGGER.info("Loaded mixin config plugin for {} (customnpcs={}, mynpcs={})",
+                mixinPackage, isModLoaded("customnpcs"), isModLoaded("mynpcs"));
     }
 
     @Override

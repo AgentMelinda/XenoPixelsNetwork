@@ -1,0 +1,31 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "group": "dragonminez",
+  "key": {
+    "#": {
+      "item": "dragonminez:blank_pattern_super"
+    },
+    "B": {
+      "item": "minecraft:black_dye"
+    },
+    "C": {
+      "item": "minecraft:cyan_dye"
+    },
+    "R": {
+      "item": "minecraft:red_dye"
+    },
+    "S": {
+      "item": "minecraft:iron_sword"
+    }
+  },
+  "pattern": [
+    "S#C",
+    "CRC",
+    "BBB"
+  ],
+  "result": {
+    "count": 1,
+    "id": "dragonminez:pattern_trunks_super"
+  }
+}

@@ -1,0 +1,206 @@
+package com.dragonminez.server.world.structure.helper;
+
+import com.dragonminez.common.init.MainTags;
+import com.dragonminez.server.world.structure.TallJigsawStructure;
+import java.util.Map;
+import java.util.Optional;
+import net.minecraft.core.HolderGetter;
+import net.minecraft.core.registries.Registries;
+import net.minecraft.data.worldgen.BootstrapContext;
+import net.minecraft.resources.ResourceKey;
+import net.minecraft.resources.ResourceLocation;
+import net.minecraft.tags.BiomeTags;
+import net.minecraft.world.level.biome.Biome;
+import net.minecraft.world.level.levelgen.VerticalAnchor;
+import net.minecraft.world.level.levelgen.GenerationStep.Decoration;
+import net.minecraft.world.level.levelgen.Heightmap.Types;
+import net.minecraft.world.level.levelgen.heightproviders.ConstantHeight;
+import net.minecraft.world.level.levelgen.heightproviders.UniformHeight;
+import net.minecraft.world.level.levelgen.structure.Structure;
+import net.minecraft.world.level.levelgen.structure.TerrainAdjustment;
+import net.minecraft.world.level.levelgen.structure.Structure.StructureSettings;
+import net.minecraft.world.level.levelgen.structure.pools.StructureTemplatePool;
+import net.minecraft.world.level.levelgen.structure.structures.JigsawStructure;
+
+public class DMZStructures {
+   public static final ResourceKey<Structure> GOKU_HOUSE = createKey("goku_house");
+   public static final ResourceKey<Structure> ROSHI_HOUSE = createKey("roshi_house");
+   public static final ResourceKey<Structure> TIMECHAMBER = createKey("timechamber");
+   public static final ResourceKey<Structure> ELDER_GURU = createKey("elder_guru");
+   public static final ResourceKey<Structure> KAMILOOKOUT = createKey("kamilookout");
+   public static final ResourceKey<Structure> GERO_LAB = createKey("gero_lab");
+   public static final ResourceKey<Structure> BABIDI = createKey("babidi");
+   public static final ResourceKey<Structure> CELL_ARENA = createKey("cell_arena");
+   public static final ResourceKey<Structure> FRIEZA_SHIP = createKey("frieza_ship");
+   public static final ResourceKey<Structure> PICCOLO_HOUSE = createKey("piccolo_house");
+   public static final ResourceKey<Structure> OLDKAI_PILLAR = createKey("oldkai_pillar");
+   public static final ResourceKey<Structure> YAMCHA_HOUSE = createKey("yamcha_house");
+   public static final ResourceKey<Structure> TRUNKS_SHIP = createKey("trunks_ship");
+   public static final ResourceKey<Structure> VEGETA_POD = createKey("vegeta_pod");
+
+   public static void bootstrap(BootstrapContext<Structure> context) {
+      HolderGetter<Biome> biomes = context.lookup(Registries.BIOME);
+      HolderGetter<StructureTemplatePool> pools = context.lookup(Registries.TEMPLATE_POOL);
+      context.register(
+         GOKU_HOUSE,
+         new JigsawStructure(
+            new StructureSettings(biomes.getOrThrow(BiomeTags.IS_OVERWORLD), Map.of(), Decoration.SURFACE_STRUCTURES, TerrainAdjustment.NONE),
+            pools.getOrThrow(DMZPools.GOKU_HOUSE),
+            1,
+            ConstantHeight.of(VerticalAnchor.absolute(1)),
+            false,
+            Types.WORLD_SURFACE_WG
+         )
+      );
+      context.register(
+         ROSHI_HOUSE,
+         new JigsawStructure(
+            new StructureSettings(biomes.getOrThrow(BiomeTags.IS_OVERWORLD), Map.of(), Decoration.SURFACE_STRUCTURES, TerrainAdjustment.NONE),
+            pools.getOrThrow(DMZPools.ROSHI_HOUSE),
+            1,
+            ConstantHeight.of(VerticalAnchor.absolute(1)),
+            false,
+            Types.WORLD_SURFACE_WG
+         )
+      );
+      context.register(
+         TIMECHAMBER,
+         new JigsawStructure(
+            new StructureSettings(biomes.getOrThrow(MainTags.Biomes.IS_HTC), Map.of(), Decoration.SURFACE_STRUCTURES, TerrainAdjustment.NONE),
+            pools.getOrThrow(DMZPools.TIMECHAMBER),
+            1,
+            ConstantHeight.of(VerticalAnchor.absolute(1)),
+            false,
+            Types.WORLD_SURFACE_WG
+         )
+      );
+      context.register(
+         ELDER_GURU,
+         new JigsawStructure(
+            new StructureSettings(biomes.getOrThrow(MainTags.Biomes.IS_NAMEK), Map.of(), Decoration.SURFACE_STRUCTURES, TerrainAdjustment.NONE),
+            pools.getOrThrow(DMZPools.ELDER_GURU),
+            1,
+            ConstantHeight.of(VerticalAnchor.absolute(1)),
+            false,
+            Types.WORLD_SURFACE_WG
+         )
+      );
+      context.register(
+         KAMILOOKOUT,
+         new JigsawStructure(
+            new StructureSettings(biomes.getOrThrow(BiomeTags.IS_OVERWORLD), Map.of(), Decoration.SURFACE_STRUCTURES, TerrainAdjustment.NONE),
+            pools.getOrThrow(DMZPools.KAMILOOKOUT),
+            1,
+            ConstantHeight.of(VerticalAnchor.absolute(1)),
+            false,
+            Types.WORLD_SURFACE_WG
+         )
+      );
+      context.register(
+         GERO_LAB,
+         new JigsawStructure(
+            new StructureSettings(biomes.getOrThrow(MainTags.Biomes.IS_LAND), Map.of(), Decoration.SURFACE_STRUCTURES, TerrainAdjustment.NONE),
+            pools.getOrThrow(DMZPools.GERO_LAB),
+            3,
+            ConstantHeight.of(VerticalAnchor.absolute(1)),
+            false,
+            Types.WORLD_SURFACE_WG
+         )
+      );
+      context.register(
+         BABIDI,
+         new TallJigsawStructure(
+            new StructureSettings(biomes.getOrThrow(MainTags.Biomes.IS_LAND), Map.of(), Decoration.SURFACE_STRUCTURES, TerrainAdjustment.NONE),
+            pools.getOrThrow(DMZPools.BABIDI),
+            Optional.empty(),
+            3,
+            ConstantHeight.of(VerticalAnchor.absolute(1)),
+            false,
+            Optional.of(Types.WORLD_SURFACE_WG),
+            160,
+            63
+         )
+      );
+      context.register(
+         CELL_ARENA,
+         new JigsawStructure(
+            new StructureSettings(biomes.getOrThrow(BiomeTags.IS_OVERWORLD), Map.of(), Decoration.SURFACE_STRUCTURES, TerrainAdjustment.NONE),
+            pools.getOrThrow(DMZPools.CELL_ARENA),
+            1,
+            ConstantHeight.of(VerticalAnchor.absolute(1)),
+            false,
+            Types.WORLD_SURFACE_WG
+         )
+      );
+      context.register(
+         FRIEZA_SHIP,
+         new JigsawStructure(
+            new StructureSettings(biomes.getOrThrow(MainTags.Biomes.IS_NAMEK), Map.of(), Decoration.SURFACE_STRUCTURES, TerrainAdjustment.NONE),
+            pools.getOrThrow(DMZPools.FRIEZA_SHIP),
+            1,
+            UniformHeight.of(VerticalAnchor.absolute(40), VerticalAnchor.absolute(80)),
+            false,
+            Types.WORLD_SURFACE_WG
+         )
+      );
+      context.register(
+         PICCOLO_HOUSE,
+         new JigsawStructure(
+            new StructureSettings(biomes.getOrThrow(MainTags.Biomes.IS_LAND), Map.of(), Decoration.SURFACE_STRUCTURES, TerrainAdjustment.NONE),
+            pools.getOrThrow(DMZPools.PICCOLO_HOUSE),
+            1,
+            ConstantHeight.of(VerticalAnchor.absolute(1)),
+            false,
+            Types.WORLD_SURFACE_WG
+         )
+      );
+      context.register(
+         OLDKAI_PILLAR,
+         new JigsawStructure(
+            new StructureSettings(biomes.getOrThrow(MainTags.Biomes.IS_SACREDKAI), Map.of(), Decoration.SURFACE_STRUCTURES, TerrainAdjustment.NONE),
+            pools.getOrThrow(DMZPools.OLDKAI_PILLAR),
+            1,
+            ConstantHeight.of(VerticalAnchor.absolute(1)),
+            false,
+            Types.WORLD_SURFACE_WG
+         )
+      );
+      context.register(
+         YAMCHA_HOUSE,
+         new JigsawStructure(
+            new StructureSettings(biomes.getOrThrow(BiomeTags.IS_OVERWORLD), Map.of(), Decoration.SURFACE_STRUCTURES, TerrainAdjustment.NONE),
+            pools.getOrThrow(DMZPools.YAMCHA_HOUSE),
+            1,
+            ConstantHeight.of(VerticalAnchor.absolute(1)),
+            false,
+            Types.WORLD_SURFACE_WG
+         )
+      );
+      context.register(
+         TRUNKS_SHIP,
+         new JigsawStructure(
+            new StructureSettings(biomes.getOrThrow(MainTags.Biomes.IS_LAND), Map.of(), Decoration.SURFACE_STRUCTURES, TerrainAdjustment.NONE),
+            pools.getOrThrow(DMZPools.TRUNKS_SHIP),
+            1,
+            ConstantHeight.of(VerticalAnchor.absolute(1)),
+            false,
+            Types.WORLD_SURFACE_WG
+         )
+      );
+      context.register(
+         VEGETA_POD,
+         new JigsawStructure(
+            new StructureSettings(biomes.getOrThrow(MainTags.Biomes.IS_LAND), Map.of(), Decoration.SURFACE_STRUCTURES, TerrainAdjustment.NONE),
+            pools.getOrThrow(DMZPools.VEGETA_POD),
+            1,
+            ConstantHeight.of(VerticalAnchor.absolute(1)),
+            false,
+            Types.WORLD_SURFACE_WG
+         )
+      );
+   }
+
+   private static ResourceKey<Structure> createKey(String name) {
+      return ResourceKey.create(Registries.STRUCTURE, ResourceLocation.fromNamespaceAndPath("dragonminez", name));
+   }
+}

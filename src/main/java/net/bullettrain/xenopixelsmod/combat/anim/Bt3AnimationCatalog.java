@@ -1,6 +1,7 @@
 package net.bullettrain.xenopixelsmod.combat.anim;
 
 import net.bullettrain.xenopixelsmod.combat.DmzAnimHelper;
+import net.bullettrain.xenopixelsmod.combat.Bt3RushResolver;
 
 import java.util.Collections;
 import java.util.EnumMap;
@@ -157,6 +158,7 @@ public final class Bt3AnimationCatalog {
 
         // Not bound to an intent, but shipped and therefore whitelisted.
         register(DmzAnimHelper.HAKAI_HOLD, DmzAnimHelper.HAKAI_FIRE);
+        Bt3RushResolver.all().forEach(definition -> register(definition.animation()));
     }
 
     private Bt3AnimationCatalog() {

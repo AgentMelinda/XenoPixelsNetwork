@@ -20,7 +20,7 @@ import java.util.Map;
 /** Explicit, server-side XenoPixels bridge exposed to CustomNPCs scripts as {@code XenoPixels}. */
 public final class NpcXenoScriptApi {
     public static final NpcXenoScriptApi INSTANCE = new NpcXenoScriptApi();
-    private static final String VERSION = "14";
+    private static final String VERSION = "16";
     private static final EquipmentSlot[] ARMOR_SLOTS = {
             EquipmentSlot.HEAD, EquipmentSlot.CHEST, EquipmentSlot.LEGS, EquipmentSlot.FEET };
 
@@ -49,6 +49,11 @@ public final class NpcXenoScriptApi {
     public boolean setAuthoritative(ICustomNpc npc, boolean authoritative) {
         return mutate(npc, p -> p.authoritative = authoritative);
     }
+
+    public boolean isKnockable(ICustomNpc npc) { return NpcCombatProfile.read(require(npc)).knockable; }
+    public boolean setKnockable(ICustomNpc npc, boolean value) { return mutate(npc, p -> p.knockable = value); }
+    public boolean isPunchable(ICustomNpc npc) { return NpcCombatProfile.read(require(npc)).punchable; }
+    public boolean setPunchable(ICustomNpc npc, boolean value) { return mutate(npc, p -> p.punchable = value); }
 
     /** Returns a defensive DMZ-shaped NBT snapshot, not a native DragonMineZ StatsData object. */
     public net.minecraft.nbt.CompoundTag getDmzStatSnapshot(ICustomNpc npc) {
@@ -107,6 +112,7 @@ public final class NpcXenoScriptApi {
         out.put("kiWeaponOn", p.kiWeaponOn); out.put("kiWeaponType", p.kiWeaponType);
         out.put("saiyanTail", p.appearance.saiyanTail);
         out.put("tailColor", p.appearance.tailColor);
+        out.put("tailUseRaceColor", p.appearance.tailUseRaceColor);
         NpcResources.Snapshot resources = NpcResources.get(entity, p);
         out.put("currentEnergy", resources.energy()); out.put("maxEnergy", resources.maxEnergy());
         out.put("currentStamina", resources.stamina()); out.put("maxStamina", resources.maxStamina());
@@ -412,11 +418,20 @@ public final class NpcXenoScriptApi {
         if (hex == null || hex.isBlank()) return clearTailColor(npc);
         var parsed = NpcCombatProfile.parseHexColor(hex);
         if (parsed.isEmpty()) return false;
-        return mutate(npc, p -> p.appearance.tailColor =
-                NpcCombatProfile.formatHex(parsed.getAsInt()));
+        return mutate(npc, p -> {
+            p.appearance.tailColor = NpcCombatProfile.formatHex(parsed.getAsInt());
+            // Setting a colour is a request to use it, matching the editor's picker.
+            p.appearance.tailUseRaceColor = false;
+        });
     }
+    /**
+     * Goes back to the race's own tail colour.
+     *
+     * <p>Keeps the stored colour rather than blanking it, so a later {@code setTailColor} with no
+     * argument -- or the editor's toggle -- can restore the same one.
+     */
     public boolean clearTailColor(ICustomNpc npc) {
-        return mutate(npc, p -> p.appearance.tailColor = "");
+        return mutate(npc, p -> p.appearance.tailUseRaceColor = true);
     }
 
     public List<String> listFormGroups(String race) { return NpcFormLookup.groups(race); }
@@ -554,10 +569,25 @@ public final class NpcXenoScriptApi {
         out.put("enabled", profile.hairEnabled);
         out.put("code", profile.hairCode == null ? "" : profile.hairCode);
         out.put("color", profile.hairColor == null ? "" : profile.hairColor);
+        out.put("style", profile.hairStyleId);
+        out.put("styleCount", NpcHairBridge.presetCount());
         return out;
     }
     public boolean setHairEnabled(ICustomNpc npc, boolean enabled) { return NpcHairBridge.setEnabled(require(npc), enabled) == NpcHairBridge.Result.OK; }
     public boolean setHairCode(ICustomNpc npc, String code) { return NpcHairBridge.setCode(require(npc), code) == NpcHairBridge.Result.OK; }
+
+    /**
+     * Picks a built-in DragonMineZ hair style, or {@code 0} to fall back to the NPC's hair code.
+     *
+     * <p>Rejects an out-of-range id rather than silently storing it, because a bad style would
+     * otherwise just render as the code with no indication why.
+     */
+    public boolean setHairStyle(ICustomNpc npc, int styleId) {
+        return NpcHairBridge.setStyle(require(npc), styleId) == NpcHairBridge.Result.OK;
+    }
+
+    /** How many built-in hair styles are available, for a script that wants to cycle them. */
+    public int getHairStyleCount() { return NpcHairBridge.presetCount(); }
     public boolean setHairColor(ICustomNpc npc, String color) { return NpcHairBridge.setColor(require(npc), color) == NpcHairBridge.Result.OK; }
 
     /** Sets the skin by player name (empty name clears it) and re-syncs clients. */

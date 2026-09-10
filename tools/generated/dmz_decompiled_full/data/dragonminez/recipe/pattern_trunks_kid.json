@@ -1,0 +1,25 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "group": "dragonminez",
+  "key": {
+    "#": {
+      "item": "dragonminez:blank_pattern_z"
+    },
+    "G": {
+      "item": "minecraft:green_dye"
+    },
+    "O": {
+      "item": "minecraft:orange_dye"
+    }
+  },
+  "pattern": [
+    "G#G",
+    "GGG",
+    "OOO"
+  ],
+  "result": {
+    "count": 1,
+    "id": "dragonminez:pattern_trunks_kid"
+  }
+}

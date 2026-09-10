@@ -1,0 +1,31 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "group": "dragonminez",
+  "key": {
+    "#": {
+      "item": "dragonminez:blank_pattern_z"
+    },
+    "C": {
+      "item": "minecraft:cyan_dye"
+    },
+    "L": {
+      "item": "minecraft:light_blue_dye"
+    },
+    "O": {
+      "item": "minecraft:orange_dye"
+    },
+    "R": {
+      "item": "minecraft:red_dye"
+    }
+  },
+  "pattern": [
+    "C#C",
+    "LRL",
+    "OCO"
+  ],
+  "result": {
+    "count": 1,
+    "id": "dragonminez:pattern_shin"
+  }
+}

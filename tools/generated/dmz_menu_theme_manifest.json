@@ -1,0 +1,534 @@
+{
+  "generator": "tools/gen_dmz_menu_themes.py",
+  "source_archive": "dragonmine_complete_ui_elements_master_bundle",
+  "dmz_contract": "dragonminez-2.1.3.jar",
+  "scale": 4,
+  "smooth_filter": false,
+  "aspect_crop": {
+    "character_left header": 0.0633,
+    "character_left panel": 0.0914,
+    "character_right header": 0.0633,
+    "character_right panel": 0.06,
+    "minigames_left header": 0.0633,
+    "minigames_left panel": 0.0914,
+    "minigames_right header": 0.0633,
+    "minigames_right panel": 0.06,
+    "party_left header": 0.0633,
+    "party_left panel": 0.0914,
+    "party_right header": 0.0633,
+    "party_right panel": 0.06,
+    "quests": 0.0914,
+    "settings_left header": 0.0633,
+    "settings_left panel": 0.0914,
+    "settings_right header": 0.0633,
+    "settings_right panel": 0.06,
+    "skills_left header": 0.0633,
+    "skills_left panel": 0.0914,
+    "skills_right header": 0.0633,
+    "skills_right panel": 0.06
+  },
+  "outputs": {
+    "character_left.png": {
+      "panel": {
+        "clean": "05_dragonmine_hd_ui_v4/dragonmine_hd_ui_single_elements_v4/01_panels/clean_information_panel.png",
+        "example_reference": "05_dragonmine_hd_ui_v4/dragonmine_hd_ui_single_elements_v4/01_panels/example_information_panel.png",
+        "clean_size": [
+          510,
+          700
+        ],
+        "example_size": [
+          510,
+          700
+        ],
+        "crop": [
+          0,
+          0,
+          510,
+          700
+        ]
+      },
+      "header": {
+        "clean": "05_dragonmine_hd_ui_v4/dragonmine_hd_ui_single_elements_v4/02_headers/clean_information_header.png",
+        "example_reference": "05_dragonmine_hd_ui_v4/dragonmine_hd_ui_single_elements_v4/02_headers/example_information_header.png",
+        "clean_size": [
+          420,
+          88
+        ],
+        "example_size": [
+          420,
+          88
+        ],
+        "crop": [
+          0,
+          0,
+          420,
+          88
+        ]
+      },
+      "stock": "assets/dragonminez/textures/gui/menu/menubig.png",
+      "sha256": "e52b19bc059f48c1e2a04df3a3a6287aac466e47e1887c8527f83df1fb27d38c"
+    },
+    "character_right.png": {
+      "panel": {
+        "clean": "05_dragonmine_hd_ui_v4/dragonmine_hd_ui_single_elements_v4/01_panels/clean_statistics_panel.png",
+        "example_reference": "05_dragonmine_hd_ui_v4/dragonmine_hd_ui_single_elements_v4/01_panels/example_statistics_panel.png",
+        "clean_size": [
+          500,
+          710
+        ],
+        "example_size": [
+          500,
+          710
+        ],
+        "crop": [
+          0,
+          0,
+          500,
+          710
+        ]
+      },
+      "header": {
+        "clean": "05_dragonmine_hd_ui_v4/dragonmine_hd_ui_single_elements_v4/02_headers/clean_statistics_header.png",
+        "example_reference": "05_dragonmine_hd_ui_v4/dragonmine_hd_ui_single_elements_v4/02_headers/example_statistics_header.png",
+        "clean_size": [
+          420,
+          88
+        ],
+        "example_size": [
+          420,
+          88
+        ],
+        "crop": [
+          0,
+          0,
+          420,
+          88
+        ]
+      },
+      "stock": "assets/dragonminez/textures/gui/menu/menubig.png",
+      "sha256": "d56ea22c933ba26f0b3b7733c028095eb949f065ae8f5ec49f6f2663e5dd9564"
+    },
+    "character_top.png": {
+      "panel": {
+        "clean": "05_dragonmine_hd_ui_v4/dragonmine_hd_ui_single_elements_v4/03_rows/clean_bottom_stats_box.png",
+        "example_reference": "05_dragonmine_hd_ui_v4/dragonmine_hd_ui_single_elements_v4/03_rows/example_bottom_stats_box.png",
+        "clean_size": [
+          430,
+          170
+        ],
+        "example_size": [
+          430,
+          170
+        ],
+        "crop": [
+          0,
+          0,
+          430,
+          170
+        ]
+      },
+      "stock": "assets/dragonminez/textures/gui/menu/menusmall.png",
+      "sha256": "3212634b82640ba01e8fbaa3833ebb5df0d112d773b32fe28db394815c324eba"
+    },
+    "characterbuttons.png": {
+      "art": "dragonminez/textures/gui/buttons/characterbuttons.png",
+      "uv": [
+        0,
+        0
+      ],
+      "hover_uv": [
+        0,
+        10
+      ],
+      "sample_size": [
+        10,
+        10
+      ],
+      "scale_mode": "nearest",
+      "sha256": "3d6623752099fd7e8c37112e70a171bb557cfd1ae00d68badb70958851a35248"
+    },
+    "menubuttons.png": {
+      "art": "dragonminez/textures/gui/buttons/menubuttons.png",
+      "scale_mode": "nearest",
+      "sha256": "c321e26ea5d9e9916df65856ba6ded0e56d349409b3420aa22378b8338b16c71"
+    },
+    "minigames_left.png": {
+      "panel": {
+        "clean": "05_dragonmine_hd_ui_v4/dragonmine_hd_ui_single_elements_v4/01_panels/clean_information_panel.png",
+        "example_reference": "05_dragonmine_hd_ui_v4/dragonmine_hd_ui_single_elements_v4/01_panels/example_information_panel.png",
+        "clean_size": [
+          510,
+          700
+        ],
+        "example_size": [
+          510,
+          700
+        ],
+        "crop": [
+          0,
+          0,
+          510,
+          700
+        ]
+      },
+      "header": {
+        "clean": "05_dragonmine_hd_ui_v4/dragonmine_hd_ui_single_elements_v4/02_headers/clean_information_header.png",
+        "example_reference": "05_dragonmine_hd_ui_v4/dragonmine_hd_ui_single_elements_v4/02_headers/example_information_header.png",
+        "clean_size": [
+          420,
+          88
+        ],
+        "example_size": [
+          420,
+          88
+        ],
+        "crop": [
+          0,
+          0,
+          420,
+          88
+        ]
+      },
+      "stock": "assets/dragonminez/textures/gui/menu/menubig.png",
+      "sha256": "e52b19bc059f48c1e2a04df3a3a6287aac466e47e1887c8527f83df1fb27d38c"
+    },
+    "minigames_right.png": {
+      "panel": {
+        "clean": "05_dragonmine_hd_ui_v4/dragonmine_hd_ui_single_elements_v4/01_panels/clean_statistics_panel.png",
+        "example_reference": "05_dragonmine_hd_ui_v4/dragonmine_hd_ui_single_elements_v4/01_panels/example_statistics_panel.png",
+        "clean_size": [
+          500,
+          710
+        ],
+        "example_size": [
+          500,
+          710
+        ],
+        "crop": [
+          0,
+          0,
+          500,
+          710
+        ]
+      },
+      "header": {
+        "clean": "05_dragonmine_hd_ui_v4/dragonmine_hd_ui_single_elements_v4/02_headers/clean_statistics_header.png",
+        "example_reference": "05_dragonmine_hd_ui_v4/dragonmine_hd_ui_single_elements_v4/02_headers/example_statistics_header.png",
+        "clean_size": [
+          420,
+          88
+        ],
+        "example_size": [
+          420,
+          88
+        ],
+        "crop": [
+          0,
+          0,
+          420,
+          88
+        ]
+      },
+      "stock": "assets/dragonminez/textures/gui/menu/menubig.png",
+      "sha256": "d56ea22c933ba26f0b3b7733c028095eb949f065ae8f5ec49f6f2663e5dd9564"
+    },
+    "party_left.png": {
+      "panel": {
+        "clean": "05_dragonmine_hd_ui_v4/dragonmine_hd_ui_single_elements_v4/01_panels/clean_information_panel.png",
+        "example_reference": "05_dragonmine_hd_ui_v4/dragonmine_hd_ui_single_elements_v4/01_panels/example_information_panel.png",
+        "clean_size": [
+          510,
+          700
+        ],
+        "example_size": [
+          510,
+          700
+        ],
+        "crop": [
+          0,
+          0,
+          510,
+          700
+        ]
+      },
+      "header": {
+        "clean": "05_dragonmine_hd_ui_v4/dragonmine_hd_ui_single_elements_v4/02_headers/clean_information_header.png",
+        "example_reference": "05_dragonmine_hd_ui_v4/dragonmine_hd_ui_single_elements_v4/02_headers/example_information_header.png",
+        "clean_size": [
+          420,
+          88
+        ],
+        "example_size": [
+          420,
+          88
+        ],
+        "crop": [
+          0,
+          0,
+          420,
+          88
+        ]
+      },
+      "stock": "assets/dragonminez/textures/gui/menu/menubig.png",
+      "sha256": "e52b19bc059f48c1e2a04df3a3a6287aac466e47e1887c8527f83df1fb27d38c"
+    },
+    "party_right.png": {
+      "panel": {
+        "clean": "05_dragonmine_hd_ui_v4/dragonmine_hd_ui_single_elements_v4/01_panels/clean_statistics_panel.png",
+        "example_reference": "05_dragonmine_hd_ui_v4/dragonmine_hd_ui_single_elements_v4/01_panels/example_statistics_panel.png",
+        "clean_size": [
+          500,
+          710
+        ],
+        "example_size": [
+          500,
+          710
+        ],
+        "crop": [
+          0,
+          0,
+          500,
+          710
+        ]
+      },
+      "header": {
+        "clean": "05_dragonmine_hd_ui_v4/dragonmine_hd_ui_single_elements_v4/02_headers/clean_statistics_header.png",
+        "example_reference": "05_dragonmine_hd_ui_v4/dragonmine_hd_ui_single_elements_v4/02_headers/example_statistics_header.png",
+        "clean_size": [
+          420,
+          88
+        ],
+        "example_size": [
+          420,
+          88
+        ],
+        "crop": [
+          0,
+          0,
+          420,
+          88
+        ]
+      },
+      "stock": "assets/dragonminez/textures/gui/menu/menubig.png",
+      "sha256": "d56ea22c933ba26f0b3b7733c028095eb949f065ae8f5ec49f6f2663e5dd9564"
+    },
+    "quests.png": {
+      "panel": {
+        "clean": "05_dragonmine_hd_ui_v4/dragonmine_hd_ui_single_elements_v4/01_panels/clean_information_panel.png",
+        "example_reference": "05_dragonmine_hd_ui_v4/dragonmine_hd_ui_single_elements_v4/01_panels/example_information_panel.png",
+        "clean_size": [
+          510,
+          700
+        ],
+        "example_size": [
+          510,
+          700
+        ],
+        "crop": [
+          0,
+          0,
+          510,
+          700
+        ]
+      },
+      "stock": "assets/dragonminez/textures/gui/menu/questmenu.png",
+      "sha256": "b4cede853000422455bf1492324881956ff5eee58c7a8ca4fe1b7f7a1a53b43e"
+    },
+    "settings_left.png": {
+      "panel": {
+        "clean": "05_dragonmine_hd_ui_v4/dragonmine_hd_ui_single_elements_v4/01_panels/clean_information_panel.png",
+        "example_reference": "05_dragonmine_hd_ui_v4/dragonmine_hd_ui_single_elements_v4/01_panels/example_information_panel.png",
+        "clean_size": [
+          510,
+          700
+        ],
+        "example_size": [
+          510,
+          700
+        ],
+        "crop": [
+          0,
+          0,
+          510,
+          700
+        ]
+      },
+      "header": {
+        "clean": "05_dragonmine_hd_ui_v4/dragonmine_hd_ui_single_elements_v4/02_headers/clean_information_header.png",
+        "example_reference": "05_dragonmine_hd_ui_v4/dragonmine_hd_ui_single_elements_v4/02_headers/example_information_header.png",
+        "clean_size": [
+          420,
+          88
+        ],
+        "example_size": [
+          420,
+          88
+        ],
+        "crop": [
+          0,
+          0,
+          420,
+          88
+        ]
+      },
+      "stock": "assets/dragonminez/textures/gui/menu/menubig.png",
+      "sha256": "e52b19bc059f48c1e2a04df3a3a6287aac466e47e1887c8527f83df1fb27d38c"
+    },
+    "settings_right.png": {
+      "panel": {
+        "clean": "05_dragonmine_hd_ui_v4/dragonmine_hd_ui_single_elements_v4/01_panels/clean_statistics_panel.png",
+        "example_reference": "05_dragonmine_hd_ui_v4/dragonmine_hd_ui_single_elements_v4/01_panels/example_statistics_panel.png",
+        "clean_size": [
+          500,
+          710
+        ],
+        "example_size": [
+          500,
+          710
+        ],
+        "crop": [
+          0,
+          0,
+          500,
+          710
+        ]
+      },
+      "header": {
+        "clean": "05_dragonmine_hd_ui_v4/dragonmine_hd_ui_single_elements_v4/02_headers/clean_statistics_header.png",
+        "example_reference": "05_dragonmine_hd_ui_v4/dragonmine_hd_ui_single_elements_v4/02_headers/example_statistics_header.png",
+        "clean_size": [
+          420,
+          88
+        ],
+        "example_size": [
+          420,
+          88
+        ],
+        "crop": [
+          0,
+          0,
+          420,
+          88
+        ]
+      },
+      "stock": "assets/dragonminez/textures/gui/menu/menubig.png",
+      "sha256": "d56ea22c933ba26f0b3b7733c028095eb949f065ae8f5ec49f6f2663e5dd9564"
+    },
+    "skills_left.png": {
+      "panel": {
+        "clean": "05_dragonmine_hd_ui_v4/dragonmine_hd_ui_single_elements_v4/01_panels/clean_information_panel.png",
+        "example_reference": "05_dragonmine_hd_ui_v4/dragonmine_hd_ui_single_elements_v4/01_panels/example_information_panel.png",
+        "clean_size": [
+          510,
+          700
+        ],
+        "example_size": [
+          510,
+          700
+        ],
+        "crop": [
+          0,
+          0,
+          510,
+          700
+        ]
+      },
+      "header": {
+        "clean": "05_dragonmine_hd_ui_v4/dragonmine_hd_ui_single_elements_v4/02_headers/clean_information_header.png",
+        "example_reference": "05_dragonmine_hd_ui_v4/dragonmine_hd_ui_single_elements_v4/02_headers/example_information_header.png",
+        "clean_size": [
+          420,
+          88
+        ],
+        "example_size": [
+          420,
+          88
+        ],
+        "crop": [
+          0,
+          0,
+          420,
+          88
+        ]
+      },
+      "stock": "assets/dragonminez/textures/gui/menu/menubig.png",
+      "sha256": "e52b19bc059f48c1e2a04df3a3a6287aac466e47e1887c8527f83df1fb27d38c"
+    },
+    "skills_right.png": {
+      "panel": {
+        "clean": "05_dragonmine_hd_ui_v4/dragonmine_hd_ui_single_elements_v4/01_panels/clean_statistics_panel.png",
+        "example_reference": "05_dragonmine_hd_ui_v4/dragonmine_hd_ui_single_elements_v4/01_panels/example_statistics_panel.png",
+        "clean_size": [
+          500,
+          710
+        ],
+        "example_size": [
+          500,
+          710
+        ],
+        "crop": [
+          0,
+          0,
+          500,
+          710
+        ]
+      },
+      "header": {
+        "clean": "05_dragonmine_hd_ui_v4/dragonmine_hd_ui_single_elements_v4/02_headers/clean_statistics_header.png",
+        "example_reference": "05_dragonmine_hd_ui_v4/dragonmine_hd_ui_single_elements_v4/02_headers/example_statistics_header.png",
+        "clean_size": [
+          420,
+          88
+        ],
+        "example_size": [
+          420,
+          88
+        ],
+        "crop": [
+          0,
+          0,
+          420,
+          88
+        ]
+      },
+      "stock": "assets/dragonminez/textures/gui/menu/menubig.png",
+      "sha256": "d56ea22c933ba26f0b3b7733c028095eb949f065ae8f5ec49f6f2663e5dd9564"
+    },
+    "skills_top.png": {
+      "compact_panel": {
+        "clean": "05_dragonmine_hd_ui_v4/dragonmine_hd_ui_single_elements_v4/03_rows/clean_bottom_stats_box.png",
+        "example_reference": "05_dragonmine_hd_ui_v4/dragonmine_hd_ui_single_elements_v4/03_rows/example_bottom_stats_box.png",
+        "clean_size": [
+          430,
+          170
+        ],
+        "example_size": [
+          430,
+          170
+        ],
+        "crop": [
+          0,
+          0,
+          430,
+          170
+        ]
+      },
+      "uv_regions": [
+        [
+          0,
+          0,
+          141,
+          94
+        ],
+        [
+          0,
+          154,
+          141,
+          32
+        ]
+      ],
+      "stock": "assets/dragonminez/textures/gui/menu/menusmall.png",
+      "sha256": "97bdace3bb25d3078ca21d4f3f3832b33ae492cf928ef4c0126162f7b43a6d36"
+    }
+  }
+}

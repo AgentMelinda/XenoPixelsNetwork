@@ -1,0 +1,26 @@
+{
+  "criteria": {
+    "tick": {
+      "trigger": "minecraft:tick"
+    }
+  },
+  "display": {
+    "background": "dragonminez:textures/block/rocky_stone.png",
+    "description": {
+      "translate": "advancements.dragonminez.root.description"
+    },
+    "icon": {
+      "count": 1,
+      "id": "dragonminez:dball4"
+    },
+    "title": {
+      "translate": "advancements.dragonminez.root.title"
+    }
+  },
+  "requirements": [
+    [
+      "tick"
+    ]
+  ],
+  "sends_telemetry_event": true
+}

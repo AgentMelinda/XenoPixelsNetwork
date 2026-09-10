@@ -1,0 +1,22 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "group": "dragonminez",
+  "key": {
+    "#": {
+      "item": "dragonminez:blank_pattern_z"
+    },
+    "R": {
+      "item": "minecraft:red_dye"
+    }
+  },
+  "pattern": [
+    "R#R",
+    "R R",
+    "RRR"
+  ],
+  "result": {
+    "count": 1,
+    "id": "dragonminez:pattern_goku_kid"
+  }
+}

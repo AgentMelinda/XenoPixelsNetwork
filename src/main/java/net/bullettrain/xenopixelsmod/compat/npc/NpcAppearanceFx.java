@@ -49,12 +49,13 @@ public final class NpcAppearanceFx {
 
     private static NpcAppearancePacket packet(LivingEntity living) {
         NpcCombatProfile profile = NpcCombatProfile.read(living);
+        NpcFormDisplayTuning.applyCurrentSize(living, profile);
         return new NpcAppearancePacket(living.getUUID(), profile.raceId,
                 profile.formGroup, profile.formId,
                 profile.hairEnabled, profile.hairCode, profile.hairColor,
                 profile.strength, profile.strikePower, profile.resistance,
-                profile.vitality, profile.kiPower, profile.energy,
-                profile.auraColor, profile.auraScale,
+                profile.vitality, profile.kiPower, profile.energy, profile.authoritative,
+                profile.auraColor, NpcFormDisplayTuning.effectiveAuraScale(profile),
                 (profile.appearance == null ? new NpcDmzAppearance() : profile.appearance).toTag(),
                 profile.visualOptionsTag(),
                 profile.skinPlayer, profile.skinUrl, resolveSkinUuid(living, profile.skinPlayer));

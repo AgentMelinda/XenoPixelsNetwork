@@ -1,0 +1,19 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "building",
+  "group": "dragonminez",
+  "key": {
+    "#": {
+      "item": "dragonminez:namek_cobblestone"
+    }
+  },
+  "pattern": [
+    "#  ",
+    "## ",
+    "###"
+  ],
+  "result": {
+    "count": 4,
+    "id": "dragonminez:namek_cobblestone_stairs"
+  }
+}

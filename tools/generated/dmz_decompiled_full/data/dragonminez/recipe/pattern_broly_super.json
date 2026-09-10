@@ -1,0 +1,31 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "group": "dragonminez",
+  "key": {
+    "#": {
+      "item": "dragonminez:blank_pattern_super"
+    },
+    "B": {
+      "item": "minecraft:black_dye"
+    },
+    "G": {
+      "item": "minecraft:green_dye"
+    },
+    "L": {
+      "item": "minecraft:lime_dye"
+    },
+    "P": {
+      "item": "minecraft:purple_dye"
+    }
+  },
+  "pattern": [
+    "G#G",
+    "BBB",
+    "LPL"
+  ],
+  "result": {
+    "count": 1,
+    "id": "dragonminez:pattern_broly_super"
+  }
+}

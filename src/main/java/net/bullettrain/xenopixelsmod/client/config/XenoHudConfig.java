@@ -23,7 +23,7 @@ public final class XenoHudConfig {
 
     private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
     private static final Path PATH = FMLPaths.CONFIGDIR.get().resolve("xenopixelsmod-hud.json");
-    private static final int CURRENT_CONFIG_VERSION = 5;
+    private static final int CURRENT_CONFIG_VERSION = 11;
 
     /** What fills the round portrait well on the main panel. */
     public enum PortraitMode {
@@ -211,8 +211,11 @@ public final class XenoHudConfig {
     }
 
     static net.minecraft.resources.ResourceLocation parseFont(String id) {
+        net.bullettrain.xenopixelsmod.util.XenoIdentifierDiagnostics.reportIfMalformed(
+                id, "XenoHudConfig font");
         net.minecraft.resources.ResourceLocation rl =
-                id == null ? null : net.minecraft.resources.ResourceLocation.tryParse(id);
+                id == null || id.isBlank() || id.endsWith(":")
+                        ? null : net.minecraft.resources.ResourceLocation.tryParse(id);
         return rl != null ? rl : net.minecraft.resources.ResourceLocation.withDefaultNamespace("default");
     }
 
@@ -337,9 +340,51 @@ public final class XenoHudConfig {
      */
     public static boolean unifiedHudRenderer = true;
 
+    /**
+     * The renderer actually in use, and the value that is stored.
+     *
+     * <p>{@link #legacyHudRenderer} and {@link #unifiedHudRenderer} are kept in step with it by
+     * {@link #setRenderer} so the call sites that already read them keep working. Write through
+     * {@code setRenderer} rather than assigning those booleans, or the three disagree.
+     */
+    public static XenoHudRenderer renderer = XenoHudRenderer.MODERN_UNIFIED;
+
+    /**
+     * Chooses a renderer and republishes the two compatibility booleans.
+     *
+     * <p>BT3 reports itself as neither legacy nor unified, so any caller still branching on those
+     * booleans falls through to its modern path instead of the procedural one -- the closer of the
+     * two, and never a crash.
+     */
+    public static void setRenderer(XenoHudRenderer next) {
+        renderer = next == null ? XenoHudRenderer.MODERN_UNIFIED : next;
+        legacyHudRenderer = renderer == XenoHudRenderer.LEGACY;
+        unifiedHudRenderer = renderer == XenoHudRenderer.MODERN_UNIFIED;
+    }
+
     /** True when the unified renderer owns drawing the cooldown strip. */
     public static boolean unifiedActive() {
-        return !legacyHudRenderer && unifiedHudRenderer;
+        return renderer == XenoHudRenderer.MODERN_UNIFIED;
+    }
+
+    /**
+     * What happens to the DragonMineZ menus behind V, and to the DMZ HUD textures that follow the
+     * same setting -- lock-on, radar and the four scouters.
+     *
+     * <p>Defaults to {@link DmzMenuMode#THEME}: DragonMineZ's own screens, its own widgets,
+     * scrolling, packets and validation, dressed in Xeno chrome. This is the look the mod is meant
+     * to ship with.
+     *
+     * <p>Every other route stays one command away and none of them was removed.
+     * {@code /xenohud menus stock} is the way back to DragonMineZ untouched, which is what makes
+     * "is this a Xeno bug or a DMZ one?" answerable in game; {@code screen} and {@code neon} are the
+     * two full rebuilds of the character page.
+     */
+    public static DmzMenuMode dmzMenuMode = DmzMenuMode.DEFAULT;
+
+    /** True when Xeno draws over DMZ's menus, in either rework. Read by the theme and the swap. */
+    public static boolean dmzMenusThemed() {
+        return dmzMenuMode.themed();
     }
 
     private XenoHudConfig() {}
@@ -372,9 +417,24 @@ public final class XenoHudConfig {
             y = Math.max(0, data.y);
             scale = clampScale(data.scale <= 0f ? 0.55f : data.scale);
             visible = data.visible;
-            legacyHudRenderer = data.legacyHudRenderer;
             legacyTechniqueRenderer = data.legacyTechniqueRenderer;
-            unifiedHudRenderer = data.unifiedHudRenderer;
+            // Version 6 replaced the two renderer booleans with a named renderer. A config written
+            // before that has no name to read, so the choice is reconstructed from the booleans
+            // exactly -- the HUD must look identical across the upgrade, and nobody is moved to
+            // bt3, which is opt-in.
+            setRenderer(fromVersion < 6 || data.renderer == null
+                    ? XenoHudRenderer.fromLegacyFlags(data.legacyHudRenderer, data.unifiedHudRenderer)
+                    : XenoHudRenderer.parse(data.renderer,
+                            XenoHudRenderer.fromLegacyFlags(data.legacyHudRenderer,
+                                    data.unifiedHudRenderer)));
+            // Version 11 makes the themed menus the default. Same shape as version 10's rule, which
+            // put them back to stock, and for the same reason: a config already written at 10
+            // records "stock" explicitly and would otherwise be parsed straight back onto it. A
+            // choice made at 11 or later is kept, so anyone who picks stock, screen or neon after
+            // this point keeps it.
+            dmzMenuMode = fromVersion < 11
+                    ? DmzMenuMode.DEFAULT
+                    : DmzMenuMode.parse(data.dmzMenuMode, DmzMenuMode.DEFAULT);
             portraitMode = PortraitMode.parse(data.portraitMode);
             portraitMask = data.portraitMask;
             transformRing = data.transformRing;
@@ -427,6 +487,8 @@ public final class XenoHudConfig {
         data.y = y;
         data.scale = scale;
         data.visible = visible;
+        data.renderer = renderer.id();
+        data.dmzMenuMode = dmzMenuMode.id();
         data.legacyHudRenderer = legacyHudRenderer;
         data.legacyTechniqueRenderer = legacyTechniqueRenderer;
         data.unifiedHudRenderer = unifiedHudRenderer;
@@ -525,6 +587,10 @@ public final class XenoHudConfig {
 
     private static class Data {
         int configVersion;
+        /** Null in a config written before version 6; the booleans are read instead. */
+        String renderer;
+        /** Null in a config written before version 7; the theming was unconditional then. */
+        String dmzMenuMode;
         int x = 0;
         int y = 0;
         float scale = 0.55f;

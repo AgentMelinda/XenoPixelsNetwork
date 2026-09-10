@@ -1,0 +1,14 @@
+{
+  "type": "minecraft:campfire_cooking",
+  "category": "food",
+  "cookingtime": 600,
+  "experience": 0.35,
+  "group": "dragonminez",
+  "ingredient": {
+    "item": "dragonminez:frog_legs_raw"
+  },
+  "result": {
+    "count": 1,
+    "id": "dragonminez:frog_legs_cooked"
+  }
+}

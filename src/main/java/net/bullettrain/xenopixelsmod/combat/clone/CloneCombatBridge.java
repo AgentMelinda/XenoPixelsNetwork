@@ -20,6 +20,10 @@ public final class CloneCombatBridge {
     private int refreshAt;
     private int cooldown;
     private java.util.UUID attackTarget;
+    /** Melee attempts in a row that connected with nothing; see CloneCombatPolicy.shouldAbandon. */
+    private int whiffStreak;
+    /** Server tick this clone stops refusing the target it gave up on, or Long.MIN_VALUE. */
+    private long abandonedUntil = Long.MIN_VALUE;
 
     public static ServerPlayer owner(XenoCloneEntity clone) {
         Entity raw = clone.level().getEntity(clone.ownerId());
@@ -112,6 +116,19 @@ public final class CloneCombatBridge {
         return profile;
     }
 
+    /** How long a clone leaves a target alone after giving up on hurting it. */
+    private static final int ABANDON_TICKS = 60;
+
+    private boolean abandoned(XenoCloneEntity clone, LivingEntity target) {
+        if (abandonedUntil == Long.MIN_VALUE) return false;
+        long now = clone.level().getGameTime();
+        if (now >= abandonedUntil || now < abandonedUntil - ABANDON_TICKS * 4L) {
+            abandonedUntil = Long.MIN_VALUE;
+            return false;
+        }
+        return target != null && target.getUUID().equals(attackTarget);
+    }
+
     public void cancel(XenoCloneEntity clone) {
         NpcStrikeDispatcher.cancel(clone.getUUID());
         NpcKiAim.cancel(clone);
@@ -122,7 +139,9 @@ public final class CloneCombatBridge {
     /** Returns true when combat owns movement this tick. */
     public boolean tick(XenoCloneEntity clone, ServerPlayer owner, LivingEntity target) {
         if (cooldown > 0) cooldown--;
-        boolean valid = validTarget(owner, target) && owner.distanceToSqr(target) <= CloneCombatPolicy.LEASH * CloneCombatPolicy.LEASH;
+        boolean valid = validTarget(owner, target)
+                && owner.distanceToSqr(target) <= CloneCombatPolicy.LEASH * CloneCombatPolicy.LEASH
+                && !abandoned(clone, target);
         var action = CloneCombatPolicy.decide(active(clone), valid, clone.distanceTo(owner),
                 valid ? clone.distanceTo(target) : Double.POSITIVE_INFINITY,
                 valid && clone.hasLineOfSight(target), cooldown);
@@ -133,6 +152,8 @@ public final class CloneCombatBridge {
         if (!target.getUUID().equals(attackTarget)) {
             cancel(clone);
             attackTarget = target.getUUID();
+            whiffStreak = 0;
+            abandonedUntil = Long.MIN_VALUE;
         }
         NpcCombatProfile current = profile(clone);
         if (action == CloneCombatPolicy.Action.MELEE) {
@@ -152,10 +173,26 @@ public final class CloneCombatBridge {
                 if (data != null && spend(clone, 0, Math.max(1, data.getStaminaPerHit()))) {
                     clone.swing(InteractionHand.MAIN_HAND, true);
                     NpcDmzAnim.play(clone, net.bullettrain.xenopixelsmod.combat.anim.Bt3AnimationIntent.BODY_PUNCH_RIGHT);
-                    target.hurt(clone.damageSources().mobAttack(clone), current.meleeDamage());
+                    // The return value is the only honest signal that the swing did something. It
+                    // was previously discarded, so a clone swinging at something it can never hurt
+                    // -- invulnerable, already dying, damage cancelled elsewhere -- kept choosing
+                    // MELEE forever and stood there punching air.
+                    if (target.hurt(clone.damageSources().mobAttack(clone), current.meleeDamage())) {
+                        whiffStreak = 0;
+                    } else {
+                        whiffStreak++;
+                    }
                 }
             }
             if (!strike) cooldown = 20;
+            if (CloneCombatPolicy.shouldAbandon(whiffStreak)) {
+                // Back to formation, and stay off this target long enough not to re-engage on the
+                // very next tick. A new target clears both counters above.
+                abandonedUntil = clone.level().getGameTime() + ABANDON_TICKS;
+                whiffStreak = 0;
+                cancel(clone);
+                return false;
+            }
         } else if (action == CloneCombatPolicy.Action.RANGED) {
             if (current.kiDamage() > 0 && spend(clone, Math.max(1, current.kiDamage() * 0.1), 0)) {
                 NpcKiAttackDispatcher.fireKiBlast(clone, current, 40, target, 0);

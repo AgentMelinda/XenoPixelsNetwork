@@ -1,0 +1,49 @@
+package com.dragonminez.common.init.item.weapons;
+
+import net.minecraft.tags.BlockTags;
+import net.minecraft.tags.TagKey;
+import net.minecraft.world.item.Tier;
+import net.minecraft.world.item.crafting.Ingredient;
+import net.minecraft.world.level.block.Block;
+
+public class BlankWeaponTier implements Tier {
+   private final int uses;
+   private final float speed;
+   private final float attackDamageBonus;
+   private final int level;
+   private final int enchantmentValue;
+   private final Ingredient repairIngredient;
+
+   public BlankWeaponTier(int uses, float speed, float attackDamageBonus, int level, int enchantmentValue, Ingredient repairIngredient) {
+      this.uses = uses;
+      this.speed = speed;
+      this.attackDamageBonus = attackDamageBonus;
+      this.level = level;
+      this.enchantmentValue = enchantmentValue;
+      this.repairIngredient = repairIngredient;
+   }
+
+   public int getUses() {
+      return this.uses;
+   }
+
+   public float getSpeed() {
+      return this.speed;
+   }
+
+   public float getAttackDamageBonus() {
+      return this.attackDamageBonus;
+   }
+
+   public int getEnchantmentValue() {
+      return this.enchantmentValue;
+   }
+
+   public Ingredient getRepairIngredient() {
+      return this.repairIngredient;
+   }
+
+   public TagKey<Block> getIncorrectBlocksForDrops() {
+      return BlockTags.INCORRECT_FOR_WOODEN_TOOL;
+   }
+}

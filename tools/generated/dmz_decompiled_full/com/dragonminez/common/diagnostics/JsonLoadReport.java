@@ -1,0 +1,83 @@
+package com.dragonminez.common.diagnostics;
+
+import com.dragonminez.Env;
+import com.dragonminez.LogUtil;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+
+public final class JsonLoadReport {
+   private static final List<JsonLoadReport.Entry> ENTRIES = new ArrayList<>();
+
+   private JsonLoadReport() {
+   }
+
+   public static synchronized void clear(String source) {
+      ENTRIES.removeIf(e -> e.source().equals(source));
+   }
+
+   public static synchronized void error(String source, String file, String message) {
+      ENTRIES.add(new JsonLoadReport.Entry(JsonLoadReport.Kind.ERROR, source, file, message == null ? "" : message));
+   }
+
+   public static synchronized void update(String source, String file, String message) {
+      ENTRIES.add(new JsonLoadReport.Entry(JsonLoadReport.Kind.UPDATE, source, file, message == null ? "" : message));
+   }
+
+   public static synchronized boolean isEmpty() {
+      return ENTRIES.isEmpty();
+   }
+
+   public static synchronized List<JsonLoadReport.Entry> entries() {
+      return Collections.unmodifiableList(new ArrayList<>(ENTRIES));
+   }
+
+   public static synchronized long count(JsonLoadReport.Kind kind) {
+      return ENTRIES.stream().filter(e -> e.kind() == kind).count();
+   }
+
+   public static synchronized void logConsoleReport() {
+      if (!ENTRIES.isEmpty()) {
+         long errors = ENTRIES.stream().filter(e -> e.kind() == JsonLoadReport.Kind.ERROR).count();
+         long updates = (long)ENTRIES.size() - errors;
+         boolean hasErrors = errors > 0L;
+         List<String> lines = new ArrayList<>();
+         lines.add("==================== DragonMineZ JSON load report ====================");
+         lines.add(errors + " problem(s), " + updates + " auto-update(s) across your data files:");
+
+         for (JsonLoadReport.Entry e : ENTRIES) {
+            lines.add("  " + (e.kind() == JsonLoadReport.Kind.ERROR ? "[ERROR]  " : "[UPDATE] ") + e.file() + " - " + e.message());
+         }
+
+         lines.add("Fix the file(s) and run /dmzreload. In-game notices: developer.reportJsonProblemsInChat.");
+         lines.add("======================================================================");
+
+         for (String line : lines) {
+            if (hasErrors) {
+               LogUtil.warn(Env.COMMON, line);
+            } else {
+               LogUtil.info(Env.COMMON, line);
+            }
+         }
+      }
+   }
+
+   public static String rootCause(Throwable t) {
+      Throwable cur = t;
+
+      while (cur.getCause() != null && cur.getCause() != cur) {
+         cur = cur.getCause();
+      }
+
+      String msg = cur.getMessage();
+      return msg != null && !msg.isBlank() ? msg : cur.getClass().getSimpleName();
+   }
+
+   public static record Entry(JsonLoadReport.Kind kind, String source, String file, String message) {
+   }
+
+   public static enum Kind {
+      ERROR,
+      UPDATE;
+   }
+}

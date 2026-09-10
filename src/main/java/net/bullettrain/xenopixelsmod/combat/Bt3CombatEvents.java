@@ -40,6 +40,15 @@ public final class Bt3CombatEvents {
     /** Zanzoken press windows and cooldowns, keyed the same way the counter window is. */
     private static final Map<UUID, Integer> ZANZOKEN_UNTIL_TICK = new HashMap<>();
     private static final Map<UUID, Integer> ZANZOKEN_READY_TICK = new HashMap<>();
+    /**
+     * While this is in the future, this player's afterimages are still on screen.
+     *
+     * <p>Separate from the dodge window on purpose. The window closes on the first hit that tests
+     * it, but the images outlive that -- and it is the images, not the read, that an onlooker or an
+     * AI is being fooled by. Tying the confusion to the window would end it the instant something
+     * swung, which is the opposite of what the technique is for.
+     */
+    private static final Map<UUID, Integer> ZANZOKEN_IMAGES_UNTIL = new HashMap<>();
     /** Grace after a chase drops the fighter mid-air, so the landing does not kill them. */
     private static final Map<UUID, Integer> FALL_GRACE_UNTIL = new HashMap<>();
 
@@ -107,6 +116,39 @@ public final class Bt3CombatEvents {
         return true;
     }
 
+    /** Marks this player's afterimages as on screen for {@code ticks} from now. */
+    public static void markAfterimages(ServerPlayer player, int ticks) {
+        if (player == null || ticks <= 0) return;
+        ZANZOKEN_IMAGES_UNTIL.put(player.getUUID(), serverTick(player) + ticks);
+    }
+
+    /**
+     * The images are gone before their time was up.
+     *
+     * <p>Striking any image drops the whole ring, well short of the lifetime it was marked for.
+     * Without this the mark outlived the bodies, and for the remainder of that lifetime nothing
+     * could acquire the fighter even though there was plainly nothing left to be fooled by — a
+     * fighter who had already been found stayed untargetable. The mark describes what is on screen,
+     * so it has to end when that does.
+     */
+    public static void clearAfterimages(UUID ownerId) {
+        if (ownerId == null) return;
+        ZANZOKEN_IMAGES_UNTIL.remove(ownerId);
+    }
+
+    /** Whether this player currently has afterimages standing in for them. */
+    public static boolean afterimagesActive(ServerPlayer player) {
+        if (player == null) return false;
+        Integer until = ZANZOKEN_IMAGES_UNTIL.get(player.getUUID());
+        // Reuses the window's own staleness rule, so a restarted server clock cannot leave a
+        // player permanently untargetable.
+        if (until == null || !ZanzokenWindow.armed(serverTick(player), until)) {
+            ZANZOKEN_IMAGES_UNTIL.remove(player.getUUID());
+            return false;
+        }
+        return true;
+    }
+
     /** True once, for a hit that arrived inside a live window. Closes the window either way. */
     public static boolean consumeDodgeWindow(ServerPlayer player) {
         if (player == null) return false;
@@ -131,6 +173,7 @@ public final class Bt3CombatEvents {
         GUARD_STUN_UNTIL.clear();
         ZANZOKEN_UNTIL_TICK.clear();
         ZANZOKEN_READY_TICK.clear();
+        ZANZOKEN_IMAGES_UNTIL.clear();
         FALL_GRACE_UNTIL.clear();
     }
 
@@ -143,6 +186,7 @@ public final class Bt3CombatEvents {
         GUARD_STUN_UNTIL.remove(id);
         ZANZOKEN_UNTIL_TICK.remove(id);
         ZANZOKEN_READY_TICK.remove(id);
+        ZANZOKEN_IMAGES_UNTIL.remove(id);
         FALL_GRACE_UNTIL.remove(id);
     }
 

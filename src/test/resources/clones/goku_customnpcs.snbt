@@ -1,0 +1,644 @@
+{
+    "ReturnToStart": 1b,
+    "Brain": {
+        "memories": {
+        }
+    },
+    "NpcInv": [
+    ],
+    "BossColor": 0,
+    "CompanionOwnerName": "",
+    "PotionEffect": 0,
+    "Size": 5,
+    "stopAndInteract": 1b,
+    "CompanionStage": 4,
+    "Resistances": {
+        "Arrow": 2.0f,
+        "Explosion": 2.0f,
+        "Knockback": 2.0f,
+        "Melee": 2.0f
+    },
+    "CompanionExp": 0,
+    "BossBar": 0b,
+    "RespawnTime": 20,
+    "CompanionInventory": {
+        "NpcMiscInv": [
+        ]
+    },
+    "NpcAngrySound": "",
+    "ReactsToFire": 0b,
+    "IgnoreCobweb": 0b,
+    "PositionOffsetZ": 5.0f,
+    "PositionOffsetY": 5.0f,
+    "PositionOffsetX": 5.0f,
+    "LootMode": 0,
+    "TransformHasAI": 0b,
+    "AttackStrenght": 1,
+    "PersistenceRequired": 0b,
+    "CompanionOwner": "",
+    "id": "customnpcs:customnpc",
+    "IsStatue": 0b,
+    "MovingPatern": 0,
+    "NpcLines": {
+        "Lines": [
+        ]
+    },
+    "DefendFaction": 0b,
+    "FireIndirect": 0,
+    "CompanionTalents": [
+    ],
+    "NpcVisible": 0,
+    "LinkedNpcName": "",
+    "NpcScenes": {
+        "Scenes": [
+        ]
+    },
+    "HitSound": "minecraft:entity.arrow.hit",
+    "FindShelter": 2,
+    "Air": 300s,
+    "Orientation": 0,
+    "ScriptLanguage": "ECMAScript",
+    "HandItems": [
+        {
+        },
+        {
+        }
+    ],
+    "KnockBack": 0,
+    "TransformHasJob": 0b,
+    "ArmorDropChances": [
+        0.085f,
+        0.085f,
+        0.085f,
+        0.085f
+    ],
+    "BurnInSun": 0b,
+    "StandingState": 0,
+    "ShowLayers": 1b,
+    "AttackInvisible": 0b,
+    "NpcInteractNPCLines": {
+        "Lines": [
+        ]
+    },
+    "HurtTime": 0s,
+    "WalkingRange": 10,
+    "CompanionID": 0,
+    "ShotCount": 1,
+    "neoforge:attachments": {
+        "voltaic:recievedradiationamount": 0.0d,
+        "voltaic:oldrecievedradiationamount": 0.0d,
+        "voltaic:recievedradiationstrength": 0.0d,
+        "voltaic:oldrecievedradiationstrength": 0.0d
+    },
+    "pDur": 5,
+    "AttackRange": 2,
+    "ActiveRange": 32,
+    "NpcKillLines": {
+        "Lines": [
+        ]
+    },
+    "PotionImmune": 0b,
+    "AvoidsSun": 0b,
+    "Texture": "customnpcs:textures/entity/humanmale/steve.png",
+    "NpcJob": 0,
+    "BurstCount": 1,
+    "NpcAttackLines": {
+        "Lines": [
+        ]
+    },
+    "pSpeed": 10,
+    "pArea": 0,
+    "DeathTime": 0s,
+    "pImpact": 0,
+    "MoveState": 0,
+    "CompanionHasInv": 1b,
+    "pRender3D": 1b,
+    "CompanionDefendOwner": 1b,
+    "Motion": [
+        0.0d,
+        -0.0784000015258789d,
+        0.0d
+    ],
+    "CombatRegen": 0,
+    "NpcsTimers": [
+    ],
+    "MarkovGender": 0,
+    "pEffect": 0,
+    "DistanceToMelee": 0,
+    "NpcStepSound": "",
+    "FireRate": 5,
+    "LeftHanded": 0b,
+    "pEffAmp": 0,
+    "OnGround": 1b,
+    "ImmuneToFire": 0b,
+    "OverlayGlowing": 1b,
+    "NpcKilledLines": {
+        "Lines": [
+        ]
+    },
+    "Fire": -1s,
+    "ArmorItems": [
+        {
+        },
+        {
+        },
+        {
+        },
+        {
+        }
+    ],
+    "DisablePitch": 0b,
+    "attributes": [
+        {
+            "id": "minecraft:generic.max_health",
+            "base": 120.0d
+        },
+        {
+            "id": "minecraft:generic.flying_speed",
+            "base": 0.5d
+        },
+        {
+            "id": "minecraft:generic.step_height",
+            "base": 0.5d
+        },
+        {
+            "id": "minecraft:generic.attack_damage",
+            "base": 1.0d
+        },
+        {
+            "id": "minecraft:generic.movement_speed",
+            "base": 0.25d
+        },
+        {
+            "id": "minecraft:generic.oxygen_bonus",
+            "base": 0.0d
+        },
+        {
+            "id": "minecraft:generic.follow_range",
+            "base": 128.0d
+        }
+    ],
+    "pPhysics": 1b,
+    "foodLevel": 20,
+    "foodExhaustionLevel": 0.19999997f,
+    "TransformHasInv": 0b,
+    "NpcInteractLines": {
+        "Lines": [
+            {
+                "Line": "Hello @p",
+                "Song": "",
+                "Slot": 0
+            }
+        ]
+    },
+    "HurtByTimestamp": 1841,
+    "pSpin": 0b,
+    "NpcHurtSound": "minecraft:entity.player.hurt",
+    "pTrail": 0,
+    "CreatureType": 0,
+    "Invulnerable": 0b,
+    "TransformHasDisplay": 0b,
+    "NoFallDamage": 0b,
+    "AbsorptionAmount": 0.0f,
+    "TransformHasRole": 0b,
+    "Name": "Goku",
+    "FallDistance": 0.0f,
+    "SkinColor": 16777215,
+    "NpcIdleSound": "",
+    "Weapons": [
+    ],
+    "NPCDialogOptions": [
+        {
+            "NPCDialog": {
+                "DialogCommand": "",
+                "Dialog": 12,
+                "Title": "Saiyan Prince",
+                "DialogColor": 14737632,
+                "OptionType": 1
+            },
+            "DialogSlot": 0
+        }
+    ],
+    "AggroRange": 128,
+    "DirectLOS": 1b,
+    "HealthRegen": 0,
+    "HandDropChances": [
+        0.085f,
+        0.085f
+    ],
+    "NpcModelData": {
+        "CustomSkinUrl": "",
+        "BodyConfig": {
+            "NotShared": 0b,
+            "ScaleZ": 1.0f,
+            "TransZ": 0.0f,
+            "TransY": 0.0f,
+            "TransX": 0.0f,
+            "ScaleY": 1.0f,
+            "ScaleX": 1.0f
+        },
+        "MoveAnimation": 16,
+        "EntityName": "dragonminez:saga_goku_early",
+        "Legs2Config": {
+            "NotShared": 0b,
+            "ScaleZ": 1.0f,
+            "TransZ": 0.0f,
+            "TransY": 0.0f,
+            "TransX": 0.0f,
+            "ScaleY": 1.0f,
+            "ScaleX": 1.0f
+        },
+        "SimpleRender": 1b,
+        "ArmsConfig": {
+            "NotShared": 0b,
+            "ScaleZ": 1.0f,
+            "TransZ": 0.0f,
+            "TransY": 0.0f,
+            "TransX": 0.0f,
+            "ScaleY": 1.0f,
+            "ScaleX": 1.0f
+        },
+        "ExtraData": {
+        },
+        "HeadConfig": {
+            "NotShared": 0b,
+            "ScaleZ": 1.0f,
+            "TransZ": 0.0f,
+            "TransY": 0.0f,
+            "TransX": 0.0f,
+            "ScaleY": 1.0f,
+            "ScaleX": 1.0f
+        },
+        "LegsConfig": {
+            "NotShared": 0b,
+            "ScaleZ": 1.0f,
+            "TransZ": 0.0f,
+            "TransY": 0.0f,
+            "TransX": 0.0f,
+            "ScaleY": 1.0f,
+            "ScaleX": 1.0f
+        },
+        "Arms2Config": {
+            "NotShared": 0b,
+            "ScaleZ": 1.0f,
+            "TransZ": 0.0f,
+            "TransY": 0.0f,
+            "TransX": 0.0f,
+            "ScaleY": 1.0f,
+            "ScaleX": 1.0f
+        },
+        "Parts": [
+        ],
+        "NewParts": [
+        ],
+        "WingMode": 0,
+        "DisplayName": "",
+        "Animation": 0,
+        "ModelType": 0,
+        "LastEdited": 1788909216244L
+    },
+    "NeoForgeData": {
+        "xenopixels:npc_resources": {
+            "MaxEnergy": 120.0d,
+            "Energy": 120.0d,
+            "MaxStamina": 20.0d,
+            "Stamina": 20.0d
+        },
+        "cnpcmarkdata": {
+            "marks": [
+            ]
+        },
+        "dmz_stats_configured": 1b,
+        "xenopixels:npc_last_stat_fingerprint": -1076110913,
+        "CreateNuclearTechRadiationDose": 0.0d,
+        "xenopixels:npc_base_max_health": 20,
+        "CreateNuclearTechRadiationLevel": 0.0d,
+        "xenopixels:npc_combat_profile": {
+            "KiColor": 0,
+            "FormGroup": "",
+            "Schema": 9,
+            "FlySkillLevel": 1,
+            "SkinPlayer": "",
+            "AuraScale": 1.2f,
+            "StackAuraStyles": [
+            ],
+            "AggroMultiplier": 2.0f,
+            "AuraColor": 16712449,
+            "HairEnabled": 1b,
+            "KiPower": 0,
+            "SelectedStackFormGroup": "kaioken",
+            "Masteries": {
+            },
+            "AimAccuracy": 0.85f,
+            "KiChargePercent": 100,
+            "StrikePower": 0,
+            "Authoritative": 1b,
+            "StackFormGroup": "",
+            "SkinUrl": "",
+            "Techniques": [
+            ],
+            "StackForm": "",
+            "FlySkillOn": 0b,
+            "HairCode": "",
+            "SelectedForm": "",
+            "BaseSize": 5,
+            "Resistance": 0,
+            "FormAuraStyles": [
+            ],
+            "AuraGroundRing": 0b,
+            "Form": "",
+            "PowerReleasePercent": 100,
+            "Vitality": 100,
+            "CombatBrain": 0b,
+            "AuraOn": 1b,
+            "Energy": 100,
+            "Race": "human",
+            "SelectedStackForm": "x2",
+            "DmzAppearance": {
+                "EyesType": 0,
+                "MouthType": 0,
+                "Schema": 4,
+                "Mode": "OFF",
+                "EyebrowsType": 0,
+                "Gender": "male",
+                "BodyType": 0,
+                "NoseType": 0,
+                "Eye2Color": "#000000",
+                "BodyColor3": "#FFFFFF",
+                "Eye1Color": "#000000",
+                "RenderHairBase": 1b,
+                "BodyColor": "#F4C7A1",
+                "TattooType": 0,
+                "BodyColor2": "#C98F68",
+                "TailColor": "",
+                "ActiveHeadBone": "",
+                "Class": "warrior",
+                "SaiyanTail": 0b,
+                "BoobScale": 1.0f
+            },
+            "SelectedFormGroup": "",
+            "AuraRocks": 0b,
+            "StackMasteries": {
+                "kaioken:x2": 100.0d
+            },
+            "KiWeaponOn": 1b,
+            "KiWeaponType": "blade",
+            "HairColor": "#FF0301",
+            "DmzSkills": [
+            ],
+            "AuraSparking": 1b,
+            "BaseAuraStyle": {
+                "ExtraLayer": -1,
+                "ExtraEnabled": 0b,
+                "PrimaryLayer": -1,
+                "ExtraConfigured": 0b,
+                "ExtraType": "",
+                "PrimaryColor": "",
+                "LightningEnabled": 0b,
+                "Enabled": 0b,
+                "ExtraColor": "",
+                "LightningConfigured": 0b,
+                "PrimaryType": "",
+                "LightningColor": ""
+            },
+            "AuraColorHex": "#FF0301",
+            "AuraLightning": 1b,
+            "FormPower": 1.0d,
+            "Strength": 0,
+            "Halo": 0b
+        },
+        "xenopixels:npc_last_applied_max_health": 120,
+        "CreateNuclearTechToxicityLevel": 0.0d
+    },
+    "VisibleAvailability": {
+        "AvailabilityQuestId": -1,
+        "AvailabilityScoreboardType": 1,
+        "AvailabilityFactionStance": 0,
+        "AvailabilityScoreboard2Value": 1,
+        "AvailabilityQuest": 0,
+        "AvailabilityDialog4": 0,
+        "AvailabilityScoreboardObjective": "",
+        "AvailabilityDialog3": 0,
+        "AvailabilityQuest2": 0,
+        "AvailabilityQuest3": 0,
+        "AvailabilityScoreboard2Objective": "",
+        "AvailabilityQuest4": 0,
+        "ModRev": 18,
+        "AvailabilityDialog2": 0,
+        "AvailabilityDayTime": 0,
+        "AvailabilityFaction2Id": -1,
+        "AvailabilityScoreboardValue": 1,
+        "AvailabilityFaction": 0,
+        "AvailabilityDialog": 0,
+        "AvailabilityScoreboard2Type": 1,
+        "AvailabilityFaction2": 0,
+        "AvailabilityFactionId": -1,
+        "AvailabilityFaction2Stance": 0,
+        "AvailabilityDialogId": -1,
+        "AvailabilityQuest4Id": -1,
+        "AvailabilityQuest3Id": -1,
+        "AvailabilityQuest2Id": -1,
+        "AvailabilityDialog2Id": -1,
+        "AvailabilityDialog3Id": -1,
+        "AvailabilityDialog4Id": -1,
+        "AvailabilityMinPlayerLevel": 0
+    },
+    "minDelay": 20,
+    "DoorInteract": 2,
+    "MoveSpeed": 5,
+    "TransformEditingModus": 0b,
+    "UsingSkinUrl": 0b,
+    "SkinUrl": "",
+    "CanSwim": 1b,
+    "GroundSound": "minecraft:block.stone.break",
+    "CompanionJob": 0,
+    "MountControl": 0b,
+    "MaxHealth": 120,
+    "HideBodyWhenKilled": 0b,
+    "AttackSpeed": 20,
+    "PotionDuration": 5,
+    "maxDelay": 40,
+    "ScriptEnabled": 1b,
+    "Role": 6,
+    "DropChance": [
+        {
+            "Integer": 100.0f,
+            "Slot": 0
+        },
+        {
+            "Integer": 100.0f,
+            "Slot": 1
+        },
+        {
+            "Integer": 100.0f,
+            "Slot": 2
+        },
+        {
+            "Integer": 100.0f,
+            "Slot": 3
+        },
+        {
+            "Integer": 100.0f,
+            "Slot": 4
+        },
+        {
+            "Integer": 100.0f,
+            "Slot": 5
+        },
+        {
+            "Integer": 100.0f,
+            "Slot": 6
+        },
+        {
+            "Integer": 100.0f,
+            "Slot": 7
+        },
+        {
+            "Integer": 100.0f,
+            "Slot": 8
+        }
+    ],
+    "FactionPoints": {
+        "DecreaseFaction1Points": 0b,
+        "OptionFaction2Points": 100,
+        "OptionFactions1": -1,
+        "OptionFactions2": -1,
+        "OptionFaction1Points": 100,
+        "DecreaseFaction2Points": 0b
+    },
+    "pDamage": 4,
+    "KilledTime": 0L,
+    "AimWhileShooting": 0b,
+    "CanPickUpLoot": 0b,
+    "AttackOtherFactions": 0b,
+    "CanDrown": 1b,
+    "foodTickTimer": 0,
+    "pSize": 5,
+    "CanSprint": 0b,
+    "CanLeap": 0b,
+    "TransformIsActive": 0b,
+    "MovingState": 0,
+    "MovingPos": 0,
+    "PotionAmp": 0,
+    "OnAttack": 3,
+    "FallFlying": 0b,
+    "MaxExp": 0,
+    "OrderedLines": 0b,
+    "PortalCooldown": 0,
+    "pGlows": 0b,
+    "TransformHasAdvanced": 0b,
+    "TransformHasStats": 0b,
+    "MovementType": 0,
+    "FiringSound": "minecraft:entity.arrow.shoot",
+    "ModRev": 18,
+    "Accuracy": 60,
+    "CompanionCanAge": 1b,
+    "MinExp": 0,
+    "Armor": [
+    ],
+    "CloakTexture": "",
+    "GlowTexture": "",
+    "MaxFiringRange": 15,
+    "pXlr8": 0b,
+    "MarkovGeneratorId": 6,
+    "Scripts": [
+        {
+            "Script": "/**
+ * Individual CustomNPCs NPC script: award DragonMineZ points for one normal quest.
+ *
+ * Paste this entire script into the quest-giver NPC's Script tab.
+ * It does not use CustomNPCs command rewards.
+ */
+\"use strict\";
+
+// Change these two values for this NPC.
+var QUEST_ID = 4;
+var POINT_REWARD = 10000;
+
+// true: reward after the quest is turned in.
+// false: reward as soon as every quest objective is complete.
+var PAY_ON_TURN_IN = true;
+
+function tick(event) {
+    var players = event.npc.getWorld().getAllPlayers();
+    for (var i = 0; i < players.length; i++) {
+        checkQuest(event, players[i]);
+    }
+}
+
+function interact(event) {
+    checkQuest(event, event.player);
+}
+
+function checkQuest(event, player) {
+    if (player == null || typeof XenoPixels === \"undefined\") return;
+
+    var data = player.getStoreddata();
+    var keyBase = \"xeno_quest_points_\" + event.npc.getUUID() + \"_\" + QUEST_ID;
+    var activeKey = keyBase + \"_active\";
+    var paidKey = keyBase + \"_paid\";
+    var active = player.hasActiveQuest(QUEST_ID);
+    var finished = player.hasFinishedQuest(QUEST_ID);
+
+    // Seeing the quest active marks a new attempt. This also re-arms repeatable quests after the
+    // previous turn-in paid successfully.
+    if (active && !data.has(activeKey)) {
+        data.put(activeKey, 1);
+        data.remove(paidKey);
+    }
+
+    var ready = PAY_ON_TURN_IN
+            ? finished && !active
+            : finished || objectivesComplete(event, player);
+
+    if (ready && !data.has(paidKey)) {
+        if (XenoPixels.addDmzPoints(player, POINT_REWARD)) {
+            data.put(paidKey, 1);
+            player.message(\"Quest reward: +\" + POINT_REWARD + \" DragonMineZ points.\");
+        } else {
+            player.message(\"DragonMineZ points could not be awarded.\");
+        }
+    }
+
+    if (!active) {
+        data.remove(activeKey);
+    }
+}
+
+function objectivesComplete(event, player) {
+    var quest = event.API.getQuests().get(QUEST_ID);
+    if (quest == null) return false;
+
+    var objectives = quest.getObjectives(player);
+    if (objectives == null || objectives.length == 0) return false;
+
+    for (var i = 0; i < objectives.length; i++) {
+        if (!objectives[i].isCompleted()) return false;
+    }
+    return true;
+}",
+            "Console": [
+            ],
+            "ScriptList": [
+            ]
+        }
+    ],
+    "Health": 120.0f,
+    "pStick": 0b,
+    "MovingPause": 1b,
+    "NpcDeathSound": "minecraft:entity.player.hurt",
+    "foodSaturationLevel": 5.0f,
+    "FactionID": 0,
+    "Title": "Kaioken",
+    "CompanionAge": 0L,
+    "TotalTicksAlive": 110451L,
+    "Rotation": [
+        270.0f,
+        0.0f
+    ],
+    "ShowName": 0,
+    "npcInteracting": 1b,
+    "AvoidsWater": 0b,
+    "NoLivingAnimation": 0b,
+    "SpawnCycle": 0
+}

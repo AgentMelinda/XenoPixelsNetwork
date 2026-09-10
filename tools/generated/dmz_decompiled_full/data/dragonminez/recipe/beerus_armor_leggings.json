@@ -1,0 +1,39 @@
+{
+  "type": "dragonminez:kikono_crafting",
+  "crafting_time": 200,
+  "ingredients": [
+    {
+      "item": "dragonminez:kikono_cloth"
+    },
+    {
+      "item": "dragonminez:kikono_cloth"
+    },
+    {
+      "item": "dragonminez:kikono_cloth"
+    },
+    {
+      "item": "dragonminez:kikono_cloth"
+    },
+    [],
+    {
+      "item": "dragonminez:kikono_cloth"
+    },
+    {
+      "item": "dragonminez:kikono_string"
+    },
+    [],
+    {
+      "item": "dragonminez:kikono_string"
+    }
+  ],
+  "output": {
+    "count": 1,
+    "id": "dragonminez:beerus_armor_leggings"
+  },
+  "pattern": {
+    "item": "dragonminez:pattern_beerus"
+  },
+  "template": {
+    "item": "minecraft:iron_leggings"
+  }
+}

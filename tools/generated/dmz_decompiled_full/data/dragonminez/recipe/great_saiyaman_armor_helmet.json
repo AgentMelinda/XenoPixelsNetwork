@@ -1,0 +1,35 @@
+{
+  "type": "dragonminez:kikono_crafting",
+  "crafting_time": 200,
+  "ingredients": [
+    {
+      "item": "dragonminez:kikono_cloth"
+    },
+    {
+      "item": "dragonminez:kikono_string"
+    },
+    {
+      "item": "dragonminez:kikono_cloth"
+    },
+    {
+      "item": "dragonminez:kikono_string"
+    },
+    [],
+    {
+      "item": "dragonminez:kikono_string"
+    },
+    [],
+    [],
+    []
+  ],
+  "output": {
+    "count": 1,
+    "id": "dragonminez:great_saiyaman_armor_helmet"
+  },
+  "pattern": {
+    "item": "dragonminez:pattern_great_saiyaman"
+  },
+  "template": {
+    "item": "minecraft:iron_helmet"
+  }
+}

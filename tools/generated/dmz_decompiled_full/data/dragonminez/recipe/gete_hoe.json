@@ -1,0 +1,32 @@
+{
+  "type": "dragonminez:kikono_crafting",
+  "ingredients": [
+    {
+      "item": "dragonminez:gete_ingot"
+    },
+    {
+      "item": "dragonminez:gete_ingot"
+    },
+    [],
+    [],
+    {
+      "item": "dragonminez:kikono_stick"
+    },
+    [],
+    [],
+    {
+      "item": "dragonminez:kikono_stick"
+    },
+    []
+  ],
+  "output": {
+    "count": 1,
+    "id": "dragonminez:gete_hoe"
+  },
+  "pattern": {
+    "item": "dragonminez:pattern_gete"
+  },
+  "template": {
+    "item": "minecraft:iron_hoe"
+  }
+}

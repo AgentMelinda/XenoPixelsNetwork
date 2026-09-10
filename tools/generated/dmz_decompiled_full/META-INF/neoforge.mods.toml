@@ -1,0 +1,79 @@
+modLoader="javafml"
+loaderVersion="[4,)"
+license="GNU General Public License v3.0"
+issueTrackerURL="https://discord.dragonminez.com"
+
+[[mods]]
+modId="dragonminez"
+version="2.1.3"
+displayName="DragonMineZ"
+logoFile="dmz_logo.png"
+credits="A special thanks to Bruno, Kyo, UB, YaibaToKen, Ben, Antro, and everyone else who supported the mod in some way."
+authors="Yuseix300 & ezShokkoh"
+description='''The DragonMine Z Mod is a Minecraft NeoForge Mod based on the Dragon Ball Series made by Akira Toriyama.
+ This mod adds NPCs, Transformations, Stats System, Dimensions and more!'''
+displayTest="MATCH_VERSION"
+displayURL="https://dragonminez.com/"
+updateJSONURL="https://raw.githubusercontent.com/DragonMineZ/dragonminez/main/update.json"
+
+[[mixins]]
+config="dragonminez.mixins.json"
+
+[[mixins]]
+config="dragonminez.sable.mixins.json"
+
+[[dependencies.dragonminez]]
+    modId="neoforge"
+    type="required"
+    versionRange="[21.1.220,)"
+    ordering="NONE"
+    side="BOTH"
+
+[[dependencies.dragonminez]]
+    modId="minecraft"
+    type="required"
+    versionRange="[1.21.1,1.22)"
+    ordering="NONE"
+    side="BOTH"
+
+[[dependencies.dragonminez]]
+    modId="geckolib"
+    type="required"
+    versionRange="[4.9.2,)"
+    ordering="AFTER"
+    side="BOTH"
+
+[[dependencies.dragonminez]]
+    modId="terrablender"
+    type="required"
+    versionRange="[1.21.1-4.1.0.8,)"
+    ordering="AFTER"
+    side="BOTH"
+
+[[dependencies.dragonminez]]
+    modId="curios"
+    type="required"
+    versionRange="[9.5.1+1.21.1,)"
+    ordering="AFTER"
+    side="BOTH"
+
+[[dependencies.dragonminez]]
+    modId="legendarytooltips"
+    type="incompatible"
+    versionRange="*"
+    ordering="NONE"
+    side="BOTH"
+
+[[dependencies.dragonminez]]
+    modId="epicfight"
+    type="incompatible"
+    versionRange="*"
+    ordering="NONE"
+    side="BOTH"
+
+[[dependencies.dragonminez]]
+    modId="bettercombat"
+    type="incompatible"
+    versionRange="*"
+    ordering="NONE"
+    side="BOTH"

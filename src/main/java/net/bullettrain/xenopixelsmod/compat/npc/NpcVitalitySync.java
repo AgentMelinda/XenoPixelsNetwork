@@ -1,6 +1,7 @@
 package net.bullettrain.xenopixelsmod.compat.npc;
 
 import net.bullettrain.xenopixelsmod.XenoPixelsMod;
+import net.bullettrain.xenopixelsmod.config.XenoServerConfig;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.Tag;
 import net.minecraft.world.entity.Entity;
@@ -18,8 +19,8 @@ public final class NpcVitalitySync {
     private NpcVitalitySync() {}
 
     /**
-     * Keeps CustomNPCs' configured health as the baseline, then adds the profile's VIT bonus.
-     * The metadata lives outside the replaceable profile tag so wand saves cannot erase it.
+     * Uses only profile VIT while DMZ stats are authoritative. Hybrid mode retains CustomNPCs'
+     * configured health as a baseline. The metadata lives outside the replaceable profile tag.
      */
     public static void apply(Entity entity, NpcCombatProfile profile) {
         if (!(entity instanceof LivingEntity living)
@@ -47,12 +48,15 @@ public final class NpcVitalitySync {
 
             // A native CustomNPC stats edit changes its configured max away from our last value.
             // Treat that new value as the requested baseline instead of overwriting the edit.
-            if (hasLast && configuredMax != persistent.getInt(TAG_LAST_MAX_HEALTH)) {
+            if (!XenoServerConfig.npcDmzStatsAuthoritative
+                    && hasLast && configuredMax != persistent.getInt(TAG_LAST_MAX_HEALTH)) {
                 baseMax = configuredMax;
             }
 
-            int targetMax = NpcVitalityMath.maxHealth(
-                    baseMax, profile.vitality, vitalityMultiplier(profile));
+            double multiplier = vitalityMultiplier(profile);
+            int targetMax = XenoServerConfig.npcDmzStatsAuthoritative
+                    ? NpcVitalityMath.authoritativeMaxHealth(profile.vitality, multiplier)
+                    : NpcVitalityMath.hybridMaxHealth(baseMax, profile.vitality, multiplier);
             float oldHealth = living.getHealth();
             float oldMax = living.getMaxHealth();
 
@@ -82,6 +86,27 @@ public final class NpcVitalitySync {
             }
         }
         return null;
+    }
+
+    /** Restores the native max-health baseline when a profile stops being authoritative. */
+    static void restoreNative(Entity entity) {
+        if (!(entity instanceof LivingEntity living) || entity.level().isClientSide()) return;
+        CompoundTag persistent = entity.getPersistentData();
+        if (!persistent.contains(TAG_BASE_MAX_HEALTH, Tag.TAG_INT)) return;
+        try {
+            Object stats = customNpcStats(entity);
+            if (stats == null) return;
+            int baseMax = Math.max(1, persistent.getInt(TAG_BASE_MAX_HEALTH));
+            float oldHealth = living.getHealth();
+            float oldMax = living.getMaxHealth();
+            stats.getClass().getMethod("setMaxHealth", int.class).invoke(stats, baseMax);
+            persistent.remove(TAG_BASE_MAX_HEALTH);
+            persistent.remove(TAG_LAST_MAX_HEALTH);
+            living.setHealth(NpcVitalityMath.preserveHealthPercent(
+                    oldHealth, oldMax, living.getMaxHealth()));
+        } catch (ReflectiveOperationException | ClassCastException e) {
+            warnOnce(e);
+        }
     }
 
     private static double vitalityMultiplier(NpcCombatProfile profile) {

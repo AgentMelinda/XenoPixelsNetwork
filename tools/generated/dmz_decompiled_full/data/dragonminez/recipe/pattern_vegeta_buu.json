@@ -1,0 +1,25 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "group": "dragonminez",
+  "key": {
+    "#": {
+      "item": "dragonminez:blank_pattern_z"
+    },
+    "B": {
+      "item": "minecraft:blue_dye"
+    },
+    "C": {
+      "item": "minecraft:cyan_dye"
+    }
+  },
+  "pattern": [
+    "C#C",
+    "BCB",
+    "BBB"
+  ],
+  "result": {
+    "count": 1,
+    "id": "dragonminez:pattern_vegeta_buu"
+  }
+}

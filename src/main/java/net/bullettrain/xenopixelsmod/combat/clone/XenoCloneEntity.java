@@ -46,6 +46,8 @@ public class XenoCloneEntity extends LivingEntity {
     /** 0 while still bursting out of the fighter, 1 once the body has reached its place. */
     private static final EntityDataAccessor<Float> TRAVEL =
             SynchedEntityData.defineId(XenoCloneEntity.class, EntityDataSerializers.FLOAT);
+    private static final EntityDataAccessor<Integer> LIFETIME =
+            SynchedEntityData.defineId(XenoCloneEntity.class, EntityDataSerializers.INT);
 
     /** A Zanzoken image: it does not follow, it stays exactly where it was placed. */
     public static final int SLOT_STATIONARY = -1;
@@ -91,6 +93,7 @@ public class XenoCloneEntity extends LivingEntity {
         this.entityData.set(OWNER_ID, owner == null ? -1 : owner.getId());
         this.entityData.set(SLOT, slot);
         this.lifetime = Math.max(1, lifetimeTicks);
+        this.entityData.set(LIFETIME, this.lifetime);
         this.travelTicks = slot == SLOT_STATIONARY ? 0 : TRAVEL_TICKS;
         this.entityData.set(TRAVEL, slot == SLOT_STATIONARY ? 1.0f : 0.0f);
         this.healthCapacity = Math.max(0f, health);
@@ -130,6 +133,24 @@ public class XenoCloneEntity extends LivingEntity {
         return ownerUuid;
     }
 
+    /**
+     * Whether a player destroyed this image, as opposed to it expiring or being cleaned up.
+     *
+     * <p>Deliberately not saved: it is a decision made and consumed within the tick the image dies,
+     * and a ring never survives a reload anyway.
+     *
+     * @see net.bullettrain.xenopixelsmod.combat.ZanzokenRing
+     */
+    private boolean revealedByPlayer;
+
+    public boolean revealedByPlayer() {
+        return revealedByPlayer;
+    }
+
+    public void markRevealedByPlayer() {
+        this.revealedByPlayer = true;
+    }
+
     void setFormationBodies(int bodies) {
         formationBodies = Math.max(1, bodies);
     }
@@ -150,6 +171,10 @@ public class XenoCloneEntity extends LivingEntity {
     /** 0 while bursting out of the fighter, 1 once settled — the renderer can lean on this too. */
     public float travelProgress() {
         return this.entityData.get(TRAVEL);
+    }
+
+    public int lifetimeTicks() {
+        return Math.max(1, this.entityData.get(LIFETIME));
     }
 
     @Override
@@ -310,6 +335,7 @@ public class XenoCloneEntity extends LivingEntity {
         builder.define(OWNER_ID, -1);
         builder.define(SLOT, SLOT_STATIONARY);
         builder.define(TRAVEL, 1.0f);
+        builder.define(LIFETIME, 20);
     }
 
     @Override

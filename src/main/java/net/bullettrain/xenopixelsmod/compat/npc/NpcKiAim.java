@@ -260,11 +260,11 @@ public final class NpcKiAim {
 
     private static void applyCnpcAimPose(LivingEntity caster) {
         try {
-            Class<?> npcClass = Class.forName("noppes.npcs.entity.EntityNPCInterface");
+            Class<?> npcClass = NpcTypes.npcInterface();
             if (!npcClass.isInstance(caster)) {
                 return;
             }
-            int aim = Class.forName("noppes.npcs.api.constants.AnimationType")
+            int aim = NpcTypes.find("api.constants.AnimationType")
                     .getField("AIM")
                     .getInt(null);
             npcClass.getMethod("setCurrentAnimation", int.class).invoke(caster, aim);
@@ -274,7 +274,7 @@ public final class NpcKiAim {
 
     private static int readCnpcAnimation(LivingEntity caster) {
         try {
-            Class<?> npcClass = Class.forName("noppes.npcs.entity.EntityNPCInterface");
+            Class<?> npcClass = NpcTypes.npcInterface();
             if (!npcClass.isInstance(caster)) {
                 return 0;
             }
@@ -287,7 +287,7 @@ public final class NpcKiAim {
 
     private static void restoreCnpcAnimation(LivingEntity caster, int animation) {
         try {
-            Class<?> npcClass = Class.forName("noppes.npcs.entity.EntityNPCInterface");
+            Class<?> npcClass = NpcTypes.npcInterface();
             if (!npcClass.isInstance(caster)) {
                 return;
             }

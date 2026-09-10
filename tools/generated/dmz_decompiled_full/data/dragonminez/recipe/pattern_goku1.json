@@ -1,0 +1,25 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "group": "dragonminez",
+  "key": {
+    "#": {
+      "item": "dragonminez:blank_pattern_z"
+    },
+    "B": {
+      "item": "minecraft:blue_dye"
+    },
+    "O": {
+      "item": "minecraft:orange_dye"
+    }
+  },
+  "pattern": [
+    "B#B",
+    "OBO",
+    "OOO"
+  ],
+  "result": {
+    "count": 1,
+    "id": "dragonminez:pattern_goku1"
+  }
+}

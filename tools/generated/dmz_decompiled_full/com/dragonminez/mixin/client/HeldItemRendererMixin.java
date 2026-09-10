@@ -1,0 +1,131 @@
+package com.dragonminez.mixin.client;
+
+import com.dragonminez.client.render.DMZRenderHand;
+import com.dragonminez.client.render.firstperson.dto.FirstPersonManager;
+import com.dragonminez.common.combat.util.Minecraft_DMZ;
+import com.mojang.blaze3d.vertex.PoseStack;
+import com.mojang.math.Axis;
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.model.PlayerModel;
+import net.minecraft.client.model.geom.ModelLayers;
+import net.minecraft.client.player.AbstractClientPlayer;
+import net.minecraft.client.player.LocalPlayer;
+import net.minecraft.client.renderer.ItemInHandRenderer;
+import net.minecraft.client.renderer.MultiBufferSource;
+import net.minecraft.client.renderer.MultiBufferSource.BufferSource;
+import net.minecraft.client.renderer.entity.EntityRendererProvider.Context;
+import net.minecraft.util.Mth;
+import net.minecraft.world.entity.HumanoidArm;
+import org.spongepowered.asm.mixin.Mixin;
+import org.spongepowered.asm.mixin.Unique;
+import org.spongepowered.asm.mixin.injection.At;
+import org.spongepowered.asm.mixin.injection.Inject;
+import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
+
+@Mixin({ItemInHandRenderer.class})
+public class HeldItemRendererMixin {
+   @Unique
+   private static DMZRenderHand dmz$handRenderer;
+
+   @Inject(
+      method = {"renderHandsWithItems"},
+      at = {@At("HEAD")},
+      cancellable = true
+   )
+   private void dmz$cancelGlobalHandRendering(
+      float pPartialTicks, PoseStack pPoseStack, BufferSource pBufferSource, LocalPlayer pPlayerEntity, int pCombinedLight, CallbackInfo ci
+   ) {
+      if (FirstPersonManager.shouldRenderFirstPerson(pPlayerEntity)) {
+         ci.cancel();
+      }
+   }
+
+   @Unique
+   private void dmz$ensureRenderer() {
+      if (!FirstPersonManager.shouldRenderFirstPerson(Minecraft.getInstance().player)) {
+         if (dmz$handRenderer == null) {
+            Minecraft mc = Minecraft.getInstance();
+            Context context = new Context(
+               mc.getEntityRenderDispatcher(),
+               mc.getItemRenderer(),
+               mc.getBlockRenderer(),
+               mc.getEntityRenderDispatcher().getItemInHandRenderer(),
+               mc.getResourceManager(),
+               mc.getEntityModels(),
+               mc.font
+            );
+            dmz$handRenderer = new DMZRenderHand(context, new PlayerModel(context.bakeLayer(ModelLayers.PLAYER), false));
+         }
+      }
+   }
+
+   @Inject(
+      method = {"renderPlayerArm"},
+      at = {@At("HEAD")},
+      cancellable = true
+   )
+   private void dmz$hookRenderArm(
+      PoseStack pPoseStack, MultiBufferSource pBuffer, int pCombinedLight, float pEquippedProgress, float pSwingProgress, HumanoidArm pSide, CallbackInfo ci
+   ) {
+      this.dmz$ensureRenderer();
+      AbstractClientPlayer player = Minecraft.getInstance().player;
+      if (player != null) {
+         pPoseStack.pushPose();
+         boolean isRight = pSide == HumanoidArm.RIGHT;
+         float f = isRight ? 1.0F : -1.0F;
+         float swingProgress = ((Minecraft_DMZ)Minecraft.getInstance()).getSwingProgress();
+         float equippedProgress = Math.min(pEquippedProgress, swingProgress);
+         float f1 = Mth.sqrt(pSwingProgress);
+         float f2 = -0.3F * Mth.sin(f1 * (float) Math.PI);
+         float f3 = 0.4F * Mth.sin(f1 * (float) (Math.PI * 2));
+         float f4 = -0.4F * Mth.sin(pSwingProgress * (float) Math.PI);
+         pPoseStack.translate(f * (f2 + 0.64000005F), f3 + -0.6F + equippedProgress * -0.6F, f4 + -0.71999997F);
+         pPoseStack.mulPose(Axis.YP.rotationDegrees(f * 45.0F));
+         float f5 = Mth.sin(pSwingProgress * pSwingProgress * (float) Math.PI);
+         float f6 = Mth.sin(f1 * (float) Math.PI);
+         pPoseStack.mulPose(Axis.YP.rotationDegrees(f * f6 * 70.0F));
+         pPoseStack.mulPose(Axis.ZP.rotationDegrees(f * f5 * -20.0F));
+         pPoseStack.translate(f * -1.0F, 3.6F, 3.5F);
+         pPoseStack.mulPose(Axis.ZP.rotationDegrees(f * 120.0F));
+         pPoseStack.mulPose(Axis.XP.rotationDegrees(200.0F));
+         pPoseStack.mulPose(Axis.YP.rotationDegrees(f * -135.0F));
+         pPoseStack.translate(f * 5.6F, 0.0F, 0.0F);
+         if (dmz$handRenderer != null) {
+            if (isRight) {
+               dmz$handRenderer.renderRightHand(pPoseStack, pBuffer, pCombinedLight, player);
+            } else {
+               dmz$handRenderer.renderLeftHand(pPoseStack, pBuffer, pCombinedLight, player);
+            }
+         }
+
+         pPoseStack.popPose();
+         ci.cancel();
+      }
+   }
+
+   @Inject(
+      method = {"renderMapHand"},
+      at = {@At("HEAD")},
+      cancellable = true
+   )
+   private void dmz$hookRenderMapHand(PoseStack pPoseStack, MultiBufferSource pBuffer, int pCombinedLight, HumanoidArm pSide, CallbackInfo ci) {
+      this.dmz$ensureRenderer();
+      AbstractClientPlayer player = Minecraft.getInstance().player;
+      if (player != null) {
+         pPoseStack.pushPose();
+         float f = pSide == HumanoidArm.RIGHT ? 1.0F : -1.0F;
+         pPoseStack.mulPose(Axis.YP.rotationDegrees(92.0F));
+         pPoseStack.mulPose(Axis.XP.rotationDegrees(45.0F));
+         pPoseStack.mulPose(Axis.ZP.rotationDegrees(f * -41.0F));
+         pPoseStack.translate(f * 0.3F, -1.1F, 0.45F);
+         if (pSide == HumanoidArm.RIGHT) {
+            dmz$handRenderer.renderRightHand(pPoseStack, pBuffer, pCombinedLight, player);
+         } else {
+            dmz$handRenderer.renderLeftHand(pPoseStack, pBuffer, pCombinedLight, player);
+         }
+
+         pPoseStack.popPose();
+         ci.cancel();
+      }
+   }
+}

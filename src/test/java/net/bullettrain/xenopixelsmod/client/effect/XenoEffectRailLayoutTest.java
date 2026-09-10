@@ -16,7 +16,7 @@ class XenoEffectRailLayoutTest {
         assertEquals(504, cells.getFirst().x());
         assertEquals(100, cells.getFirst().y());
         assertEquals(504, cells.getLast().x());
-        assertEquals(172, cells.getLast().y());
+        assertEquals(181, cells.getLast().y());
     }
 
     @Test
@@ -25,9 +25,9 @@ class XenoEffectRailLayoutTest {
 
         assertEquals(504, cells.get(0).x());
         assertEquals(100, cells.get(0).y());
-        assertEquals(504, cells.get(1).x());
-        assertEquals(124, cells.get(1).y());
-        assertEquals(528, cells.get(2).x());
+        assertEquals(531, cells.get(1).x());
+        assertEquals(100, cells.get(1).y());
+        assertEquals(558, cells.get(2).x());
         assertEquals(100, cells.get(2).y());
     }
 

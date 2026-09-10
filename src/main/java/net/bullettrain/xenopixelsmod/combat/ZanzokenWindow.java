@@ -24,6 +24,24 @@ public final class ZanzokenWindow {
      */
     static final int MAX_PLAUSIBLE_HORIZON_TICKS = 20 * 60 * 5;
 
+    /**
+     * How long a fighter counts as standing behind their images, in ticks.
+     *
+     * <p>Two durations describe the same disguise from different ends: {@code pressTicks} covers a
+     * press that has not resolved into anything yet, and {@code ringTicks} is how long the ring of
+     * bodies actually stands once a read lands. Whichever is longer is how long the fighter is
+     * genuinely hidden, so that is what AI confusion has to run for.
+     *
+     * <p>This exists because the two were not reconciled. The press marked the images for
+     * {@code pressTicks} and nothing re-marked them when the ring went up, so for a default
+     * configuration — a 40-tick press mark against a 200-tick ring — the mark expired four fifths of
+     * the way <i>before</i> the ring did. AI went on tracking the real body through a ring that was
+     * still plainly on screen, which is exactly the case the images exist for.
+     */
+    public static int afterimageTicks(int pressTicks, int ringTicks) {
+        return Math.max(1, Math.max(pressTicks, ringTicks));
+    }
+
     /** Is a press still live at {@code now}? */
     public static boolean armed(int now, Integer windowEndTick) {
         if (windowEndTick == null || stale(now, windowEndTick)) return false;

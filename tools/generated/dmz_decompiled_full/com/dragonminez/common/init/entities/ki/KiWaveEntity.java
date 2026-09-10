@@ -1,0 +1,907 @@
+package com.dragonminez.common.init.entities.ki;
+
+import com.dragonminez.client.util.ColorUtils;
+import com.dragonminez.common.combat.util.MultipartTargeting;
+import com.dragonminez.common.compat.CameraAimHelper;
+import com.dragonminez.common.compat.SableCompat;
+import com.dragonminez.common.init.MainEntities;
+import com.dragonminez.common.init.MainParticles;
+import com.dragonminez.common.init.MainSounds;
+import com.dragonminez.common.init.particles.KiLightningParticle;
+import com.dragonminez.common.init.particles.KiSheddingParticle;
+import com.dragonminez.common.init.particles.KiTrailParticle;
+import java.util.List;
+import net.minecraft.client.Minecraft;
+import net.minecraft.core.BlockPos;
+import net.minecraft.core.particles.ParticleOptions;
+import net.minecraft.core.particles.ParticleTypes;
+import net.minecraft.core.particles.SimpleParticleType;
+import net.minecraft.nbt.CompoundTag;
+import net.minecraft.network.syncher.EntityDataAccessor;
+import net.minecraft.network.syncher.EntityDataSerializers;
+import net.minecraft.network.syncher.SynchedEntityData;
+import net.minecraft.network.syncher.SynchedEntityData.Builder;
+import net.minecraft.server.level.ServerLevel;
+import net.minecraft.sounds.SoundEvent;
+import net.minecraft.sounds.SoundEvents;
+import net.minecraft.sounds.SoundSource;
+import net.minecraft.util.Mth;
+import net.minecraft.world.entity.EntityType;
+import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.entity.projectile.Projectile;
+import net.minecraft.world.level.ClipContext;
+import net.minecraft.world.level.Level;
+import net.minecraft.world.level.ClipContext.Block;
+import net.minecraft.world.level.ClipContext.Fluid;
+import net.minecraft.world.phys.AABB;
+import net.minecraft.world.phys.BlockHitResult;
+import net.minecraft.world.phys.HitResult;
+import net.minecraft.world.phys.Vec3;
+import net.minecraft.world.phys.HitResult.Type;
+
+public class KiWaveEntity extends AbstractKiProjectile {
+   private static final EntityDataAccessor<Float> BEAM_LENGTH = SynchedEntityData.defineId(KiWaveEntity.class, EntityDataSerializers.FLOAT);
+   private static final EntityDataAccessor<Float> FIXED_YAW = SynchedEntityData.defineId(KiWaveEntity.class, EntityDataSerializers.FLOAT);
+   private static final EntityDataAccessor<Float> FIXED_PITCH = SynchedEntityData.defineId(KiWaveEntity.class, EntityDataSerializers.FLOAT);
+   private static final EntityDataAccessor<Integer> CAST_WAVE = SynchedEntityData.defineId(KiWaveEntity.class, EntityDataSerializers.INT);
+   private static final EntityDataAccessor<Float> CAST_SIZE = SynchedEntityData.defineId(KiWaveEntity.class, EntityDataSerializers.FLOAT);
+   private static final EntityDataAccessor<Float> OFFSET_X = SynchedEntityData.defineId(KiWaveEntity.class, EntityDataSerializers.FLOAT);
+   private static final EntityDataAccessor<Float> OFFSET_Y = SynchedEntityData.defineId(KiWaveEntity.class, EntityDataSerializers.FLOAT);
+   private static final EntityDataAccessor<Float> OFFSET_Z = SynchedEntityData.defineId(KiWaveEntity.class, EntityDataSerializers.FLOAT);
+   private static final EntityDataAccessor<Boolean> CONTINUOUS_FOLLOW = SynchedEntityData.defineId(KiWaveEntity.class, EntityDataSerializers.BOOLEAN);
+   private static final EntityDataAccessor<Boolean> IS_FIRING = SynchedEntityData.defineId(KiWaveEntity.class, EntityDataSerializers.BOOLEAN);
+   private static final float MAX_RANGE = 300.0F;
+
+   private float calcWaveForwardOffset(LivingEntity owner) {
+      return owner.getBbWidth() / 2.0F + 0.2F;
+   }
+
+   private float calcWaveCenterOffsetY(LivingEntity owner) {
+      return 0.0F;
+   }
+
+   public KiWaveEntity(EntityType<? extends Projectile> pEntityType, Level pLevel) {
+      super(pEntityType, pLevel);
+      this.setNoGravity(true);
+      this.noPhysics = true;
+      this.setKiType(AbstractKiProjectile.KiType.WAVE);
+   }
+
+   public KiWaveEntity(Level level, LivingEntity owner) {
+      super((EntityType<? extends Projectile>)MainEntities.KI_WAVE.get(), level);
+      this.setOwner(owner);
+      this.setNoGravity(true);
+      this.noPhysics = true;
+      this.entityData.set(FIXED_YAW, owner.getYRot());
+      this.entityData.set(FIXED_PITCH, owner.getXRot());
+      this.setYRot(owner.getYRot());
+      this.setXRot(owner.getXRot());
+      Vec3 look = owner.getLookAngle();
+      Vec3 startPos = owner.getEyePosition().add(look.scale(0.4));
+      this.setPos(startPos.x, startPos.y, startPos.z);
+      this.setKiSpeed(1.2F);
+      this.setSize(1.0F);
+      level.playSound(
+         null,
+         owner.getX(),
+         owner.getY(),
+         owner.getZ(),
+         (SoundEvent)MainSounds.KI_KAME_FIRE.get(),
+         SoundSource.PLAYERS,
+         0.1F,
+         0.8F + this.random.nextFloat() * 0.2F
+      );
+   }
+
+   @Override
+   public int getMaxHits() {
+      return Math.max(1, this.firingWindowTicks() / 20);
+   }
+
+   @Override
+   public AbstractKiProjectile.ClashRole getClashRole() {
+      return AbstractKiProjectile.ClashRole.MAJOR;
+   }
+
+   @Override
+   public float getClashYaw() {
+      return this.getFixedYaw();
+   }
+
+   @Override
+   public float getClashPitch() {
+      return this.getFixedPitch();
+   }
+
+   @Override
+   public float getClashBeamLength() {
+      return this.getBeamLength();
+   }
+
+   public void setupKiWave(LivingEntity owner, float damage, float speed, int color, int colorBorder, int colorOutline, float size, int castTime) {
+      this.setKiRenderType(0);
+      this.setSize(size);
+      this.setCastSize(size / 2.0F);
+      this.setKiDamage(damage);
+      this.setKiSpeed(speed);
+      this.setColors(color, colorBorder, colorOutline);
+      this.setFiring(false);
+      this.setCastWave(castTime);
+      this.setMaxLife(castTime * 2);
+      this.playInitialSound((SoundEvent)MainSounds.KI_KAME_FIRE.get());
+      this.setCastOffsets(0.4F, this.calcWaveCenterOffsetY(owner), this.calcWaveForwardOffset(owner));
+      this.updatePositionRelativeToOwner(owner, false);
+      if (!this.level().isClientSide) {
+         this.level().addFreshEntity(this);
+      }
+   }
+
+   public void setupKiWave(LivingEntity owner, float damage, float speed, int color, int colorBorder, float size, int castTime) {
+      this.setupKiWave(owner, damage, speed, color, colorBorder, 16777215, size, castTime);
+   }
+
+   public void setupKiWave(LivingEntity owner, float damage, float speed, int color, float size, int castTime) {
+      this.setupKiWave(owner, damage, speed, color, color, 16777215, size, castTime);
+   }
+
+   public void setupKiWavePlayer(LivingEntity owner, float damage, float speed, int color, int colorBorder, int colorOutline, float size) {
+      this.setKiRenderType(0);
+      this.setSize(size);
+      this.setCastSize(0.2F);
+      this.setKiDamage(damage);
+      this.setKiSpeed(speed);
+      this.setColors(color, colorBorder, colorOutline);
+      this.setFiring(false);
+      this.setMaxLife(99999);
+      this.setCastWave(0);
+      this.setCastOffsets(0.4F, 0.6F, 0.0F);
+      this.updatePositionRelativeToOwner(owner, false);
+   }
+
+   public void setupKiWavePlayer(LivingEntity owner, float damage, float speed, int color, int colorBorder, float size) {
+      this.setupKiWavePlayer(owner, damage, speed, color, colorBorder, 16777215, size);
+   }
+
+   public void setupKiHame(LivingEntity owner, float damage, float speed, float size, int colorOutline, int castTime) {
+      this.setKiRenderType(1);
+      this.setSize(size);
+      this.setCastSize(size / 2.0F);
+      this.setKiDamage(damage);
+      this.setKiSpeed(speed);
+      this.setColors(5240831, 5240831, colorOutline);
+      this.setFiring(false);
+      this.setCastWave(castTime);
+      this.setMaxLife(castTime * 2);
+      this.playInitialSound((SoundEvent)MainSounds.KI_KAME_FIRE.get());
+      this.setCastOffsets(0.4F, -0.2F, 0.0F);
+      this.updatePositionRelativeToOwner(owner, true);
+      if (!this.level().isClientSide) {
+         this.level().addFreshEntity(this);
+      }
+   }
+
+   public void setupKiHame(LivingEntity owner, float damage, float speed, float size, int castTime) {
+      this.setupKiHame(owner, damage, speed, size, 16777215, castTime);
+   }
+
+   public void setupKiHamePlayer(LivingEntity owner, float damage, float speed, float size, int colorOutline) {
+      this.setKiRenderType(1);
+      this.setSize(size);
+      this.setCastSize(0.2F);
+      this.setKiDamage(damage);
+      this.setKiSpeed(speed);
+      this.setColors(5240831, 5240831, colorOutline);
+      this.setFiring(false);
+      this.setMaxLife(99999);
+      this.setCastWave(0);
+      this.setCastOffsets(0.4F, -0.6F, 0.0F);
+      this.updatePositionRelativeToOwner(owner, true);
+   }
+
+   public void setupKiHamePlayer(LivingEntity owner, float damage, float speed, float size) {
+      this.setupKiHamePlayer(owner, damage, speed, size, 16777215);
+   }
+
+   public void setupKiGalickGun(LivingEntity owner, float damage, float speed, float size, int colorOutline, int castTime) {
+      this.setKiRenderType(2);
+      this.setSize(size);
+      this.setCastSize(size / 2.0F);
+      this.setKiDamage(damage);
+      this.setKiSpeed(speed);
+      this.setColors(13504739, 11407587, colorOutline);
+      this.setFiring(false);
+      this.setCastWave(castTime);
+      this.setMaxLife(castTime * 2);
+      this.playInitialSound((SoundEvent)MainSounds.KI_EXPLOSION_CHARGE.get());
+      this.setCastOffsets(0.4F, 0.2F, 0.0F);
+      this.updatePositionRelativeToOwner(owner, true);
+      if (!this.level().isClientSide) {
+         this.level().addFreshEntity(this);
+      }
+   }
+
+   public void setupKiGalickGun(LivingEntity owner, float damage, float speed, float size, int castTime) {
+      this.setupKiGalickGun(owner, damage, speed, size, 16777215, castTime);
+   }
+
+   public void setupKiGalickGunPlayer(LivingEntity owner, float damage, float speed, float size, int colorOutline) {
+      this.setKiRenderType(2);
+      this.setSize(size);
+      this.setCastSize(0.3F);
+      this.setKiDamage(damage);
+      this.setKiSpeed(speed);
+      this.setColors(13504739, 10495203, colorOutline);
+      this.setFiring(false);
+      this.setMaxLife(99999);
+      this.setCastWave(0);
+      this.setCastOffsets(0.4F, 0.2F, 0.0F);
+      this.updatePositionRelativeToOwner(owner, true);
+   }
+
+   public void setupKiGalickGunPlayer(LivingEntity owner, float damage, float speed, float size) {
+      this.setupKiGalickGunPlayer(owner, damage, speed, size, 9971701);
+   }
+
+   public void setupFinalFlash(LivingEntity owner, float damage, float speed, float size, int colorOutline, int castTime) {
+      this.setKiRenderType(3);
+      this.setSize(size);
+      this.setCastSize(size / 2.0F);
+      this.setKiDamage(damage);
+      this.setKiSpeed(speed);
+      this.setColors(16776533, 16777215, colorOutline);
+      this.setFiring(false);
+      this.setCastWave(castTime);
+      this.setMaxLife(castTime * 2);
+      this.playInitialSound((SoundEvent)MainSounds.KI_FINALFLASH_CHARGE.get());
+      this.setCastOffsets(0.0F, -0.3F, 0.4F);
+      this.updatePositionRelativeToOwner(owner, true);
+      if (!this.level().isClientSide) {
+         this.level().addFreshEntity(this);
+      }
+   }
+
+   public void setupFinalFlash(LivingEntity owner, float damage, float speed, float size, int castTime) {
+      this.setupFinalFlash(owner, damage, speed, size, 16777215, castTime);
+   }
+
+   public void setupFinalFlashPlayer(LivingEntity owner, float damage, float speed, float size, int colorOutline) {
+      this.setKiRenderType(3);
+      this.setSize(size);
+      this.setCastSize(size / 2.0F);
+      this.setKiDamage(damage);
+      this.setKiSpeed(speed);
+      this.setColors(16776533, 16776533, colorOutline);
+      this.setFiring(false);
+      this.setMaxLife(99999);
+      this.setCastWave(50);
+      this.setCastOffsets(0.0F, 0.3F, 2.5F);
+      this.updatePositionRelativeToOwner(owner, false);
+   }
+
+   public void setupFinalFlashPlayer(LivingEntity owner, float damage, float speed, float size) {
+      this.setupFinalFlashPlayer(owner, damage, speed, size, 16777215);
+   }
+
+   public void setupDoubleSunday(LivingEntity owner, float damage, float speed, int color, int colorBorder, int colorOutline, float size, int castTime) {
+      this.setKiRenderType(5);
+      this.setSize(size);
+      this.setCastSize(size / 2.0F);
+      this.setKiDamage(damage);
+      this.setKiSpeed(speed);
+      this.setColors(color, colorBorder, colorOutline);
+      this.setFiring(false);
+      this.setCastWave(castTime);
+      this.setMaxLife(castTime * 2);
+      this.playInitialSound((SoundEvent)MainSounds.KI_FINALFLASH_CHARGE.get());
+      this.setCastOffsets(0.0F, 0.4F, 0.5F);
+      this.updatePositionRelativeToOwner(owner, true);
+      if (!this.level().isClientSide) {
+         this.level().addFreshEntity(this);
+      }
+   }
+
+   public void setupDoubleSunday(LivingEntity owner, float damage, float speed, int color, int colorBorder, float size, int castTime) {
+      this.setupDoubleSunday(owner, damage, speed, color, colorBorder, 16777215, size, castTime);
+   }
+
+   public void setupKiOozaru(LivingEntity owner, float damage, float speed, int color, int colorBorder, int colorOutline, float size, int castTime) {
+      this.setKiRenderType(0);
+      this.setSize(size);
+      this.setCastSize(size / 2.0F);
+      this.setKiDamage(damage);
+      this.setKiSpeed(speed);
+      this.setColors(color, colorBorder, colorOutline);
+      this.setContinuousFollow(true);
+      this.setFiring(false);
+      this.setCastWave(castTime);
+      this.setMaxLife(castTime * 2);
+      this.playInitialSound((SoundEvent)MainSounds.KI_KAME_FIRE.get());
+      this.setCastOffsets(0.0F, 0.0F, 0.6F);
+      this.updatePositionRelativeToOwner(owner, true);
+      if (!this.level().isClientSide) {
+         this.level().addFreshEntity(this);
+      }
+   }
+
+   public void setupKiOozaru(LivingEntity owner, float damage, float speed, int color, int colorBorder, float size, int castTime) {
+      this.setupKiOozaru(owner, damage, speed, color, colorBorder, 16777215, size, castTime);
+   }
+
+   public void setupKiOozaruPlayer(LivingEntity owner, float damage, float speed, int color, int colorBorder, int colorOutline, float size) {
+      this.setKiRenderType(0);
+      this.setSize(size);
+      this.setCastSize(size / 2.0F);
+      this.setKiDamage(damage);
+      this.setKiSpeed(speed);
+      this.setColors(color, colorBorder, colorOutline);
+      this.setContinuousFollow(true);
+      this.setFiring(false);
+      this.setMaxLife(99999);
+      this.setCastWave(0);
+      this.setCastOffsets(0.0F, 0.0F, 0.5F);
+      this.updatePositionRelativeToOwner(owner, false);
+   }
+
+   public void setupKiOozaruPlayer(LivingEntity owner, float damage, float speed, int color, int colorBorder, float size) {
+      this.setupKiOozaruPlayer(owner, damage, speed, color, colorBorder, 16777215, size);
+   }
+
+   public void setupKiMasenko(LivingEntity owner, float damage, float speed, float size, int colorOutline, int castTime) {
+      this.setKiRenderType(4);
+      this.setSize(size);
+      this.setCastSize(0.2F);
+      this.setKiDamage(damage);
+      this.setKiSpeed(speed);
+      this.setColors(16776325, 16572514, colorOutline);
+      this.setFiring(false);
+      this.setCastWave(castTime);
+      this.setMaxLife(castTime * 2);
+      this.playInitialSound((SoundEvent)MainSounds.KI_EXPLOSION_CHARGE.get());
+      this.setCastOffsets(0.0F, 0.2F, 0.0F);
+      this.updatePositionRelativeToOwner(owner, true);
+      if (!this.level().isClientSide) {
+         this.level().addFreshEntity(this);
+      }
+   }
+
+   public void setupKiMasenko(LivingEntity owner, float damage, float speed, float size, int castTime) {
+      this.setupKiMasenko(owner, damage, speed, size, 16777215, castTime);
+   }
+
+   public void setupKiMasenkoPlayer(LivingEntity owner, float damage, float speed, float size, int colorOutline) {
+      this.setKiRenderType(4);
+      this.setSize(size);
+      this.setCastSize(0.2F);
+      this.setKiDamage(damage);
+      this.setKiSpeed(speed);
+      this.setColors(16776325, 16572514, colorOutline);
+      this.setFiring(false);
+      this.setCastWave(15);
+      this.setMaxLife(99999);
+      this.playInitialSound((SoundEvent)MainSounds.KI_EXPLOSION_CHARGE.get());
+      this.setCastOffsets(0.0F, 0.9F, 0.2F);
+      this.updatePositionRelativeToOwner(owner, true);
+   }
+
+   public void setupKiMasenkoPlayer(LivingEntity owner, float damage, float speed, float size) {
+      this.setupKiMasenkoPlayer(owner, damage, speed, size, 16777215);
+   }
+
+   public void fireHability(int finalMaxLife) {
+      this.setFiring(true);
+      this.setMaxLife(this.tickCount + finalMaxLife);
+      this.setFireTick(this.tickCount);
+      if (this.getOwner() instanceof LivingEntity livingOwner) {
+         this.updatePositionRelativeToOwner(livingOwner, false, CameraAimHelper.resolve(livingOwner));
+      }
+
+      if (this.getOwner() instanceof Player) {
+         this.triggerAnimationPacket("_fire");
+      }
+   }
+
+   private void updatePositionRelativeToOwner(LivingEntity owner, boolean isCasting) {
+      this.updatePositionRelativeToOwner(owner, isCasting, owner.getLookAngle());
+   }
+
+   private void updatePositionRelativeToOwner(LivingEntity owner, boolean isCasting, Vec3 look) {
+      double centerX = owner.getX();
+      double centerY = this.isContinuousFollow() ? owner.getEyeY() : owner.getY() + (double)owner.getBbHeight() / 2.0;
+      double centerZ = owner.getZ();
+      Vec3 hitboxCenter = new Vec3(centerX, centerY, centerZ);
+      Vec3 newPos;
+      if (!isCasting && !this.isContinuousFollow()) {
+         newPos = hitboxCenter.add(look.scale(2.5));
+      } else {
+         Vec3 right = look.cross(new Vec3(0.0, 1.0, 0.0)).normalize();
+         Vec3 up = right.cross(look).normalize();
+         Vec3 offset = right.scale((double)((Float)this.entityData.get(OFFSET_X)).floatValue())
+            .add(up.scale((double)((Float)this.entityData.get(OFFSET_Y)).floatValue()))
+            .add(look.scale((double)((Float)this.entityData.get(OFFSET_Z)).floatValue()));
+         newPos = hitboxCenter.add(offset);
+      }
+
+      this.setPos(newPos.x, newPos.y, newPos.z);
+      float horizontalDistance = (float)Math.sqrt(look.x * look.x + look.z * look.z);
+      float exactPitch = (float)(-(Mth.atan2(look.y, (double)horizontalDistance) * (180.0 / Math.PI)));
+      float exactYaw = (float)(Mth.atan2(look.z, look.x) * (180.0 / Math.PI) - 90.0);
+      this.entityData.set(FIXED_YAW, exactYaw);
+      this.entityData.set(FIXED_PITCH, exactPitch);
+      this.setYRot(exactYaw);
+      this.setXRot(exactPitch);
+   }
+
+   @Override
+   protected void defineSynchedData(Builder builder) {
+      super.defineSynchedData(builder);
+      builder.define(BEAM_LENGTH, 0.0F);
+      builder.define(FIXED_YAW, 0.0F);
+      builder.define(FIXED_PITCH, 0.0F);
+      builder.define(CAST_WAVE, 100);
+      builder.define(CAST_SIZE, 1.0F);
+      builder.define(OFFSET_X, 0.0F);
+      builder.define(OFFSET_Y, 0.0F);
+      builder.define(OFFSET_Z, 0.0F);
+      builder.define(CONTINUOUS_FOLLOW, false);
+      builder.define(IS_FIRING, false);
+   }
+
+   public float getBeamLength() {
+      return (Float)this.entityData.get(BEAM_LENGTH);
+   }
+
+   private void setBeamLength(float len) {
+      this.entityData.set(BEAM_LENGTH, len);
+   }
+
+   public float getFixedYaw() {
+      return (Float)this.entityData.get(FIXED_YAW);
+   }
+
+   public float getFixedPitch() {
+      return (Float)this.entityData.get(FIXED_PITCH);
+   }
+
+   public int getCastWave() {
+      return (Integer)this.entityData.get(CAST_WAVE);
+   }
+
+   public void setCastWave(int ticks) {
+      this.entityData.set(CAST_WAVE, ticks);
+   }
+
+   public float getCastSize() {
+      return (Float)this.entityData.get(CAST_SIZE);
+   }
+
+   public void setCastSize(float size) {
+      this.entityData.set(CAST_SIZE, size);
+   }
+
+   public void setCastOffsets(float offsetX, float offsetY, float offsetZ) {
+      this.entityData.set(OFFSET_X, offsetX);
+      this.entityData.set(OFFSET_Y, offsetY);
+      this.entityData.set(OFFSET_Z, offsetZ);
+   }
+
+   public boolean isContinuousFollow() {
+      return (Boolean)this.entityData.get(CONTINUOUS_FOLLOW);
+   }
+
+   public void setContinuousFollow(boolean follow) {
+      this.entityData.set(CONTINUOUS_FOLLOW, follow);
+   }
+
+   @Override
+   public boolean isFiring() {
+      return (Boolean)this.entityData.get(IS_FIRING);
+   }
+
+   @Override
+   public void setFiring(boolean firing) {
+      this.entityData.set(IS_FIRING, firing);
+   }
+
+   @Override
+   public void tick() {
+      this.baseTick();
+      this.setDeltaMovement(0.0, 0.0, 0.0);
+      int renderType = this.getKiRenderType();
+      if (renderType == 1 || renderType == 0) {
+         if (this.tickCount <= 5) {
+            this.setCastOffsets(0.0F, 0.1F, 0.5F);
+         } else if (this.tickCount < 15) {
+            this.setCastOffsets(0.0F, 0.3F, 0.5F);
+         } else {
+            this.setCastOffsets(0.4F, 0.1F, 0.0F);
+         }
+      }
+
+      if (renderType == 2) {
+         if (this.tickCount <= 5) {
+            this.setCastOffsets(0.0F, 0.3F, 0.5F);
+         } else {
+            this.setCastOffsets(0.2F, 0.4F, -0.3F);
+         }
+      }
+
+      if (!this.isFiring() && this.getMaxLife() != 99999 && this.tickCount >= this.getCastWave()) {
+         this.setFiring(true);
+         if (this.getOwner() instanceof LivingEntity livingOwner) {
+            this.updatePositionRelativeToOwner(livingOwner, false);
+         }
+      }
+
+      boolean isFiring;
+      label109: {
+         isFiring = this.isFiring();
+         if (this.getOwner() instanceof LivingEntity livingOwner && livingOwner.isAlive()) {
+            if (!isFiring) {
+               this.updatePositionRelativeToOwner(livingOwner, true);
+            } else if (this.isContinuousFollow()) {
+               this.updatePositionRelativeToOwner(livingOwner, false);
+            }
+            break label109;
+         }
+
+         if (!this.level().isClientSide) {
+            this.discard();
+            return;
+         }
+      }
+
+      if (!this.level().isClientSide) {
+         if (!isFiring) {
+            if (this.tickCount == 1) {
+               if (this.getKiRenderType() != 3 && this.getKiRenderType() != 5) {
+                  this.level()
+                     .playSound(null, this.getX(), this.getY(), this.getZ(), (SoundEvent)MainSounds.KI_EXPLOSION_CHARGE.get(), SoundSource.PLAYERS, 0.7F, 1.0F);
+               } else {
+                  this.level()
+                     .playSound(null, this.getX(), this.getY(), this.getZ(), (SoundEvent)MainSounds.KI_FINALFLASH_CHARGE.get(), SoundSource.HOSTILE, 0.7F, 1.0F);
+               }
+            }
+
+            if (this.getKiRenderType() == 1 && this.tickCount == 1) {
+               this.playSound((SoundEvent)MainSounds.KI_KAME_CHARGE.get(), 0.7F, 1.0F);
+            }
+         } else {
+            if (this.isClashLocked()) {
+               this.setBeamLength(this.getClashLockedLength());
+               this.onKiTick();
+               return;
+            }
+
+            Vec3 startPos = this.position();
+            Vec3 dir = Vec3.directionFromRotation(this.getXRot(), this.getYRot());
+            float currentLen = this.getBeamLength();
+            float currentSpeed = this.getKiSpeed();
+            if (this.tickCount % 5 == 0) {
+               Vec3 tipPosForSound = startPos.add(dir.scale((double)currentLen));
+               SoundEvent fireSound = this.getKiRenderType() != 3 && this.getKiRenderType() != 5
+                  ? (SoundEvent)MainSounds.KI_KAME_FIRE.get()
+                  : (SoundEvent)MainSounds.KI_FINALFLASH_FIRE.get();
+               this.level().playSound(null, tipPosForSound.x, tipPosForSound.y, tipPosForSound.z, fireSound, SoundSource.HOSTILE, 0.7F, 1.0F);
+            }
+
+            float targetLen = currentLen + currentSpeed;
+            Vec3 tipPos = startPos.add(dir.scale((double)targetLen));
+            HitResult hitResult = this.level().clip(new ClipContext(startPos.add(dir.scale((double)currentLen)), tipPos, Block.COLLIDER, Fluid.NONE, this));
+            if (hitResult.getType() == Type.BLOCK) {
+               BlockHitResult blockHit = (BlockHitResult)hitResult;
+               BlockPos hitPos = blockHit.getBlockPos();
+               Vec3 worldHit = SableCompat.projectToWorld(this.level(), blockHit.getLocation());
+               if (this.level().getBlockState(hitPos).getExplosionResistance(this.level(), hitPos, null) >= 1000.0F) {
+                  targetLen = (float)worldHit.distanceTo(startPos);
+                  currentSpeed = 0.0F;
+                  this.setKiSpeed(currentSpeed);
+               } else {
+                  this.destroyBlocksAt(hitPos);
+               }
+            } else {
+               this.destroyBlocksAtTip(tipPos);
+            }
+
+            this.setBeamLength(targetLen);
+            this.damageEntitiesInBeam(startPos, dir, targetLen);
+            if (currentSpeed < 0.05F || this.tickCount > this.getMaxLife()) {
+               this.explodeAndDie(startPos.add(dir.scale((double)targetLen)));
+               return;
+            }
+         }
+      } else if (isFiring) {
+         this.spawnWaveParticles();
+         this.spawnOriginSplash();
+      }
+
+      if (isFiring) {
+         Vec3 startPosx = this.position();
+         double radius = (double)this.getSize() * 1.5;
+         AABB originBox = new AABB(
+            startPosx.x - radius, startPosx.y - radius, startPosx.z - radius, startPosx.x + radius, startPosx.y + radius, startPosx.z + radius
+         );
+         this.setBoundingBox(originBox);
+      }
+
+      this.onKiTick();
+   }
+
+   private void spawnLightningParticles(boolean isCasting) {
+      if (this.getKiRenderType() == 2) {
+         float length = this.getBeamLength();
+         float yaw = this.getFixedYaw();
+         float pitch = this.getFixedPitch();
+         Vec3 dir = Vec3.directionFromRotation(pitch, yaw);
+         Vec3 startPos = this.position();
+         Vec3 endPos = startPos.add(dir.scale((double)length));
+         float scale = this.getSize();
+         float[] borderColor = this.getRgbColorBorder();
+         int rayosPorTick = 8;
+
+         for (int i = 0; i < rayosPorTick; i++) {
+            if (isCasting) {
+               if (this.random.nextFloat() < 1.0F) {
+                  this.spawnLightningAt(startPos, scale * 1.5F, borderColor);
+                  this.spawnLightningAt(startPos, scale * 1.5F, ColorUtils.darkenColor(borderColor, 0.5F));
+               }
+            } else if (length > 1.0F && this.random.nextFloat() < 1.0F) {
+               this.spawnLightningAt(endPos, scale * 3.0F, borderColor);
+               this.spawnLightningAt(endPos, scale * 3.0F, ColorUtils.darkenColor(borderColor, 0.5F));
+            }
+         }
+      }
+   }
+
+   private void spawnLightningAt(Vec3 pos, float scaleRadius, float[] rgb) {
+      double offsetX = (this.random.nextDouble() - 0.5) * (double)scaleRadius * 1.8;
+      double offsetY = (this.random.nextDouble() - 0.5) * (double)scaleRadius * 1.8;
+      double offsetZ = (this.random.nextDouble() - 0.5) * (double)scaleRadius * 1.8;
+      double vx = offsetX * 0.1;
+      double vy = offsetY * 0.1;
+      double vz = offsetZ * 0.1;
+      if (Minecraft.getInstance()
+         .particleEngine
+         .createParticle((ParticleOptions)MainParticles.KI_LIGHTNING.get(), pos.x + offsetX, pos.y + offsetY, pos.z + offsetZ, vx, vy, vz) instanceof KiLightningParticle lightning
+         )
+       {
+         lightning.setLightningColor(rgb[0], rgb[1], rgb[2]);
+         float randomScale = scaleRadius * 0.8F + this.random.nextFloat() * scaleRadius * 0.5F;
+         lightning.setLightningScale(randomScale);
+      }
+   }
+
+   private boolean destroyBlocksAtTip(Vec3 tipPos) {
+      return this.destroyBlocksAt(BlockPos.containing(tipPos));
+   }
+
+   private boolean destroyBlocksAt(BlockPos center) {
+      boolean hitSomething = false;
+      float eatRadius = this.scaledDestructionRadius(this.getSize() * 3.2F);
+      int bRad = Math.round(eatRadius);
+      Level level = this.level();
+
+      for (int x = -bRad; x <= bRad; x++) {
+         for (int y = -bRad; y <= bRad; y++) {
+            for (int z = -bRad; z <= bRad; z++) {
+               if ((float)(x * x + y * y + z * z) <= eatRadius * eatRadius) {
+                  BlockPos targetPos = center.offset(x, y, z);
+                  if (!level.getBlockState(targetPos).isAir()
+                     && level.getBlockState(targetPos).getExplosionResistance(level, targetPos, null) < 1000.0F
+                     && this.destroyKiBlock(targetPos, false)) {
+                     hitSomething = true;
+                     if (level instanceof ServerLevel) {
+                        ServerLevel serverLevel = (ServerLevel)level;
+                        if (this.random.nextFloat() < 0.25F) {
+                           serverLevel.sendParticles(
+                              ParticleTypes.CAMPFIRE_COSY_SMOKE,
+                              (double)targetPos.getX() + 0.5,
+                              (double)targetPos.getY() + 0.5,
+                              (double)targetPos.getZ() + 0.5,
+                              1,
+                              0.5,
+                              0.5,
+                              0.5,
+                              0.05
+                           );
+                        }
+                     }
+                  }
+               }
+            }
+         }
+      }
+
+      return hitSomething;
+   }
+
+   private void spawnOriginSplash() {
+      if (this.tickCount % 5 == 0) {
+         double colorInt = (double)this.getColorBorder();
+         double mySize = (double)this.getSize();
+         this.level().addParticle((ParticleOptions)MainParticles.KI_SPLASH_WAVE.get(), this.getX(), this.getY(), this.getZ(), colorInt, mySize, 0.0);
+      }
+   }
+
+   private void spawnWaveParticles() {
+      float length = this.getBeamLength();
+      if (!(length <= 1.0F)) {
+         float yaw = this.getFixedYaw();
+         float pitch = this.getFixedPitch();
+         Vec3 dir = Vec3.directionFromRotation(pitch, yaw);
+         Vec3 startPos = this.position();
+         Vec3 tipPos = startPos.add(dir.scale((double)length));
+         float scale = this.getSize();
+         float[] borderColor = this.getRgbColorBorder();
+         float pr = borderColor[0];
+         float pg = borderColor[1];
+         float pb = borderColor[2];
+
+         for (int i = 0; i < 4; i++) {
+            double radius = (double)scale * 1.2;
+            double theta = this.random.nextDouble() * 2.0 * Math.PI;
+            double phi = Math.acos(2.0 * this.random.nextDouble() - 1.0);
+            double dx = radius * Math.sin(phi) * Math.cos(theta);
+            double dy = radius * Math.sin(phi) * Math.sin(theta);
+            double dz = radius * Math.cos(phi);
+            double vx = dx * 0.15;
+            double vy = dy * 0.15;
+            double vz = dz * 0.15;
+            if (Minecraft.getInstance()
+               .particleEngine
+               .createParticle((ParticleOptions)MainParticles.KI_TRAIL.get(), tipPos.x + dx, tipPos.y + dy, tipPos.z + dz, vx, vy, vz) instanceof KiTrailParticle trail
+               )
+             {
+               trail.setKiColor(pr, pg, pb);
+               trail.setKiScale(scale);
+            }
+         }
+
+         for (int ix = 0; ix < 5; ix++) {
+            double absDist = (double)scale * 2.0;
+            double angle = this.random.nextDouble() * Math.PI * 2.0;
+            double sx = Math.cos(angle) * absDist;
+            double sz = Math.sin(angle) * absDist;
+            double sy = (this.random.nextDouble() - 0.5) * 2.0 * absDist;
+            if (Minecraft.getInstance()
+               .particleEngine
+               .createParticle(
+                  (ParticleOptions)MainParticles.KI_SHEDDING.get(), startPos.x + sx, startPos.y + sy, startPos.z + sz, -sx * 0.15, -sy * 0.15, -sz * 0.15
+               ) instanceof KiSheddingParticle kiParticle) {
+               kiParticle.setKiColor(borderColor[0], borderColor[1], borderColor[2]);
+            }
+         }
+      }
+   }
+
+   private void damageEntitiesInBeam(Vec3 start, Vec3 dir, float length) {
+      Vec3 end = start.add(dir.scale((double)length));
+      double cilindroRadio = (double)this.getSize() * 1.5;
+      AABB searchBox = new AABB(start, end).inflate(cilindroRadio);
+      List<LivingEntity> targets = MultipartTargeting.collectTargets(this.level(), searchBox);
+      int hitInterval = 20;
+
+      for (LivingEntity target : targets) {
+         if (this.shouldDamage(target) && !target.is(this.getOwner()) && target.invulnerableTime <= 0) {
+            float hitPrecision = (float)cilindroRadio;
+            boolean intersects = false;
+
+            for (AABB hb : MultipartTargeting.hitBoxes(target)) {
+               AABB targetBox = hb.inflate((double)hitPrecision);
+               if (targetBox.clip(start, end).isPresent() || targetBox.contains(start)) {
+                  intersects = true;
+                  break;
+               }
+            }
+
+            if (intersects) {
+               boolean wasHit = this.applyDamageOrHeal(target, this.getDamagePerHit());
+               if (wasHit) {
+                  this.onSuccessfulHit(target);
+                  target.invulnerableTime = hitInterval;
+                  this.setKiSpeed(this.getKiSpeed() * 0.75F);
+                  if (this.level() instanceof ServerLevel serverLevel) {
+                     double colorData = (double)this.getColorBorder();
+                     double sizeData = (double)this.getSize();
+                     serverLevel.sendParticles(
+                        (SimpleParticleType)MainParticles.KI_SPLASH_WAVE.get(),
+                        target.getX(),
+                        target.getY() + (double)target.getBbHeight() / 2.0,
+                        target.getZ(),
+                        0,
+                        colorData,
+                        sizeData,
+                        0.0,
+                        1.0
+                     );
+                  }
+               }
+            }
+         }
+      }
+   }
+
+   private void explodeAndDie(Vec3 pos) {
+      float explosionRadius = this.getSize() * 5.5F;
+      AABB damageArea = new AABB(pos, pos).inflate((double)explosionRadius);
+
+      for (LivingEntity target : MultipartTargeting.collectTargets(this.level(), damageArea)) {
+         if (this.shouldDamage(target)) {
+            boolean wasHit = this.applyDamageOrHeal(target, this.getKiDamage());
+            if (wasHit) {
+               this.onSuccessfulHit(target);
+            }
+         }
+      }
+
+      if (!this.level().isClientSide) {
+         BlockPos center = BlockPos.containing(pos);
+         float destructionRadius = this.scaledDestructionRadius(explosionRadius);
+         int blockRadius = Math.round(destructionRadius);
+
+         for (int x = -blockRadius; x <= blockRadius; x++) {
+            for (int y = -blockRadius; y <= blockRadius; y++) {
+               for (int z = -blockRadius; z <= blockRadius; z++) {
+                  if ((float)(x * x + y * y + z * z) <= destructionRadius * destructionRadius) {
+                     BlockPos targetPos = center.offset(x, y, z);
+                     if (this.level().getBlockState(targetPos).getExplosionResistance(this.level(), targetPos, null) < 1000.0F) {
+                        this.setKiBlockToAir(targetPos, 2);
+                     }
+                  }
+               }
+            }
+         }
+
+         float visualParticleSize = explosionRadius * 2.4F;
+         if (this.level() instanceof ServerLevel serverLevel) {
+            serverLevel.sendParticles((SimpleParticleType)MainParticles.KI_EXPLOSION.get(), pos.x, pos.y, pos.z, 0, (double)visualParticleSize, 0.0, 0.0, 1.0);
+            serverLevel.playSound(null, pos.x, pos.y, pos.z, SoundEvents.GENERIC_EXPLODE, SoundSource.BLOCKS, 5.0F, 0.6F);
+            KiExplosionVisualEntity explosionVisual = new KiExplosionVisualEntity((EntityType<?>)MainEntities.KI_EXPLOSION_VISUAL.get(), this.level());
+            explosionVisual.setPos(pos.x, pos.y - 0.5, pos.z);
+            explosionVisual.setupExplosion(this.getColor(), this.getColorBorder(), this.getColorOutline(), this.getSize() * 2.5F);
+            this.level().addFreshEntity(explosionVisual);
+         }
+      }
+
+      this.discard();
+   }
+
+   @Override
+   protected void addAdditionalSaveData(CompoundTag pCompound) {
+      super.addAdditionalSaveData(pCompound);
+      pCompound.putInt("CastWave", this.getCastWave());
+      pCompound.putFloat("CastSize", this.getCastSize());
+      pCompound.putFloat("OffsetX", (Float)this.entityData.get(OFFSET_X));
+      pCompound.putFloat("OffsetY", (Float)this.entityData.get(OFFSET_Y));
+      pCompound.putFloat("OffsetZ", (Float)this.entityData.get(OFFSET_Z));
+      pCompound.putBoolean("ContinuousFollow", this.isContinuousFollow());
+   }
+
+   @Override
+   protected void readAdditionalSaveData(CompoundTag pCompound) {
+      super.readAdditionalSaveData(pCompound);
+      if (pCompound.contains("CastWave")) {
+         this.setCastWave(pCompound.getInt("CastWave"));
+      }
+
+      if (pCompound.contains("CastSize")) {
+         this.setCastSize(pCompound.getFloat("CastSize"));
+      }
+
+      if (pCompound.contains("OffsetX")) {
+         this.entityData.set(OFFSET_X, pCompound.getFloat("OffsetX"));
+      }
+
+      if (pCompound.contains("OffsetY")) {
+         this.entityData.set(OFFSET_Y, pCompound.getFloat("OffsetY"));
+      }
+
+      if (pCompound.contains("OffsetZ")) {
+         this.entityData.set(OFFSET_Z, pCompound.getFloat("OffsetZ"));
+      }
+
+      if (pCompound.contains("ContinuousFollow")) {
+         this.setContinuousFollow(pCompound.getBoolean("ContinuousFollow"));
+      }
+   }
+}

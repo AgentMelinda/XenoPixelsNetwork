@@ -1,0 +1,18 @@
+package com.dragonminez.common.util.lists;
+
+public class HumanForms {
+   public static final String BASE = "";
+   public static final String GROUP_SUPERFORMS = "superforms";
+   public static final String BUFFED = "buffed";
+   public static final String FULLPOWER = "fullpower";
+   public static final String OVERDRIVE = "overdrive";
+   public static final String SOLARIS = "solaris";
+   public static final String GROUP_ANDROIDFORMS = "androidforms";
+   public static final String ANDROID_BASE = "androidbase";
+   public static final String SUPER_ANDROID = "superandroid";
+   public static final String FUSED_ANDROID = "fusedandroid";
+   public static final String GROUP_LEGENDARYFORMS = "legendaryforms";
+   public static final String SHIYOKEN = "shiyoken";
+   public static final String SHIN_SHIYOKEN = "shin_shiyoken";
+   public static final String CHOU_SHIYOKEN = "chou_shiyoken";
+}

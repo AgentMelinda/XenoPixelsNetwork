@@ -1,0 +1,28 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "group": "dragonminez",
+  "key": {
+    "#": {
+      "item": "dragonminez:blank_pattern_super"
+    },
+    "C": {
+      "item": "minecraft:cyan_dye"
+    },
+    "P": {
+      "item": "minecraft:purple_dye"
+    },
+    "Y": {
+      "item": "minecraft:yellow_dye"
+    }
+  },
+  "pattern": [
+    "P#P",
+    "CPC",
+    "CYC"
+  ],
+  "result": {
+    "count": 1,
+    "id": "dragonminez:pattern_hit"
+  }
+}

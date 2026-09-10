@@ -1,0 +1,28 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "group": "dragonminez",
+  "key": {
+    "#": {
+      "item": "dragonminez:blank_pattern_z"
+    },
+    "B": {
+      "item": "minecraft:blue_dye"
+    },
+    "O": {
+      "item": "minecraft:orange_dye"
+    },
+    "R": {
+      "item": "minecraft:clock"
+    }
+  },
+  "pattern": [
+    "B#B",
+    "OBO",
+    "ORO"
+  ],
+  "result": {
+    "count": 1,
+    "id": "dragonminez:pattern_future_gohan"
+  }
+}

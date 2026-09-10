@@ -35,6 +35,8 @@
         3.8,
         3.8
       ],
+      "xenopixelsNpcDisplaySize": 30,
+      "xenopixelsNpcAuraScale": 1.0,
       "strMultiplier": 1.2,
       "skpMultiplier": 1.2,
       "stmMultiplier": 1.0,

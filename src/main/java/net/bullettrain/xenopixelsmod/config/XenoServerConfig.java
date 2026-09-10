@@ -40,7 +40,7 @@ public final class XenoServerConfig {
      * safe without a bump — but the file is never rewritten, so the keys stay invisible and nobody
      * can discover or tune them. A bump is what gets them written out.
      */
-    private static final int CURRENT_CONFIG_VERSION = 12;
+    private static final int CURRENT_CONFIG_VERSION = 14;
 
     // --- HUD / DMZ ---
     /** When false, clients block DMZ vanilla HUD overlays. */
@@ -55,9 +55,30 @@ public final class XenoServerConfig {
      */
     public static boolean npcSayEnabled = true;
 
+    /**
+     * Lets NPC-run commands work on a server that has command blocks switched off.
+     *
+     * <p>My NPCs and CustomNPCs both refuse to run any NPC command at all when
+     * {@code enable-command-block=false} — {@code EspiUtilServer.runCommand} returns
+     * "Cant run commands if CommandBlocks are disabled" before it has even substituted {@code @dp},
+     * so a quest reward that awards points simply does nothing. This makes that one check pass for
+     * the NPC command path, and only for it: real command blocks stay exactly as disabled as the
+     * server owner set them.
+     *
+     * <p><b>Off by default, deliberately.</b> It overrides a setting somebody chose, and My NPCs
+     * runs NPC commands at permission level 2 — or level 4 when its own {@code NpcUseOpCommands} is
+     * enabled. An NPC running op-level commands on a server that turned command blocks off is the
+     * operator's call, so they have to make it.
+     *
+     * <p>The alternative, with no mod involved, is {@code enable-command-block=true} in
+     * {@code server.properties}.
+     */
+    public static boolean npcCommandsIgnoreCommandBlockSetting = false;
+
     // --- Combat master switches ---
     public static boolean bt3CombatEnabled = true;
     public static boolean bt3ComboEnabled = true;
+    public static boolean bt3CinematicRushEnabled = true;
     public static boolean bt3VanishEnabled = true;
     public static boolean bt3ChaseDashEnabled = true;
     /** When true, chase dash flies the player to the target over several ticks instead of teleporting. */
@@ -98,6 +119,29 @@ public final class XenoServerConfig {
     public static boolean bt3ComboPunchesOnly = true;
     /** Prevent players from damaging / knocking DMZ master NPCs. */
     public static boolean protectDmzMasters = true;
+
+    /**
+     * Stops XenoPixels combat from launching DragonMineZ masters.
+     *
+     * <p>Separate from {@link #protectDmzMasters} on purpose: that one governs whether masters can
+     * be attacked and damaged at all, while this governs only the impulses our own moves apply
+     * directly. A server that wants masters hittable but not launched out of their training spot
+     * needs both switches, not one.
+     */
+    public static boolean protectMastersFromCombatKnockback = true;
+
+    /**
+     * Copy a world's CustomNPCs data across to My NPCs when the server starts.
+     *
+     * <p>On by default because the alternative is silent loss: without CustomNPCs installed, vanilla
+     * cannot resolve an in-world NPC's entity id and discards it. Only ever reads the CustomNPCs
+     * folder and never overwrites a file My NPCs already has, so it is safe to leave on.
+     */
+    public static boolean migrateCustomNpcsWorldData = true;
+    /** Make profiled NPCs use only their DMZ/Xeno combat profile, not stacked native NPC stats. */
+    public static boolean npcDmzStatsAuthoritative = true;
+    /** Script tick cadence for both supported NPC mods. One runs scripted tick hooks every tick. */
+    public static int npcScriptTickInterval = 1;
     /** Air chase / rush chain after knockup. */
     public static boolean bt3RushChainEnabled = true;
     /** Sonic sway side-step with brief i-frames. */
@@ -258,6 +302,10 @@ public final class XenoServerConfig {
     public static int zanzokenCooldownTicks = 40;
     /** True renders a copy of the fighter with their DMZ appearance; false uses the dust silhouette. */
     public static boolean zanzokenGhostAfterimage = true;
+    /** 1=semi-transparent fade, 2=solid fade, 3=constant semi-transparent then vanish. */
+    public static int zanzokenGhostFadeMode = 2;
+    /** Starting alpha for fade mode 1 and constant alpha for mode 3. */
+    public static float zanzokenGhostAlpha = 0.55f;
     /** Copies in the ring Zanzoken throws around the attacker. */
     public static int zanzokenRingClones = 6;
     public static double zanzokenRingRadius = 3.0;
@@ -297,8 +345,65 @@ public final class XenoServerConfig {
     public static double hakaiMoveInterruptDistance = 3.0;
     public static float sparkingBuildPerHit = 6.0f;
     public static float sparkingBuildOnHurt = 3.0f;
-    public static int sparkingDurationTicks = 100;
+    /**
+     * How long a full ki bar of Sparking lasts. This also sets the drain speed: the bar is emptied
+     * over exactly this many ticks, so spending ki on techniques shortens Sparking too.
+     */
+    public static int sparkingDurationTicks = 200;
+    /** Full-ki charge time before Sparking activates. Default 100 ticks = five seconds. */
+    public static int sparkingChargeTicks = 100;
     public static float sparkingDamageMult = 1.35f;
+    /**
+     * Sparking is entered by charging the ki bar to full rather than by filling a hit-built meter,
+     * the way Budokai Tenkaichi 3 does it. Switch off to go back to the meter.
+     */
+    public static boolean sparkingFromKiCharge = true;
+    /**
+     * Release limit while Sparking is up, in percent.
+     *
+     * <p>DragonMineZ normally caps a player at {@code 50 + potentialunlock_level * 5}, which tops
+     * out at 115. Sparking lifts the ceiling; DMZ's own tick handler then ramps power release
+     * toward it, and the player's real limit is restored when Sparking ends.
+     */
+    /**
+     * Register Hakai, Zanzoken and Shi Shin No Ken as DragonMineZ technique slot entries.
+     *
+     * <p>Off by default. They are reached from their own keys and gamepad chords, which work; the
+     * slot route is kept for a later look rather than removed, but it does not clutter DMZ's
+     * technique list or intercept strikes unless it is deliberately switched on.
+     */
+    /**
+     * Zanzoken's afterimages also fool AI, not just other players.
+     *
+     * <p>Blocks a mob from acquiring the fighter while their images are up; anything already
+     * fighting them keeps its target, so this cannot be used to shed a fight.
+     */
+    public static boolean zanzokenConfusesAi = true;
+    /** How long the afterimages stand in for the fighter, for both onlookers and AI. */
+    public static int zanzokenAfterimageTicks = 40;
+
+    /**
+     * XenoPixels' own ceiling on every DragonMineZ stat, or {@link XenoStatCeiling#OFF} to leave
+     * DragonMineZ's configured maximum alone.
+     *
+     * <p>Off by default: a server that has not asked for this keeps exactly the caps DragonMineZ
+     * gives it. {@code /xenostats limit} is what turns it on.
+     *
+     * @see net.bullettrain.xenopixelsmod.combat.XenoStatCeiling
+     */
+    public static int statMaxOverride = net.bullettrain.xenopixelsmod.combat.XenoStatCeiling.OFF;
+
+    public static boolean xenoSlotTechniquesEnabled = false;
+
+    public static int sparkingReleaseLimit = 225;
+    /** Ticks after Sparking ends before it can be entered again. */
+    public static int sparkingCooldownTicks = 200;
+    /** Movement speed multiplier while Sparking is up. */
+    public static float sparkingMoveSpeedMult = 1.25f;
+    /** Attack speed multiplier while Sparking is up. */
+    public static float sparkingAttackSpeedMult = 1.35f;
+    /** Sparking ends once energy falls to this fraction of the maximum. */
+    public static float sparkingEndEnergyFraction = 0.02f;
     public static float transformImpactRadius = 3.5f;
     public static float transformImpactKnock = 0.45f;
     /**
@@ -825,6 +930,12 @@ public final class XenoServerConfig {
         }
     }
 
+    /** Multipliers are bounded so a stray config cannot make a player untouchable. */
+    private static float clampMult(float value, float fallback) {
+        if (!(value > 0f)) return fallback;
+        return Math.max(1f, Math.min(4f, value));
+    }
+
     public static void save() {
         // Every form-scale writer routes through here, so this is the one place the memo has to
         // be dropped. Invalidating per-mutation instead would be one missed call away from
@@ -847,8 +958,10 @@ public final class XenoServerConfig {
         d.dmzContentBootstrap = dmzContentBootstrap;
         d.dmzSagaSpawnCompat = dmzSagaSpawnCompat;
         d.npcSayEnabled = npcSayEnabled;
+        d.npcCommandsIgnoreCommandBlockSetting = npcCommandsIgnoreCommandBlockSetting;
         d.bt3CombatEnabled = bt3CombatEnabled;
         d.bt3ComboEnabled = bt3ComboEnabled;
+        d.bt3CinematicRushEnabled = bt3CinematicRushEnabled;
         d.bt3VanishEnabled = bt3VanishEnabled;
         d.bt3ChaseDashEnabled = bt3ChaseDashEnabled;
         d.chaseFlightEnabled = chaseFlightEnabled;
@@ -865,6 +978,10 @@ public final class XenoServerConfig {
         d.kiDiskDespawnOnHitBudget = kiDiskDespawnOnHitBudget;
         d.bt3ComboPunchesOnly = bt3ComboPunchesOnly;
         d.protectDmzMasters = protectDmzMasters;
+        d.protectMastersFromCombatKnockback = protectMastersFromCombatKnockback;
+        d.migrateCustomNpcsWorldData = migrateCustomNpcsWorldData;
+        d.npcDmzStatsAuthoritative = npcDmzStatsAuthoritative;
+        d.npcScriptTickInterval = npcScriptTickInterval;
         d.bt3RushChainEnabled = bt3RushChainEnabled;
         d.bt3SonicSwayEnabled = bt3SonicSwayEnabled;
         d.bt3UltimateEnabled = bt3UltimateEnabled;
@@ -909,6 +1026,8 @@ public final class XenoServerConfig {
         d.zanzokenIFramesTicks = zanzokenIFramesTicks;
         d.zanzokenCooldownTicks = zanzokenCooldownTicks;
         d.zanzokenGhostAfterimage = zanzokenGhostAfterimage;
+        d.zanzokenGhostFadeMode = zanzokenGhostFadeMode;
+        d.zanzokenGhostAlpha = zanzokenGhostAlpha;
         d.zanzokenRingClones = zanzokenRingClones;
         d.zanzokenRingRadius = zanzokenRingRadius;
         d.zanzokenRingTicks = zanzokenRingTicks;
@@ -924,7 +1043,18 @@ public final class XenoServerConfig {
         d.sparkingBuildPerHit = sparkingBuildPerHit;
         d.sparkingBuildOnHurt = sparkingBuildOnHurt;
         d.sparkingDurationTicks = sparkingDurationTicks;
+        d.sparkingChargeTicks = sparkingChargeTicks;
         d.sparkingDamageMult = sparkingDamageMult;
+        d.sparkingFromKiCharge = sparkingFromKiCharge;
+        d.zanzokenConfusesAi = zanzokenConfusesAi;
+        d.zanzokenAfterimageTicks = zanzokenAfterimageTicks;
+        d.statMaxOverride = statMaxOverride;
+        d.xenoSlotTechniquesEnabled = xenoSlotTechniquesEnabled;
+        d.sparkingReleaseLimit = sparkingReleaseLimit;
+        d.sparkingCooldownTicks = sparkingCooldownTicks;
+        d.sparkingMoveSpeedMult = sparkingMoveSpeedMult;
+        d.sparkingAttackSpeedMult = sparkingAttackSpeedMult;
+        d.sparkingEndEnergyFraction = sparkingEndEnergyFraction;
         d.transformImpactRadius = transformImpactRadius;
         d.transformImpactKnock = transformImpactKnock;
         d.chaseSuccessChance = chaseSuccessChance;
@@ -1075,8 +1205,10 @@ public final class XenoServerConfig {
         dmzContentBootstrap = d.dmzContentBootstrap;
         dmzSagaSpawnCompat = d.dmzSagaSpawnCompat;
         npcSayEnabled = d.npcSayEnabled;
+        npcCommandsIgnoreCommandBlockSetting = d.npcCommandsIgnoreCommandBlockSetting;
         bt3CombatEnabled = d.bt3CombatEnabled;
         bt3ComboEnabled = d.bt3ComboEnabled;
+        bt3CinematicRushEnabled = d.bt3CinematicRushEnabled;
         bt3VanishEnabled = d.bt3VanishEnabled;
         bt3ChaseDashEnabled = d.bt3ChaseDashEnabled;
         chaseFlightEnabled = d.chaseFlightEnabled;
@@ -1093,6 +1225,11 @@ public final class XenoServerConfig {
         kiDiskDespawnOnHitBudget = d.kiDiskDespawnOnHitBudget == null || d.kiDiskDespawnOnHitBudget;
         bt3ComboPunchesOnly = d.bt3ComboPunchesOnly;
         protectDmzMasters = d.protectDmzMasters;
+        protectMastersFromCombatKnockback = d.protectMastersFromCombatKnockback;
+        migrateCustomNpcsWorldData = d.migrateCustomNpcsWorldData;
+        npcDmzStatsAuthoritative = d.npcDmzStatsAuthoritative == null || d.npcDmzStatsAuthoritative;
+        npcScriptTickInterval = d.npcScriptTickInterval == null ? 1
+                : Math.max(1, Math.min(20, d.npcScriptTickInterval));
         bt3RushChainEnabled = d.bt3RushChainEnabled;
         bt3SonicSwayEnabled = d.bt3SonicSwayEnabled;
         bt3UltimateEnabled = d.bt3UltimateEnabled;
@@ -1138,6 +1275,10 @@ public final class XenoServerConfig {
         zanzokenIFramesTicks = Math.max(0, d.zanzokenIFramesTicks);
         zanzokenCooldownTicks = Math.max(0, d.zanzokenCooldownTicks);
         zanzokenGhostAfterimage = d.zanzokenGhostAfterimage;
+        zanzokenGhostFadeMode = d.zanzokenGhostFadeMode == null ? 2
+                : Math.max(1, Math.min(3, d.zanzokenGhostFadeMode));
+        zanzokenGhostAlpha = d.zanzokenGhostAlpha == null ? 0.55f
+                : Math.max(0.05f, Math.min(1.0f, d.zanzokenGhostAlpha));
         zanzokenRingClones = Math.max(1, Math.min(16, d.zanzokenRingClones));
         zanzokenRingRadius = d.zanzokenRingRadius > 0 ? Math.min(12.0, d.zanzokenRingRadius) : 3.0;
         zanzokenRingTicks = Math.max(20, Math.min(1200, d.zanzokenRingTicks));
@@ -1160,8 +1301,19 @@ public final class XenoServerConfig {
                 : Math.max(0.5, Math.min(32.0, d.hakaiMoveInterruptDistance));
         sparkingBuildPerHit = Math.max(0f, d.sparkingBuildPerHit);
         sparkingBuildOnHurt = Math.max(0f, d.sparkingBuildOnHurt);
-        sparkingDurationTicks = Math.max(20, Math.min(400, d.sparkingDurationTicks <= 0 ? 100 : d.sparkingDurationTicks));
+        sparkingDurationTicks = Math.max(20, Math.min(1200, d.sparkingDurationTicks <= 0 ? 200 : d.sparkingDurationTicks));
+        sparkingChargeTicks = Math.max(20, Math.min(1200, d.sparkingChargeTicks <= 0 ? 100 : d.sparkingChargeTicks));
         sparkingDamageMult = d.sparkingDamageMult > 1f ? d.sparkingDamageMult : 1.35f;
+        sparkingFromKiCharge = d.sparkingFromKiCharge == null || d.sparkingFromKiCharge;
+        zanzokenConfusesAi = d.zanzokenConfusesAi == null || d.zanzokenConfusesAi;
+        zanzokenAfterimageTicks = Math.max(1, Math.min(200, d.zanzokenAfterimageTicks <= 0 ? 40 : d.zanzokenAfterimageTicks));
+        statMaxOverride = net.bullettrain.xenopixelsmod.combat.XenoStatCeiling.store(d.statMaxOverride);
+        xenoSlotTechniquesEnabled = d.xenoSlotTechniquesEnabled != null && d.xenoSlotTechniquesEnabled;
+        sparkingReleaseLimit = d.sparkingReleaseLimit > 0 ? Math.min(1000, d.sparkingReleaseLimit) : 225;
+        sparkingCooldownTicks = Math.max(0, Math.min(12000, d.sparkingCooldownTicks));
+        sparkingMoveSpeedMult = clampMult(d.sparkingMoveSpeedMult, 1.25f);
+        sparkingAttackSpeedMult = clampMult(d.sparkingAttackSpeedMult, 1.35f);
+        sparkingEndEnergyFraction = Math.max(0f, Math.min(0.5f, d.sparkingEndEnergyFraction));
         transformImpactRadius = d.transformImpactRadius > 0f ? d.transformImpactRadius : 3.5f;
         transformImpactKnock = Math.max(0f, d.transformImpactKnock);
         chaseSuccessChance = !Float.isFinite(d.chaseSuccessChance) || d.chaseSuccessChance < 0f
@@ -2028,8 +2180,10 @@ public final class XenoServerConfig {
         public boolean dmzContentBootstrap = true;
         public boolean dmzSagaSpawnCompat = true;
         public boolean npcSayEnabled = true;
+        public boolean npcCommandsIgnoreCommandBlockSetting = false;
         public boolean bt3CombatEnabled = true;
         public boolean bt3ComboEnabled = true;
+        public boolean bt3CinematicRushEnabled = true;
         public boolean bt3VanishEnabled = true;
         public boolean bt3ChaseDashEnabled = true;
         public boolean chaseFlightEnabled = true;
@@ -2046,6 +2200,10 @@ public final class XenoServerConfig {
         public Boolean kiDiskDespawnOnHitBudget;
         public boolean bt3ComboPunchesOnly = true;
         public boolean protectDmzMasters = true;
+        public boolean protectMastersFromCombatKnockback = true;
+        public boolean migrateCustomNpcsWorldData = true;
+        public Boolean npcDmzStatsAuthoritative;
+        public Integer npcScriptTickInterval;
         public boolean bt3RushChainEnabled = true;
         public boolean bt3SonicSwayEnabled = true;
         public boolean bt3UltimateEnabled = true;
@@ -2084,6 +2242,8 @@ public final class XenoServerConfig {
         public int zanzokenIFramesTicks = 10;
         public int zanzokenCooldownTicks = 40;
         public boolean zanzokenGhostAfterimage = true;
+        public Integer zanzokenGhostFadeMode;
+        public Float zanzokenGhostAlpha;
         public int zanzokenRingClones = 6;
         public double zanzokenRingRadius = 3.0;
         public int zanzokenRingTicks = 200;
@@ -2104,8 +2264,19 @@ public final class XenoServerConfig {
         public Double hakaiMoveInterruptDistance;
         public float sparkingBuildPerHit = 6.0f;
         public float sparkingBuildOnHurt = 3.0f;
-        public int sparkingDurationTicks = 100;
+        public int sparkingDurationTicks = 200;
+        public int sparkingChargeTicks = 100;
         public float sparkingDamageMult = 1.35f;
+        public Boolean sparkingFromKiCharge;
+        public Boolean zanzokenConfusesAi;
+        public int zanzokenAfterimageTicks = 40;
+        public int statMaxOverride;
+        public Boolean xenoSlotTechniquesEnabled;
+        public int sparkingReleaseLimit = 225;
+        public int sparkingCooldownTicks = 200;
+        public float sparkingMoveSpeedMult = 1.25f;
+        public float sparkingAttackSpeedMult = 1.35f;
+        public float sparkingEndEnergyFraction = 0.02f;
         public float transformImpactRadius = 3.5f;
         public float transformImpactKnock = 0.45f;
         public float chaseSuccessChance = 1.0f;

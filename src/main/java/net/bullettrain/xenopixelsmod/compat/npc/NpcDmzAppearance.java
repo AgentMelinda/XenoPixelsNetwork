@@ -50,6 +50,14 @@ public final class NpcDmzAppearance {
     public String eye2Color = "#000000";
     /** Empty inherits DMZ's race/body/form tail color for Saiyan, Bio-Android and Frost Demon. */
     public String tailColor = "";
+    /**
+     * Whether the tail takes the race's own colour instead of {@link #tailColor}.
+     *
+     * <p>Separate from the colour rather than encoded as a blank string, so switching to the race
+     * colour and back does not throw the chosen colour away. Defaults true, which is what every
+     * existing NPC was already doing.
+     */
+    public boolean tailUseRaceColor = true;
     public String activeHeadBone = "";
     public boolean saiyanTail;
     public boolean renderHairBase = true;
@@ -77,6 +85,7 @@ public final class NpcDmzAppearance {
         tag.putString("Eye1Color", color(eye1Color, "#000000"));
         tag.putString("Eye2Color", color(eye2Color, "#000000"));
         tag.putString("TailColor", optionalColor(tailColor));
+        tag.putBoolean("TailUseRaceColor", tailUseRaceColor);
         tag.putString("ActiveHeadBone", activeHeadBone == null ? "" : activeHeadBone.trim());
         tag.putBoolean("SaiyanTail", saiyanTail);
         tag.putBoolean("RenderHairBase", renderHairBase);
@@ -106,6 +115,11 @@ public final class NpcDmzAppearance {
         out.eye1Color = color(tag.getString("Eye1Color"), out.eye1Color);
         out.eye2Color = color(tag.getString("Eye2Color"), out.eye2Color);
         out.tailColor = optionalColor(tag.getString("TailColor"));
+        // Absent means an NPC saved before the flag existed: inherit unless it had a colour, which
+        // is exactly what the old blank-string rule meant.
+        out.tailUseRaceColor = tag.contains("TailUseRaceColor")
+                ? tag.getBoolean("TailUseRaceColor")
+                : out.tailColor.isBlank();
         out.activeHeadBone = tag.getString("ActiveHeadBone").trim();
         out.saiyanTail = tag.getBoolean("SaiyanTail");
         out.renderHairBase = !tag.contains("RenderHairBase") || tag.getBoolean("RenderHairBase");

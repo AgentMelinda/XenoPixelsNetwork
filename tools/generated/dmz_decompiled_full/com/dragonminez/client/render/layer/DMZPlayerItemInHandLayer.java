@@ -1,0 +1,231 @@
+package com.dragonminez.client.render.layer;
+
+import com.dragonminez.client.animation.IPlayerAnimatable;
+import com.dragonminez.client.render.util.WeaponGripProfile;
+import com.dragonminez.common.combat.logic.player.PlayerAttackHelper;
+import com.dragonminez.common.combat.logic.weapon.WeaponRegistry;
+import com.dragonminez.common.combat.weapon.WeaponAttributes;
+import com.dragonminez.common.stats.StatsCapability;
+import com.dragonminez.common.stats.StatsData;
+import com.dragonminez.common.stats.StatsProvider;
+import com.dragonminez.common.stats.character.Character;
+import com.mojang.blaze3d.vertex.PoseStack;
+import com.mojang.blaze3d.vertex.VertexConsumer;
+import com.mojang.math.Axis;
+import javax.annotation.Nullable;
+import net.minecraft.client.player.AbstractClientPlayer;
+import net.minecraft.client.renderer.MultiBufferSource;
+import net.minecraft.client.renderer.RenderType;
+import net.minecraft.world.entity.HumanoidArm;
+import net.minecraft.world.item.ItemDisplayContext;
+import net.minecraft.world.item.ItemStack;
+import org.joml.Matrix4f;
+import org.joml.Quaternionf;
+import org.joml.Vector3f;
+import software.bernie.geckolib.animatable.GeoAnimatable;
+import software.bernie.geckolib.animatable.GeoItem;
+import software.bernie.geckolib.cache.object.GeoBone;
+import software.bernie.geckolib.renderer.GeoRenderer;
+import software.bernie.geckolib.renderer.layer.BlockAndItemGeoLayer;
+import software.bernie.geckolib.util.RenderUtil;
+
+public class DMZPlayerItemInHandLayer<T extends AbstractClientPlayer & GeoAnimatable> extends BlockAndItemGeoLayer<T> {
+   private static final String RIGHT_GRIP = "right_hand_item";
+   private static final String LEFT_GRIP = "left_hand_item";
+   private static final float VANILLA_SCALING = 0.9375F;
+   private static final float GIANT_SCALING = 3.8F;
+   private static final float SCALE_DAMPEN = 0.012499988F / (float)Math.sqrt(2.8625F);
+
+   public DMZPlayerItemInHandLayer(GeoRenderer<T> renderer) {
+      super(renderer);
+   }
+
+   public void renderForBone(
+      PoseStack poseStack,
+      T animatable,
+      GeoBone bone,
+      RenderType renderType,
+      MultiBufferSource bufferSource,
+      VertexConsumer buffer,
+      float partialTick,
+      int packedLight,
+      int packedOverlay
+   ) {
+      ItemStack stack = this.getStackForBone(bone, animatable);
+      if (stack != null && !stack.isEmpty()) {
+         poseStack.pushPose();
+         float combatWeight = this.combatPlacementWeight(bone, animatable);
+         RenderUtil.translateToPivotPoint(poseStack, bone);
+         this.rotateBoneScaled(poseStack, bone, 1.0F - combatWeight);
+         this.renderStackForBone(poseStack, bone, stack, animatable, bufferSource, partialTick, packedLight, packedOverlay);
+         if (renderType != null) {
+            bufferSource.getBuffer(renderType);
+         }
+
+         poseStack.popPose();
+      }
+   }
+
+   @Nullable
+   protected ItemStack getStackForBone(GeoBone bone, T animatable) {
+      String name = bone.getName();
+      boolean isTwoHanded = PlayerAttackHelper.isTwoHandedWielding(animatable);
+      boolean rightIsOffhand = name.equals("right_hand_item") && animatable.getMainArm() != HumanoidArm.RIGHT;
+      boolean leftIsOffhand = name.equals("left_hand_item") && animatable.getMainArm() != HumanoidArm.LEFT;
+      if (!isTwoHanded || !rightIsOffhand && !leftIsOffhand) {
+         if (name.equals("right_hand_item")) {
+            return animatable.getMainArm() == HumanoidArm.RIGHT ? animatable.getMainHandItem() : animatable.getOffhandItem();
+         } else if (name.equals("left_hand_item")) {
+            return animatable.getMainArm() == HumanoidArm.LEFT ? animatable.getMainHandItem() : animatable.getOffhandItem();
+         } else {
+            return null;
+         }
+      } else {
+         return ItemStack.EMPTY;
+      }
+   }
+
+   protected ItemDisplayContext getTransformTypeForStack(GeoBone bone, ItemStack stack, T animatable) {
+      String name = bone.getName();
+      if (this.useCombatPlacement(bone, animatable)) {
+         if (name.equals("right_hand_item")) {
+            return ItemDisplayContext.THIRD_PERSON_RIGHT_HAND;
+         }
+
+         if (name.equals("left_hand_item")) {
+            return ItemDisplayContext.THIRD_PERSON_LEFT_HAND;
+         }
+      }
+
+      if (name.equals("right_hand_item")) {
+         return animatable.getMainArm() == HumanoidArm.RIGHT ? ItemDisplayContext.THIRD_PERSON_RIGHT_HAND : ItemDisplayContext.THIRD_PERSON_LEFT_HAND;
+      } else if (name.equals("left_hand_item")) {
+         return animatable.getMainArm() == HumanoidArm.LEFT ? ItemDisplayContext.THIRD_PERSON_RIGHT_HAND : ItemDisplayContext.THIRD_PERSON_LEFT_HAND;
+      } else {
+         return ItemDisplayContext.NONE;
+      }
+   }
+
+   protected void renderStackForBone(
+      PoseStack poseStack, GeoBone bone, ItemStack stack, T animatable, MultiBufferSource bufferSource, float partialTick, int packedLight, int packedOverlay
+   ) {
+      if (!animatable.isInvisible()) {
+         String name = bone.getName();
+         boolean isRight = name.equals("right_hand_item");
+         boolean isLeft = name.equals("left_hand_item");
+         if (!isRight && !isLeft) {
+            super.renderStackForBone(poseStack, bone, stack, animatable, bufferSource, partialTick, packedLight, packedOverlay);
+         } else {
+            poseStack.pushPose();
+            float combatWeight = this.combatPlacementWeight(bone, animatable);
+            boolean selfPosed = stack.getItem() instanceof GeoItem;
+            float gripWeight = selfPosed && isLeft ? 1.0F : 1.0F - combatWeight;
+            if (gripWeight > 0.0F) {
+               boolean isUsing = animatable.isUsingItem() && animatable.getUseItem() == stack;
+               String weaponType = this.resolveWeaponType(stack);
+               WeaponGripProfile profile = WeaponGripProfile.resolve(stack.getItem(), isUsing, weaponType);
+               boolean restFlip = !selfPosed && combatWeight <= 0.0F && animatable.getMainArm() == HumanoidArm.LEFT;
+               boolean applyAsLeft = selfPosed ? false : (restFlip ? !isLeft : isLeft);
+               this.applyGripEased(poseStack, profile, applyAsLeft, gripWeight);
+               if (restFlip) {
+                  poseStack.translate(0.1 * (double)gripWeight, 0.0, 0.0);
+               }
+            }
+
+            float itemScale = this.resolveItemScale(animatable);
+            if (itemScale != 1.0F) {
+               poseStack.scale(itemScale, itemScale, itemScale);
+            }
+
+            super.renderStackForBone(poseStack, bone, stack, animatable, bufferSource, partialTick, packedLight, packedOverlay);
+            poseStack.popPose();
+         }
+      }
+   }
+
+   private boolean useCombatPlacement(GeoBone bone, T animatable) {
+      return this.combatPlacementWeight(bone, animatable) > 0.5F;
+   }
+
+   private float combatPlacementWeight(GeoBone bone, T animatable) {
+      if (!(animatable instanceof IPlayerAnimatable playerAnim)) {
+         return 0.0F;
+      } else {
+         float weight = playerAnim.dragonminez$getCombatPlacementWeight();
+         if (weight <= 0.0F) {
+            return 0.0F;
+         } else {
+            String name = bone.getName();
+            boolean isRight = name.equals("right_hand_item");
+            boolean isLeft = name.equals("left_hand_item");
+            if (!isRight && !isLeft) {
+               return 0.0F;
+            } else {
+               boolean boneIsOffhand = isRight && animatable.getMainArm() == HumanoidArm.LEFT || isLeft && animatable.getMainArm() == HumanoidArm.RIGHT;
+               boolean isOffhandAttack = playerAnim.dragonminez$isAttackingWithOffhand();
+               return boneIsOffhand == isOffhandAttack ? weight : 0.0F;
+            }
+         }
+      }
+   }
+
+   private void rotateBoneScaled(PoseStack poseStack, GeoBone bone, float scale) {
+      if (!(scale <= 0.0F)) {
+         if (bone.getRotZ() != 0.0F) {
+            poseStack.mulPose(Axis.ZP.rotation(bone.getRotZ() * scale));
+         }
+
+         if (bone.getRotY() != 0.0F) {
+            poseStack.mulPose(Axis.YP.rotation(bone.getRotY() * scale));
+         }
+
+         if (bone.getRotX() != 0.0F) {
+            poseStack.mulPose(Axis.XP.rotation(bone.getRotX() * scale));
+         }
+      }
+   }
+
+   private void applyGripEased(PoseStack poseStack, WeaponGripProfile profile, boolean isLeft, float weight) {
+      if (weight >= 1.0F) {
+         profile.apply(poseStack, isLeft);
+      } else {
+         PoseStack temp = new PoseStack();
+         profile.apply(temp, isLeft);
+         Matrix4f matrix = temp.last().pose();
+         Vector3f translation = matrix.getTranslation(new Vector3f());
+         Quaternionf rotation = matrix.getNormalizedRotation(new Quaternionf());
+         Quaternionf eased = new Quaternionf().slerp(rotation, weight);
+         poseStack.translate(translation.x * weight, translation.y * weight, translation.z * weight);
+         poseStack.mulPose(eased);
+      }
+   }
+
+   private String resolveWeaponType(ItemStack stack) {
+      WeaponAttributes attrs = WeaponRegistry.getAttributes(stack);
+      return attrs != null ? attrs.category() : null;
+   }
+
+   private float resolveItemScale(T animatable) {
+      StatsData stats = StatsProvider.get(StatsCapability.INSTANCE, animatable).orElse(null);
+      if (stats == null) {
+         return 1.0F;
+      } else {
+         Character character = stats.getCharacter();
+         if (character == null) {
+            return 1.0F;
+         } else {
+            Float[] resolved = character.getResolvedModelScaling();
+            if (resolved != null && resolved.length >= 3) {
+               float uniform = (resolved[0] + resolved[1] + resolved[2]) / 3.0F;
+               return Math.max(0.25F, Math.min(this.dampenScale(uniform), 8.0F));
+            } else {
+               return 1.0F;
+            }
+         }
+      }
+   }
+
+   private float dampenScale(float uniform) {
+      return uniform <= 0.9375F ? uniform : 0.9375F + (float)Math.sqrt((double)(uniform - 0.9375F)) * SCALE_DAMPEN;
+   }
+}

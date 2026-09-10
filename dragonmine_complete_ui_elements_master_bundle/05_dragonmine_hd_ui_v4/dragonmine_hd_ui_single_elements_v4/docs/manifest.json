@@ -1,0 +1,474 @@
+[
+  {
+    "file": "04_buttons/example_nav_button_character.png",
+    "size": [
+      122,
+      154
+    ],
+    "note": "Example bottom navigation button: CHARACTER."
+  },
+  {
+    "file": "04_buttons/clean_nav_button_character.png",
+    "size": [
+      122,
+      154
+    ],
+    "note": "Clean bottom navigation button shell for CHARACTER."
+  },
+  {
+    "file": "05_icons/example_icon_character.png",
+    "size": [
+      56,
+      56
+    ],
+    "note": "Standalone icon for CHARACTER."
+  },
+  {
+    "file": "05_icons/clean_icon_character.png",
+    "size": [
+      56,
+      56
+    ],
+    "note": "Transparent placeholder clean icon canvas for CHARACTER."
+  },
+  {
+    "file": "04_buttons/example_nav_button_skills.png",
+    "size": [
+      122,
+      154
+    ],
+    "note": "Example bottom navigation button: SKILLS."
+  },
+  {
+    "file": "04_buttons/clean_nav_button_skills.png",
+    "size": [
+      122,
+      154
+    ],
+    "note": "Clean bottom navigation button shell for SKILLS."
+  },
+  {
+    "file": "05_icons/example_icon_skills.png",
+    "size": [
+      56,
+      56
+    ],
+    "note": "Standalone icon for SKILLS."
+  },
+  {
+    "file": "05_icons/clean_icon_skills.png",
+    "size": [
+      56,
+      56
+    ],
+    "note": "Transparent placeholder clean icon canvas for SKILLS."
+  },
+  {
+    "file": "04_buttons/example_nav_button_quests.png",
+    "size": [
+      122,
+      154
+    ],
+    "note": "Example bottom navigation button: QUESTS."
+  },
+  {
+    "file": "04_buttons/clean_nav_button_quests.png",
+    "size": [
+      122,
+      154
+    ],
+    "note": "Clean bottom navigation button shell for QUESTS."
+  },
+  {
+    "file": "05_icons/example_icon_quests.png",
+    "size": [
+      56,
+      56
+    ],
+    "note": "Standalone icon for QUESTS."
+  },
+  {
+    "file": "05_icons/clean_icon_quests.png",
+    "size": [
+      56,
+      56
+    ],
+    "note": "Transparent placeholder clean icon canvas for QUESTS."
+  },
+  {
+    "file": "04_buttons/example_nav_button_items.png",
+    "size": [
+      122,
+      154
+    ],
+    "note": "Example bottom navigation button: ITEMS."
+  },
+  {
+    "file": "04_buttons/clean_nav_button_items.png",
+    "size": [
+      122,
+      154
+    ],
+    "note": "Clean bottom navigation button shell for ITEMS."
+  },
+  {
+    "file": "05_icons/example_icon_items.png",
+    "size": [
+      56,
+      56
+    ],
+    "note": "Standalone icon for ITEMS."
+  },
+  {
+    "file": "05_icons/clean_icon_items.png",
+    "size": [
+      56,
+      56
+    ],
+    "note": "Transparent placeholder clean icon canvas for ITEMS."
+  },
+  {
+    "file": "04_buttons/example_nav_button_party.png",
+    "size": [
+      122,
+      154
+    ],
+    "note": "Example bottom navigation button: PARTY."
+  },
+  {
+    "file": "04_buttons/clean_nav_button_party.png",
+    "size": [
+      122,
+      154
+    ],
+    "note": "Clean bottom navigation button shell for PARTY."
+  },
+  {
+    "file": "05_icons/example_icon_party.png",
+    "size": [
+      56,
+      56
+    ],
+    "note": "Standalone icon for PARTY."
+  },
+  {
+    "file": "05_icons/clean_icon_party.png",
+    "size": [
+      56,
+      56
+    ],
+    "note": "Transparent placeholder clean icon canvas for PARTY."
+  },
+  {
+    "file": "04_buttons/example_nav_button_settings.png",
+    "size": [
+      122,
+      154
+    ],
+    "note": "Example bottom navigation button: SETTINGS."
+  },
+  {
+    "file": "04_buttons/clean_nav_button_settings.png",
+    "size": [
+      122,
+      154
+    ],
+    "note": "Clean bottom navigation button shell for SETTINGS."
+  },
+  {
+    "file": "05_icons/example_icon_settings.png",
+    "size": [
+      56,
+      56
+    ],
+    "note": "Standalone icon for SETTINGS."
+  },
+  {
+    "file": "05_icons/clean_icon_settings.png",
+    "size": [
+      56,
+      56
+    ],
+    "note": "Transparent placeholder clean icon canvas for SETTINGS."
+  },
+  {
+    "file": "05_icons/example_top_orb_blue.png",
+    "size": [
+      54,
+      54
+    ],
+    "note": "Top-right orb icon (blue)."
+  },
+  {
+    "file": "05_icons/clean_top_orb_blue.png",
+    "size": [
+      54,
+      54
+    ],
+    "note": "Clean top-right orb shell (blue)."
+  },
+  {
+    "file": "05_icons/example_top_orb_yellow.png",
+    "size": [
+      54,
+      54
+    ],
+    "note": "Top-right orb icon (yellow)."
+  },
+  {
+    "file": "05_icons/clean_top_orb_yellow.png",
+    "size": [
+      54,
+      54
+    ],
+    "note": "Clean top-right orb shell (yellow)."
+  },
+  {
+    "file": "05_icons/example_top_orb_red.png",
+    "size": [
+      54,
+      54
+    ],
+    "note": "Top-right orb icon (red)."
+  },
+  {
+    "file": "05_icons/clean_top_orb_red.png",
+    "size": [
+      54,
+      54
+    ],
+    "note": "Clean top-right orb shell (red)."
+  },
+  {
+    "file": "05_icons/example_info_kanji_circle.png",
+    "size": [
+      96,
+      96
+    ],
+    "note": "Example information circular kanji icon."
+  },
+  {
+    "file": "05_icons/clean_info_kanji_circle.png",
+    "size": [
+      96,
+      96
+    ],
+    "note": "Clean circular kanji-shell icon."
+  },
+  {
+    "file": "05_icons/example_stats_bars_icon.png",
+    "size": [
+      96,
+      96
+    ],
+    "note": "Example statistics bars icon."
+  },
+  {
+    "file": "05_icons/clean_stats_bars_icon.png",
+    "size": [
+      96,
+      96
+    ],
+    "note": "Clean statistics icon shell."
+  },
+  {
+    "file": "01_panels/example_information_panel.png",
+    "size": [
+      510,
+      700
+    ],
+    "note": "Example full information panel."
+  },
+  {
+    "file": "01_panels/clean_information_panel.png",
+    "size": [
+      510,
+      700
+    ],
+    "note": "Clean full information panel shell."
+  },
+  {
+    "file": "01_panels/example_statistics_panel.png",
+    "size": [
+      500,
+      710
+    ],
+    "note": "Example full statistics panel."
+  },
+  {
+    "file": "01_panels/clean_statistics_panel.png",
+    "size": [
+      500,
+      710
+    ],
+    "note": "Clean full statistics panel shell."
+  },
+  {
+    "file": "01_panels/example_nameplate_dev_saiyan.png",
+    "size": [
+      980,
+      180
+    ],
+    "note": "Example top-center nameplate."
+  },
+  {
+    "file": "01_panels/clean_nameplate.png",
+    "size": [
+      980,
+      180
+    ],
+    "note": "Clean top-center nameplate shell."
+  },
+  {
+    "file": "02_headers/example_information_header.png",
+    "size": [
+      420,
+      88
+    ],
+    "note": "Example information header."
+  },
+  {
+    "file": "02_headers/clean_information_header.png",
+    "size": [
+      420,
+      88
+    ],
+    "note": "Clean information header shell."
+  },
+  {
+    "file": "02_headers/example_statistics_header.png",
+    "size": [
+      420,
+      88
+    ],
+    "note": "Example statistics header."
+  },
+  {
+    "file": "02_headers/clean_statistics_header.png",
+    "size": [
+      420,
+      88
+    ],
+    "note": "Clean statistics header shell."
+  },
+  {
+    "file": "02_headers/example_stats_subheader.png",
+    "size": [
+      332,
+      78
+    ],
+    "note": "Example stats subheader."
+  },
+  {
+    "file": "02_headers/clean_stats_subheader.png",
+    "size": [
+      332,
+      78
+    ],
+    "note": "Clean stats subheader shell."
+  },
+  {
+    "file": "03_rows/example_basic_info_row.png",
+    "size": [
+      400,
+      56
+    ],
+    "note": "Example basic information row."
+  },
+  {
+    "file": "03_rows/clean_basic_info_row.png",
+    "size": [
+      400,
+      56
+    ],
+    "note": "Clean basic information row."
+  },
+  {
+    "file": "03_rows/example_information_stat_row.png",
+    "size": [
+      416,
+      68
+    ],
+    "note": "Example information-stat row with multiplier."
+  },
+  {
+    "file": "03_rows/clean_information_stat_row.png",
+    "size": [
+      416,
+      68
+    ],
+    "note": "Clean information-stat row with plus slot and multiplier area."
+  },
+  {
+    "file": "03_rows/example_statistics_row.png",
+    "size": [
+      396,
+      56
+    ],
+    "note": "Example statistics row."
+  },
+  {
+    "file": "03_rows/clean_statistics_row.png",
+    "size": [
+      396,
+      56
+    ],
+    "note": "Clean statistics row."
+  },
+  {
+    "file": "03_rows/example_bottom_stats_box.png",
+    "size": [
+      430,
+      170
+    ],
+    "note": "Example lower statistics box."
+  },
+  {
+    "file": "03_rows/clean_bottom_stats_box.png",
+    "size": [
+      430,
+      170
+    ],
+    "note": "Clean lower statistics box."
+  },
+  {
+    "file": "03_rows/example_plus_button.png",
+    "size": [
+      56,
+      56
+    ],
+    "note": "Example plus button."
+  },
+  {
+    "file": "03_rows/clean_plus_button.png",
+    "size": [
+      56,
+      56
+    ],
+    "note": "Clean plus-button shell."
+  },
+  {
+    "file": "06_overlays/clean_scan_ring_overlay.png",
+    "size": [
+      620,
+      620
+    ],
+    "note": "Transparent scan-ring overlay behind the character."
+  },
+  {
+    "file": "06_overlays/clean_blue_orange_divider.png",
+    "size": [
+      440,
+      40
+    ],
+    "note": "Divider accent."
+  },
+  {
+    "file": "06_overlays/clean_vertical_orange_accent.png",
+    "size": [
+      30,
+      170
+    ],
+    "note": "Vertical orange accent line."
+  }
+]

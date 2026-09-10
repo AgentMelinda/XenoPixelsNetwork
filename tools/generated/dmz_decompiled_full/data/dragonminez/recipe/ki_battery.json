@@ -1,0 +1,25 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "group": "dragonminez",
+  "key": {
+    "G": {
+      "item": "dragonminez:gete_ingot"
+    },
+    "L": {
+      "item": "minecraft:lapis_lazuli"
+    },
+    "R": {
+      "item": "minecraft:redstone"
+    }
+  },
+  "pattern": [
+    "RLR",
+    "LGL",
+    "RLR"
+  ],
+  "result": {
+    "count": 1,
+    "id": "dragonminez:ki_battery"
+  }
+}

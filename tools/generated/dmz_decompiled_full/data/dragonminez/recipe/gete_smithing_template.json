@@ -1,0 +1,25 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "group": "dragonminez",
+  "key": {
+    "G": {
+      "item": "dragonminez:gete_scrap"
+    },
+    "I": {
+      "item": "minecraft:iron_ingot"
+    },
+    "T": {
+      "item": "minecraft:netherite_upgrade_smithing_template"
+    }
+  },
+  "pattern": [
+    "IGI",
+    "GTG",
+    "IGI"
+  ],
+  "result": {
+    "count": 1,
+    "id": "dragonminez:gete_smithing_template"
+  }
+}

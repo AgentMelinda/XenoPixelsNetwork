@@ -1,0 +1,25 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "group": "dragonminez",
+  "key": {
+    "#": {
+      "item": "dragonminez:blank_pattern_z"
+    },
+    "B": {
+      "item": "minecraft:blue_dye"
+    },
+    "N": {
+      "item": "minecraft:black_dye"
+    }
+  },
+  "pattern": [
+    "B#B",
+    "NNN",
+    "BBB"
+  ],
+  "result": {
+    "count": 1,
+    "id": "dragonminez:pattern_turles"
+  }
+}

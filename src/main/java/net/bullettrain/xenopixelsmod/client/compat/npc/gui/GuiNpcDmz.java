@@ -50,6 +50,8 @@ public final class GuiNpcDmz extends GuiNPCInterface2 implements ITextfieldListe
     private static final int ID_CUSTOMIZE = 24;
     private static final int ID_STACKS = 25;
     private static final int ID_STACK_APPLY = 26;
+    private static final int ID_KNOCKABLE = 27;
+    private static final int ID_PUNCHABLE = 28;
     private static final int ID_GROUP_PREV = 30;
     private static final int ID_GROUP_NEXT = 31;
     private static final int ID_FORM_PREV = 32;
@@ -122,6 +124,12 @@ public final class GuiNpcDmz extends GuiNPCInterface2 implements ITextfieldListe
         addButton(new GuiButtonNop(this, ID_CUSTOMIZE, left, y + 24, 180, 18, "Customize DMZ Appearance"));
         addButton(new GuiButtonNop(this, ID_STACKS, left, y + 46, 180, 18, "DMZ Stack Forms"));
 
+        int combatY = y + 68;
+        addLabel(new GuiLabel(122, "Knock", left, combatY + 3, 0xFFFFFF));
+        addButton(new GuiButtonYesNo(this, ID_KNOCKABLE, left + 42, combatY, 44, boxH, p.knockable));
+        addLabel(new GuiLabel(123, "Damage", left + 94, combatY + 3, 0xFFFFFF));
+        addButton(new GuiButtonYesNo(this, ID_PUNCHABLE, left + 140, combatY, 44, boxH, p.punchable));
+
         addLabel(new GuiLabel(ID_HAIR_COLOR + 200, "Color", right, y2 + 3, 0xFFFFFF));
         textBox(ID_HAIR_COLOR, right + 40, y2, 70, boxH, p.hairColor, 32);
         addButton(new GuiButtonNop(this, ID_HAIR_COLOR + PICKER_OFFSET,
@@ -132,6 +140,8 @@ public final class GuiNpcDmz extends GuiNPCInterface2 implements ITextfieldListe
         // CNPC GuiTextFieldNop caps at 500 in its constructor — setMaxLength BEFORE setValue.
         textBox(ID_HAIR_CODE, right + 32, y2, 166, boxH, p.hairCode, 262144);
     }
+
+
 
     private NpcCombatProfile editorProfile() {
         NpcCombatProfile p = NpcCombatProfile.read(npc);
@@ -268,6 +278,10 @@ public final class GuiNpcDmz extends GuiNPCInterface2 implements ITextfieldListe
             p.auraOn = yes.getBoolean();
         } else if (button.id == ID_HAIR && button instanceof GuiButtonYesNo yes) {
             p.hairEnabled = yes.getBoolean();
+        } else if (button.id == ID_KNOCKABLE && button instanceof GuiButtonYesNo yes) {
+            p.knockable = yes.getBoolean();
+        } else if (button.id == ID_PUNCHABLE && button instanceof GuiButtonYesNo yes) {
+            p.punchable = yes.getBoolean();
         } else if (button.id == ID_GROUP_PREV || button.id == ID_GROUP_NEXT) {
             cycleGroup(p, button.id == ID_GROUP_NEXT ? 1 : -1);
         } else if (button.id == ID_FORM_PREV || button.id == ID_FORM_NEXT) {
@@ -414,6 +428,10 @@ public final class GuiNpcDmz extends GuiNPCInterface2 implements ITextfieldListe
         if (auraBtn instanceof GuiButtonYesNo auraYes) {
             p.auraOn = auraYes.getBoolean();
         }
+        GuiButtonNop knockableBtn = getButton(ID_KNOCKABLE);
+        if (knockableBtn instanceof GuiButtonYesNo yes) p.knockable = yes.getBoolean();
+        GuiButtonNop punchableBtn = getButton(ID_PUNCHABLE);
+        if (punchableBtn instanceof GuiButtonYesNo yes) p.punchable = yes.getBoolean();
         if (p.hairCode != null && !p.hairCode.isBlank()) {
             p.hairEnabled = true;
         }

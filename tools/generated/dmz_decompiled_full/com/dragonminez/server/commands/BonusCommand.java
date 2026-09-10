@@ -1,0 +1,292 @@
+package com.dragonminez.server.commands;
+
+import com.dragonminez.common.config.ConfigManager;
+import com.dragonminez.common.network.NetworkHandler;
+import com.dragonminez.common.network.S2C.ProgressionSyncS2C;
+import com.dragonminez.common.stats.StatsCapability;
+import com.dragonminez.common.stats.StatsProvider;
+import com.mojang.brigadier.CommandDispatcher;
+import com.mojang.brigadier.arguments.BoolArgumentType;
+import com.mojang.brigadier.arguments.DoubleArgumentType;
+import com.mojang.brigadier.arguments.StringArgumentType;
+import com.mojang.brigadier.builder.LiteralArgumentBuilder;
+import com.mojang.brigadier.builder.RequiredArgumentBuilder;
+import com.mojang.brigadier.suggestion.SuggestionProvider;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.List;
+import java.util.Set;
+import net.minecraft.commands.CommandSourceStack;
+import net.minecraft.commands.Commands;
+import net.minecraft.commands.SharedSuggestionProvider;
+import net.minecraft.commands.arguments.EntityArgument;
+import net.minecraft.nbt.CompoundTag;
+import net.minecraft.nbt.ListTag;
+import net.minecraft.network.chat.Component;
+import net.minecraft.server.level.ServerPlayer;
+
+public class BonusCommand {
+   private static final SuggestionProvider<CommandSourceStack> STAT_SUGGESTIONS = (ctx, builder) -> SharedSuggestionProvider.suggest(
+         Set.of("STR", "SKP", "DEF", "STM", "VIT", "PWR", "ENE", "ALL"), builder
+      );
+   private static final SuggestionProvider<CommandSourceStack> OPERATOR_SUGGESTIONS = (ctx, builder) -> SharedSuggestionProvider.suggest(
+         Set.of("+", "-", "x", "\"*\""), builder
+      );
+   private static final SuggestionProvider<CommandSourceStack> BONUS_NAME_SUGGESTIONS = (ctx, builder) -> {
+      try {
+         ServerPlayer player = ((CommandSourceStack)ctx.getSource()).getPlayerOrException();
+         String stat = StringArgumentType.getString(ctx, "stat").toUpperCase();
+         return StatsProvider.get(StatsCapability.INSTANCE, player).map(data -> {
+            CompoundTag tag = data.getBonusStats().save();
+            List<String> bonusNames = new ArrayList<>();
+            if (tag.contains(stat)) {
+               ListTag list = tag.getList(stat, 10);
+
+               for (int i = 0; i < list.size(); i++) {
+                  CompoundTag bonusTag = list.getCompound(i);
+                  if (bonusTag.contains("Name")) {
+                     bonusNames.add(bonusTag.getString("Name"));
+                  }
+               }
+            }
+
+            return SharedSuggestionProvider.suggest(bonusNames, builder);
+         }).orElse(SharedSuggestionProvider.suggest(new String[0], builder));
+      } catch (Exception var4) {
+         return SharedSuggestionProvider.suggest(new String[0], builder);
+      }
+   };
+
+   public static void register(CommandDispatcher<CommandSourceStack> dispatcher) {
+      dispatcher.register(
+         (LiteralArgumentBuilder)((LiteralArgumentBuilder)((LiteralArgumentBuilder)((LiteralArgumentBuilder)Commands.literal("dmzbonus")
+                     .requires(source -> DMZPermissions.check(source, DMZPermissions.BONUS_ADD_SELF, DMZPermissions.BONUS_ADD_OTHERS)))
+                  .then(
+                     ((LiteralArgumentBuilder)Commands.literal("add")
+                           .requires(source -> DMZPermissions.check(source, DMZPermissions.BONUS_ADD_SELF, DMZPermissions.BONUS_ADD_OTHERS)))
+                        .then(
+                           Commands.argument("stat", StringArgumentType.word())
+                              .suggests(STAT_SUGGESTIONS)
+                              .then(
+                                 Commands.argument("operation", StringArgumentType.string())
+                                    .suggests(OPERATOR_SUGGESTIONS)
+                                    .then(
+                                       Commands.argument("value", DoubleArgumentType.doubleArg())
+                                          .then(
+                                             ((RequiredArgumentBuilder)Commands.argument("bonusName", StringArgumentType.word())
+                                                   .executes(
+                                                      ctx -> addBonus(
+                                                            (CommandSourceStack)ctx.getSource(),
+                                                            StringArgumentType.getString(ctx, "stat"),
+                                                            StringArgumentType.getString(ctx, "operation"),
+                                                            DoubleArgumentType.getDouble(ctx, "value"),
+                                                            StringArgumentType.getString(ctx, "bonusName"),
+                                                            false,
+                                                            List.of(((CommandSourceStack)ctx.getSource()).getPlayerOrException())
+                                                         )
+                                                   ))
+                                                .then(
+                                                   ((RequiredArgumentBuilder)Commands.argument("applyMultipliers", BoolArgumentType.bool())
+                                                         .executes(
+                                                            ctx -> addBonus(
+                                                                  (CommandSourceStack)ctx.getSource(),
+                                                                  StringArgumentType.getString(ctx, "stat"),
+                                                                  StringArgumentType.getString(ctx, "operation"),
+                                                                  DoubleArgumentType.getDouble(ctx, "value"),
+                                                                  StringArgumentType.getString(ctx, "bonusName"),
+                                                                  BoolArgumentType.getBool(ctx, "applyMultipliers"),
+                                                                  List.of(((CommandSourceStack)ctx.getSource()).getPlayerOrException())
+                                                               )
+                                                         ))
+                                                      .then(
+                                                         ((RequiredArgumentBuilder)Commands.argument("targets", EntityArgument.players())
+                                                               .requires(source -> DMZPermissions.hasPermission(source, DMZPermissions.BONUS_ADD_OTHERS)))
+                                                            .executes(
+                                                               ctx -> addBonus(
+                                                                     (CommandSourceStack)ctx.getSource(),
+                                                                     StringArgumentType.getString(ctx, "stat"),
+                                                                     StringArgumentType.getString(ctx, "operation"),
+                                                                     DoubleArgumentType.getDouble(ctx, "value"),
+                                                                     StringArgumentType.getString(ctx, "bonusName"),
+                                                                     BoolArgumentType.getBool(ctx, "applyMultipliers"),
+                                                                     EntityArgument.getPlayers(ctx, "targets")
+                                                                  )
+                                                            )
+                                                      )
+                                                )
+                                          )
+                                    )
+                              )
+                        )
+                  ))
+               .then(
+                  ((LiteralArgumentBuilder)Commands.literal("remove")
+                        .requires(source -> DMZPermissions.check(source, DMZPermissions.BONUS_CLEAR_SELF, DMZPermissions.BONUS_CLEAR_OTHERS)))
+                     .then(
+                        Commands.argument("stat", StringArgumentType.word())
+                           .suggests(STAT_SUGGESTIONS)
+                           .then(
+                              ((RequiredArgumentBuilder)Commands.argument("bonusName", StringArgumentType.word())
+                                    .suggests(BONUS_NAME_SUGGESTIONS)
+                                    .executes(
+                                       ctx -> removeBonus(
+                                             (CommandSourceStack)ctx.getSource(),
+                                             StringArgumentType.getString(ctx, "stat"),
+                                             StringArgumentType.getString(ctx, "bonusName"),
+                                             List.of(((CommandSourceStack)ctx.getSource()).getPlayerOrException())
+                                          )
+                                    ))
+                                 .then(
+                                    ((RequiredArgumentBuilder)Commands.argument("targets", EntityArgument.players())
+                                          .requires(source -> DMZPermissions.hasPermission(source, DMZPermissions.BONUS_CLEAR_OTHERS)))
+                                       .executes(
+                                          ctx -> removeBonus(
+                                                (CommandSourceStack)ctx.getSource(),
+                                                StringArgumentType.getString(ctx, "stat"),
+                                                StringArgumentType.getString(ctx, "bonusName"),
+                                                EntityArgument.getPlayers(ctx, "targets")
+                                             )
+                                       )
+                                 )
+                           )
+                     )
+               ))
+            .then(
+               ((LiteralArgumentBuilder)Commands.literal("clear")
+                     .requires(source -> DMZPermissions.check(source, DMZPermissions.BONUS_CLEAR_SELF, DMZPermissions.BONUS_CLEAR_OTHERS)))
+                  .then(
+                     ((RequiredArgumentBuilder)Commands.argument("stat", StringArgumentType.word())
+                           .suggests(STAT_SUGGESTIONS)
+                           .executes(
+                              ctx -> clearStat(
+                                    (CommandSourceStack)ctx.getSource(),
+                                    StringArgumentType.getString(ctx, "stat"),
+                                    List.of(((CommandSourceStack)ctx.getSource()).getPlayerOrException())
+                                 )
+                           ))
+                        .then(
+                           ((RequiredArgumentBuilder)Commands.argument("targets", EntityArgument.players())
+                                 .requires(source -> DMZPermissions.hasPermission(source, DMZPermissions.BONUS_CLEAR_OTHERS)))
+                              .executes(
+                                 ctx -> clearStat(
+                                       (CommandSourceStack)ctx.getSource(),
+                                       StringArgumentType.getString(ctx, "stat"),
+                                       EntityArgument.getPlayers(ctx, "targets")
+                                    )
+                              )
+                        )
+                  )
+            )
+      );
+   }
+
+   private static int addBonus(
+      CommandSourceStack source, String stat, String operation, double value, String bonusName, boolean applyMultipliers, Collection<ServerPlayer> targets
+   ) {
+      boolean log = ConfigManager.getServerConfig().getGameplay().getCommandOutputOnConsole();
+      String finalStat = stat.toUpperCase();
+      if (operation.equalsIgnoreCase("x")) {
+         operation = "*";
+      }
+
+      if (!isValidStat(finalStat) && !finalStat.equals("ALL")) {
+         source.sendFailure(Component.translatable("command.dragonminez.bonus.invalid_stat"));
+         return 0;
+      } else {
+         for (ServerPlayer player : targets) {
+            String finalOp = operation;
+            StatsProvider.get(StatsCapability.INSTANCE, player).ifPresent(data -> {
+               if (finalStat.equals("ALL")) {
+                  for (String s : new String[]{"STR", "SKP", "DEF", "STM", "VIT", "PWR", "ENE"}) {
+                     data.getBonusStats().addBonus(s, bonusName, finalOp, value, applyMultipliers);
+                  }
+               } else {
+                  data.getBonusStats().addBonusSplit(finalStat, bonusName, finalOp, value, applyMultipliers);
+               }
+
+               NetworkHandler.sendToTrackingEntityAndSelf(new ProgressionSyncS2C(player), player);
+            });
+         }
+
+         if (targets.size() == 1) {
+            source.sendSuccess(
+               () -> Component.translatable(
+                     "command.dragonminez.bonus.add.success", new Object[]{bonusName, finalStat, targets.iterator().next().getName().getString()}
+                  ),
+               log
+            );
+         } else {
+            source.sendSuccess(() -> Component.translatable("command.dragonminez.bonus.add.multiple", new Object[]{bonusName, targets.size(), finalStat}), log);
+         }
+
+         return targets.size();
+      }
+   }
+
+   private static int removeBonus(CommandSourceStack source, String stat, String bonusName, Collection<ServerPlayer> targets) {
+      boolean log = ConfigManager.getServerConfig().getGameplay().getCommandOutputOnConsole();
+      String finalStat = stat.toUpperCase();
+      if (!isValidStat(finalStat)) {
+         source.sendFailure(Component.translatable("command.dragonminez.bonus.invalid_stat"));
+         return 0;
+      } else {
+         for (ServerPlayer player : targets) {
+            StatsProvider.get(StatsCapability.INSTANCE, player).ifPresent(data -> {
+               data.getBonusStats().removeBonusSplit(finalStat, bonusName);
+               NetworkHandler.sendToTrackingEntityAndSelf(new ProgressionSyncS2C(player), player);
+            });
+         }
+
+         if (targets.size() == 1) {
+            source.sendSuccess(
+               () -> Component.translatable(
+                     "command.dragonminez.bonus.remove.success", new Object[]{bonusName, finalStat, targets.iterator().next().getName().getString()}
+                  ),
+               log
+            );
+         } else {
+            source.sendSuccess(
+               () -> Component.translatable("command.dragonminez.bonus.remove.multiple", new Object[]{bonusName, targets.size(), finalStat}), log
+            );
+         }
+
+         return targets.size();
+      }
+   }
+
+   private static int clearStat(CommandSourceStack source, String stat, Collection<ServerPlayer> targets) {
+      boolean log = ConfigManager.getServerConfig().getGameplay().getCommandOutputOnConsole();
+      String finalStat = stat.toUpperCase();
+      if (!isValidStat(finalStat) && !finalStat.equals("ALL")) {
+         source.sendFailure(Component.translatable("command.dragonminez.bonus.invalid_stat"));
+         return 0;
+      } else {
+         for (ServerPlayer player : targets) {
+            StatsProvider.get(StatsCapability.INSTANCE, player).ifPresent(data -> {
+               if (finalStat.equals("ALL")) {
+                  data.getBonusStats().clearAllStats();
+               } else {
+                  data.getBonusStats().clearAllSplit(finalStat);
+               }
+
+               NetworkHandler.sendToTrackingEntityAndSelf(new ProgressionSyncS2C(player), player);
+            });
+         }
+
+         if (targets.size() == 1) {
+            source.sendSuccess(
+               () -> Component.translatable("command.dragonminez.bonus.clear.success", new Object[]{finalStat, targets.iterator().next().getName().getString()}),
+               log
+            );
+         } else {
+            source.sendSuccess(() -> Component.translatable("command.dragonminez.bonus.clear.multiple", new Object[]{finalStat, targets.size()}), log);
+         }
+
+         return targets.size();
+      }
+   }
+
+   private static boolean isValidStat(String stat) {
+      return Set.of("STR", "SKP", "DEF", "STM", "VIT", "PWR", "ENE").contains(stat);
+   }
+}

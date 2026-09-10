@@ -1,0 +1,55 @@
+package com.dragonminez.common.network.C2S;
+
+import com.dragonminez.common.config.ConfigManager;
+import com.dragonminez.common.network.NetworkHandler;
+import com.dragonminez.common.network.S2C.StatsSyncS2C;
+import com.dragonminez.common.stats.StatsCapability;
+import com.dragonminez.common.stats.StatsProvider;
+import com.dragonminez.common.stats.extras.DynamicGrowthStat;
+import com.dragonminez.compat.network.NetworkEvent;
+import java.util.function.Supplier;
+import net.minecraft.network.FriendlyByteBuf;
+import net.minecraft.server.level.ServerPlayer;
+
+public class DynamicGrowthToggleC2S {
+   private final String stat;
+   private final boolean enabled;
+
+   public DynamicGrowthToggleC2S(String stat, boolean enabled) {
+      this.stat = stat;
+      this.enabled = enabled;
+   }
+
+   public DynamicGrowthToggleC2S(FriendlyByteBuf buffer) {
+      this.stat = buffer.readUtf();
+      this.enabled = buffer.readBoolean();
+   }
+
+   public void encode(FriendlyByteBuf buffer) {
+      buffer.writeUtf(this.stat);
+      buffer.writeBoolean(this.enabled);
+   }
+
+   public void handle(Supplier<NetworkEvent.Context> contextSupplier) {
+      NetworkEvent.Context context = contextSupplier.get();
+      context.enqueueWork(() -> {
+         ServerPlayer player = context.getSender();
+         if (player != null) {
+            if (ConfigManager.getServerConfig().getDynamicGrowth().isEnabled()) {
+               DynamicGrowthStat parsed;
+               try {
+                  parsed = DynamicGrowthStat.valueOf(this.stat);
+               } catch (IllegalArgumentException var5) {
+                  return;
+               }
+
+               StatsProvider.get(StatsCapability.INSTANCE, player).ifPresent(data -> {
+                  data.getDynamicGrowth().setGrowthEnabled(parsed, this.enabled);
+                  NetworkHandler.sendToTrackingEntityAndSelf(new StatsSyncS2C(player), player);
+               });
+            }
+         }
+      });
+      context.setPacketHandled(true);
+   }
+}

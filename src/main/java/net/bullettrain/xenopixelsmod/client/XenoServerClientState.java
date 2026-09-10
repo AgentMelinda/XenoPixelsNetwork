@@ -29,6 +29,15 @@ public final class XenoServerClientState {
         return data.bt3CombatEnabled && data.bt3ComboEnabled;
     }
 
+    public static void clear() {
+        data = new XenoServerConfig.Data();
+        DmzHudClientState.setDmzHudEnabled(false);
+    }
+
+    public static boolean cinematicRush() {
+        return data.bt3CombatEnabled && data.bt3ComboEnabled && data.bt3CinematicRushEnabled;
+    }
+
     public static boolean vanish() {
         return data.bt3CombatEnabled && data.bt3VanishEnabled;
     }
@@ -84,5 +93,10 @@ public final class XenoServerClientState {
 
     public static boolean comboPunchesOnly() {
         return data.bt3CombatEnabled && data.bt3ComboEnabled && data.bt3ComboPunchesOnly;
+    }
+
+    /** Server makes DMZ profile stats exclusive for authoritative NPC profiles. */
+    public static boolean npcDmzStatsAuthoritative() {
+        return data.npcDmzStatsAuthoritative == null || data.npcDmzStatsAuthoritative;
     }
 }

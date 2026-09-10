@@ -1,5 +1,6 @@
 package net.bullettrain.xenopixelsmod.combat;
 
+import net.bullettrain.xenopixelsmod.config.XenoServerConfig;
 import net.bullettrain.xenopixelsmod.network.ModNetwork;
 import net.bullettrain.xenopixelsmod.network.packet.AfterimageGhostPacket;
 import net.minecraft.server.level.ServerLevel;
@@ -20,9 +21,6 @@ import net.minecraft.world.phys.Vec3;
  */
 public final class AfterimageGhost {
 
-    /** Long enough to be read as a body, short enough not to look like a second fighter. */
-    private static final int LIFETIME_TICKS = 20;
-
     private AfterimageGhost() {
     }
 
@@ -33,6 +31,6 @@ public final class AfterimageGhost {
         // should see the image they left behind.
         ModNetwork.sendToTrackingAndSelf(owner,
                 new AfterimageGhostPacket(owner.getId(), origin, owner.getYRot(), owner.getXRot(),
-                        LIFETIME_TICKS));
+                        Math.max(1, XenoServerConfig.zanzokenRingTicks)));
     }
 }

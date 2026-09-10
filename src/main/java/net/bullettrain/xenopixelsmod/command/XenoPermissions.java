@@ -63,6 +63,16 @@ public final class XenoPermissions {
             op("xenoserver.set", "Use /xenoserver set <key> <value>");
 
     // -------------------------------------------------------------------------
+    // /xenostats  (server — OP default)
+    // -------------------------------------------------------------------------
+    public static final PermissionNode<Boolean> XENOSTATS_STATUS =
+            op("xenostats.status", "Use /xenostats get — read a player's DragonMineZ stats");
+    public static final PermissionNode<Boolean> XENOSTATS_SET =
+            op("xenostats.set", "Use /xenostats set — write a player's DragonMineZ stats");
+    public static final PermissionNode<Boolean> XENOSTATS_LIMIT =
+            op("xenostats.limit", "Use /xenostats limit — raise or lift the DragonMineZ stat cap");
+
+    // -------------------------------------------------------------------------
     // /xenoform  (server — OP default)
     // -------------------------------------------------------------------------
     public static final PermissionNode<Boolean> XENOFORM_STATUS =
@@ -79,6 +89,8 @@ public final class XenoPermissions {
             op("xenobarrage.set", "Use /xenobarrage duration|cooldown <ticks>");
     public static final PermissionNode<Boolean> XENOKI_CLEAR =
             op("xenoki.clear", "Use /xenoki clear all|radius <blocks>");
+    public static final PermissionNode<Boolean> XENOHOLOGRAMS_CLEAR =
+            op("xenoholograms.clear", "Use /xenoholograms clear all|radius <blocks>");
 
     // -------------------------------------------------------------------------
     // /xenochase  (server — OP default)

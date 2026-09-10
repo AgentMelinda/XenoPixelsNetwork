@@ -1,0 +1,34 @@
+package com.dragonminez.common.network.C2S;
+
+import com.dragonminez.common.quest.QuestService;
+import com.dragonminez.compat.network.NetworkEvent;
+import java.util.function.Supplier;
+import net.minecraft.network.FriendlyByteBuf;
+import net.minecraft.server.level.ServerPlayer;
+
+public class ClaimQuestRewardC2S {
+   private final String questId;
+
+   public ClaimQuestRewardC2S(String questId) {
+      this.questId = questId;
+   }
+
+   public ClaimQuestRewardC2S(FriendlyByteBuf buffer) {
+      this.questId = buffer.readUtf();
+   }
+
+   public void encode(FriendlyByteBuf buffer) {
+      buffer.writeUtf(this.questId);
+   }
+
+   public void handle(Supplier<NetworkEvent.Context> contextSupplier) {
+      NetworkEvent.Context context = contextSupplier.get();
+      context.enqueueWork(() -> {
+         ServerPlayer player = context.getSender();
+         if (player != null) {
+            QuestService.claimRewards(player, this.questId);
+         }
+      });
+      context.setPacketHandled(true);
+   }
+}

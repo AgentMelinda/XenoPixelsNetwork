@@ -1,0 +1,17 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "building",
+  "group": "dragonminez",
+  "key": {
+    "#": {
+      "item": "dragonminez:namek_stone"
+    }
+  },
+  "pattern": [
+    "###"
+  ],
+  "result": {
+    "count": 6,
+    "id": "dragonminez:namek_stone_slab"
+  }
+}

@@ -41,7 +41,7 @@ class NpcFullDmzRendererTest {
         options.kiWeaponType = "scythe";
         NpcAppearanceClient.State state = new NpcAppearanceClient.State(
                 "saiyan", "supersaiyan", "supersaiyan2",
-                true, "", "#112233", 1, 2, 3, 4, 5, 6,
+                true, "", "#112233", 1, 2, 3, 4, 5, 6, true,
                 0x445566, 1.25f, new NpcDmzAppearance(), options.visualOptionsTag(),
                 "", "", "");
 

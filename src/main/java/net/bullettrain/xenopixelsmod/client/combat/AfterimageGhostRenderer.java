@@ -2,6 +2,8 @@ package net.bullettrain.xenopixelsmod.client.combat;
 
 import com.mojang.blaze3d.vertex.PoseStack;
 import net.bullettrain.xenopixelsmod.XenoPixelsMod;
+import net.bullettrain.xenopixelsmod.client.config.XenoClientConfig;
+import net.bullettrain.xenopixelsmod.config.XenoServerConfig;
 import net.minecraft.client.Camera;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.MultiBufferSource;
@@ -58,6 +60,7 @@ public final class AfterimageGhostRenderer {
     }
 
     public static void add(int ownerId, Vec3 pos, float yaw, float pitch, int lifetimeTicks) {
+        if (!XenoClientConfig.bt3Afterimage) return;
         synchronized (GHOSTS) {
             if (GHOSTS.size() >= MAX_GHOSTS) {
                 GHOSTS.remove(0);
@@ -117,11 +120,18 @@ public final class AfterimageGhostRenderer {
                 living.setXRot(ghost.pitch);
 
                 pose.pushPose();
-                pose.translate(ghost.pos.x - view.x, ghost.pos.y - view.y, ghost.pos.z - view.z);
-                mc.getEntityRenderDispatcher().render(living, 0.0, 0.0, 0.0, ghost.yaw,
-                        event.getPartialTick().getGameTimeDeltaPartialTick(false),
-                        pose, buffers, 0x00F000F0);
-                pose.popPose();
+                try {
+                    pose.translate(ghost.pos.x - view.x, ghost.pos.y - view.y, ghost.pos.z - view.z);
+                    float alpha = AfterimageFade.alpha(XenoServerConfig.zanzokenGhostFadeMode,
+                            XenoServerConfig.zanzokenGhostAlpha,
+                            ghost.age + event.getPartialTick().getGameTimeDeltaPartialTick(false),
+                            ghost.lifetime);
+                    mc.getEntityRenderDispatcher().render(living, 0.0, 0.0, 0.0, ghost.yaw,
+                            event.getPartialTick().getGameTimeDeltaPartialTick(false),
+                            pose, new AlphaMultiBufferSource(buffers, alpha), 0x00F000F0);
+                } finally {
+                    pose.popPose();
+                }
             } catch (Throwable t) {
                 // A renderer that refuses to draw an entity out of place must not take the frame
                 // down with it. The dodge itself is server-side and already happened.

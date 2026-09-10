@@ -21,6 +21,8 @@ import net.bullettrain.xenopixelsmod.network.packet.TargetLockStatePacket;
 import net.bullettrain.xenopixelsmod.network.packet.TargetLockErrorPacket;
 import net.bullettrain.xenopixelsmod.network.packet.CombatFxPacket;
 import net.bullettrain.xenopixelsmod.network.packet.ChaseFlightStatePacket;
+import net.bullettrain.xenopixelsmod.network.packet.SparkingChargePacket;
+import net.bullettrain.xenopixelsmod.network.packet.SparkingStatePacket;
 import net.bullettrain.xenopixelsmod.network.packet.PartySyncPacket;
 import net.bullettrain.xenopixelsmod.network.packet.PartyActionPacket;
 import net.bullettrain.xenopixelsmod.network.packet.PartyPingPacket;
@@ -63,6 +65,8 @@ public class ModNetwork {
      * <p>11: appended {@code AeroControlPacket} and {@code AeroStatePacket} for the Aero
      * flight controller. Clients and servers must both run this build — the channel refuses
      * a mismatched protocol, so differently versioned builds cannot join each other.
+     * <p>63: appended {@code Bt3RushStatePacket}; {@code Bt3CombatPacket.Action} appended
+     * {@code CINEMATIC_RUSH}; server config sync appended the cinematic-rush toggle.
      *
      * <p>30: {@code SeatFlightInputPacket} grew two stick bytes and a mouse-aim flag bit for
      * direct keyboard-mode flap control.
@@ -109,8 +113,12 @@ public class ModNetwork {
      * <p>55: generation 4's ordinary jab pair now resolves to Xeno-owned copies of DMZ's exact
      * left/right one-handed punches.
      * <p>56: appended {@code ChaseFlightStatePacket} to arbitrate DMZ and Xeno flight movement.
+     * <p>61: appended {@code SparkingStatePacket}. Mob effects are not synced to the clients
+     * tracking a player, so the Sparking aura needs its own signal to be visible on anyone but the
+     * local player.
+     * <p>62: appended {@code SparkingChargePacket} for the owner HUD's staged Max Power charge.
      */
-    private static final String PROTOCOL = "60";
+    private static final String PROTOCOL = "63";
 
     public static final SimpleChannel CHANNEL = NetworkRegistry.ChannelBuilder
             .named(ResourceLocation.fromNamespaceAndPath(XenoPixelsMod.MOD_ID, "main"))
@@ -362,10 +370,29 @@ public class ModNetwork {
                 .consumerMainThread(net.bullettrain.xenopixelsmod.network.packet.Bt3AnimIntentPacket::handle)
                 .add();
 
+        CHANNEL.messageBuilder(net.bullettrain.xenopixelsmod.network.packet.Bt3RushStatePacket.class, id++,
+                        NetworkDirection.PLAY_TO_CLIENT)
+                .decoder(net.bullettrain.xenopixelsmod.network.packet.Bt3RushStatePacket::new)
+                .encoder(net.bullettrain.xenopixelsmod.network.packet.Bt3RushStatePacket::encode)
+                .consumerMainThread(net.bullettrain.xenopixelsmod.network.packet.Bt3RushStatePacket::handle)
+                .add();
+
         CHANNEL.messageBuilder(ChaseFlightStatePacket.class, id++, NetworkDirection.PLAY_TO_CLIENT)
                 .decoder(ChaseFlightStatePacket::new)
                 .encoder(ChaseFlightStatePacket::encode)
                 .consumerMainThread(ChaseFlightStatePacket::handle)
+                .add();
+
+        CHANNEL.messageBuilder(SparkingStatePacket.class, id++, NetworkDirection.PLAY_TO_CLIENT)
+                .decoder(SparkingStatePacket::new)
+                .encoder(SparkingStatePacket::encode)
+                .consumerMainThread(SparkingStatePacket::handle)
+                .add();
+
+        CHANNEL.messageBuilder(SparkingChargePacket.class, id++, NetworkDirection.PLAY_TO_CLIENT)
+                .decoder(SparkingChargePacket::new)
+                .encoder(SparkingChargePacket::encode)
+                .consumerMainThread(SparkingChargePacket::handle)
                 .add();
 
         XenoPixelsMod.LOGGER.info("ModNetwork: registered {} packet types (protocol {})", id, PROTOCOL);

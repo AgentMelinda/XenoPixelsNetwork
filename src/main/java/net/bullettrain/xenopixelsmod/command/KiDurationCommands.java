@@ -9,6 +9,7 @@ import com.mojang.brigadier.suggestion.SuggestionProvider;
 import com.dragonminez.common.init.entities.ki.AbstractKiProjectile;
 import com.dragonminez.common.init.entities.ki.KiExplosionVisualEntity;
 import net.bullettrain.xenopixelsmod.combat.technique.KiDuration;
+import net.bullettrain.xenopixelsmod.combat.technique.KiCleanupSavedData;
 import net.bullettrain.xenopixelsmod.config.XenoServerConfig;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
@@ -126,11 +127,12 @@ public final class KiDurationCommands {
     }
 
     private static int clearAll(CommandSourceStack source) {
+        KiCleanupSavedData.get(source.getServer()).beginGlobalClear();
         CleanupCount total = CleanupCount.ZERO;
         for (ServerLevel level : source.getServer().getAllLevels()) {
             total = total.add(discardLoadedKi(level));
         }
-        sendCleanupResult(source, total, "all loaded dimensions");
+        sendCleanupResult(source, total, "all dimensions (persisted across restarts)");
         return total.total();
     }
 
@@ -147,8 +149,15 @@ public final class KiDurationCommands {
                 KiExplosionVisualEntity.class, search,
                 entity -> entity.distanceToSqr(center) <= radiusSquared);
 
-        projectiles.forEach(Entity::discard);
-        visuals.forEach(Entity::discard);
+        KiCleanupSavedData cleanup = KiCleanupSavedData.get(source.getServer());
+        projectiles.forEach(entity -> {
+            cleanup.tombstone(entity);
+            entity.discard();
+        });
+        visuals.forEach(entity -> {
+            cleanup.tombstone(entity);
+            entity.discard();
+        });
 
         CleanupCount total = new CleanupCount(projectiles.size(), visuals.size());
         sendCleanupResult(source, total, radius + " blocks");

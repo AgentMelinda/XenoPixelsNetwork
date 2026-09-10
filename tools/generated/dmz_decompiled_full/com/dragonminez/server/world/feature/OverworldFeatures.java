@@ -1,0 +1,28 @@
+package com.dragonminez.server.world.feature;
+
+import net.minecraft.core.registries.Registries;
+import net.minecraft.world.level.levelgen.feature.Feature;
+import net.minecraft.world.level.levelgen.feature.configurations.NoneFeatureConfiguration;
+import net.neoforged.bus.api.IEventBus;
+import net.neoforged.neoforge.registries.DeferredHolder;
+import net.neoforged.neoforge.registries.DeferredRegister;
+
+public class OverworldFeatures {
+   public static final DeferredRegister<Feature<?>> FEATURES = DeferredRegister.create(Registries.FEATURE, "dragonminez");
+   public static final DeferredHolder<Feature<?>, Feature<NoneFeatureConfiguration>> STONE_SPIKE = FEATURES.register(
+      "stone_spike", () -> new StoneSpikeFeature(NoneFeatureConfiguration.CODEC)
+   );
+   public static final DeferredHolder<Feature<?>, Feature<NoneFeatureConfiguration>> ROCKY_PEAK = FEATURES.register(
+      "rocky_peak", () -> new RockyPeakFeature(NoneFeatureConfiguration.CODEC)
+   );
+   public static final DeferredHolder<Feature<?>, Feature<NoneFeatureConfiguration>> KARST_PILLAR = FEATURES.register(
+      "karst_pillar", () -> new KarstPillarFeature(NoneFeatureConfiguration.CODEC)
+   );
+   public static final DeferredHolder<Feature<?>, Feature<NoneFeatureConfiguration>> ROCKY_CLIFF = FEATURES.register(
+      "rocky_cliff", () -> new RockyCliffFeature(NoneFeatureConfiguration.CODEC)
+   );
+
+   public static void register(IEventBus eventBus) {
+      FEATURES.register(eventBus);
+   }
+}

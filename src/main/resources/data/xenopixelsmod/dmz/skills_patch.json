@@ -29,27 +29,87 @@
     ]
   },
   "exclusiveFormSkills": {
-    "xenopixels_fan_ss": ["beerus", "whis"],
-    "xenopixels_divinity": ["beerus", "whis"],
-    "xenopixels_saga_forms": ["beerus", "whis"],
-    "xenopixels_dark_frieza": ["beerus", "whis"]
+    "xenopixels_fan_ss": [
+      "beerus",
+      "whis"
+    ],
+    "xenopixels_divinity": [
+      "beerus",
+      "whis"
+    ],
+    "xenopixels_saga_forms": [
+      "beerus",
+      "whis"
+    ],
+    "xenopixels_dark_frieza": [
+      "beerus",
+      "whis"
+    ]
   },
   "skillCosts": {
     "xenopixels_divinity": {
-      "costs": [1, 1, 1, 1, 1, 1, 1, 1],
+      "costs": [
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1
+      ],
       "allowedRaces": []
     },
     "xenopixels_fan_ss": {
-      "costs": [1, 1, 1, 1, 1, 1],
+      "costs": [
+        1,
+        1,
+        1,
+        1,
+        1,
+        1
+      ],
       "allowedRaces": []
     },
     "xenopixels_saga_forms": {
-      "costs": [1],
+      "costs": [
+        1
+      ],
       "allowedRaces": []
     },
     "xenopixels_dark_frieza": {
-      "costs": [1],
-      "allowedRaces": ["frostdemon"]
+      "costs": [
+        1
+      ],
+      "allowedRaces": [
+        "frostdemon"
+      ]
+    },
+    "sparking": {
+      "costs": [
+        5000
+      ],
+      "allowedRaces": []
     }
+  },
+  "nonFormSkillOfferings": {
+    "goku": [
+      "sparking"
+    ],
+    "vegeta": [
+      "sparking"
+    ],
+    "gohan": [
+      "sparking"
+    ],
+    "kingkai": [
+      "sparking"
+    ],
+    "oldkai": [
+      "sparking"
+    ],
+    "piccolo": [
+      "sparking"
+    ]
   }
 }

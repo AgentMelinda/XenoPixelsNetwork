@@ -1,0 +1,32 @@
+{
+  "parent": "minecraft:recipes/root",
+  "criteria": {
+    "has_blank_pattern_super": {
+      "conditions": {
+        "items": [
+          {
+            "items": "dragonminez:blank_pattern_super"
+          }
+        ]
+      },
+      "trigger": "minecraft:inventory_changed"
+    },
+    "has_the_recipe": {
+      "conditions": {
+        "recipe": "dragonminez:pattern_goku_super"
+      },
+      "trigger": "minecraft:recipe_unlocked"
+    }
+  },
+  "requirements": [
+    [
+      "has_the_recipe",
+      "has_blank_pattern_super"
+    ]
+  ],
+  "rewards": {
+    "recipes": [
+      "dragonminez:pattern_goku_super"
+    ]
+  }
+}

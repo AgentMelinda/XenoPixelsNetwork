@@ -6,7 +6,6 @@
   "race.dragonminez.saiyan.form.supersaiyan_legend.ssj8": "Super Saiyan 8",
   "race.dragonminez.saiyan.form.supersaiyan_legend.ssj9": "Super Saiyan 9",
   "race.dragonminez.saiyan.form.supersaiyan_legend.ssj10": "Super Saiyan 10",
-
   "race.dragonminez.saiyan.group.xenopixels_fan_ss": "XenoPixels Fan Super Saiyan",
   "race.dragonminez.saiyan.form.xenopixels_fan_ss.ssj5": "Super Saiyan 5",
   "race.dragonminez.saiyan.form.xenopixels_fan_ss.ssj6": "Super Saiyan 6",
@@ -16,7 +15,6 @@
   "race.dragonminez.saiyan.form.xenopixels_fan_ss.ssj10": "Super Saiyan 10",
   "skill.dragonminez.xenopixels_fan_ss": "Fan Super Saiyan Forms",
   "skill.dragonminez.xenopixels_fan_ss.desc": "Unlock fan Super Saiyan 5–10 (XenoPixels). Extra Forms. Goku / Vegeta.",
-
   "race.dragonminez.saiyan.group.xenopixels_gods_forms": "XenoPixels Gods Forms",
   "race.dragonminez.saiyan.form.xenopixels_gods_forms.ssg": "Super Saiyan God",
   "race.dragonminez.saiyan.form.xenopixels_gods_forms.ssb": "Super Saiyan Blue",
@@ -28,14 +26,14 @@
   "race.dragonminez.saiyan.form.xenopixels_gods_forms.ue": "Ultra Ego",
   "skill.dragonminez.xenopixels_divinity": "XenoPixels Gods Forms",
   "skill.dragonminez.xenopixels_divinity.desc": "SSG, SSB, SSBE, Rose, UI, Ultra Ego. Beerus / Whis. Extra Forms. Skill id xenopixels_divinity (DMZ cannot use 'god' in formType).",
-
   "race.dragonminez.saiyan.group.xenopixels_saga_forms": "XenoPixels Saga Forms",
   "race.dragonminez.saiyan.form.xenopixels_saga_forms.trunks_ikari": "Trunks Ikari",
   "skill.dragonminez.xenopixels_saga_forms": "XenoPixels Saga Forms",
   "skill.dragonminez.xenopixels_saga_forms.desc": "Trunks Super Saiyan Rage / Ikari (just under Blue/Rose Evolution). Master Trunks. Extra Forms.",
-
   "race.dragonminez.frostdemon.group.xenopixels_dark_frieza": "XenoPixels Dark Frieza",
   "race.dragonminez.frostdemon.form.xenopixels_dark_frieza.dark": "Dark Frieza",
   "skill.dragonminez.xenopixels_dark_frieza": "Dark Frieza",
-  "skill.dragonminez.xenopixels_dark_frieza.desc": "Frieza race (Frost Demon) Super Hero form. Above Blue Evolution, below full Ultra Instinct. Master Frieza."
+  "skill.dragonminez.xenopixels_dark_frieza.desc": "Frieza race (Frost Demon) Super Hero form. Above Blue Evolution, below full Ultra Instinct. Master Frieza.",
+  "skill.dragonminez.sparking": "Sparking",
+  "skill.dragonminez.sparking.desc": "Charge your Ki to full to erupt into Sparking: your power release ceiling is lifted far past its normal limit, you move and strike faster, and your aura burns gold. It lasts until that Ki drains, so spending it on techniques cuts it short. Granted once Potential Unlock is mastered, and taught by Goku, Vegeta, Gohan, King Kai, Old Kai and Piccolo."
 }

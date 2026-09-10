@@ -2,6 +2,8 @@ package net.bullettrain.xenopixelsmod.combat.anim;
 
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
+import net.bullettrain.xenopixelsmod.combat.Bt3RushDefinition;
+import net.bullettrain.xenopixelsmod.combat.Bt3RushResolver;
 import org.junit.jupiter.api.Test;
 
 import java.io.IOException;
@@ -235,5 +237,21 @@ class Bt3AnimationCatalogTest {
         assertFalse(Bt3AnimationCatalog.isPlayable("combat.does_not_exist"));
         assertFalse(Bt3AnimationCatalog.isPlayable(""));
         assertFalse(Bt3AnimationCatalog.isPlayable(null));
+    }
+
+    @Test
+    void cinematicRushProfilesShipWithServerAlignedCosmeticKeyframes() throws IOException {
+        JsonObject animations = animations();
+        Set<String> expectedTimes = Set.of("0.25", "0.5", "0.8", "1.15");
+        for (Bt3RushDefinition definition : Bt3RushResolver.all()) {
+            JsonObject animation = animations.getAsJsonObject(definition.animation());
+            assertNotNull(animation, definition.animation());
+            assertEquals(definition.durationTicks() / 20.0,
+                    animation.get("animation_length").getAsDouble(), 1.0e-6, definition.id());
+            assertEquals(expectedTimes, animation.getAsJsonObject("sound_effects").keySet(), definition.id());
+            assertEquals(expectedTimes, animation.getAsJsonObject("particle_effects").keySet(), definition.id());
+            assertEquals(expectedTimes, animation.getAsJsonObject("timeline").keySet(), definition.id());
+            assertTrue(Bt3AnimationCatalog.customAnimationNames().contains(definition.animation()));
+        }
     }
 }

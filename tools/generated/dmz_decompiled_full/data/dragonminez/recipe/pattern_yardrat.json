@@ -1,0 +1,31 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "group": "dragonminez",
+  "key": {
+    "#": {
+      "item": "dragonminez:blank_pattern_z"
+    },
+    "B": {
+      "item": "minecraft:blue_dye"
+    },
+    "P": {
+      "item": "minecraft:pink_dye"
+    },
+    "W": {
+      "item": "minecraft:white_dye"
+    },
+    "Y": {
+      "item": "minecraft:yellow_dye"
+    }
+  },
+  "pattern": [
+    "W#P",
+    "WBW",
+    "BYB"
+  ],
+  "result": {
+    "count": 1,
+    "id": "dragonminez:pattern_yardrat"
+  }
+}

@@ -1,0 +1,87 @@
+package com.dragonminez.common.network.S2C;
+
+import com.dragonminez.common.network.ClientPacketHandler;
+import com.dragonminez.compat.DistExecutor;
+import com.dragonminez.compat.network.NetworkEvent;
+import java.util.function.Supplier;
+import lombok.Generated;
+import net.minecraft.network.FriendlyByteBuf;
+import net.neoforged.api.distmarker.Dist;
+
+public class BeamClashStateS2C {
+   private final boolean active;
+   private final float meterPhase;
+   private final float sweetLow;
+   private final float sweetHigh;
+   private final float advantage;
+   private final int beamColor;
+   private final int opponentEntityId;
+
+   public BeamClashStateS2C(boolean active, float meterPhase, float sweetLow, float sweetHigh, float advantage, int beamColor, int opponentEntityId) {
+      this.active = active;
+      this.meterPhase = meterPhase;
+      this.sweetLow = sweetLow;
+      this.sweetHigh = sweetHigh;
+      this.advantage = advantage;
+      this.beamColor = beamColor;
+      this.opponentEntityId = opponentEntityId;
+   }
+
+   public static BeamClashStateS2C inactive() {
+      return new BeamClashStateS2C(false, 0.0F, 0.0F, 0.0F, 0.5F, 16777215, -1);
+   }
+
+   public static void encode(BeamClashStateS2C msg, FriendlyByteBuf buf) {
+      buf.writeBoolean(msg.active);
+      buf.writeFloat(msg.meterPhase);
+      buf.writeFloat(msg.sweetLow);
+      buf.writeFloat(msg.sweetHigh);
+      buf.writeFloat(msg.advantage);
+      buf.writeInt(msg.beamColor);
+      buf.writeInt(msg.opponentEntityId);
+   }
+
+   public static BeamClashStateS2C decode(FriendlyByteBuf buf) {
+      return new BeamClashStateS2C(buf.readBoolean(), buf.readFloat(), buf.readFloat(), buf.readFloat(), buf.readFloat(), buf.readInt(), buf.readInt());
+   }
+
+   public static void handle(BeamClashStateS2C msg, Supplier<NetworkEvent.Context> ctx) {
+      ctx.get().enqueueWork(() -> DistExecutor.unsafeRunWhenOn(Dist.CLIENT, () -> () -> ClientPacketHandler.handleBeamClashState(msg)));
+      ctx.get().setPacketHandled(true);
+   }
+
+   @Generated
+   public boolean isActive() {
+      return this.active;
+   }
+
+   @Generated
+   public float getMeterPhase() {
+      return this.meterPhase;
+   }
+
+   @Generated
+   public float getSweetLow() {
+      return this.sweetLow;
+   }
+
+   @Generated
+   public float getSweetHigh() {
+      return this.sweetHigh;
+   }
+
+   @Generated
+   public float getAdvantage() {
+      return this.advantage;
+   }
+
+   @Generated
+   public int getBeamColor() {
+      return this.beamColor;
+   }
+
+   @Generated
+   public int getOpponentEntityId() {
+      return this.opponentEntityId;
+   }
+}

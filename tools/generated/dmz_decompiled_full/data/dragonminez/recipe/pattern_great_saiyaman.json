@@ -1,0 +1,31 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "group": "dragonminez",
+  "key": {
+    "#": {
+      "item": "dragonminez:blank_pattern_z"
+    },
+    "B": {
+      "item": "minecraft:black_dye"
+    },
+    "G": {
+      "item": "minecraft:green_dye"
+    },
+    "R": {
+      "item": "minecraft:red_dye"
+    },
+    "Y": {
+      "item": "minecraft:yellow_dye"
+    }
+  },
+  "pattern": [
+    "R#R",
+    "GGG",
+    "BYB"
+  ],
+  "result": {
+    "count": 1,
+    "id": "dragonminez:pattern_great_saiyaman"
+  }
+}

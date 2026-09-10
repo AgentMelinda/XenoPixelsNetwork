@@ -1,0 +1,18 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "redstone",
+  "group": "dragonminez",
+  "key": {
+    "K": {
+      "item": "dragonminez:kikono_shard"
+    }
+  },
+  "pattern": [
+    "K",
+    "K"
+  ],
+  "result": {
+    "count": 2,
+    "id": "dragonminez:kikono_stick"
+  }
+}

@@ -1,0 +1,31 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "group": "dragonminez",
+  "key": {
+    "#": {
+      "item": "dragonminez:blank_pattern_z"
+    },
+    "B": {
+      "item": "minecraft:black_dye"
+    },
+    "G": {
+      "item": "minecraft:gray_dye"
+    },
+    "L": {
+      "item": "minecraft:light_blue_dye"
+    },
+    "W": {
+      "item": "minecraft:white_dye"
+    }
+  },
+  "pattern": [
+    "L#L",
+    "BWB",
+    "GGG"
+  ],
+  "result": {
+    "count": 1,
+    "id": "dragonminez:pattern_age1000"
+  }
+}

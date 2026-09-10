@@ -4,13 +4,13 @@ import java.util.ArrayList;
 import java.util.List;
 
 import net.bullettrain.xenopixelsmod.XenoPixelsMod;
-import net.bullettrain.xenopixelsmod.effect.ModEffects;
-import net.bullettrain.xenopixelsmod.effect.XenoMobEffect;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.screens.inventory.InventoryScreen;
 import net.minecraft.client.renderer.texture.TextureAtlasSprite;
+import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.network.chat.Component;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.effect.MobEffect;
 import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.effect.MobEffectUtil;
@@ -34,13 +34,21 @@ public final class XenoInventoryEffects {
 
         @SubscribeEvent
         public static void register(RegisterClientExtensionsEvent event) {
+            MobEffect[] compactEffects = BuiltInRegistries.MOB_EFFECT.stream()
+                    .filter(XenoInventoryEffects::isCompactEffect)
+                    .toArray(MobEffect[]::new);
             event.registerMobEffect(new IClientMobEffectExtensions() {
                 @Override
                 public boolean isVisibleInInventory(MobEffectInstance instance) {
                     return false;
                 }
-            }, ModEffects.EFFECTS.getEntries().stream().map(holder -> holder.get()).toArray(MobEffect[]::new));
+            }, compactEffects);
         }
+    }
+
+    @SubscribeEvent
+    public static void suppressVanillaInventoryEffects(ScreenEvent.RenderInventoryMobEffects event) {
+        if (event.getScreen() instanceof InventoryScreen) event.setCanceled(true);
     }
 
     @SubscribeEvent
@@ -51,7 +59,6 @@ public final class XenoInventoryEffects {
         if (minecraft.player == null) return;
 
         List<MobEffectInstance> effects = minecraft.player.getActiveEffects().stream()
-                .filter(effect -> effect.getEffect().value() instanceof XenoMobEffect)
                 .toList();
         if (effects.isEmpty()) return;
 
@@ -77,16 +84,24 @@ public final class XenoInventoryEffects {
     }
 
     private static void renderCell(GuiGraphics graphics, Minecraft minecraft, MobEffectInstance effect, int x, int y) {
-        graphics.fill(x, y, x + XenoEffectRailLayout.CELL_SIZE, y + XenoEffectRailLayout.CELL_SIZE, 0xB0101010);
-        graphics.fill(x, y, x + XenoEffectRailLayout.CELL_SIZE, y + 1, 0xFF8A8A8A);
-        graphics.fill(x, y, x + 1, y + XenoEffectRailLayout.CELL_SIZE, 0xFF8A8A8A);
+        ResourceLocation key = BuiltInRegistries.MOB_EFFECT.getKey(effect.getEffect().value());
+        int accent = key != null && "dragonminez".equals(key.getNamespace()) ? 0xFFFFC928 : 0xFF35D7FF;
+        graphics.fill(x, y, x + XenoEffectRailLayout.CELL_SIZE, y + XenoEffectRailLayout.CELL_SIZE, 0xD00A1018);
+        graphics.fill(x, y, x + XenoEffectRailLayout.CELL_SIZE, y + 2, accent);
+        graphics.fill(x, y, x + 1, y + XenoEffectRailLayout.CELL_SIZE, 0xFF688195);
         graphics.fill(x, y + XenoEffectRailLayout.CELL_SIZE - 1,
-                x + XenoEffectRailLayout.CELL_SIZE, y + XenoEffectRailLayout.CELL_SIZE, 0xFF303030);
+                x + XenoEffectRailLayout.CELL_SIZE, y + XenoEffectRailLayout.CELL_SIZE, 0xFF182A38);
         graphics.fill(x + XenoEffectRailLayout.CELL_SIZE - 1, y,
-                x + XenoEffectRailLayout.CELL_SIZE, y + XenoEffectRailLayout.CELL_SIZE, 0xFF303030);
+                x + XenoEffectRailLayout.CELL_SIZE, y + XenoEffectRailLayout.CELL_SIZE, 0xFF182A38);
 
         TextureAtlasSprite sprite = minecraft.getMobEffectTextures().get(effect.getEffect());
         graphics.blit(x + ICON_INSET, y + ICON_INSET, 0, ICON_SIZE, ICON_SIZE, sprite);
+    }
+
+    private static boolean isCompactEffect(MobEffect effect) {
+        ResourceLocation key = BuiltInRegistries.MOB_EFFECT.getKey(effect);
+        if (key == null) return false;
+        return XenoPixelsMod.MOD_ID.equals(key.getNamespace()) || "dragonminez".equals(key.getNamespace());
     }
 
     private static List<Component> tooltip(MobEffectInstance effect) {

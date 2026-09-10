@@ -6,10 +6,14 @@ import com.mojang.brigadier.CommandDispatcher;
 import com.mojang.brigadier.arguments.BoolArgumentType;
 import com.mojang.brigadier.arguments.StringArgumentType;
 import net.bullettrain.xenopixelsmod.XenoPixelsMod;
+import com.mojang.brigadier.arguments.DoubleArgumentType;
+import net.bullettrain.xenopixelsmod.client.config.DmzMenuMode;
+import net.bullettrain.xenopixelsmod.client.config.XenoAuraConfig;
 import net.bullettrain.xenopixelsmod.client.config.XenoClientConfig;
 import net.bullettrain.xenopixelsmod.client.config.XenoCooldownHudConfig;
 import net.bullettrain.xenopixelsmod.client.config.XenoHotbarConfig;
 import net.bullettrain.xenopixelsmod.client.config.XenoHudConfig;
+import net.bullettrain.xenopixelsmod.client.config.XenoHudRenderer;
 import net.bullettrain.xenopixelsmod.client.screen.HudSurfaces;
 import net.bullettrain.xenopixelsmod.client.screen.XenoCooldownHudEditScreen;
 import net.bullettrain.xenopixelsmod.client.screen.XenoHotbarEditScreen;
@@ -32,6 +36,45 @@ public final class XenoHudCommands {
     @SubscribeEvent
     public static void onRegisterClientCommands(RegisterClientCommandsEvent event) {
         register(event.getDispatcher());
+    }
+
+    /** Applies a renderer choice, saves it, and reports what was selected. */
+    private static int setRenderer(com.mojang.brigadier.context.CommandContext<CommandSourceStack> ctx,
+                                   XenoHudRenderer renderer, String description) {
+        XenoHudConfig.setRenderer(renderer);
+        XenoHudConfig.save();
+        ctx.getSource().sendSuccess(
+                () -> Component.literal("Xeno HUD renderer: " + description), false);
+        return 1;
+    }
+
+    /** Applies a DMZ menu mode, saves it, and reports what the V key will now open. */
+    private static int setMenuMode(com.mojang.brigadier.context.CommandContext<CommandSourceStack> ctx,
+                                   DmzMenuMode mode, String description) {
+        XenoHudConfig.dmzMenuMode = mode;
+        XenoHudConfig.save();
+        ctx.getSource().sendSuccess(
+                () -> Component.literal("DragonMineZ menus: " + description), false);
+        return 1;
+    }
+
+    /** One aura knob, applied, saved and echoed back. */
+    private static int setAura(com.mojang.brigadier.context.CommandContext<CommandSourceStack> ctx,
+                               String name, double value, java.util.function.DoubleConsumer apply) {
+        apply.accept(value);
+        XenoAuraConfig.save();
+        ctx.getSource().sendSuccess(
+                () -> Component.literal("Aura " + name + ": " + value), false);
+        return 1;
+    }
+
+    /** Builds a `<name> <value>` branch for one aura knob. */
+    private static com.mojang.brigadier.builder.LiteralArgumentBuilder<CommandSourceStack> auraKnob(
+            String name, double min, double max, java.util.function.DoubleConsumer apply) {
+        return Commands.literal(name).then(Commands.argument("value",
+                        DoubleArgumentType.doubleArg(min, max))
+                .executes(ctx -> setAura(ctx, name,
+                        DoubleArgumentType.getDouble(ctx, "value"), apply)));
     }
 
     private static void register(CommandDispatcher<CommandSourceStack> dispatcher) {
@@ -83,50 +126,93 @@ public final class XenoHudCommands {
                 .then(Commands.literal("renderer")
                         .requires(XenoPermissions.require(XenoPermissions.XENOHUD_RENDERER))
                         .then(Commands.literal("legacy")
-                                .executes(ctx -> {
-                                    XenoHudConfig.legacyHudRenderer = true;
-                                    XenoHudConfig.unifiedHudRenderer = false;
-                                    XenoHudConfig.save();
-                                    ctx.getSource().sendSuccess(() -> Component.literal("Xeno HUD renderer: legacy"), false);
-                                    return 1;
-                                }))
+                                .executes(ctx -> setRenderer(ctx, XenoHudRenderer.LEGACY,
+                                        "legacy")))
                         .then(Commands.literal("modern")
-                                .executes(ctx -> {
-                                    XenoHudConfig.legacyHudRenderer = false;
-                                    XenoHudConfig.unifiedHudRenderer = false;
-                                    XenoHudConfig.save();
-                                    ctx.getSource().sendSuccess(() -> Component.literal(
-                                            "Xeno HUD renderer: modern (textured atlas)"), false);
-                                    return 1;
-                                }))
+                                .executes(ctx -> setRenderer(ctx, XenoHudRenderer.MODERN,
+                                        "modern (textured atlas)")))
                         .then(Commands.literal("modernunified")
-                                .executes(ctx -> {
-                                    XenoHudConfig.legacyHudRenderer = false;
-                                    XenoHudConfig.unifiedHudRenderer = true;
-                                    XenoHudConfig.save();
-                                    ctx.getSource().sendSuccess(() -> Component.literal(
-                                            "Xeno HUD renderer: modernunified (stats + combat "
-                                                    + "cooldowns in one panel; the cooldown HUD's "
-                                                    + "own position and scale are ignored)"), false);
-                                    return 1;
-                                }))
+                                .executes(ctx -> setRenderer(ctx, XenoHudRenderer.MODERN_UNIFIED,
+                                        "modernunified (stats + combat cooldowns in one panel; the "
+                                                + "cooldown HUD's own position and scale are "
+                                                + "ignored)")))
+                        .then(Commands.literal("bt3")
+                                .executes(ctx -> setRenderer(ctx, XenoHudRenderer.BT3,
+                                        "bt3 (Budokai Tenkaichi inspired)")))
                         // Kept so existing macros and muscle memory still work after the
                         // flat-rectangle LDLib spike was replaced by the textured renderer.
                         .then(Commands.literal("ldlib")
-                                .executes(ctx -> {
-                                    XenoHudConfig.legacyHudRenderer = false;
-                                    XenoHudConfig.unifiedHudRenderer = false;
-                                    XenoHudConfig.save();
-                                    ctx.getSource().sendSuccess(() -> Component.literal(
-                                            "Xeno HUD renderer: modern (alias 'ldlib')"), false);
-                                    return 1;
-                                }))
+                                .executes(ctx -> setRenderer(ctx, XenoHudRenderer.MODERN,
+                                        "modern (alias 'ldlib')")))
                         .executes(ctx -> {
-                            String current = XenoHudConfig.legacyHudRenderer ? "legacy"
-                                    : XenoHudConfig.unifiedHudRenderer ? "modernunified" : "modern";
                             ctx.getSource().sendSuccess(() -> Component.literal(
-                                    "Xeno HUD renderer: " + current
-                                            + " (usage: /xenohud renderer <legacy|modern|modernunified>)"), false);
+                                    "Xeno HUD renderer: " + XenoHudConfig.renderer.id()
+                                            + " (usage: /xenohud renderer <"
+                                            + XenoHudRenderer.usage() + ">)"), false);
+                            return 1;
+                        }))
+                .then(Commands.literal("aura")
+                        .requires(XenoPermissions.require(XenoPermissions.XENOHUD_RENDERER))
+                        .then(Commands.literal("on").executes(ctx -> {
+                            XenoAuraConfig.enabled = true;
+                            XenoAuraConfig.save();
+                            ctx.getSource().sendSuccess(
+                                    () -> Component.literal("Aura scaling: on"), false);
+                            return 1;
+                        }))
+                        .then(Commands.literal("off").executes(ctx -> {
+                            XenoAuraConfig.enabled = false;
+                            XenoAuraConfig.save();
+                            ctx.getSource().sendSuccess(() -> Component.literal(
+                                    "Aura scaling: off (DragonMineZ's own sizing)"), false);
+                            return 1;
+                        }))
+                        .then(Commands.literal("reset").executes(ctx -> {
+                            XenoAuraConfig.reset();
+                            ctx.getSource().sendSuccess(
+                                    () -> Component.literal("Aura scaling reset"), false);
+                            return 1;
+                        }))
+                        .then(auraKnob("pivot", 1.0, 1.0e12, v -> XenoAuraConfig.powerPivot = v))
+                        .then(auraKnob("gain", 0.0, 4.0, v -> XenoAuraConfig.powerGain = v))
+                        .then(auraKnob("max", 1.0, 12.0, v -> XenoAuraConfig.powerMax = v))
+                        .then(auraKnob("chargeheight", 0.0, 12.0, v -> XenoAuraConfig.chargeHeight = v))
+                        .then(auraKnob("chargewidth", 0.0, 4.0, v -> XenoAuraConfig.chargeWidth = v))
+                        .then(auraKnob("ramp", 1.0, 200.0, v -> XenoAuraConfig.rampTicks = v))
+                        .executes(ctx -> {
+                            ctx.getSource().sendSuccess(() -> Component.literal(
+                                    "Aura scaling: " + (XenoAuraConfig.enabled ? "on" : "off")
+                                            + " (pivot " + XenoAuraConfig.powerPivot
+                                            + ", gain " + XenoAuraConfig.powerGain
+                                            + ", max " + XenoAuraConfig.powerMax
+                                            + ", chargeheight " + XenoAuraConfig.chargeHeight
+                                            + ", chargewidth " + XenoAuraConfig.chargeWidth
+                                            + ", ramp " + XenoAuraConfig.rampTicks + ")"), false);
+                            return 1;
+                        }))
+                .then(Commands.literal("menus")
+                        .requires(XenoPermissions.require(XenoPermissions.XENOHUD_RENDERER))
+                        .then(Commands.literal("stock")
+                                .executes(ctx -> setMenuMode(ctx, DmzMenuMode.STOCK,
+                                        "stock (DragonMineZ's own screens, untouched)")))
+                        .then(Commands.literal("theme")
+                                .executes(ctx -> setMenuMode(ctx, DmzMenuMode.THEME,
+                                        "theme (DMZ's real screens in Xeno chrome)")))
+                        .then(Commands.literal("screen")
+                                .executes(ctx -> setMenuMode(ctx, DmzMenuMode.SCREEN,
+                                        "screen (our own stats page; the rest themed)")))
+                        .then(Commands.literal("neon")
+                                .executes(ctx -> setMenuMode(ctx, DmzMenuMode.NEON,
+                                        "neon (the newer our-style stats page; the rest themed)")))
+                        // The replacement screen was called 'bt3' before the theming existed.
+                        .then(Commands.literal("bt3")
+                                .executes(ctx -> setMenuMode(ctx, DmzMenuMode.SCREEN,
+                                        "screen (alias 'bt3')")))
+                        .executes(ctx -> {
+                            ctx.getSource().sendSuccess(() -> Component.literal(
+                                    "DragonMineZ menus: " + XenoHudConfig.dmzMenuMode.id()
+                                            + " (usage: /xenohud menus <"
+                                            + DmzMenuMode.usage() + ">)"), false);
                             return 1;
                         }))
                 .then(Commands.literal("techrenderer")
@@ -632,7 +718,10 @@ public final class XenoHudCommands {
             case "headfollow", "mashhead" -> XenoClientConfig.bt3MashHeadFollow = value;
             case "chain", "kickchain" -> XenoClientConfig.bt3KickChainAnims = value;
             case "particles", "fx" -> XenoClientConfig.bt3CombatParticles = value;
-            case "afterimage" -> XenoClientConfig.bt3Afterimage = value;
+            case "afterimage" -> {
+                XenoClientConfig.bt3Afterimage = value;
+                if (!value) net.bullettrain.xenopixelsmod.client.combat.AfterimageGhostRenderer.clear();
+            }
             case "cooldownhud", "cdhud" -> XenoClientConfig.cooldownHudEnabled = value;
             case "party" -> XenoClientConfig.partyHudEnabled = value;
             case "techchathide", "hideintechchat" -> XenoClientConfig.techniqueHotbarHideInChat = value;

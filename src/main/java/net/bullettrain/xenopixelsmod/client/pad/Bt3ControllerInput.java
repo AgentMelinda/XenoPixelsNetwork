@@ -10,8 +10,16 @@ import java.util.HashSet;
 import java.util.Set;
 
 /**
- * Direct controller state reader for BT3 mode.
- * Replaces key emulation with raw button/axis queries.
+ * Raw controller state, read straight off the hardware rather than through a Controlify binding.
+ *
+ * <p>Used for the things a binding cannot answer: analogue stick values for the pilot seat, and
+ * the "is this physical input spoken for by BT3" question the input filter asks. It is also the
+ * body of the optional {@code padRawPolling} path in {@link XenoPadBinds#held}.
+ *
+ * <p><b>These reads carry no chord gate and no remapping.</b> {@link #meleePressed()} is "is the
+ * west face button down", nothing more, so it answers true while the left trigger is held and the
+ * button really means Ultimate. Anything that needs a move's real meaning must go through
+ * {@link XenoPadBinds#held}, which applies {@link PadChords}.
  */
 public final class Bt3ControllerInput {
     private static final Set<ResourceLocation> BT3_PHYSICAL_INPUTS = new HashSet<>();
@@ -55,65 +63,32 @@ public final class Bt3ControllerInput {
         return ControlifyApi.get().getCurrentController().orElse(null);
     }
 
-    private static float state(ControllerEntity controller, ResourceLocation input, boolean previous) {
+    private static float state(ControllerEntity controller, ResourceLocation input) {
         if (controller == null || input == null) return 0f;
         Input binding = GamepadInputs.getBind(input);
         if (binding == null) return 0f;
         return controller.input()
-                .map(component -> binding.state(previous ? component.stateThen() : component.stateNow()))
+                .map(component -> binding.state(component.stateNow()))
                 .orElse(0f);
     }
 
     public static boolean isButtonPressed(ResourceLocation input) {
-        return state(controller(), input, false) > 0.5f;
+        return state(controller(), input) > 0.5f;
     }
 
     public static float getAxis(ResourceLocation input) {
-        return state(controller(), input, false);
+        return state(controller(), input);
     }
 
-    public static boolean isButtonJustPressed(ResourceLocation input) {
-        ControllerEntity controller = controller();
-        return state(controller, input, false) > 0.5f && state(controller, input, true) <= 0.5f;
-    }
-
-    public static boolean isButtonJustReleased(ResourceLocation input) {
-        ControllerEntity controller = controller();
-        return state(controller, input, false) <= 0.5f && state(controller, input, true) > 0.5f;
-    }
-
-    // Convenience helpers for specific BT3 actions
+    // Convenience helpers for specific BT3 actions. Ungated -- see the class note.
     public static boolean meleePressed() { return isButtonPressed(GamepadInputs.WEST_BUTTON); }
-    public static boolean meleeJustPressed() { return isButtonJustPressed(GamepadInputs.WEST_BUTTON); }
     public static boolean dashPressed() { return isButtonPressed(GamepadInputs.SOUTH_BUTTON); }
-    public static boolean dashJustPressed() { return isButtonJustPressed(GamepadInputs.SOUTH_BUTTON); }
     public static boolean guardPressed() { return isButtonPressed(GamepadInputs.EAST_BUTTON); }
-    public static boolean guardJustPressed() { return isButtonJustPressed(GamepadInputs.EAST_BUTTON); }
     public static boolean kiBlastPressed() { return isButtonPressed(GamepadInputs.NORTH_BUTTON); }
-    public static boolean kiBlastJustPressed() { return isButtonJustPressed(GamepadInputs.NORTH_BUTTON); }
 
     public static boolean chargeHeld() { return getAxis(GamepadInputs.LEFT_TRIGGER_AXIS) > 0.5f; }
     public static boolean lockHeld() { return isButtonPressed(GamepadInputs.LEFT_SHOULDER_BUTTON); }
-
-    public static boolean ascendPressed() { return isButtonPressed(GamepadInputs.RIGHT_SHOULDER_BUTTON); }
     public static boolean descendPressed() { return getAxis(GamepadInputs.RIGHT_TRIGGER_AXIS) > 0.5f; }
-
-    public static boolean transformPressed() { return isButtonPressed(GamepadInputs.RIGHT_STICK_BUTTON); }
-    public static boolean statsMenuPressed() { return isButtonPressed(GamepadInputs.BACK_BUTTON); }
-    public static boolean chasePressed() { return isButtonPressed(GamepadInputs.DPAD_UP_BUTTON); }
-    public static boolean backstepPressed() { return isButtonPressed(GamepadInputs.DPAD_DOWN_BUTTON); }
-    public static boolean sonicLeftPressed() { return isButtonPressed(GamepadInputs.DPAD_LEFT_BUTTON); }
-    public static boolean sonicRightPressed() { return isButtonPressed(GamepadInputs.DPAD_RIGHT_BUTTON) || (lockHeld() && dashPressed()); }
-
-    public static boolean zBurstPressed() { return chargeHeld() && dashPressed(); }
-    public static boolean ultimatePressed() { return chargeHeld() && meleePressed(); }
-    public static boolean sparkingPressed() { return chargeHeld() && guardPressed(); }
-    public static boolean chargedKickPressed() { return chargeHeld() && kiBlastPressed(); }
-    public static boolean zanzokenPressed() { return lockHeld() && meleePressed(); }
-    public static boolean multiformPressed() { return lockHeld() && kiBlastPressed(); }
-    public static boolean hakaiPressed() { return lockHeld() && guardPressed(); }
-
-    public static boolean flightModeToggleJustPressed() { return isButtonJustPressed(GamepadInputs.LEFT_STICK_BUTTON); }
 
     // Axis readings
     public static float leftStickX() { return getAxis(GamepadInputs.LEFT_STICK_AXIS_RIGHT) - getAxis(GamepadInputs.LEFT_STICK_AXIS_LEFT); }
@@ -122,45 +97,16 @@ public final class Bt3ControllerInput {
     public static float flightPitch() { return leftStickY(); }
     public static float flightRoll() { return leftStickX(); }
 
-    // Check if any BT3 physical input is currently down
-    public static boolean anyBt3InputDown() {
-        ControllerEntity controller = controller();
-        if (controller == null) return false;
-        for (ResourceLocation input : BT3_PHYSICAL_INPUTS) {
-            if (state(controller, input, false) > 0.5f) return true;
-        }
-        return false;
-    }
-
-    // This can be used to suppress vanilla actions when BT3 owns a physical input
-    public static boolean conflicts(ResourceLocation bindingInput) {
-        if (bindingInput == null) return false;
-        // Radial menu is exempt
-        if (ResourceLocation.fromNamespaceAndPath("controlify", "radial_menu").equals(bindingInput)) {
-            return false;
-        }
-        // Vanilla movement/camera bindings are never suppressed
-        if (isControlifyVanillaBinding(bindingInput)) {
-            return false;
-        }
-        return BT3_PHYSICAL_INPUTS.contains(bindingInput);
-    }
-
-    private static boolean isControlifyVanillaBinding(ResourceLocation id) {
-        if (id == null || !"controlify".equals(id.getNamespace())) return false;
-        String path = id.getPath();
-        return "walk_forward".equals(path) || "walk_backward".equals(path)
-                || "strafe_left".equals(path) || "strafe_right".equals(path)
-                || "look_up".equals(path) || "look_down".equals(path)
-                || "look_left".equals(path) || "look_right".equals(path)
-                || "sprint".equals(path) || "sneak".equals(path)
-                || "jump".equals(path) || "attack".equals(path)
-                || "use".equals(path) || "pick_block".equals(path)
-                || "drop".equals(path) || "inventory".equals(path)
-                || "swap_hands".equals(path) || "hotbar_1".equals(path)
-                || "hotbar_2".equals(path) || "hotbar_3".equals(path)
-                || "hotbar_4".equals(path) || "hotbar_5".equals(path)
-                || "hotbar_6".equals(path) || "hotbar_7".equals(path)
-                || "hotbar_8".equals(path) || "hotbar_9".equals(path);
+    /**
+     * Whether a physical input is one the BT3 layout owns, so a built-in Controlify action bound to
+     * it can be withheld.
+     *
+     * <p>Takes a physical input id -- {@code controlify:button/south}, {@code controlify:axis/
+     * left_trigger} -- not a binding id. The exemptions for the radial menu and for Controlify's
+     * vanilla movement bindings are decided by {@link XenoPadBinds#conflicts}, which is the caller
+     * and the only side that holds the binding's own id; testing them here could never match.
+     */
+    public static boolean conflicts(ResourceLocation physicalInput) {
+        return physicalInput != null && BT3_PHYSICAL_INPUTS.contains(physicalInput);
     }
 }

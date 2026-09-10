@@ -1,0 +1,31 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "group": "dragonminez",
+  "key": {
+    "#": {
+      "item": "dragonminez:blank_pattern_super"
+    },
+    "B": {
+      "item": "minecraft:black_dye"
+    },
+    "O": {
+      "item": "minecraft:orange_dye"
+    },
+    "R": {
+      "item": "minecraft:red_dye"
+    },
+    "W": {
+      "item": "minecraft:white_dye"
+    }
+  },
+  "pattern": [
+    "O#O",
+    "RBR",
+    "WWW"
+  ],
+  "result": {
+    "count": 1,
+    "id": "dragonminez:pattern_granola"
+  }
+}

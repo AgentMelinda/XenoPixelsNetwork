@@ -1,0 +1,714 @@
+[
+  {
+    "file": "00_reference/example_full_ui_reference.png",
+    "size": [
+      1672,
+      941
+    ],
+    "note": "Full redesigned UI reference."
+  },
+  {
+    "file": "01_panels/example_information_panel.png",
+    "size": [
+      989,
+      1461
+    ],
+    "note": "Full panel asset. Example contains sample text; clean is intended for dynamic rendering."
+  },
+  {
+    "file": "01_panels/clean_information_panel.png",
+    "size": [
+      1024,
+      1531
+    ],
+    "note": "Full panel asset. Example contains sample text; clean is intended for dynamic rendering."
+  },
+  {
+    "file": "01_panels/example_statistics_panel.png",
+    "size": [
+      1023,
+      1536
+    ],
+    "note": "Full panel asset. Example contains sample text; clean is intended for dynamic rendering."
+  },
+  {
+    "file": "01_panels/clean_statistics_panel.png",
+    "size": [
+      1024,
+      1498
+    ],
+    "note": "Full panel asset. Example contains sample text; clean is intended for dynamic rendering."
+  },
+  {
+    "file": "06_nameplate/example_nameplate_dev_saiyan.png",
+    "size": [
+      1536,
+      1001
+    ],
+    "note": "Top center player/race nameplate."
+  },
+  {
+    "file": "06_nameplate/clean_nameplate.png",
+    "size": [
+      1536,
+      1003
+    ],
+    "note": "Top center player/race nameplate."
+  },
+  {
+    "file": "07_navigation_buttons/clean_character_button.png",
+    "size": [
+      1239,
+      1249
+    ],
+    "note": "Bottom navigation button asset."
+  },
+  {
+    "file": "07_navigation_buttons/clean_items_button.png",
+    "size": [
+      1239,
+      1249
+    ],
+    "note": "Bottom navigation button asset."
+  },
+  {
+    "file": "07_navigation_buttons/clean_navigation_button_base.png",
+    "size": [
+      1239,
+      1249
+    ],
+    "note": "Bottom navigation button asset."
+  },
+  {
+    "file": "07_navigation_buttons/clean_party_button.png",
+    "size": [
+      1239,
+      1249
+    ],
+    "note": "Bottom navigation button asset."
+  },
+  {
+    "file": "07_navigation_buttons/clean_quests_button.png",
+    "size": [
+      1239,
+      1249
+    ],
+    "note": "Bottom navigation button asset."
+  },
+  {
+    "file": "07_navigation_buttons/clean_settings_button.png",
+    "size": [
+      1239,
+      1249
+    ],
+    "note": "Bottom navigation button asset."
+  },
+  {
+    "file": "07_navigation_buttons/clean_skills_button.png",
+    "size": [
+      1239,
+      1249
+    ],
+    "note": "Bottom navigation button asset."
+  },
+  {
+    "file": "07_navigation_buttons/example_character_button.png",
+    "size": [
+      1254,
+      1229
+    ],
+    "note": "Bottom navigation button asset."
+  },
+  {
+    "file": "07_navigation_buttons/example_items_button.png",
+    "size": [
+      1182,
+      1185
+    ],
+    "note": "Bottom navigation button asset."
+  },
+  {
+    "file": "07_navigation_buttons/example_party_button.png",
+    "size": [
+      1218,
+      1217
+    ],
+    "note": "Bottom navigation button asset."
+  },
+  {
+    "file": "07_navigation_buttons/example_quests_button.png",
+    "size": [
+      1250,
+      1224
+    ],
+    "note": "Bottom navigation button asset."
+  },
+  {
+    "file": "07_navigation_buttons/example_settings_button.png",
+    "size": [
+      1250,
+      1212
+    ],
+    "note": "Bottom navigation button asset."
+  },
+  {
+    "file": "07_navigation_buttons/example_skills_button.png",
+    "size": [
+      1242,
+      1217
+    ],
+    "note": "Bottom navigation button asset."
+  },
+  {
+    "file": "08_icons/example_blue_orb_icon.png",
+    "size": [
+      521,
+      907
+    ],
+    "note": "Small top-right status/orb icon."
+  },
+  {
+    "file": "08_icons/example_orange_orb_icon.png",
+    "size": [
+      541,
+      941
+    ],
+    "note": "Small top-right status/orb icon."
+  },
+  {
+    "file": "08_icons/example_red_orb_icon.png",
+    "size": [
+      522,
+      915
+    ],
+    "note": "Small top-right status/orb icon."
+  },
+  {
+    "file": "02_headers/example_information_header.png",
+    "size": [
+      925,
+      255
+    ],
+    "note": "Information header with title/emblem example."
+  },
+  {
+    "file": "02_headers/clean_information_header.png",
+    "size": [
+      960,
+      285
+    ],
+    "note": "Clean Information header shell with no title text."
+  },
+  {
+    "file": "02_headers/example_information_stats_header.png",
+    "size": [
+      795,
+      130
+    ],
+    "note": "STATS section header example."
+  },
+  {
+    "file": "02_headers/clean_information_stats_header.png",
+    "size": [
+      810,
+      135
+    ],
+    "note": "Clean STATS section header shell."
+  },
+  {
+    "file": "02_headers/example_statistics_header.png",
+    "size": [
+      840,
+      205
+    ],
+    "note": "STATISTICS title header example."
+  },
+  {
+    "file": "02_headers/clean_statistics_header.png",
+    "size": [
+      870,
+      230
+    ],
+    "note": "Clean STATISTICS title header shell."
+  },
+  {
+    "file": "03_information_basic_rows/clean_level_row.png",
+    "size": [
+      900,
+      110
+    ],
+    "note": "Clean Level information row; render label/value dynamically."
+  },
+  {
+    "file": "03_information_basic_rows/example_level_row.png",
+    "size": [
+      900,
+      110
+    ],
+    "note": "Example Level row with sample value."
+  },
+  {
+    "file": "03_information_basic_rows/clean_tps_row.png",
+    "size": [
+      900,
+      110
+    ],
+    "note": "Clean TPs information row; render label/value dynamically."
+  },
+  {
+    "file": "03_information_basic_rows/example_tps_row.png",
+    "size": [
+      900,
+      110
+    ],
+    "note": "Example TPs row with sample value."
+  },
+  {
+    "file": "03_information_basic_rows/clean_form_row.png",
+    "size": [
+      900,
+      110
+    ],
+    "note": "Clean Form information row; render label/value dynamically."
+  },
+  {
+    "file": "03_information_basic_rows/example_form_row.png",
+    "size": [
+      900,
+      110
+    ],
+    "note": "Example Form row with sample value."
+  },
+  {
+    "file": "03_information_basic_rows/clean_class_row.png",
+    "size": [
+      900,
+      110
+    ],
+    "note": "Clean Class information row; render label/value dynamically."
+  },
+  {
+    "file": "03_information_basic_rows/example_class_row.png",
+    "size": [
+      900,
+      110
+    ],
+    "note": "Example Class row with sample value."
+  },
+  {
+    "file": "04_information_stat_rows/clean_information_stat_row_generic.png",
+    "size": [
+      1040,
+      126
+    ],
+    "note": "Generic clean Information stat row with plus button and multiplier zone."
+  },
+  {
+    "file": "09_micro_elements/clean_plus_button.png",
+    "size": [
+      128,
+      128
+    ],
+    "note": "Standalone plus stat-allocation button."
+  },
+  {
+    "file": "09_micro_elements/clean_multiplier_field.png",
+    "size": [
+      260,
+      110
+    ],
+    "note": "Standalone blank multiplier field."
+  },
+  {
+    "file": "04_information_stat_rows/clean_str_row.png",
+    "size": [
+      1040,
+      126
+    ],
+    "note": "Clean Information stat row for STR; no baked text/number/multiplier."
+  },
+  {
+    "file": "04_information_stat_rows/example_str_row.png",
+    "size": [
+      1040,
+      126
+    ],
+    "note": "Example Information stat row: STR 126,727 x3.9."
+  },
+  {
+    "file": "09_micro_elements/example_str_label.png",
+    "size": [
+      127,
+      67
+    ],
+    "note": "Standalone STR label example element."
+  },
+  {
+    "file": "09_micro_elements/example_str_value.png",
+    "size": [
+      206,
+      66
+    ],
+    "note": "Standalone STR value example element."
+  },
+  {
+    "file": "09_micro_elements/example_str_multiplier.png",
+    "size": [
+      114,
+      59
+    ],
+    "note": "Standalone STR multiplier example element."
+  },
+  {
+    "file": "04_information_stat_rows/clean_skp_row.png",
+    "size": [
+      1040,
+      126
+    ],
+    "note": "Clean Information stat row for SKP; no baked text/number/multiplier."
+  },
+  {
+    "file": "04_information_stat_rows/example_skp_row.png",
+    "size": [
+      1040,
+      126
+    ],
+    "note": "Example Information stat row: SKP 130,361 x3.9."
+  },
+  {
+    "file": "09_micro_elements/example_skp_label.png",
+    "size": [
+      131,
+      67
+    ],
+    "note": "Standalone SKP label example element."
+  },
+  {
+    "file": "09_micro_elements/example_skp_value.png",
+    "size": [
+      204,
+      66
+    ],
+    "note": "Standalone SKP value example element."
+  },
+  {
+    "file": "09_micro_elements/example_skp_multiplier.png",
+    "size": [
+      114,
+      59
+    ],
+    "note": "Standalone SKP multiplier example element."
+  },
+  {
+    "file": "04_information_stat_rows/clean_res_row.png",
+    "size": [
+      1040,
+      126
+    ],
+    "note": "Clean Information stat row for RES; no baked text/number/multiplier."
+  },
+  {
+    "file": "04_information_stat_rows/example_res_row.png",
+    "size": [
+      1040,
+      126
+    ],
+    "note": "Example Information stat row: RES 32,203,590 x3.2."
+  },
+  {
+    "file": "09_micro_elements/example_res_label.png",
+    "size": [
+      122,
+      67
+    ],
+    "note": "Standalone RES label example element."
+  },
+  {
+    "file": "09_micro_elements/example_res_value.png",
+    "size": [
+      277,
+      66
+    ],
+    "note": "Standalone RES value example element."
+  },
+  {
+    "file": "09_micro_elements/example_res_multiplier.png",
+    "size": [
+      114,
+      59
+    ],
+    "note": "Standalone RES multiplier example element."
+  },
+  {
+    "file": "04_information_stat_rows/clean_vit_row.png",
+    "size": [
+      1040,
+      126
+    ],
+    "note": "Clean Information stat row for VIT; no baked text/number/multiplier."
+  },
+  {
+    "file": "04_information_stat_rows/example_vit_row.png",
+    "size": [
+      1040,
+      126
+    ],
+    "note": "Example Information stat row: VIT 10,006,999 x1."
+  },
+  {
+    "file": "09_micro_elements/example_vit_label.png",
+    "size": [
+      118,
+      67
+    ],
+    "note": "Standalone VIT label example element."
+  },
+  {
+    "file": "09_micro_elements/example_vit_value.png",
+    "size": [
+      275,
+      66
+    ],
+    "note": "Standalone VIT value example element."
+  },
+  {
+    "file": "09_micro_elements/example_vit_multiplier.png",
+    "size": [
+      74,
+      59
+    ],
+    "note": "Standalone VIT multiplier example element."
+  },
+  {
+    "file": "04_information_stat_rows/clean_pur_row.png",
+    "size": [
+      1040,
+      126
+    ],
+    "note": "Clean Information stat row for PUR; no baked text/number/multiplier."
+  },
+  {
+    "file": "04_information_stat_rows/example_pur_row.png",
+    "size": [
+      1040,
+      126
+    ],
+    "note": "Example Information stat row: PUR 86,939 x3.9."
+  },
+  {
+    "file": "09_micro_elements/example_pur_label.png",
+    "size": [
+      138,
+      67
+    ],
+    "note": "Standalone PUR label example element."
+  },
+  {
+    "file": "09_micro_elements/example_pur_value.png",
+    "size": [
+      178,
+      66
+    ],
+    "note": "Standalone PUR value example element."
+  },
+  {
+    "file": "09_micro_elements/example_pur_multiplier.png",
+    "size": [
+      114,
+      59
+    ],
+    "note": "Standalone PUR multiplier example element."
+  },
+  {
+    "file": "04_information_stat_rows/clean_ene_row.png",
+    "size": [
+      1040,
+      126
+    ],
+    "note": "Clean Information stat row for ENE; no baked text/number/multiplier."
+  },
+  {
+    "file": "04_information_stat_rows/example_ene_row.png",
+    "size": [
+      1040,
+      126
+    ],
+    "note": "Example Information stat row: ENE 10,011,999 x1."
+  },
+  {
+    "file": "09_micro_elements/example_ene_label.png",
+    "size": [
+      129,
+      67
+    ],
+    "note": "Standalone ENE label example element."
+  },
+  {
+    "file": "09_micro_elements/example_ene_value.png",
+    "size": [
+      275,
+      66
+    ],
+    "note": "Standalone ENE value example element."
+  },
+  {
+    "file": "09_micro_elements/example_ene_multiplier.png",
+    "size": [
+      74,
+      59
+    ],
+    "note": "Standalone ENE multiplier example element."
+  },
+  {
+    "file": "04_information_stat_rows/clean_tpc_row.png",
+    "size": [
+      1040,
+      126
+    ],
+    "note": "Clean Information stat row for TPC; no baked text/number/multiplier."
+  },
+  {
+    "file": "04_information_stat_rows/example_tpc_row.png",
+    "size": [
+      1040,
+      126
+    ],
+    "note": "Example Information stat row: TPC 37,638,882 x1."
+  },
+  {
+    "file": "09_micro_elements/example_tpc_label.png",
+    "size": [
+      132,
+      67
+    ],
+    "note": "Standalone TPC label example element."
+  },
+  {
+    "file": "09_micro_elements/example_tpc_value.png",
+    "size": [
+      276,
+      66
+    ],
+    "note": "Standalone TPC value example element."
+  },
+  {
+    "file": "09_micro_elements/example_tpc_multiplier.png",
+    "size": [
+      74,
+      59
+    ],
+    "note": "Standalone TPC multiplier example element."
+  },
+  {
+    "file": "05_statistics_rows/clean_statistics_row_generic.png",
+    "size": [
+      1040,
+      126
+    ],
+    "note": "Generic clean Statistics row."
+  },
+  {
+    "file": "05_statistics_rows/example_melee_dmg_row.png",
+    "size": [
+      1040,
+      126
+    ],
+    "note": "Single filled Statistics example row, per request."
+  },
+  {
+    "file": "05_statistics_rows/clean_melee_dmg_row.png",
+    "size": [
+      1040,
+      126
+    ],
+    "note": "Clean Statistics row for Melee DMG; render label/value in code."
+  },
+  {
+    "file": "05_statistics_rows/clean_strike_dmg_row.png",
+    "size": [
+      1040,
+      126
+    ],
+    "note": "Clean Statistics row for Strike DMG; render label/value in code."
+  },
+  {
+    "file": "05_statistics_rows/clean_stamina_row.png",
+    "size": [
+      1040,
+      126
+    ],
+    "note": "Clean Statistics row for Stamina; render label/value in code."
+  },
+  {
+    "file": "05_statistics_rows/clean_defense_row.png",
+    "size": [
+      1040,
+      126
+    ],
+    "note": "Clean Statistics row for Defense; render label/value in code."
+  },
+  {
+    "file": "05_statistics_rows/clean_health_row.png",
+    "size": [
+      1040,
+      126
+    ],
+    "note": "Clean Statistics row for Health; render label/value in code."
+  },
+  {
+    "file": "05_statistics_rows/clean_ki_dmg_row.png",
+    "size": [
+      1040,
+      126
+    ],
+    "note": "Clean Statistics row for Ki DMG; render label/value in code."
+  },
+  {
+    "file": "05_statistics_rows/clean_max_ki_row.png",
+    "size": [
+      1040,
+      126
+    ],
+    "note": "Clean Statistics row for Max Ki; render label/value in code."
+  },
+  {
+    "file": "05_statistics_rows/clean_power_level_row.png",
+    "size": [
+      1040,
+      126
+    ],
+    "note": "Clean Statistics row for Power Level; render label/value in code."
+  },
+  {
+    "file": "05_statistics_rows/clean_gravity_row.png",
+    "size": [
+      1040,
+      126
+    ],
+    "note": "Clean Statistics row for Gravity; render label/value in code."
+  },
+  {
+    "file": "05_statistics_rows/clean_tp_multiplier_row.png",
+    "size": [
+      1040,
+      126
+    ],
+    "note": "Clean Statistics row for TP Multiplier; render label/value in code."
+  },
+  {
+    "file": "10_overlays/clean_character_scan_ring.png",
+    "size": [
+      640,
+      640
+    ],
+    "note": "Transparent circular scan-ring overlay for behind the player model."
+  },
+  {
+    "file": "10_overlays/clean_blue_orange_divider.png",
+    "size": [
+      700,
+      80
+    ],
+    "note": "Standalone blue/orange divider accent."
+  }
+]

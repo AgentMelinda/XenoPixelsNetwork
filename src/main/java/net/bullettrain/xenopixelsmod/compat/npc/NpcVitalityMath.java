@@ -2,17 +2,28 @@ package net.bullettrain.xenopixelsmod.compat.npc;
 
 /** Pure calculations used by {@link NpcVitalitySync}. */
 final class NpcVitalityMath {
+    static final int MAX_HEALTH = 1_048_576;
+
     private NpcVitalityMath() {}
 
-    static int maxHealth(int baseHealth, int vitality, double formMultiplier) {
-        long base = Math.max(1L, baseHealth);
-        long vit = Math.max(0L, vitality);
+    static int authoritativeMaxHealth(int vitality, double formMultiplier) {
+        return clampMaxHealth(scaledVitality(vitality, formMultiplier));
+    }
+
+    static int hybridMaxHealth(int baseHealth, int vitality, double formMultiplier) {
+        return clampMaxHealth(Math.max(1L, baseHealth) + scaledVitality(vitality, formMultiplier));
+    }
+
+    private static double scaledVitality(int vitality, double formMultiplier) {
         double multiplier = Double.isFinite(formMultiplier) && formMultiplier > 0.0
                 ? formMultiplier
                 : 1.0;
-        double calculated = base + vit * multiplier;
-        if (!Double.isFinite(calculated) || calculated >= Integer.MAX_VALUE) {
-            return Integer.MAX_VALUE;
+        return Math.max(0L, vitality) * multiplier;
+    }
+
+    private static int clampMaxHealth(double calculated) {
+        if (!Double.isFinite(calculated) || calculated >= MAX_HEALTH) {
+            return MAX_HEALTH;
         }
         return Math.max(1, (int) Math.round(calculated));
     }

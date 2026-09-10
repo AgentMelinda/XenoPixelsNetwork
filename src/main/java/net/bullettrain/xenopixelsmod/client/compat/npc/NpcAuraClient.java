@@ -178,6 +178,10 @@ public final class NpcAuraClient {
 
     @SubscribeEvent
     public static void onLogout(ClientPlayerNetworkEvent.LoggingOut event) {
+        clear();
+    }
+
+    public static void clear() {
         ACTIVE.clear();
         PULSE_PROGRESS.clear();
         PULSE_LAST_RENDER.clear();

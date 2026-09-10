@@ -1,5 +1,6 @@
 package net.bullettrain.xenopixelsmod.compat.npc;
 
+import net.bullettrain.xenopixelsmod.combat.CombatKnockback;
 import com.dragonminez.common.config.FormConfig;
 import com.dragonminez.common.init.MainParticles;
 import net.bullettrain.xenopixelsmod.XenoPixelsMod;
@@ -312,6 +313,7 @@ public final class NpcTransformSystem {
 
     private static void commit(LivingEntity npc, Hold hold) {
         NpcCombatProfile profile = NpcCombatProfile.read(npc);
+        NpcFormDisplayTuning.Tuning previousTuning = NpcFormDisplayTuning.forProfile(profile);
         FormConfig.FormData data;
         if (hold.stack()) {
             profile.stackGroup = hold.group();
@@ -327,6 +329,7 @@ public final class NpcTransformSystem {
             profile.formGroup = hold.group();
             profile.formId = hold.form();
             profile.formPower = NpcFormLookup.power(data);
+            NpcFormDisplayTuning.applyTransition(npc, profile, previousTuning);
         }
         profile.write(npc);
         NpcAuraFx.setActive(npc, true);
@@ -437,9 +440,7 @@ public final class NpcTransformSystem {
             if (flat.lengthSqr() < 1.0e-4) {
                 continue;
             }
-            e.setDeltaMovement(e.getDeltaMovement().add(flat.normalize().scale(knock).add(0, 0.15, 0)));
-            e.hurtMarked = true;
-            e.hasImpulse = true;
+            CombatKnockback.add(e, flat.normalize().scale(knock).add(0, 0.15, 0));
         }
     }
 

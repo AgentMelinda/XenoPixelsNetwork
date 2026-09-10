@@ -1,0 +1,25 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "group": "dragonminez",
+  "key": {
+    "#": {
+      "item": "dragonminez:blank_pattern_z"
+    },
+    "G": {
+      "item": "minecraft:green_dye"
+    },
+    "R": {
+      "item": "minecraft:red_dye"
+    }
+  },
+  "pattern": [
+    " #G",
+    "GGG",
+    "RRR"
+  ],
+  "result": {
+    "count": 1,
+    "id": "dragonminez:pattern_tien"
+  }
+}

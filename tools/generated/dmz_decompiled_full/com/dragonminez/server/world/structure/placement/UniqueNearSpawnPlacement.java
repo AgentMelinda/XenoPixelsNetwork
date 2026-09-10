@@ -1,0 +1,74 @@
+package com.dragonminez.server.world.structure.placement;
+
+import com.dragonminez.common.config.ConfigManager;
+import com.mojang.serialization.MapCodec;
+import com.mojang.serialization.codecs.RecordCodecBuilder;
+import java.util.Optional;
+import net.minecraft.core.Vec3i;
+import net.minecraft.world.level.ChunkPos;
+import net.minecraft.world.level.block.Rotation;
+import net.minecraft.world.level.chunk.ChunkGeneratorStructureState;
+import net.minecraft.world.level.levelgen.LegacyRandomSource;
+import net.minecraft.world.level.levelgen.WorldgenRandom;
+import net.minecraft.world.level.levelgen.structure.placement.StructurePlacement;
+import net.minecraft.world.level.levelgen.structure.placement.StructurePlacementType;
+import net.minecraft.world.level.levelgen.structure.placement.StructurePlacement.ExclusionZone;
+import net.minecraft.world.level.levelgen.structure.placement.StructurePlacement.FrequencyReductionMethod;
+import org.jetbrains.annotations.NotNull;
+
+public class UniqueNearSpawnPlacement extends StructurePlacement {
+   public static final MapCodec<UniqueNearSpawnPlacement> CODEC = RecordCodecBuilder.mapCodec(
+      instance -> placementCodec(instance)
+            .and(Rotation.CODEC.optionalFieldOf("rotation", Rotation.NONE).forGetter(p -> p.rotation))
+            .apply(instance, UniqueNearSpawnPlacement::new)
+   );
+   private final Rotation rotation;
+
+   public UniqueNearSpawnPlacement(
+      Vec3i locateOffset,
+      FrequencyReductionMethod frequencyReductionMethod,
+      float frequency,
+      int salt,
+      Optional<ExclusionZone> exclusionZone,
+      Rotation rotation
+   ) {
+      super(locateOffset, frequencyReductionMethod, frequency, salt, exclusionZone);
+      this.rotation = rotation;
+      StructureSpawnPlanner.registerReservation(this);
+   }
+
+   public int placementSalt() {
+      return this.salt();
+   }
+
+   public UniqueNearSpawnPlacement(
+      Vec3i locateOffset, FrequencyReductionMethod frequencyReductionMethod, float frequency, int salt, Optional<ExclusionZone> exclusionZone
+   ) {
+      this(locateOffset, frequencyReductionMethod, frequency, salt, exclusionZone, Rotation.NONE);
+   }
+
+   protected boolean isPlacementChunk(ChunkGeneratorStructureState structureState, int x, int z) {
+      if (!ConfigManager.getServerConfig().getWorldGen().getGenerateCustomStructures()) {
+         return false;
+      } else {
+         ChunkPos pos = this.getStructureChunk(structureState.getLevelSeed());
+         return pos.x == x && pos.z == z;
+      }
+   }
+
+   public ChunkPos getStructureChunk(long worldSeed) {
+      WorldgenRandom random = new WorldgenRandom(new LegacyRandomSource(worldSeed + (long)this.salt()));
+      int targetChunkX = random.nextInt(100) - 50;
+      int targetChunkZ = random.nextInt(100) - 50;
+      return new ChunkPos(targetChunkX, targetChunkZ);
+   }
+
+   @NotNull
+   public StructurePlacementType<?> type() {
+      return (StructurePlacementType<?>)MainStructurePlacements.UNIQUE_NEAR_SPAWN.get();
+   }
+
+   public Rotation getRotation() {
+      return this.rotation;
+   }
+}

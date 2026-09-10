@@ -1,0 +1,1385 @@
+[
+  {
+    "file": "01_xenoverse_party_hud_clean/core_elements/03_player1_nameplate_frame.png",
+    "source": "/mnt/data/xenoverse_party_hud_png_elements.zip:xenoverse_party_hud_png_elements/03_player1_nameplate_frame.png",
+    "size": [
+      745,
+      140
+    ],
+    "note": "Clean/no-text Xenoverse-like party HUD element."
+  },
+  {
+    "file": "01_xenoverse_party_hud_clean/core_elements/04_player2_nameplate_frame.png",
+    "source": "/mnt/data/xenoverse_party_hud_png_elements.zip:xenoverse_party_hud_png_elements/04_player2_nameplate_frame.png",
+    "size": [
+      745,
+      140
+    ],
+    "note": "Clean/no-text Xenoverse-like party HUD element."
+  },
+  {
+    "file": "01_xenoverse_party_hud_clean/core_elements/08_hp_fill_bar.png",
+    "source": "/mnt/data/xenoverse_party_hud_png_elements.zip:xenoverse_party_hud_png_elements/08_hp_fill_bar.png",
+    "size": [
+      501,
+      75
+    ],
+    "note": "Clean/no-text Xenoverse-like party HUD element."
+  },
+  {
+    "file": "01_xenoverse_party_hud_clean/core_elements/09_ki_segment_bar.png",
+    "source": "/mnt/data/xenoverse_party_hud_png_elements.zip:xenoverse_party_hud_png_elements/09_ki_segment_bar.png",
+    "size": [
+      487,
+      75
+    ],
+    "note": "Clean/no-text Xenoverse-like party HUD element."
+  },
+  {
+    "file": "01_xenoverse_party_hud_clean/core_elements/10_stm_segment_bar.png",
+    "source": "/mnt/data/xenoverse_party_hud_png_elements.zip:xenoverse_party_hud_png_elements/10_stm_segment_bar.png",
+    "size": [
+      465,
+      75
+    ],
+    "note": "Clean/no-text Xenoverse-like party HUD element."
+  },
+  {
+    "file": "01_xenoverse_party_hud_clean/core_elements/16_ability_icon_purple.png",
+    "source": "/mnt/data/xenoverse_party_hud_png_elements.zip:xenoverse_party_hud_png_elements/16_ability_icon_purple.png",
+    "size": [
+      135,
+      155
+    ],
+    "note": "Clean/no-text Xenoverse-like party HUD element."
+  },
+  {
+    "file": "01_xenoverse_party_hud_clean/core_elements/17_ability_icon_blue.png",
+    "source": "/mnt/data/xenoverse_party_hud_png_elements.zip:xenoverse_party_hud_png_elements/17_ability_icon_blue.png",
+    "size": [
+      140,
+      153
+    ],
+    "note": "Clean/no-text Xenoverse-like party HUD element."
+  },
+  {
+    "file": "01_xenoverse_party_hud_clean/core_elements/18_ability_icon_green.png",
+    "source": "/mnt/data/xenoverse_party_hud_png_elements.zip:xenoverse_party_hud_png_elements/18_ability_icon_green.png",
+    "size": [
+      140,
+      150
+    ],
+    "note": "Clean/no-text Xenoverse-like party HUD element."
+  },
+  {
+    "file": "01_xenoverse_party_hud_clean/core_elements/19_ability_icon_orange.png",
+    "source": "/mnt/data/xenoverse_party_hud_png_elements.zip:xenoverse_party_hud_png_elements/19_ability_icon_orange.png",
+    "size": [
+      145,
+      155
+    ],
+    "note": "Clean/no-text Xenoverse-like party HUD element."
+  },
+  {
+    "file": "01_xenoverse_party_hud_clean/core_elements/20_portrait_ring_p1.png",
+    "source": "/mnt/data/xenoverse_party_hud_png_elements.zip:xenoverse_party_hud_png_elements/20_portrait_ring_p1.png",
+    "size": [
+      250,
+      235
+    ],
+    "note": "Clean/no-text Xenoverse-like party HUD element."
+  },
+  {
+    "file": "01_xenoverse_party_hud_clean/core_elements/21_portrait_ring_p2.png",
+    "source": "/mnt/data/xenoverse_party_hud_png_elements.zip:xenoverse_party_hud_png_elements/21_portrait_ring_p2.png",
+    "size": [
+      250,
+      235
+    ],
+    "note": "Clean/no-text Xenoverse-like party HUD element."
+  },
+  {
+    "file": "01_xenoverse_party_hud_clean/core_elements/22_energy_orb_orange.png",
+    "source": "/mnt/data/xenoverse_party_hud_png_elements.zip:xenoverse_party_hud_png_elements/22_energy_orb_orange.png",
+    "size": [
+      240,
+      225
+    ],
+    "note": "Clean/no-text Xenoverse-like party HUD element."
+  },
+  {
+    "file": "01_xenoverse_party_hud_clean/core_elements/23_energy_orb_blue.png",
+    "source": "/mnt/data/xenoverse_party_hud_png_elements.zip:xenoverse_party_hud_png_elements/23_energy_orb_blue.png",
+    "size": [
+      246,
+      240
+    ],
+    "note": "Clean/no-text Xenoverse-like party HUD element."
+  },
+  {
+    "file": "01_xenoverse_party_hud_clean/core_elements/24_corner_bracket_orange.png",
+    "source": "/mnt/data/xenoverse_party_hud_png_elements.zip:xenoverse_party_hud_png_elements/24_corner_bracket_orange.png",
+    "size": [
+      230,
+      180
+    ],
+    "note": "Clean/no-text Xenoverse-like party HUD element."
+  },
+  {
+    "file": "01_xenoverse_party_hud_clean/core_elements/25_corner_bracket_blue.png",
+    "source": "/mnt/data/xenoverse_party_hud_png_elements.zip:xenoverse_party_hud_png_elements/25_corner_bracket_blue.png",
+    "size": [
+      190,
+      175
+    ],
+    "note": "Clean/no-text Xenoverse-like party HUD element."
+  },
+  {
+    "file": "01_xenoverse_party_hud_clean/core_elements/26_corner_chevron_orange.png",
+    "source": "/mnt/data/xenoverse_party_hud_png_elements.zip:xenoverse_party_hud_png_elements/26_corner_chevron_orange.png",
+    "size": [
+      190,
+      143
+    ],
+    "note": "Clean/no-text Xenoverse-like party HUD element."
+  },
+  {
+    "file": "01_xenoverse_party_hud_clean/core_elements/27_empty_plate_blue.png",
+    "source": "/mnt/data/xenoverse_party_hud_png_elements.zip:xenoverse_party_hud_png_elements/27_empty_plate_blue.png",
+    "size": [
+      350,
+      95
+    ],
+    "note": "Clean/no-text Xenoverse-like party HUD element."
+  },
+  {
+    "file": "01_xenoverse_party_hud_clean/core_elements/28_empty_plate_orange.png",
+    "source": "/mnt/data/xenoverse_party_hud_png_elements.zip:xenoverse_party_hud_png_elements/28_empty_plate_orange.png",
+    "size": [
+      355,
+      100
+    ],
+    "note": "Clean/no-text Xenoverse-like party HUD element."
+  },
+  {
+    "file": "01_xenoverse_party_hud_clean/core_elements/29_empty_plate_center.png",
+    "source": "/mnt/data/xenoverse_party_hud_png_elements.zip:xenoverse_party_hud_png_elements/29_empty_plate_center.png",
+    "size": [
+      310,
+      120
+    ],
+    "note": "Clean/no-text Xenoverse-like party HUD element."
+  },
+  {
+    "file": "01_xenoverse_party_hud_clean/core_elements/30_p1_badge.png",
+    "source": "/mnt/data/xenoverse_party_hud_png_elements.zip:xenoverse_party_hud_png_elements/30_p1_badge.png",
+    "size": [
+      190,
+      170
+    ],
+    "note": "Clean/no-text Xenoverse-like party HUD element."
+  },
+  {
+    "file": "01_xenoverse_party_hud_clean/core_elements/31_p2_badge.png",
+    "source": "/mnt/data/xenoverse_party_hud_png_elements.zip:xenoverse_party_hud_png_elements/31_p2_badge.png",
+    "size": [
+      190,
+      165
+    ],
+    "note": "Clean/no-text Xenoverse-like party HUD element."
+  },
+  {
+    "file": "01_xenoverse_party_hud_clean/core_elements/32_arrow_orange.png",
+    "source": "/mnt/data/xenoverse_party_hud_png_elements.zip:xenoverse_party_hud_png_elements/32_arrow_orange.png",
+    "size": [
+      115,
+      140
+    ],
+    "note": "Clean/no-text Xenoverse-like party HUD element."
+  },
+  {
+    "file": "01_xenoverse_party_hud_clean/core_elements/33_arrow_blue.png",
+    "source": "/mnt/data/xenoverse_party_hud_png_elements.zip:xenoverse_party_hud_png_elements/33_arrow_blue.png",
+    "size": [
+      110,
+      120
+    ],
+    "note": "Clean/no-text Xenoverse-like party HUD element."
+  },
+  {
+    "file": "01_xenoverse_party_hud_clean/core_elements/34_energy_streak_orange.png",
+    "source": "/mnt/data/xenoverse_party_hud_png_elements.zip:xenoverse_party_hud_png_elements/34_energy_streak_orange.png",
+    "size": [
+      85,
+      139
+    ],
+    "note": "Clean/no-text Xenoverse-like party HUD element."
+  },
+  {
+    "file": "01_xenoverse_party_hud_clean/core_elements/35_energy_streak_blue.png",
+    "source": "/mnt/data/xenoverse_party_hud_png_elements.zip:xenoverse_party_hud_png_elements/35_energy_streak_blue.png",
+    "size": [
+      76,
+      214
+    ],
+    "note": "Clean/no-text Xenoverse-like party HUD element."
+  },
+  {
+    "file": "01_xenoverse_party_hud_clean/buttons/blank_button_style_01.png",
+    "source": "/mnt/data/futuristic_neon_sci_fi_hud_banner.png",
+    "size": [
+      1536,
+      1024
+    ],
+    "note": "Blank action button shell."
+  },
+  {
+    "file": "01_xenoverse_party_hud_clean/buttons/blank_button_style_02.png",
+    "source": "/mnt/data/neon_cyberpunk_hud_status_banner.png",
+    "size": [
+      1536,
+      1024
+    ],
+    "note": "Blank action/status banner shell."
+  },
+  {
+    "file": "01_xenoverse_party_hud_clean/buttons/blank_button_style_03.png",
+    "source": "/mnt/data/neon_orange_blue_futuristic_hud_bar.png",
+    "size": [
+      1536,
+      1024
+    ],
+    "note": "Blank action bar shell."
+  },
+  {
+    "file": "01_xenoverse_party_hud_clean/menus/blank_ki_menu_style_01.png",
+    "source": "/mnt/data/neon_cyberpunk_skill_menu_panel.png",
+    "size": [
+      1536,
+      1024
+    ],
+    "note": "Blank KI menu panel."
+  },
+  {
+    "file": "01_xenoverse_party_hud_clean/menus/blank_ki_menu_style_02.png",
+    "source": "/mnt/data/blank_futuristic_neon_hud_menu_panel.png",
+    "size": [
+      1536,
+      1024
+    ],
+    "note": "Blank KI menu panel alternate."
+  },
+  {
+    "file": "01_xenoverse_party_hud_clean/menus/menu_panel_no_slot_highlight.png",
+    "source": "/mnt/data/neon_cyberpunk_hud_menu_panel.png",
+    "size": [
+      1536,
+      1024
+    ],
+    "note": "Menu panel with no active-slot highlight."
+  },
+  {
+    "file": "01_xenoverse_party_hud_clean/overlays/separate_slot_highlight_overlay.png",
+    "source": "/mnt/data/imagegen.png",
+    "size": [
+      1448,
+      1086
+    ],
+    "note": "Reusable row highlight overlay. May require manual alignment depending on panel size."
+  },
+  {
+    "file": "02_dragonmine_status_clean/01_panels/clean_information_panel.png",
+    "source": "/mnt/data/dragonmine_redesign_single_elements_v3/01_panels/clean_information_panel.png",
+    "size": [
+      1024,
+      1531
+    ],
+    "note": "Clean DragonMine status UI element."
+  },
+  {
+    "file": "02_dragonmine_status_clean/01_panels/clean_statistics_panel.png",
+    "source": "/mnt/data/dragonmine_redesign_single_elements_v3/01_panels/clean_statistics_panel.png",
+    "size": [
+      1024,
+      1498
+    ],
+    "note": "Clean DragonMine status UI element."
+  },
+  {
+    "file": "02_dragonmine_status_clean/02_headers/clean_information_header.png",
+    "source": "/mnt/data/dragonmine_redesign_single_elements_v3/02_headers/clean_information_header.png",
+    "size": [
+      960,
+      285
+    ],
+    "note": "Clean DragonMine status UI element."
+  },
+  {
+    "file": "02_dragonmine_status_clean/02_headers/clean_information_stats_header.png",
+    "source": "/mnt/data/dragonmine_redesign_single_elements_v3/02_headers/clean_information_stats_header.png",
+    "size": [
+      810,
+      135
+    ],
+    "note": "Clean DragonMine status UI element."
+  },
+  {
+    "file": "02_dragonmine_status_clean/02_headers/clean_statistics_header.png",
+    "source": "/mnt/data/dragonmine_redesign_single_elements_v3/02_headers/clean_statistics_header.png",
+    "size": [
+      870,
+      230
+    ],
+    "note": "Clean DragonMine status UI element."
+  },
+  {
+    "file": "02_dragonmine_status_clean/03_information_basic_rows/clean_class_row.png",
+    "source": "/mnt/data/dragonmine_redesign_single_elements_v3/03_information_basic_rows/clean_class_row.png",
+    "size": [
+      900,
+      110
+    ],
+    "note": "Clean DragonMine status UI element."
+  },
+  {
+    "file": "02_dragonmine_status_clean/03_information_basic_rows/clean_form_row.png",
+    "source": "/mnt/data/dragonmine_redesign_single_elements_v3/03_information_basic_rows/clean_form_row.png",
+    "size": [
+      900,
+      110
+    ],
+    "note": "Clean DragonMine status UI element."
+  },
+  {
+    "file": "02_dragonmine_status_clean/03_information_basic_rows/clean_level_row.png",
+    "source": "/mnt/data/dragonmine_redesign_single_elements_v3/03_information_basic_rows/clean_level_row.png",
+    "size": [
+      900,
+      110
+    ],
+    "note": "Clean DragonMine status UI element."
+  },
+  {
+    "file": "02_dragonmine_status_clean/03_information_basic_rows/clean_tps_row.png",
+    "source": "/mnt/data/dragonmine_redesign_single_elements_v3/03_information_basic_rows/clean_tps_row.png",
+    "size": [
+      900,
+      110
+    ],
+    "note": "Clean DragonMine status UI element."
+  },
+  {
+    "file": "02_dragonmine_status_clean/04_information_stat_rows/clean_ene_row.png",
+    "source": "/mnt/data/dragonmine_redesign_single_elements_v3/04_information_stat_rows/clean_ene_row.png",
+    "size": [
+      1040,
+      126
+    ],
+    "note": "Clean DragonMine status UI element."
+  },
+  {
+    "file": "02_dragonmine_status_clean/04_information_stat_rows/clean_information_stat_row_generic.png",
+    "source": "/mnt/data/dragonmine_redesign_single_elements_v3/04_information_stat_rows/clean_information_stat_row_generic.png",
+    "size": [
+      1040,
+      126
+    ],
+    "note": "Clean DragonMine status UI element."
+  },
+  {
+    "file": "02_dragonmine_status_clean/04_information_stat_rows/clean_pur_row.png",
+    "source": "/mnt/data/dragonmine_redesign_single_elements_v3/04_information_stat_rows/clean_pur_row.png",
+    "size": [
+      1040,
+      126
+    ],
+    "note": "Clean DragonMine status UI element."
+  },
+  {
+    "file": "02_dragonmine_status_clean/04_information_stat_rows/clean_res_row.png",
+    "source": "/mnt/data/dragonmine_redesign_single_elements_v3/04_information_stat_rows/clean_res_row.png",
+    "size": [
+      1040,
+      126
+    ],
+    "note": "Clean DragonMine status UI element."
+  },
+  {
+    "file": "02_dragonmine_status_clean/04_information_stat_rows/clean_skp_row.png",
+    "source": "/mnt/data/dragonmine_redesign_single_elements_v3/04_information_stat_rows/clean_skp_row.png",
+    "size": [
+      1040,
+      126
+    ],
+    "note": "Clean DragonMine status UI element."
+  },
+  {
+    "file": "02_dragonmine_status_clean/04_information_stat_rows/clean_str_row.png",
+    "source": "/mnt/data/dragonmine_redesign_single_elements_v3/04_information_stat_rows/clean_str_row.png",
+    "size": [
+      1040,
+      126
+    ],
+    "note": "Clean DragonMine status UI element."
+  },
+  {
+    "file": "02_dragonmine_status_clean/04_information_stat_rows/clean_tpc_row.png",
+    "source": "/mnt/data/dragonmine_redesign_single_elements_v3/04_information_stat_rows/clean_tpc_row.png",
+    "size": [
+      1040,
+      126
+    ],
+    "note": "Clean DragonMine status UI element."
+  },
+  {
+    "file": "02_dragonmine_status_clean/04_information_stat_rows/clean_vit_row.png",
+    "source": "/mnt/data/dragonmine_redesign_single_elements_v3/04_information_stat_rows/clean_vit_row.png",
+    "size": [
+      1040,
+      126
+    ],
+    "note": "Clean DragonMine status UI element."
+  },
+  {
+    "file": "02_dragonmine_status_clean/05_statistics_rows/clean_defense_row.png",
+    "source": "/mnt/data/dragonmine_redesign_single_elements_v3/05_statistics_rows/clean_defense_row.png",
+    "size": [
+      1040,
+      126
+    ],
+    "note": "Clean DragonMine status UI element."
+  },
+  {
+    "file": "02_dragonmine_status_clean/05_statistics_rows/clean_gravity_row.png",
+    "source": "/mnt/data/dragonmine_redesign_single_elements_v3/05_statistics_rows/clean_gravity_row.png",
+    "size": [
+      1040,
+      126
+    ],
+    "note": "Clean DragonMine status UI element."
+  },
+  {
+    "file": "02_dragonmine_status_clean/05_statistics_rows/clean_health_row.png",
+    "source": "/mnt/data/dragonmine_redesign_single_elements_v3/05_statistics_rows/clean_health_row.png",
+    "size": [
+      1040,
+      126
+    ],
+    "note": "Clean DragonMine status UI element."
+  },
+  {
+    "file": "02_dragonmine_status_clean/05_statistics_rows/clean_ki_dmg_row.png",
+    "source": "/mnt/data/dragonmine_redesign_single_elements_v3/05_statistics_rows/clean_ki_dmg_row.png",
+    "size": [
+      1040,
+      126
+    ],
+    "note": "Clean DragonMine status UI element."
+  },
+  {
+    "file": "02_dragonmine_status_clean/05_statistics_rows/clean_max_ki_row.png",
+    "source": "/mnt/data/dragonmine_redesign_single_elements_v3/05_statistics_rows/clean_max_ki_row.png",
+    "size": [
+      1040,
+      126
+    ],
+    "note": "Clean DragonMine status UI element."
+  },
+  {
+    "file": "02_dragonmine_status_clean/05_statistics_rows/clean_melee_dmg_row.png",
+    "source": "/mnt/data/dragonmine_redesign_single_elements_v3/05_statistics_rows/clean_melee_dmg_row.png",
+    "size": [
+      1040,
+      126
+    ],
+    "note": "Clean DragonMine status UI element."
+  },
+  {
+    "file": "02_dragonmine_status_clean/05_statistics_rows/clean_power_level_row.png",
+    "source": "/mnt/data/dragonmine_redesign_single_elements_v3/05_statistics_rows/clean_power_level_row.png",
+    "size": [
+      1040,
+      126
+    ],
+    "note": "Clean DragonMine status UI element."
+  },
+  {
+    "file": "02_dragonmine_status_clean/05_statistics_rows/clean_stamina_row.png",
+    "source": "/mnt/data/dragonmine_redesign_single_elements_v3/05_statistics_rows/clean_stamina_row.png",
+    "size": [
+      1040,
+      126
+    ],
+    "note": "Clean DragonMine status UI element."
+  },
+  {
+    "file": "02_dragonmine_status_clean/05_statistics_rows/clean_statistics_row_generic.png",
+    "source": "/mnt/data/dragonmine_redesign_single_elements_v3/05_statistics_rows/clean_statistics_row_generic.png",
+    "size": [
+      1040,
+      126
+    ],
+    "note": "Clean DragonMine status UI element."
+  },
+  {
+    "file": "02_dragonmine_status_clean/05_statistics_rows/clean_strike_dmg_row.png",
+    "source": "/mnt/data/dragonmine_redesign_single_elements_v3/05_statistics_rows/clean_strike_dmg_row.png",
+    "size": [
+      1040,
+      126
+    ],
+    "note": "Clean DragonMine status UI element."
+  },
+  {
+    "file": "02_dragonmine_status_clean/05_statistics_rows/clean_tp_multiplier_row.png",
+    "source": "/mnt/data/dragonmine_redesign_single_elements_v3/05_statistics_rows/clean_tp_multiplier_row.png",
+    "size": [
+      1040,
+      126
+    ],
+    "note": "Clean DragonMine status UI element."
+  },
+  {
+    "file": "02_dragonmine_status_clean/06_nameplate/clean_nameplate.png",
+    "source": "/mnt/data/dragonmine_redesign_single_elements_v3/06_nameplate/clean_nameplate.png",
+    "size": [
+      1536,
+      1003
+    ],
+    "note": "Clean DragonMine status UI element."
+  },
+  {
+    "file": "02_dragonmine_status_clean/07_navigation_buttons/clean_character_button.png",
+    "source": "/mnt/data/dragonmine_redesign_single_elements_v3/07_navigation_buttons/clean_character_button.png",
+    "size": [
+      1239,
+      1249
+    ],
+    "note": "Clean DragonMine status UI element."
+  },
+  {
+    "file": "02_dragonmine_status_clean/07_navigation_buttons/clean_items_button.png",
+    "source": "/mnt/data/dragonmine_redesign_single_elements_v3/07_navigation_buttons/clean_items_button.png",
+    "size": [
+      1239,
+      1249
+    ],
+    "note": "Clean DragonMine status UI element."
+  },
+  {
+    "file": "02_dragonmine_status_clean/07_navigation_buttons/clean_navigation_button_base.png",
+    "source": "/mnt/data/dragonmine_redesign_single_elements_v3/07_navigation_buttons/clean_navigation_button_base.png",
+    "size": [
+      1239,
+      1249
+    ],
+    "note": "Clean DragonMine status UI element."
+  },
+  {
+    "file": "02_dragonmine_status_clean/07_navigation_buttons/clean_party_button.png",
+    "source": "/mnt/data/dragonmine_redesign_single_elements_v3/07_navigation_buttons/clean_party_button.png",
+    "size": [
+      1239,
+      1249
+    ],
+    "note": "Clean DragonMine status UI element."
+  },
+  {
+    "file": "02_dragonmine_status_clean/07_navigation_buttons/clean_quests_button.png",
+    "source": "/mnt/data/dragonmine_redesign_single_elements_v3/07_navigation_buttons/clean_quests_button.png",
+    "size": [
+      1239,
+      1249
+    ],
+    "note": "Clean DragonMine status UI element."
+  },
+  {
+    "file": "02_dragonmine_status_clean/07_navigation_buttons/clean_settings_button.png",
+    "source": "/mnt/data/dragonmine_redesign_single_elements_v3/07_navigation_buttons/clean_settings_button.png",
+    "size": [
+      1239,
+      1249
+    ],
+    "note": "Clean DragonMine status UI element."
+  },
+  {
+    "file": "02_dragonmine_status_clean/07_navigation_buttons/clean_skills_button.png",
+    "source": "/mnt/data/dragonmine_redesign_single_elements_v3/07_navigation_buttons/clean_skills_button.png",
+    "size": [
+      1239,
+      1249
+    ],
+    "note": "Clean DragonMine status UI element."
+  },
+  {
+    "file": "02_dragonmine_status_clean/09_micro_elements/clean_multiplier_field.png",
+    "source": "/mnt/data/dragonmine_redesign_single_elements_v3/09_micro_elements/clean_multiplier_field.png",
+    "size": [
+      260,
+      110
+    ],
+    "note": "Clean DragonMine status UI element."
+  },
+  {
+    "file": "02_dragonmine_status_clean/09_micro_elements/clean_plus_button.png",
+    "source": "/mnt/data/dragonmine_redesign_single_elements_v3/09_micro_elements/clean_plus_button.png",
+    "size": [
+      128,
+      128
+    ],
+    "note": "Clean DragonMine status UI element."
+  },
+  {
+    "file": "02_dragonmine_status_clean/10_overlays/clean_blue_orange_divider.png",
+    "source": "/mnt/data/dragonmine_redesign_single_elements_v3/10_overlays/clean_blue_orange_divider.png",
+    "size": [
+      700,
+      80
+    ],
+    "note": "Clean DragonMine status UI element."
+  },
+  {
+    "file": "02_dragonmine_status_clean/10_overlays/clean_character_scan_ring.png",
+    "source": "/mnt/data/dragonmine_redesign_single_elements_v3/10_overlays/clean_character_scan_ring.png",
+    "size": [
+      640,
+      640
+    ],
+    "note": "Clean DragonMine status UI element."
+  },
+  {
+    "file": "03_other_menus_clean/minigames/00_full_screens/clean_full_screen.png",
+    "source": "/mnt/data/dragonmine_other_menus_single_elements/minigames/00_full_screens/clean_full_screen.png",
+    "size": [
+      703,
+      492
+    ],
+    "note": "Clean or neutral element from the other redesigned menus pack."
+  },
+  {
+    "file": "03_other_menus_clean/minigames/01_panels/body_text_panel_clean.png",
+    "source": "/mnt/data/dragonmine_other_menus_single_elements/minigames/01_panels/body_text_panel_clean.png",
+    "size": [
+      215,
+      88
+    ],
+    "note": "Clean or neutral element from the other redesigned menus pack."
+  },
+  {
+    "file": "03_other_menus_clean/minigames/01_panels/clean_detail_panel.png",
+    "source": "/mnt/data/dragonmine_other_menus_single_elements/minigames/01_panels/clean_detail_panel.png",
+    "size": [
+      297,
+      296
+    ],
+    "note": "Clean or neutral element from the other redesigned menus pack."
+  },
+  {
+    "file": "03_other_menus_clean/minigames/01_panels/clean_list_panel.png",
+    "source": "/mnt/data/dragonmine_other_menus_single_elements/minigames/01_panels/clean_list_panel.png",
+    "size": [
+      197,
+      302
+    ],
+    "note": "Clean or neutral element from the other redesigned menus pack."
+  },
+  {
+    "file": "03_other_menus_clean/minigames/02_rows_buttons/arrow_up_down.png",
+    "source": "/mnt/data/dragonmine_other_menus_single_elements/minigames/02_rows_buttons/arrow_up_down.png",
+    "size": [
+      50,
+      114
+    ],
+    "note": "Clean or neutral element from the other redesigned menus pack."
+  },
+  {
+    "file": "03_other_menus_clean/minigames/02_rows_buttons/normal_row_clean.png",
+    "source": "/mnt/data/dragonmine_other_menus_single_elements/minigames/02_rows_buttons/normal_row_clean.png",
+    "size": [
+      291,
+      61
+    ],
+    "note": "Clean or neutral element from the other redesigned menus pack."
+  },
+  {
+    "file": "03_other_menus_clean/minigames/02_rows_buttons/scrollbar.png",
+    "source": "/mnt/data/dragonmine_other_menus_single_elements/minigames/02_rows_buttons/scrollbar.png",
+    "size": [
+      53,
+      127
+    ],
+    "note": "Clean or neutral element from the other redesigned menus pack."
+  },
+  {
+    "file": "03_other_menus_clean/minigames/02_rows_buttons/selected_row_clean.png",
+    "source": "/mnt/data/dragonmine_other_menus_single_elements/minigames/02_rows_buttons/selected_row_clean.png",
+    "size": [
+      293,
+      67
+    ],
+    "note": "Clean or neutral element from the other redesigned menus pack."
+  },
+  {
+    "file": "03_other_menus_clean/minigames/02_rows_buttons/start_button_clean.png",
+    "source": "/mnt/data/dragonmine_other_menus_single_elements/minigames/02_rows_buttons/start_button_clean.png",
+    "size": [
+      202,
+      50
+    ],
+    "note": "Clean or neutral element from the other redesigned menus pack."
+  },
+  {
+    "file": "03_other_menus_clean/minigames/03_headers_accents/icon_controller.png",
+    "source": "/mnt/data/dragonmine_other_menus_single_elements/minigames/03_headers_accents/icon_controller.png",
+    "size": [
+      36,
+      47
+    ],
+    "note": "Clean or neutral element from the other redesigned menus pack."
+  },
+  {
+    "file": "03_other_menus_clean/minigames/03_headers_accents/icon_fist.png",
+    "source": "/mnt/data/dragonmine_other_menus_single_elements/minigames/03_headers_accents/icon_fist.png",
+    "size": [
+      37,
+      49
+    ],
+    "note": "Clean or neutral element from the other redesigned menus pack."
+  },
+  {
+    "file": "03_other_menus_clean/minigames/03_headers_accents/icon_gravity.png",
+    "source": "/mnt/data/dragonmine_other_menus_single_elements/minigames/03_headers_accents/icon_gravity.png",
+    "size": [
+      52,
+      48
+    ],
+    "note": "Clean or neutral element from the other redesigned menus pack."
+  },
+  {
+    "file": "03_other_menus_clean/minigames/03_headers_accents/icon_music.png",
+    "source": "/mnt/data/dragonmine_other_menus_single_elements/minigames/03_headers_accents/icon_music.png",
+    "size": [
+      52,
+      47
+    ],
+    "note": "Clean or neutral element from the other redesigned menus pack."
+  },
+  {
+    "file": "03_other_menus_clean/minigames/03_headers_accents/icon_shadow.png",
+    "source": "/mnt/data/dragonmine_other_menus_single_elements/minigames/03_headers_accents/icon_shadow.png",
+    "size": [
+      37,
+      48
+    ],
+    "note": "Clean or neutral element from the other redesigned menus pack."
+  },
+  {
+    "file": "03_other_menus_clean/minigames/03_headers_accents/icon_target.png",
+    "source": "/mnt/data/dragonmine_other_menus_single_elements/minigames/03_headers_accents/icon_target.png",
+    "size": [
+      52,
+      47
+    ],
+    "note": "Clean or neutral element from the other redesigned menus pack."
+  },
+  {
+    "file": "03_other_menus_clean/minigames/03_headers_accents/title_bar_clean.png",
+    "source": "/mnt/data/dragonmine_other_menus_single_elements/minigames/03_headers_accents/title_bar_clean.png",
+    "size": [
+      204,
+      91
+    ],
+    "note": "Clean or neutral element from the other redesigned menus pack."
+  },
+  {
+    "file": "03_other_menus_clean/options/00_full_screens/clean_full_screen.png",
+    "source": "/mnt/data/dragonmine_other_menus_single_elements/options/00_full_screens/clean_full_screen.png",
+    "size": [
+      690,
+      480
+    ],
+    "note": "Clean or neutral element from the other redesigned menus pack."
+  },
+  {
+    "file": "03_other_menus_clean/options/01_panels/options_panel_clean.png",
+    "source": "/mnt/data/dragonmine_other_menus_single_elements/options/01_panels/options_panel_clean.png",
+    "size": [
+      228,
+      296
+    ],
+    "note": "Clean or neutral element from the other redesigned menus pack."
+  },
+  {
+    "file": "03_other_menus_clean/options/01_panels/values_panel_clean.png",
+    "source": "/mnt/data/dragonmine_other_menus_single_elements/options/01_panels/values_panel_clean.png",
+    "size": [
+      216,
+      296
+    ],
+    "note": "Clean or neutral element from the other redesigned menus pack."
+  },
+  {
+    "file": "03_other_menus_clean/options/02_rows_buttons/option_row_clean.png",
+    "source": "/mnt/data/dragonmine_other_menus_single_elements/options/02_rows_buttons/option_row_clean.png",
+    "size": [
+      234,
+      51
+    ],
+    "note": "Clean or neutral element from the other redesigned menus pack."
+  },
+  {
+    "file": "03_other_menus_clean/options/02_rows_buttons/scroll_bar.png",
+    "source": "/mnt/data/dragonmine_other_menus_single_elements/options/02_rows_buttons/scroll_bar.png",
+    "size": [
+      118,
+      121
+    ],
+    "note": "Clean or neutral element from the other redesigned menus pack."
+  },
+  {
+    "file": "03_other_menus_clean/options/02_rows_buttons/toggle_off.png",
+    "source": "/mnt/data/dragonmine_other_menus_single_elements/options/02_rows_buttons/toggle_off.png",
+    "size": [
+      83,
+      67
+    ],
+    "note": "Clean or neutral element from the other redesigned menus pack."
+  },
+  {
+    "file": "03_other_menus_clean/options/02_rows_buttons/toggle_off_clean.png",
+    "source": "/mnt/data/dragonmine_other_menus_single_elements/options/02_rows_buttons/toggle_off_clean.png",
+    "size": [
+      93,
+      60
+    ],
+    "note": "Clean or neutral element from the other redesigned menus pack."
+  },
+  {
+    "file": "03_other_menus_clean/options/02_rows_buttons/toggle_on.png",
+    "source": "/mnt/data/dragonmine_other_menus_single_elements/options/02_rows_buttons/toggle_on.png",
+    "size": [
+      81,
+      68
+    ],
+    "note": "Clean or neutral element from the other redesigned menus pack."
+  },
+  {
+    "file": "03_other_menus_clean/options/02_rows_buttons/toggle_on_clean.png",
+    "source": "/mnt/data/dragonmine_other_menus_single_elements/options/02_rows_buttons/toggle_on_clean.png",
+    "size": [
+      94,
+      61
+    ],
+    "note": "Clean or neutral element from the other redesigned menus pack."
+  },
+  {
+    "file": "03_other_menus_clean/options/02_rows_buttons/value_row_clean.png",
+    "source": "/mnt/data/dragonmine_other_menus_single_elements/options/02_rows_buttons/value_row_clean.png",
+    "size": [
+      191,
+      49
+    ],
+    "note": "Clean or neutral element from the other redesigned menus pack."
+  },
+  {
+    "file": "03_other_menus_clean/options/03_headers_accents/background_honeycomb.png",
+    "source": "/mnt/data/dragonmine_other_menus_single_elements/options/03_headers_accents/background_honeycomb.png",
+    "size": [
+      77,
+      122
+    ],
+    "note": "Clean or neutral element from the other redesigned menus pack."
+  },
+  {
+    "file": "03_other_menus_clean/options/03_headers_accents/background_ring.png",
+    "source": "/mnt/data/dragonmine_other_menus_single_elements/options/03_headers_accents/background_ring.png",
+    "size": [
+      117,
+      122
+    ],
+    "note": "Clean or neutral element from the other redesigned menus pack."
+  },
+  {
+    "file": "03_other_menus_clean/options/03_headers_accents/corner_pieces.png",
+    "source": "/mnt/data/dragonmine_other_menus_single_elements/options/03_headers_accents/corner_pieces.png",
+    "size": [
+      131,
+      124
+    ],
+    "note": "Clean or neutral element from the other redesigned menus pack."
+  },
+  {
+    "file": "03_other_menus_clean/options/03_headers_accents/dividers_accents.png",
+    "source": "/mnt/data/dragonmine_other_menus_single_elements/options/03_headers_accents/dividers_accents.png",
+    "size": [
+      525,
+      123
+    ],
+    "note": "Clean or neutral element from the other redesigned menus pack."
+  },
+  {
+    "file": "03_other_menus_clean/options/03_headers_accents/header_bar_clean.png",
+    "source": "/mnt/data/dragonmine_other_menus_single_elements/options/03_headers_accents/header_bar_clean.png",
+    "size": [
+      221,
+      87
+    ],
+    "note": "Clean or neutral element from the other redesigned menus pack."
+  },
+  {
+    "file": "03_other_menus_clean/options/03_headers_accents/icon_kanji.png",
+    "source": "/mnt/data/dragonmine_other_menus_single_elements/options/03_headers_accents/icon_kanji.png",
+    "size": [
+      114,
+      123
+    ],
+    "note": "Clean or neutral element from the other redesigned menus pack."
+  },
+  {
+    "file": "03_other_menus_clean/options/03_headers_accents/icon_stripes.png",
+    "source": "/mnt/data/dragonmine_other_menus_single_elements/options/03_headers_accents/icon_stripes.png",
+    "size": [
+      65,
+      69
+    ],
+    "note": "Clean or neutral element from the other redesigned menus pack."
+  },
+  {
+    "file": "03_other_menus_clean/quest_tree/00_full_screens/clean_full_screen.png",
+    "source": "/mnt/data/dragonmine_other_menus_single_elements/quest_tree/00_full_screens/clean_full_screen.png",
+    "size": [
+      697,
+      500
+    ],
+    "note": "Clean or neutral element from the other redesigned menus pack."
+  },
+  {
+    "file": "03_other_menus_clean/quest_tree/01_panels/clean_left_quest_panel.png",
+    "source": "/mnt/data/dragonmine_other_menus_single_elements/quest_tree/01_panels/clean_left_quest_panel.png",
+    "size": [
+      205,
+      422
+    ],
+    "note": "Clean or neutral element from the other redesigned menus pack."
+  },
+  {
+    "file": "03_other_menus_clean/quest_tree/01_panels/clean_map_panel.png",
+    "source": "/mnt/data/dragonmine_other_menus_single_elements/quest_tree/01_panels/clean_map_panel.png",
+    "size": [
+      325,
+      276
+    ],
+    "note": "Clean or neutral element from the other redesigned menus pack."
+  },
+  {
+    "file": "03_other_menus_clean/quest_tree/02_rows_buttons/node_active.png",
+    "source": "/mnt/data/dragonmine_other_menus_single_elements/quest_tree/02_rows_buttons/node_active.png",
+    "size": [
+      94,
+      124
+    ],
+    "note": "Clean or neutral element from the other redesigned menus pack."
+  },
+  {
+    "file": "03_other_menus_clean/quest_tree/02_rows_buttons/node_clean.png",
+    "source": "/mnt/data/dragonmine_other_menus_single_elements/quest_tree/02_rows_buttons/node_clean.png",
+    "size": [
+      90,
+      123
+    ],
+    "note": "Clean or neutral element from the other redesigned menus pack."
+  },
+  {
+    "file": "03_other_menus_clean/quest_tree/02_rows_buttons/node_locked.png",
+    "source": "/mnt/data/dragonmine_other_menus_single_elements/quest_tree/02_rows_buttons/node_locked.png",
+    "size": [
+      86,
+      122
+    ],
+    "note": "Clean or neutral element from the other redesigned menus pack."
+  },
+  {
+    "file": "03_other_menus_clean/quest_tree/02_rows_buttons/normal_row_clean.png",
+    "source": "/mnt/data/dragonmine_other_menus_single_elements/quest_tree/02_rows_buttons/normal_row_clean.png",
+    "size": [
+      169,
+      50
+    ],
+    "note": "Clean or neutral element from the other redesigned menus pack."
+  },
+  {
+    "file": "03_other_menus_clean/quest_tree/02_rows_buttons/selected_row_clean.png",
+    "source": "/mnt/data/dragonmine_other_menus_single_elements/quest_tree/02_rows_buttons/selected_row_clean.png",
+    "size": [
+      171,
+      67
+    ],
+    "note": "Clean or neutral element from the other redesigned menus pack."
+  },
+  {
+    "file": "03_other_menus_clean/quest_tree/03_headers_accents/chapter_title_bar_clean.png",
+    "source": "/mnt/data/dragonmine_other_menus_single_elements/quest_tree/03_headers_accents/chapter_title_bar_clean.png",
+    "size": [
+      276,
+      69
+    ],
+    "note": "Clean or neutral element from the other redesigned menus pack."
+  },
+  {
+    "file": "03_other_menus_clean/quest_tree/03_headers_accents/connector_line.png",
+    "source": "/mnt/data/dragonmine_other_menus_single_elements/quest_tree/03_headers_accents/connector_line.png",
+    "size": [
+      256,
+      113
+    ],
+    "note": "Clean or neutral element from the other redesigned menus pack."
+  },
+  {
+    "file": "03_other_menus_clean/quest_tree/03_headers_accents/difficulty_label_clean.png",
+    "source": "/mnt/data/dragonmine_other_menus_single_elements/quest_tree/03_headers_accents/difficulty_label_clean.png",
+    "size": [
+      146,
+      50
+    ],
+    "note": "Clean or neutral element from the other redesigned menus pack."
+  },
+  {
+    "file": "03_other_menus_clean/quest_tree/03_headers_accents/progress_bar_clean.png",
+    "source": "/mnt/data/dragonmine_other_menus_single_elements/quest_tree/03_headers_accents/progress_bar_clean.png",
+    "size": [
+      186,
+      48
+    ],
+    "note": "Clean or neutral element from the other redesigned menus pack."
+  },
+  {
+    "file": "03_other_menus_clean/server_menu/00_full_screens/clean_full_screen.png",
+    "source": "/mnt/data/dragonmine_other_menus_single_elements/server_menu/00_full_screens/clean_full_screen.png",
+    "size": [
+      700,
+      480
+    ],
+    "note": "Clean or neutral element from the other redesigned menus pack."
+  },
+  {
+    "file": "03_other_menus_clean/server_menu/01_panels/clean_left_panel.png",
+    "source": "/mnt/data/dragonmine_other_menus_single_elements/server_menu/01_panels/clean_left_panel.png",
+    "size": [
+      203,
+      419
+    ],
+    "note": "Clean or neutral element from the other redesigned menus pack."
+  },
+  {
+    "file": "03_other_menus_clean/server_menu/01_panels/clean_right_panel.png",
+    "source": "/mnt/data/dragonmine_other_menus_single_elements/server_menu/01_panels/clean_right_panel.png",
+    "size": [
+      190,
+      422
+    ],
+    "note": "Clean or neutral element from the other redesigned menus pack."
+  },
+  {
+    "file": "03_other_menus_clean/server_menu/02_rows_buttons/clean_list_row.png",
+    "source": "/mnt/data/dragonmine_other_menus_single_elements/server_menu/02_rows_buttons/clean_list_row.png",
+    "size": [
+      151,
+      57
+    ],
+    "note": "Clean or neutral element from the other redesigned menus pack."
+  },
+  {
+    "file": "03_other_menus_clean/server_menu/02_rows_buttons/clean_stats_button.png",
+    "source": "/mnt/data/dragonmine_other_menus_single_elements/server_menu/02_rows_buttons/clean_stats_button.png",
+    "size": [
+      188,
+      74
+    ],
+    "note": "Clean or neutral element from the other redesigned menus pack."
+  },
+  {
+    "file": "03_other_menus_clean/server_menu/02_rows_buttons/left_arrow.png",
+    "source": "/mnt/data/dragonmine_other_menus_single_elements/server_menu/02_rows_buttons/left_arrow.png",
+    "size": [
+      85,
+      94
+    ],
+    "note": "Clean or neutral element from the other redesigned menus pack."
+  },
+  {
+    "file": "03_other_menus_clean/server_menu/02_rows_buttons/right_arrow.png",
+    "source": "/mnt/data/dragonmine_other_menus_single_elements/server_menu/02_rows_buttons/right_arrow.png",
+    "size": [
+      82,
+      94
+    ],
+    "note": "Clean or neutral element from the other redesigned menus pack."
+  },
+  {
+    "file": "03_other_menus_clean/server_menu/03_headers_accents/accent_corner_blue_frame.png",
+    "source": "/mnt/data/dragonmine_other_menus_single_elements/server_menu/03_headers_accents/accent_corner_blue_frame.png",
+    "size": [
+      153,
+      111
+    ],
+    "note": "Clean or neutral element from the other redesigned menus pack."
+  },
+  {
+    "file": "03_other_menus_clean/server_menu/03_headers_accents/accent_corner_orange.png",
+    "source": "/mnt/data/dragonmine_other_menus_single_elements/server_menu/03_headers_accents/accent_corner_orange.png",
+    "size": [
+      86,
+      68
+    ],
+    "note": "Clean or neutral element from the other redesigned menus pack."
+  },
+  {
+    "file": "03_other_menus_clean/server_menu/03_headers_accents/accent_long_divider.png",
+    "source": "/mnt/data/dragonmine_other_menus_single_elements/server_menu/03_headers_accents/accent_long_divider.png",
+    "size": [
+      234,
+      47
+    ],
+    "note": "Clean or neutral element from the other redesigned menus pack."
+  },
+  {
+    "file": "03_other_menus_clean/server_menu/03_headers_accents/clean_header_bar.png",
+    "source": "/mnt/data/dragonmine_other_menus_single_elements/server_menu/03_headers_accents/clean_header_bar.png",
+    "size": [
+      324,
+      113
+    ],
+    "note": "Clean or neutral element from the other redesigned menus pack."
+  },
+  {
+    "file": "03_other_menus_clean/skills_information/00_full_screens/clean_full_screen.png",
+    "source": "/mnt/data/dragonmine_other_menus_single_elements/skills_information/00_full_screens/clean_full_screen.png",
+    "size": [
+      701,
+      492
+    ],
+    "note": "Clean or neutral element from the other redesigned menus pack."
+  },
+  {
+    "file": "03_other_menus_clean/skills_information/01_panels/clean_bottom_strip.png",
+    "source": "/mnt/data/dragonmine_other_menus_single_elements/skills_information/01_panels/clean_bottom_strip.png",
+    "size": [
+      270,
+      90
+    ],
+    "note": "Clean or neutral element from the other redesigned menus pack."
+  },
+  {
+    "file": "03_other_menus_clean/skills_information/01_panels/clean_detail_panel.png",
+    "source": "/mnt/data/dragonmine_other_menus_single_elements/skills_information/01_panels/clean_detail_panel.png",
+    "size": [
+      222,
+      150
+    ],
+    "note": "Clean or neutral element from the other redesigned menus pack."
+  },
+  {
+    "file": "03_other_menus_clean/skills_information/01_panels/clean_left_panel.png",
+    "source": "/mnt/data/dragonmine_other_menus_single_elements/skills_information/01_panels/clean_left_panel.png",
+    "size": [
+      240,
+      292
+    ],
+    "note": "Clean or neutral element from the other redesigned menus pack."
+  },
+  {
+    "file": "03_other_menus_clean/skills_information/02_rows_buttons/clean_skill_row.png",
+    "source": "/mnt/data/dragonmine_other_menus_single_elements/skills_information/02_rows_buttons/clean_skill_row.png",
+    "size": [
+      281,
+      59
+    ],
+    "note": "Clean or neutral element from the other redesigned menus pack."
+  },
+  {
+    "file": "03_other_menus_clean/skills_information/02_rows_buttons/scroll_down.png",
+    "source": "/mnt/data/dragonmine_other_menus_single_elements/skills_information/02_rows_buttons/scroll_down.png",
+    "size": [
+      77,
+      83
+    ],
+    "note": "Clean or neutral element from the other redesigned menus pack."
+  },
+  {
+    "file": "03_other_menus_clean/skills_information/02_rows_buttons/scroll_up.png",
+    "source": "/mnt/data/dragonmine_other_menus_single_elements/skills_information/02_rows_buttons/scroll_up.png",
+    "size": [
+      77,
+      82
+    ],
+    "note": "Clean or neutral element from the other redesigned menus pack."
+  },
+  {
+    "file": "03_other_menus_clean/skills_information/02_rows_buttons/selected_skill_row.png",
+    "source": "/mnt/data/dragonmine_other_menus_single_elements/skills_information/02_rows_buttons/selected_skill_row.png",
+    "size": [
+      287,
+      61
+    ],
+    "note": "Clean or neutral element from the other redesigned menus pack."
+  },
+  {
+    "file": "03_other_menus_clean/skills_information/02_rows_buttons/tab_button_clean.png",
+    "source": "/mnt/data/dragonmine_other_menus_single_elements/skills_information/02_rows_buttons/tab_button_clean.png",
+    "size": [
+      80,
+      92
+    ],
+    "note": "Clean or neutral element from the other redesigned menus pack."
+  },
+  {
+    "file": "03_other_menus_clean/skills_information/02_rows_buttons/tab_button_selected.png",
+    "source": "/mnt/data/dragonmine_other_menus_single_elements/skills_information/02_rows_buttons/tab_button_selected.png",
+    "size": [
+      87,
+      97
+    ],
+    "note": "Clean or neutral element from the other redesigned menus pack."
+  },
+  {
+    "file": "03_other_menus_clean/skills_information/03_headers_accents/accent_blue_divider.png",
+    "source": "/mnt/data/dragonmine_other_menus_single_elements/skills_information/03_headers_accents/accent_blue_divider.png",
+    "size": [
+      133,
+      63
+    ],
+    "note": "Clean or neutral element from the other redesigned menus pack."
+  },
+  {
+    "file": "03_other_menus_clean/skills_information/03_headers_accents/accent_corner_frame.png",
+    "source": "/mnt/data/dragonmine_other_menus_single_elements/skills_information/03_headers_accents/accent_corner_frame.png",
+    "size": [
+      97,
+      136
+    ],
+    "note": "Clean or neutral element from the other redesigned menus pack."
+  },
+  {
+    "file": "03_other_menus_clean/skills_information/03_headers_accents/accent_honeycomb.png",
+    "source": "/mnt/data/dragonmine_other_menus_single_elements/skills_information/03_headers_accents/accent_honeycomb.png",
+    "size": [
+      67,
+      81
+    ],
+    "note": "Clean or neutral element from the other redesigned menus pack."
+  },
+  {
+    "file": "03_other_menus_clean/skills_information/03_headers_accents/accent_orange_divider.png",
+    "source": "/mnt/data/dragonmine_other_menus_single_elements/skills_information/03_headers_accents/accent_orange_divider.png",
+    "size": [
+      142,
+      44
+    ],
+    "note": "Clean or neutral element from the other redesigned menus pack."
+  },
+  {
+    "file": "03_other_menus_clean/skills_information/03_headers_accents/clean_top_information_panel.png",
+    "source": "/mnt/data/dragonmine_other_menus_single_elements/skills_information/03_headers_accents/clean_top_information_panel.png",
+    "size": [
+      282,
+      106
+    ],
+    "note": "Clean or neutral element from the other redesigned menus pack."
+  },
+  {
+    "file": "04_legacy_clean_elements/01_information_panel.png",
+    "source": "/mnt/data/dragonmine_ui_single_elements/01_information_panel.png",
+    "size": [
+      1024,
+      1536
+    ],
+    "note": "Legacy single UI element from earlier DragonMine redesign pass."
+  },
+  {
+    "file": "04_legacy_clean_elements/02_top_nameplate.png",
+    "source": "/mnt/data/dragonmine_ui_single_elements/02_top_nameplate.png",
+    "size": [
+      1536,
+      1024
+    ],
+    "note": "Legacy single UI element from earlier DragonMine redesign pass."
+  },
+  {
+    "file": "04_legacy_clean_elements/03_statistics_panel.png",
+    "source": "/mnt/data/dragonmine_ui_single_elements/03_statistics_panel.png",
+    "size": [
+      1024,
+      1536
+    ],
+    "note": "Legacy single UI element from earlier DragonMine redesign pass."
+  },
+  {
+    "file": "04_legacy_clean_elements/04_character_button.png",
+    "source": "/mnt/data/dragonmine_ui_single_elements/04_character_button.png",
+    "size": [
+      1254,
+      1254
+    ],
+    "note": "Legacy single UI element from earlier DragonMine redesign pass."
+  },
+  {
+    "file": "04_legacy_clean_elements/05_skills_button.png",
+    "source": "/mnt/data/dragonmine_ui_single_elements/05_skills_button.png",
+    "size": [
+      1254,
+      1254
+    ],
+    "note": "Legacy single UI element from earlier DragonMine redesign pass."
+  },
+  {
+    "file": "04_legacy_clean_elements/06_quests_button.png",
+    "source": "/mnt/data/dragonmine_ui_single_elements/06_quests_button.png",
+    "size": [
+      1254,
+      1254
+    ],
+    "note": "Legacy single UI element from earlier DragonMine redesign pass."
+  },
+  {
+    "file": "04_legacy_clean_elements/07_items_button.png",
+    "source": "/mnt/data/dragonmine_ui_single_elements/07_items_button.png",
+    "size": [
+      1254,
+      1254
+    ],
+    "note": "Legacy single UI element from earlier DragonMine redesign pass."
+  },
+  {
+    "file": "04_legacy_clean_elements/08_party_button.png",
+    "source": "/mnt/data/dragonmine_ui_single_elements/08_party_button.png",
+    "size": [
+      1254,
+      1254
+    ],
+    "note": "Legacy single UI element from earlier DragonMine redesign pass."
+  },
+  {
+    "file": "04_legacy_clean_elements/09_settings_button.png",
+    "source": "/mnt/data/dragonmine_ui_single_elements/09_settings_button.png",
+    "size": [
+      1254,
+      1254
+    ],
+    "note": "Legacy single UI element from earlier DragonMine redesign pass."
+  },
+  {
+    "file": "04_legacy_clean_elements/10_top_right_orb_icons.png",
+    "source": "/mnt/data/dragonmine_ui_single_elements/10_top_right_orb_icons.png",
+    "size": [
+      1536,
+      1024
+    ],
+    "note": "Legacy single UI element from earlier DragonMine redesign pass."
+  },
+  {
+    "file": "04_legacy_clean_elements/README.txt",
+    "source": "/mnt/data/dragonmine_ui_single_elements/README.txt",
+    "size": null,
+    "note": "Legacy pack note."
+  }
+]

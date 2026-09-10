@@ -45,7 +45,8 @@ BOX_L = [-92, 22, -52]
 BOX_R = [-92, -22, 52]
 
 
-def clip(length: float, bones: dict) -> dict:
+def clip(length: float, bones: dict, *, sound_effects=None, particle_effects=None,
+         timeline=None) -> dict:
     """One animation: seconds plus {bone: {channel: {time: [x,y,z]}}}."""
     out = {"animation_length": length, "bones": {}}
     for bone, channels in bones.items():
@@ -53,7 +54,142 @@ def clip(length: float, bones: dict) -> dict:
             channel: {str(t): {"vector": list(v)} for t, v in frames.items()}
             for channel, frames in channels.items()
         }
+    if sound_effects:
+        out["sound_effects"] = {str(t): value for t, value in sound_effects.items()}
+    if particle_effects:
+        out["particle_effects"] = {str(t): value for t, value in particle_effects.items()}
+    if timeline:
+        out["timeline"] = {str(t): value for t, value in timeline.items()}
     return out
+
+
+RUSH_PROFILES = {
+    "universal": (0, 0, 1.00),
+    "saiyan": (8, -3, 1.04),
+    "human": (-6, 2, 0.98),
+    "namekian": (12, -5, 1.02),
+    "majin": (-12, 7, 1.05),
+    "arcosian": (16, -8, 1.06),
+    "super_saiyan_blue": (6, -7, 1.12),
+    "super_saiyan_god": (-7, -9, 1.10),
+    "super_saiyan_3": (13, -5, 1.14),
+    "super_saiyan_2": (-10, -4, 1.11),
+    "super_saiyan": (9, -2, 1.08),
+    "golden_arcosian": (-16, -10, 1.14),
+    "potential_unleashed": (5, -6, 1.10),
+    "orange_namekian": (18, -4, 1.16),
+    "giant_namekian": (-18, 3, 1.18),
+    "pure_majin": (14, 9, 1.16),
+}
+
+
+def cinematic_rush(profile: str) -> dict:
+    """One continuous BT3 rush whose presentation varies by race/form profile."""
+    yaw, lean, power = RUSH_PROFILES[profile]
+    side = 1 if yaw >= 0 else -1
+    root_yaw = abs(yaw)
+    impact_scale = 1.0 + (power - 1.0) * 1.8
+    bones = {
+        "root": {
+            "rotation": {
+                0.0: [0, 0, 0], 0.10: [-22 + lean, root_yaw * 0.3, 0],
+                0.25: [-8, -18 * side + yaw * 0.2, 0], 0.38: [-16, 12 * side, 0],
+                0.50: [-5, 28 * side + yaw * 0.25, 0], 0.66: [-24, -10 * side, 0],
+                0.80: [-14, -34 * side + yaw * 0.25, 0], 0.97: [8, 46 * side, 0],
+                1.15: [-12 + lean * 0.35, -10 * side + yaw * 0.35, 0],
+                1.28: [-9, -8 * side, 0], 1.40: [0, 0, 0],
+            },
+            "position": {
+                0.0: [0, 0, 0], 0.10: [0, 0.15, -1.2 * power],
+                0.25: [0.3 * side, 0.1, -2.4 * power],
+                0.50: [-0.3 * side, 0.25, -2.0 * power],
+                0.80: [0.15 * side, 1.1, -2.8 * power],
+                1.15: [0, 0.35, -3.2 * power], 1.28: [0, 0.2, -2.4 * power],
+                1.40: [0, 0, 0],
+            },
+            "scale": {
+                0.0: [1, 1, 1], 0.25: [1, 1, 1.16 * power],
+                0.50: [1, 1, 1.18 * power], 0.80: [1, 1, 1.22 * power],
+                1.15: [1.04, 1, 1.34 * impact_scale],
+                1.28: [1.02, 1, 1.22 * impact_scale], 1.40: [1, 1, 1],
+            },
+        },
+        "waist": {"rotation": {
+            0.0: [0, 0, 0], 0.10: [-14, -8 * side, 0],
+            0.25: [-4, -28 * side, 5 * side], 0.50: [8, 34 * side, -8 * side],
+            0.80: [-18, -22 * side, 10 * side], 0.97: [12, 44 * side, -8 * side],
+            1.15: [-8, -16 * side, 0], 1.40: [0, 0, 0],
+        }},
+        "right_arm": {
+            "rotation": {
+                0.0: G3_R, 0.10: [-38, -20, 42], 0.25: [-98, 18, 4],
+                0.38: [-56, -12, 26], 0.50: [-72, -18, 44],
+                0.80: [24, -14, 36], 0.97: [-28, 58 * side, 66 * side],
+                1.15: [-112, -8, 8], 1.28: [-106, -6, 8], 1.40: G3_R,
+            },
+            "position": {
+                0.0: [0, 0, 0], 0.10: [0.5, 0.3, 1.8],
+                0.25: [0.2, -0.1, -3.2 * power], 0.38: [0, 0, 0],
+                0.97: [1.4 * side, 0.7, 2.2],
+                1.15: [0.25, 0, -3.8 * power], 1.28: [0.2, 0, -3.4 * power],
+                1.40: [0, 0, 0],
+            },
+        },
+        "left_arm": {
+            "rotation": {
+                0.0: G3_L, 0.10: [-58, 18, -42], 0.25: [-64, 12, -34],
+                0.38: [-42, 54 * side, -76 * side],
+                0.50: [-88, -34 * side, -18 * side], 0.66: [-52, 18, -40],
+                0.80: [18, 12, -34], 0.97: [-30, -50 * side, -58 * side],
+                1.15: [-112, 8, -8], 1.28: [-106, 6, -8], 1.40: G3_L,
+            },
+            "position": {
+                0.0: [0, 0, 0], 0.38: [-1.5 * side, 0.5, 1.4],
+                0.50: [-0.8 * side, 0.1, -2.8 * power], 0.66: [0, 0, 0],
+                0.97: [-1.2 * side, 0.6, 2.0],
+                1.15: [-0.25, 0, -3.8 * power], 1.28: [-0.2, 0, -3.4 * power],
+                1.40: [0, 0, 0],
+            },
+        },
+        "right_leg": {
+            "rotation": {
+                0.0: [0, 0, 0], 0.25: [-18, 0, 0], 0.50: [22, 0, 0],
+                0.66: [42, 0, 0], 0.80: [-104, 8 * side, 12 * side],
+                0.97: [-68, 4 * side, 8 * side], 1.15: [-12, 0, 0],
+                1.40: [0, 0, 0],
+            },
+            "position": {
+                0.0: [0, 0, 0], 0.80: [0.3 * side, 0.4, -3.6 * power],
+                0.97: [0.15 * side, 0.2, -2.0], 1.15: [0, 0, 0],
+                1.40: [0, 0, 0],
+            },
+        },
+        "left_leg": {"rotation": {
+            0.0: [0, 0, 0], 0.25: [18, 0, 0], 0.50: [-20, 0, 0],
+            0.66: [-34, 0, 0], 0.80: [38, 0, 0], 0.97: [24, 0, 0],
+            1.15: [16, 0, 0], 1.40: [0, 0, 0],
+        }},
+    }
+    impacts = (0.25, 0.50, 0.80, 1.15)
+    return clip(
+        1.40,
+        bones,
+        sound_effects={
+            time: {"effect": "xeno:rush_finish" if time == 1.15 else "xeno:rush_hit"}
+            for time in impacts
+        },
+        particle_effects={
+            time: {
+                "effect": "xeno:rush_finish" if time == 1.15 else "xeno:rush_trail",
+                "locator": "right_arm" if time in (0.25, 1.15) else "left_arm",
+            }
+            for time in impacts
+        },
+        timeline={
+            time: "xeno:rush_finish" if time == 1.15 else "xeno:rush_pulse"
+            for time in impacts
+        },
+    )
 
 
 def dmz_one_handed_punches() -> dict[str, dict]:
@@ -316,6 +452,8 @@ def build() -> dict:
         a["combat.xeno_cross_%s_v2" % side] = dmz_punches[side]
     a.update(build_v3())
     a.update(build_v4())
+    for profile in RUSH_PROFILES:
+        a["combat.xeno_cinematic_rush_" + profile] = cinematic_rush(profile)
     return {"format_version": "1.8.0", "animations": a}
 
 

@@ -1,0 +1,63 @@
+package com.dragonminez.common.init.particles;
+
+import net.minecraft.client.multiplayer.ClientLevel;
+import net.minecraft.client.particle.Particle;
+import net.minecraft.client.particle.ParticleProvider;
+import net.minecraft.client.particle.ParticleRenderType;
+import net.minecraft.client.particle.SpriteSet;
+import net.minecraft.client.particle.TextureSheetParticle;
+import net.minecraft.core.particles.SimpleParticleType;
+
+public class KiSplashParticle extends TextureSheetParticle {
+   private final SpriteSet spriteSet;
+
+   protected KiSplashParticle(ClientLevel level, double x, double y, double z, double r, double g, double b, SpriteSet spriteSet) {
+      super(level, x, y, z, 0.0, 0.0, 0.0);
+      this.spriteSet = spriteSet;
+      this.lifetime = 10;
+      this.quadSize = 1.0F;
+      this.gravity = 0.0F;
+      this.hasPhysics = false;
+      this.rCol = (float)r;
+      this.gCol = (float)g;
+      this.bCol = (float)b;
+      this.alpha = 1.0F;
+      this.setSpriteFromAge(spriteSet);
+   }
+
+   public void tick() {
+      this.xo = this.x;
+      this.yo = this.y;
+      this.zo = this.z;
+      if (this.age++ >= this.lifetime) {
+         this.remove();
+      } else {
+         this.setSpriteFromAge(this.spriteSet);
+         this.quadSize += 0.1F;
+      }
+   }
+
+   public ParticleRenderType getRenderType() {
+      return ParticleRenderType.PARTICLE_SHEET_OPAQUE;
+   }
+
+   public int getLightColor(float pPartialTick) {
+      return 15728880;
+   }
+
+   public static class Provider implements ParticleProvider<SimpleParticleType> {
+      private final SpriteSet spriteSet;
+
+      public Provider(SpriteSet spriteSet) {
+         this.spriteSet = spriteSet;
+      }
+
+      public Particle createParticle(SimpleParticleType type, ClientLevel level, double x, double y, double z, double r, double g, double b) {
+         try {
+            return new KiSplashParticle(level, x, y, z, r, g, b, this.spriteSet);
+         } catch (NullPointerException var16) {
+            return null;
+         }
+      }
+   }
+}

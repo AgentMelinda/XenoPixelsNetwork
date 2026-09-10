@@ -136,8 +136,7 @@ public final class XenoModernHudView {
         drawContainedBar(graphics, moved(HP, XenoHudConfig.Part.HP), displayedHp,
                 displayedHp < 0.25f ? 0xFFFF3B30 : 0xFFFFA000,
                 0xFF180A09, 0xFFFFC247);
-        drawContainedSegments(graphics, moved(KI, XenoHudConfig.Part.KI), displayedKi,
-                0xFF19B9FF, 0xFF071929, 0xFF55D8FF, 8);
+        drawKiSegments(graphics, moved(KI, XenoHudConfig.Part.KI), displayedKi);
         drawContainedSegments(graphics, moved(STM, XenoHudConfig.Part.STM), displayedStm,
                 0xFF18E0D2, 0xFF071E24, 0xFF62FFF0, 8);
 
@@ -387,9 +386,33 @@ public final class XenoModernHudView {
     }
 
     private static void drawContainedSegments(GuiGraphics g, Lane lane, float fraction,
-                                              int fill, int empty, int outline, int count) {
+                                               int fill, int empty, int outline, int count) {
         drawContainedSegments(g, lane.x(), lane.y(), lane.w(), lane.h(), lane.skew(),
                 fraction, fill, empty, outline, count);
+    }
+
+    private static void drawKiSegments(GuiGraphics g, Lane lane, float fraction) {
+        if (!SparkingKiBar.charging()) {
+            drawContainedSegments(g, lane, fraction,
+                    SparkingKiBar.fill(0xFF19B9FF), 0xFF071929,
+                    SparkingKiBar.highlight(0xFF55D8FF), SparkingKiBar.segmentCount());
+            return;
+        }
+
+        int count = SparkingKiBar.segmentCount();
+        int gap = 2;
+        int segmentSkew = 2;
+        int usable = Math.max(count, lane.w() - lane.skew() - gap * (count - 1));
+        int segmentW = Math.max(1, usable / count);
+        for (int i = 0; i < count; i++) {
+            int sx = lane.x() + i * (segmentW + gap);
+            HudDraw.fillPara(g, sx, lane.y(), segmentW, lane.h(), segmentSkew,
+                    SparkingKiBar.chargeSegmentFill(i));
+            HudDraw.fillPara(g, sx, lane.y(), segmentW, 2, segmentSkew,
+                    SparkingKiBar.chargeSegmentHighlight(i));
+        }
+        HudDraw.borderPara(g, lane.x(), lane.y(), Math.max(1, lane.w() - lane.skew()),
+                lane.h(), lane.skew(), SparkingKiBar.HIGHLIGHT, 1);
     }
 
     /** Paints inside a slanted lane and redraws its rim last, so no fill can cover the outline. */

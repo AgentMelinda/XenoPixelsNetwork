@@ -1,5 +1,6 @@
 package net.bullettrain.xenopixelsmod.client.pad;
 
+import com.dragonminez.client.events.FlySkillEvent;
 import com.dragonminez.client.util.KeyBinds;
 import com.dragonminez.common.network.C2S.FlightModeC2S;
 import com.dragonminez.common.network.NetworkHandler;
@@ -10,6 +11,7 @@ import dev.isxander.controlify.api.bind.ControlifyBindApi;
 import dev.isxander.controlify.api.bind.InputBinding;
 import dev.isxander.controlify.api.bind.InputBindingBuilder;
 import dev.isxander.controlify.api.bind.InputBindingSupplier;
+import dev.isxander.controlify.api.bind.RadialIcon;
 import dev.isxander.controlify.bindings.BindContext;
 import dev.isxander.controlify.bindings.input.EmptyInput;
 import dev.isxander.controlify.controller.ControllerEntity;
@@ -17,6 +19,9 @@ import dev.isxander.controlify.controller.input.GamepadInputs;
 import net.bullettrain.xenopixelsmod.XenoPixelsMod;
 import net.bullettrain.xenopixelsmod.client.DmzClientStats;
 import net.bullettrain.xenopixelsmod.client.combat.Bt3CombatClient;
+import net.bullettrain.xenopixelsmod.client.combat.Bt3DirectBind;
+import net.bullettrain.xenopixelsmod.client.combat.XenoTargetingControls;
+import net.bullettrain.xenopixelsmod.client.PartyClientControls;
 import net.bullettrain.xenopixelsmod.client.config.XenoClientConfig;
 import net.minecraft.client.KeyMapping;
 import net.minecraft.client.Minecraft;
@@ -88,6 +93,7 @@ public final class XenoPadBinds {
     private static PadBind dashBind;
     private static PadBind descendBind;
 
+    private static InputBindingSupplier flyToggleAction;
     private static InputBindingSupplier normalModeAction;
     private static InputBindingSupplier bt3ModeAction;
     private static InputBindingSupplier flightModeAction;
@@ -139,27 +145,29 @@ public final class XenoPadBinds {
 
         // --- Charge layer: hold the left trigger. ---
         layered(api, "z_burst", Bt3CombatClient.Z_BURST,
-                GamepadInputs.SOUTH_BUTTON, PadChords.Layer.CHARGE);
+                GamepadInputs.SOUTH_BUTTON, PadChords.Layer.CHARGE, Bt3DirectBind.Z_BURST);
         layered(api, "ultimate", Bt3CombatClient.ULTIMATE,
-                GamepadInputs.WEST_BUTTON, PadChords.Layer.CHARGE);
+                GamepadInputs.WEST_BUTTON, PadChords.Layer.CHARGE, Bt3DirectBind.ULTIMATE);
         layered(api, "sparking", Bt3CombatClient.SPARKING,
-                GamepadInputs.EAST_BUTTON, PadChords.Layer.CHARGE);
+                GamepadInputs.EAST_BUTTON, PadChords.Layer.CHARGE, Bt3DirectBind.SPARKING);
         layered(api, "charged_kick", Bt3CombatClient.CHARGE_KICK,
                 GamepadInputs.NORTH_BUTTON, PadChords.Layer.CHARGE);
-        // RT+Y also triggers charged kick so the player can kick while descending.
-        bind(api, "charged_kick_rt", Bt3CombatClient.CHARGE_KICK,
-                GamepadInputs.NORTH_BUTTON,
-                controller -> bt3Mode() && descendBind != null && descendBind.pressed(controller));
+        // --- Descend layer: hold the right trigger. ---
+        // RT+Y also triggers charged kick so the player can kick while descending. It goes through
+        // the same layer machinery as every other chord so the base ki blast stands down for it;
+        // gating it on the raw trigger instead let both fire from one press.
+        layered(api, "charged_kick_rt", Bt3CombatClient.CHARGE_KICK,
+                GamepadInputs.NORTH_BUTTON, PadChords.Layer.DESCEND);
 
         // --- Lock layer: hold the left bumper. ---
         // Zanzoken and Multi-Form ship unbound on the keyboard because the key space is full. The
         // pad's is not, so here they get a real default.
         layered(api, "zanzoken", Bt3CombatClient.ZANZOKEN,
-                GamepadInputs.WEST_BUTTON, PadChords.Layer.LOCK);
+                GamepadInputs.WEST_BUTTON, PadChords.Layer.LOCK, Bt3DirectBind.ZANZOKEN);
         layered(api, "multiform", Bt3CombatClient.MULTIFORM,
-                GamepadInputs.NORTH_BUTTON, PadChords.Layer.LOCK);
+                GamepadInputs.NORTH_BUTTON, PadChords.Layer.LOCK, Bt3DirectBind.MULTIFORM);
         layered(api, "hakai", Bt3CombatClient.HAKAI,
-                GamepadInputs.EAST_BUTTON, PadChords.Layer.LOCK);
+                GamepadInputs.EAST_BUTTON, PadChords.Layer.LOCK, Bt3DirectBind.HAKAI);
 
         // --- The modifiers themselves, which are also actions in their own right. ---
         chargeModifier = bind(api, "ki_charge", KeyBinds.KI_CHARGE,
@@ -173,7 +181,7 @@ public final class XenoPadBinds {
         // --- Unlayered bindings. ---
         // RB toggles flight via edge-triggered pulse (DMZ uses consumeClick).
         // Ascend while flying is handled by emulating jump on the same button.
-        api.registerBinding(builder -> builder
+        flyToggleAction = api.registerBinding(builder -> builder
                 .id(XenoPixelsMod.MOD_ID, "fly_toggle")
                 .name(Component.translatable(KeyBinds.FLY_KEY.getName()))
                 .description(Component.translatable("key.xenopixelsmod.pad.desc",
@@ -185,9 +193,36 @@ public final class XenoPadBinds {
             bind(api, "ascend", mc.options.keyJump,
                     GamepadInputs.RIGHT_SHOULDER_BUTTON,
                     controller -> bt3Mode() && localFlyActive());
+        } else {
+            LOGGER.warn("[XenoPixels] Controlify pre-init ran before game options existed; "
+                    + "the gamepad ascend binding was skipped.");
         }
         descendBind = bind(api, "descend", KeyBinds.DESCEND, GamepadInputs.RIGHT_TRIGGER_AXIS,
                 controller -> bt3Mode());
+
+        // --- Flight direction. ---
+        // DragonMineZ steers flight from Options.keyUp/keyDown/keyLeft/keyRight.isDown()
+        // (FlySkillEvent.handleFlightMovement), but Controlify does not press those: its
+        // ControllerPlayerMovement replaces LocalPlayer.input outright and writes analogue
+        // forwardImpulse/leftImpulse instead. The stick therefore walks you on the ground and does
+        // nothing at all in Search or Combat Fly, while ascend and descend work because those are
+        // key-emulated the way everything here is.
+        //
+        // Emulating the four movement keys off the left stick gives DMZ exactly what WASD gives it.
+        // The gate is flight-only, so ground movement stays Controlify's analogue path untouched.
+        if (mc.options != null) {
+            bind(api, "fly_forward", mc.options.keyUp, GamepadInputs.LEFT_STICK_AXIS_UP,
+                    controller -> flightKeysEmulated());
+            bind(api, "fly_back", mc.options.keyDown, GamepadInputs.LEFT_STICK_AXIS_DOWN,
+                    controller -> flightKeysEmulated());
+            bind(api, "fly_left", mc.options.keyLeft, GamepadInputs.LEFT_STICK_AXIS_LEFT,
+                    controller -> flightKeysEmulated());
+            bind(api, "fly_right", mc.options.keyRight, GamepadInputs.LEFT_STICK_AXIS_RIGHT,
+                    controller -> flightKeysEmulated());
+        } else {
+            LOGGER.warn("[XenoPixels] Controlify pre-init ran before game options existed; "
+                    + "gamepad flight steering was skipped.");
+        }
         bind(api, "transform", KeyBinds.ACTION_KEY, GamepadInputs.RIGHT_STICK_BUTTON,
                 controller -> bt3Mode());
         bind(api, "stats_menu", KeyBinds.STATS_MENU, GamepadInputs.BACK_BUTTON,
@@ -197,9 +232,10 @@ public final class XenoPadBinds {
         bind(api, "backstep", Bt3CombatClient.BACKSTEP, GamepadInputs.DPAD_DOWN_BUTTON,
                 controller -> bt3Mode());
         bind(api, "sonic_left", Bt3CombatClient.SONIC_SWAY_LEFT,
-                GamepadInputs.DPAD_LEFT_BUTTON, controller -> bt3Mode());
+                GamepadInputs.DPAD_LEFT_BUTTON,
+                controller -> bt3Mode() && Bt3DirectBind.SONIC_SWAY_LEFT.enabled());
         layered(api, "sonic_right", Bt3CombatClient.SONIC_SWAY_RIGHT,
-                GamepadInputs.SOUTH_BUTTON, PadChords.Layer.LOCK);
+                GamepadInputs.SOUTH_BUTTON, PadChords.Layer.LOCK, Bt3DirectBind.SONIC_SWAY_RIGHT);
 
         ResourceLocation normalIcon = registerIcon(api, "normal_mode", "MC", 0xFF55FF55);
         ResourceLocation bt3Icon = registerIcon(api, "bt3_mode", "BT3", 0xFFFFAA00);
@@ -217,8 +253,68 @@ public final class XenoPadBinds {
             techniqueSlot(api, i, slots[i]);
         }
 
-        int count = BY_MAPPING.values().stream().mapToInt(List::size).sum() + 7;
-        LOGGER.info("[XenoPixels] Registered {} gamepad bindings with Controlify.", count);
+        // --- Everything else Xeno owns that no button could reach. ---
+        // The BT3 layout spends every face button, both bumpers, both triggers, both sticks and
+        // the d-pad, so these would otherwise be keyboard-only on a pad. Colour-coded by area so
+        // the radial reads at a glance: orange combat, cyan targeting, green party.
+        int combat = 0xFFFFAA00;
+        radialBinding(api, "dash_left", Bt3CombatClient.DASH_LEFT, new PadModeIcon("<", combat));
+        radialBinding(api, "dash_right", Bt3CombatClient.DASH_RIGHT, new PadModeIcon(">", combat));
+        radialBinding(api, "ki_blast_cancel", Bt3CombatClient.KI_BLAST_CANCEL,
+                new PadModeIcon("KC", combat));
+        // LB cycles targets forward; there is no button left for the other direction.
+        radialBinding(api, "lock_prev", Bt3CombatClient.LOCK_PREV, new PadModeIcon("LP", combat));
+        radialBinding(api, "ki_guidance", Bt3CombatClient.KI_GUIDANCE,
+                new PadModeIcon("KG", combat));
+
+        int targeting = 0xFF55FFFF;
+        radialBinding(api, "target_lock", XenoTargetingControls.LOCK_TOGGLE,
+                new PadModeIcon("LK", targeting));
+        radialBinding(api, "target_clear", XenoTargetingControls.CLEAR_LOCK,
+                new PadModeIcon("CL", targeting));
+        radialBinding(api, "target_cycle", XenoTargetingControls.CYCLE_TARGET,
+                new PadModeIcon("CY", targeting));
+        radialBinding(api, "target_lead", XenoTargetingControls.TOGGLE_LEAD,
+                new PadModeIcon("LD", targeting));
+
+        int party = 0xFF55FF55;
+        radialBinding(api, "party_screen", PartyClientControls.OPEN_PARTY,
+                new PadModeIcon("PT", party));
+        radialBinding(api, "party_ping", PartyClientControls.PING_TARGET,
+                new PadModeIcon("PG", party));
+
+        // Bindings that emulate a key live in BY_MAPPING; the mode/flight radial actions and the
+        // flight toggle do not, so they are counted separately rather than as a fixed number that
+        // silently drifts whenever a binding is added or the technique slot count changes.
+        int emulating = BY_MAPPING.values().stream().mapToInt(List::size).sum();
+        int standalone = 0;
+        for (InputBindingSupplier supplier : new InputBindingSupplier[]{
+                flyToggleAction, normalModeAction, bt3ModeAction, flightModeAction}) {
+            if (supplier != null) standalone++;
+        }
+        LOGGER.info("[XenoPixels] Registered {} gamepad bindings with Controlify.",
+                emulating + standalone);
+    }
+
+    /**
+     * A binding that presses {@code mapping} only while {@code layer} is the active one, and only
+     * while {@code route}'s direct input is switched on.
+     *
+     * <p>A move that has moved to the radial menu or a DragonMineZ slot keeps its chord here; the
+     * switch decides whether the chord still acts, so turning the route back on restores it
+     * without the binding having to be re-registered.
+     */
+    private static PadBind layered(ControlifyBindApi api, String name, KeyMapping mapping,
+                                   ResourceLocation input, PadChords.Layer layer,
+                                   Bt3DirectBind route) {
+        PadBind padBind = bind(api, name, mapping, input,
+                controller -> bt3Mode() && route.enabled()
+                        && PadChords.allows(layer, chargeHeld(controller), lockHeld(controller),
+                                descendHeld(controller)));
+        if (padBind != null && layer != PadChords.Layer.BASE) {
+            CHORD_FACES.add(padBind);
+        }
+        return padBind;
     }
 
     /** A binding that presses {@code mapping} only while {@code layer} is the active one. */
@@ -226,7 +322,8 @@ public final class XenoPadBinds {
                                    ResourceLocation input, PadChords.Layer layer) {
         PadBind padBind = bind(api, name, mapping, input,
                 controller -> bt3Mode()
-                        && PadChords.allows(layer, chargeHeld(controller), lockHeld(controller)));
+                        && PadChords.allows(layer, chargeHeld(controller), lockHeld(controller),
+                                descendHeld(controller)));
         if (padBind != null && layer != PadChords.Layer.BASE) {
             CHORD_FACES.add(padBind);
         }
@@ -277,21 +374,35 @@ public final class XenoPadBinds {
     }
 
     private static void techniqueSlot(ControlifyBindApi api, int index, KeyMapping mapping) {
+        radialBinding(api, "technique_slot_" + (index + 1), mapping,
+                new TechniqueSlotIcon(index + 1));
+    }
+
+    /**
+     * A binding that ships unbound and offers itself to Controlify's radial menu.
+     *
+     * <p>The pad has roughly sixteen inputs and this mod has forty bindings, so most actions can
+     * never own a button. A radial candidate costs no button at all, still shows up in Controlify's
+     * config for anyone who wants to bind it to one, and survives the action list growing.
+     *
+     * <p>Registered like every other binding otherwise: it emulates the same {@link KeyMapping} the
+     * keyboard uses, so there is no second implementation of the action, and it lands in
+     * {@link #BY_MAPPING} so {@link #held} answers for it too.
+     */
+    private static void radialBinding(ControlifyBindApi api, String name, KeyMapping mapping,
+                                      RadialIcon icon) {
         if (mapping == null) return;
-        String name = "technique_slot_" + (index + 1);
-        ResourceLocation icon = ResourceLocation.fromNamespaceAndPath(XenoPixelsMod.MOD_ID, name);
-        api.registerRadialIcon(icon, new TechniqueSlotIcon(index + 1));
+        ResourceLocation iconId = ResourceLocation.fromNamespaceAndPath(XenoPixelsMod.MOD_ID, name);
+        api.registerRadialIcon(iconId, icon);
         InputBindingSupplier supplier = api.registerBinding(builder -> builder
                 .id(XenoPixelsMod.MOD_ID, name)
                 .name(Component.translatable(mapping.getName()))
                 .description(Component.translatable("key.xenopixelsmod.pad.desc",
                         Component.translatable(mapping.getName())))
                 .category(Component.translatable("key.categories.xenopixelsmod"))
-                // Unbound by default: eight moves cannot each own a button, which is the whole
-                // reason they are radial candidates instead.
                 .defaultInput(EmptyInput.INSTANCE)
                 .allowedContexts(BindContext.IN_GAME)
-                .radialCandidate(icon)
+                .radialCandidate(iconId)
                 .addKeyCorrelation(mapping)
                 .keyEmulation(mapping, controller -> bt3Mode()));
         BY_MAPPING.computeIfAbsent(mapping, k -> new ArrayList<>())
@@ -315,12 +426,20 @@ public final class XenoPadBinds {
         }
         if (justPressed(flightModeAction, controller)) toggleFlightMode(mc);
 
-        // Direct BT3 input handling using Bt3ControllerInput
-        // Flight toggle: edge-triggered on RB
-        if (!localFlyActive() && Bt3ControllerInput.isButtonJustPressed(GamepadInputs.RIGHT_SHOULDER_BUTTON)) {
-            KeyBinds.FLY_KEY.setDown(true);
-        } else {
-            KeyBinds.FLY_KEY.setDown(false);
+        // Flight toggle, edge-triggered on the fly_toggle binding so a player who rebinds it in
+        // Controlify's UI is obeyed.
+        //
+        // This calls DragonMineZ directly rather than pressing FLY_KEY. DMZ reads that mapping in
+        // FlySkillEvent.onKeyPress(InputEvent.Key) through consumeClick(), and InputEvent.Key is
+        // only fired by the real keyboard callback, so no amount of writing to the mapping from
+        // here can reach it. toggleFlightFromMenu is DMZ's own entry point for a toggle that did
+        // not come from a key press, and it resolves the local player itself.
+        //
+        // Nothing writes to FLY_KEY any more either: this package's contract is that the pad adds
+        // an input source and never suppresses the keyboard, and the old per-tick setDown(false)
+        // broke that.
+        if (!localFlyActive() && justPressed(flyToggleAction, controller)) {
+            FlySkillEvent.toggleFlightFromMenu();
         }
 
         // Vanish gesture uses left stick roll and guard state
@@ -380,15 +499,17 @@ public final class XenoPadBinds {
      */
     public static boolean held(KeyMapping mapping) {
         if (!bt3Mode()) return false;
-        // For BT3 mode, delegate to direct controller state if the mapping corresponds to a known BT3 action
-        // Otherwise fall back to pad bind emulation (for compatibility)
-        // This is a simplified mapping; we can expand as needed.
-        if (mapping == Bt3CombatClient.CHARGE_FIST) return Bt3ControllerInput.meleePressed();
-        if (mapping == Bt3CombatClient.DRAGON_DASH) return Bt3ControllerInput.dashPressed();
-        if (mapping == Bt3CombatClient.GUARD) return Bt3ControllerInput.guardPressed();
-        if (mapping == KeyBinds.KI_CHARGE) return Bt3ControllerInput.chargeHeld();
-        if (mapping == Bt3CombatClient.LOCK_NEXT) return Bt3ControllerInput.lockHeld();
-        // Fallback to pad bind emulation for other mappings
+        if (XenoClientConfig.padRawPolling) {
+            // Reads the physical button and nothing else: no chord gate, no remapping. Holding the
+            // left trigger and pressing X therefore reports a plain melee press at the same time
+            // as the Ultimate it really meant, which is the failure the gated path below exists to
+            // prevent. Kept switchable so the two can be compared in play.
+            if (mapping == Bt3CombatClient.CHARGE_FIST) return Bt3ControllerInput.meleePressed();
+            if (mapping == Bt3CombatClient.DRAGON_DASH) return Bt3ControllerInput.dashPressed();
+            if (mapping == Bt3CombatClient.GUARD) return Bt3ControllerInput.guardPressed();
+            if (mapping == KeyBinds.KI_CHARGE) return Bt3ControllerInput.chargeHeld();
+            if (mapping == Bt3CombatClient.LOCK_NEXT) return Bt3ControllerInput.lockHeld();
+        }
         List<PadBind> binds = BY_MAPPING.get(mapping);
         if (binds == null) return false;
         ControllerEntity controller = current();
@@ -487,6 +608,18 @@ public final class XenoPadBinds {
         return XenoClientConfig.padEnabled && XenoClientConfig.padMode == PadMode.BT3;
     }
 
+    /**
+     * Whether the stick should be pressing the vanilla movement keys for DragonMineZ flight.
+     *
+     * <p>Flight only, so Controlify's own analogue ground movement is left alone. This stays on
+     * even under {@code padAnalogueFlight}: DMZ builds its flight direction from these keys as
+     * {@code isDown() ? 1 : 0}, so the keys are what supply the direction either way, and the
+     * analogue option only scales the speed that comes out.
+     */
+    private static boolean flightKeysEmulated() {
+        return bt3Mode() && localFlyActive();
+    }
+
     private static boolean localFlyActive() {
         Minecraft mc = Minecraft.getInstance();
         return mc.player != null && DmzClientStats.read(mc.player).flyActive;
@@ -498,6 +631,10 @@ public final class XenoPadBinds {
 
     private static boolean lockHeld(ControllerEntity controller) {
         return lockModifier != null && lockModifier.pressed(controller);
+    }
+
+    private static boolean descendHeld(ControllerEntity controller) {
+        return descendBind != null && descendBind.pressed(controller);
     }
 
     private static boolean anyChordFaceDown(ControllerEntity controller) {

@@ -3,6 +3,7 @@ package net.bullettrain.xenopixelsmod.compat.npc;
 import com.dragonminez.common.config.ConfigManager;
 import com.dragonminez.common.init.MainDamageTypes;
 import net.bullettrain.xenopixelsmod.XenoPixelsMod;
+import net.bullettrain.xenopixelsmod.config.XenoServerConfig;
 import net.minecraft.world.entity.LivingEntity;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
@@ -71,6 +72,31 @@ public final class NpcMeleeDamage {
      * native melee attempt. Called from the CustomNPCs attack path after its meleeAttack script
      * event and cancellation check, but before it invokes {@code hurt} on the target.
      */
+    /**
+     * Whether this NPC's attack is animated by us rather than by the vanilla arm swing.
+     *
+     * <p>The NPC mods' melee goal swings and then calls {@code doHurtTarget}, so without this the
+     * vanilla swing plays over the top of whatever clip we start a moment later -- a DragonMineZ
+     * punch on a Full-appearance NPC fighting a humanoid arm swing, which reads as the limbs
+     * snapping. Asked from the swing itself, so the two never run together.
+     *
+     * <p>Deliberately cheap in the common case: almost every {@code swing} in a game is a player or
+     * an ordinary mob, and those fail the first test.
+     */
+    public static boolean playsOwnAttackAnimation(LivingEntity attacker) {
+        if (attacker == null || !NpcTypes.isNpc(attacker) || !NpcCombatProfile.hasProfile(attacker)) {
+            return false;
+        }
+        MeleeAnimation selected = MELEE_ANIMATIONS.get(attacker.getUUID());
+        if (selected != null) {
+            return selected.kind() == AnimationKind.DMZ
+                    ? NpcDmzAnim.canAnimate(attacker)
+                    : NpcGeckoAnim.canAnimate(attacker);
+        }
+        // No configured clip: the built-in punch only plays on the Full DragonMineZ path.
+        return NpcDmzAnim.canAnimate(attacker);
+    }
+
     public static void onMeleeAttempt(LivingEntity attacker) {
         if (attacker == null || attacker.level().isClientSide
                 || !attacker.isAlive() || !NpcCombatProfile.hasProfile(attacker)) {
@@ -86,6 +112,10 @@ public final class NpcMeleeDamage {
             }
         }
         if (!NpcDmzAnim.canAnimate(attacker)) {
+            // No swing of our own here. The NPC mods' melee goal already calls swing() immediately
+            // before doHurtTarget, so an NPC with no clip of ours still animates -- and adding a
+            // second swing in the same tick restarted the arm mid-stroke, which is precisely the
+            // snapping this was meant to cure.
             NpcGeckoAnim.playAttack(attacker);
             return;
         }
@@ -106,7 +136,8 @@ public final class NpcMeleeDamage {
                     * ConfigManager.getCombatConfig().getStaminaConsumptionRatio()));
             float damage = NpcResources.spendStamina(attacker, profile, staminaCost)
                     ? profile.meleeDamage() : 1.0f;
-            float residual = Math.max(0f, event.getOriginalDamage() - 1.0f);
+            float residual = XenoServerConfig.npcDmzStatsAuthoritative
+                    ? 0.0f : Math.max(0f, event.getOriginalDamage() - 1.0f);
             event.setNewDamage(damage + residual);
         }
 

@@ -58,19 +58,16 @@ public class XenoPixelsMod {
             // CustomNPCs copies ScriptContainer.Data into every new script executor.
             // Install the bridge only when the optional mod is present so a dedicated
             // server without CustomNPCs keeps the same class-loading surface.
-            try {
-                if (net.neoforged.fml.ModList.get().isLoaded("customnpcs")) {
-                    Class.forName("net.bullettrain.xenopixelsmod.compat.npc.NpcXenoScriptApi")
-                            .getMethod("install").invoke(null);
-                    LOGGER.info("CustomNPCs XenoPixels scripting API installed");
-                }
-            } catch (Throwable t) {
-                LOGGER.warn("CustomNPCs XenoPixels scripting API unavailable: {}", t.toString());
-            }
+            // My NPCs is CustomNPCs with its package renamed, so each ships its own ScriptContainer
+            // and needs its own bridge. Exactly one is installed: they are the same mod, and having
+            // both present is a misconfiguration rather than a supported setup.
+            installScriptApi("mynpcs", "compat.npc.mynpcs.NpcXenoScriptApi", "My NPCs");
+            installScriptApi("customnpcs", "compat.npc.NpcXenoScriptApi", "CustomNPCs");
             if (net.bullettrain.xenopixelsmod.config.XenoServerConfig.dmzContentBootstrap) {
                 net.bullettrain.xenopixelsmod.dmz.DmzContentBootstrap.installBundledContent();
             }
             net.bullettrain.xenopixelsmod.combat.technique.XenoRushTechniques.register();
+            net.bullettrain.xenopixelsmod.combat.technique.XenoSlotTechniques.register();
             // Sable thruster + moving-sub-level ballistic controls
             try {
                 net.bullettrain.xenopixelsmod.vs.XenoThrusterControl.ensureRegistered();
@@ -103,6 +100,23 @@ public class XenoPixelsMod {
     }
 
     // You can use SubscribeEvent and let the Event Bus discover methods to call
+    /**
+     * Installs the XenoPixels scripting API into an NPC mod, if that mod is present.
+     *
+     * <p>Reflective on purpose: naming the bridge directly would load a class that references the
+     * NPC mod's own types, which is exactly what must not happen on a server running neither.
+     */
+    private static void installScriptApi(String modId, String bridge, String label) {
+        try {
+            if (!net.neoforged.fml.ModList.get().isLoaded(modId)) return;
+            Class.forName("net.bullettrain.xenopixelsmod." + bridge)
+                    .getMethod("install").invoke(null);
+            LOGGER.info("{} XenoPixels scripting API installed", label);
+        } catch (Throwable t) {
+            LOGGER.warn("{} XenoPixels scripting API unavailable: {}", label, t.toString());
+        }
+    }
+
     @SubscribeEvent
     public void onServerStarting(ServerStartingEvent event) {
 
@@ -119,6 +133,9 @@ public class XenoPixelsMod {
                 net.bullettrain.xenopixelsmod.client.config.XenoHotbarConfig.load();
                 net.bullettrain.xenopixelsmod.client.config.XenoCooldownHudConfig.load();
                 net.bullettrain.xenopixelsmod.client.config.XenoPartyHudConfig.load();
+                net.bullettrain.xenopixelsmod.client.config.XenoAuraConfig.load();
+                net.bullettrain.xenopixelsmod.client.config.XenoDmzScreenConfig.load();
+                net.bullettrain.xenopixelsmod.client.config.XenoDmzNeonConfig.load();
                 // Wire GUIs without loading client classes on dedicated server
                 net.bullettrain.xenopixelsmod.client.ClientScreens.openTargetTool = () ->
                         net.minecraft.client.Minecraft.getInstance().setScreen(

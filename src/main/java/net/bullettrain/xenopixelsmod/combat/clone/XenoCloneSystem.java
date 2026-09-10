@@ -278,6 +278,24 @@ public final class XenoCloneSystem {
         return placed;
     }
 
+    /**
+     * The Zanzoken images currently standing for this fighter, or an empty list.
+     *
+     * <p>Separate from {@link #clonesOf}: that is the Shi Shin No Ken split, bodies that fight.
+     * These are the ring, bodies that only stand there and mislead, and the confusion the technique
+     * applies to AI has to aim at these and not at the split.
+     */
+    public static List<XenoCloneEntity> ringOf(UUID ownerId) {
+        List<XenoCloneEntity> ring = RINGS.get(ownerId);
+        if (ring == null) return List.of();
+        ring.removeIf(clone -> !clone.isAlive() || clone.isRemoved());
+        if (ring.isEmpty()) {
+            RINGS.remove(ownerId);
+            return List.of();
+        }
+        return List.copyOf(ring);
+    }
+
     /** Yaw that points from a ring slot at whoever is standing in the middle of it. */
     public static float ringFacing(Entity target, double x, double z) {
         return (float) (Math.toDegrees(Math.atan2(target.getZ() - z, target.getX() - x)) - 90.0);
@@ -295,6 +313,39 @@ public final class XenoCloneSystem {
         for (XenoCloneEntity clone : ring) {
             if (clone.isAlive()) clone.discard();
         }
+        // The disguise ends with the bodies. Leaving the mark standing kept the fighter
+        // untargetable after they had already been found.
+        net.bullettrain.xenopixelsmod.combat.Bt3CombatEvents.clearAfterimages(ownerId);
+    }
+
+    /**
+     * Stops anything but a player destroying a standing Zanzoken image.
+     *
+     * <p>The images exist to be swung at. Letting a mob delete one per hit -- and, since
+     * {@code ZanzokenConfusion} now points every nearby attacker at an image, that is the first
+     * thing that happens -- ended a ten-second disguise in a tick.
+     *
+     * @see net.bullettrain.xenopixelsmod.combat.ZanzokenRing
+     */
+    @SubscribeEvent(priority = net.neoforged.bus.api.EventPriority.HIGHEST)
+    public static void protectRingImages(
+            net.neoforged.neoforge.event.entity.living.LivingIncomingDamageEvent event) {
+        if (!(event.getEntity() instanceof XenoCloneEntity image)) return;
+        if (image.level().isClientSide()) return;
+        List<XenoCloneEntity> ring = RINGS.get(image.ownerUuid());
+        if (ring == null || !ring.contains(image)) return;
+
+        boolean byPlayer = event.getSource().getEntity() instanceof Player
+                || event.getSource().getDirectEntity() instanceof Player;
+        if (!net.bullettrain.xenopixelsmod.combat.ZanzokenRing.canDestroyImage(byPlayer)) {
+            // The swing still happened and the attacker is still committed to this body; it simply
+            // does not remove it. Nothing about the attacker's state is touched.
+            event.setCanceled(true);
+            return;
+        }
+        // A player has guessed. Recorded here rather than at the removal, which is the only point
+        // that still knows what dealt the damage.
+        image.markRevealedByPlayer();
     }
 
     /** Death and all other removals forfeit the body's remaining health. */
@@ -302,7 +353,17 @@ public final class XenoCloneSystem {
         if (clone == null || clone.level().isClientSide()) return;
         List<XenoCloneEntity> ring = RINGS.get(clone.ownerUuid());
         if (ring != null && ring.remove(clone)) {
-            disperseRing(clone.ownerUuid());
+            // One image lost is not the trick resolved. The ring ends when a player has picked a
+            // body -- they have committed and guessed -- or when nothing is left standing.
+            if (net.bullettrain.xenopixelsmod.combat.ZanzokenRing.disperseWholeRing(
+                    clone.revealedByPlayer(), ring.size())) {
+                disperseRing(clone.ownerUuid());
+            } else {
+                // Whoever was drawn onto this body is moved to another one rather than being handed
+                // back the real fighter, so losing an image degrades the disguise instead of ending
+                // it.
+                net.bullettrain.xenopixelsmod.combat.ZanzokenConfusion.rehome(clone, ring);
+            }
         }
         CloneSplitState<XenoCloneEntity> state = SPLIT.get(clone.ownerUuid());
         if (state != null) {

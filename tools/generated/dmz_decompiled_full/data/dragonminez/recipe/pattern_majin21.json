@@ -1,0 +1,31 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "group": "dragonminez",
+  "key": {
+    "#": {
+      "item": "dragonminez:blank_pattern_super"
+    },
+    "B": {
+      "item": "minecraft:black_dye"
+    },
+    "P": {
+      "item": "minecraft:pink_dye"
+    },
+    "R": {
+      "item": "minecraft:red_dye"
+    },
+    "W": {
+      "item": "minecraft:white_dye"
+    }
+  },
+  "pattern": [
+    "P#P",
+    "RWR",
+    "BPB"
+  ],
+  "result": {
+    "count": 1,
+    "id": "dragonminez:pattern_majin21"
+  }
+}

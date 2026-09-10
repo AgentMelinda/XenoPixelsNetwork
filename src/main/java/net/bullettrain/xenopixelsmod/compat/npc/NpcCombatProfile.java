@@ -28,8 +28,10 @@ import java.util.Locale;
 public final class NpcCombatProfile {
     public static final String NBT_KEY = "xenopixels:npc_combat_profile";
     private static final String TAG_SCHEMA = "Schema";
-    private static final int CURRENT_SCHEMA = 9;
+    private static final int CURRENT_SCHEMA = 11;
     private static final String TAG_AUTHORITATIVE = "Authoritative";
+    private static final String TAG_KNOCKABLE = "Knockable";
+    private static final String TAG_PUNCHABLE = "Punchable";
     private static final String TAG_DMZ_SNAPSHOT = "DmzStatSnapshot";
     /** AuraColorHex and the native aura-scale migration were completed in schema 4. */
     private static final int AURA_SCHEMA = 4;
@@ -61,6 +63,7 @@ public final class NpcCombatProfile {
     private static final String TAG_HAIR_CODE = "HairCode";
     private static final String TAG_HAIR_CODE_CHUNKS = "HairCodeChunks";
     private static final String TAG_HAIR_COLOR = "HairColor";
+    private static final String TAG_HAIR_STYLE = "HairStyleId";
     private static final String TAG_DMZ_APPEARANCE = "DmzAppearance";
     private static final String TAG_AURA_COLOR_HEX = "AuraColorHex";
     private static final String TAG_SELECTED_FORM_GROUP = "SelectedFormGroup";
@@ -91,6 +94,8 @@ public final class NpcCombatProfile {
 
     /** Existing explicit profiles migrate as authoritative; unprofiled NPCs remain untouched. */
     public boolean authoritative = true;
+    public boolean knockable = true;
+    public boolean punchable = true;
     public String raceId = "human";
     public int strength;
     public int strikePower;
@@ -177,6 +182,15 @@ public final class NpcCombatProfile {
     public boolean hairEnabled;
     public String hairCode = "";
     public String hairColor = "";
+    /**
+     * Which DragonMineZ hair the NPC wears: {@code 0} means the custom {@link #hairCode}, and any
+     * other value is that built-in character-creation preset.
+     *
+     * <p>This is DMZ's own {@code Character.hairId}, and DMZ only consults the custom hair when it
+     * is zero ({@code HairManager.getEffectiveHair}) — so it has to be set deliberately rather than
+     * inherited, or a race config with a non-zero default silently overrides the builder's code.
+     */
+    public int hairStyleId;
     /** Full player-independent DMZ customization state. */
     public NpcDmzAppearance appearance = new NpcDmzAppearance();
 
@@ -267,6 +281,8 @@ public final class NpcCombatProfile {
             return profile;
         }
         profile.authoritative = !tag.contains(TAG_AUTHORITATIVE) || tag.getBoolean(TAG_AUTHORITATIVE);
+        profile.knockable = !tag.contains(TAG_KNOCKABLE) || tag.getBoolean(TAG_KNOCKABLE);
+        profile.punchable = !tag.contains(TAG_PUNCHABLE) || tag.getBoolean(TAG_PUNCHABLE);
         profile.raceId = tag.contains(TAG_RACE) ? tag.getString(TAG_RACE) : profile.raceId;
         profile.strength = tag.getInt(TAG_STRENGTH);
         profile.strikePower = tag.getInt(TAG_STRIKE_POWER);
@@ -363,6 +379,7 @@ public final class NpcCombatProfile {
         profile.hairEnabled = tag.getBoolean(TAG_HAIR_ENABLED);
         profile.hairCode = readHairCode(tag);
         profile.hairColor = canonicalizeHairColor(tag.getString(TAG_HAIR_COLOR));
+        profile.hairStyleId = Math.max(0, tag.getInt(TAG_HAIR_STYLE));
         if (tag.contains(TAG_DMZ_APPEARANCE, Tag.TAG_COMPOUND)) {
             profile.appearance = NpcDmzAppearance.fromTag(tag.getCompound(TAG_DMZ_APPEARANCE));
         }
@@ -409,6 +426,8 @@ public final class NpcCombatProfile {
         CompoundTag tag = new CompoundTag();
         tag.putInt(TAG_SCHEMA, CURRENT_SCHEMA);
         tag.putBoolean(TAG_AUTHORITATIVE, authoritative);
+        tag.putBoolean(TAG_KNOCKABLE, knockable);
+        tag.putBoolean(TAG_PUNCHABLE, punchable);
         tag.putString(TAG_RACE, raceId);
         tag.putInt(TAG_STRENGTH, strength);
         tag.putInt(TAG_STRIKE_POWER, strikePower);
@@ -457,6 +476,7 @@ public final class NpcCombatProfile {
         tag.putBoolean(TAG_HAIR_ENABLED, hairEnabled);
         writeHairCode(tag, hairCode);
         tag.putString(TAG_HAIR_COLOR, canonicalizeHairColor(hairColor));
+        tag.putInt(TAG_HAIR_STYLE, Math.max(0, hairStyleId));
         tag.put(TAG_DMZ_APPEARANCE, (appearance == null ? new NpcDmzAppearance() : appearance).toTag());
         tag.put(TAG_MASTERIES, masteries.save());
         tag.put(TAG_STACK_MASTERIES, stackMasteries.save());
@@ -731,6 +751,9 @@ public final class NpcCombatProfile {
         tag.putBoolean(TAG_BRAIN, combatBrain);
         tag.putBoolean(TAG_KI_WEAPON_ON, kiWeaponOn);
         tag.putString(TAG_KI_WEAPON_TYPE, canonicalKiWeaponType(kiWeaponType));
+        // Live visual state every nearby client needs, so it rides the compact options tag the
+        // appearance packet already carries rather than widening the packet itself.
+        tag.putInt(TAG_HAIR_STYLE, Math.max(0, hairStyleId));
         tag.put(TAG_BASE_AURA_STYLE, baseAuraStyle.save());
         tag.put(TAG_FORM_AURA_STYLES, saveAuraStyles(formAuraStyles));
         tag.put(TAG_STACK_AURA_STYLES, saveAuraStyles(stackAuraStyles));
@@ -765,6 +788,7 @@ public final class NpcCombatProfile {
         }
         kiWeaponOn = tag.getBoolean(TAG_KI_WEAPON_ON);
         kiWeaponType = canonicalKiWeaponType(tag.getString(TAG_KI_WEAPON_TYPE));
+        hairStyleId = Math.max(0, tag.getInt(TAG_HAIR_STYLE));
         if (tag.contains(TAG_BASE_AURA_STYLE, Tag.TAG_COMPOUND)) baseAuraStyle = NpcAuraStyle.load(tag.getCompound(TAG_BASE_AURA_STYLE));
         formAuraStyles.clear();
         stackAuraStyles.clear();

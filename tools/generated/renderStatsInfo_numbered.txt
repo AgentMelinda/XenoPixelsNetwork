@@ -1,0 +1,397 @@
+  410:    private void renderStatsInfo(GuiGraphics graphics, int mouseX, int mouseY) {
+  411:       int centerY = this.getUiHeight() / 2;
+  412:       int titleY = centerY - 88;
+  413:       TextUtil.drawCenteredStringWithBorder(
+  414:          graphics, this.font, this.tr("gui.dragonminez.character_stats.info", new Object[0]).withStyle(style -> style.withBold(true)), 85, titleY, 16499996, 0
+  415:       );
+  416:       int level = this.statsData.getLevel();
+  417:       float tps = this.statsData.getResources().getTrainingPoints();
+  418:       String characterClass = this.statsData.getCharacter().getCharacterClass();
+  419:       String form = this.statsData.getCharacter().getActiveForm();
+  420:       String stackForm = this.statsData.getCharacter().getActiveStackForm();
+  421:       int labelX = 30;
+  422:       int valueX = 70;
+  423:       int startY = centerY - 72;
+  424:       TextUtil.drawStringWithBorder(
+  425:          graphics,
+  426:          this.font,
+  427:          this.tr("gui.dragonminez.character_stats.level", new Object[0]).withStyle(style -> style.withBold(true)),
+  428:          labelX,
+  429:          startY,
+  430:          14155509,
+  431:          0
+  432:       );
+  433:       TextUtil.drawStringWithBorder(graphics, this.font, this.txt(this.numberFormatter.format((long)level)), valueX + 5, startY, 16777215, 0);
+  434:       TextUtil.drawStringWithBorder(
+  435:          graphics,
+  436:          this.font,
+  437:          this.tr("gui.dragonminez.character_stats.tps", new Object[0]).withStyle(style -> style.withBold(true)),
+  438:          labelX,
+  439:          startY + 11,
+  440:          14155509,
+  441:          0
+  442:       );
+  443:       String displayedTps = this.formatTpsDisplay(tps);
+  444:       int tpsX = valueX + 5;
+  445:       int tpsY = startY + 11;
+  446:       TextUtil.drawStringWithBorder(graphics, this.font, this.txt(displayedTps), tpsX, tpsY, 16770451, 0);
+  447:       if (this.shouldUseScientificForTps(tps)) {
+  448:          int tpsWidth = this.font.width(displayedTps);
+  449:          if (mouseX >= tpsX && mouseX <= tpsX + tpsWidth && mouseY >= tpsY && mouseY <= tpsY + 9) {
+  450:             List<Component> tooltip = new ArrayList<>();
+  451:             tooltip.add(this.txt(this.fullTpsFormatter.format((double)tps)).withStyle(ChatFormatting.YELLOW));
+  452:             TextUtil.renderAdvancedTooltip(graphics, this.font, mouseX, mouseY, this.getUiWidth(), this.getUiHeight(), null, tooltip, null, 16776960);
+  453:          }
+  454:       }
+  455: 
+  456:       TextUtil.drawStringWithBorder(
+  457:          graphics,
+  458:          this.font,
+  459:          this.tr("gui.dragonminez.character_stats.form", new Object[0]).withStyle(style -> style.withBold(true)),
+  460:          labelX,
+  461:          startY + 22,
+  462:          14155509,
+  463:          0
+  464:       );
+  465:       boolean isBase = form == null || form.isEmpty() || form.equals("base");
+  466:       boolean hasActiveStack = stackForm != null && !stackForm.isEmpty();
+  467:       String activeStackGroup = this.statsData.getCharacter().getActiveStackFormGroup();
+  468:       Component baseFormComponent = isBase
+  469:          ? this.tr("race.dragonminez.base", new Object[0])
+  470:          : this.tr(
+  471:             "race.dragonminez." + this.statsData.getCharacter().getRaceName() + ".form." + this.statsData.getCharacter().getActiveFormGroup() + "." + form,
+  472:             new Object[0]
+  473:          );
+  474:       Component formComponent;
+  475:       if (!isBase) {
+  476:          if (hasActiveStack) {
+  477:             formComponent = baseFormComponent.copy()
+  478:                .append(" ")
+  479:                .append(this.tr("race.dragonminez.stack.form." + activeStackGroup + "." + stackForm, new Object[0]));
+  480:          } else {
+  481:             formComponent = baseFormComponent;
+  482:          }
+  483:       } else if (hasActiveStack) {
+  484:          formComponent = this.tr("race.dragonminez.stack.group." + activeStackGroup, new Object[0])
+  485:             .append(" ")
+  486:             .append(this.tr("race.dragonminez.stack.form." + activeStackGroup + "." + stackForm, new Object[0]));
+  487:       } else {
+  488:          formComponent = baseFormComponent;
+  489:       }
+  490: 
+  491:       TextUtil.drawStringWithBorder(graphics, this.font, formComponent, valueX + 5, startY + 22, 13101820, 0);
+  492:       if (mouseX >= valueX + 5 && mouseX <= valueX + 85 && mouseY >= startY + 22 && mouseY <= startY + 22 + 9) {
+  493:          Component title = this.tr("gui.dragonminez.character_stats.form.mastery", new Object[0]).withStyle(ChatFormatting.GOLD);
+  494:          List<Component> tooltip = new ArrayList<>();
+  495:          boolean hasTitle = false;
+  496:          if (!isBase) {
+  497:             String currentFormGroup = this.statsData.getCharacter().getActiveFormGroup();
+  498:             if (currentFormGroup != null && !currentFormGroup.isEmpty()) {
+  499:                FormConfig formConfig = ConfigManager.getFormGroup(this.statsData.getCharacter().getRaceName(), currentFormGroup);
+  500:                if (formConfig != null) {
+  501:                   FormConfig.FormData formData = formConfig.getForm(form);
+  502:                   if (formData != null) {
+  503:                      if (!hasTitle) {
+  504:                         tooltip.add(this.tr("gui.dragonminez.character_stats.form.mastery", new Object[0]).withStyle(ChatFormatting.GOLD));
+  505:                         hasTitle = true;
+  506:                      }
+  507: 
+  508:                      double mastery = this.statsData.getCharacter().getFormMasteries().getMastery(currentFormGroup, form);
+  509:                      double maxMastery = formData.getMaxMastery();
+  510:                      tooltip.add(
+  511:                         this.txt(" ")
+  512:                            .append(baseFormComponent.copy().withStyle(ChatFormatting.GRAY))
+  513:                            .append(
+  514:                               this.txt(": " + String.format(Locale.US, "%.2f", mastery) + " / " + String.format(Locale.US, "%.0f", maxMastery))
+  515:                                  .withStyle(ChatFormatting.AQUA)
+  516:                            )
+  517:                      );
+  518:                   }
+  519:                }
+  520:             }
+  521:          }
+  522: 
+  523:          if (stackForm != null && !stackForm.isEmpty()) {
+  524:             String currentStackGroup = this.statsData.getCharacter().getActiveStackFormGroup();
+  525:             FormConfig stackFormConfig = ConfigManager.getStackFormGroup(currentStackGroup);
+  526:             if (currentStackGroup != null && !currentStackGroup.isEmpty() && stackFormConfig != null) {
+  527:                FormConfig.FormData formData = stackFormConfig.getForm(stackForm);
+  528:                if (formData != null) {
+  529:                   if (!hasTitle) {
+  530:                      tooltip.add(this.tr("gui.dragonminez.character_stats.form.mastery", new Object[0]).withStyle(ChatFormatting.GOLD));
+  531:                      hasTitle = true;
+  532:                   }
+  533: 
+  534:                   double mastery = this.statsData.getCharacter().getStackFormMasteries().getMastery(currentStackGroup, stackForm);
+  535:                   double maxMastery = formData.getMaxMastery();
+  536:                   Component stackFormComponent = this.tr("race.dragonminez.stack.group." + currentStackGroup, new Object[0])
+  537:                      .append(" ")
+  538:                      .append(this.tr("race.dragonminez.stack.form." + currentStackGroup + "." + stackForm, new Object[0]));
+  539:                   tooltip.add(
+  540:                      this.txt(" ")
+  541:                         .append(stackFormComponent.copy().withStyle(ChatFormatting.GRAY))
+  542:                         .append(
+  543:                            this.txt(": " + String.format(Locale.US, "%.2f", mastery) + " / " + String.format(Locale.US, "%.0f", maxMastery))
+  544:                               .withStyle(ChatFormatting.AQUA)
+  545:                         )
+  546:                   );
+  547:                }
+  548:             }
+  549:          }
+  550: 
+  551:          if (!tooltip.isEmpty()) {
+  552:             TextUtil.renderAdvancedTooltip(graphics, this.font, mouseX, mouseY, this.getUiWidth(), this.getUiHeight(), title, tooltip, null, 16763904);
+  553:          }
+  554:       }
+  555: 
+  556:       TextUtil.drawStringWithBorder(
+  557:          graphics,
+  558:          this.font,
+  559:          this.tr("gui.dragonminez.character_stats.class", new Object[0]).withStyle(style -> style.withBold(true)),
+  560:          labelX,
+  561:          startY + 33,
+  562:          14155509,
+  563:          0
+  564:       );
+  565:       Component classComponent = this.tr("class.dragonminez." + characterClass, new Object[0]);
+  566:       TextUtil.drawStringWithBorder(graphics, this.font, classComponent, valueX + 5, startY + 33, 16777215, 0);
+  567:       int statsStartY = centerY - 21;
+  568:       TextUtil.drawCenteredStringWithBorder(
+  569:          graphics, this.font, this.tr("gui.dragonminez.character_stats.stats", new Object[0]).withStyle(ChatFormatting.BOLD), 82, statsStartY, 6868223, 0
+  570:       );
+  571:       String[] statNames = new String[]{"str", "skp", "res", "vit", "pwr", "ene"};
+  572:       String[] statNamesUpper = new String[]{"STR", "SKP", "RES", "VIT", "PWR", "ENE"};
+  573:       int[] statValues = new int[]{
+  574:          this.statsData.getStats().getStrength(),
+  575:          this.statsData.getStats().getStrikePower(),
+  576:          this.statsData.getStats().getResistance(),
+  577:          this.statsData.getStats().getVitality(),
+  578:          this.statsData.getStats().getKiPower(),
+  579:          this.statsData.getStats().getEnergy()
+  580:       };
+  581:       int statY = centerY - 3;
+  582: 
+  583:       for (int i = 0; i < statNames.length; i++) {
+  584:          int statLabelX = 42;
+  585:          int yPos = statY + i * 12;
+  586:          double totalMult = this.statsData.getTotalMultiplier(statNamesUpper[i]);
+  587:          int baseValue = statValues[i];
+  588:          double modifiedValue = (double)baseValue * totalMult;
+  589:          Component statComponent = this.tr("gui.dragonminez.character_stats." + statNames[i], new Object[0]).withStyle(style -> style.withBold(true));
+  590:          TextUtil.drawStringWithBorder(graphics, this.font, statComponent, statLabelX, yPos, 14095410, 0);
+  591:          boolean hasMult = Math.abs(totalMult - 1.0) > 0.01;
+  592:          int statColor = hasMult ? 16776960 : 16766891;
+  593:          String statText = hasMult
+  594:             ? this.numberFormatter.format((long)((int)modifiedValue)) + " x" + String.format(Locale.US, "%.1f", totalMult)
+  595:             : this.numberFormatter.format((long)baseValue);
+  596:          TextUtil.drawStringWithBorder(graphics, this.font, this.txt(statText), valueX + 5, yPos, statColor, 0);
+  597:          if (mouseX >= statLabelX && mouseX <= statLabelX + 25 && mouseY >= yPos && mouseY <= yPos + 9) {
+  598:             Component titlex = this.tr("gui.dragonminez.character_stats." + statNames[i], new Object[0]).withStyle(ChatFormatting.BOLD);
+  599:             List<Component> desc = new ArrayList<>();
+  600:             desc.add(this.tr("gui.dragonminez.character_stats." + statNames[i] + ".desc", new Object[0]));
+  601:             List<Component> extras = new ArrayList<>();
+  602:             if (hasMult) {
+  603:                extras.add(
+  604:                   this.tr("gui.dragonminez.character_stats.base_value", new Object[0])
+  605:                      .append(": " + this.numberFormatter.format((long)baseValue))
+  606:                      .withStyle(ChatFormatting.GRAY)
+  607:                );
+  608:                extras.add(
+  609:                   this.tr("gui.dragonminez.character_stats.modified_value", new Object[0])
+  610:                      .append(": " + this.numberFormatter.format((long)((int)modifiedValue)))
+  611:                      .withStyle(ChatFormatting.YELLOW)
+  612:                );
+  613:                if (statNamesUpper[i].equals("RES")) {
+  614:                   double formDef = this.statsData.getFormMultiplier("DEF");
+  615:                   double formStm = this.statsData.getFormMultiplier("STM");
+  616:                   double stackDef = this.statsData.getStackFormMultiplier("DEF");
+  617:                   double stackStm = this.statsData.getStackFormMultiplier("STM");
+  618:                   double effectsDef = this.statsData.getEffectsMultiplier("DEF");
+  619:                   double effectsStm = this.statsData.getEffectsMultiplier("STM");
+  620:                   double secondaryDef = this.statsData.getSecondaryStatEffects().getMultiplier("DEF");
+  621:                   boolean hasForm = Math.abs(formDef - 1.0) > 0.01 || Math.abs(formStm - 1.0) > 0.01;
+  622:                   boolean hasStack = Math.abs(stackDef - 1.0) > 0.01 || Math.abs(stackStm - 1.0) > 0.01;
+  623:                   boolean hasEffects = Math.abs(effectsDef - 1.0) > 0.01 || Math.abs(effectsStm - 1.0) > 0.01;
+  624:                   boolean hasSecondary = Math.abs(secondaryDef - 1.0) > 0.01;
+  625:                   if (hasForm || hasStack || hasEffects || hasSecondary) {
+  626:                      extras.add(this.tr("gui.dragonminez.character_stats.multipliers", new Object[0]).withStyle(ChatFormatting.AQUA));
+  627:                      if (hasForm) {
+  628:                         extras.add(
+  629:                            this.tr("gui.dragonminez.character_stats.form_multiplier", new Object[0])
+  630:                               .append(this.txt(" ("))
+  631:                               .append(this.tr("gui.dragonminez.character_stats.def", new Object[0]))
+  632:                               .append(this.txt(": x" + String.format(Locale.US, "%.2f", formDef) + ", "))
+  633:                               .append(this.tr("gui.dragonminez.character_stats.stm", new Object[0]))
+  634:                               .append(this.txt(": x" + String.format(Locale.US, "%.2f", formStm) + ")"))
+  635:                               .withStyle(ChatFormatting.GOLD)
+  636:                         );
+  637:                      }
+  638: 
+  639:                      if (hasStack) {
+  640:                         extras.add(
+  641:                            this.tr("gui.dragonminez.character_stats.stack_multiplier", new Object[0])
+  642:                               .append(this.txt(" ("))
+  643:                               .append(this.tr("gui.dragonminez.character_stats.def", new Object[0]))
+  644:                               .append(this.txt(": x" + String.format(Locale.US, "%.2f", stackDef) + ", "))
+  645:                               .append(this.tr("gui.dragonminez.character_stats.stm", new Object[0]))
+  646:                               .append(this.txt(": x" + String.format(Locale.US, "%.2f", stackStm) + ")"))
+  647:                               .withStyle(ChatFormatting.RED)
+  648:                         );
+  649:                      }
+  650: 
+  651:                      if (hasEffects) {
+  652:                         extras.add(
+  653:                            this.tr("gui.dragonminez.character_stats.effects_multiplier", new Object[0])
+  654:                               .append(this.txt(" ("))
+  655:                               .append(this.tr("gui.dragonminez.character_stats.def", new Object[0]))
+  656:                               .append(this.txt(": x" + String.format(Locale.US, "%.2f", effectsDef) + ", "))
+  657:                               .append(this.tr("gui.dragonminez.character_stats.stm", new Object[0]))
+  658:                               .append(this.txt(": x" + String.format(Locale.US, "%.2f", effectsStm) + ")"))
+  659:                               .withStyle(ChatFormatting.LIGHT_PURPLE)
+  660:                         );
+  661:                      }
+  662: 
+  663:                      if (hasSecondary) {
+  664:                         extras.add(
+  665:                            this.tr("gui.dragonminez.character_stats.secondary_multiplier", new Object[0])
+  666:                               .append(this.txt(" ("))
+  667:                               .append(this.tr("gui.dragonminez.character_stats.def", new Object[0]))
+  668:                               .append(this.txt(": x" + String.format(Locale.US, "%.2f", secondaryDef) + ")"))
+  669:                               .withStyle(ChatFormatting.DARK_AQUA)
+  670:                         );
+  671:                      }
+  672:                   }
+  673:                } else {
+  674:                   double formMultiplier = this.statsData.getFormMultiplier(statNamesUpper[i]);
+  675:                   double stackMultiplier = this.statsData.getStackFormMultiplier(statNamesUpper[i]);
+  676:                   double effectsMultiplier = this.statsData.getEffectsMultiplier(statNamesUpper[i]);
+  677:                   double secondaryMultiplier = this.statsData.getSecondaryStatEffects().getMultiplier(statNamesUpper[i]);
+  678:                   boolean hasForm = Math.abs(formMultiplier - 1.0) > 0.01;
+  679:                   boolean hasStack = Math.abs(stackMultiplier - 1.0) > 0.01;
+  680:                   boolean hasEffects = Math.abs(effectsMultiplier - 1.0) > 0.01;
+  681:                   boolean hasSecondary = Math.abs(secondaryMultiplier - 1.0) > 0.01;
+  682:                   if (hasForm || hasStack || hasEffects || hasSecondary) {
+  683:                      extras.add(this.tr("gui.dragonminez.character_stats.multipliers", new Object[0]).withStyle(ChatFormatting.AQUA));
+  684:                      if (hasForm) {
+  685:                         extras.add(
+  686:                            this.tr("gui.dragonminez.character_stats.form_multiplier", new Object[0])
+  687:                               .append(" x" + String.format(Locale.US, "%.2f", formMultiplier))
+  688:                               .withStyle(ChatFormatting.GOLD)
+  689:                         );
+  690:                      }
+  691: 
+  692:                      if (hasStack) {
+  693:                         extras.add(
+  694:                            this.tr("gui.dragonminez.character_stats.stack_multiplier", new Object[0])
+  695:                               .append(" x" + String.format(Locale.US, "%.2f", stackMultiplier))
+  696:                               .withStyle(ChatFormatting.RED)
+  697:                         );
+  698:                      }
+  699: 
+  700:                      if (hasEffects) {
+  701:                         extras.add(
+  702:                            this.tr("gui.dragonminez.character_stats.effects_multiplier", new Object[0])
+  703:                               .append(" x" + String.format(Locale.US, "%.2f", effectsMultiplier))
+  704:                               .withStyle(ChatFormatting.LIGHT_PURPLE)
+  705:                         );
+  706:                      }
+  707: 
+  708:                      if (hasSecondary) {
+  709:                         extras.add(
+  710:                            this.tr("gui.dragonminez.character_stats.secondary_multiplier", new Object[0])
+  711:                               .append(" x" + String.format(Locale.US, "%.2f", secondaryMultiplier))
+  712:                               .withStyle(ChatFormatting.DARK_AQUA)
+  713:                         );
+  714:                      }
+  715:                   }
+  716:                }
+  717:             }
+  718: 
+  719:             ArrayList<BonusStats.StatBonus> bonuses = new ArrayList<>(this.statsData.getBonusStats().getBonuses(statNamesUpper[i]));
+  720:             if (statNamesUpper[i].equals("RES")) {
+  721:                List<String> seenNames = new ArrayList<>();
+  722: 
+  723:                for (BonusStats.StatBonus b : bonuses) {
+  724:                   seenNames.add(b.name);
+  725:                }
+  726: 
+  727:                for (BonusStats.StatBonus b : this.statsData.getBonusStats().getBonuses("DEF")) {
+  728:                   if (!seenNames.contains(b.name)) {
+  729:                      bonuses.add(b);
+  730:                      seenNames.add(b.name);
+  731:                   }
+  732:                }
+  733: 
+  734:                for (BonusStats.StatBonus bx : this.statsData.getBonusStats().getBonuses("STM")) {
+  735:                   if (!seenNames.contains(bx.name)) {
+  736:                      bonuses.add(bx);
+  737:                      seenNames.add(bx.name);
+  738:                   }
+  739:                }
+  740:             }
+  741: 
+  742:             bonuses.sort((a, bxx) -> a.name.compareTo(bxx.name));
+  743:             if (!bonuses.isEmpty()) {
+  744:                extras.add(this.tr("gui.dragonminez.character_stats.bonus", new Object[0]).withStyle(ChatFormatting.AQUA));
+  745: 
+  746:                for (BonusStats.StatBonus bonus : bonuses) {
+  747:                   String opDisplay = bonus.operation.equals("*") ? "x" : bonus.operation;
+  748:                   String bonusText = bonus.name.replace("_", " ")
+  749:                      + ": "
+  750:                      + opDisplay
+  751:                      + (bonus.operation.equals("*") ? String.format(Locale.US, "%.2f", bonus.value) : String.format(Locale.US, "%.0f", bonus.value));
+  752:                   extras.add(this.txt("  " + bonusText).withStyle(ChatFormatting.GREEN));
+  753:                }
+  754:             }
+  755: 
+  756:             this.appendDynamicGrowthProgress(extras, statNamesUpper[i], baseValue);
+  757:             TextUtil.renderAdvancedTooltip(graphics, this.font, mouseX, mouseY, this.getUiWidth(), this.getUiHeight(), titlex, desc, extras, 14095410);
+  758:          }
+  759:       }
+  760: 
+  761:       int pendingAP = this.statsData.getPendingAttributePoints();
+  762:       boolean showAP = pendingAP > 0;
+  763:       int bottomY = statY + 76;
+  764:       int bottomValueX = 75;
+  765:       Component bottomLabel = (showAP
+  766:             ? this.tr("gui.dragonminez.character_stats.ap", new Object[0])
+  767:             : this.tr("gui.dragonminez.character_stats.tpc", new Object[0]))
+  768:          .withStyle(style -> style.withBold(true));
+  769:       int labelColor = showAP ? 11758591 : 2883554;
+  770:       TextUtil.drawStringWithBorder(graphics, this.font, bottomLabel, 42, bottomY, labelColor, 0);
+  771:       int maxStats = ConfigManager.getServerConfig().getGameplay().getMaxValue();
+  772:       int tpCost = this.statsData.calculateRecursiveCost(this.tpMultiplier, maxStats);
+  773:       Component bottomValue = showAP ? this.txt(this.numberFormatter.format((long)pendingAP)) : this.txt(this.numberFormatter.format((long)tpCost));
+  774:       int valueColor = showAP ? 16776960 : 16764481;
+  775:       TextUtil.drawStringWithBorder(graphics, this.font, bottomValue, bottomValueX, bottomY, valueColor, 0);
+  776:       TextUtil.drawStringWithBorder(graphics, this.font, this.txt("x" + this.tpMultiplier), bottomValueX, bottomY + 10, 2883554, 0);
+  777:       if (mouseX >= 42 && mouseX <= bottomValueX + this.font.width(bottomValue) && mouseY >= bottomY && mouseY <= bottomY + 9) {
+  778:          List<Component> descx = new ArrayList<>();
+  779:          List<Component> extrasx = new ArrayList<>();
+  780:          Component titlexx;
+  781:          int color;
+  782:          if (showAP) {
+  783:             titlexx = this.tr("gui.dragonminez.character_stats.ap", new Object[0]).withStyle(ChatFormatting.LIGHT_PURPLE);
+  784:             color = 11758591;
+  785:             descx.add(this.tr("gui.dragonminez.character_stats.ap.desc", new Object[0]));
+  786:             extrasx.add(
+  787:                this.tr("gui.dragonminez.character_stats.ap.pending", new Object[]{this.numberFormatter.format((long)pendingAP)})
+  788:                   .withStyle(ChatFormatting.YELLOW)
+  789:             );
+  790:          } else {
+  791:             titlexx = this.tr("gui.dragonminez.character_stats.tpc", new Object[0]).withStyle(ChatFormatting.AQUA);
+  792:             color = 2883554;
+  793:             descx.add(this.tr("gui.dragonminez.character_stats.tpc.desc", new Object[0]));
+  794:             if (hasShiftDown()) {
+  795:                extrasx.add(this.tr("gui.dragonminez.character_stats.tpc.formula1", new Object[0]).withStyle(ChatFormatting.GRAY));
+  796:                extrasx.add(this.tr("gui.dragonminez.character_stats.tpc.formula2", new Object[0]).withStyle(ChatFormatting.GRAY));
+  797:                extrasx.add(this.tr("gui.dragonminez.character_stats.tpc.formula3", new Object[0]).withStyle(ChatFormatting.GRAY));
+  798:             } else {
+  799:                this.appendAdvancedHint(extrasx, true);
+  800:             }
+  801:          }
+  802: 
+  803:          TextUtil.renderAdvancedTooltip(graphics, this.font, mouseX, mouseY, this.getUiWidth(), this.getUiHeight(), titlexx, descx, extrasx, color);
+  804:       }
+  805:    }
+  806: 

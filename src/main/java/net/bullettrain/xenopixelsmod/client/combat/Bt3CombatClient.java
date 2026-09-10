@@ -30,6 +30,7 @@ import net.minecraft.sounds.SoundEvent;
 import net.minecraft.sounds.SoundEvents;
 import net.minecraft.util.Mth;
 import net.bullettrain.xenopixelsmod.combat.RushCamera;
+import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.core.BlockPos;
 import net.minecraft.world.phys.BlockHitResult;
@@ -254,6 +255,9 @@ public final class Bt3CombatClient {
      */
     private static boolean clientComboAirborne;
     private static int comboTicksLeft;
+    /** Optimistic client mirror; the server only arms this after the third hit actually lands. */
+    private static int cinematicFollowupTicks;
+    private static int cinematicFollowupTargetId = -1;
     /** Last mash pose this string; used so head-follow only runs on spin / flying-kick beats. */
     private static net.bullettrain.xenopixelsmod.combat.anim.Bt3AnimationIntent lastMashIntent;
     private static int holdComboCooldown;
@@ -471,14 +475,25 @@ public final class Bt3CombatClient {
             resetConnectionState();
         }
 
+        @SubscribeEvent
+        public static void onClone(net.neoforged.neoforge.client.event.ClientPlayerNetworkEvent.Clone event) {
+            resetConnectionState();
+        }
+
         private static net.minecraft.world.level.Level inputLevel;
 
-        private static void resetConnectionState() {
+        public static void resetConnectionState() {
             inputLevel = null;
             xenoDigging = false;
+            SparkingClientState.clear();
+            SparkingChargeClientState.clear();
+            net.bullettrain.xenopixelsmod.client.combat.aura.XenoAuraScaling.clear();
             stopClientChase(false);
             resetCharge();
             resetRushHold();
+            cinematicFollowupTicks = 0;
+            cinematicFollowupTargetId = -1;
+            net.bullettrain.xenopixelsmod.client.combat.anim.Bt3CinematicRushClient.clear();
             moveCooldown = 0;
             clientGuarding = false;
             clearGuardInputState();
@@ -586,6 +601,9 @@ public final class Bt3CombatClient {
             if (sonicCd > 0) sonicCd--;
             if (ultimateCd > 0) ultimateCd--;
             if (counterFlashTicks > 0) counterFlashTicks--;
+            if (cinematicFollowupTicks > 0 && --cinematicFollowupTicks == 0) {
+                cinematicFollowupTargetId = -1;
+            }
             if (comboTicksLeft > 0) {
                 comboTicksLeft--;
                 if (comboTicksLeft == 0) {
@@ -923,6 +941,36 @@ public final class Bt3CombatClient {
             }
         }
         guardWasDown = want;
+        tickGuardSway(mc);
+    }
+
+    private static boolean swayLeftWasDown;
+    private static boolean swayRightWasDown;
+
+    /**
+     * Sonic Sway comes out of stepping aside while guarding, rather than from a key of its own.
+     *
+     * <p>That keeps it the answer to rush pressure it is meant to be -- you have to already be
+     * blocking to sway -- and it costs the layout no button, which is the whole point of moving
+     * these moves onto the combat state instead of onto chords.
+     *
+     * <p>Edge-triggered on each direction, so holding a strafe while blocking sways once instead of
+     * every tick.
+     */
+    private static void tickGuardSway(Minecraft mc) {
+        if (mc.options == null) {
+            swayLeftWasDown = false;
+            swayRightWasDown = false;
+            return;
+        }
+        boolean left = mc.options.keyLeft.isDown();
+        boolean right = mc.options.keyRight.isDown();
+        if (clientGuarding) {
+            if (left && !swayLeftWasDown) trySonic(mc, -1, true);
+            else if (right && !swayRightWasDown) trySonic(mc, 1, true);
+        }
+        swayLeftWasDown = left;
+        swayRightWasDown = right;
     }
 
     private static void clearGuardInputState() {
@@ -982,6 +1030,10 @@ public final class Bt3CombatClient {
 
     private static boolean hakaiKeyHeld(Minecraft mc) {
         if (mc.player == null || mc.screen != null) return false;
+        // Hakai is a hold rather than a click, so its switch lives here instead of on a
+        // consumeClick. Reporting "not held" also cancels a channel that was already running when
+        // the route was switched off, which tickHakai's release branch handles for free.
+        if (!Bt3DirectBind.HAKAI.enabled()) return false;
         try {
             if (InputConstants.isKeyDown(mc.getWindow().getWindow(), GLFW.GLFW_KEY_J)) return true;
         } catch (Throwable ignored) {
@@ -1096,7 +1148,7 @@ public final class Bt3CombatClient {
         }
 
         // Z-Burst mid-combo
-        while (Z_BURST.consumeClick()) {
+        while (Bt3DirectBind.Z_BURST.consume(Z_BURST)) {
             if (!XenoClientConfig.bt3ZBurstClient || !XenoServerClientState.zBurst()) continue;
             if (clientGuarding || chargeMode != ChargeMode.NONE) continue;
             if (comboStep <= 0 || comboTicksLeft <= 0) {
@@ -1143,15 +1195,15 @@ public final class Bt3CombatClient {
         }
 
         // Sonic sway
-        while (SONIC_SWAY_LEFT.consumeClick()) {
+        while (Bt3DirectBind.SONIC_SWAY_LEFT.consume(SONIC_SWAY_LEFT)) {
             trySonic(mc, -1);
         }
-        while (SONIC_SWAY_RIGHT.consumeClick()) {
+        while (Bt3DirectBind.SONIC_SWAY_RIGHT.consume(SONIC_SWAY_RIGHT)) {
             trySonic(mc, 1);
         }
 
         // Ultimate
-        while (ULTIMATE.consumeClick()) {
+        while (Bt3DirectBind.ULTIMATE.consume(ULTIMATE)) {
             if (!XenoServerClientState.get().bt3UltimateEnabled) continue;
             if (clientGuarding || chargeMode != ChargeMode.NONE || ultimateCd > 0) continue;
             int tid = locked != null ? locked.getId() : -1;
@@ -1167,7 +1219,7 @@ public final class Bt3CombatClient {
         }
 
         // Sparking activate
-        while (SPARKING.consumeClick()) {
+        while (Bt3DirectBind.SPARKING.consume(SPARKING)) {
             if (!XenoServerClientState.get().bt3SparkingEnabled) continue;
             send(new Bt3CombatPacket(
                     Bt3CombatPacket.Action.SPARKING, -1, 0));
@@ -1177,8 +1229,16 @@ public final class Bt3CombatClient {
     }
 
     private static void trySonic(Minecraft mc, int side) {
+        trySonic(mc, side, false);
+    }
+
+    /**
+     * @param fromGuard the sway was asked for by stepping while guarding, which is now the way in
+     *                  rather than a key of its own -- so guarding must not also refuse it
+     */
+    private static void trySonic(Minecraft mc, int side, boolean fromGuard) {
         if (!XenoServerClientState.get().bt3SonicSwayEnabled) return;
-        if (clientGuarding || chargeMode != ChargeMode.NONE) return;
+        if ((clientGuarding && !fromGuard) || chargeMode != ChargeMode.NONE) return;
         if (sonicCd > 0 || moveCooldown > 0) return;
         LocalPlayer p = mc.player;
         if (p == null) return;
@@ -1296,6 +1356,8 @@ public final class Bt3CombatClient {
 
     /** Shared by left-click and hold-R so the HUD combo chip counts both. */
     private static void fireComboBeat(LocalPlayer player) {
+        cinematicFollowupTicks = 0;
+        cinematicFollowupTargetId = -1;
         LivingEntity target = LockOnEvent.getLockedTarget();
         if (target != null && !target.isAlive()) target = null;
         if (target == null) {
@@ -1349,6 +1411,12 @@ public final class Bt3CombatClient {
         int tid = target != null ? target.getId() : -1;
         send(new Bt3CombatPacket(
                 Bt3CombatPacket.Action.COMBO_HIT, tid, comboStep, 0, verticalBias, mashStyle));
+        if (comboStep == net.bullettrain.xenopixelsmod.combat.Bt3RushFollowup.REQUIRED_COMBO_STEP
+                && target != null && XenoServerClientState.cinematicRush()) {
+            cinematicFollowupTicks = net.bullettrain.xenopixelsmod.combat.Bt3RushFollowup.WINDOW_TICKS;
+            cinematicFollowupTargetId = target.getId();
+            player.displayClientMessage(Component.literal("§6X X X §f→ §aA"), true);
+        }
         clientSparkingMeter = Math.min(100f, clientSparkingMeter
                 + Math.max(1f, XenoServerClientState.get().sparkingBuildPerHit * 0.5f));
 
@@ -1443,7 +1511,7 @@ public final class Bt3CombatClient {
     private static void tickZanzoken(Minecraft mc) {
         if (mc.player == null) return;
         boolean pressed = false;
-        while (ZANZOKEN.consumeClick()) {
+        while (Bt3DirectBind.ZANZOKEN.consume(ZANZOKEN)) {
             pressed = true;
         }
         if (!pressed) return;
@@ -1455,7 +1523,7 @@ public final class Bt3CombatClient {
     private static void tickMultiForm(Minecraft mc) {
         if (mc.player == null) return;
         boolean pressed = false;
-        while (MULTIFORM.consumeClick()) {
+        while (Bt3DirectBind.MULTIFORM.consume(MULTIFORM)) {
             pressed = true;
         }
         if (!pressed) return;
@@ -1499,6 +1567,12 @@ public final class Bt3CombatClient {
     private static void tickFistKey(Minecraft mc) {
         LocalPlayer player = mc.player;
         if (player == null) return;
+        if (net.bullettrain.xenopixelsmod.client.combat.anim.Bt3CinematicRushClient.isActive(player)) {
+            fistHoldTicks = 0;
+            holdComboCooldown = 0;
+            fistChargeArmedUntilMs = 0;
+            return;
+        }
         if (!fistsActive(mc) || clientGuarding) {
             fistHoldTicks = 0;
             holdComboCooldown = 0;
@@ -1683,6 +1757,13 @@ public final class Bt3CombatClient {
         LocalPlayer player = mc.player;
         if (player == null) return;
 
+        if (net.bullettrain.xenopixelsmod.client.combat.anim.Bt3CinematicRushClient.isActive(player)) {
+            fistWasDown = leftMouseDown(mc);
+            kickWasDown = heldNow(CHARGE_KICK);
+            dragonWasDown = heldNow(DRAGON_DASH);
+            return;
+        }
+
         if (chargeMode == ChargeMode.FIST && !fistsActive(mc)) {
             resetCharge();
             return;
@@ -1714,7 +1795,20 @@ public final class Bt3CombatClient {
         if (chargeMode == ChargeMode.NONE) {
             LivingEntity locked = LockOnEvent.getLockedTarget();
             boolean hasLock = locked != null && locked.isAlive();
-            if (canDragon && dragonDown && !dragonWasDown) {
+            LivingEntity rushTarget = null;
+            if (cinematicFollowupTicks > 0 && cinematicFollowupTargetId > 0 && mc.level != null) {
+                Entity candidate = mc.level.getEntity(cinematicFollowupTargetId);
+                if (candidate instanceof LivingEntity living && living.isAlive()) rushTarget = living;
+            }
+            if (dragonDown && !dragonWasDown && rushTarget != null && XenoServerClientState.cinematicRush()) {
+                send(new Bt3CombatPacket(Bt3CombatPacket.Action.CINEMATIC_RUSH,
+                        rushTarget.getId(), comboStep));
+                cinematicFollowupTicks = 0;
+                cinematicFollowupTargetId = -1;
+                comboTicksLeft = 0;
+                comboStep = 0;
+                lastMashIntent = null;
+            } else if (canDragon && dragonDown && !dragonWasDown) {
                 if (hasLock) {
                     beginCharge(ChargeMode.DRAGON);
                 } else if (mc.player != null) {
@@ -1807,7 +1901,14 @@ public final class Bt3CombatClient {
         send(new ChargeAnimPacket(ChargeAnimPacket.Phase.CANCEL, style));
         resetCharge();
 
-        if (percent < 20) {
+        // A tap of the kick button is an ordinary kick, not a cancelled charge: BT3 has one kick
+        // that grows heavier the longer its button is held, rather than a separate charged move.
+        // The server clamps anything below 25% up to 25% (Bt3CombatPacket.handleChargeAttack and
+        // handleUntargetedCharge), so a tap lands as the light end of the same attack.
+        //
+        // Fist and dragon dash keep the floor. A tapped fist is already served by the ordinary
+        // combo punch on the same button, and a tapped dragon dash should not fire a dash at all.
+        if (percent < 20 && mode != ChargeMode.KICK) {
             return; // too weak, cancel (pose already stopped)
         }
 
@@ -1844,8 +1945,11 @@ public final class Bt3CombatClient {
         } else if (mode == ChargeMode.KICK) {
             float baseKick = srv.kickChargeStaminaCost > 0 ? srv.kickChargeStaminaCost
                     : (srv.chargeStaminaCost > 0 ? srv.chargeStaminaCost : 18f);
-            needStam = baseKick * (0.45f + 0.55f * progress);
-            if (verticalBias != 0) needStam += srv.kickVerticalExtraStamina * (0.5f + 0.5f * progress);
+            // Mirror the server's floor, or a tapped kick passes this check on a stamina figure
+            // the server then refuses to spend, and the kick silently does nothing.
+            float kickCharge = Math.max(0.25f, progress);
+            needStam = baseKick * (0.45f + 0.55f * kickCharge);
+            if (verticalBias != 0) needStam += srv.kickVerticalExtraStamina * (0.5f + 0.5f * kickCharge);
         } else {
             float baseFist = srv.fistChargeStaminaCost > 0 ? srv.fistChargeStaminaCost
                     : (srv.chargeStaminaCost > 0 ? srv.chargeStaminaCost : 18f);

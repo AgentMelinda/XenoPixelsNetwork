@@ -2,6 +2,7 @@ package net.bullettrain.xenopixelsmod.combat;
 
 import org.junit.jupiter.api.Test;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -52,5 +53,19 @@ class ZanzokenWindowTest {
         assertFalse(ZanzokenWindow.dodges(true, true, false, true));
         // A hit that would not have hurt anyway is not worth the technique.
         assertFalse(ZanzokenWindow.dodges(true, true, true, false));
+    }
+
+    @Test
+    void theImagesStayMarkedForAsLongAsTheRingActuallyStands() {
+        // The shipped configuration: a 40-tick press mark against a 200-tick ring. The mark used to
+        // be the press value alone, so it expired while the ring was still plainly on screen and AI
+        // went back to tracking the real body through it.
+        assertEquals(200, ZanzokenWindow.afterimageTicks(40, 200));
+        // A ring shorter than the press mark does not shorten the disguise either.
+        assertEquals(40, ZanzokenWindow.afterimageTicks(40, 10));
+        // Never zero: a configuration of all zeroes would leave the images marked for no time at
+        // all, which reads in game as the confusion simply not working.
+        assertEquals(1, ZanzokenWindow.afterimageTicks(0, 0));
+        assertEquals(1, ZanzokenWindow.afterimageTicks(-5, -5));
     }
 }

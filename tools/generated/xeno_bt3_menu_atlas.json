@@ -1,0 +1,80 @@
+{
+  "generator": "tools/gen_bt3_menu_atlas.py",
+  "source": "new_menus_redisgn.zip",
+  "atlas": {
+    "width": 512,
+    "height": 256
+  },
+  "sprites": {
+    "BUTTON_CHARACTER": {
+      "x": 393,
+      "y": 0,
+      "width": 22,
+      "height": 22,
+      "source": "04_character_button.png"
+    },
+    "BUTTON_ITEMS": {
+      "x": 416,
+      "y": 0,
+      "width": 22,
+      "height": 22,
+      "source": "07_items_button.png"
+    },
+    "BUTTON_PARTY": {
+      "x": 439,
+      "y": 0,
+      "width": 22,
+      "height": 22,
+      "source": "08_party_button.png"
+    },
+    "BUTTON_QUESTS": {
+      "x": 462,
+      "y": 0,
+      "width": 22,
+      "height": 22,
+      "source": "06_quests_button.png"
+    },
+    "BUTTON_SETTINGS": {
+      "x": 485,
+      "y": 0,
+      "width": 22,
+      "height": 22,
+      "source": "09_settings_button.png"
+    },
+    "BUTTON_SKILLS": {
+      "x": 0,
+      "y": 181,
+      "width": 22,
+      "height": 22,
+      "source": "05_skills_button.png"
+    },
+    "INFO_PANEL": {
+      "x": 0,
+      "y": 0,
+      "width": 120,
+      "height": 180,
+      "source": "01_information_panel.png"
+    },
+    "NAMEPLATE": {
+      "x": 242,
+      "y": 0,
+      "width": 150,
+      "height": 50,
+      "source": "02_top_nameplate.png"
+    },
+    "ORB_ICONS": {
+      "x": 23,
+      "y": 181,
+      "width": 60,
+      "height": 20,
+      "source": "10_top_right_orb_icons.png"
+    },
+    "STATS_PANEL": {
+      "x": 121,
+      "y": 0,
+      "width": 120,
+      "height": 180,
+      "source": "03_statistics_panel.png"
+    }
+  }
+}

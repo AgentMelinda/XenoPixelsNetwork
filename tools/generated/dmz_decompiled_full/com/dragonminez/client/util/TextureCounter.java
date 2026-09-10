@@ -1,0 +1,260 @@
+package com.dragonminez.client.util;
+
+import com.dragonminez.client.render.layer.DMZSkinLayer;
+import com.dragonminez.common.config.ConfigManager;
+import com.dragonminez.common.config.RaceCharacterConfig;
+import java.util.HashMap;
+import java.util.Map;
+import net.minecraft.client.Minecraft;
+import net.minecraft.resources.ResourceLocation;
+import net.minecraft.server.packs.resources.ResourceManager;
+import net.neoforged.api.distmarker.Dist;
+import net.neoforged.api.distmarker.OnlyIn;
+
+@OnlyIn(Dist.CLIENT)
+public class TextureCounter {
+   private static final HashMap<String, ResourceLocation> CACHE = new HashMap<>();
+   private static final Map<String, Integer> BODY_TYPE_CACHE = new HashMap<>();
+   private static final Map<String, Integer> HAIR_TYPE_CACHE = new HashMap<>();
+   private static final Map<String, Integer> EYES_TYPE_CACHE = new HashMap<>();
+   private static final Map<String, Integer> NOSE_TYPE_CACHE = new HashMap<>();
+   private static final Map<String, Integer> MOUTH_TYPE_CACHE = new HashMap<>();
+   private static final Map<String, Integer> TATTOO_TYPE_CACHE = new HashMap<>();
+
+   public static ResourceLocation cache(String namespace, String path) {
+      return CACHE.computeIfAbsent(namespace + ":" + path, ResourceLocation::parse);
+   }
+
+   private static String normalizeRace(String race) {
+      String lower = race.toLowerCase();
+      if (lower.startsWith("frostdemon")) {
+         return "frostdemon";
+      } else if (lower.startsWith("bioandroid")) {
+         return "bioandroid";
+      } else if (lower.startsWith("majin")) {
+         return "majin";
+      } else if (lower.startsWith("namekian")) {
+         return "namekian";
+      } else {
+         return lower.startsWith("saiyan") ? "saiyan" : lower;
+      }
+   }
+
+   public static int getMaxBodyTypes(String race, String gender) {
+      String normalizedRace = normalizeRace(race);
+      String genderNormalized = gender.equals("female") ? "female" : "male";
+      String key = normalizedRace + "_" + genderNormalized;
+      if (BODY_TYPE_CACHE.containsKey(key)) {
+         return BODY_TYPE_CACHE.get(key);
+      } else {
+         int count = countBodyTextures(normalizedRace, genderNormalized);
+         BODY_TYPE_CACHE.put(key, count);
+         return count;
+      }
+   }
+
+   public static int getMaxEyesTypes(String race) {
+      String normalizedRace = normalizeRace(race);
+      if (EYES_TYPE_CACHE.containsKey(normalizedRace)) {
+         return EYES_TYPE_CACHE.get(normalizedRace);
+      } else {
+         int count = countFaceTextures(normalizedRace, "eye");
+         EYES_TYPE_CACHE.put(normalizedRace, count);
+         return count;
+      }
+   }
+
+   public static int getMaxNoseTypes(String race) {
+      String normalizedRace = normalizeRace(race);
+      if (NOSE_TYPE_CACHE.containsKey(normalizedRace)) {
+         return NOSE_TYPE_CACHE.get(normalizedRace);
+      } else {
+         int count = countFaceTextures(normalizedRace, "nose");
+         NOSE_TYPE_CACHE.put(normalizedRace, count);
+         return count;
+      }
+   }
+
+   public static int getMaxMouthTypes(String race) {
+      String normalizedRace = normalizeRace(race);
+      if (MOUTH_TYPE_CACHE.containsKey(normalizedRace)) {
+         return MOUTH_TYPE_CACHE.get(normalizedRace);
+      } else {
+         int count = countFaceTextures(normalizedRace, "mouth");
+         MOUTH_TYPE_CACHE.put(normalizedRace, count);
+         return count;
+      }
+   }
+
+   public static int getMaxTattooTypes(String race) {
+      String normalizedRace = normalizeRace(race);
+      if (TATTOO_TYPE_CACHE.containsKey(normalizedRace)) {
+         return TATTOO_TYPE_CACHE.get(normalizedRace);
+      } else {
+         int count = countTattooTextures();
+         TATTOO_TYPE_CACHE.put(normalizedRace, count);
+         return count;
+      }
+   }
+
+   private static int countBodyTextures(String race, String gender) {
+      ResourceManager resourceManager = Minecraft.getInstance().getResourceManager();
+      int count = 0;
+      boolean isNativeLayered = race.equals("namekian") || race.equals("frostdemon") || race.equals("bioandroid");
+      RaceCharacterConfig config = ConfigManager.getRaceCharacter(race);
+      boolean isHumanoid = race.equals("human") || race.equals("saiyan");
+      boolean isCustomLayered = !isNativeLayered && !isHumanoid && config != null && Boolean.TRUE.equals(config.getIsLayered());
+      if (race.equals("majin")) {
+         for (int i = 0; i <= 100; i++) {
+            String basePath = "textures/entity/races/majin/bodytype_" + gender + "_" + i + "_layer1.png";
+            ResourceLocation location = ResourceLocation.fromNamespaceAndPath("dragonminez", basePath);
+            if (!resourceManager.getResource(location).isPresent()) {
+               break;
+            }
+
+            count++;
+         }
+
+         return count > 0 ? count - 1 : 0;
+      } else if (race.equals("bioandroid")) {
+         for (int i = 0; i <= 100; i++) {
+            String basePath = "textures/entity/races/bioandroid/base_" + i + "_layer1.png";
+            ResourceLocation location = ResourceLocation.fromNamespaceAndPath("dragonminez", basePath);
+            if (!resourceManager.getResource(location).isPresent()) {
+               break;
+            }
+
+            count++;
+         }
+
+         return count > 0 ? count - 1 : -1;
+      } else if (isNativeLayered) {
+         for (int i = 0; i <= 100; i++) {
+            String basePath = "textures/entity/races/" + race + "/bodytype_" + i + "_layer1.png";
+            ResourceLocation location = ResourceLocation.fromNamespaceAndPath("dragonminez", basePath);
+            if (!resourceManager.getResource(location).isPresent()) {
+               break;
+            }
+
+            count++;
+         }
+
+         return count > 0 ? count - 1 : -1;
+      } else if (isCustomLayered) {
+         String model = config.getCustomModel() != null && !config.getCustomModel().isEmpty() ? config.getCustomModel() : race;
+         String genSuffix = Boolean.TRUE.equals(config.getHasGender()) ? (gender.equals("female") ? "_female" : "_male") : "";
+         int startIndex = Boolean.TRUE.equals(config.getUseVanillaSkin()) ? 1 : 0;
+
+         for (int i = startIndex; i <= 100; i++) {
+            String basePath = "textures/entity/races/" + race + "/" + model + genSuffix + "_" + i + "_layer1.png";
+            ResourceLocation location = ResourceLocation.fromNamespaceAndPath("dragonminez", basePath);
+            if (!resourceManager.getResource(location).isPresent()) {
+               break;
+            }
+
+            count++;
+         }
+
+         return count > 0 ? (Boolean.TRUE.equals(config.getUseVanillaSkin()) ? count : count - 1) : -1;
+      } else {
+         boolean usesVanillaSkin = race.equals("human") || race.equals("saiyan") || config != null && Boolean.TRUE.equals(config.getUseVanillaSkin());
+         int startIndex = usesVanillaSkin ? 1 : 0;
+         String basePath = getBasePathForBodyType(race, gender);
+
+         for (int i = startIndex; i <= 100; i++) {
+            ResourceLocation location = ResourceLocation.fromNamespaceAndPath("dragonminez", basePath + i + ".png");
+            if (!resourceManager.getResource(location).isPresent()) {
+               break;
+            }
+
+            count++;
+         }
+
+         if (count > 0) {
+            return usesVanillaSkin ? count : count - 1;
+         } else {
+            return -1;
+         }
+      }
+   }
+
+   private static int countFaceTextures(String race, String type) {
+      ResourceManager resourceManager = Minecraft.getInstance().getResourceManager();
+      int count = 0;
+      boolean isHumanoid = race.equals("human") || race.equals("saiyan");
+      String raceFolder = isHumanoid ? "humansaiyan" : race;
+      String prefix = raceFolder + "_";
+      RaceCharacterConfig config = ConfigManager.getRaceCharacter(race);
+      boolean isCustomLayered = !isHumanoid
+         && config != null
+         && Boolean.TRUE.equals(config.getIsLayered())
+         && !race.equals("namekian")
+         && !race.equals("frostdemon")
+         && !race.equals("bioandroid")
+         && !race.equals("majin");
+      if (isCustomLayered) {
+         raceFolder = race;
+         prefix = race + "_";
+      }
+
+      String basePath = "textures/entity/races/" + raceFolder + "/faces/" + prefix + type + "_";
+      boolean isEyes = type.equals("eye");
+      String suffix = isEyes ? "_0.png" : ".png";
+
+      for (int i = 0; i <= 100; i++) {
+         ResourceLocation location = ResourceLocation.fromNamespaceAndPath("dragonminez", basePath + i + suffix);
+         if (!resourceManager.getResource(location).isPresent()) {
+            break;
+         }
+
+         count++;
+      }
+
+      return count > 0 ? count - 1 : 0;
+   }
+
+   private static int countTattooTextures() {
+      ResourceManager resourceManager = Minecraft.getInstance().getResourceManager();
+      int count = 0;
+      String basePath = "textures/entity/races/tattoos/tattoo_";
+
+      for (int i = 0; i <= 100; i++) {
+         ResourceLocation location = ResourceLocation.fromNamespaceAndPath("dragonminez", basePath + i + ".png");
+         if (!resourceManager.getResource(location).isPresent()) {
+            break;
+         }
+
+         count++;
+      }
+
+      return count > 0 ? count - 1 : 0;
+   }
+
+   private static String getBasePathForBodyType(String race, String gender) {
+      if (race.equals("human") || race.equals("saiyan")) {
+         return "textures/entity/races/humansaiyan/bodytype_" + gender + "_";
+      } else if (race.equals("majin")) {
+         return "textures/entity/races/majin/bodytype_" + gender + "_";
+      } else {
+         RaceCharacterConfig config = ConfigManager.getRaceCharacter(race);
+         if (config != null && !Boolean.TRUE.equals(config.getIsLayered())) {
+            String model = config.getCustomModel() != null && !config.getCustomModel().isEmpty() ? config.getCustomModel() : race;
+            String genSuffix = Boolean.TRUE.equals(config.getHasGender()) ? (gender.equals("female") ? "_female" : "_male") : "";
+            return "textures/entity/races/" + race + "/" + model + genSuffix + "_";
+         } else {
+            return "textures/entity/races/" + race + "/bodytype_";
+         }
+      }
+   }
+
+   public static void clearCache() {
+      CACHE.clear();
+      BODY_TYPE_CACHE.clear();
+      HAIR_TYPE_CACHE.clear();
+      EYES_TYPE_CACHE.clear();
+      NOSE_TYPE_CACHE.clear();
+      MOUTH_TYPE_CACHE.clear();
+      TATTOO_TYPE_CACHE.clear();
+      DMZSkinLayer.clearValidatedTexturesCache();
+   }
+}

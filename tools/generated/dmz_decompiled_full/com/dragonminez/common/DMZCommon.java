@@ -1,0 +1,71 @@
+package com.dragonminez.common;
+
+import com.dragonminez.Env;
+import com.dragonminez.LogUtil;
+import com.dragonminez.common.config.ConfigManager;
+import com.dragonminez.common.events.ModCommonEvents;
+import com.dragonminez.common.init.EntityAttributes;
+import com.dragonminez.common.init.MainAttributes;
+import com.dragonminez.common.init.MainBlockEntities;
+import com.dragonminez.common.init.MainBlocks;
+import com.dragonminez.common.init.MainDamageTypes;
+import com.dragonminez.common.init.MainEffects;
+import com.dragonminez.common.init.MainEnchants;
+import com.dragonminez.common.init.MainEntities;
+import com.dragonminez.common.init.MainFluids;
+import com.dragonminez.common.init.MainGameRules;
+import com.dragonminez.common.init.MainItems;
+import com.dragonminez.common.init.MainLootModifiers;
+import com.dragonminez.common.init.MainMenus;
+import com.dragonminez.common.init.MainParticles;
+import com.dragonminez.common.init.MainRecipes;
+import com.dragonminez.common.init.MainSounds;
+import com.dragonminez.common.init.MainTabs;
+import com.dragonminez.common.init.MainVillagers;
+import com.dragonminez.common.init.armor.ModArmorMaterials;
+import com.dragonminez.common.network.NetworkHandler;
+import com.dragonminez.common.quest.QuestRegistry;
+import com.dragonminez.common.stats.StatsCapability;
+import com.dragonminez.common.wish.WishManager;
+import com.dragonminez.server.world.feature.OverworldFeatures;
+import com.dragonminez.server.world.feature.SacredKaiFeatures;
+import com.dragonminez.server.world.structure.helper.MainStructureTypes;
+import com.dragonminez.server.world.structure.placement.MainStructurePlacements;
+import com.dragonminez.server.world.structure.processor.MainStructureProcessors;
+import net.neoforged.bus.api.IEventBus;
+
+public class DMZCommon {
+   public static void init(IEventBus modEventBus) {
+      LogUtil.info(Env.COMMON, "Initializing DragonMineZ Common...");
+      ConfigManager.initialize();
+      QuestRegistry.init();
+      WishManager.init();
+      NetworkHandler.register();
+      StatsCapability.register(modEventBus);
+      MainAttributes.ATTRIBUTES.register(modEventBus);
+      EntityAttributes.ATTRIBUTES.register(modEventBus);
+      ModArmorMaterials.ARMOR_MATERIALS.register(modEventBus);
+      MainBlocks.register(modEventBus);
+      MainBlockEntities.register(modEventBus);
+      MainItems.register(modEventBus);
+      MainFluids.register(modEventBus);
+      MainSounds.register(modEventBus);
+      MainTabs.register(modEventBus);
+      MainEntities.register(modEventBus);
+      MainVillagers.register(modEventBus);
+      MainParticles.register(modEventBus);
+      MainRecipes.register(modEventBus);
+      MainMenus.register(modEventBus);
+      MainEffects.register(modEventBus);
+      MainEnchants.register(modEventBus);
+      MainLootModifiers.register(modEventBus);
+      MainStructurePlacements.register(modEventBus);
+      MainStructureProcessors.register(modEventBus);
+      MainStructureTypes.register(modEventBus);
+      modEventBus.addListener(ModCommonEvents::commonSetup);
+      OverworldFeatures.register(modEventBus);
+      SacredKaiFeatures.register(modEventBus);
+      MainGameRules.register();
+      MainDamageTypes.register();
+   }
+}

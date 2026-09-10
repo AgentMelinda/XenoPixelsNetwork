@@ -1,0 +1,34 @@
+{
+  "type": "dragonminez:kikono_crafting",
+  "ingredients": [
+    {
+      "item": "dragonminez:gete_ingot"
+    },
+    {
+      "item": "dragonminez:gete_ingot"
+    },
+    [],
+    {
+      "item": "dragonminez:gete_ingot"
+    },
+    {
+      "item": "dragonminez:kikono_stick"
+    },
+    [],
+    [],
+    {
+      "item": "dragonminez:kikono_stick"
+    },
+    []
+  ],
+  "output": {
+    "count": 1,
+    "id": "dragonminez:gete_axe"
+  },
+  "pattern": {
+    "item": "dragonminez:pattern_gete"
+  },
+  "template": {
+    "item": "minecraft:iron_axe"
+  }
+}

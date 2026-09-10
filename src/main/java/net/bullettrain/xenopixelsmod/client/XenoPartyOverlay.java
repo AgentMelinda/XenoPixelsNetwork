@@ -4,11 +4,14 @@ import com.mojang.blaze3d.systems.RenderSystem;
 import net.bullettrain.xenopixelsmod.XenoPixelsMod;
 import net.bullettrain.xenopixelsmod.client.config.XenoClientConfig;
 import net.bullettrain.xenopixelsmod.client.config.XenoPartyHudConfig;
+import net.bullettrain.xenopixelsmod.client.config.XenoPartyHudConfig.Part;
 import net.bullettrain.xenopixelsmod.network.packet.PartySyncPacket;
 import net.minecraft.client.DeltaTracker;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.network.chat.Component;
+import net.minecraft.network.chat.Style;
 import net.minecraft.client.gui.components.PlayerFaceRenderer;
 import net.minecraft.client.player.AbstractClientPlayer;
 import net.minecraft.resources.ResourceLocation;
@@ -119,6 +122,34 @@ public final class XenoPartyOverlay {
         return CACHED;
     }
 
+    private static int px(int part) {
+        return XenoPartyHudConfig.partX(part);
+    }
+
+    private static int py(int part) {
+        return XenoPartyHudConfig.partY(part);
+    }
+
+    /**
+     * One live piece of the card, honouring its editor settings.
+     *
+     * <p>Coordinates are the positions the card art was drawn for; the editor's offset, scale,
+     * colour, bold and font are applied on top, so a card with the override switched off renders
+     * exactly as it always did.
+     */
+    private static void drawPart(GuiGraphics g, Font font, int part, String text, int x, int y) {
+        if (text == null || text.isEmpty()) return;
+        Component line = Component.literal(text).setStyle(Style.EMPTY
+                .withBold(XenoPartyHudConfig.partBold[part])
+                .withFont(XenoPartyHudConfig.partFontLocation(part)));
+        float scale = XenoPartyHudConfig.partScale(part);
+        g.pose().pushPose();
+        g.pose().translate(x + px(part), y + py(part), 0);
+        g.pose().scale(scale, scale, 1f);
+        g.drawString(font, line, 0, 0, XenoPartyHudConfig.partColor(part), true);
+        g.pose().popPose();
+    }
+
     private static void drawCard(GuiGraphics g, Font font, Entry entry) {
         PartySyncPacket.Member member = entry.member;
         Player player = entry.player;
@@ -126,23 +157,26 @@ public final class XenoPartyOverlay {
 
         // Live skin face stays inside the dark circular well; the supplied glow ring remains visible.
         if (player instanceof AbstractClientPlayer clientPlayer) {
-            PlayerFaceRenderer.draw(g, clientPlayer.getSkin().texture(), 54, 66, 142);
+            PlayerFaceRenderer.draw(g, clientPlayer.getSkin().texture(),
+                    54 + px(Part.PORTRAIT), 66 + py(Part.PORTRAIT), 142);
         }
 
         // Cover the baked demo fills, then paint live clipped gauges while retaining their chrome.
-        drawGauge(g, 315, 148, 296, 25, member.hpPercent(), 0xFF16090B,
-                member.hpPercent() < 0.25f ? 0xFFFF3D35 : 0xFFFFA000);
-        drawSegments(g, 306, 187, 302, 24, member.kiPercent(), 0xFF07182A, 0xFF19B9FF, 8);
-        drawSegments(g, 286, 225, 300, 23, member.staminaPercent(), 0xFF071F26, 0xFF18E6D2, 8);
+        drawGauge(g, 315 + px(Part.HP), 148 + py(Part.HP), 296, 25, member.hpPercent(), 0xFF16090B,
+                member.hpPercent() < 0.25f ? 0xFFFF3D35 : XenoPartyHudConfig.partColor(Part.HP));
+        drawSegments(g, 306 + px(Part.KI), 187 + py(Part.KI), 302, 24, member.kiPercent(),
+                0xFF07182A, XenoPartyHudConfig.partColor(Part.KI), 8);
+        drawSegments(g, 286 + px(Part.STM), 225 + py(Part.STM), 300, 23, member.staminaPercent(),
+                0xFF071F26, XenoPartyHudConfig.partColor(Part.STM), 8);
 
-        g.drawString(font, entry.displayName, 270, 88, 0xFFFFFFFF, true);
-        g.drawString(font, entry.levelText, 632, 88, 0xFFFFD54F, true);
-        if (member.leader()) g.drawString(font, "★", 244, 88, 0xFFFFC107, true);
+        drawPart(g, font, Part.NAME, entry.displayName, 270, 88);
+        drawPart(g, font, Part.LEVEL, entry.levelText, 632, 88);
+        if (member.leader()) drawPart(g, font, Part.LEADER, "★", 244, 88);
         if (!entry.formText.isEmpty()) {
-            g.drawString(font, entry.formText, 270, 111, 0xFF80D8FF, true);
+            drawPart(g, font, Part.FORM, entry.formText, 270, 111);
         }
-        if (member.sparkingActive()) g.drawString(font, "SPARKING", 625, 228, 0xFFFFC107, true);
-        else if (member.sparking() >= 99f) g.drawString(font, "READY", 642, 228, 0xFFE5B8FF, true);
+        if (member.sparkingActive()) drawPart(g, font, Part.SPARKING, "SPARKING", 625, 228);
+        else if (member.sparking() >= 99f) drawPart(g, font, Part.SPARKING, "READY", 642, 228);
 
         if (member.hpPercent() < 0.25f) {
             int pulse = 100 + (int) (70 * (0.5 + 0.5 * Math.sin(System.currentTimeMillis() / 130.0)));

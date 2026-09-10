@@ -69,6 +69,10 @@ public final class XenoServerConfigKeys {
                 () -> XenoServerConfig.bt3ComboEnabled,
                 v -> XenoServerConfig.bt3ComboEnabled = v,
                 "combo");
+        bool("bt3CinematicRushEnabled", "X-X-X then Dragon Dash cinematic rush",
+                () -> XenoServerConfig.bt3CinematicRushEnabled,
+                v -> XenoServerConfig.bt3CinematicRushEnabled = v,
+                "cinematicrush", "xxxa");
         bool("bt3VanishEnabled", "Vanish",
                 () -> XenoServerConfig.bt3VanishEnabled,
                 v -> XenoServerConfig.bt3VanishEnabled = v,
@@ -223,6 +227,22 @@ public final class XenoServerConfigKeys {
                 () -> XenoServerConfig.protectDmzMasters,
                 v -> XenoServerConfig.protectDmzMasters = v,
                 "protectmasters", "masters");
+        bool("protectMastersFromCombatKnockback", "Masters immune to Xeno combat knockback",
+                () -> XenoServerConfig.protectMastersFromCombatKnockback,
+                v -> XenoServerConfig.protectMastersFromCombatKnockback = v,
+                "masterkb", "masterknockback");
+        bool("migrateCustomNpcsWorldData", "Migrate CustomNPCs world data to My NPCs on load",
+                () -> XenoServerConfig.migrateCustomNpcsWorldData,
+                v -> XenoServerConfig.migrateCustomNpcsWorldData = v,
+                "npcmigrate", "migratenpcs");
+        bool("npcDmzStatsAuthoritative", "Use DMZ/Xeno stats exclusively for profiled NPC combat",
+                () -> XenoServerConfig.npcDmzStatsAuthoritative,
+                v -> XenoServerConfig.npcDmzStatsAuthoritative = v,
+                "npcauthority");
+        integer("npcScriptTickInterval", "Ticks between CustomNPCs/MyNPCs scripted tick events",
+                () -> XenoServerConfig.npcScriptTickInterval,
+                v -> XenoServerConfig.npcScriptTickInterval = Math.max(1, Math.min(20, v)),
+                "npctickdelay");
         bool("dmzSagaSpawnCompat", "Recover missing DMZ saga quest enemies",
                 () -> XenoServerConfig.dmzSagaSpawnCompat,
                 v -> XenoServerConfig.dmzSagaSpawnCompat = v,
@@ -263,6 +283,14 @@ public final class XenoServerConfigKeys {
                 () -> XenoServerConfig.zanzokenGhostAfterimage,
                 v -> XenoServerConfig.zanzokenGhostAfterimage = v,
                 "zanzokenghost");
+        integer("zanzokenGhostFadeMode", "Zanzoken ghost fade: 1 semi fade, 2 solid fade, 3 constant alpha",
+                () -> XenoServerConfig.zanzokenGhostFadeMode,
+                v -> XenoServerConfig.zanzokenGhostFadeMode = Math.max(1, Math.min(3, v)),
+                "zanzokenfade");
+        flt("zanzokenGhostAlpha", "Zanzoken semi-transparent ghost alpha",
+                () -> XenoServerConfig.zanzokenGhostAlpha,
+                v -> XenoServerConfig.zanzokenGhostAlpha = Math.max(0.05f, Math.min(1.0f, v)),
+                "zanzokenalpha");
         integer("zanzokenRingClones", "Copies in the ring Zanzoken throws around the attacker",
                 () -> XenoServerConfig.zanzokenRingClones,
                 v -> XenoServerConfig.zanzokenRingClones = Math.max(1, Math.min(16, v)),
@@ -299,6 +327,30 @@ public final class XenoServerConfigKeys {
                 () -> XenoServerConfig.bt3SparkingEnabled,
                 v -> XenoServerConfig.bt3SparkingEnabled = v,
                 "sparking");
+        integer("sparkingDurationTicks", "Sparking length in ticks; also sets the ki drain speed",
+                () -> XenoServerConfig.sparkingDurationTicks,
+                v -> XenoServerConfig.sparkingDurationTicks = Math.max(20, Math.min(1200, v)),
+                "sparkingduration", "sparkinglength");
+        integer("sparkingChargeTicks", "Full-ki charge time before Sparking activates",
+                () -> XenoServerConfig.sparkingChargeTicks,
+                v -> XenoServerConfig.sparkingChargeTicks = Math.max(20, Math.min(1200, v)),
+                "sparkingcharge", "sparkingmaxpower");
+        integer("sparkingCooldownTicks", "Ticks after Sparking before it can be used again",
+                () -> XenoServerConfig.sparkingCooldownTicks,
+                v -> XenoServerConfig.sparkingCooldownTicks = Math.max(0, Math.min(12000, v)),
+                "sparkingcooldown", "sparkingcd");
+        integer("sparkingReleaseLimit", "Release ceiling while Sparking, in percent",
+                () -> XenoServerConfig.sparkingReleaseLimit,
+                v -> XenoServerConfig.sparkingReleaseLimit = Math.max(1, Math.min(1000, v)),
+                "sparkingrelease", "sparkinglimit");
+        flt("sparkingMoveSpeedMult", "Movement speed multiplier while Sparking",
+                () -> XenoServerConfig.sparkingMoveSpeedMult,
+                v -> XenoServerConfig.sparkingMoveSpeedMult = Math.max(1f, Math.min(4f, v)),
+                "sparkingmove", "sparkingspeed");
+        flt("sparkingAttackSpeedMult", "Attack speed multiplier while Sparking",
+                () -> XenoServerConfig.sparkingAttackSpeedMult,
+                v -> XenoServerConfig.sparkingAttackSpeedMult = Math.max(1f, Math.min(4f, v)),
+                "sparkingattack", "sparkingatkspeed");
         bool("bt3TransformImpactEnabled", "Transform impact",
                 () -> XenoServerConfig.bt3TransformImpactEnabled,
                 v -> XenoServerConfig.bt3TransformImpactEnabled = v,
@@ -359,6 +411,11 @@ public final class XenoServerConfigKeys {
                 () -> XenoServerConfig.npcSayEnabled,
                 v -> XenoServerConfig.npcSayEnabled = v,
                 "npcsay", "npcsayenabled", "npcsaychat");
+        bool("npcCommandsIgnoreCommandBlockSetting",
+                "Let NPC quest/dialog commands run while command blocks are disabled",
+                () -> XenoServerConfig.npcCommandsIgnoreCommandBlockSetting,
+                v -> XenoServerConfig.npcCommandsIgnoreCommandBlockSetting = v,
+                "npccommands", "npccommandblock");
         integer("dmzStructureY", "Absolute Y for /xenostructure place (0 = terrain)",
                 () -> XenoServerConfig.dmzStructureY,
                 v -> XenoServerConfig.dmzStructureY = v,

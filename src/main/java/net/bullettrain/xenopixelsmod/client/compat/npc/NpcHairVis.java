@@ -20,9 +20,13 @@ public final class NpcHairVis {
     private static final CustomHair[] INVALID = new CustomHair[0];
     private static final Map<String, CustomHair[]> CACHE = new ConcurrentHashMap<>();
 
-    public record Spec(boolean enabled, String code, String color) {}
+    public record Spec(boolean enabled, String code, String color, int styleId) {}
 
     private NpcHairVis() {}
+
+    public static void clearCache() {
+        CACHE.clear();
+    }
 
     public static Spec spec(LivingEntity owner) {
         if (owner == null) {
@@ -30,22 +34,24 @@ public final class NpcHairVis {
         }
         NpcAppearanceClient.State appearance = NpcAppearanceClient.get(owner.getUUID());
         if (appearance != null) {
-            return new Spec(appearance.hairEnabled(), appearance.hairCode(), appearance.hairColor());
+            return new Spec(appearance.hairEnabled(), appearance.hairCode(), appearance.hairColor(),
+                    appearance.hairStyleId());
         }
         if (!NpcCombatProfile.hasProfile(owner)) {
             return null;
         }
         NpcCombatProfile profile = NpcCombatProfile.read(owner);
-        return new Spec(profile.hairEnabled, profile.hairCode, profile.hairColor);
+        return new Spec(profile.hairEnabled, profile.hairCode, profile.hairColor,
+                profile.hairStyleId);
     }
 
     public static void render(PoseStack pose, LivingEntity owner, MultiBufferSource buffers,
                               float partialTick, int packedLight, int packedOverlay) {
         Spec spec = spec(owner);
-        if (spec == null || !spec.enabled() || spec.code() == null || spec.code().isBlank()) {
+        if (spec == null || !spec.enabled()) {
             return;
         }
-        CustomHair[] set = parseSet(spec.code());
+        CustomHair[] set = resolveSet(spec);
         if (set == null || set.length == 0 || set[0] == null) {
             return;
         }
@@ -69,6 +75,42 @@ public final class NpcHairVis {
                 from.rgb(), to.rgb(), from.forceColor(), to.forceColor(),
                 partialTick, packedLight, packedOverlay,
                 1.0f, physics.physicsLod(), physics.chargeProgress());
+    }
+
+    /**
+     * The four hair slots an NPC wears, from whichever source its profile selects.
+     *
+     * <p>The single answer to "what hair does this NPC have", deliberately. The two appearance
+     * modes used to work it out separately — OVERLAY parsed the code here and FULL parsed it again
+     * in {@code NpcFullDmzRenderer} — which is how they came to disagree. Both now ask this.
+     *
+     * <p>{@code styleId} 0 means the custom code; anything else is one of DragonMineZ's
+     * character-creation presets, resolved through {@code HairManager} exactly as DMZ resolves it
+     * for a real player. An id past the end of the preset list falls back to the code rather than
+     * throwing, so a profile written against a larger preset set still renders.
+     *
+     * @return four slots (base, SSJ, SSJ2, SSJ3), or {@code null} when there is nothing to draw
+     */
+    public static CustomHair[] resolveSet(Spec spec) {
+        if (spec == null) return null;
+        int styleId = spec.styleId();
+        if (styleId > 0 && styleId <= HairManager.getPresetCount()) {
+            String color = spec.color() == null ? "" : spec.color();
+            CustomHair base = HairManager.getPresetHair(styleId, color);
+            if (base != null) {
+                return new CustomHair[]{
+                        base,
+                        orElse(HairManager.getPresetHairSSJ(styleId, color), base),
+                        orElse(HairManager.getPresetHairSSJ2(styleId, color), base),
+                        orElse(HairManager.getPresetHairSSJ3(styleId, color), base)
+                };
+            }
+        }
+        return parseSet(spec.code());
+    }
+
+    private static CustomHair orElse(CustomHair value, CustomHair fallback) {
+        return value == null ? fallback : value;
     }
 
     public static CustomHair[] parseSet(String code) {

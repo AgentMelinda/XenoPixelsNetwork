@@ -1,0 +1,27 @@
+package com.dragonminez.server.world.feature;
+
+import net.minecraft.core.registries.Registries;
+import net.minecraft.data.worldgen.BootstrapContext;
+import net.minecraft.resources.ResourceKey;
+import net.minecraft.resources.ResourceLocation;
+import net.minecraft.world.level.levelgen.feature.ConfiguredFeature;
+import net.minecraft.world.level.levelgen.feature.Feature;
+import net.minecraft.world.level.levelgen.feature.configurations.NoneFeatureConfiguration;
+
+public class OverworldConfiguredFeatures {
+   public static final ResourceKey<ConfiguredFeature<?, ?>> STONE_SPIKE_KEY = createKey("stone_spike");
+   public static final ResourceKey<ConfiguredFeature<?, ?>> ROCKY_PEAK_KEY = createKey("rocky_peak");
+   public static final ResourceKey<ConfiguredFeature<?, ?>> KARST_PILLAR_KEY = createKey("karst_pillar");
+   public static final ResourceKey<ConfiguredFeature<?, ?>> ROCKY_CLIFF_KEY = createKey("rocky_cliff");
+
+   public static void bootstrap(BootstrapContext<ConfiguredFeature<?, ?>> context) {
+      context.register(STONE_SPIKE_KEY, new ConfiguredFeature((Feature)OverworldFeatures.STONE_SPIKE.get(), NoneFeatureConfiguration.INSTANCE));
+      context.register(ROCKY_PEAK_KEY, new ConfiguredFeature((Feature)OverworldFeatures.ROCKY_PEAK.get(), NoneFeatureConfiguration.INSTANCE));
+      context.register(KARST_PILLAR_KEY, new ConfiguredFeature((Feature)OverworldFeatures.KARST_PILLAR.get(), NoneFeatureConfiguration.INSTANCE));
+      context.register(ROCKY_CLIFF_KEY, new ConfiguredFeature((Feature)OverworldFeatures.ROCKY_CLIFF.get(), NoneFeatureConfiguration.INSTANCE));
+   }
+
+   private static ResourceKey<ConfiguredFeature<?, ?>> createKey(String name) {
+      return ResourceKey.create(Registries.CONFIGURED_FEATURE, ResourceLocation.fromNamespaceAndPath("dragonminez", name));
+   }
+}

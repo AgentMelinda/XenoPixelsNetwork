@@ -159,7 +159,9 @@ class NpcDmzAppearanceTest {
         NpcCombatProfile current = new NpcCombatProfile();
         current.auraScale = 1.7f;
         CompoundTag encoded = current.toTag();
-        assertEquals(9, encoded.getInt("Schema"));
+        // Tracks NpcCombatProfile.CURRENT_SCHEMA; bump both together when a persisted field is
+        // added. 10 added HairStyleId.
+        assertEquals(11, encoded.getInt("Schema"));
         assertEquals(1.7f, NpcCombatProfile.fromTag(encoded).auraScale, 1.0e-6f);
     }
 

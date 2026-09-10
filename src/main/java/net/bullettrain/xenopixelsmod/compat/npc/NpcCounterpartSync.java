@@ -1,6 +1,7 @@
 package net.bullettrain.xenopixelsmod.compat.npc;
 
 import net.bullettrain.xenopixelsmod.XenoPixelsMod;
+import net.bullettrain.xenopixelsmod.config.XenoServerConfig;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.Tag;
 import net.minecraft.world.entity.Entity;
@@ -15,6 +16,7 @@ public final class NpcCounterpartSync {
             "noppes.npcs.entity.EntityNPCInterface"
     };
     private static final String TAG_LAST_FINGERPRINT = "xenopixels:npc_last_stat_fingerprint";
+    private static final String TAG_NATIVE_BACKUP = "xenopixels:npc_native_stat_backup";
     private static boolean warnedReflectionFailure;
 
     private NpcCounterpartSync() {}
@@ -57,8 +59,11 @@ public final class NpcCounterpartSync {
      */
     public static void apply(Entity entity, NpcCombatProfile profile, boolean force) {
         if (entity == null || entity.level().isClientSide() || profile == null
-                || !profile.authoritative || !NpcCombatProfile.hasProfile(entity)
-                || !isCustomNpc(entity)) {
+                || !NpcCombatProfile.hasProfile(entity) || !isCustomNpc(entity)) {
+            return;
+        }
+        if (!profile.authoritative) {
+            restoreAfterAuthority(entity);
             return;
         }
 
@@ -72,7 +77,8 @@ public final class NpcCounterpartSync {
         NpcAggroBridge.apply(entity, profile);
 
         CompoundTag persistent = entity.getPersistentData();
-        int fingerprint = profile.authorityFingerprint();
+        int fingerprint = 31 * profile.authorityFingerprint()
+                + Boolean.hashCode(XenoServerConfig.npcDmzStatsAuthoritative);
         if (!force && persistent.contains(TAG_LAST_FINGERPRINT, Tag.TAG_INT)
                 && persistent.getInt(TAG_LAST_FINGERPRINT) == fingerprint) {
             return;
@@ -82,13 +88,27 @@ public final class NpcCounterpartSync {
         try {
             Object stats = stats(entity);
             if (stats != null) {
-                // Verified in MyNPC 1.5.0: INPCStats#getMelee() and
-                // INPCMelee#setStrength(int). This keeps the native editor/client counterpart in
-                // step; NpcMeleeDamage remains the sole final DMZ damage authority.
                 Object melee = stats.getClass().getMethod("getMelee").invoke(stats);
-                if (melee != null) {
-                    Method setStrength = melee.getClass().getMethod("setStrength", int.class);
-                    setStrength.invoke(melee, Math.max(1, Math.round(profile.meleeDamage())));
+                if (XenoServerConfig.npcDmzStatsAuthoritative) {
+                    backupNative(persistent, stats, melee);
+                    if (melee != null) {
+                        melee.getClass().getMethod("setStrength", int.class).invoke(melee, 1);
+                        melee.getClass().getMethod("setKnockback", int.class).invoke(melee, 0);
+                    }
+                    stats.getClass().getMethod("setHealthRegen", int.class).invoke(stats, 0);
+                    stats.getClass().getMethod("setCombatRegen", int.class).invoke(stats, 0);
+                    Method setResistance = stats.getClass().getMethod("setResistance", int.class, float.class);
+                    for (int type = 0; type < 4; type++) {
+                        setResistance.invoke(stats, type, 1.0f);
+                    }
+                    Object ranged = stats.getClass().getMethod("getRanged").invoke(stats);
+                    if (ranged != null) {
+                        ranged.getClass().getMethod("setStrength", int.class).invoke(ranged, 0);
+                        ranged.getClass().getMethod("setKnockback", int.class).invoke(ranged, 0);
+                        ranged.getClass().getMethod("setExplodeSize", int.class).invoke(ranged, 0);
+                    }
+                } else {
+                    restoreNative(persistent, stats, melee);
                 }
                 markClientUpdate(entity);
             }
@@ -104,6 +124,21 @@ public final class NpcCounterpartSync {
         NpcFlightBridge.force(entity, profile);
         NpcAggroBridge.forget(entity.getUUID());
         apply(entity, profile, true);
+    }
+
+    private static void restoreAfterAuthority(Entity entity) {
+        CompoundTag persistent = entity.getPersistentData();
+        try {
+            Object stats = stats(entity);
+            if (stats != null) {
+                restoreNative(persistent, stats, stats.getClass().getMethod("getMelee").invoke(stats));
+                markClientUpdate(entity);
+            }
+            NpcVitalitySync.restoreNative(entity);
+            persistent.remove(TAG_LAST_FINGERPRINT);
+        } catch (ReflectiveOperationException | ClassCastException failure) {
+            warnOnce(failure);
+        }
     }
 
     private static Object stats(Entity entity) throws ReflectiveOperationException {
@@ -131,6 +166,52 @@ public final class NpcCounterpartSync {
         } catch (ReflectiveOperationException | NullPointerException ignored) {
             // DataStats setters already mark current MyNPC builds for update.
         }
+    }
+
+    private static void backupNative(CompoundTag persistent, Object stats, Object melee)
+            throws ReflectiveOperationException {
+        if (persistent.contains(TAG_NATIVE_BACKUP, Tag.TAG_COMPOUND)) return;
+        CompoundTag backup = new CompoundTag();
+        backup.putInt("HealthRegen", (Integer) stats.getClass().getMethod("getHealthRegen").invoke(stats));
+        backup.putInt("CombatRegen", (Integer) stats.getClass().getMethod("getCombatRegen").invoke(stats));
+        Method getResistance = stats.getClass().getMethod("getResistance", int.class);
+        for (int type = 0; type < 4; type++) {
+            backup.putFloat("Resistance" + type, (Float) getResistance.invoke(stats, type));
+        }
+        if (melee != null) {
+            backup.putInt("MeleeStrength", (Integer) melee.getClass().getMethod("getStrength").invoke(melee));
+            backup.putInt("MeleeKnockback", (Integer) melee.getClass().getMethod("getKnockback").invoke(melee));
+        }
+        Object ranged = stats.getClass().getMethod("getRanged").invoke(stats);
+        if (ranged != null) {
+            backup.putInt("RangedStrength", (Integer) ranged.getClass().getMethod("getStrength").invoke(ranged));
+            backup.putInt("RangedKnockback", (Integer) ranged.getClass().getMethod("getKnockback").invoke(ranged));
+            backup.putInt("RangedExplosion", (Integer) ranged.getClass().getMethod("getExplodeSize").invoke(ranged));
+        }
+        persistent.put(TAG_NATIVE_BACKUP, backup);
+    }
+
+    private static void restoreNative(CompoundTag persistent, Object stats, Object melee)
+            throws ReflectiveOperationException {
+        if (!persistent.contains(TAG_NATIVE_BACKUP, Tag.TAG_COMPOUND)) return;
+        CompoundTag backup = persistent.getCompound(TAG_NATIVE_BACKUP);
+        stats.getClass().getMethod("setHealthRegen", int.class).invoke(stats, backup.getInt("HealthRegen"));
+        stats.getClass().getMethod("setCombatRegen", int.class).invoke(stats, backup.getInt("CombatRegen"));
+        Method setResistance = stats.getClass().getMethod("setResistance", int.class, float.class);
+        for (int type = 0; type < 4; type++) {
+            setResistance.invoke(stats, type, backup.getFloat("Resistance" + type));
+        }
+        if (melee != null) {
+            melee.getClass().getMethod("setStrength", int.class).invoke(melee, backup.getInt("MeleeStrength"));
+            melee.getClass().getMethod("setKnockback", int.class).invoke(melee, backup.getInt("MeleeKnockback"));
+        }
+        Object ranged = stats.getClass().getMethod("getRanged").invoke(stats);
+        if (ranged != null) {
+            ranged.getClass().getMethod("setStrength", int.class).invoke(ranged, backup.getInt("RangedStrength"));
+            ranged.getClass().getMethod("setKnockback", int.class).invoke(ranged, backup.getInt("RangedKnockback"));
+            ranged.getClass().getMethod("setExplodeSize", int.class).invoke(ranged, backup.getInt("RangedExplosion"));
+        }
+        persistent.remove(TAG_NATIVE_BACKUP);
     }
 
     private static void warnOnce(Exception failure) {

@@ -1,6 +1,7 @@
 package net.bullettrain.xenopixelsmod.command;
 
 import com.mojang.brigadier.CommandDispatcher;
+import com.mojang.brigadier.arguments.BoolArgumentType;
 import com.mojang.brigadier.arguments.DoubleArgumentType;
 import com.mojang.brigadier.arguments.FloatArgumentType;
 import com.mojang.brigadier.arguments.IntegerArgumentType;
@@ -75,8 +76,54 @@ public final class NpcProfileCommands {
         register(event.getDispatcher());
     }
 
+    /**
+     * Converts CustomNPCs clones into real My NPCs clones.
+     *
+     * <p>Pasting a CustomNPCs clone file into the folder already works — the clone controller
+     * converts on read — so this is for making that permanent, and for bulk-importing a whole
+     * CustomNPCs clone folder in one go.
+     */
+    private static int importClones(com.mojang.brigadier.context.CommandContext<CommandSourceStack> context,
+                                    int tab) {
+        var result = net.bullettrain.xenopixelsmod.compat.npc.clone.NpcCloneImport.run(tab);
+        if (result.failed()) {
+            context.getSource().sendFailure(Component.literal("Clone import: " + result.failure()));
+            return 0;
+        }
+        if (result.converted() == 0) {
+            context.getSource().sendSuccess(() -> Component.literal(
+                    "Clone import: nothing to convert (" + result.skipped()
+                            + " file(s) were already My NPCs clones or unreadable)"), true);
+            return 0;
+        }
+        context.getSource().sendSuccess(() -> Component.literal(
+                "Clone import: converted " + result.converted() + " CustomNPCs clone(s) — "
+                        + String.join(", ", result.names())), true);
+        return result.converted();
+    }
+
     private static void register(CommandDispatcher<CommandSourceStack> dispatcher) {
         dispatcher.register(Commands.literal("xenopixels")
+                .then(Commands.literal("migratenpcs")
+                        .requires(XenoPermissions.require(XenoPermissions.NPCPROFILE_SET))
+                        .executes(context -> {
+                            var result = net.bullettrain.xenopixelsmod.compat.npc.clone
+                                    .NpcWorldMigrator.run();
+                            if (result.failed()) {
+                                context.getSource().sendFailure(Component.literal(
+                                        "NPC migration: " + result.summary()));
+                                return 0;
+                            }
+                            context.getSource().sendSuccess(() -> Component.literal(
+                                    "NPC migration: " + result.summary()), true);
+                            return result.copied() + result.converted();
+                        }))
+                .then(Commands.literal("importclones")
+                        .requires(XenoPermissions.require(XenoPermissions.NPCPROFILE_SET))
+                        .executes(context -> importClones(context, -1))
+                        .then(Commands.argument("tab", IntegerArgumentType.integer(0))
+                                .executes(context -> importClones(context,
+                                        IntegerArgumentType.getInteger(context, "tab")))))
                 .then(Commands.literal("npcprofile")
                         .then(Commands.literal("set")
                                 .requires(XenoPermissions.require(XenoPermissions.NPCPROFILE_SET))
@@ -88,6 +135,17 @@ public final class NpcProfileCommands {
                                         .then(Commands.argument("kiPower", IntegerArgumentType.integer(0))
                                         .then(Commands.argument("energy", IntegerArgumentType.integer(0))
                                                 .executes(NpcProfileCommands::setProfile)))))))))
+                        .then(Commands.literal("combat")
+                                .requires(XenoPermissions.require(XenoPermissions.NPCPROFILE_SET))
+                                .then(Commands.literal("punchable")
+                                        .then(Commands.argument("value", BoolArgumentType.bool())
+                                                .executes(ctx -> setCombatFlag(ctx, true,
+                                                        BoolArgumentType.getBool(ctx, "value")))))
+                                .then(Commands.literal("knockable")
+                                        .then(Commands.argument("value", BoolArgumentType.bool())
+                                                .executes(ctx -> setCombatFlag(ctx, false,
+                                                        BoolArgumentType.getBool(ctx, "value")))))
+                                .executes(NpcProfileCommands::dumpCombat))
                         .then(Commands.literal("kiattack")
                                 .requires(XenoPermissions.require(XenoPermissions.NPCPROFILE_KIATTACK))
                                 .then(Commands.argument("blastType", StringArgumentType.word())
@@ -190,6 +248,10 @@ public final class NpcProfileCommands {
                                 .then(Commands.literal("code")
                                         .then(Commands.argument("code", StringArgumentType.greedyString())
                                                 .executes(NpcProfileCommands::setHairCode)))
+                                .then(Commands.literal("style")
+                                        .then(Commands.argument("styleId",
+                                                        com.mojang.brigadier.arguments.IntegerArgumentType.integer(0))
+                                                .executes(NpcProfileCommands::setHairStyle)))
                                 .then(Commands.literal("color")
                                         .then(Commands.literal("clear")
                                                 .executes(ctx -> setHairColor(ctx, "")))
@@ -278,6 +340,56 @@ public final class NpcProfileCommands {
         profile.kiColor = hex.orElse(0);
         profile.write(entity);
         npcCommandReply(ctx.getSource(), "NPC ki attack color set to " + NpcCombatProfile.formatHex(profile.kiColor), true);
+        return 1;
+    }
+
+    /**
+     * Sets {@code punchable} or {@code knockable} on the NPC being looked at, server-side.
+     *
+     * <p>Exists because the editor route is client-driven — the GUI writes the flag into its own
+     * copy of the entity and ships the whole profile back in {@code NpcProfileSavePacket} — and
+     * when a flag does not survive a restart, that chain has several places it could be lost in.
+     * This one writes the server's copy directly, which is the copy that gets saved, so it settles
+     * whether the problem is the editor path or the storage underneath it.
+     */
+    private static int setCombatFlag(CommandContext<CommandSourceStack> ctx, boolean punchable,
+                                     boolean value) {
+        Entity entity = profileEntity(ctx, "npcprofile combat");
+        if (entity == null) {
+            return 0;
+        }
+        NpcCombatProfile profile = NpcCombatProfile.read(entity);
+        if (punchable) {
+            profile.punchable = value;
+        } else {
+            profile.knockable = value;
+        }
+        profile.write(entity);
+        npcCommandReply(ctx.getSource(),
+                "NPC " + (punchable ? "punchable" : "knockable") + " " + value, true);
+        return 1;
+    }
+
+    /**
+     * Reports what is actually stored on this NPC, server-side.
+     *
+     * <p>Deliberately reads the persistent NBT rather than the parsed profile: the question this
+     * answers is "is the tag on the entity the server will save, or not", which a parsed profile
+     * cannot distinguish from a default one — {@code fromTag} defaults both flags to true when they
+     * are absent, so a missing profile and an untouched profile read identically. Run it, restart
+     * the world, and run it again.
+     */
+    private static int dumpCombat(CommandContext<CommandSourceStack> ctx) {
+        Entity entity = profileEntity(ctx, "npcprofile combat");
+        if (entity == null) {
+            return 0;
+        }
+        boolean stored = NpcCombatProfile.hasProfile(entity);
+        NpcCombatProfile profile = NpcCombatProfile.read(entity);
+        npcCommandReply(ctx.getSource(),
+                "NPC combat — profile stored on the server entity: " + stored
+                        + ", punchable " + profile.punchable
+                        + ", knockable " + profile.knockable, false);
         return 1;
     }
 
@@ -593,6 +705,15 @@ public final class NpcProfileCommands {
                 StringArgumentType.getString(ctx, "code")), "DMZ hair code saved");
     }
 
+    private static int setHairStyle(CommandContext<CommandSourceStack> ctx) {
+        Entity entity = profileEntity(ctx, "npcprofile hair style");
+        if (entity == null) return 0;
+        int styleId = com.mojang.brigadier.arguments.IntegerArgumentType.getInteger(ctx, "styleId");
+        return hairResult(ctx, NpcHairBridge.setStyle(entity, styleId),
+                styleId == 0 ? "DMZ hair style cleared (using the hair code)"
+                        : "DMZ hair style " + styleId + " saved");
+    }
+
     private static int setHairColor(CommandContext<CommandSourceStack> ctx, String color) {
         Entity entity = profileEntity(ctx, "npcprofile hair color");
         if (entity == null) return 0;
@@ -604,10 +725,20 @@ public final class NpcProfileCommands {
         Entity entity = profileEntity(ctx, "npcprofile hair");
         if (entity == null) return 0;
         NpcCombatProfile profile = NpcCombatProfile.read(entity);
+        // Also says which source is actually in play and whether DragonMineZ would allow it, so a
+        // "my hair code does nothing" report can be diagnosed without guessing. DMZ only honours a
+        // custom code when the style is 0, and only allows custom hair for some races at all.
+        String source = profile.hairStyleId > 0
+                ? ("built-in style " + profile.hairStyleId + "/" + NpcHairBridge.presetCount())
+                : (profile.hairCode == null || profile.hairCode.isBlank() ? "(none)" : "custom code");
         npcCommandReply(ctx.getSource(), "DMZ hair=" + profile.hairEnabled
+                + ", using=" + source
                 + ", code=" + (profile.hairCode == null || profile.hairCode.isBlank() ? "(empty)" : "set")
                 + ", color=" + (profile.hairColor == null || profile.hairColor.isBlank()
-                ? "encoded hair colors" : profile.hairColor), true);
+                ? "encoded hair colors" : profile.hairColor)
+                + ", race=" + (profile.raceId == null || profile.raceId.isBlank() ? "(unset)" : profile.raceId)
+                + " (DMZ allows custom hair for human/saiyan and majin female; XenoPixels lifts that"
+                + " restriction for NPCs)", true);
         return 1;
     }
 
@@ -622,6 +753,8 @@ public final class NpcProfileCommands {
             case CUSTOM_MODEL_REQUIRED -> "This NPC must use a CNPC Gecko custom model";
             case INVALID_CODE -> "Invalid DMZ hair code/full-set code";
             case INVALID_COLOR -> "Invalid hair color (use #RRGGBB or clear)";
+            case INVALID_STYLE -> "Invalid hair style (0 = custom code, 1.."
+                    + NpcHairBridge.presetCount() + " = built-in style)";
             default -> "DMZ hair update failed";
         };
         npcCommandReply(ctx.getSource(), error, false);

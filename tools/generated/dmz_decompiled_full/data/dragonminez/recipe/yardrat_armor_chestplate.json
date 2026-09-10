@@ -1,0 +1,41 @@
+{
+  "type": "dragonminez:kikono_crafting",
+  "crafting_time": 200,
+  "ingredients": [
+    {
+      "item": "dragonminez:kikono_cloth"
+    },
+    [],
+    {
+      "item": "dragonminez:kikono_cloth"
+    },
+    {
+      "item": "dragonminez:kikono_string"
+    },
+    {
+      "item": "dragonminez:kikono_string"
+    },
+    {
+      "item": "dragonminez:kikono_string"
+    },
+    {
+      "item": "dragonminez:kikono_cloth"
+    },
+    {
+      "item": "dragonminez:kikono_cloth"
+    },
+    {
+      "item": "dragonminez:kikono_cloth"
+    }
+  ],
+  "output": {
+    "count": 1,
+    "id": "dragonminez:yardrat_armor_chestplate"
+  },
+  "pattern": {
+    "item": "dragonminez:pattern_yardrat"
+  },
+  "template": {
+    "item": "minecraft:iron_chestplate"
+  }
+}

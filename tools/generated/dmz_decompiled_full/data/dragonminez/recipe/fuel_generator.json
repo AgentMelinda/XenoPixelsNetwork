@@ -1,0 +1,22 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "group": "dragonminez",
+  "key": {
+    "O": {
+      "item": "minecraft:crying_obsidian"
+    },
+    "T": {
+      "item": "dragonminez:t1_radar_chip"
+    }
+  },
+  "pattern": [
+    "OOO",
+    "OTO",
+    "OOO"
+  ],
+  "result": {
+    "count": 1,
+    "id": "dragonminez:fuel_generator"
+  }
+}

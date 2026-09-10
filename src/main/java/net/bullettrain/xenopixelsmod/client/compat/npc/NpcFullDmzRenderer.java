@@ -328,20 +328,29 @@ public final class NpcFullDmzRenderer {
         return context == null ? null : context.tailColor();
     }
 
+    /**
+     * Whether a bone is a tail, on any race.
+     *
+     * <p>Race-agnostic on purpose. This used to be a list — Cell and Frieza tails by race name,
+     * the Saiyan tail by the single bone name {@code tailenrolled} — and the result was that any
+     * race not on the list, or any tail bone named slightly differently, silently ignored the
+     * NPC's tail colour. Matching the bone rather than the race removes that whole class of bug
+     * instead of adding one more entry to a list.
+     *
+     * <p>Deliberately exact rather than a prefix test: {@code tailcoat} is not a tail.
+     */
+    public static boolean isTailBone(String boneName) {
+        if (boneName == null) return false;
+        String bone = boneName.trim().toLowerCase(java.util.Locale.ROOT);
+        return bone.equals("tail") || bone.equals("cola") || bone.equals("tailenrolled")
+                || numberedTailBone(bone);
+    }
+
     /** DMZ keeps Cell/Frieza tails inside the race model rather than its Saiyan tail layer. */
     public static boolean isEmbeddedRaceTailBone(String boneName) {
         RenderContext context = RENDER_CONTEXT.get();
-        if (context == null || context.character() == null || boneName == null) return false;
-        String race = context.character().getRaceName();
-        race = race == null ? "" : race.trim().toLowerCase(java.util.Locale.ROOT);
-        String bone = boneName.toLowerCase(java.util.Locale.ROOT);
-        if (race.equals("bioandroid") || race.equals("cell")) {
-            return bone.equals("cola") || numberedTailBone(bone);
-        }
-        if (race.equals("frostdemon") || race.equals("frieza") || race.equals("arcosian")) {
-            return numberedTailBone(bone);
-        }
-        return false;
+        if (context == null || context.character() == null) return false;
+        return isTailBone(boneName);
     }
 
     /** Authoritative server hold fraction used in place of DMZ's mastery-based hair timer. */
@@ -380,7 +389,7 @@ public final class NpcFullDmzRenderer {
         return new TransformSnapshot(target, progress, hold != null);
     }
 
-    static void clearCache() {
+    public static void clearCache() {
         WORLD_PROXIES.clear();
         for (UUID id : java.util.List.copyOf(COPY_PROXIES.keySet())) forgetCopy(id);
         PREVIEW_PROXIES.clear();
@@ -680,14 +689,22 @@ public final class NpcFullDmzRenderer {
         character.setRenderHairBase(a.renderHairBase);
         character.setArmored(true);
 
+        // DragonMineZ reads the custom hair only when hairId is 0 (HairManager.getEffectiveHair);
+        // any other value resolves a built-in preset instead. Character's constructor seeds hairId
+        // from the race config's defaultHairType, so leaving it alone let a server config silently
+        // override the builder's hair code. Set it deliberately, every time.
+        character.setHairId(Math.max(0, state.hairStyleId()));
+
         String hairCode = state.hairCode() == null ? "" : state.hairCode().trim();
-        if (!Objects.equals(proxy.syncedHairCode, hairCode)) {
-            CustomHair[] hair = NpcHairVis.parseSet(hairCode);
+        String hairKey = state.hairStyleId() + "|" + hairCode;
+        if (!Objects.equals(proxy.syncedHairCode, hairKey)) {
+            // Same resolver the OVERLAY layers use, so the two modes cannot drift apart again.
+            CustomHair[] hair = NpcHairVis.resolveSet(NpcHairVis.spec(proxy.owner));
             character.setHairBase(copy(hair, 0));
             character.setHairSSJ(copy(hair, 1));
             character.setHairSSJ2(copy(hair, 2));
             character.setHairSSJ3(copy(hair, 3));
-            proxy.syncedHairCode = hairCode;
+            proxy.syncedHairCode = hairKey;
         }
         if (state.formGroup().isBlank() || state.form().isBlank()) character.clearActiveForm();
         else character.setActiveForm(state.formGroup(), state.form());
@@ -728,7 +745,10 @@ public final class NpcFullDmzRenderer {
     }
 
     private static float[] tailColor(NpcDmzAppearance appearance) {
-        if (appearance == null || appearance.tailColor == null || appearance.tailColor.isBlank()) {
+        // Inheriting is its own flag, not "the string is empty". That is what lets the editor keep
+        // a chosen colour while the race colour is in use, so switching back restores it.
+        if (appearance == null || appearance.tailUseRaceColor
+                || appearance.tailColor == null || appearance.tailColor.isBlank()) {
             return null;
         }
         java.util.OptionalInt parsed = NpcCombatProfile.parseHexColor(appearance.tailColor);

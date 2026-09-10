@@ -1,0 +1,28 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "group": "dragonminez",
+  "key": {
+    "#": {
+      "item": "dragonminez:blank_pattern_z"
+    },
+    "I": {
+      "item": "minecraft:gold_ingot"
+    },
+    "R": {
+      "item": "minecraft:red_dye"
+    },
+    "Y": {
+      "item": "minecraft:gold_nugget"
+    }
+  },
+  "pattern": [
+    "Y#Y",
+    " I ",
+    "RIR"
+  ],
+  "result": {
+    "count": 1,
+    "id": "dragonminez:pattern_broly_z"
+  }
+}

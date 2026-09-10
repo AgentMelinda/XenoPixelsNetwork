@@ -83,6 +83,10 @@ public final class NpcTransformHairClient {
         if (hold != null) hold.cancel();
     }
 
+    public static void clearAll() {
+        HOLDS.clear();
+    }
+
     public static Hold get(UUID id) {
         if (id == null) return null;
         Hold hold = HOLDS.get(id);
@@ -116,6 +120,6 @@ public final class NpcTransformHairClient {
 
     @SubscribeEvent
     public static void onLogout(ClientPlayerNetworkEvent.LoggingOut event) {
-        HOLDS.clear();
+        clearAll();
     }
 }

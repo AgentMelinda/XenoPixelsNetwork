@@ -24,6 +24,7 @@ public final class NpcAppearancePacket {
     private final int vitality;
     private final int kiPower;
     private final int energy;
+    private final boolean authoritative;
     private final int auraColor;
     private final float auraScale;
     private final CompoundTag dmzAppearance;
@@ -33,25 +34,25 @@ public final class NpcAppearancePacket {
     private final String skinUuid;
 
     public NpcAppearancePacket(UUID entityUuid, String race, String formGroup, String form) {
-        this(entityUuid, race, formGroup, form, false, "", "", 0, 0, 0, 0, 0, 0,
+        this(entityUuid, race, formGroup, form, false, "", "", 0, 0, 0, 0, 0, 0, true,
                 0, 1.0f, new CompoundTag(), new CompoundTag(), "", "", "");
     }
 
     public NpcAppearancePacket(UUID entityUuid, String race, String formGroup, String form,
                                boolean hairEnabled, String hairCode, String hairColor,
                                int strength, int strikePower, int resistance,
-                               int vitality, int kiPower, int energy,
+                               int vitality, int kiPower, int energy, boolean authoritative,
                                int auraColor, float auraScale, CompoundTag dmzAppearance,
                                CompoundTag visualOptions) {
         this(entityUuid, race, formGroup, form, hairEnabled, hairCode, hairColor,
-                strength, strikePower, resistance, vitality, kiPower, energy,
+                strength, strikePower, resistance, vitality, kiPower, energy, authoritative,
                 auraColor, auraScale, dmzAppearance, visualOptions, "", "", "");
     }
 
     public NpcAppearancePacket(UUID entityUuid, String race, String formGroup, String form,
                                boolean hairEnabled, String hairCode, String hairColor,
                                int strength, int strikePower, int resistance,
-                               int vitality, int kiPower, int energy,
+                               int vitality, int kiPower, int energy, boolean authoritative,
                                int auraColor, float auraScale, CompoundTag dmzAppearance,
                                CompoundTag visualOptions,
                                String skinPlayer, String skinUrl, String skinUuid) {
@@ -68,6 +69,7 @@ public final class NpcAppearancePacket {
         this.vitality = vitality;
         this.kiPower = kiPower;
         this.energy = energy;
+        this.authoritative = authoritative;
         this.auraColor = auraColor & 0xFFFFFF;
         this.auraScale = NpcCombatProfile.clampAuraScale(auraScale);
         this.dmzAppearance = dmzAppearance == null ? new CompoundTag() : dmzAppearance.copy();
@@ -91,6 +93,7 @@ public final class NpcAppearancePacket {
         vitality = buf.readVarInt();
         kiPower = buf.readVarInt();
         energy = buf.readVarInt();
+        authoritative = buf.readBoolean();
         auraColor = buf.readInt() & 0xFFFFFF;
         auraScale = NpcCombatProfile.clampAuraScale(buf.readFloat());
         CompoundTag appearance = buf.readNbt();
@@ -116,6 +119,7 @@ public final class NpcAppearancePacket {
         buf.writeVarInt(vitality);
         buf.writeVarInt(kiPower);
         buf.writeVarInt(energy);
+        buf.writeBoolean(authoritative);
         buf.writeInt(auraColor);
         buf.writeFloat(auraScale);
         buf.writeNbt(dmzAppearance);
@@ -131,7 +135,7 @@ public final class NpcAppearancePacket {
                         msg.entityUuid, msg.race, msg.formGroup, msg.form,
                         msg.hairEnabled, msg.hairCode, msg.hairColor,
                         msg.strength, msg.strikePower, msg.resistance,
-                        msg.vitality, msg.kiPower, msg.energy,
+                        msg.vitality, msg.kiPower, msg.energy, msg.authoritative,
                         msg.auraColor, msg.auraScale, msg.dmzAppearance, msg.visualOptions,
                         msg.skinPlayer, msg.skinUrl, msg.skinUuid));
         ctx.get().setPacketHandled(true);

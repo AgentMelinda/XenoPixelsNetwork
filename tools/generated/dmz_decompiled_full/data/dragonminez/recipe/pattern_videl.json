@@ -1,0 +1,31 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "group": "dragonminez",
+  "key": {
+    "#": {
+      "item": "dragonminez:blank_pattern_z"
+    },
+    "B": {
+      "item": "minecraft:black_dye"
+    },
+    "L": {
+      "item": "minecraft:light_blue_dye"
+    },
+    "P": {
+      "item": "minecraft:pink_dye"
+    },
+    "W": {
+      "item": "minecraft:white_dye"
+    }
+  },
+  "pattern": [
+    "W#W",
+    "BPB",
+    "LLL"
+  ],
+  "result": {
+    "count": 1,
+    "id": "dragonminez:pattern_videl"
+  }
+}

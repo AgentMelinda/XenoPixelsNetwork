@@ -29,6 +29,11 @@ public final class DmzClientStats {
 
     private DmzClientStats() {}
 
+    public static void clear() {
+        TICK_CACHE.clear();
+        cacheGameTime = Long.MIN_VALUE;
+    }
+
     public static final class Snapshot {
         public final boolean present;
         public final int powerRelease;

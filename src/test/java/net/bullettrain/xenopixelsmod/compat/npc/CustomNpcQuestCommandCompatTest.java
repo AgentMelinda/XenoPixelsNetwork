@@ -7,9 +7,23 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 
 class CustomNpcQuestCommandCompatTest {
     @Test
+    void normalizesEmbeddedPointCommandsOnly() {
+        assertEquals("reward: dmzpoints add 5000 @dp",
+                CustomNpcQuestCommandCompat.normalizeEmbedded(
+                        "reward: dmzpoints add 5000 {RefPlayer}"));
+        assertEquals("give {RefPlayer} stone",
+                CustomNpcQuestCommandCompat.normalizeEmbedded("give {RefPlayer} stone"));
+    }
+    @Test
     void adaptsDedicatedServerQuestReward() {
         assertEquals("xenopoints add 5000 @dp",
                 CustomNpcQuestCommandCompat.normalize("xenopoints add 5000 {RefPlayer}"));
+    }
+
+    @Test
+    void adaptsDragonMineZPointsRewardsToo() {
+        assertEquals("dmzpoints add 5000 @dp",
+                CustomNpcQuestCommandCompat.normalize("dmzpoints add 5000 {RefPlayer}"));
     }
 
     @Test

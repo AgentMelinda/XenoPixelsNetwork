@@ -15,7 +15,7 @@ public final class NpcDisplayApply {
             return false;
         }
         try {
-            Class<?> npcClass = Class.forName("noppes.npcs.entity.EntityNPCInterface");
+            Class<?> npcClass = NpcTypes.npcInterface();
             if (!npcClass.isInstance(npc)) {
                 return false;
             }
@@ -73,7 +73,7 @@ public final class NpcDisplayApply {
             }
             field.set(display, target);
             try {
-                Class.forName("noppes.npcs.entity.EntityNPCInterface")
+                NpcTypes.npcInterface()
                         .getField("updateClient").setBoolean(npc, true);
             } catch (Throwable ignored) {
             }
@@ -103,7 +103,7 @@ public final class NpcDisplayApply {
         }
         try {
             display.getClass().getMethod("setSize", int.class).invoke(display, Math.max(1, size));
-            Class.forName("noppes.npcs.entity.EntityNPCInterface")
+            NpcTypes.npcInterface()
                     .getField("updateClient").setBoolean(npc, true);
             return true;
         } catch (Throwable ignored) {
@@ -116,7 +116,7 @@ public final class NpcDisplayApply {
             return null;
         }
         try {
-            Class<?> npcClass = Class.forName("noppes.npcs.entity.EntityNPCInterface");
+            Class<?> npcClass = NpcTypes.npcInterface();
             if (!npcClass.isInstance(npc)) {
                 return null;
             }

@@ -2,6 +2,7 @@ package net.bullettrain.xenopixelsmod.network.packet;
 
 import com.dragonminez.compat.network.NetworkEvent;
 import net.bullettrain.xenopixelsmod.compat.npc.NpcAuraResolver;
+import net.bullettrain.xenopixelsmod.util.XenoIdentifierDiagnostics;
 import net.minecraft.network.FriendlyByteBuf;
 
 import java.util.ArrayList;
@@ -63,7 +64,10 @@ public final class NpcAuraPacket {
         int count = Math.max(0, Math.min(16, buf.readVarInt()));
         List<NpcAuraResolver.Layer> read = new ArrayList<>(count);
         for (int i = 0; i < count; i++) {
-            read.add(new NpcAuraResolver.Layer(buf.readUtf(64), buf.readVarInt(), buf.readInt() & 0xFFFFFF));
+            String type = buf.readUtf(64);
+            XenoIdentifierDiagnostics.reportIfMalformed(type,
+                    "NpcAuraPacket entity=" + entityUuid + " layer=" + i + " field=type");
+            read.add(new NpcAuraResolver.Layer(type, buf.readVarInt(), buf.readInt() & 0xFFFFFF));
         }
         this.layers = List.copyOf(read);
     }

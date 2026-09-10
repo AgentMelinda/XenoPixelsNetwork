@@ -1,5 +1,6 @@
 package net.bullettrain.xenopixelsmod.compat.npc;
 
+import net.bullettrain.xenopixelsmod.combat.CombatKnockback;
 import net.bullettrain.xenopixelsmod.combat.VanishShadeFx;
 import net.bullettrain.xenopixelsmod.combat.fx.CombatFx;
 import net.bullettrain.xenopixelsmod.combat.fx.CombatFxKind;
@@ -142,8 +143,7 @@ public final class NpcCombatMoves {
         }
         Vec3 push = target.position().subtract(npc.position());
         if (push.lengthSqr() > 1.0e-4) {
-            target.setDeltaMovement(target.getDeltaMovement().add(push.normalize().scale(0.8)));
-            target.hurtMarked = true;
+            CombatKnockback.add(target, push.normalize().scale(0.8));
         }
         mark(npc, CD_ZBURST, ZBURST_CD_TICKS);
         return true;

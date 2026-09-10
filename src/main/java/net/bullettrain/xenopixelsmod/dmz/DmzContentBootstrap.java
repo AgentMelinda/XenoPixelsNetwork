@@ -384,6 +384,27 @@ public final class DmzContentBootstrap {
                 offerings.add(entry.getKey(), cleaned);
             }
 
+            // 5) Non-form skills. The passes above are deliberately form-skill-only -- they strip
+            // Xeno form skills from every master but Beerus and Whis -- so a plain skill like
+            // sparking, which any master may teach, needs its own additive pass. Form skill ids are
+            // refused here so this cannot be used to route one around that rule.
+            if (patch.has("nonFormSkillOfferings") && patch.get("nonFormSkillOfferings").isJsonObject()) {
+                for (Map.Entry<String, JsonElement> entry
+                        : patch.getAsJsonObject("nonFormSkillOfferings").entrySet()) {
+                    if (!entry.getValue().isJsonArray()) continue;
+                    String master = entry.getKey().toLowerCase();
+                    JsonArray existing = offerings.has(master) && offerings.get(master).isJsonArray()
+                            ? offerings.getAsJsonArray(master)
+                            : new JsonArray();
+                    for (JsonElement el : entry.getValue().getAsJsonArray()) {
+                        String skill = el.getAsString();
+                        if (isXenoFormSkill(skill) || isLegacyFormSkill(skill)) continue;
+                        if (!jsonArrayContains(existing, skill)) existing.add(skill);
+                    }
+                    offerings.add(master, existing);
+                }
+            }
+
             skills.add("skillOfferings", offerings);
 
             try (Writer writer = Files.newBufferedWriter(skillsJson, StandardCharsets.UTF_8)) {

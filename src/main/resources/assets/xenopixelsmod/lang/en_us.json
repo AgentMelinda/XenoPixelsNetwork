@@ -129,5 +129,7 @@
   "message.xenopixelsmod.pad.bt3": "BT3 controller mode",
   "message.xenopixelsmod.pad.flight_unavailable": "Flight mode requires active DragonMineZ flight",
   "message.xenopixelsmod.pad.flight_search": "Search Fly",
-  "message.xenopixelsmod.pad.flight_combat": "Combat Fly"
+  "message.xenopixelsmod.pad.flight_combat": "Combat Fly",
+  "screen.xenopixelsmod.dmz_stats": "Character",
+  "screen.xenopixelsmod.dmz_neon": "Character"
 }

@@ -1,0 +1,882 @@
+[
+  {
+    "file": "server_menu/00_full_screens/example_full_screen.png",
+    "size": [
+      690,
+      480
+    ],
+    "note": "Full example server screen."
+  },
+  {
+    "file": "server_menu/00_full_screens/clean_full_screen.png",
+    "size": [
+      700,
+      480
+    ],
+    "note": "Full clean server screen."
+  },
+  {
+    "file": "server_menu/01_panels/example_left_panel.png",
+    "size": [
+      200,
+      419
+    ],
+    "note": "Example left server list panel."
+  },
+  {
+    "file": "server_menu/01_panels/clean_left_panel.png",
+    "size": [
+      203,
+      419
+    ],
+    "note": "Clean left server list panel."
+  },
+  {
+    "file": "server_menu/01_panels/example_right_panel.png",
+    "size": [
+      187,
+      422
+    ],
+    "note": "Example right details panel."
+  },
+  {
+    "file": "server_menu/01_panels/clean_right_panel.png",
+    "size": [
+      190,
+      422
+    ],
+    "note": "Clean right details panel."
+  },
+  {
+    "file": "server_menu/02_rows_buttons/example_list_row.png",
+    "size": [
+      167,
+      57
+    ],
+    "note": "Example server row."
+  },
+  {
+    "file": "server_menu/02_rows_buttons/clean_list_row.png",
+    "size": [
+      151,
+      57
+    ],
+    "note": "Clean server row."
+  },
+  {
+    "file": "server_menu/02_rows_buttons/example_stats_button.png",
+    "size": [
+      189,
+      78
+    ],
+    "note": "Example stats button."
+  },
+  {
+    "file": "server_menu/02_rows_buttons/clean_stats_button.png",
+    "size": [
+      188,
+      74
+    ],
+    "note": "Clean stats button."
+  },
+  {
+    "file": "server_menu/02_rows_buttons/left_arrow.png",
+    "size": [
+      85,
+      94
+    ],
+    "note": "Left arrow button."
+  },
+  {
+    "file": "server_menu/02_rows_buttons/right_arrow.png",
+    "size": [
+      82,
+      94
+    ],
+    "note": "Right arrow button."
+  },
+  {
+    "file": "server_menu/03_headers_accents/example_header_bar.png",
+    "size": [
+      330,
+      119
+    ],
+    "note": "Example header bar."
+  },
+  {
+    "file": "server_menu/03_headers_accents/clean_header_bar.png",
+    "size": [
+      324,
+      113
+    ],
+    "note": "Clean header bar."
+  },
+  {
+    "file": "server_menu/03_headers_accents/accent_long_divider.png",
+    "size": [
+      234,
+      47
+    ],
+    "note": "Long accent divider."
+  },
+  {
+    "file": "server_menu/03_headers_accents/accent_corner_orange.png",
+    "size": [
+      86,
+      68
+    ],
+    "note": "Orange corner accent."
+  },
+  {
+    "file": "server_menu/03_headers_accents/accent_corner_blue_frame.png",
+    "size": [
+      153,
+      111
+    ],
+    "note": "Blue/orange accent frame."
+  },
+  {
+    "file": "skills_information/00_full_screens/example_full_screen.png",
+    "size": [
+      681,
+      492
+    ],
+    "note": "Full example skills/information screen."
+  },
+  {
+    "file": "skills_information/00_full_screens/clean_full_screen.png",
+    "size": [
+      701,
+      492
+    ],
+    "note": "Full clean skills/information screen."
+  },
+  {
+    "file": "skills_information/01_panels/example_left_panel.png",
+    "size": [
+      208,
+      289
+    ],
+    "note": "Example skills list panel."
+  },
+  {
+    "file": "skills_information/01_panels/clean_left_panel.png",
+    "size": [
+      240,
+      292
+    ],
+    "note": "Clean skills list panel."
+  },
+  {
+    "file": "skills_information/01_panels/example_detail_panel.png",
+    "size": [
+      285,
+      150
+    ],
+    "note": "Example middle detail panel."
+  },
+  {
+    "file": "skills_information/01_panels/clean_detail_panel.png",
+    "size": [
+      222,
+      150
+    ],
+    "note": "Clean middle detail panel."
+  },
+  {
+    "file": "skills_information/01_panels/example_bottom_strip.png",
+    "size": [
+      267,
+      95
+    ],
+    "note": "Example bottom strip panel."
+  },
+  {
+    "file": "skills_information/01_panels/clean_bottom_strip.png",
+    "size": [
+      270,
+      90
+    ],
+    "note": "Clean bottom strip panel."
+  },
+  {
+    "file": "skills_information/02_rows_buttons/example_skill_row.png",
+    "size": [
+      280,
+      58
+    ],
+    "note": "Example skill row."
+  },
+  {
+    "file": "skills_information/02_rows_buttons/clean_skill_row.png",
+    "size": [
+      281,
+      59
+    ],
+    "note": "Clean skill row."
+  },
+  {
+    "file": "skills_information/02_rows_buttons/selected_skill_row.png",
+    "size": [
+      287,
+      61
+    ],
+    "note": "Selected/highlighted skill row."
+  },
+  {
+    "file": "skills_information/02_rows_buttons/tab_button_example.png",
+    "size": [
+      79,
+      93
+    ],
+    "note": "Example category tab button."
+  },
+  {
+    "file": "skills_information/02_rows_buttons/tab_button_clean.png",
+    "size": [
+      80,
+      92
+    ],
+    "note": "Clean category tab button."
+  },
+  {
+    "file": "skills_information/02_rows_buttons/tab_button_selected.png",
+    "size": [
+      87,
+      97
+    ],
+    "note": "Selected category tab button."
+  },
+  {
+    "file": "skills_information/02_rows_buttons/scroll_up.png",
+    "size": [
+      77,
+      82
+    ],
+    "note": "Scroll up button."
+  },
+  {
+    "file": "skills_information/02_rows_buttons/scroll_down.png",
+    "size": [
+      77,
+      83
+    ],
+    "note": "Scroll down button."
+  },
+  {
+    "file": "skills_information/03_headers_accents/example_top_information_panel.png",
+    "size": [
+      279,
+      153
+    ],
+    "note": "Example top information header panel."
+  },
+  {
+    "file": "skills_information/03_headers_accents/clean_top_information_panel.png",
+    "size": [
+      282,
+      106
+    ],
+    "note": "Clean top information header panel."
+  },
+  {
+    "file": "skills_information/03_headers_accents/accent_blue_divider.png",
+    "size": [
+      133,
+      63
+    ],
+    "note": "Blue arrow divider accent."
+  },
+  {
+    "file": "skills_information/03_headers_accents/accent_orange_divider.png",
+    "size": [
+      142,
+      44
+    ],
+    "note": "Orange arrow divider accent."
+  },
+  {
+    "file": "skills_information/03_headers_accents/accent_honeycomb.png",
+    "size": [
+      67,
+      81
+    ],
+    "note": "Honeycomb accent."
+  },
+  {
+    "file": "skills_information/03_headers_accents/accent_corner_frame.png",
+    "size": [
+      97,
+      136
+    ],
+    "note": "Corner frame accent."
+  },
+  {
+    "file": "quest_tree/00_full_screens/example_full_screen.png",
+    "size": [
+      696,
+      500
+    ],
+    "note": "Full example quest tree screen."
+  },
+  {
+    "file": "quest_tree/00_full_screens/clean_full_screen.png",
+    "size": [
+      697,
+      500
+    ],
+    "note": "Full clean quest tree screen."
+  },
+  {
+    "file": "quest_tree/01_panels/example_left_quest_panel.png",
+    "size": [
+      209,
+      422
+    ],
+    "note": "Example left quest list panel."
+  },
+  {
+    "file": "quest_tree/01_panels/clean_left_quest_panel.png",
+    "size": [
+      205,
+      422
+    ],
+    "note": "Clean left quest list panel."
+  },
+  {
+    "file": "quest_tree/01_panels/example_map_panel.png",
+    "size": [
+      354,
+      276
+    ],
+    "note": "Example map panel."
+  },
+  {
+    "file": "quest_tree/01_panels/clean_map_panel.png",
+    "size": [
+      325,
+      276
+    ],
+    "note": "Clean map panel."
+  },
+  {
+    "file": "quest_tree/02_rows_buttons/normal_row_example.png",
+    "size": [
+      167,
+      51
+    ],
+    "note": "Normal quest row example."
+  },
+  {
+    "file": "quest_tree/02_rows_buttons/normal_row_clean.png",
+    "size": [
+      169,
+      50
+    ],
+    "note": "Normal quest row clean."
+  },
+  {
+    "file": "quest_tree/02_rows_buttons/selected_row_example.png",
+    "size": [
+      171,
+      67
+    ],
+    "note": "Selected quest row example."
+  },
+  {
+    "file": "quest_tree/02_rows_buttons/selected_row_clean.png",
+    "size": [
+      171,
+      67
+    ],
+    "note": "Selected quest row clean."
+  },
+  {
+    "file": "quest_tree/02_rows_buttons/node_active.png",
+    "size": [
+      94,
+      124
+    ],
+    "note": "Active quest node example."
+  },
+  {
+    "file": "quest_tree/02_rows_buttons/node_clean.png",
+    "size": [
+      90,
+      123
+    ],
+    "note": "Clean quest node."
+  },
+  {
+    "file": "quest_tree/02_rows_buttons/node_locked.png",
+    "size": [
+      86,
+      122
+    ],
+    "note": "Locked quest node."
+  },
+  {
+    "file": "quest_tree/03_headers_accents/connector_line.png",
+    "size": [
+      256,
+      113
+    ],
+    "note": "Connector line."
+  },
+  {
+    "file": "quest_tree/03_headers_accents/chapter_title_bar_example.png",
+    "size": [
+      276,
+      71
+    ],
+    "note": "Chapter title bar example."
+  },
+  {
+    "file": "quest_tree/03_headers_accents/chapter_title_bar_clean.png",
+    "size": [
+      276,
+      69
+    ],
+    "note": "Chapter title bar clean."
+  },
+  {
+    "file": "quest_tree/03_headers_accents/difficulty_label_example.png",
+    "size": [
+      148,
+      55
+    ],
+    "note": "Difficulty label example."
+  },
+  {
+    "file": "quest_tree/03_headers_accents/difficulty_label_clean.png",
+    "size": [
+      146,
+      50
+    ],
+    "note": "Difficulty label clean."
+  },
+  {
+    "file": "quest_tree/03_headers_accents/progress_bar_example.png",
+    "size": [
+      185,
+      55
+    ],
+    "note": "Progress bar example."
+  },
+  {
+    "file": "quest_tree/03_headers_accents/progress_bar_clean.png",
+    "size": [
+      186,
+      48
+    ],
+    "note": "Progress bar clean."
+  },
+  {
+    "file": "minigames/00_full_screens/example_full_screen.png",
+    "size": [
+      690,
+      493
+    ],
+    "note": "Full example minigames screen."
+  },
+  {
+    "file": "minigames/00_full_screens/clean_full_screen.png",
+    "size": [
+      703,
+      492
+    ],
+    "note": "Full clean minigames screen."
+  },
+  {
+    "file": "minigames/01_panels/example_list_panel.png",
+    "size": [
+      211,
+      303
+    ],
+    "note": "Example minigames list panel."
+  },
+  {
+    "file": "minigames/01_panels/clean_list_panel.png",
+    "size": [
+      197,
+      302
+    ],
+    "note": "Clean minigames list panel."
+  },
+  {
+    "file": "minigames/01_panels/example_detail_panel.png",
+    "size": [
+      300,
+      297
+    ],
+    "note": "Example detail panel."
+  },
+  {
+    "file": "minigames/01_panels/clean_detail_panel.png",
+    "size": [
+      297,
+      296
+    ],
+    "note": "Clean detail panel."
+  },
+  {
+    "file": "minigames/01_panels/body_text_panel_clean.png",
+    "size": [
+      215,
+      88
+    ],
+    "note": "Clean body text panel."
+  },
+  {
+    "file": "minigames/02_rows_buttons/normal_row_example.png",
+    "size": [
+      291,
+      61
+    ],
+    "note": "Normal row example."
+  },
+  {
+    "file": "minigames/02_rows_buttons/normal_row_clean.png",
+    "size": [
+      291,
+      61
+    ],
+    "note": "Normal row clean."
+  },
+  {
+    "file": "minigames/02_rows_buttons/selected_row_example.png",
+    "size": [
+      291,
+      68
+    ],
+    "note": "Selected row example."
+  },
+  {
+    "file": "minigames/02_rows_buttons/selected_row_clean.png",
+    "size": [
+      293,
+      67
+    ],
+    "note": "Selected row clean."
+  },
+  {
+    "file": "minigames/02_rows_buttons/start_button_example.png",
+    "size": [
+      200,
+      50
+    ],
+    "note": "Start button example."
+  },
+  {
+    "file": "minigames/02_rows_buttons/start_button_clean.png",
+    "size": [
+      202,
+      50
+    ],
+    "note": "Start button clean."
+  },
+  {
+    "file": "minigames/02_rows_buttons/scrollbar.png",
+    "size": [
+      53,
+      127
+    ],
+    "note": "Scrollbar."
+  },
+  {
+    "file": "minigames/02_rows_buttons/arrow_up_down.png",
+    "size": [
+      50,
+      114
+    ],
+    "note": "Arrow up/down icons."
+  },
+  {
+    "file": "minigames/03_headers_accents/title_bar_example.png",
+    "size": [
+      210,
+      91
+    ],
+    "note": "Title bar example."
+  },
+  {
+    "file": "minigames/03_headers_accents/title_bar_clean.png",
+    "size": [
+      204,
+      91
+    ],
+    "note": "Title bar clean."
+  },
+  {
+    "file": "minigames/03_headers_accents/icon_music.png",
+    "size": [
+      52,
+      47
+    ],
+    "note": "Music icon."
+  },
+  {
+    "file": "minigames/03_headers_accents/icon_controller.png",
+    "size": [
+      36,
+      47
+    ],
+    "note": "Controller icon."
+  },
+  {
+    "file": "minigames/03_headers_accents/icon_fist.png",
+    "size": [
+      37,
+      49
+    ],
+    "note": "Fist/training icon."
+  },
+  {
+    "file": "minigames/03_headers_accents/icon_target.png",
+    "size": [
+      52,
+      47
+    ],
+    "note": "Target/precision icon."
+  },
+  {
+    "file": "minigames/03_headers_accents/icon_gravity.png",
+    "size": [
+      52,
+      48
+    ],
+    "note": "Gravity/moon icon."
+  },
+  {
+    "file": "minigames/03_headers_accents/icon_shadow.png",
+    "size": [
+      37,
+      48
+    ],
+    "note": "Shadow dummy icon."
+  },
+  {
+    "file": "options/00_full_screens/example_full_screen.png",
+    "size": [
+      694,
+      480
+    ],
+    "note": "Full example options screen."
+  },
+  {
+    "file": "options/00_full_screens/clean_full_screen.png",
+    "size": [
+      690,
+      480
+    ],
+    "note": "Full clean options screen."
+  },
+  {
+    "file": "options/01_panels/options_panel_example.png",
+    "size": [
+      207,
+      296
+    ],
+    "note": "Options panel example."
+  },
+  {
+    "file": "options/01_panels/options_panel_clean.png",
+    "size": [
+      228,
+      296
+    ],
+    "note": "Options panel clean."
+  },
+  {
+    "file": "options/01_panels/values_panel_example.png",
+    "size": [
+      216,
+      296
+    ],
+    "note": "Values panel example."
+  },
+  {
+    "file": "options/01_panels/values_panel_clean.png",
+    "size": [
+      216,
+      296
+    ],
+    "note": "Values panel clean."
+  },
+  {
+    "file": "options/02_rows_buttons/option_row_example.png",
+    "size": [
+      237,
+      55
+    ],
+    "note": "Option row example."
+  },
+  {
+    "file": "options/02_rows_buttons/option_row_clean.png",
+    "size": [
+      234,
+      51
+    ],
+    "note": "Option row clean."
+  },
+  {
+    "file": "options/02_rows_buttons/value_row_example.png",
+    "size": [
+      191,
+      50
+    ],
+    "note": "Value row example."
+  },
+  {
+    "file": "options/02_rows_buttons/value_row_clean.png",
+    "size": [
+      191,
+      49
+    ],
+    "note": "Value row clean."
+  },
+  {
+    "file": "options/02_rows_buttons/toggle_on.png",
+    "size": [
+      81,
+      68
+    ],
+    "note": "Toggle ON example."
+  },
+  {
+    "file": "options/02_rows_buttons/toggle_on_clean.png",
+    "size": [
+      94,
+      61
+    ],
+    "note": "Toggle ON clean shell."
+  },
+  {
+    "file": "options/02_rows_buttons/toggle_off.png",
+    "size": [
+      83,
+      67
+    ],
+    "note": "Toggle OFF example."
+  },
+  {
+    "file": "options/02_rows_buttons/toggle_off_clean.png",
+    "size": [
+      93,
+      60
+    ],
+    "note": "Toggle OFF clean shell."
+  },
+  {
+    "file": "options/02_rows_buttons/scroll_bar.png",
+    "size": [
+      118,
+      121
+    ],
+    "note": "Scroll bar."
+  },
+  {
+    "file": "options/03_headers_accents/header_bar_example.png",
+    "size": [
+      216,
+      87
+    ],
+    "note": "Header bar example."
+  },
+  {
+    "file": "options/03_headers_accents/header_bar_clean.png",
+    "size": [
+      221,
+      87
+    ],
+    "note": "Header bar clean."
+  },
+  {
+    "file": "options/03_headers_accents/dividers_accents.png",
+    "size": [
+      525,
+      123
+    ],
+    "note": "Divider/accent set."
+  },
+  {
+    "file": "options/03_headers_accents/corner_pieces.png",
+    "size": [
+      131,
+      124
+    ],
+    "note": "Corner pieces."
+  },
+  {
+    "file": "options/03_headers_accents/background_honeycomb.png",
+    "size": [
+      77,
+      122
+    ],
+    "note": "Background honeycomb accent."
+  },
+  {
+    "file": "options/03_headers_accents/background_ring.png",
+    "size": [
+      117,
+      122
+    ],
+    "note": "Background ring accent."
+  },
+  {
+    "file": "options/03_headers_accents/icon_kanji.png",
+    "size": [
+      114,
+      123
+    ],
+    "note": "Kanji icon."
+  },
+  {
+    "file": "options/03_headers_accents/icon_stripes.png",
+    "size": [
+      65,
+      69
+    ],
+    "note": "Stripes icon."
+  },
+  {
+    "file": "00_original_asset_sheets/neon_dragonmine_server_ui_asset_sheet.png",
+    "size": [
+      1448,
+      1086
+    ],
+    "note": "Original asset sheet for server_menu."
+  },
+  {
+    "file": "00_original_asset_sheets/neon_skills_ui_asset_sheet.png",
+    "size": [
+      1448,
+      1086
+    ],
+    "note": "Original asset sheet for skills_information."
+  },
+  {
+    "file": "00_original_asset_sheets/neon_anime_quest_tree_ui_sheet.png",
+    "size": [
+      1448,
+      1086
+    ],
+    "note": "Original asset sheet for quest_tree."
+  },
+  {
+    "file": "00_original_asset_sheets/neon_anime_combat_ui_asset_sheet.png",
+    "size": [
+      1448,
+      1086
+    ],
+    "note": "Original asset sheet for minigames."
+  },
+  {
+    "file": "00_original_asset_sheets/neon_sci_fi_options_ui_asset_sheet.png",
+    "size": [
+      1448,
+      1086
+    ],
+    "note": "Original asset sheet for options."
+  }
+]

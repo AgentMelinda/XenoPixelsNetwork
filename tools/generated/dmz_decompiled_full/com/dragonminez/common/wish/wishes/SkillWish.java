@@ -1,0 +1,37 @@
+package com.dragonminez.common.wish.wishes;
+
+import com.dragonminez.common.network.NetworkHandler;
+import com.dragonminez.common.network.S2C.ProgressionSyncS2C;
+import com.dragonminez.common.stats.StatsCapability;
+import com.dragonminez.common.stats.StatsProvider;
+import com.dragonminez.common.wish.Wish;
+import com.google.gson.GsonBuilder;
+import net.minecraft.server.level.ServerPlayer;
+
+public class SkillWish extends Wish {
+   private final String skill;
+   private final int level;
+
+   public SkillWish(String name, String description, String skill, int level) {
+      super(name, description, "skill");
+      this.skill = skill;
+      this.level = level;
+   }
+
+   @Override
+   public void grant(ServerPlayer player) {
+      StatsProvider.get(StatsCapability.INSTANCE, player).ifPresent(data -> {
+         if (data.getStatus().isHasCreatedCharacter()) {
+            if (data.getSkills().getSkillLevel(this.skill) < this.level) {
+               data.getSkills().setSkillLevel(this.skill, this.level);
+               NetworkHandler.sendToTrackingEntityAndSelf(new ProgressionSyncS2C(player), player);
+            }
+         }
+      });
+   }
+
+   @Override
+   public String toJson() {
+      return new GsonBuilder().setPrettyPrinting().create().toJson(this, SkillWish.class);
+   }
+}

@@ -25,7 +25,7 @@ public final class XenoClientConfig {
     private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
     private static final Path PATH = FMLPaths.CONFIGDIR.get().resolve("xenopixelsmod-client.json");
     /** Version 3 restores Guard while its dedicated key keeps right-click placement vanilla. */
-    private static final int CURRENT_CONFIG_VERSION = 4;
+    private static final int CURRENT_CONFIG_VERSION = 5;
 
     // --- UI ---
     public static boolean xenoHudEnabled = true;
@@ -77,6 +77,39 @@ public final class XenoClientConfig {
      * fastest way to tell whether the pad is behind some odd combat behaviour.
      */
     public static boolean padEnabled = true;
+    /**
+     * Read BT3's melee, dash, guard, charge and lock straight off the pad instead of through the
+     * registered bindings. Off by default: the raw reads carry no chord gate, so holding the left
+     * trigger and pressing X reports a plain melee press as well as the Ultimate it meant. Kept so
+     * the two input paths can be compared in play.
+     */
+    public static boolean padRawPolling = false;
+
+    /**
+     * Feed DragonMineZ flight the left stick's analogue impulses instead of emulating WASD, so a
+     * half-pushed stick flies at half speed. Off by default: the emulated-key path is the one that
+     * matches keyboard flight exactly, and this one rewrites DMZ's own input handling.
+     */
+    public static boolean padAnalogueFlight = false;
+
+    /**
+     * Whether each move's own key or gamepad chord still fires it, alongside any newer route --
+     * a DragonMineZ technique slot, a combo terminator, or a resource state.
+     *
+     * <p>All ship <b>on</b>, deliberately. Switching one off makes the newer route the only way to
+     * reach that move, and a route that has not been confirmed in a running game is not something
+     * to stake a move's only access on. Turn one off once its replacement is proven, not before.
+     * {@code /xenobind} flips any of them at runtime. See {@code Bt3DirectBind}.
+     */
+    public static boolean bt3DirectHakai = true; // Hakai
+    public static boolean bt3DirectZanzoken = true; // Zanzoken
+    public static boolean bt3DirectMultiform = true; // Shi Shin No Ken / Multi-Form
+    public static boolean bt3DirectUltimate = true; // Ultimate - also the finisher beat of a combo
+    public static boolean bt3DirectZBurst = true; // Z-Burst Dash - also a combo swing at an out-of-reach target
+    public static boolean bt3DirectSonicSwayLeft = true; // Sonic Sway Left - also stepping left while guarding
+    public static boolean bt3DirectSonicSwayRight = true; // Sonic Sway Right - also stepping right while guarding
+    public static boolean bt3DirectSparking = true; // Sparking - also entered by charging ki to full
+
     /** Controller gameplay layer; BT3 is the first-install default and the last choice is saved. */
     public static PadMode padMode = PadMode.BT3;
     public static boolean bt3BackstepClient = true;
@@ -262,7 +295,24 @@ public final class XenoClientConfig {
             if (data == null) return;
             boolean migrateConfig = data.configVersion < CURRENT_CONFIG_VERSION;
             boolean migrateGuardDefault = data.configVersion < 3;
+            // A build between versions 4 and 5 shipped these switched off, on the assumption that
+            // each move's newer route -- a DragonMineZ slot, a combo terminator -- had replaced its
+            // key. None of those routes had been confirmed in game, and the result was Hakai,
+            // Zanzoken and Shi Shin No Ken simply not responding to their keys. Anyone who ran that
+            // build has the off values written into their config, where a changed default cannot
+            // reach them, so switch them back on once here.
+            boolean migrateDirectBinds = data.configVersion < 5;
             apply(data);
+            if (migrateDirectBinds) {
+                bt3DirectHakai = true;
+                bt3DirectZanzoken = true;
+                bt3DirectMultiform = true;
+                bt3DirectUltimate = true;
+                bt3DirectZBurst = true;
+                bt3DirectSonicSwayLeft = true;
+                bt3DirectSonicSwayRight = true;
+                bt3DirectSparking = true;
+            }
             if (migrateGuardDefault) {
                 // Guard is active again; its B binding no longer intercepts vanilla Use/place.
                 bt3GuardClient = true;
@@ -306,6 +356,16 @@ public final class XenoClientConfig {
         d.bt3ChaseSpaceGesture = bt3ChaseSpaceGesture;
         d.bt3ChaseWGesture = bt3ChaseWGesture;
         d.padEnabled = padEnabled;
+        d.padRawPolling = padRawPolling;
+        d.padAnalogueFlight = padAnalogueFlight;
+        d.bt3DirectHakai = bt3DirectHakai;
+        d.bt3DirectZanzoken = bt3DirectZanzoken;
+        d.bt3DirectMultiform = bt3DirectMultiform;
+        d.bt3DirectUltimate = bt3DirectUltimate;
+        d.bt3DirectZBurst = bt3DirectZBurst;
+        d.bt3DirectSonicSwayLeft = bt3DirectSonicSwayLeft;
+        d.bt3DirectSonicSwayRight = bt3DirectSonicSwayRight;
+        d.bt3DirectSparking = bt3DirectSparking;
         d.padMode = padMode.name();
         d.bt3BackstepClient = bt3BackstepClient;
         d.bt3ChargeAttackClient = bt3ChargeAttackClient;
@@ -395,6 +455,16 @@ public final class XenoClientConfig {
         bt3ChaseSpaceGesture = d.bt3ChaseSpaceGesture;
         bt3ChaseWGesture = d.bt3ChaseWGesture;
         padEnabled = d.padEnabled == null || d.padEnabled;
+        padRawPolling = d.padRawPolling != null && d.padRawPolling;
+        padAnalogueFlight = d.padAnalogueFlight != null && d.padAnalogueFlight;
+        bt3DirectHakai = d.bt3DirectHakai == null || d.bt3DirectHakai;
+        bt3DirectZanzoken = d.bt3DirectZanzoken == null || d.bt3DirectZanzoken;
+        bt3DirectMultiform = d.bt3DirectMultiform == null || d.bt3DirectMultiform;
+        bt3DirectUltimate = d.bt3DirectUltimate == null || d.bt3DirectUltimate;
+        bt3DirectZBurst = d.bt3DirectZBurst == null || d.bt3DirectZBurst;
+        bt3DirectSonicSwayLeft = d.bt3DirectSonicSwayLeft == null || d.bt3DirectSonicSwayLeft;
+        bt3DirectSonicSwayRight = d.bt3DirectSonicSwayRight == null || d.bt3DirectSonicSwayRight;
+        bt3DirectSparking = d.bt3DirectSparking == null || d.bt3DirectSparking;
         padMode = PadMode.parse(d.padMode);
         bt3BackstepClient = d.bt3BackstepClient;
         bt3ChargeAttackClient = d.bt3ChargeAttackClient;
@@ -500,6 +570,16 @@ public final class XenoClientConfig {
         public boolean bt3ChaseSpaceGesture = false;
         public boolean bt3ChaseWGesture = false;
         public Boolean padEnabled;
+        public Boolean padRawPolling;
+        public Boolean padAnalogueFlight;
+        public Boolean bt3DirectHakai;
+        public Boolean bt3DirectZanzoken;
+        public Boolean bt3DirectMultiform;
+        public Boolean bt3DirectUltimate;
+        public Boolean bt3DirectZBurst;
+        public Boolean bt3DirectSonicSwayLeft;
+        public Boolean bt3DirectSonicSwayRight;
+        public Boolean bt3DirectSparking;
         public String padMode;
         public boolean bt3BackstepClient = true;
         public boolean bt3ChargeAttackClient = true;

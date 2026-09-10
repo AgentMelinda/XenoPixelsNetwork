@@ -1,5 +1,6 @@
 package net.bullettrain.xenopixelsmod.combat.technique;
 
+import net.bullettrain.xenopixelsmod.combat.CombatKnockback;
 import com.dragonminez.common.events.DMZEvent;
 import com.dragonminez.common.stats.techniques.StrikeAttackData;
 import net.bullettrain.xenopixelsmod.XenoPixelsMod;
@@ -70,10 +71,8 @@ public final class XenoRushTechniqueEvents {
         if (flat.lengthSqr() < 1.0e-4) {
             return;
         }
-        target.setDeltaMovement(target.getDeltaMovement().add(flat.normalize().scale(horizontal)
-                .add(0.0, upward, 0.0)));
-        target.hurtMarked = true;
-        target.hasImpulse = true;
+        CombatKnockback.add(target,
+                flat.normalize().scale(horizontal).add(0.0, upward, 0.0));
         if (chase) {
             ChaseFlightSystem.startAutomatic(player, target);
         }

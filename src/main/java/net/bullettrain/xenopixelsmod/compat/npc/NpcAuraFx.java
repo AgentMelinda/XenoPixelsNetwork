@@ -87,15 +87,16 @@ public final class NpcAuraFx {
             return;
         }
         NpcAuraResolver.Resolved resolved = NpcAuraResolver.resolve(profile);
+        float auraScale = NpcFormDisplayTuning.effectiveAuraScale(profile);
         int fingerprint = java.util.Objects.hash(on, resolved.layers(), resolved.lightning(),
                 resolved.lightningRgb(), resolved.sparking(), resolved.groundRing(),
-                NpcCombatProfile.clampAuraScale(profile.auraScale));
+                auraScale);
         Integer previous = LAST_SENT.put(living.getUUID(), fingerprint);
         if (previous != null && previous == fingerprint) {
             return;
         }
         NpcAuraPacket packet = new NpcAuraPacket(living.getUUID(), on,
-                NpcCombatProfile.clampAuraScale(profile.auraScale), resolved);
+                auraScale, resolved);
         for (ServerPlayer viewer : level.players()) {
             if (viewer.distanceToSqr(living) > SYNC_RANGE_SQ) {
                 continue;
@@ -145,7 +146,7 @@ public final class NpcAuraFx {
             return;
         }
         ModNetwork.sendToPlayer(player, new NpcAuraPacket(living.getUUID(), on,
-                NpcCombatProfile.clampAuraScale(profile.auraScale), resolved));
+                NpcFormDisplayTuning.effectiveAuraScale(profile), resolved));
     }
 
     @SubscribeEvent

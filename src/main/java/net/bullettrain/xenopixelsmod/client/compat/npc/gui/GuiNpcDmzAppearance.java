@@ -4,6 +4,7 @@ import com.dragonminez.client.util.TextureCounter;
 import com.dragonminez.common.config.ConfigManager;
 import com.dragonminez.common.config.RaceCharacterConfig;
 import net.bullettrain.xenopixelsmod.compat.npc.NpcCombatProfile;
+import net.bullettrain.xenopixelsmod.compat.npc.NpcHairBridge;
 import net.bullettrain.xenopixelsmod.client.compat.npc.NpcAppearanceClient;
 import net.bullettrain.xenopixelsmod.client.compat.npc.NpcFullDmzRenderer;
 import net.bullettrain.xenopixelsmod.compat.npc.NpcDmzAppearance;
@@ -83,6 +84,7 @@ public final class GuiNpcDmzAppearance extends GuiNPCInterface2 implements IText
     private static final int ID_FLY_ON = 233;
     private static final int ID_FLY_LEVEL = 234;
     private static final int ID_SKILLS = 235;
+    private static final int ID_HAIR_STYLE = 236;
     private static final int PICKER_OFFSET = 500;
     private static final int PREVIEW_X = 278;
     private static final int PREVIEW_Y = 28;
@@ -139,7 +141,7 @@ public final class GuiNpcDmzAppearance extends GuiNPCInterface2 implements IText
         addButton(new GuiButtonNop(this, ID_TAIL_COLOR + PICKER_OFFSET,
                 x + 202, y + 80, 58, 16, "..."));
         addButton(new GuiButtonNop(this, ID_TAIL_INHERIT,
-                x + 202, y + 100, 58, 16, a.tailColor.isBlank() ? "Race" : "Inherit"));
+                x + 202, y + 100, 58, 16, a.tailUseRaceColor ? "Tail: Race" : "Tail: Custom"));
     }
 
     private void initFace(int x, int y, NpcDmzAppearance a) {
@@ -165,7 +167,7 @@ public final class GuiNpcDmzAppearance extends GuiNPCInterface2 implements IText
         field(ID_HEAD_BONE, "Head parts", x, y, a.activeHeadBone, false);
         addButton(new GuiButtonNop(this, ID_AURA_DETAILS, x + 202, y, 58, 16, "Details"));
         addButton(new GuiButtonNop(this, ID_SKILLS, x + 202, y + 18, 58, 16, "Skills"));
-        colorField(ID_HAIR_COLOR, "Hair color", x, y + 20, draft.hairColor);
+        hairRow(x, y + 20, draft.hairColor, draft.hairStyleId);
         colorField(ID_AURA_COLOR, "Base aura", x, y + 40,
                 draft.auraColorHex == null || draft.auraColorHex.isBlank() ? "" : draft.auraColorHex);
         field(ID_AURA_SCALE, "Aura scale", x, y + 60, Float.toString(draft.auraScale), false);
@@ -175,8 +177,13 @@ public final class GuiNpcDmzAppearance extends GuiNPCInterface2 implements IText
         addButton(new GuiButtonNop(this, ID_KI_WEAPON_TYPE,
                 x + 202, y + 58, 58, 18, kiWeaponLabel(draft.kiWeaponType)));
         // Three toggle columns. The panel is 420x200 with Apply/Cancel occupying the bottom
-        // right from y+174 down, so nothing may sit below the y+120 row and the third column
-        // has to stay clear of x+300 -- a fourth row would render outside the background.
+        // right from y+174 down, so nothing may sit below the y+120 row -- a fourth row would
+        // render outside the background.
+        //
+        // The usable width ends at x+270, not x+300 as this comment used to say: the NPC preview
+        // is drawn at guiLeft+278 and x is guiLeft+8. Anything past x+270 renders underneath it.
+        // The third column's "Rings" and "Fly" labels already run a few pixels into the preview
+        // for that reason.
         toggle(ID_HAIR_BASE, "Base hair", x, y + 80, a.renderHairBase);
         toggle(ID_HALO, "Halo", x + 108, y + 80, draft.haloOn);
         toggle(ID_GROUND_RING, "Rings", x + 202, y + 80, draft.auraGroundRing);
@@ -191,6 +198,34 @@ public final class GuiNpcDmzAppearance extends GuiNPCInterface2 implements IText
         flyLevel.setNumbersOnly();
         flyLevel.setMaxLength(2);
         addTextField(flyLevel);
+    }
+
+    /**
+     * Hair colour and hair style on one row.
+     *
+     * <p>A row of its own rather than a {@link #colorField} plus a button, because the panel's
+     * usable width ends at {@code x + 270} -- the NPC preview starts there -- and every other
+     * column on this tab is already spoken for down to {@code y + 120}. Squeezing the style button
+     * in beside the colour keeps the whole control inside the same budget the colour field already
+     * had, instead of pushing it under the preview.
+     */
+    private void hairRow(int x, int y, String color, int styleId) {
+        addLabel(new GuiLabel(ID_HAIR_COLOR + 1000, "Hair color", x, y + 3, 0xFFFFFF));
+        GuiTextFieldNop box = new GuiTextFieldNop(ID_HAIR_COLOR, this, x + 92, y, 60, 16,
+                color == null ? "" : color);
+        box.setMaxLength(9);
+        addTextField(box);
+        addButton(new GuiButtonNop(this, ID_HAIR_COLOR + PICKER_OFFSET, x + 154, y, 20, 16, "..."));
+        // DragonMineZ's own character-creation hair styles; H0 hands back to the hair code.
+        // Cycles forward and wraps -- NpcHairBridge.cycleStyle wraps through 0, so one button
+        // still reaches every style.
+        addButton(new GuiButtonNop(this, ID_HAIR_STYLE, x + 176, y, 22, 16,
+                hairStyleLabel(styleId)));
+    }
+
+    /** Compact enough for a 22px button: H0 is the custom hair code, H1+ are DMZ's own styles. */
+    private static String hairStyleLabel(int styleId) {
+        return "H" + Math.max(0, styleId);
     }
 
     private void toggle(int id, String label, int x, int y, boolean value) {
@@ -234,7 +269,10 @@ public final class GuiNpcDmzAppearance extends GuiNPCInterface2 implements IText
         else if (button.id == ID_MODE) a.mode = a.mode.next();
         else if (button.id == ID_GENDER) a.gender = "female".equals(a.gender) ? "male" : "female";
         else if (button.id == ID_TAIL && button instanceof GuiButtonYesNo yes) a.saiyanTail = yes.getBoolean();
-        else if (button.id == ID_TAIL_INHERIT) a.tailColor = "";
+        else if (button.id == ID_TAIL_INHERIT) {
+            // A toggle, not a clear. The colour is kept either way so switching back restores it.
+            a.tailUseRaceColor = !a.tailUseRaceColor;
+        }
         else if (button.id == ID_HAIR_BASE && button instanceof GuiButtonYesNo yes) a.renderHairBase = yes.getBoolean();
         else if (button.id == ID_HALO && button instanceof GuiButtonYesNo yes) draft.haloOn = yes.getBoolean();
         else if (button.id == ID_AURA_ON && button instanceof GuiButtonYesNo yes) draft.auraOn = yes.getBoolean();
@@ -243,6 +281,10 @@ public final class GuiNpcDmzAppearance extends GuiNPCInterface2 implements IText
         else if (button.id == ID_LIGHTNING && button instanceof GuiButtonYesNo yes) draft.auraLightning = yes.getBoolean();
         else if (button.id == ID_GROUND_RING && button instanceof GuiButtonYesNo yes) draft.auraGroundRing = yes.getBoolean();
         else if (button.id == ID_FLY_ON && button instanceof GuiButtonYesNo yes) draft.flySkillOn = yes.getBoolean();
+        else if (button.id == ID_HAIR_STYLE) {
+            draft.hairStyleId = NpcHairBridge.cycleStyle(draft.hairStyleId, 1,
+                    NpcHairBridge.presetCount());
+        }
         else if (button.id == ID_KI_WEAPON_ON && button instanceof GuiButtonYesNo yes) draft.kiWeaponOn = yes.getBoolean();
         else if (button.id == ID_KI_WEAPON_TYPE) draft.kiWeaponType = nextKiWeaponType(draft.kiWeaponType);
         else if (button.id == ID_BODY_PREV) a.bodyType = cycle(a.bodyType, -1, maxBodyType(a));
@@ -298,6 +340,8 @@ public final class GuiNpcDmzAppearance extends GuiNPCInterface2 implements IText
             String selected = NpcCombatProfile.formatHex(selector.color);
             if (colorTarget == ID_TAIL_COLOR) {
                 appearance().tailColor = selected;
+                // Picking a colour is a request to use it.
+                appearance().tailUseRaceColor = false;
             } else {
                 GuiTextFieldNop field = getTextField(colorTarget);
                 if (field != null) field.setValue(selected);
@@ -436,6 +480,24 @@ public final class GuiNpcDmzAppearance extends GuiNPCInterface2 implements IText
         return canonical.isBlank() ? fallback : canonical;
     }
 
+    /**
+     * The preview's caption: the NPC's own name, trimmed to the panel, or the generic label when it
+     * has none.
+     */
+    private String previewTitle() {
+        String fallback = tab == TAB_FACE ? "Face preview" : "NPC preview";
+        String name;
+        try {
+            name = ((Entity) npc).getName().getString();
+        } catch (Throwable ignored) {
+            return fallback;
+        }
+        if (name == null || name.isBlank()) return fallback;
+        name = name.trim();
+        // Leave a margin either side of the 134px panel so the caption cannot touch its border.
+        return getFontRenderer().plainSubstrByWidth(name, PREVIEW_W - 16);
+    }
+
     private void preview(NpcCombatProfile profile) {
         NpcCombatProfile snapshot = copy(profile);
         NpcAppearanceClient.applyProfile(((Entity) npc).getUUID(), snapshot);
@@ -455,7 +517,9 @@ public final class GuiNpcDmzAppearance extends GuiNPCInterface2 implements IText
         graphics.fill(left, bottom - 1, right, bottom, 0xFFB98235);
         graphics.fill(left, top, left + 1, bottom, 0xFFB98235);
         graphics.fill(right - 1, top, right, bottom, 0xFFB98235);
-        graphics.drawCenteredString(getFontRenderer(), tab == TAB_FACE ? "Face preview" : "NPC preview",
+        // Name the NPC rather than the panel. With several NPCs open in turn, "NPC preview" said
+        // nothing about which one you were editing.
+        graphics.drawCenteredString(getFontRenderer(), previewTitle(),
                 left + PREVIEW_W / 2, top + 4, 0xFFE2C078);
         graphics.drawCenteredString(getFontRenderer(), "Drag rotate  •  Wheel zoom",
                 left + PREVIEW_W / 2, bottom - 11, 0xFF888888);

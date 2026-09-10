@@ -1,0 +1,28 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "group": "dragonminez",
+  "key": {
+    "#": {
+      "item": "dragonminez:blank_pattern_super"
+    },
+    "A": {
+      "item": "minecraft:gray_dye"
+    },
+    "W": {
+      "item": "minecraft:white_dye"
+    },
+    "Y": {
+      "item": "minecraft:yellow_dye"
+    }
+  },
+  "pattern": [
+    "A#A",
+    "AWA",
+    "YYY"
+  ],
+  "result": {
+    "count": 1,
+    "id": "dragonminez:pattern_vegeta_whis"
+  }
+}

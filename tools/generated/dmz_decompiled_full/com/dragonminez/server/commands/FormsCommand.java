@@ -1,0 +1,185 @@
+package com.dragonminez.server.commands;
+
+import com.dragonminez.common.config.ConfigManager;
+import com.dragonminez.common.config.SkillsConfig;
+import com.dragonminez.common.network.NetworkHandler;
+import com.dragonminez.common.network.S2C.ProgressionSyncS2C;
+import com.dragonminez.common.stats.StatsCapability;
+import com.dragonminez.common.stats.StatsProvider;
+import com.mojang.brigadier.CommandDispatcher;
+import com.mojang.brigadier.arguments.IntegerArgumentType;
+import com.mojang.brigadier.arguments.StringArgumentType;
+import com.mojang.brigadier.builder.LiteralArgumentBuilder;
+import com.mojang.brigadier.builder.RequiredArgumentBuilder;
+import com.mojang.brigadier.suggestion.SuggestionProvider;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.List;
+import net.minecraft.commands.CommandSourceStack;
+import net.minecraft.commands.Commands;
+import net.minecraft.commands.SharedSuggestionProvider;
+import net.minecraft.commands.arguments.EntityArgument;
+import net.minecraft.network.chat.Component;
+import net.minecraft.server.level.ServerPlayer;
+
+public class FormsCommand {
+   private static final SuggestionProvider<CommandSourceStack> FORM_SUGGESTIONS = (ctx, builder) -> {
+      SkillsConfig config = ConfigManager.getSkillsConfig();
+      List<String> validForms = new ArrayList<>(config.getFormSkills());
+      validForms.addAll(config.getStackSkills());
+      validForms.addAll(config.getFormSkills());
+      return SharedSuggestionProvider.suggest(validForms, builder);
+   };
+
+   public static void register(CommandDispatcher<CommandSourceStack> dispatcher) {
+      dispatcher.register(
+         (LiteralArgumentBuilder)((LiteralArgumentBuilder)((LiteralArgumentBuilder)((LiteralArgumentBuilder)Commands.literal("dmzform")
+                     .requires(source -> DMZPermissions.check(source, DMZPermissions.FORMS_LIST_SELF, DMZPermissions.FORMS_LIST_OTHERS)))
+                  .then(
+                     ((LiteralArgumentBuilder)Commands.literal("set")
+                           .requires(source -> DMZPermissions.check(source, DMZPermissions.FORMS_SET_SELF, DMZPermissions.FORMS_SET_OTHERS)))
+                        .then(
+                           Commands.argument("form", StringArgumentType.string())
+                              .suggests(FORM_SUGGESTIONS)
+                              .then(
+                                 ((RequiredArgumentBuilder)Commands.argument("level", IntegerArgumentType.integer(0))
+                                       .executes(
+                                          ctx -> setForm(
+                                                (CommandSourceStack)ctx.getSource(),
+                                                List.of(((CommandSourceStack)ctx.getSource()).getPlayerOrException()),
+                                                StringArgumentType.getString(ctx, "form"),
+                                                IntegerArgumentType.getInteger(ctx, "level")
+                                             )
+                                       ))
+                                    .then(
+                                       ((RequiredArgumentBuilder)Commands.argument("targets", EntityArgument.players())
+                                             .requires(source -> DMZPermissions.hasPermission(source, DMZPermissions.FORMS_SET_OTHERS)))
+                                          .executes(
+                                             ctx -> setForm(
+                                                   (CommandSourceStack)ctx.getSource(),
+                                                   EntityArgument.getPlayers(ctx, "targets"),
+                                                   StringArgumentType.getString(ctx, "form"),
+                                                   IntegerArgumentType.getInteger(ctx, "level")
+                                                )
+                                          )
+                                    )
+                              )
+                        )
+                  ))
+               .then(
+                  ((LiteralArgumentBuilder)Commands.literal("add")
+                        .requires(source -> DMZPermissions.check(source, DMZPermissions.FORMS_ADD_SELF, DMZPermissions.FORMS_ADD_OTHERS)))
+                     .then(
+                        ((RequiredArgumentBuilder)Commands.argument("form", StringArgumentType.string())
+                              .suggests(FORM_SUGGESTIONS)
+                              .executes(
+                                 ctx -> setForm(
+                                       (CommandSourceStack)ctx.getSource(),
+                                       List.of(((CommandSourceStack)ctx.getSource()).getPlayerOrException()),
+                                       StringArgumentType.getString(ctx, "form"),
+                                       1
+                                    )
+                              ))
+                           .then(
+                              ((RequiredArgumentBuilder)Commands.argument("targets", EntityArgument.players())
+                                    .requires(source -> DMZPermissions.hasPermission(source, DMZPermissions.FORMS_ADD_OTHERS)))
+                                 .executes(
+                                    ctx -> setForm(
+                                          (CommandSourceStack)ctx.getSource(),
+                                          EntityArgument.getPlayers(ctx, "targets"),
+                                          StringArgumentType.getString(ctx, "form"),
+                                          1
+                                       )
+                                 )
+                           )
+                     )
+               ))
+            .then(
+               ((LiteralArgumentBuilder)Commands.literal("remove")
+                     .requires(source -> DMZPermissions.check(source, DMZPermissions.FORMS_REMOVE_SELF, DMZPermissions.FORMS_REMOVE_OTHERS)))
+                  .then(
+                     ((RequiredArgumentBuilder)Commands.argument("form", StringArgumentType.string())
+                           .suggests(FORM_SUGGESTIONS)
+                           .executes(
+                              ctx -> removeForm(
+                                    (CommandSourceStack)ctx.getSource(),
+                                    List.of(((CommandSourceStack)ctx.getSource()).getPlayerOrException()),
+                                    StringArgumentType.getString(ctx, "form")
+                                 )
+                           ))
+                        .then(
+                           ((RequiredArgumentBuilder)Commands.argument("targets", EntityArgument.players())
+                                 .requires(source -> DMZPermissions.hasPermission(source, DMZPermissions.FORMS_REMOVE_OTHERS)))
+                              .executes(
+                                 ctx -> removeForm(
+                                       (CommandSourceStack)ctx.getSource(),
+                                       EntityArgument.getPlayers(ctx, "targets"),
+                                       StringArgumentType.getString(ctx, "form")
+                                    )
+                              )
+                        )
+                  )
+            )
+      );
+   }
+
+   private static int setForm(CommandSourceStack source, Collection<ServerPlayer> targets, String formName, int level) {
+      boolean log = ConfigManager.getServerConfig().getGameplay().getCommandOutputOnConsole();
+      String lowerName = formName.toLowerCase();
+      SkillsConfig config = ConfigManager.getSkillsConfig();
+      if (!config.getFormSkills().contains(lowerName) && !config.getStackSkills().contains(lowerName)) {
+         source.sendFailure(Component.translatable("command.dragonminez.forms.unknown_form", new Object[]{formName}));
+         return 0;
+      } else {
+         for (ServerPlayer player : targets) {
+            StatsProvider.get(StatsCapability.INSTANCE, player).ifPresent(data -> {
+               data.getSkills().setSkillLevel(lowerName, level);
+               NetworkHandler.sendToTrackingEntityAndSelf(new ProgressionSyncS2C(player), player);
+            });
+         }
+
+         if (targets.size() == 1) {
+            source.sendSuccess(
+               () -> Component.translatable(
+                     "command.dragonminez.forms.set_success", new Object[]{formName, level, targets.iterator().next().getName().getString()}
+                  ),
+               log
+            );
+         } else {
+            source.sendSuccess(() -> Component.translatable("command.dragonminez.forms.set_multiple", new Object[]{formName, level, targets.size()}), log);
+         }
+
+         return targets.size();
+      }
+   }
+
+   private static int removeForm(CommandSourceStack source, Collection<ServerPlayer> targets, String formName) {
+      boolean log = ConfigManager.getServerConfig().getGameplay().getCommandOutputOnConsole();
+      String lowerName = formName.toLowerCase();
+      SkillsConfig config = ConfigManager.getSkillsConfig();
+      if (!config.getFormSkills().contains(lowerName) && !config.getStackSkills().contains(lowerName)) {
+         source.sendFailure(Component.translatable("command.dragonminez.forms.unknown_form", new Object[]{formName}));
+         return 0;
+      } else {
+         for (ServerPlayer player : targets) {
+            StatsProvider.get(StatsCapability.INSTANCE, player).ifPresent(data -> {
+               if (data.getSkills().hasSkill(lowerName)) {
+                  data.getSkills().removeSkill(lowerName);
+                  NetworkHandler.sendToTrackingEntityAndSelf(new ProgressionSyncS2C(player), player);
+               }
+            });
+         }
+
+         if (targets.size() == 1) {
+            source.sendSuccess(
+               () -> Component.translatable("command.dragonminez.forms.remove_success", new Object[]{formName, targets.iterator().next().getName().getString()}),
+               log
+            );
+         } else {
+            source.sendSuccess(() -> Component.translatable("command.dragonminez.forms.remove_multiple", new Object[]{formName, targets.size()}), log);
+         }
+
+         return targets.size();
+      }
+   }
+}

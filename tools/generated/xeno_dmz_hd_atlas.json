@@ -1,0 +1,227 @@
+{
+  "generator": "tools/gen_dmz_hd_atlas.py",
+  "source": "dragonmine_complete_ui_elements_master_bundle/05_dragonmine_hd_ui_v4",
+  "scale": 4,
+  "atlas": {
+    "width": 2048,
+    "height": 2048
+  },
+  "sprites": {
+    "ACCENT": {
+      "x": 1208,
+      "y": 0,
+      "source_width": 8,
+      "source_height": 240,
+      "width": 2,
+      "height": 60,
+      "source": "06_overlays/clean_vertical_orange_accent.png"
+    },
+    "BOTTOM_BOX": {
+      "x": 1220,
+      "y": 0,
+      "source_width": 520,
+      "source_height": 204,
+      "width": 130,
+      "height": 51,
+      "source": "03_rows/clean_bottom_stats_box.png"
+    },
+    "DIVIDER": {
+      "x": 0,
+      "y": 1116,
+      "source_width": 520,
+      "source_height": 12,
+      "width": 130,
+      "height": 3,
+      "source": "06_overlays/clean_blue_orange_divider.png"
+    },
+    "INFO_DIVIDER": {
+      "x": 524,
+      "y": 1116,
+      "source_width": 520,
+      "source_height": 8,
+      "width": 130,
+      "height": 2,
+      "source": "03_rows/clean_basic_info_row.png"
+    },
+    "INFO_HEADER": {
+      "x": 876,
+      "y": 856,
+      "source_width": 480,
+      "source_height": 100,
+      "width": 120,
+      "height": 25,
+      "source": "02_headers/clean_information_header.png"
+    },
+    "INFO_PANEL": {
+      "x": 604,
+      "y": 0,
+      "source_width": 600,
+      "source_height": 824,
+      "width": 150,
+      "height": 206,
+      "source": "01_panels/clean_information_panel.png"
+    },
+    "KANJI_CIRCLE": {
+      "x": 940,
+      "y": 1020,
+      "source_width": 72,
+      "source_height": 72,
+      "width": 18,
+      "height": 18,
+      "source": "05_icons/clean_info_kanji_circle.png"
+    },
+    "NAMEPLATE": {
+      "x": 0,
+      "y": 856,
+      "source_width": 872,
+      "source_height": 160,
+      "width": 218,
+      "height": 40,
+      "source": "01_panels/clean_nameplate.png"
+    },
+    "NAV_CHARACTER": {
+      "x": 388,
+      "y": 1020,
+      "source_width": 88,
+      "source_height": 88,
+      "width": 22,
+      "height": 22,
+      "source": "04_buttons/clean_nav_button_character.png + 05_icons/example_icon_character.png"
+    },
+    "NAV_ITEMS": {
+      "x": 480,
+      "y": 1020,
+      "source_width": 88,
+      "source_height": 88,
+      "width": 22,
+      "height": 22,
+      "source": "04_buttons/clean_nav_button_items.png + 05_icons/example_icon_items.png"
+    },
+    "NAV_PARTY": {
+      "x": 572,
+      "y": 1020,
+      "source_width": 88,
+      "source_height": 88,
+      "width": 22,
+      "height": 22,
+      "source": "04_buttons/clean_nav_button_party.png + 05_icons/example_icon_party.png"
+    },
+    "NAV_QUESTS": {
+      "x": 664,
+      "y": 1020,
+      "source_width": 88,
+      "source_height": 88,
+      "width": 22,
+      "height": 22,
+      "source": "04_buttons/clean_nav_button_quests.png + 05_icons/example_icon_quests.png"
+    },
+    "NAV_SETTINGS": {
+      "x": 756,
+      "y": 1020,
+      "source_width": 88,
+      "source_height": 88,
+      "width": 22,
+      "height": 22,
+      "source": "04_buttons/clean_nav_button_settings.png + 05_icons/example_icon_settings.png"
+    },
+    "NAV_SKILLS": {
+      "x": 848,
+      "y": 1020,
+      "source_width": 88,
+      "source_height": 88,
+      "width": 22,
+      "height": 22,
+      "source": "04_buttons/clean_nav_button_skills.png + 05_icons/example_icon_skills.png"
+    },
+    "ORB_BLUE": {
+      "x": 1616,
+      "y": 1020,
+      "source_width": 48,
+      "source_height": 48,
+      "width": 12,
+      "height": 12,
+      "source": "05_icons/example_top_orb_blue.png"
+    },
+    "ORB_RED": {
+      "x": 1668,
+      "y": 1020,
+      "source_width": 48,
+      "source_height": 48,
+      "width": 12,
+      "height": 12,
+      "source": "05_icons/example_top_orb_red.png"
+    },
+    "ORB_YELLOW": {
+      "x": 1720,
+      "y": 1020,
+      "source_width": 48,
+      "source_height": 48,
+      "width": 12,
+      "height": 12,
+      "source": "05_icons/example_top_orb_yellow.png"
+    },
+    "PLUS_BUTTON": {
+      "x": 1772,
+      "y": 1020,
+      "source_width": 44,
+      "source_height": 44,
+      "width": 11,
+      "height": 11,
+      "source": "03_rows/example_plus_button.png"
+    },
+    "ROW_DIVIDER": {
+      "x": 1048,
+      "y": 1116,
+      "source_width": 520,
+      "source_height": 8,
+      "width": 130,
+      "height": 2,
+      "source": "03_rows/clean_statistics_row.png"
+    },
+    "STATS_BARS_ICON": {
+      "x": 1016,
+      "y": 1020,
+      "source_width": 72,
+      "source_height": 72,
+      "width": 18,
+      "height": 18,
+      "source": "05_icons/clean_stats_bars_icon.png"
+    },
+    "STATS_HEADER": {
+      "x": 1360,
+      "y": 856,
+      "source_width": 480,
+      "source_height": 100,
+      "width": 120,
+      "height": 25,
+      "source": "02_headers/clean_statistics_header.png"
+    },
+    "STATS_PANEL": {
+      "x": 0,
+      "y": 0,
+      "source_width": 600,
+      "source_height": 852,
+      "width": 150,
+      "height": 213,
+      "source": "01_panels/clean_statistics_panel.png"
+    },
+    "STATS_SUBHEADER": {
+      "x": 0,
+      "y": 1020,
+      "source_width": 384,
+      "source_height": 92,
+      "width": 96,
+      "height": 23,
+      "source": "02_headers/clean_stats_subheader.png"
+    },
+    "STAT_ROW": {
+      "x": 1092,
+      "y": 1020,
+      "source_width": 520,
+      "source_height": 72,
+      "width": 130,
+      "height": 18,
+      "source": "03_rows/clean_information_stat_row.png"
+    }
+  }
+}

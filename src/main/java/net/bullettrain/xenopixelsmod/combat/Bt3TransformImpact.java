@@ -75,16 +75,16 @@ public final class Bt3TransformImpact {
         if (knock <= 0f || r <= 0) return;
         AABB box = player.getBoundingBox().inflate(r);
         for (LivingEntity e : sl.getEntitiesOfClass(LivingEntity.class, box,
-                ent -> ent != player && ent.isAlive() && !DmzMasterProtectionSafe.isMaster(ent))) {
+                ent -> ent != player && ent.isAlive())) {
             Vec3 away = e.position().subtract(player.position());
             Vec3 flat = new Vec3(away.x, 0, away.z);
             if (flat.lengthSqr() < 1.0e-4) continue;
             double dist = flat.length();
             if (dist > r) continue;
             double scale = knock * (1.0 - dist / r);
-            e.setDeltaMovement(flat.normalize().scale(scale).add(0, 0.25 * scale, 0));
-            e.hurtMarked = true;
-            e.hasImpulse = true;
+            // Masters are filtered here rather than in the predicate above, so that one switch
+            // governs every impulse our combat applies instead of this shockwave having its own.
+            CombatKnockback.set(e, flat.normalize().scale(scale).add(0, 0.25 * scale, 0));
         }
         DmzAnimHelper.broadcastMelee(player, DmzAnimHelper.CHARGE_HEAVY_FIRE, false, 1.0f);
     }
@@ -112,9 +112,4 @@ public final class Bt3TransformImpact {
     }
 
     /** Avoid hard dependency cycle if MastersEntity class load fails. */
-    private static final class DmzMasterProtectionSafe {
-        static boolean isMaster(LivingEntity e) {
-            return net.bullettrain.xenopixelsmod.event.DmzMasterProtection.isDmzMaster(e);
-        }
-    }
 }

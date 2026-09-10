@@ -1,0 +1,95 @@
+{
+  "generator": "tools/gen_bt3_hud_atlas.py",
+  "source": "new_menus_redisgn.zip",
+  "scale": 0.25,
+  "atlas": {
+    "width": 256,
+    "height": 256
+  },
+  "sprites": {
+    "ENERGY_STREAK": {
+      "x": 207,
+      "y": 0,
+      "width": 21,
+      "height": 35,
+      "source": "34_energy_streak_orange.png"
+    },
+    "HP_BAR": {
+      "x": 90,
+      "y": 96,
+      "width": 122,
+      "height": 19,
+      "source": "08_hp_fill_bar.png"
+    },
+    "KI_BAR": {
+      "x": 0,
+      "y": 122,
+      "width": 120,
+      "height": 19,
+      "source": "09_ki_segment_bar.png"
+    },
+    "NAMEPLATE": {
+      "x": 0,
+      "y": 60,
+      "width": 186,
+      "height": 35,
+      "source": "03_player1_nameplate_frame.png"
+    },
+    "PORTRAIT_RING": {
+      "x": 0,
+      "y": 0,
+      "width": 62,
+      "height": 59,
+      "source": "20_portrait_ring_p1.png"
+    },
+    "PROMPT_ARROW": {
+      "x": 187,
+      "y": 60,
+      "width": 29,
+      "height": 35,
+      "source": "32_arrow_orange.png"
+    },
+    "PROMPT_PLATE": {
+      "x": 0,
+      "y": 96,
+      "width": 89,
+      "height": 25,
+      "source": "28_empty_plate_orange.png"
+    },
+    "STAMINA_BAR": {
+      "x": 121,
+      "y": 122,
+      "width": 113,
+      "height": 19,
+      "source": "10_stm_segment_bar.png"
+    },
+    "TECHNIQUE_BLUE": {
+      "x": 135,
+      "y": 0,
+      "width": 35,
+      "height": 37,
+      "source": "17_ability_icon_blue.png"
+    },
+    "TECHNIQUE_GREEN": {
+      "x": 171,
+      "y": 0,
+      "width": 35,
+      "height": 36,
+      "source": "18_ability_icon_green.png"
+    },
+    "TECHNIQUE_ORANGE": {
+      "x": 98,
+      "y": 0,
+      "width": 36,
+      "height": 38,
+      "source": "19_ability_icon_orange.png"
+    },
+    "TECHNIQUE_PURPLE": {
+      "x": 63,
+      "y": 0,
+      "width": 34,
+      "height": 39,
+      "source": "16_ability_icon_purple.png"
+    }
+  }
+}

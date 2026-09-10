@@ -174,8 +174,13 @@ public final class XenoHudView {
 
         drawParallelogramBorder(graphics, CONTENT_LEFT - 2, KI_Y - 2, BAR_W + 4, KI_H + 4, BAR_SKEW, PANEL_BORDER, 1);
         fillParallelogram(graphics, CONTENT_LEFT, KI_Y, BAR_W, KI_H, BAR_SKEW, KI_EMPTY);
-        int kiFillW = Math.max(0, Math.round(BAR_W * displayedKi));
-        if (kiFillW > 0) fillParallelogram(graphics, CONTENT_LEFT, KI_Y, kiFillW, KI_H, BAR_SKEW, KI_FILLED);
+        if (SparkingKiBar.charging()) {
+            drawKiChargeSegments(graphics);
+        } else {
+            int kiFillW = Math.max(0, Math.round(BAR_W * displayedKi));
+            if (kiFillW > 0) fillParallelogram(graphics, CONTENT_LEFT, KI_Y, kiFillW, KI_H, BAR_SKEW,
+                    SparkingKiBar.fill(KI_FILLED));
+        }
         drawBarValue(graphics, font, CONTENT_LEFT, KI_Y, BAR_W, KI_H, formatPair(snapshot.curKi, snapshot.maxKi));
 
         // STM: solid segments (shimmer was 16× fillPara + pulse per frame)
@@ -198,6 +203,20 @@ public final class XenoHudView {
         }
 
         graphics.pose().popPose();
+    }
+
+    private static void drawKiChargeSegments(GuiGraphics graphics) {
+        int count = SparkingKiBar.segmentCount();
+        int gap = 2;
+        int usable = BAR_W - gap * (count - 1);
+        int segmentW = Math.max(1, usable / count);
+        for (int i = 0; i < count; i++) {
+            int sx = CONTENT_LEFT + i * (segmentW + gap);
+            int fill = SparkingKiBar.chargeSegmentFill(i);
+            fillParallelogram(graphics, sx, KI_Y, segmentW, KI_H, 2, fill);
+            fillParallelogram(graphics, sx, KI_Y, segmentW, 2, 2,
+                    SparkingKiBar.chargeSegmentHighlight(i));
+        }
     }
 
     private static float clamp01(float v) {

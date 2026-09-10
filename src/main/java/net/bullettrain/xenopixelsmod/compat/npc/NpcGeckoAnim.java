@@ -18,7 +18,7 @@ public final class NpcGeckoAnim {
             return false;
         }
         try {
-            Object display = Class.forName("noppes.npcs.entity.EntityNPCInterface")
+            Object display = NpcTypes.npcInterface()
                     .getField("display").get(npc);
             return display instanceof IDataDisplay addon && addon.hasCustomModel();
         } catch (ReflectiveOperationException | LinkageError | RuntimeException e) {
@@ -32,7 +32,7 @@ public final class NpcGeckoAnim {
             return false;
         }
         try {
-            Object display = Class.forName("noppes.npcs.entity.EntityNPCInterface")
+            Object display = NpcTypes.npcInterface()
                     .getField("display").get(npc);
             if (!(display instanceof IDataDisplay addon) || !addon.hasCustomModel()) {
                 return false;
@@ -57,7 +57,7 @@ public final class NpcGeckoAnim {
             return false;
         }
         try {
-            Class<?> npcClass = Class.forName("noppes.npcs.entity.EntityNPCInterface");
+            Class<?> npcClass = NpcTypes.npcInterface();
             if (!npcClass.isInstance(npc)) {
                 return false;
             }

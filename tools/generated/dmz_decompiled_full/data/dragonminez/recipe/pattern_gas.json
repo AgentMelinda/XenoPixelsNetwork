@@ -1,0 +1,28 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "group": "dragonminez",
+  "key": {
+    "#": {
+      "item": "dragonminez:blank_pattern_super"
+    },
+    "R": {
+      "item": "minecraft:red_dye"
+    },
+    "W": {
+      "item": "minecraft:white_dye"
+    },
+    "Y": {
+      "item": "minecraft:yellow_dye"
+    }
+  },
+  "pattern": [
+    "Y#Y",
+    "RYR",
+    "RWR"
+  ],
+  "result": {
+    "count": 1,
+    "id": "dragonminez:pattern_gas"
+  }
+}
