@@ -50,6 +50,7 @@ class PlotSaleTest {
         assertNotNull(PlotSale.Result.valueOf("NOT_FOR_SALE"));
         assertNotNull(PlotSale.Result.valueOf("NO_PLOT"));
         assertNotNull(PlotSale.Result.valueOf("ALREADY_OWNER"));
+        assertNotNull(PlotSale.Result.valueOf("NO_PERMISSION"));
     }
 
     @Test

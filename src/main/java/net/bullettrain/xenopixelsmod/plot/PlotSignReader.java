@@ -29,6 +29,23 @@ public final class PlotSignReader {
         if (text == null) {
             return null;
         }
+        String[] lines = linesOf(text, filtered);
+        if (lines == null) {
+            return null;
+        }
+        return PlotSignSyntax.parse(lines);
+    }
+
+    /** True when this face carries the plot marker, even if the payload is not yet valid. */
+    public static boolean hasMarker(@Nullable SignText text) {
+        return PlotSignSyntax.isPlotSign(linesOf(text, false));
+    }
+
+    @Nullable
+    static String[] linesOf(@Nullable SignText text, boolean filtered) {
+        if (text == null) {
+            return null;
+        }
         Component[] messages = text.getMessages(filtered);
         if (messages == null || messages.length < PlotSignSyntax.LINE_COUNT) {
             return null;
@@ -37,6 +54,6 @@ public final class PlotSignReader {
         for (int i = 0; i < messages.length; i++) {
             lines[i] = messages[i] == null ? "" : messages[i].getString();
         }
-        return PlotSignSyntax.parse(lines);
+        return lines;
     }
 }

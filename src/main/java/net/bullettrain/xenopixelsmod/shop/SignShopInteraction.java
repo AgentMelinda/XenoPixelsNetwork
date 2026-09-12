@@ -1,9 +1,11 @@
 package net.bullettrain.xenopixelsmod.shop;
 
 import net.bullettrain.xenopixelsmod.XenoPixelsMod;
+import net.bullettrain.xenopixelsmod.command.XenoPermissions;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.entity.SignBlockEntity;
@@ -12,16 +14,12 @@ import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.neoforge.event.entity.player.PlayerInteractEvent;
 
 /**
- * Purchase trigger for sign shops.
+ * Purchase and edit gates for sign shops.
  *
- * <p>A plain right-click on a sign opens vanilla's editor, so the buy action is bound to
- * <b>sneak-right-click</b> instead. That leaves editing untouched and gives the purchase a
- * deliberate input that cannot fire by accident.</p>
- *
- * <p>The "is this a shop" test reads the sign's own text through {@link SignShopReader}, which works
- * on both sides. The client therefore never opens the editor over a shop sign, and the server never
- * has to trust a client-side claim that a sign is a shop — the purchase path re-resolves the listing
- * from the server's own registry.</p>
+ * <p>A recognized shop swallows a plain right-click and buys when the player has
+ * {@link XenoPermissions#SHOP_USE}. Sneak-right-click opens vanilla's editor only when the
+ * player has {@link XenoPermissions#SHOP_EDIT}; everyone else is refused so a finished listing
+ * cannot be rewritten.</p>
  */
 @EventBusSubscriber(modid = XenoPixelsMod.MOD_ID)
 public final class SignShopInteraction {
@@ -31,22 +29,33 @@ public final class SignShopInteraction {
 
     @SubscribeEvent
     public static void onRightClickBlock(PlayerInteractEvent.RightClickBlock event) {
-        if (event.getEntity() == null || !event.getEntity().isShiftKeyDown()) {
+        if (event.getEntity() == null || event.getHand() != InteractionHand.MAIN_HAND) {
             return;
         }
         Level level = event.getLevel();
         BlockPos pos = event.getPos();
-        if (!(level.getBlockEntity(pos) instanceof SignBlockEntity sign)) {
+        if (!(level.getBlockEntity(pos) instanceof SignBlockEntity sign)
+                || !SignListingProtection.isShop(sign)) {
             return;
         }
-        boolean isShop = SignShopReader.fromSignText(sign.getText(true), false) != null
-                || SignShopReader.fromSignText(sign.getText(false), false) != null;
-        if (!isShop) {
+
+        if (event.getEntity().isShiftKeyDown()) {
+            if (level.isClientSide) {
+                // Do not open the editor locally. The server sends it only when shop.edit is held.
+                event.setCancellationResult(InteractionResult.SUCCESS);
+                event.setCanceled(true);
+                return;
+            }
+            if (event.getEntity() instanceof ServerPlayer player
+                    && !XenoPermissions.hasPermission(player, XenoPermissions.SHOP_EDIT)) {
+                player.displayClientMessage(Component.literal("You cannot edit this shop sign."), true);
+                event.setCancellationResult(InteractionResult.FAIL);
+                event.setCanceled(true);
+            }
             return;
         }
 
         if (level.isClientSide) {
-            // Suppress the editor; the server is the only side that may move money.
             event.setCancellationResult(InteractionResult.SUCCESS);
             event.setCanceled(true);
             return;

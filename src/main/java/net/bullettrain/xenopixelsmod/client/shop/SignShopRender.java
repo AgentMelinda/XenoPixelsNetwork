@@ -66,7 +66,7 @@ public final class SignShopRender {
         rows[ROW_ITEM] = splitter.apply(rainbow(name, hueSeed(data)));
         rows[ROW_QUANTITY] = splitter.apply(Component.literal(data.quantity() + "x")
                 .withStyle(ChatFormatting.WHITE));
-        rows[ROW_PRICE] = splitter.apply(price(SignShopSyntax.formatPrice(data.price())));
+        rows[ROW_PRICE] = splitter.apply(price(priceLabel(data.price())));
         return rows;
     }
 
@@ -91,7 +91,7 @@ public final class SignShopRender {
         rows[ROW_ITEM] = splitter.apply(rainbow("Plot", hueSeed(data)));
         rows[ROW_QUANTITY] = splitter.apply(Component.literal(data.width() + "x" + data.length())
                 .withStyle(ChatFormatting.WHITE));
-        rows[ROW_PRICE] = splitter.apply(price(SignShopSyntax.formatPrice(data.price())));
+        rows[ROW_PRICE] = splitter.apply(price(priceLabel(data.price())));
         return rows;
     }
 
@@ -106,6 +106,11 @@ public final class SignShopRender {
                     .withStyle(Style.EMPTY.withColor(rgb)));
         }
         return root;
+    }
+
+    /** Display-only; the sign text and the registry still store a bare number. */
+    static String priceLabel(double amount) {
+        return "$" + SignShopSyntax.formatPrice(amount);
     }
 
     /** Gold to amber across the digits, bold, so the price reads as the emphasis line. */

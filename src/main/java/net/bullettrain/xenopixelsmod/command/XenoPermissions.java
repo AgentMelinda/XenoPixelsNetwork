@@ -195,6 +195,22 @@ public final class XenoPermissions {
     public static final PermissionNode<Boolean> XENOCLIENT_SET =
             client("xenoclient.set", "Use /xenoclient set <key> <true|false>");
 
+    // -------------------------------------------------------------------------
+    // Sign shops + plot-sale signs
+    // -------------------------------------------------------------------------
+    /** Create, rewrite, or break a shop sign after it has been set up. Default: OP level 2. */
+    public static final PermissionNode<Boolean> SHOP_EDIT =
+            op("shop.edit", "Create or rewrite XenoPixels shop signs");
+    /** Right-click a shop sign to buy. Default: everyone. */
+    public static final PermissionNode<Boolean> SHOP_USE =
+            everyone("shop.use", "Buy from XenoPixels shop signs");
+    /** Create, rewrite, or break a plot-sale sign. Default: OP level 2. */
+    public static final PermissionNode<Boolean> PLOT_EDIT =
+            op("plot.edit", "Create or rewrite XenoPixels plot-sale signs");
+    /** Right-click a plot-sale sign to buy. Default: everyone. */
+    public static final PermissionNode<Boolean> PLOT_USE =
+            everyone("plot.use", "Buy a plot from a XenoPixels plot-sale sign");
+
     private XenoPermissions() {
     }
 
@@ -247,6 +263,10 @@ public final class XenoPermissions {
     /** Brigadier {@code .requires(...)} helper. */
     public static Predicate<CommandSourceStack> require(PermissionNode<Boolean> node) {
         return src -> hasPermission(src, node);
+    }
+
+    public static boolean hasPermission(ServerPlayer player, PermissionNode<Boolean> node) {
+        return player != null && hasPermission(player.createCommandSourceStack(), node);
     }
 
     public static boolean hasPermission(CommandSourceStack source, PermissionNode<Boolean> node) {

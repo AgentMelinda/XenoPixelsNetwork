@@ -1,5 +1,6 @@
 package net.bullettrain.xenopixelsmod.mixin.common;
 
+import net.bullettrain.xenopixelsmod.shop.SignListingProtection;
 import net.bullettrain.xenopixelsmod.shop.SignShopData;
 import net.bullettrain.xenopixelsmod.shop.SignShopManager;
 import net.bullettrain.xenopixelsmod.shop.SignShopReader;
@@ -34,6 +35,22 @@ public abstract class SignShopUpdateMixin {
     @Shadow
     public ServerPlayer player;
 
+    @Inject(method = "handleSignUpdate", at = @At("HEAD"), cancellable = true)
+    private void xenopixels$guardSignListingEdit(ServerboundSignUpdatePacket packet, CallbackInfo ci) {
+        if (this.player == null || packet == null) {
+            return;
+        }
+        if (!(this.player.level() instanceof ServerLevel level)) {
+            return;
+        }
+        if (!(level.getBlockEntity(packet.getPos()) instanceof SignBlockEntity sign)) {
+            return;
+        }
+        if (SignListingProtection.denyEdit(this.player, sign, incomingLines(packet), packet.isFrontText())) {
+            ci.cancel();
+        }
+    }
+
     @Inject(method = "handleSignUpdate", at = @At("TAIL"))
     private void xenopixels$registerSignShop(ServerboundSignUpdatePacket packet, CallbackInfo ci) {
         if (this.player == null || packet == null) {
@@ -56,5 +73,10 @@ public abstract class SignShopUpdateMixin {
             return;
         }
         manager.put(dimension, pos, this.player.getUUID(), data);
+    }
+
+    private static String[] incomingLines(ServerboundSignUpdatePacket packet) {
+        String[] lines = packet.getLines();
+        return lines != null ? lines : new String[0];
     }
 }

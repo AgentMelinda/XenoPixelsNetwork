@@ -294,11 +294,18 @@ Line 4: <price>          decimal; an optional trailing currency tag is discarded
 **Rendering shares the shop renderer.** `SignRendererShopMixin` keeps its single redirect on
 `SignText.getRenderMessages`, tries the shop grammar first, then the plot grammar, and lets
 vanilla perform all layout. `plotRows` uses the same `rainbow(...)` and `price(...)` helpers:
-row 0 empty, row 1 rainbow `Plot`, row 2 white `WxL` size, row 3 gold→amber bold price. The hue
+row 0 empty, row 1 rainbow `Plot`, row 2 white `WxL` size, row 3 gold→amber bold `$` + price. The hue
 seed derives from the plot bounds plus `Double.hashCode(price)`, so colour is stable per sign and
 does not flicker frame to frame.
 
-**Purchase reuses the sale path.** A sneak-right-click resolves the sign's tuple to a `PlotArea`
+**Permissions.** Shop and plot listings use NeoForge nodes (LuckPerms ids
+`xenopixelsmod.<path>`). `shop.use` / `plot.use` default to everyone and gate a right-click
+purchase. `shop.edit` / `plot.edit` default to OP level 2 (and `xenopixelsmod.admin`) and are
+required to create, sneak-edit, or break a finished listing. A sign-update packet that would
+write `[XPSHOP]` or `[XPLOT]` without the edit node is dropped, so a player cannot turn a
+plain sign into a shop or vandalize one that is already set up.
+
+**Purchase reuses the sale path.** A plain right-click resolves the sign's tuple to a `PlotArea`
 reference and calls the already-verified `PlotSale.buy`; seller and price come from the server's
 own listing, so editing the sign cannot change what is charged. `PlotSignInteraction.describe` is
 an exhaustive switch over `PlotSale.Result` (`SUCCESS`, `NO_ECONOMY`, `INSUFFICIENT_FUNDS`,

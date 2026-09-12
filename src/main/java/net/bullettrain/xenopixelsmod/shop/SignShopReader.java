@@ -1,6 +1,7 @@
 package net.bullettrain.xenopixelsmod.shop;
 
 import net.minecraft.network.chat.Component;
+import net.minecraft.world.level.block.entity.SignBlockEntity;
 import net.minecraft.world.level.block.entity.SignText;
 
 import javax.annotation.Nullable;
@@ -30,6 +31,37 @@ public final class SignShopReader {
         if (text == null) {
             return null;
         }
+        String[] lines = linesOf(text, filtered);
+        if (lines == null) {
+            return null;
+        }
+        SignShopData data = SignShopSyntax.parse(lines);
+        if (data == null || !SignShopTarget.isResolvable(data.targetId())) {
+            return null;
+        }
+        return data;
+    }
+
+    /** Front face first, then back. {@code null} when neither face is a resolvable shop. */
+    @Nullable
+    public static SignShopData listing(@Nullable SignBlockEntity sign) {
+        if (sign == null) {
+            return null;
+        }
+        SignShopData data = fromSignText(sign.getText(true), false);
+        return data != null ? data : fromSignText(sign.getText(false), false);
+    }
+
+    /** True when this face carries the shop marker, even if the payload is not yet valid. */
+    public static boolean hasMarker(@Nullable SignText text) {
+        return SignShopSyntax.isShopSign(linesOf(text, false));
+    }
+
+    @Nullable
+    static String[] linesOf(@Nullable SignText text, boolean filtered) {
+        if (text == null) {
+            return null;
+        }
         Component[] messages = text.getMessages(filtered);
         if (messages == null || messages.length < SignShopSyntax.LINE_COUNT) {
             return null;
@@ -38,10 +70,6 @@ public final class SignShopReader {
         for (int i = 0; i < messages.length; i++) {
             lines[i] = messages[i] == null ? "" : messages[i].getString();
         }
-        SignShopData data = SignShopSyntax.parse(lines);
-        if (data == null || !SignShopTarget.isResolvable(data.targetId())) {
-            return null;
-        }
-        return data;
+        return lines;
     }
 }

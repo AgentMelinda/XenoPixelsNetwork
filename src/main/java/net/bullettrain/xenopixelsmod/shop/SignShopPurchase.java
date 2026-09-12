@@ -1,5 +1,6 @@
 package net.bullettrain.xenopixelsmod.shop;
 
+import net.bullettrain.xenopixelsmod.command.XenoPermissions;
 import net.bullettrain.xenopixelsmod.compat.mmoecon.MmoEconBridge;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.chat.Component;
@@ -8,6 +9,7 @@ import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.level.block.entity.SignBlockEntity;
 
 import javax.annotation.Nullable;
 
@@ -37,7 +39,9 @@ public final class SignShopPurchase {
         /** No shop is registered at that position. */
         NO_SHOP,
         /** The sign's target id no longer resolves to an item. */
-        NO_TARGET
+        NO_TARGET,
+        /** The buyer lacks {@link XenoPermissions#SHOP_USE}. */
+        NO_PERMISSION
     }
 
     /**
@@ -50,25 +54,39 @@ public final class SignShopPurchase {
             return Result.NO_SHOP;
         }
         ResourceLocation dimension = level.dimension().location();
-        SignShopManager.Entry entry = SignShopManager.get(level.getServer()).at(dimension, pos);
-        if (entry == null) {
+        SignShopManager manager = SignShopManager.get(level.getServer());
+        SignShopData data = null;
+        if (level.getBlockEntity(pos) instanceof SignBlockEntity sign) {
+            data = SignShopReader.listing(sign);
+        }
+        SignShopManager.Entry entry = manager.at(dimension, pos);
+        if (data == null && entry != null) {
+            data = entry.data();
+        }
+        if (data == null) {
             return Result.NO_SHOP;
+        }
+        if (entry == null) {
+            manager.put(dimension, pos, null, data);
+        }
+        if (!XenoPermissions.hasPermission(buyer, XenoPermissions.SHOP_USE)) {
+            return Result.NO_PERMISSION;
         }
         if (!MmoEconBridge.available()) {
             return Result.NO_ECONOMY;
         }
-        Item item = SignShopTarget.resolve(entry.data().targetId());
+        Item item = SignShopTarget.resolve(data.targetId());
         if (item == null) {
             return Result.NO_TARGET;
         }
-        long price = MmoEconBridge.toUnits(entry.data().price());
+        long price = MmoEconBridge.toUnits(data.price());
         if (!MmoEconBridge.hasFunds(buyer.getUUID(), price)) {
             return Result.INSUFFICIENT_FUNDS;
         }
         if (!MmoEconBridge.withdraw(buyer.getUUID(), price)) {
             return Result.INSUFFICIENT_FUNDS;
         }
-        give(buyer, item, entry.data().quantity());
+        give(buyer, item, data.quantity());
         return Result.SUCCESS;
     }
 
@@ -81,6 +99,7 @@ public final class SignShopPurchase {
             case INSUFFICIENT_FUNDS -> Component.literal("You cannot afford this.");
             case NO_SHOP -> Component.literal("That sign is not a shop.");
             case NO_TARGET -> Component.literal("That shop's item no longer exists.");
+            case NO_PERMISSION -> Component.literal("You cannot use shop signs.");
         };
     }
 

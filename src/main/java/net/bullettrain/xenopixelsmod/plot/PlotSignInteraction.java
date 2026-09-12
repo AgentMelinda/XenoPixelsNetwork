@@ -1,9 +1,12 @@
 package net.bullettrain.xenopixelsmod.plot;
 
 import net.bullettrain.xenopixelsmod.XenoPixelsMod;
+import net.bullettrain.xenopixelsmod.command.XenoPermissions;
+import net.bullettrain.xenopixelsmod.shop.SignListingProtection;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.entity.SignBlockEntity;
@@ -14,16 +17,11 @@ import net.neoforged.neoforge.event.entity.player.PlayerInteractEvent;
 import javax.annotation.Nullable;
 
 /**
- * Purchase trigger for plot-sale signs.
+ * Purchase and edit gates for plot-sale signs.
  *
- * <p>Bound to <b>sneak-right-click</b> for the same reason a shop sign is: a plain right-click
- * opens vanilla's editor, so the buy action needs an input that cannot fire by accident. Editing
- * a plot sign is therefore untouched.</p>
- *
- * <p>Purchase delegates to {@link PlotSale#buy}, so money-first settlement, the {@code NO_ECONOMY}
- * failure posture and the ownership hand-off are the already-verified plot sale path rather than a
- * second implementation. The sign contributes only the plot tuple; the seller and the price come
- * from the server's own listing, so a sign cannot be edited to change what is actually charged.</p>
+ * <p>A recognized plot-sale sign swallows a plain right-click and buys when the player has
+ * {@link XenoPermissions#PLOT_USE}. Sneak-right-click opens vanilla's editor only when the
+ * player has {@link XenoPermissions#PLOT_EDIT}.</p>
  */
 @EventBusSubscriber(modid = XenoPixelsMod.MOD_ID)
 public final class PlotSignInteraction {
@@ -33,22 +31,32 @@ public final class PlotSignInteraction {
 
     @SubscribeEvent
     public static void onRightClickBlock(PlayerInteractEvent.RightClickBlock event) {
-        if (event.getEntity() == null || !event.getEntity().isShiftKeyDown()) {
+        if (event.getEntity() == null || event.getHand() != InteractionHand.MAIN_HAND) {
             return;
         }
         Level level = event.getLevel();
         BlockPos pos = event.getPos();
-        if (!(level.getBlockEntity(pos) instanceof SignBlockEntity sign)) {
+        if (!(level.getBlockEntity(pos) instanceof SignBlockEntity sign)
+                || !SignListingProtection.isPlot(sign)) {
             return;
         }
-        boolean isPlotSign = PlotSignReader.fromSignText(sign.getText(true), false) != null
-                || PlotSignReader.fromSignText(sign.getText(false), false) != null;
-        if (!isPlotSign) {
+
+        if (event.getEntity().isShiftKeyDown()) {
+            if (level.isClientSide) {
+                event.setCancellationResult(InteractionResult.SUCCESS);
+                event.setCanceled(true);
+                return;
+            }
+            if (event.getEntity() instanceof ServerPlayer player
+                    && !XenoPermissions.hasPermission(player, XenoPermissions.PLOT_EDIT)) {
+                player.displayClientMessage(Component.literal("You cannot edit this plot sign."), true);
+                event.setCancellationResult(InteractionResult.FAIL);
+                event.setCanceled(true);
+            }
             return;
         }
 
         if (level.isClientSide) {
-            // Suppress the editor; the server is the only side that may move money.
             event.setCancellationResult(InteractionResult.SUCCESS);
             event.setCanceled(true);
             return;
@@ -87,6 +95,7 @@ public final class PlotSignInteraction {
             case NOT_FOR_SALE -> Component.literal("That plot is not for sale.");
             case NO_PLOT -> Component.literal("No claimed plot at those coordinates.");
             case ALREADY_OWNER -> Component.literal("You already own that plot.");
+            case NO_PERMISSION -> Component.literal("You cannot use plot signs.");
         };
     }
 }

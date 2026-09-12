@@ -1,5 +1,6 @@
 package net.bullettrain.xenopixelsmod.plot;
 
+import net.bullettrain.xenopixelsmod.command.XenoPermissions;
 import net.bullettrain.xenopixelsmod.compat.mmoecon.MmoEconBridge;
 import net.minecraft.core.HolderLookup;
 import net.minecraft.nbt.CompoundTag;
@@ -62,7 +63,9 @@ public final class PlotSale extends SavedData {
         /** The plot is not claimed, or the buyer was not on a server level. */
         NO_PLOT,
         /** The buyer already owns the plot. */
-        ALREADY_OWNER
+        ALREADY_OWNER,
+        /** The buyer lacks {@link XenoPermissions#PLOT_USE}. */
+        NO_PERMISSION
     }
 
     private final List<Listing> listings = new ArrayList<>();
@@ -156,6 +159,9 @@ public final class PlotSale extends SavedData {
     public static Result buy(ServerPlayer buyer, PlotArea plot) {
         if (buyer == null || plot == null || !(buyer.level() instanceof ServerLevel level)) {
             return Result.NO_PLOT;
+        }
+        if (!XenoPermissions.hasPermission(buyer, XenoPermissions.PLOT_USE)) {
+            return Result.NO_PERMISSION;
         }
         MinecraftServer server = level.getServer();
         PlotManager manager = PlotManager.get(server);
