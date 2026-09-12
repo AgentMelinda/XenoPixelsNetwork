@@ -3,6 +3,8 @@ package net.bullettrain.xenopixelsmod.combat;
 import com.dragonminez.common.network.NetworkHandler;
 import com.dragonminez.common.network.S2C.MeleeAnimationS2C;
 import com.dragonminez.common.network.S2C.TriggerAnimationS2C;
+import net.bullettrain.xenopixelsmod.anim.XenoTechniqueAnimBindings;
+import net.bullettrain.xenopixelsmod.combat.anim.TechniqueAnimSlot;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.server.TickTask;
 
@@ -95,33 +97,69 @@ public final class DmzAnimHelper {
         broadcastChargeStop(player);
     }
 
-    /** Looping palm-out for the caster and everyone tracking them. */
+    public static String hakaiHoldAnim() {
+        return XenoTechniqueAnimBindings.resolve(TechniqueAnimSlot.HAKAI_HOLD);
+    }
+
+    public static String hakaiFireAnim() {
+        return XenoTechniqueAnimBindings.resolve(TechniqueAnimSlot.HAKAI_FIRE);
+    }
+
+    /**
+     * {@code TriggerAnimationS2C} KI hold flag. Client does
+     * {@code playKiAnimation(name, variant == 1)}; 1 is play-and-hold last frame.
+     * Variant 0 drops the main controller back to idle — that is the snap.
+     */
+    public static final int HAKAI_HOLD_KI_VARIANT = 1;
+
+    /** Shipped hold name, used by tests and default resolve. */
+    public static boolean isShippedHakaiHold(String anim) {
+        return HAKAI_HOLD.equals(anim);
+    }
+
+    /**
+     * Every Hakai hold — shipped or studio — uses DMZ play-and-hold KI so the
+     * last authored pose stays up until fire/cancel. Melee play-once returns to idle.
+     */
+    public static boolean useLoopingHakaiHold(String resolvedAnim, String boundClip) {
+        return resolvedAnim != null && !resolvedAnim.isBlank();
+    }
+
+    /**
+     * Retriggering a hold restarts GeckoLib from frame 0. Channel begin already
+     * started it; later ticks must not.
+     */
+    public static boolean shouldRetriggerHold(int ticksElapsed) {
+        return false;
+    }
+
+    /** Palm-out for the caster and everyone tracking them. Started once per channel. */
     public static void broadcastHakaiHold(ServerPlayer player) {
+        String hold = hakaiHoldAnim();
         try {
             TriggerAnimationS2C pkt = new TriggerAnimationS2C(
                     player.getUUID(),
                     TriggerAnimationS2C.AnimationType.KI_ANIMATION,
-                    0,
+                    HAKAI_HOLD_KI_VARIANT,
                     player.getId(),
-                    HAKAI_HOLD);
+                    hold);
             NetworkHandler.sendToTrackingEntityAndSelf(pkt, player);
         } catch (Throwable ignored) {
             try {
                 NetworkHandler.sendToTrackingEntity(new TriggerAnimationS2C(
                         player.getUUID(),
                         TriggerAnimationS2C.AnimationType.KI_ANIMATION,
-                        0,
+                        HAKAI_HOLD_KI_VARIANT,
                         player.getId(),
-                        HAKAI_HOLD), player);
+                        hold), player);
             } catch (Throwable ignored2) {
             }
         }
-        broadcastMelee(player, HAKAI_HOLD, false, 1.0f);
     }
 
     public static void broadcastHakaiFire(ServerPlayer player) {
         broadcastChargeStop(player);
-        broadcastMelee(player, HAKAI_FIRE, false, 1.15f);
+        broadcastMelee(player, hakaiFireAnim(), false, 1.15f);
     }
 
     public static void broadcastHakaiStop(ServerPlayer player) {

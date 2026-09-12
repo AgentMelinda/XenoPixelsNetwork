@@ -1,195 +1,215 @@
 {
+  "source": "dragonmine_complete_ui_elements_master_bundle/04_dragonmine_status_redesign_v3/dragonmine_redesign_single_elements_v3",
+  "density": 5,
   "atlas": {
     "width": 2048,
     "height": 2048,
-    "sha256": "03ec2c64ce41ef59674e0cac01e30c5cb9f8cdf2147d3e3c400c2e022cb17e50"
+    "sha256": "bff62778b75781420940c6c06895151055ac3c5c15f11fe967fa73ebc7eea7f3"
   },
-  "java_sha256": "8f3ba321b528739c4540cd042db54f0bc17a770db012e7acc9e79cd5940b5f9b",
   "sprites": {
+    "BASIC_ROW": [
+      1050,
+      920,
+      450,
+      55
+    ],
+    "DIVIDER": [
+      1690,
+      920,
+      350,
+      40
+    ],
+    "INFO_HEADER": [
+      0,
+      770,
+      480,
+      145
+    ],
     "INFO_PANEL": [
       0,
       0,
-      505,
-      790
+      510,
+      765
+    ],
+    "INFO_STATS_HEADER": [
+      1220,
+      770,
+      405,
+      70
+    ],
+    "MULTIPLIER_FIELD": [
+      1505,
+      920,
+      130,
+      55
     ],
     "NAMEPLATE": [
+      1355,
       0,
-      795,
       620,
-      150
+      160
     ],
-    "NAV_CHARACTER": [
-      625,
-      795,
-      130,
-      150
-    ],
-    "NAV_ITEMS": [
-      760,
-      795,
+    "NAV_BASE": [
+      485,
+      770,
       125,
-      150
-    ],
-    "NAV_PARTY": [
-      890,
-      795,
-      125,
-      150
-    ],
-    "NAV_QUESTS": [
-      1020,
-      795,
-      125,
-      150
-    ],
-    "NAV_SETTINGS": [
-      1150,
-      795,
-      125,
-      150
-    ],
-    "NAV_SKILLS": [
-      1280,
-      795,
-      125,
-      150
+      125
     ],
     "ORB_BLUE": [
-      1410,
-      795,
-      95,
-      85
+      1055,
+      770,
+      50,
+      90
     ],
     "ORB_GOLD": [
-      1510,
-      795,
-      95,
-      85
+      1110,
+      770,
+      50,
+      90
     ],
     "ORB_RED": [
-      1610,
-      795,
-      100,
-      85
+      1165,
+      770,
+      50,
+      90
+    ],
+    "PLUS": [
+      1640,
+      920,
+      45,
+      45
     ],
     "SCAN_RING": [
       1030,
       0,
-      410,
-      380
+      320,
+      320
+    ],
+    "STATISTICS_HEADER": [
+      615,
+      770,
+      435,
+      115
+    ],
+    "STATISTIC_ROW": [
+      0,
+      920,
+      520,
+      65
     ],
     "STATS_PANEL": [
-      510,
-      0,
       515,
-      660
+      0,
+      510,
+      750
+    ],
+    "STAT_ROW": [
+      525,
+      920,
+      520,
+      65
     ]
   },
-  "info_rows": [
-    [
-      141,
-      181
+  "logical_sizes": {
+    "BASIC_ROW": [
+      90,
+      11
     ],
-    [
-      182,
-      218
+    "DIVIDER": [
+      70,
+      8
     ],
-    [
-      220,
-      255
+    "INFO_HEADER": [
+      96,
+      29
     ],
-    [
-      256,
-      293
+    "INFO_PANEL": [
+      102,
+      153
     ],
-    [
-      294,
-      316
+    "INFO_STATS_HEADER": [
+      81,
+      14
+    ],
+    "MULTIPLIER_FIELD": [
+      26,
+      11
+    ],
+    "NAMEPLATE": [
+      124,
+      32
+    ],
+    "NAV_BASE": [
+      25,
+      25
+    ],
+    "ORB_BLUE": [
+      10,
+      18
+    ],
+    "ORB_GOLD": [
+      10,
+      18
+    ],
+    "ORB_RED": [
+      10,
+      18
+    ],
+    "PLUS": [
+      9,
+      9
+    ],
+    "SCAN_RING": [
+      64,
+      64
+    ],
+    "STATISTICS_HEADER": [
+      87,
+      23
+    ],
+    "STATISTIC_ROW": [
+      104,
+      13
+    ],
+    "STATS_PANEL": [
+      102,
+      150
+    ],
+    "STAT_ROW": [
+      104,
+      13
     ]
-  ],
-  "stat_rows": [
-    [
-      391,
-      428
+  },
+  "anchors": {
+    "info_rows": [
+      34,
+      45,
+      56,
+      67
     ],
-    [
-      437,
-      476
+    "stat_rows": [
+      74,
+      85,
+      96,
+      107,
+      118,
+      129,
+      140
     ],
-    [
-      485,
-      524
+    "statistic_rows": [
+      29,
+      41,
+      53,
+      65,
+      77,
+      89,
+      101
     ],
-    [
-      532,
-      571
-    ],
-    [
-      580,
-      619
-    ],
-    [
-      627,
-      667
-    ],
-    [
-      676,
-      715
+    "summary_rows": [
+      113,
+      125,
+      137
     ]
-  ],
-  "statistic_rows": [
-    [
-      131,
-      173
-    ],
-    [
-      174,
-      214
-    ],
-    [
-      215,
-      254
-    ],
-    [
-      255,
-      293
-    ],
-    [
-      295,
-      334
-    ],
-    [
-      335,
-      374
-    ],
-    [
-      376,
-      414
-    ]
-  ],
-  "summary_rows": [
-    [
-      503,
-      544
-    ],
-    [
-      545,
-      580
-    ],
-    [
-      581,
-      622
-    ]
-  ],
-  "colours": {
-    "CYAN": "#0093CC",
-    "GOLD": "#FFE005",
-    "GREEN": "#00C569",
-    "HEADER": "#FFEC13",
-    "LABEL": "#C3F8FC",
-    "MAGENTA": "#EA62FF",
-    "ORANGE": "#FF7E18",
-    "RED": "#FF3A4A",
-    "VALUE": "#FFFFFF"
-  }
+  },
+  "java_sha256": "3ae4f8677d30c8df8eba4d1a8209ca9b8f2aa6273f287dcb420039dfab7b386a"
 }

@@ -70,6 +70,7 @@ public final class XenoPartyHudConfig {
     public static final int[] partColor = new int[Part.COUNT];
     public static final boolean[] partBold = new boolean[Part.COUNT];
     public static final String[] partFont = new String[Part.COUNT];
+    public static final boolean[] partHidden = new boolean[Part.COUNT];
 
     /** The colours the card shipped with, so a reset restores exactly what the art was drawn for. */
     private static final int[] DEFAULT_PART_COLOR = {
@@ -132,6 +133,7 @@ public final class XenoPartyHudConfig {
         partBold[part] = false;
         partColor[part] = DEFAULT_PART_COLOR[part];
         partFont[part] = DEFAULT_FONT;
+        partHidden[part] = false;
     }
 
     public static void resetParts() {
@@ -157,6 +159,7 @@ public final class XenoPartyHudConfig {
             copyInto(d.partColor, partColor);
             copyInto(d.partBold, partBold);
             copyInto(d.partFont, partFont);
+            copyInto(d.partHidden, partHidden);
         } catch (IOException e) {
             XenoPixelsMod.LOGGER.warn("Failed to load party HUD config", e);
         }
@@ -197,6 +200,7 @@ public final class XenoPartyHudConfig {
         d.partColor = partColor.clone();
         d.partBold = partBold.clone();
         d.partFont = partFont.clone();
+        d.partHidden = partHidden.clone();
         try {
             Files.createDirectories(PATH.getParent());
             try (Writer writer = Files.newBufferedWriter(PATH)) { GSON.toJson(d, writer); }
@@ -233,5 +237,6 @@ public final class XenoPartyHudConfig {
         int[] partColor;
         boolean[] partBold;
         String[] partFont;
+        boolean[] partHidden;
     }
 }

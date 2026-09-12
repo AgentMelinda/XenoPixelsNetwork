@@ -101,6 +101,7 @@ public final class XenoDmzNeonConfig {
     public static final int[] partColor = new int[Part.COUNT];
     public static final boolean[] partBold = new boolean[Part.COUNT];
     public static final String[] partFont = new String[Part.COUNT];
+    public static final boolean[] partHidden = new boolean[Part.COUNT];
 
     /**
      * The colours the screen ships with, every one of them sampled from the bundle's reference
@@ -184,6 +185,7 @@ public final class XenoDmzNeonConfig {
         partBold[part] = false;
         partColor[part] = DEFAULT_PART_COLOR[part];
         partFont[part] = DEFAULT_FONT;
+        partHidden[part] = false;
     }
 
     public static void resetParts() {
@@ -205,6 +207,7 @@ public final class XenoDmzNeonConfig {
             copyInto(d.partColor, partColor);
             copyInto(d.partBold, partBold);
             copyInto(d.partFont, partFont);
+            copyInto(d.partHidden, partHidden);
         } catch (IOException e) {
             XenoPixelsMod.LOGGER.warn("Failed to load neon DMZ screen layout", e);
         }
@@ -240,6 +243,7 @@ public final class XenoDmzNeonConfig {
         d.partColor = partColor.clone();
         d.partBold = partBold.clone();
         d.partFont = partFont.clone();
+        d.partHidden = partHidden.clone();
         try {
             Files.createDirectories(PATH.getParent());
             try (Writer writer = Files.newBufferedWriter(PATH)) { GSON.toJson(d, writer); }
@@ -256,5 +260,6 @@ public final class XenoDmzNeonConfig {
         int[] partColor;
         boolean[] partBold;
         String[] partFont;
+        boolean[] partHidden;
     }
 }

@@ -33,10 +33,25 @@ public final class HudNumbers {
      */
     public static String format(double value) {
         double v = Math.max(0.0, value);
-        if (!XenoClientConfig.hudCompactNumbers) return String.valueOf(Math.round(v));
+        if (!XenoClientConfig.hudCompactNumbers) return exact(v);
         if (v >= MILLION) return trim(v / MILLION) + "M";
         if (v >= THOUSAND) return trim(v / THOUSAND) + "k";
-        return String.valueOf(Math.round(v));
+        return exact(v);
+    }
+
+    /**
+     * The whole number when there is one, otherwise three decimals.
+     *
+     * <p>{@code Math.round} was the old path and it silently dropped the fraction: a heal that
+     * moved 102.4 to 102.9 read as {@code 102} both times, so the exact mode could not actually
+     * show a small heal landing. Large values stay integral because DMZ writes them that way, so
+     * the common case still prints with no decimal point at all.
+     */
+    private static String exact(double v) {
+        if (v == Math.rint(v) && v < 9.007199254740992E15) {
+            return String.valueOf((long) v);
+        }
+        return String.format(java.util.Locale.ROOT, "%.3f", v);
     }
 
     /** {@code current/max}, the form the bars label themselves with. */

@@ -17,7 +17,7 @@ import noppes.npcs.shared.client.gui.components.GuiTextFieldNop;
 import noppes.npcs.shared.client.gui.listeners.ITextfieldListener;
 
 /** Per-NPC base, normal-form, and stack-form aura layer editor. */
-public final class GuiNpcDmzAuraEditor extends GuiNPCInterface2 implements ITextfieldListener {
+public final class GuiNpcDmzAuraEditor extends GuiNPCInterface2 implements ITextfieldListener, NpcPreviewOwner {
     public enum Target { BASE, FORM, STACK;
         Target next() { return values()[(ordinal() + 1) % values().length]; }
     }

@@ -36,7 +36,7 @@ import software.bernie.geckolib.animation.PlayState;
  * {@code require = 0} because the targets are methods another mod's mixin merges in: if DMZ
  * renames them the portrait degrades rather than failing at startup.
  */
-@Mixin(value = AbstractClientPlayer.class, remap = false)
+@Mixin(value = AbstractClientPlayer.class, remap = false, priority = 1100)
 public abstract class DmzPortraitFlightMixin {
 
 	@Inject(method = "predicate", at = @At("HEAD"), cancellable = true, remap = false, require = 0)

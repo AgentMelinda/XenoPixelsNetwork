@@ -827,6 +827,12 @@ net.bullettrain.xenopixelsmod.combat.VanishShadeFx.spawn(player, from);
     public static void handleZanzoken(ServerPlayer player) {
         // Three different refusals used to look like one message or like nothing at all, which is
         // what made a stuck cooldown so hard to tell apart from a technique that was not wired up.
+        if (!net.bullettrain.xenopixelsmod.features.progression.CombatSkills.zanzokenUnlocked(player)) {
+            player.displayClientMessage(
+                    net.minecraft.network.chat.Component.literal(
+                            "§7Zanzoken: unlock it in the skill tree first (/xenoskills)"), true);
+            return;
+        }
         if (!XenoServerConfig.zanzokenEnabled) {
             player.displayClientMessage(
                     net.minecraft.network.chat.Component.literal("§7Zanzoken is disabled here"), true);
@@ -845,6 +851,12 @@ net.bullettrain.xenopixelsmod.combat.VanishShadeFx.spawn(player, from);
             return;
         }
         trySpendKi(res, XenoServerConfig.zanzokenKiCost);
+        if (!XenoServerConfig.zanzokenRequireTiming) {
+            LivingEntity center = net.bullettrain.xenopixelsmod.combat.clone.XenoCloneSystem
+                    .lockedTarget(player);
+            performZanzoken(player, center != null ? center : player);
+            return;
+        }
         // The images are now standing in for this fighter: onlookers cannot pick the real body out,
         // and AI cannot acquire them until the images fade (ZanzokenConfusion).
         net.bullettrain.xenopixelsmod.combat.Bt3CombatEvents.markAfterimages(
@@ -975,6 +987,12 @@ net.bullettrain.xenopixelsmod.combat.VanishShadeFx.spawn(player, from);
      * because a fighter should never be stranded in four weak bodies by an empty bar.
      */
     public static void handleMultiForm(ServerPlayer player) {
+        if (!net.bullettrain.xenopixelsmod.features.progression.CombatSkills.multiFormUnlocked(player)) {
+            player.displayClientMessage(
+                    net.minecraft.network.chat.Component.literal(
+                            "§7Shi Shin No Ken: unlock it in the skill tree first (/xenoskills)"), true);
+            return;
+        }
         if (!XenoServerConfig.multiFormEnabled) return;
         if (net.bullettrain.xenopixelsmod.combat.clone.XenoCloneSystem.isSplit(player)) {
             net.bullettrain.xenopixelsmod.combat.clone.XenoCloneSystem.reunite(player);
@@ -1247,6 +1265,10 @@ net.bullettrain.xenopixelsmod.combat.VanishShadeFx.spawn(player, from);
      * @param target the caster's locked target, or {@code null} to search where they are looking
      */
     public static void startHakai(ServerPlayer player, LivingEntity target) {
+        if (!net.bullettrain.xenopixelsmod.features.progression.CombatSkills.hakaiUnlocked(player)) {
+            hakaiFail(player, "Hakai: unlock it in the skill tree first (/xenoskills)");
+            return;
+        }
         if (net.bullettrain.xenopixelsmod.combat.HakaiChannelSystem.isChanneling(player)) {
             return;
         }

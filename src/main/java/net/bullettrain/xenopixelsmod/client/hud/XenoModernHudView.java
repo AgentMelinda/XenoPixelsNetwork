@@ -131,14 +131,22 @@ public final class XenoModernHudView {
         // The source artwork supplies the chrome. These layers replace its demonstration data.
         drawPortrait(graphics, mc);
 
-        drawContainedBar(graphics, moved(RELEASE, XenoHudConfig.Part.RELEASE), snap.releasePercent,
-                0xFFFFC107, 0xFF271B08, 0xFFFFD65A);
-        drawContainedBar(graphics, moved(HP, XenoHudConfig.Part.HP), displayedHp,
-                displayedHp < 0.25f ? 0xFFFF3B30 : 0xFFFFA000,
-                0xFF180A09, 0xFFFFC247);
-        drawKiSegments(graphics, moved(KI, XenoHudConfig.Part.KI), displayedKi);
-        drawContainedSegments(graphics, moved(STM, XenoHudConfig.Part.STM), displayedStm,
-                0xFF18E0D2, 0xFF071E24, 0xFF62FFF0, 8);
+        if (!XenoHudConfig.hidden(XenoHudConfig.Part.RELEASE)) {
+            drawContainedBar(graphics, moved(RELEASE, XenoHudConfig.Part.RELEASE), snap.releasePercent,
+                    0xFFFFC107, 0xFF271B08, 0xFFFFD65A);
+        }
+        if (!XenoHudConfig.hidden(XenoHudConfig.Part.HP)) {
+            drawContainedBar(graphics, moved(HP, XenoHudConfig.Part.HP), displayedHp,
+                    displayedHp < 0.25f ? 0xFFFF3B30 : 0xFFFFA000,
+                    0xFF180A09, 0xFFFFC247);
+        }
+        if (!XenoHudConfig.hidden(XenoHudConfig.Part.KI)) {
+            drawKiSegments(graphics, moved(KI, XenoHudConfig.Part.KI), displayedKi);
+        }
+        if (!XenoHudConfig.hidden(XenoHudConfig.Part.STM)) {
+            drawContainedSegments(graphics, moved(STM, XenoHudConfig.Part.STM), displayedStm,
+                    0xFF18E0D2, 0xFF071E24, 0xFF62FFF0, 8);
+        }
 
         String name = snap.name == null ? "" : font.plainSubstrByWidth(snap.name, NAME_W);
         // Cover the baked "P1" badge before placing live level data. Slanted to match the badge —
@@ -263,6 +271,7 @@ public final class XenoModernHudView {
      */
     private static void drawPart(GuiGraphics g, Font font, int part, String text,
                                  float x, float y, boolean shadow) {
+        if (XenoHudConfig.hidden(part)) return;
         if (text == null || text.isEmpty()) return;
         Style style = Style.EMPTY.withFont(XenoHudConfig.partFontLocation(part))
                 .withBold(XenoHudConfig.partBold[part]);
@@ -325,6 +334,7 @@ public final class XenoModernHudView {
      * inscribed in it.
      */
     private void drawPortrait(GuiGraphics graphics, Minecraft mc) {
+        if (XenoHudConfig.hidden(XenoHudConfig.Part.PORTRAIT)) return;
         if (!(mc.player instanceof AbstractClientPlayer player)) return;
         boolean masked = XenoHudConfig.portraitMask;
 

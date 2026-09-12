@@ -62,7 +62,24 @@ public final class Bt3AnimDebugCommands {
                         .then(Commands.argument("dmzAnim", StringArgumentType.word())
                                 .suggests(DMZ_NAME_SUGGEST)
                                 .executes(ctx -> playName(ctx.getSource(),
-                                        StringArgumentType.getString(ctx, "dmzAnim"))))));
+                                        StringArgumentType.getString(ctx, "dmzAnim")))))
+                .then(Commands.literal("play-clip")
+                        .then(Commands.argument("name", StringArgumentType.word())
+                                .suggests((c, b) -> {
+                                    for (String file : net.bullettrain.xenopixelsmod.client.anim.XenoAnimClip.listSaved()) {
+                                        b.suggest(file.replace(".animation.json", ""));
+                                    }
+                                    return b.buildFuture();
+                                })
+                                .executes(ctx -> playStudio(ctx.getSource(),
+                                        StringArgumentType.getString(ctx, "name"), false))
+                                .then(Commands.literal("loop").executes(ctx -> playStudio(ctx.getSource(),
+                                        StringArgumentType.getString(ctx, "name"), true)))))
+                .then(Commands.literal("stop-clip").executes(ctx -> {
+                    net.bullettrain.xenopixelsmod.client.anim.XenoAnimPlayer.stop();
+                    ctx.getSource().sendSuccess(() -> Component.literal("§7Studio clip stopped"), false);
+                    return 1;
+                })));
     }
 
     private static int list(CommandSourceStack source) {
@@ -71,9 +88,31 @@ public final class Bt3AnimDebugCommands {
             source.sendFailure(Component.literal("§cNo combat.xeno_* names are bound"));
             return 0;
         }
+        var studio = net.bullettrain.xenopixelsmod.client.anim.XenoAnimClip.listSaved();
         source.sendSuccess(() -> Component.literal(
-                "§eBT3 DMZ animations (" + names.size() + "): §f" + String.join(", ", names)), false);
+                "§eBT3 DMZ animations (" + names.size() + "): §f" + String.join(", ", names)
+                        + (studio.isEmpty() ? "" : "\n§dStudio clips: §f"
+                        + studio.stream().map(s -> s.replace(".animation.json", ""))
+                                .reduce((a, b) -> a + ", " + b).orElse(""))), false);
         return names.size();
+    }
+
+    private static int playStudio(CommandSourceStack source, String name, boolean loop) {
+        try {
+            var clip = net.bullettrain.xenopixelsmod.client.anim.XenoAnimClip.load(name);
+            if (clip.isEmpty()) {
+                source.sendFailure(Component.literal("Studio clip has no keys: " + name));
+                return 0;
+            }
+            net.bullettrain.xenopixelsmod.client.anim.XenoAnimPlayer.play(clip, loop);
+            source.sendSuccess(() -> Component.literal(
+                    "§aPlaying studio clip §f" + clip.name + (loop ? " §7(loop)" : "")
+                            + " §7— /xenobt3 stop-clip"), false);
+            return 1;
+        } catch (Exception e) {
+            source.sendFailure(Component.literal("Cannot play studio clip: " + e.getMessage()));
+            return 0;
+        }
     }
 
     private static int playIntent(CommandSourceStack source, String raw) {
@@ -82,9 +121,7 @@ public final class Bt3AnimDebugCommands {
         }
         Bt3AnimationIntent intent = parseIntent(raw);
         if (intent == null) {
-            source.sendFailure(Component.literal(
-                    "§cNo BT3 intent " + raw + " — try /xenobt3 play jab_left"));
-            return 0;
+            return playStudio(source, raw, false);
         }
         Bt3AnimationBinding.Binding binding = Bt3AnimationBinding.of(intent);
         String dmzName = binding == null ? "?" : binding.dmzAnim();

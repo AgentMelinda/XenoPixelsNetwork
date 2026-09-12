@@ -3,8 +3,11 @@ package net.bullettrain.xenopixelsmod.compat.npc;
 import net.minecraft.nbt.CompoundTag;
 import org.junit.jupiter.api.Test;
 
+import java.util.List;
+
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class NpcCombatProfileKiWeaponTest {
@@ -18,6 +21,47 @@ class NpcCombatProfileKiWeaponTest {
 
         assertTrue(decoded.kiWeaponOn);
         assertEquals("scythe", decoded.kiWeaponType);
+    }
+
+    @Test
+    void togglingKiWeaponChangesThatOneFieldAndNothingElse() {
+        // The Stats tab's KI Weapon button saves the whole profile, so the payload it builds must
+        // be the NPC's current profile with only this flag flipped - anything else would reset
+        // appearance, transformation, mastery or combat values owned by the other DMZ screens.
+        NpcCombatProfile source = new NpcCombatProfile();
+        source.kiWeaponOn = false;
+        source.kiWeaponType = "scythe";
+        source.raceId = "saiyan";
+        source.formGroup = "superforms";
+        source.formId = "ssj1";
+        source.stackGroup = "kaioken";
+        source.stackId = "kaioken";
+        source.auraOn = true;
+        source.auraColorHex = "#123456";
+        source.auraScale = 2.25f;
+        source.knockable = false;
+        source.punchable = false;
+        source.techniques.addAll(List.of("kamehameha", "final_flash"));
+
+        CompoundTag before = source.toTag();
+        CompoundTag after = NpcCombatProfile.withKiWeapon(before.copy(), true);
+
+        assertEquals(before.getAllKeys(), after.getAllKeys(), "no field may appear or disappear");
+        for (String key : before.getAllKeys()) {
+            if ("KiWeaponOn".equals(key)) continue;
+            assertEquals(before.get(key), after.get(key), key + " must be preserved");
+        }
+        assertNotEquals(before.get("KiWeaponOn"), after.get("KiWeaponOn"));
+        assertTrue(NpcCombatProfile.fromTag(after).kiWeaponOn);
+        assertEquals("scythe", NpcCombatProfile.fromTag(after).kiWeaponType);
+
+        // Turning it back off is likewise lossless.
+        CompoundTag off = NpcCombatProfile.withKiWeapon(after.copy(), false);
+        assertFalse(NpcCombatProfile.fromTag(off).kiWeaponOn);
+        assertEquals(before.getAllKeys(), off.getAllKeys());
+        for (String key : before.getAllKeys()) {
+            assertEquals(before.get(key), off.get(key), key + " must survive a full toggle cycle");
+        }
     }
 
     @Test

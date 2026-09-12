@@ -45,7 +45,9 @@ public final class FlightPlanRequestPacket {
 
     public FlightPlanRequestPacket(FriendlyByteBuf buf) {
         computerPos = buf.readBlockPos();
-        revision = buf.readVarInt();
+        int decodedRevision = buf.readVarInt();
+        if (decodedRevision < 0) throw new IllegalArgumentException("revision must not be negative");
+        revision = decodedRevision;
         action = buf.readEnum(Action.class);
         target = buf.readBlockPos();
         targetShipId = buf.readLong();

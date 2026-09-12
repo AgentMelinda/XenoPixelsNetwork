@@ -101,6 +101,7 @@ public final class XenoInventoryEffects {
     private static boolean isCompactEffect(MobEffect effect) {
         ResourceLocation key = BuiltInRegistries.MOB_EFFECT.getKey(effect);
         if (key == null) return false;
+        if ("hakai_dissolve".equals(key.getPath())) return false;
         return XenoPixelsMod.MOD_ID.equals(key.getNamespace()) || "dragonminez".equals(key.getNamespace());
     }
 

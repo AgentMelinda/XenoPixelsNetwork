@@ -280,6 +280,8 @@ public final class Bt3CombatClient {
     private static boolean clientGuarding;
     /** True after a HAKAI_START this hold; release does not cancel the channel. */
     private static boolean hakaiSentThisHold;
+    /** One actionbar hint per session when the Zanzoken key has no bind. */
+    private static boolean zanzokenUnboundNoticed;
     private static int zBurstCd;
     private static int kiBlastCd;
     private static int counterFlashTicks;
@@ -487,6 +489,7 @@ public final class Bt3CombatClient {
             xenoDigging = false;
             SparkingClientState.clear();
             SparkingChargeClientState.clear();
+            HakaiFade.clear();
             net.bullettrain.xenopixelsmod.client.combat.aura.XenoAuraScaling.clear();
             stopClientChase(false);
             resetCharge();
@@ -497,6 +500,7 @@ public final class Bt3CombatClient {
             moveCooldown = 0;
             clientGuarding = false;
             clearGuardInputState();
+            zanzokenUnboundNoticed = false;
         }
 
         @SubscribeEvent
@@ -580,6 +584,7 @@ public final class Bt3CombatClient {
             }
             tickGuidanceHold(mc);
             tickHakai(mc);
+            tickZanzoken(mc);
             if (!XenoClientConfig.bt3CombatClient || !XenoServerClientState.combat()) {
                 stopClientChase(true);
                 if (clientGuarding) {
@@ -623,7 +628,6 @@ public final class Bt3CombatClient {
             tickGuard(mc);
             tickChase(mc);
             tickXenoDrivenDig(mc);
-            tickZanzoken(mc);
             tickMultiForm(mc);
             tickPhase1Keys(mc);
 
@@ -1022,8 +1026,6 @@ public final class Bt3CombatClient {
         }
         if (!hakaiSentThisHold && chargeMode == ChargeMode.NONE) {
             tryStartHakai(mc.player);
-        } else if (hakaiSentThisHold && mc.player != null && mc.player.tickCount % 20 == 0) {
-            DmzAnimHelperClient.playLocalHakaiHold(mc.player);
         }
         while (HAKAI.consumeClick()) { }
     }
@@ -1220,7 +1222,8 @@ public final class Bt3CombatClient {
 
         // Sparking activate
         while (Bt3DirectBind.SPARKING.consume(SPARKING)) {
-            if (!XenoServerClientState.get().bt3SparkingEnabled) continue;
+            if (!XenoServerClientState.get().bt3SparkingEnabled
+                    || !XenoClientConfig.sparkingEnabled) continue;
             send(new Bt3CombatPacket(
                     Bt3CombatPacket.Action.SPARKING, -1, 0));
             // Optimistic full-meter clear for HUD; server is authority
@@ -1283,6 +1286,9 @@ public final class Bt3CombatClient {
      */
     private static void lockRushView(LocalPlayer player, LivingEntity target) {
         if (player == null || target == null) return;
+        // DMZ lock-on already writes yaw/pitch every render tick. A second writer on the
+        // client tick is what made the rush camera thrash while locked on.
+        if (LockOnEvent.getLockedTarget() == target) return;
         double dx = target.getX() - player.getX();
         double dz = target.getZ() - player.getZ();
         // Mid-body rather than eye-to-eye: at contact the eye offset is the steepest possible
@@ -1510,12 +1516,29 @@ public final class Bt3CombatClient {
     /** One request per press: the server owns the window, the cooldown and the ki. */
     private static void tickZanzoken(Minecraft mc) {
         if (mc.player == null) return;
+        if (ZANZOKEN.isUnbound()) {
+            if (!zanzokenUnboundNoticed) {
+                zanzokenUnboundNoticed = true;
+                mc.player.displayClientMessage(Component.literal(
+                        "§7Zanzoken: bind a key in Controls → XenoPixels"), true);
+            }
+            return;
+        }
         boolean pressed = false;
-        while (Bt3DirectBind.ZANZOKEN.consume(ZANZOKEN)) {
+        while (ZANZOKEN.consumeClick()) {
             pressed = true;
         }
         if (!pressed) return;
-        if (!XenoClientConfig.bt3CombatClient || !XenoServerClientState.combat()) return;
+        if (!Bt3DirectBind.ZANZOKEN.enabled()) {
+            mc.player.displayClientMessage(Component.literal(
+                    "§7Zanzoken: direct bind is off (/xenobind zanzoken on)"), true);
+            return;
+        }
+        if (!XenoClientConfig.bt3CombatClient || !XenoServerClientState.combat()) {
+            mc.player.displayClientMessage(Component.literal(
+                    "§7Zanzoken: BT3 combat is off"), true);
+            return;
+        }
         send(new Bt3CombatPacket(Bt3CombatPacket.Action.ZANZOKEN, -1, 0));
     }
 

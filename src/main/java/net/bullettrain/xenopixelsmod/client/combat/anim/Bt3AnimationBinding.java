@@ -1,10 +1,16 @@
 package net.bullettrain.xenopixelsmod.client.combat.anim;
 
 import net.bullettrain.xenopixelsmod.XenoPixelsMod;
+import net.bullettrain.xenopixelsmod.client.anim.StudioClipBindings;
+import net.bullettrain.xenopixelsmod.client.anim.XenoAnimClip;
+import net.bullettrain.xenopixelsmod.client.anim.XenoStudioClipCache;
+import net.bullettrain.xenopixelsmod.client.anim.XenoTechniqueAnimBindingsClient;
 import net.bullettrain.xenopixelsmod.combat.anim.Bt3AnimationCatalog;
 import net.bullettrain.xenopixelsmod.combat.anim.Bt3AnimationIntent;
 import net.minecraft.resources.ResourceLocation;
 
+import java.util.Collections;
+import java.util.LinkedHashSet;
 import java.util.Locale;
 import java.util.Set;
 
@@ -69,14 +75,40 @@ public final class Bt3AnimationBinding {
         return of(intent, Bt3AnimationCatalog.GEN_DEFAULT);
     }
 
-    /** As {@link #of(Bt3AnimationIntent)}, for a specific generation. */
+    /**
+     * As {@link #of(Bt3AnimationIntent)}, for a specific generation.
+     *
+     * <p>A studio clip bound to this intent wins, but only once it has actually baked. A clip that
+     * is missing or malformed falls through to the shipped animation, so a broken file in the
+     * studio directory cannot stop the player punching.
+     */
     public static Binding of(Bt3AnimationIntent intent, int generation) {
         Bt3AnimationCatalog.Clip clip = Bt3AnimationCatalog.clipFor(intent, generation);
+        Binding studio = studioOverride(intent);
+        if (studio != null) {
+            return studio;
+        }
         if (clip == null) {
             return null;
         }
         return new Binding(palClip(intent), clip.name(), Bt3AnimationCatalog.speedOf(intent),
                 clip.seconds());
+    }
+
+    private static Binding studioOverride(Bt3AnimationIntent intent) {
+        String clipName = XenoTechniqueAnimBindingsClient.clipFor(intent);
+        if (clipName == null || clipName.isBlank()) {
+            clipName = StudioClipBindings.clipFor(intent);
+        }
+        if (clipName == null || clipName.isBlank()) {
+            return null;
+        }
+        String animation = XenoAnimClip.ANIMATION_PREFIX + clipName;
+        Float seconds = XenoStudioClipCache.lengthSeconds(animation);
+        if (seconds == null || seconds <= 0f) {
+            return null;
+        }
+        return new Binding(palClip(intent), animation, Bt3AnimationCatalog.speedOf(intent), seconds);
     }
 
     /**
@@ -133,7 +165,58 @@ public final class Bt3AnimationBinding {
      * {@code CombatAnimationResolver} must be told about or it resolves them to nothing.
      */
     public static Set<String> customAnimationNames() {
-        return Bt3AnimationCatalog.customAnimationNames();
+        Set<String> bound = StudioClipBindings.boundAnimationNames();
+        if (bound.isEmpty()) {
+            return Bt3AnimationCatalog.customAnimationNames();
+        }
+        Set<String> all = new LinkedHashSet<>(Bt3AnimationCatalog.customAnimationNames());
+        for (String name : bound) {
+            if (XenoStudioClipCache.has(name)) all.add(name);
+        }
+        return Collections.unmodifiableSet(all);
+    }
+
+    /**
+     * Adds every baked, bound studio name to DragonMineZ's live resolver set.
+     *
+     * <p>{@code DmzCombatAnimationRegistryMixin} does this once per resource reload, which is the
+     * right time for the names this mod ships. A clip bound during a session would otherwise resolve
+     * to nothing until the next F3+T, so binding calls this as well.
+     *
+     * <p>Silent when DragonMineZ is absent or its internals moved: the resolver is an optimisation
+     * here, not a correctness requirement, and a missing one must not break a punch.
+     */
+    /**
+     * Teaches DragonMineZ's resolver one animation name straight away.
+     *
+     * <p>Used by the studio's baked preview, which plays a scratch clip that is bound to no intent
+     * and so would not be covered by {@link #registerStudioNames()}.
+     */
+    public static void registerAnimationName(String name) {
+        if (name == null || !name.startsWith(XenoAnimClip.ANIMATION_PREFIX)) return;
+        try {
+            Set<String> raw = net.bullettrain.xenopixelsmod.mixin.compat.dmz
+                    .DmzCombatAnimationNamesAccessor.xeno$availableRaw();
+            if (raw != null) raw.add(name);
+        } catch (Throwable ignored) {
+            // DragonMineZ absent, or its resolver changed shape.
+        }
+    }
+
+    public static void registerStudioNames() {
+        try {
+            Set<String> raw = net.bullettrain.xenopixelsmod.mixin.compat.dmz
+                    .DmzCombatAnimationNamesAccessor.xeno$availableRaw();
+            if (raw == null) return;
+            for (String name : XenoStudioClipCache.names()) {
+                if (name != null && name.startsWith(XenoAnimClip.ANIMATION_PREFIX)) raw.add(name);
+            }
+            for (String name : StudioClipBindings.boundAnimationNames()) {
+                if (XenoStudioClipCache.has(name)) raw.add(name);
+            }
+        } catch (Throwable ignored) {
+            // DragonMineZ not present, or the resolver changed shape.
+        }
     }
 
     /**

@@ -33,8 +33,16 @@ public enum DmzMenuMode {
      *
      * <p>A separate mode rather than a replacement for {@link #SCREEN}: the two rebuilds use
      * different art and different layouts, and which one plays better is a question only playing
-     * both answers. Any page this mode has not rebuilt yet falls through to {@link #THEME}'s
-     * behaviour, because {@link #themed()} is true here too.
+     * both answers.
+     *
+     * <p>All six V-menus get page-specific art in this mode, each page drawn from its own group in
+     * the master bundle -- skills from the skills/information pack, quests from the quest tree,
+     * minigames from minigames, party from the server menu, settings from options. Only the
+     * character page is a custom screen; the other five remain DragonMineZ's own screens with their
+     * panels, headers and widget sheets replaced, so DMZ still owns every control, scroll region,
+     * hitbox and packet on them and none of it is repositionable from Xeno's elements editor. Where
+     * a page has no neon sheet for a particular slot the {@link #THEME} sheet is used, and where
+     * neither exists DragonMineZ's own art is left alone -- {@link #themed()} is true here too.
      */
     NEON("neon");
 
@@ -68,9 +76,9 @@ public enum DmzMenuMode {
         if (raw == null) return fallback;
         String needle = raw.trim().toLowerCase(Locale.ROOT);
         if (needle.isEmpty()) return fallback;
-        // "bt3" was the name of the replacement screen before the theming existed; anyone with it
-        // in a config or a macro means the replacement screen, which is what SCREEN is now.
-        if (needle.equals("bt3")) return SCREEN;
+        // "bt3" was the original name and "v3" is the asset-bundle/menu-facing name. Both mean
+        // the clean modular replacement screen, which is what SCREEN is now.
+        if (needle.equals("bt3") || needle.equals("v3")) return SCREEN;
         for (DmzMenuMode mode : values()) {
             if (mode.id.equals(needle)) return mode;
         }

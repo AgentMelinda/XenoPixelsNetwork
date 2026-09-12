@@ -1,9 +1,11 @@
 package net.bullettrain.xenopixelsmod.client.combat;
 
 import com.dragonminez.client.animation.IPlayerAnimatable;
+import net.bullettrain.xenopixelsmod.client.anim.XenoTechniqueAnimBindingsClient;
 import net.bullettrain.xenopixelsmod.client.config.XenoClientConfig;
 import net.bullettrain.xenopixelsmod.combat.DmzAnimHelper;
 import net.bullettrain.xenopixelsmod.combat.DmzAnimHelper.ChargeStyle;
+import net.bullettrain.xenopixelsmod.combat.anim.TechniqueAnimSlot;
 import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.world.entity.player.Player;
 
@@ -71,14 +73,15 @@ public final class DmzAnimHelperClient {
 
     public static void playLocalHakaiHold(Player player) {
         if (!XenoClientConfig.bt3CombatAnims || player == null) return;
-        tryPlayKi(player, DmzAnimHelper.HAKAI_HOLD, true);
-        playLocalMelee(player, DmzAnimHelper.HAKAI_HOLD, false, 1.0f);
+        String hold = XenoTechniqueAnimBindingsClient.resolve(TechniqueAnimSlot.HAKAI_HOLD);
+        tryPlayKi(player, hold, true);
     }
 
     public static void playLocalHakaiFire(Player player) {
         if (!XenoClientConfig.bt3CombatAnims || player == null) return;
         playLocalChargeStop(player);
-        playLocalMelee(player, DmzAnimHelper.HAKAI_FIRE, false, 1.15f);
+        playLocalMelee(player, XenoTechniqueAnimBindingsClient.resolve(TechniqueAnimSlot.HAKAI_FIRE),
+                false, 1.15f);
     }
 
     public static void playLocalHakaiStop(Player player) {

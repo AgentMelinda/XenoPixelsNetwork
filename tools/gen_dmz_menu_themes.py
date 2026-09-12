@@ -17,6 +17,7 @@ import hashlib
 import io
 import json
 import pathlib
+import re
 import sys
 import zipfile
 
@@ -138,6 +139,153 @@ THEMES = {
 }
 
 QUEST_PANEL = CLEAN_LEFT_PANEL
+
+
+# ---------------------------------------------------------------------------
+# NEON mode
+# ---------------------------------------------------------------------------
+# `/xenohud menus neon` gets its own sheets, written into a `neon/` subfolder, so the THEME sheets
+# above keep their exact bytes and the two menu reworks stay switchable side by side.
+#
+# CharacterStatsScreen is deliberately absent. In NEON mode XenoDmzScreenSwap replaces that screen
+# outright with XenoNeonStatsScreen, so no themed character sheet is ever sampled.
+#
+# Every crop below is explicit, and none of them could be derived from alpha. The packs under
+# 03_dragonmine_other_menus_clean_and_example are auto-splits out of larger labelled contact sheets,
+# so a file's own bounds routinely contain a caption -- "Clean (Empty)", "LEFT PANEL (CLEAN)",
+# "STATS BUTTON (CLEAN)" -- or a slice of the element next to it. And every one of those files is
+# RGBA with its alpha channel fixed at 255, whatever the pack README says about transparency, so
+# getbbox() returns the whole rectangle and a crop has to be stated rather than measured. Each one
+# here was read off the source's neon-border row/column profile and is checked by the per-page proof
+# sheets in tools/generated/.
+NEON_DIR = "neon/"
+
+
+def _art(path, crop, note, cap=None):
+    """One bundle element, with the crop that isolates it from its contact sheet.
+
+    `cap` is `(source_y, rows)`: that band is lifted off the source and laid over the top of the
+    crop. A panel cropped below its own title bar has no top edge left -- its rows run straight off
+    the cut -- and the frame's real top rule is sitting unused higher up the same file, at the same
+    width, so it is put back rather than invented.
+    """
+    return {"path": OTHER_MENUS + path, "crop": tuple(crop), "note": note, "cap": cap}
+
+
+NEON_PAGES = {
+    "skills": {
+        "screen": "com.dragonminez.client.gui.character.SkillsMenuScreen",
+        "group": "skills_information",
+        "left": _art("skills_information/01_panels/clean_left_panel.png", (0, 38, 240, 209),
+                     "panel body, below the pack's own 'Skills' title bar; the 'Clean (Empty)' "
+                     "sheet caption below y=209 is dropped too. No cap: this frame's top rule and "
+                     "its title band overlap, so the body is left open at the top"),
+        "right": _art("skills_information/01_panels/clean_detail_panel.png", (0, 0, 222, 105),
+                      "detail frame, which carries no title of its own; its bottom rule is at "
+                      "y=104 and the 'Clean (Empty)' sheet caption sits below that"),
+        # No header entry. skills_information's only header-shaped file is
+        # 03_headers_accents/clean_top_information_panel.png, which is the top of a *panel* -- it
+        # carries a cropped title and a 'Clean (Empty)' caption, not a bar -- so DragonMineZ's own
+        # header pixels are kept and the fallback is recorded.
+        "small": _art("skills_information/01_panels/clean_detail_panel.png", (0, 0, 222, 105),
+                      "the same detail frame, for MENU_SMALL's 141x94 box"),
+        "strip": _art("skills_information/01_panels/clean_bottom_strip.png", (12, 0, 270, 19),
+                      "the strip alone; the divider at y>=25 and its caption are sheet furniture"),
+    },
+    "quests": {
+        "screen": "com.dragonminez.client.gui.character.QuestTreeScreen",
+        "group": "quest_tree",
+        "quest": _art("quest_tree/01_panels/clean_left_quest_panel.png", (7, 50, 205, 274),
+                      "panel body, below the pack's own 'Quest Tree' title bar; the "
+                      "'NODE ELEMENTS' swatch row below y=274 is a sheet label. No cap: this "
+                      "frame's top rule runs through its 悟 badge, so the body is left open at "
+                      "the top and DragonMineZ's own chrome sits across it"),
+    },
+    "minigames": {
+        "screen": "com.dragonminez.client.gui.character.MinigamesScreen",
+        "group": "minigames",
+        # No cap: this frame's outer top rule and its 悟 badge overlap, so lifting the rule would
+        # lift the title band with it. The body is left open at the top and DMZ's header bar sits
+        # across it.
+        "left": _art("minigames/01_panels/clean_list_panel.png", (4, 48, 197, 258),
+                     "list body, below the pack's own 'MINIGAMES' title bar"),
+        # Kept as-is: this frame's painted bottom bar is the page's own housing for a start
+        # control, and MinigamesScreen draws its start button from menubuttons (0,50) 105x20 over
+        # that area rather than beside it, so the bar reads as the button's frame.
+        "right": _art("minigames/01_panels/clean_detail_panel.png", (0, 0, 297, 264),
+                      "detail frame, which carries no title of its own; the "
+                      "'SCROLLBAR / ACCENTS' caption below y=264 is dropped"),
+        "header": _art("minigames/03_headers_accents/title_bar_clean.png", (10, 0, 204, 51),
+                       "title bar; the sliver at x<10 belongs to the element beside it"),
+    },
+    "party": {
+        "screen": "com.dragonminez.client.gui.character.PartyMenuScreen",
+        "group": "server_menu",
+        "left": _art("server_menu/01_panels/clean_left_panel.png", (0, 59, 203, 362),
+                     "list body, below the pack's own 'SERVER' title bar; this file's frame starts "
+                     "at y=17 because a 'LEFT PANEL (CLEAN)' caption occupies the rows above it",
+                     cap=(17, 14)),
+        # Deliberately the left panel again. server_menu's right panel is not clean: it has an
+        # example '???' heading, a progress row and a pair of arrows painted into it, and DMZ draws
+        # its own arrows and action button over that area. Two sets of arrows is worse than two
+        # matching frames, so the clean list body is used on both sides and it is said so here.
+        "right": _art("server_menu/01_panels/clean_left_panel.png", (0, 59, 203, 362),
+                      "the left panel's body reused: the pack's right panel has example content "
+                      "painted into it -- a '???' heading, a progress row and prev/next arrows",
+                      cap=(17, 14)),
+        "header": _art("server_menu/03_headers_accents/clean_header_bar.png", (16, 0, 324, 69),
+                       "header bar; the accent rule below y=69 is a separate element"),
+    },
+    "settings": {
+        "screen": "com.dragonminez.client.gui.character.ConfigMenuScreen",
+        "group": "options",
+        "left": _art("options/01_panels/options_panel_clean.png", (0, 38, 228, 296),
+                     "options body, below the pack's own 'Options' title bar",
+                     cap=(12, 10)),
+        # Deliberately the options panel again. options/values_panel_clean has a toggle pill and a
+        # scrollbar painted into every row, and ConfigMenuScreen draws its own +/- steppers at
+        # rightPanelX+25 and +108 and its own scrollbar over exactly that area. Two sets of controls
+        # is worse than two matching frames.
+        "right": _art("options/01_panels/options_panel_clean.png", (0, 38, 228, 296),
+                      "the options body reused: the pack's values panel has a toggle pill and a "
+                      "scrollbar painted into it, and DragonMineZ draws its own there",
+                      cap=(12, 10)),
+        "header": _art("options/03_headers_accents/header_bar_clean.png", (0, 0, 221, 42),
+                       "header bar; the caption below y=42 is a sheet label"),
+    },
+}
+
+
+# The characterbuttons cells DragonMineZ really samples, as normal UV, hover UV and sample size.
+# Read off the decompiled builder chains rather than inferred -- see dmz_contract() for the full
+# table this is a subset of.
+CHAR_BUTTON_CELLS = {
+    "increase": ((0, 0), (0, 10), (10, 10)),
+    "decrease": ((142, 0), (142, 10), (10, 10)),
+    "action": ((0, 28), (0, 48), (74, 20)),
+    "next": ((20, 0), (20, 14), (8, 14)),
+    "prev": ((32, 0), (32, 14), (8, 14)),
+}
+
+# Page-specific widget plates, per cell. Only cells whose bundle art is a self-contained plate are
+# listed; every other cell on every page keeps DragonMineZ's own pixels and is recorded under
+# "neon_widget_fallbacks" in the manifest rather than being quietly filled with something wrong.
+NEON_WIDGETS = {
+    "party": {
+        "action": _art("server_menu/02_rows_buttons/clean_stats_button.png", (17, 0, 188, 39),
+                       "the stats button plate; its caption sits below y=39"),
+    },
+    "minigames": {
+        "action": _art("minigames/02_rows_buttons/start_button_clean.png", (0, 0, 145, 50),
+                       "the start button plate; a separate element sits at x>=156"),
+    },
+}
+
+# Corner size for the nine-slice, as a fraction of the source's shorter side. These panels are neon
+# frames with heavy corner brackets, so the corners are carried across at a uniform scale and only
+# the middle is stretched -- an aspect-preserving fit would letterbox a 240x209 source into a 141x213
+# slot and leave most of the panel empty.
+NEON_BORDER_FRACTION = 0.22
 
 
 class BuildError(RuntimeError):
@@ -281,6 +429,200 @@ def frame_slot(atlas: Image.Image, image: Image.Image,
     atlas.alpha_composite(nine_slice(image, (width, height)), (x, y))
 
 
+def load_art(art: dict) -> Image.Image:
+    """One NEON element, cropped to the rectangle that isolates it from its contact sheet."""
+    image = load(art["path"])
+    left, top, right, bottom = art["crop"]
+    if (left < 0 or top < 0 or right > image.width or bottom > image.height
+            or right <= left or bottom <= top):
+        raise BuildError(f"invalid crop {art['crop']} for {art['path']} "
+                         f"({image.width}x{image.height})")
+    cropped = image.crop(art["crop"]).copy()
+    cap = art.get("cap")
+    if cap:
+        cap_top, rows = cap
+        if rows >= cropped.height or cap_top + rows > image.height:
+            raise BuildError(f"cap {cap} does not fit {art['path']}")
+        cropped.alpha_composite(image.crop((left, cap_top, right, cap_top + rows)), (0, 0))
+    if cropped.getbbox() is None:
+        raise BuildError("empty crop for " + art["path"])
+    return cropped
+
+
+def nine_slice_scaled(image: Image.Image, size: tuple[int, int],
+                      border_fraction: float = NEON_BORDER_FRACTION
+                      ) -> tuple[Image.Image, dict[str, object]]:
+    """Fill a slot with a framed panel, carrying its corners across at a single uniform scale.
+
+    `nine_slice` above keeps the corner *in source pixels*, which is right when the slot and the art
+    are a similar size and wrong here: a 240x209 panel going into 564x852 atlas pixels would keep a
+    32px bracket reading as 6% of the slot instead of the 17% of the panel it is. The corner is
+    scaled by the smaller of the two axis factors -- so it can never overflow the slot -- and only
+    the middle is stretched. An aspect-preserving fit is the other obvious option and it is worse:
+    it would letterbox that same source into the tall slot and leave most of the panel empty.
+    """
+    target_width, target_height = size
+    source_border = max(1, round(border_fraction * min(image.width, image.height)))
+    source_border = max(1, min(source_border, image.width // 3, image.height // 3))
+    scale = min(target_width / image.width, target_height / image.height)
+    border_x = max(1, min(round(source_border * scale), target_width // 3))
+    border_y = max(1, min(round(source_border * scale), target_height // 3))
+
+    source_x = (0, source_border, image.width - source_border, image.width)
+    source_y = (0, source_border, image.height - source_border, image.height)
+    target_x = (0, border_x, target_width - border_x, target_width)
+    target_y = (0, border_y, target_height - border_y, target_height)
+    output = Image.new("RGBA", size, (0, 0, 0, 0))
+    for row in range(3):
+        for column in range(3):
+            source_box = (source_x[column], source_y[row],
+                          source_x[column + 1], source_y[row + 1])
+            target_box = (target_x[column], target_y[row],
+                          target_x[column + 1], target_y[row + 1])
+            width = target_box[2] - target_box[0]
+            height = target_box[3] - target_box[1]
+            if width <= 0 or height <= 0:
+                continue
+            piece = image.crop(source_box).resize((width, height), Image.Resampling.LANCZOS)
+            output.alpha_composite(piece, (target_box[0], target_box[1]))
+    return output, {
+        "source_border": source_border,
+        "corner_scale": round(scale, 4),
+        "target_border": [border_x, border_y],
+    }
+
+
+def neon_slot(atlas: Image.Image, art: dict, box: tuple[int, int, int, int]) -> dict[str, object]:
+    """Replace one of DragonMineZ's rectangles with a page's own framed art."""
+    x, y, width, height = scaled(box)
+    image = load_art(art)
+    filled, geometry = nine_slice_scaled(image, (width, height))
+    atlas.paste((0, 0, 0, 0), (x, y, x + width, y + height))
+    atlas.alpha_composite(filled, (x, y))
+    return {
+        "source": art["path"],
+        "crop": list(art["crop"]),
+        "cap": list(art["cap"]) if art.get("cap") else None,
+        "crop_size": list(image.size),
+        "uv": list(box),
+        "note": art["note"],
+        **geometry,
+    }
+
+
+# ---------------------------------------------------------------------------
+# DragonMineZ's own contract, read out of the tracked decompiled source
+# ---------------------------------------------------------------------------
+DECOMPILED = ROOT / "tools/generated/dmz_decompiled_full/com/dragonminez/client/gui/character"
+
+CONTRACT_SCREENS = (
+    "CharacterStatsScreen",
+    "SkillsMenuScreen",
+    "QuestTreeScreen",
+    "MinigamesScreen",
+    "PartyMenuScreen",
+    "ConfigMenuScreen",
+    "util/BaseMenuScreen",
+)
+
+_RESOURCE_LOCATION = re.compile(
+    r'ResourceLocation\s+(\w+)\s*=\s*ResourceLocation\.fromNamespaceAndPath\('
+    r'\s*"([^"]+)"\s*,\s*"([^"]+)"\s*\)')
+_BLIT = re.compile(r'graphics\.blit\(\s*([^;]*?)\s*\)\s*;', re.S)
+_CHAIN = re.compile(r'\.texture\(\s*(\w+)\s*\)(.*?)\.build\(\)', re.S)
+_COORDS = re.compile(r'\.textureCoords\(\s*(-?\d+)\s*,\s*(-?\d+)\s*,\s*(-?\d+)\s*,\s*(-?\d+)\s*\)')
+_TEXTURE_SIZE = re.compile(r'\.textureSize\(\s*(-?\d+)\s*,\s*(-?\d+)\s*\)')
+_SIZE = re.compile(r'\.size\(\s*(-?\d+)\s*,\s*(-?\d+)\s*\)')
+
+NEWLINE = chr(10)
+
+
+def split_arguments(raw: str) -> list[str]:
+    """Top-level comma split, so a nested cast or call is not torn in half."""
+    out: list[str] = []
+    depth = 0
+    current = ""
+    for character in raw:
+        if character == "," and depth == 0:
+            out.append(current.strip())
+            current = ""
+            continue
+        if character in "([":
+            depth += 1
+        elif character in ")]":
+            depth -= 1
+        current += character
+    if current.strip():
+        out.append(current.strip())
+    return out
+
+
+def dmz_contract() -> dict[str, object]:
+    """Every texture draw the six V-menus make, from the tracked decompiled DragonMineZ source.
+
+    Recorded rather than inferred. A UV that is a literal is written as a number; one that is a
+    computed expression is written as that expression, because putting a guessed number there is how
+    a theme ends up sampling a rectangle the game never draws. Anything this cannot read gets no
+    entry rather than an assumed one.
+    """
+    if not DECOMPILED.exists():
+        return {"unavailable": "tools/generated/dmz_decompiled_full is not present"}
+
+    contract: dict[str, object] = {}
+    for screen in CONTRACT_SCREENS:
+        path = DECOMPILED / (screen + ".java")
+        if not path.exists():
+            continue
+        text = path.read_text(encoding="utf-8", errors="replace")
+        constants = {match.group(1): match.group(2) + ":" + match.group(3)
+                     for match in _RESOURCE_LOCATION.finditer(text)}
+
+        blits = []
+        for match in _BLIT.finditer(text):
+            arguments = split_arguments(match.group(1))
+            # A texture built at the call site is recorded as the expression it is, not resolved to
+            # whatever constant happens to share its name.
+            texture = constants.get(arguments[0], "<expression> " + arguments[0])
+            entry = {"line": text.count(NEWLINE, 0, match.start()) + 1, "texture": texture}
+            if len(arguments) == 9:
+                entry.update(x=arguments[1], y=arguments[2], u=arguments[3], v=arguments[4],
+                             width=arguments[5], height=arguments[6],
+                             texture_size=[arguments[7], arguments[8]])
+            elif len(arguments) == 11:
+                entry.update(x=arguments[1], y=arguments[2],
+                             width=arguments[3], height=arguments[4],
+                             u=arguments[5], v=arguments[6],
+                             source_size=[arguments[7], arguments[8]],
+                             texture_size=[arguments[9], arguments[10]])
+            else:
+                entry["arguments"] = arguments
+            blits.append(entry)
+
+        widgets = []
+        for match in _CHAIN.finditer(text):
+            body = match.group(2)
+            coords = _COORDS.search(body)
+            texture_size = _TEXTURE_SIZE.search(body)
+            size = _SIZE.search(match.group(0))
+            entry = {
+                "line": text.count(NEWLINE, 0, match.start()) + 1,
+                "texture": constants.get(match.group(1), match.group(1)),
+            }
+            if coords:
+                numbers = [int(value) for value in coords.groups()]
+                entry["uv"] = numbers[:2]
+                entry["hover_uv"] = numbers[2:]
+            if texture_size:
+                entry["sample_size"] = [int(value) for value in texture_size.groups()]
+            if size:
+                entry["draw_size"] = [int(value) for value in size.groups()]
+            widgets.append(entry)
+
+        name = "com.dragonminez.client.gui.character." + screen.replace("util/", "util.")
+        contract[name] = {"blits": blits, "widgets": widgets}
+    return contract
+
+
 def scrim(size: tuple[int, int], fill: tuple[int, int, int]) -> Image.Image:
     """A soft band that darkens the middle of a header and fades out at both edges.
 
@@ -361,8 +703,183 @@ def encode(image: Image.Image) -> bytes:
     return buffer.getvalue()
 
 
+
+
+# DragonMineZ's own rectangles, in its 1x menu coordinates. Every one of these is read off the
+# decompiled screens (see dmz_contract()); none is guessed from a file name.
+BIG_PANEL_UV = (0, 0, 141, 213)
+BIG_HEADER_UV = (142, 22, 107, 21)
+SMALL_PANEL_UV = (0, 0, 141, 94)
+SMALL_STRIP_UV = (0, 154, 141, 32)
+# QuestTreeScreen samples (1, 1, 282, 426) and then bleeds up to `round(3 * 282 / panel.width)`
+# texels to either side when a panel is flush against an edge, clamping u at 0. Filling from u=0 to
+# u=298 covers that bleed for any panel at least 30px wide.
+QUEST_PANEL_UV = (0, 1, 298, 426)
+
+
+def build_neon(big_base: Image.Image, small_base: Image.Image, quest_base: Image.Image,
+               widget_base: Image.Image) -> tuple[dict[str, bytes], dict[str, object],
+                                                  dict[str, object],
+                                                  dict[str, dict[str, Image.Image]]]:
+    """The NEON sheet set: one panel/header atlas per DragonMineZ page, plus per-page widgets.
+
+    Returns the encoded sheets, their source ledger, the list of rectangles that deliberately keep
+    DragonMineZ's or the shared Neon art, and the per-page widget cells for the proof sheets.
+    """
+    outputs: dict[str, bytes] = {}
+    sources: dict[str, object] = {}
+    fallbacks: list[dict[str, object]] = []
+    proofs: dict[str, dict[str, Image.Image]] = {}
+
+    for page, spec in NEON_PAGES.items():
+        ledger: dict[str, object] = {"screen": spec["screen"], "bundle_group": spec["group"]}
+        sheets: dict[str, Image.Image] = {}
+
+        if "quest" in spec:
+            atlas = quest_base.copy()
+            ledger["panel"] = neon_slot(atlas, spec["quest"], QUEST_PANEL_UV)
+            ledger["stock"] = STOCK_QUEST
+            name = NEON_DIR + "quests.png"
+            outputs[name] = encode(atlas)
+            sources[name] = ledger
+            sheets["quest panel"] = atlas.crop(scaled_box(QUEST_PANEL_UV))
+            fallbacks.append({
+                "page": page, "element": "header",
+                "reason": "the quest_tree pack's chapter title bar carries baked example text "
+                          "('Chapter Title', 'Difficulty: ???') and no untitled variant ships; "
+                          "DragonMineZ's own header pixels are kept",
+            })
+            proofs[page] = sheets
+            continue
+
+        for side in ("left", "right"):
+            atlas = big_base.copy()
+            side_ledger: dict[str, object] = {"panel": neon_slot(atlas, spec[side], BIG_PANEL_UV)}
+            if "header" in spec:
+                side_ledger["header"] = neon_slot(atlas, spec["header"], BIG_HEADER_UV)
+            else:
+                fallbacks.append({
+                    "page": page, "element": f"{side} header",
+                    "reason": "no untitled header bar ships in this pack; DragonMineZ's own header "
+                              "pixels are kept",
+                })
+            side_ledger["stock"] = STOCK_BIG
+            name = NEON_DIR + f"{page}_{side}.png"
+            outputs[name] = encode(atlas)
+            sources[name] = {**ledger, **side_ledger}
+            sheets[side + " panel"] = atlas.crop(scaled_box(BIG_PANEL_UV))
+            sheets[side + " header"] = atlas.crop(scaled_box(BIG_HEADER_UV))
+
+        if "small" in spec:
+            atlas = small_base.copy()
+            small_ledger = {
+                "panel": neon_slot(atlas, spec["small"], SMALL_PANEL_UV),
+                "strip": neon_slot(atlas, spec["strip"], SMALL_STRIP_UV),
+                "stock": STOCK_SMALL,
+            }
+            name = NEON_DIR + f"{page}_top.png"
+            outputs[name] = encode(atlas)
+            sources[name] = {**ledger, **small_ledger}
+            sheets["small panel"] = atlas.crop(scaled_box(SMALL_PANEL_UV))
+            sheets["small strip"] = atlas.crop(scaled_box(SMALL_STRIP_UV))
+
+        proofs[page] = sheets
+
+    # Per-page widget sheets. Each starts from the shared Neon characterbuttons art, so a cell with
+    # no page-specific plate still reads as Xeno's own style rather than as DragonMineZ's; only the
+    # cells listed in NEON_WIDGETS differ from page to page, and the rest are recorded below.
+    widget_cells: dict[str, dict[str, Image.Image]] = {}
+    for page, spec in NEON_PAGES.items():
+        atlas = widget_base.resize((256 * SCALE, 256 * SCALE), Image.Resampling.NEAREST)
+        plates = NEON_WIDGETS.get(page, {})
+        cells: dict[str, Image.Image] = {}
+        cell_ledger: dict[str, object] = {}
+        for cell, ((u, v), (hover_u, hover_v), (width, height)) in CHAR_BUTTON_CELLS.items():
+            art = plates.get(cell)
+            if art is None:
+                fallbacks.append({
+                    "page": page, "element": "characterbuttons " + cell,
+                    "reason": "no self-contained plate for this cell in the "
+                              + spec["group"] + " pack; the shared Neon widget art is kept",
+                })
+                cells[cell] = atlas.crop(scaled_box((u, v, width, height)))
+                continue
+            plate = load_art(art)
+            normal, geometry = nine_slice_scaled(plate, scaled((0, 0, width, height))[2:])
+            hover = brighten(normal, 1.28)
+            for corner, image in (((u, v), normal), ((hover_u, hover_v), hover)):
+                x, y = corner[0] * SCALE, corner[1] * SCALE
+                atlas.paste((0, 0, 0, 0), (x, y, x + image.width, y + image.height))
+                atlas.alpha_composite(image, (x, y))
+            cell_ledger[cell] = {
+                "source": art["path"], "crop": list(art["crop"]), "note": art["note"],
+                "uv": [u, v], "hover_uv": [hover_u, hover_v], "sample_size": [width, height],
+                **geometry,
+            }
+            cells[cell] = normal
+        name = NEON_DIR + f"{page}_characterbuttons.png"
+        outputs[name] = encode(atlas)
+        sources[name] = {
+            "screen": spec["screen"],
+            "shared_base": "dragonminez/textures/gui/buttons/characterbuttons.png (our-style)",
+            "page_cells": cell_ledger,
+        }
+        widget_cells[page] = cells
+
+    return outputs, sources, {"fallbacks": fallbacks}, {"panels": proofs, "widgets": widget_cells}
+
+
+def scaled_box(box: tuple[int, int, int, int]) -> tuple[int, int, int, int]:
+    """A DMZ rectangle as a PIL crop box in atlas pixels."""
+    x, y, width, height = scaled(box)
+    return (x, y, x + width, y + height)
+
+
+def proof_sheet(page: str, sheets: dict[str, Image.Image],
+                cells: dict[str, Image.Image]) -> Image.Image:
+    """One page, drawn the way DragonMineZ will sample it.
+
+    The panel and the header are composited at the offset DMZ uses (+17, +10), because the question
+    a proof sheet has to answer is not "is the art nice" but "does anything the art has baked into
+    it -- a title, a caption -- escape from under the rectangle DMZ draws on top of it".
+    """
+    cell = 8
+    panels = []
+    for name, image in sheets.items():
+        preview = image.resize((image.width // SCALE, image.height // SCALE),
+                               Image.Resampling.LANCZOS)
+        panels.append((name, preview))
+
+    composed = None
+    if "left panel" in sheets and "left header" in sheets:
+        base = sheets["left panel"].copy()
+        base.alpha_composite(sheets["left header"], (17 * SCALE, 10 * SCALE))
+        composed = base.resize((base.width // SCALE, base.height // SCALE),
+                               Image.Resampling.LANCZOS)
+        panels.insert(0, ("left as drawn", composed))
+
+    width = sum(image.width + cell for _, image in panels) + cell
+    height = max([image.height for _, image in panels] + [1]) + cell * 4
+    sheet = Image.new("RGBA", (max(width, 200), height), (18, 18, 24, 255))
+    x = cell
+    for name, image in panels:
+        sheet.alpha_composite(image, (x, cell * 3))
+        x += image.width + cell
+
+    strip_x = cell
+    strip = Image.new("RGBA", (max(width, 200), cell * 6), (18, 18, 24, 255))
+    for name, image in sorted(cells.items()):
+        strip.alpha_composite(image.resize((image.width // SCALE, image.height // SCALE),
+                                           Image.Resampling.LANCZOS), (strip_x, cell))
+        strip_x += image.width // SCALE + cell
+    out = Image.new("RGBA", (sheet.width, sheet.height + strip.height), (18, 18, 24, 255))
+    out.alpha_composite(sheet, (0, 0))
+    out.alpha_composite(strip, (0, sheet.height))
+    return out.resize((out.width * 2, out.height * 2), Image.Resampling.NEAREST)
+
+
 def build() -> tuple[dict[str, bytes], dict[str, object],
-                     dict[str, tuple[Image.Image, Image.Image]]]:
+                     dict[str, tuple[Image.Image, Image.Image]], dict[str, object]]:
     if not BUNDLE.exists() or not DMZ_JAR.exists() or not OUR_STYLE.exists():
         raise BuildError("menu bundle, our-style sources, or libs/dragonminez-2.1.3.jar is missing")
 
@@ -457,6 +974,14 @@ def build() -> tuple[dict[str, bytes], dict[str, object],
             "scale_mode": "nearest",
         }
 
+        # NEON's own sheets, in their own subfolder. The THEME sheets above are already encoded, so
+        # nothing here can change a byte of them.
+        neon_outputs, neon_sources, neon_report, neon_proofs = build_neon(
+            big_base, small_base,
+            upscale_stock(stock_quest, (512 * SCALE, 512 * SCALE)), char_source)
+        outputs.update(neon_outputs)
+        sources.update(neon_sources)
+
     if SMOOTH_FILTER:
         meta = json.dumps({"texture": {"blur": True, "clamp": False}}, indent=2) + chr(10)
         for name in list(outputs):
@@ -465,7 +990,13 @@ def build() -> tuple[dict[str, bytes], dict[str, object],
     manifest = {
         "generator": "tools/gen_dmz_menu_themes.py",
         "source_archive": BUNDLE.name,
-        "dmz_contract": DMZ_JAR.name,
+        "dmz_jar": DMZ_JAR.name,
+        # What DragonMineZ 2.1.3 actually draws, read out of the tracked decompiled source at
+        # generation time. This is the table every rectangle above is aimed at; if DMZ changes a UV,
+        # regenerating makes the change visible here instead of leaving the theme silently wrong.
+        "dmz_contract": dmz_contract(),
+        # Rectangles NEON deliberately does not replace, and why. Nothing is hidden by omission.
+        "neon": neon_report,
         "scale": SCALE,
         "smooth_filter": SMOOTH_FILTER,
         "aspect_crop": {
@@ -477,7 +1008,7 @@ def build() -> tuple[dict[str, bytes], dict[str, object],
             if name in sources
         },
     }
-    return outputs, manifest, nav_cells
+    return outputs, manifest, nav_cells, neon_proofs
 
 
 def button_contact_sheet(cells: dict[str, tuple[Image.Image, Image.Image]]) -> Image.Image:
@@ -504,7 +1035,7 @@ def main() -> int:
     parser.add_argument("--check", action="store_true")
     args = parser.parse_args()
     try:
-        outputs, manifest, nav_cells = build()
+        outputs, manifest, nav_cells, neon_proofs = build()
     except BuildError as exc:
         print(exc, file=sys.stderr)
         return 1
@@ -529,6 +1060,12 @@ def main() -> int:
         path.unlink()
     CONTACT.parent.mkdir(parents=True, exist_ok=True)
     button_contact_sheet(nav_cells).save(CONTACT, "PNG")
+    # One proof sheet per NEON page: the panel, the header, the header composited over the panel at
+    # the offset DragonMineZ uses, and the page's widget cells. Written on a normal run only -- they
+    # are evidence to look at, not shipped resources, so they stay out of the freshness contract.
+    for page, sheets in neon_proofs["panels"].items():
+        proof_sheet(page, sheets, neon_proofs["widgets"].get(page, {})).save(
+            CONTACT.parent / f"dmz_neon_{page}_proof.png", "PNG")
     sheets = [name for name in outputs if name.endswith(".png")]
     total = sum(len(data) for data in outputs.values())
     print(f"wrote {len(sheets)} DMZ menu theme textures at {SCALE}x ({total / 1024:.0f} KiB total)")

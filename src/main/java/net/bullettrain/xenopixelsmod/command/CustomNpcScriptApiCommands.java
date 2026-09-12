@@ -33,7 +33,9 @@ public final class CustomNpcScriptApiCommands {
     @SubscribeEvent
     public static void register(RegisterCommandsEvent event) {
         CommandDispatcher<CommandSourceStack> d = event.getDispatcher();
-        var tree = Commands.literal("scriptapi")
+        // Reflective class enumeration and member dumping is developer tooling; every
+        // subcommand inherits this gate through Brigadier's parent requirement chain.
+        var tree = Commands.literal("scriptapi").requires(s -> s.hasPermission(2))
                 .then(Commands.literal("globals").executes(c -> page(c.getSource(), "", 1, true))
                         .then(Commands.argument("page", IntegerArgumentType.integer(1)).executes(c -> page(c.getSource(), "", IntegerArgumentType.getInteger(c, "page"), true))))
                 .then(Commands.literal("all").executes(c -> page(c.getSource(), "", 1, false))

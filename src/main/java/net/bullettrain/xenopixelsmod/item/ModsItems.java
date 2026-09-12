@@ -37,6 +37,17 @@ public class ModsItems {
     public static final DeferredHolder<Item, Item> PANEL_CONFIGURATOR = ITEMS.register("panel_configurator",
             () -> new PanelConfiguratorItem(new Item.Properties().stacksTo(1)));
 
+    public static final DeferredHolder<Item, Item> SUPER_SOUL_WARRIOR = ITEMS.register("super_soul_warrior",
+            () -> new net.bullettrain.xenopixelsmod.item.custom.SuperSoulItem(new Item.Properties(), "warrior"));
+    public static final DeferredHolder<Item, Item> SUPER_SOUL_IRON = ITEMS.register("super_soul_iron",
+            () -> new net.bullettrain.xenopixelsmod.item.custom.SuperSoulItem(new Item.Properties(), "iron"));
+    public static final DeferredHolder<Item, Item> SUPER_SOUL_SPARK = ITEMS.register("super_soul_spark",
+            () -> new net.bullettrain.xenopixelsmod.item.custom.SuperSoulItem(new Item.Properties(), "spark"));
+    public static final DeferredHolder<Item, Item> SUPER_SOUL_FINISHER = ITEMS.register("super_soul_finisher",
+            () -> new net.bullettrain.xenopixelsmod.item.custom.SuperSoulItem(new Item.Properties(), "finisher"));
+    public static final DeferredHolder<Item, Item> SUPER_SOUL_BALANCED = ITEMS.register("super_soul_balanced",
+            () -> new net.bullettrain.xenopixelsmod.item.custom.SuperSoulItem(new Item.Properties(), "balanced"));
+
     public static void register(IEventBus eventBus) {
         ITEMS.register(eventBus);
     }

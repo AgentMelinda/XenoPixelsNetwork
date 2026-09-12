@@ -41,20 +41,33 @@ public final class StatText {
     }
 
     /**
-     * Abbreviates a stat for display. DragonMineZ battle power reaches the billions, which would
-     * overflow the panel and be unreadable in full anyway.
+     * Exact stat for the themed Character / HUD menus.
+     *
+     * <p>Large DMZ pools used to be shortened to {@code 10.0K} / {@code 1.00M}, which hid the
+     * real figure. The themed panels now print the whole number (or one decimal for a
+     * non-integral value). {@link #condense(String)} remains for an overflow fallback if a
+     * caller measures a clip.
      */
     public static String format(double value) {
+        if (!Double.isFinite(value)) {
+            return "0";
+        }
+        if (value == Math.rint(value) && Math.abs(value) < 9.007199254740992E15) {
+            return Long.toString((long) value);
+        }
+        return String.format(Locale.ROOT, "%.1f", value);
+    }
+
+    /**
+     * Compact form used only when a caller has already measured a clip. The themed menus use
+     * {@link #format(double)} so the real figure stays on screen unless it will not fit.
+     */
+    static String abbreviate(double value) {
         double abs = Math.abs(value);
         if (abs >= 1.0e9) {
             return String.format(Locale.ROOT, "%.2fB", value / 1.0e9);
         }
         if (abs >= 1.0e6) {
-            // A value just under the next unit rounds up into it. 999,999,999 -- which is exactly
-            // what a DragonMineZ server configured with a 999,999,999 stat cap hands us -- came out
-            // as "1000.00M", which reads as a thousand million and looks like a different, larger
-            // number than the one on the stock panel beside it. Roll it into the next unit instead,
-            // so it reads "1.00B".
             if (roundsIntoNextUnit(value / 1.0e6, 2)) {
                 return String.format(Locale.ROOT, "%.2fB", value / 1.0e9);
             }
@@ -66,20 +79,9 @@ public final class StatText {
             }
             return String.format(Locale.ROOT, "%.1fK", value / 1.0e3);
         }
-        // Below the abbreviation thresholds, show the exact figure, and do not append a pointless
-        // ".0" to values that are whole -- most DMZ stats are.
-        return value == Math.floor(value) && !Double.isInfinite(value)
-                ? Long.toString((long) value)
-                : String.format(Locale.ROOT, "%.1f", value);
+        return format(value);
     }
 
-    /**
-     * True when {@code mantissa}, printed at {@code decimals} places, would reach 1000.
-     *
-     * <p>Asked before formatting rather than after, because the check is about what
-     * {@code String.format} is going to round to, not about the raw value: 999.999999 is under a
-     * thousand, and "%.2f" of it is not.
-     */
     private static boolean roundsIntoNextUnit(double mantissa, int decimals) {
         double scale = Math.pow(10, decimals);
         return Math.abs(Math.round(mantissa * scale) / scale) >= 1000.0;
@@ -107,7 +109,7 @@ public final class StatText {
             }
         }
         try {
-            return format(Double.parseDouble(digits.toString()));
+            return abbreviate(Double.parseDouble(digits.toString()));
         } catch (NumberFormatException ignored) {
             return grouped;
         }

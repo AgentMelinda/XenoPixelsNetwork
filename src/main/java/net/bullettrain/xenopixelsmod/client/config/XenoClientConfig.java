@@ -168,7 +168,7 @@ public final class XenoClientConfig {
      * Abbreviate HUD figures as k/M. Off shows the exact number, which is what a player
      * checking whether a heal landed actually wants.
      */
-    public static boolean hudCompactNumbers = true;
+    public static boolean hudCompactNumbers = false;
     /** Draw current/max values inside the HP, KI and stamina lanes on the modern panel. */
     public static boolean hudBarNumbers = true;
     /** Report the held fire key so a beam can be sustained. Off opts out entirely. */
@@ -177,6 +177,11 @@ public final class XenoClientConfig {
     public static boolean beamSurgeDebug = false;
     /** Radial speed lines while moving fast. Camera-adjacent, so it gets its own switch. */
     public static boolean speedLinesEnabled = true;
+    /**
+     * Local opt-out for Sparking. Server {@code bt3SparkingEnabled} still has to be on; this
+     * only stops this client from requesting or displaying Sparking.
+     */
+    public static boolean sparkingEnabled = true;
     /** Warm vignette while sparking. Separate switch: it is on screen for seconds. */
     public static boolean sparkingTintEnabled = true;
     /** Hide Alt/Ctrl technique hotbar while chat/command screen is open. */
@@ -394,6 +399,7 @@ public final class XenoClientConfig {
         d.beamSurgeClient = beamSurgeClient;
         d.beamSurgeDebug = beamSurgeDebug;
         d.speedLinesEnabled = speedLinesEnabled;
+        d.sparkingEnabled = sparkingEnabled;
         d.sparkingTintEnabled = sparkingTintEnabled;
         d.techniqueHotbarHideInChat = techniqueHotbarHideInChat;
         d.sableContraptionCullClient = sableContraptionCullClient;
@@ -493,6 +499,7 @@ public final class XenoClientConfig {
         beamSurgeClient = d.beamSurgeClient;
         beamSurgeDebug = d.beamSurgeDebug;
         speedLinesEnabled = d.speedLinesEnabled;
+        sparkingEnabled = d.sparkingEnabled == null || d.sparkingEnabled;
         sparkingTintEnabled = d.sparkingTintEnabled;
         techniqueHotbarHideInChat = d.techniqueHotbarHideInChat;
         sableContraptionCullClient = d.sableContraptionCullClient == null || d.sableContraptionCullClient;
@@ -603,11 +610,12 @@ public final class XenoClientConfig {
         public boolean dmzCameraShake = false;
         public boolean bt3ImpactFlash = true;
         public int bt3GuardHoldTicks = 5;
-        public boolean hudCompactNumbers = true;
+        public boolean hudCompactNumbers = false;
         public boolean hudBarNumbers = true;
         public boolean beamSurgeClient = true;
         public boolean beamSurgeDebug = false;
         public boolean speedLinesEnabled = true;
+        public Boolean sparkingEnabled;
         public boolean sparkingTintEnabled = true;
         public boolean techniqueHotbarHideInChat = true;
         public Boolean sableContraptionCullClient;

@@ -28,7 +28,7 @@ import java.util.Locale;
 public final class NpcCombatProfile {
     public static final String NBT_KEY = "xenopixels:npc_combat_profile";
     private static final String TAG_SCHEMA = "Schema";
-    private static final int CURRENT_SCHEMA = 11;
+    private static final int CURRENT_SCHEMA = 12;
     private static final String TAG_AUTHORITATIVE = "Authoritative";
     private static final String TAG_KNOCKABLE = "Knockable";
     private static final String TAG_PUNCHABLE = "Punchable";
@@ -89,6 +89,7 @@ public final class NpcCombatProfile {
     private static final String TAG_BASE_AURA_STYLE = "BaseAuraStyle";
     private static final String TAG_FORM_AURA_STYLES = "FormAuraStyles";
     private static final String TAG_STACK_AURA_STYLES = "StackAuraStyles";
+    private static final String TAG_MELEE_ANIMATION = "MeleeAnimation";
     /** Packet/NBT UTF stays under 32767 per string. Full-set DMZ codes are longer. */
     public static final int HAIR_CODE_CHUNK = 30000;
 
@@ -193,6 +194,23 @@ public final class NpcCombatProfile {
     public int hairStyleId;
     /** Full player-independent DMZ customization state. */
     public NpcDmzAppearance appearance = new NpcDmzAppearance();
+    /**
+     * Studio / catalog clip played on a committed melee hit. Empty keeps the built-in alternating
+     * punches.
+     */
+    public String meleeAnimation = "";
+
+    /** Empty plus every clip {@code XenoAnimApi.playClip} accepts, for the wand cycle. */
+    public static java.util.List<String> meleeAnimationChoices() {
+        java.util.List<String> clips = new java.util.ArrayList<>();
+        clips.add("");
+        clips.addAll(net.bullettrain.xenopixelsmod.api.anim.XenoAnimApi.listClips());
+        return clips;
+    }
+
+    public static String stepMeleeAnimation(String current, int dir) {
+        return NpcFormLookup.step(meleeAnimationChoices(), current == null ? "" : current.trim(), dir);
+    }
 
     private float effectiveMelee = Float.NaN;
     private float effectiveStrike = Float.NaN;
@@ -215,18 +233,30 @@ public final class NpcCombatProfile {
     public static boolean hasProfile(Entity entity) {
         return entity != null
                 && !(entity instanceof net.bullettrain.xenopixelsmod.combat.clone.XenoCloneEntity)
-                && entity.getPersistentData().contains(NBT_KEY, Tag.TAG_COMPOUND);
+                && storedProfile(entity) != null;
+    }
+
+    /** Namespaced ForgeData key, or unnamespaced {@link NpcProfilePersistence#CNPC_KEY} backup. */
+    private static CompoundTag storedProfile(Entity entity) {
+        if (entity == null) return null;
+        CompoundTag root = entity.getPersistentData();
+        if (root.contains(NBT_KEY, Tag.TAG_COMPOUND)) {
+            CompoundTag tag = root.getCompound(NBT_KEY);
+            return tag.isEmpty() ? null : tag;
+        }
+        if (root.contains(NpcProfilePersistence.CNPC_KEY, Tag.TAG_COMPOUND)) {
+            CompoundTag tag = root.getCompound(NpcProfilePersistence.CNPC_KEY);
+            return tag.isEmpty() ? null : tag;
+        }
+        return null;
     }
 
     public static NpcCombatProfile read(Entity entity) {
         if (entity instanceof net.bullettrain.xenopixelsmod.combat.clone.XenoCloneEntity clone) {
             return clone.combatProfile();
         }
-        CompoundTag root = entity.getPersistentData();
-        if (!root.contains(NBT_KEY)) {
-            return new NpcCombatProfile();
-        }
-        return fromTag(root.getCompound(NBT_KEY));
+        CompoundTag stored = storedProfile(entity);
+        return stored == null ? new NpcCombatProfile() : fromTag(stored);
     }
 
     /**
@@ -250,11 +280,10 @@ public final class NpcCombatProfile {
         if (entity == null) {
             return new NpcCombatProfile();
         }
-        CompoundTag root = entity.getPersistentData();
-        if (!root.contains(NBT_KEY, Tag.TAG_COMPOUND)) {
+        CompoundTag stored = storedProfile(entity);
+        if (stored == null) {
             return new NpcCombatProfile();
         }
-        CompoundTag stored = root.getCompound(NBT_KEY);
         Cached cached = CACHE.get(entity);
         if (cached != null && cached.tag == stored) {
             return cached.profile;
@@ -396,11 +425,26 @@ public final class NpcCombatProfile {
                 profile.techniques.add(id.toLowerCase(Locale.ROOT));
             }
         }
+        profile.meleeAnimation = tag.getString(TAG_MELEE_ANIMATION);
         return profile;
     }
 
     public CompoundTag toTag() {
         return writeTag();
+    }
+
+    /**
+     * Returns {@code profileTag} with only {@code kiWeaponOn} changed.
+     *
+     * <p>The Stats tab's KI Weapon button saves the whole profile, so it has to rebuild the
+     * payload from the NPC's current state rather than from a blank profile — otherwise the
+     * appearance, transformation, mastery and combat fields owned by the other DMZ screens would
+     * be overwritten with defaults on every toggle.
+     */
+    public static CompoundTag withKiWeapon(CompoundTag profileTag, boolean kiWeaponOn) {
+        NpcCombatProfile profile = fromTag(profileTag);
+        profile.kiWeaponOn = kiWeaponOn;
+        return profile.toTag();
     }
 
     public void write(Entity entity) {
@@ -410,10 +454,15 @@ public final class NpcCombatProfile {
         XenoPixelsMod.LOGGER.info("[AURA-DEBUG] write side={} entity={} auraColorHex='{}' auraColor={} formGroup='{}' formId='{}'",
                 entity.level().isClientSide() ? "CLIENT" : "SERVER", entity.getUUID(),
                 auraColorHex, formatHex(auraColor), formGroup, formId);
-        entity.getPersistentData().put(NBT_KEY, writeTag());
+        CompoundTag tag = writeTag();
+        entity.getPersistentData().put(NBT_KEY, tag);
+        entity.getPersistentData().put(NpcProfilePersistence.CNPC_KEY, tag.copy());
         NpcCounterpartSync.force(entity, this);
         if (entity instanceof net.minecraft.world.entity.LivingEntity living) {
             NpcFormAttributeSync.apply(living, this);
+            if (!entity.level().isClientSide) {
+                NpcMeleeDamage.applyProfile(living, this);
+            }
         }
         NpcHairBridge.applyProfile(entity, this);
         NpcProfileLifecycle.track(entity);
@@ -487,6 +536,7 @@ public final class NpcCombatProfile {
             }
         }
         tag.put(TAG_TECHNIQUES, techs);
+        tag.putString(TAG_MELEE_ANIMATION, meleeAnimation == null ? "" : meleeAnimation.trim());
         return tag;
     }
 
@@ -758,6 +808,7 @@ public final class NpcCombatProfile {
         tag.put(TAG_FORM_AURA_STYLES, saveAuraStyles(formAuraStyles));
         tag.put(TAG_STACK_AURA_STYLES, saveAuraStyles(stackAuraStyles));
         tag.put(TAG_STACK_MASTERIES, stackMasteries.save());
+        tag.putString(TAG_MELEE_ANIMATION, meleeAnimation == null ? "" : meleeAnimation.trim());
         return tag;
     }
 
@@ -795,6 +846,9 @@ public final class NpcCombatProfile {
         loadAuraStyles(tag.getList(TAG_FORM_AURA_STYLES, Tag.TAG_COMPOUND), formAuraStyles);
         loadAuraStyles(tag.getList(TAG_STACK_AURA_STYLES, Tag.TAG_COMPOUND), stackAuraStyles);
         if (tag.contains(TAG_STACK_MASTERIES, Tag.TAG_COMPOUND)) stackMasteries.load(tag.getCompound(TAG_STACK_MASTERIES));
+        if (tag.contains(TAG_MELEE_ANIMATION)) {
+            meleeAnimation = tag.getString(TAG_MELEE_ANIMATION);
+        }
     }
 
     public static String auraKey(String group, String form) {

@@ -29,8 +29,10 @@ import net.neoforged.neoforge.event.tick.ServerTickEvent;
 
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 
 /** Repairs missing DragonMineZ quest-spawned combat enemies without duplicating valid spawns. */
@@ -79,7 +81,7 @@ public final class DmzSagaSpawnCompat {
             RepairResult result = repair(player, pending.questKey, pending.partySize, pending.difficulty);
             if (!result.activeQuest) continue;
             int nextAudit = pending.auditNumber + 1;
-            if (nextAudit < MAX_AUDITS && (result.spawned > 0 || result.missing > 0)) {
+            if (shouldRetry(nextAudit, result.spawned, result.missing)) {
                 int delay = result.spawned > 0 ? 1 : 20;
                 PENDING.put(key, new PendingAudit(
                         pending.playerId, pending.questKey, pending.partySize, pending.difficulty,
@@ -123,16 +125,22 @@ public final class DmzSagaSpawnCompat {
                     int progress = data == null ? 0 : data.getObjectiveProgress(active.questKey, index);
                     int required = data == null ? kill.getCount()
                             : quest.getObjectiveRequired(data, active.questKey, index);
-                    int existing = countQuestEntities(player.serverLevel(), player, active.questKey, index);
+                    EntityCounts counts = countQuestEntities(
+                            player.serverLevel(), questGuardians(player), active.questKey, index, kill);
                     EntityType<?> type = kill.resolveEntityType();
                     ResourceLocation typeId = type == null ? null : BuiltInRegistries.ENTITY_TYPE.getKey(type);
                     lines.add("Objective " + index + ": entity=" + kill.getEntityId()
                             + ", resolved=" + (typeId == null ? "null" : typeId)
                             + ", progress=" + progress + "/" + required
-                            + ", loaded=" + existing);
+                            + ", matching=" + counts.matching
+                            + ", malformed=" + counts.malformed
+                            + ", mismatched=" + counts.mismatched
+                            + ", missing=" + missingCount(required, progress, counts.matching));
                 }
             }
         }
+        boolean pending = PENDING.keySet().stream().anyMatch(key -> key.playerId.equals(player.getUUID()));
+        lines.add("Pending audit=" + pending);
         String failure = LAST_FAILURE.get(player.getUUID());
         if (failure != null && !failure.isBlank()) lines.add("Last failure=" + failure);
         return lines;
@@ -140,6 +148,10 @@ public final class DmzSagaSpawnCompat {
 
     static int missingCount(int required, int progress, int existing) {
         return Math.max(0, required - progress - existing);
+    }
+
+    static boolean shouldRetry(int nextAudit, int spawned, int missing) {
+        return nextAudit < MAX_AUDITS && (spawned > 0 || missing > 0);
     }
 
     private static RepairResult repair(ServerPlayer player, String questKey, int partySize, Difficulty difficulty) {
@@ -156,7 +168,8 @@ public final class DmzSagaSpawnCompat {
         Quest quest = resolved.quest();
         int spawned = 0;
         int missing = 0;
-        int totalNeeded = totalMissing(player.serverLevel(), player, resolved, questData);
+        Set<String> guardians = questGuardians(player);
+        int totalNeeded = totalMissing(player.serverLevel(), guardians, resolved, questData);
         String teamId = totalNeeded > 1
                 ? questKey + ":" + player.getStringUUID() + ":xeno:" + System.nanoTime()
                 : null;
@@ -168,7 +181,8 @@ public final class DmzSagaSpawnCompat {
 
             int progress = questData.getObjectiveProgress(questKey, index);
             int required = quest.getObjectiveRequired(questData, questKey, index);
-            int existing = countQuestEntities(player.serverLevel(), player, questKey, index);
+            int existing = countQuestEntities(
+                    player.serverLevel(), guardians, questKey, index, kill).matching;
             int needed = missingCount(required, progress, existing);
             if (needed <= 0) continue;
 
@@ -191,7 +205,7 @@ public final class DmzSagaSpawnCompat {
                 missing == 0 ? "Spawn audit complete" : "One or more enemies could not be spawned");
     }
 
-    private static int totalMissing(ServerLevel level, ServerPlayer player,
+    private static int totalMissing(ServerLevel level, Set<String> guardians,
                                     QuestService.ResolvedQuest resolved, PlayerQuestData data) {
         int total = 0;
         Quest quest = resolved.quest();
@@ -201,7 +215,7 @@ public final class DmzSagaSpawnCompat {
                     || kill.getSpawnMode() != KillObjective.SpawnMode.QUEST) continue;
             int required = quest.getObjectiveRequired(data, resolved.questKey(), index);
             int progress = data.getObjectiveProgress(resolved.questKey(), index);
-            int existing = countQuestEntities(level, player, resolved.questKey(), index);
+            int existing = countQuestEntities(level, guardians, resolved.questKey(), index, kill).matching;
             total += missingCount(required, progress, existing);
         }
         return total;
@@ -317,20 +331,45 @@ public final class DmzSagaSpawnCompat {
         return null;
     }
 
-    private static int countQuestEntities(ServerLevel level, ServerPlayer player,
-                                          String questKey, int objectiveIndex) {
-        int count = 0;
-        String owner = player.getStringUUID();
+    private static EntityCounts countQuestEntities(ServerLevel level, Set<String> guardians,
+                                                    String questKey, int objectiveIndex,
+                                                    KillObjective objective) {
+        int matching = 0;
+        int malformed = 0;
+        int mismatched = 0;
         for (Entity entity : level.getEntities().getAll()) {
             if (!entity.isAlive()) continue;
-            CompoundTag tag = entity.getPersistentData();
-            if (!questKey.equals(tag.getString(QUEST_KEY_TAG))) continue;
-            if (tag.getInt(OBJECTIVE_INDEX_TAG) != objectiveIndex) continue;
-            String taggedOwner = tag.getString(QUEST_OWNER_TAG);
-            if (!taggedOwner.isEmpty() && !owner.equals(taggedOwner)) continue;
-            count++;
+            EntityMatch match = classifyQuestEntity(entity.getPersistentData(), entity.getType(),
+                    guardians, questKey, objectiveIndex, objective);
+            if (match == EntityMatch.MATCHING) matching++;
+            else if (match == EntityMatch.MALFORMED) malformed++;
+            else if (match == EntityMatch.MISMATCHED) mismatched++;
         }
-        return count;
+        return new EntityCounts(matching, malformed, mismatched);
+    }
+
+    static EntityMatch classifyQuestEntity(CompoundTag tag, EntityType<?> type, Set<String> guardians,
+                                           String questKey, int objectiveIndex, KillObjective objective) {
+        boolean hasAnyQuestTag = tag.contains(QUEST_KEY_TAG)
+                || tag.contains(OBJECTIVE_INDEX_TAG)
+                || tag.contains(QUEST_OWNER_TAG);
+        if (!hasAnyQuestTag) return EntityMatch.UNRELATED;
+        if (!tag.contains(QUEST_KEY_TAG) || !tag.contains(OBJECTIVE_INDEX_TAG)
+                || !tag.contains(QUEST_OWNER_TAG)) return EntityMatch.MALFORMED;
+        if (!questKey.equals(tag.getString(QUEST_KEY_TAG))
+                || tag.getInt(OBJECTIVE_INDEX_TAG) != objectiveIndex
+                || !guardians.contains(tag.getString(QUEST_OWNER_TAG))) return EntityMatch.UNRELATED;
+        if (objective == null || type == null || !objective.matches(type)) return EntityMatch.MISMATCHED;
+        return EntityMatch.MATCHING;
+    }
+
+    private static Set<String> questGuardians(ServerPlayer player) {
+        Set<String> guardians = new HashSet<>();
+        for (ServerPlayer member : com.dragonminez.common.quest.PartyManager.getAllPartyMembers(player)) {
+            guardians.add(member.getStringUUID());
+        }
+        guardians.add(player.getStringUUID());
+        return guardians;
     }
 
     private static ActiveQuest activeQuest(ServerPlayer player) {
@@ -373,6 +412,16 @@ public final class DmzSagaSpawnCompat {
         static RepairResult inactive(String message) {
             return new RepairResult(false, 0, 0, message);
         }
+    }
+
+    enum EntityMatch {
+        UNRELATED,
+        MALFORMED,
+        MISMATCHED,
+        MATCHING
+    }
+
+    private record EntityCounts(int matching, int malformed, int mismatched) {
     }
 
     private record AuditKey(UUID playerId, String questKey) {

@@ -37,6 +37,14 @@ package net.bullettrain.xenopixelsmod.api;
  *
  * <h2>Adding your own content</h2>
  *
+ * <p>{@code net.bullettrain.xenopixelsmod.api.anim.XenoAnimApi} plays animation clips on an entity -
+ * both the ones this mod ships and the ones authored in the Xeno Anim Studio and published to the
+ * server. Overloads take a speed, an optional duration in ticks, and a hold-last-frame flag;
+ * players as well as Full DragonMineZ NPCs can be targeted. {@code
+ * net.bullettrain.xenopixelsmod.api.event.AnimInstructionEvent} fires when a clip reaches an
+ * instruction keyframe. Both are additive, so {@link #API_VERSION} did not move; test for the
+ * {@code XenoAnimApi} class itself the way this class asks you to test for this one.
+ *
  * <p>{@code net.bullettrain.xenopixelsmod.api.registry.RushRegistry} takes cinematic rushes for a
  * form or a race. Read its notes on substring matching before choosing your aliases.
  * Addons that need packets use {@code net.bullettrain.xenopixelsmod.api.network.AddonNetwork}; it

@@ -3,6 +3,7 @@ package net.bullettrain.xenopixelsmod.client.combat;
 import net.bullettrain.xenopixelsmod.XenoPixelsMod;
 import net.bullettrain.xenopixelsmod.combat.clone.XenoCloneEntity;
 import net.bullettrain.xenopixelsmod.config.XenoServerConfig;
+import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.client.renderer.MultiBufferSource;
 import net.minecraft.world.entity.Entity;
 import net.neoforged.api.distmarker.Dist;
@@ -40,6 +41,19 @@ public final class ZanzokenFade {
      * so any of them reports the same age, and the ring is dropped whole.
      */
     private static final Map<Integer, XenoCloneEntity> RINGS = new ConcurrentHashMap<>();
+    private static final Map<Integer, Float> LAST_ALPHA = new ConcurrentHashMap<>();
+    private static final Map<Integer, Restore> RESTORE = new ConcurrentHashMap<>();
+    private static final int RESTORE_TICKS = 10;
+
+    private static final class Restore {
+        final float from;
+        int remaining;
+
+        Restore(float from) {
+            this.from = from;
+            this.remaining = RESTORE_TICKS;
+        }
+    }
 
     private ZanzokenFade() {
     }
@@ -66,6 +80,8 @@ public final class ZanzokenFade {
     public static void onLoggingOut(
             net.neoforged.neoforge.client.event.ClientPlayerNetworkEvent.LoggingOut event) {
         RINGS.clear();
+        LAST_ALPHA.clear();
+        RESTORE.clear();
     }
 
     /**
@@ -79,17 +95,28 @@ public final class ZanzokenFade {
                 || !XenoServerConfig.zanzokenGhostAfterimage) {
             return 1.0f;
         }
-        XenoCloneEntity image = RINGS.get(entity.getId());
-        if (image == null) {
-            return 1.0f;
+        int id = entity.getId();
+        XenoCloneEntity image = standingImage(entity);
+        if (image != null) {
+            RESTORE.remove(id);
+            float alpha = AfterimageFade.alpha(1, XenoServerConfig.zanzokenGhostAlpha,
+                    image.tickCount + partialTick, image.lifetimeTicks());
+            LAST_ALPHA.put(id, alpha);
+            return alpha;
         }
-        if (!image.isAlive() || image.isRemoved()) {
-            RINGS.remove(entity.getId(), image);
-            return 1.0f;
+        Float last = LAST_ALPHA.remove(id);
+        if (last != null && last < 0.999f) {
+            RESTORE.put(id, new Restore(last));
         }
-        return AfterimageFade.alpha(XenoServerConfig.zanzokenGhostFadeMode,
-                XenoServerConfig.zanzokenGhostAlpha,
-                image.tickCount + partialTick, image.lifetimeTicks());
+        Restore restore = RESTORE.get(id);
+        if (restore != null) {
+            restore.remaining--;
+            float t = 1.0f - restore.remaining / (float) RESTORE_TICKS;
+            float alpha = restore.from + (1.0f - restore.from) * Math.max(0.0f, Math.min(1.0f, t));
+            if (restore.remaining <= 0) RESTORE.remove(id);
+            return alpha;
+        }
+        return 1.0f;
     }
 
     /**
@@ -97,6 +124,31 @@ public final class ZanzokenFade {
      * nothing to fade.
      */
     public static MultiBufferSource wrap(MultiBufferSource buffers, float alpha) {
-        return alpha < 0.999f ? new AlphaMultiBufferSource(buffers, alpha) : buffers;
+        return CombatBodyFade.wrap(buffers, alpha);
+    }
+
+    /**
+     * The join map is the fast path. Synched {@code ownerId} can still be the default when
+     * {@code EntityJoinLevelEvent} fires, so a miss falls back to a scan of living ring copies.
+     */
+    private static XenoCloneEntity standingImage(Entity entity) {
+        int id = entity.getId();
+        XenoCloneEntity image = RINGS.get(id);
+        if (isStanding(image, id)) return image;
+        if (image != null) RINGS.remove(id, image);
+        if (!(entity.level() instanceof ClientLevel level)) return null;
+        for (Entity candidate : level.entitiesForRendering()) {
+            if (candidate instanceof XenoCloneEntity clone && isStanding(clone, id)) {
+                RINGS.put(id, clone);
+                return clone;
+            }
+        }
+        return null;
+    }
+
+    private static boolean isStanding(XenoCloneEntity clone, int ownerId) {
+        return clone != null && clone.isAlive() && !clone.isRemoved()
+                && clone.slot() == XenoCloneEntity.SLOT_STATIONARY
+                && clone.ownerId() == ownerId;
     }
 }

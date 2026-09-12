@@ -107,6 +107,7 @@ public final class XenoCooldownHudConfig {
     public static final boolean[] partBold = new boolean[Part.COUNT];
     /** Font per element, so a counter can use a fixed-width face while its label stays default. */
     public static final String[] partFont = new String[Part.COUNT];
+    public static final boolean[] partHidden = new boolean[Part.COUNT];
 
     private static final int[] DEFAULT_PART_COLOR = {
             0xFFB6DDF1, // key
@@ -229,6 +230,7 @@ public final class XenoCooldownHudConfig {
         partBold[part] = false;
         partColor[part] = DEFAULT_PART_COLOR[part];
         partFont[part] = DEFAULT_FONT;
+        partHidden[part] = false;
     }
 
     public static void resetTextLayout() {
@@ -238,6 +240,7 @@ public final class XenoCooldownHudConfig {
         java.util.Arrays.fill(partScale, 1.0f);
         java.util.Arrays.fill(partBold, false);
         java.util.Arrays.fill(partFont, DEFAULT_FONT);
+        java.util.Arrays.fill(partHidden, false);
         System.arraycopy(DEFAULT_PART_COLOR, 0, partColor, 0, Part.COUNT);
         textScale = 0.6f;
     }
@@ -304,6 +307,7 @@ public final class XenoCooldownHudConfig {
         d.partColor = partColor.clone();
         d.partBold = partBold.clone();
         d.partFont = partFont.clone();
+        d.partHidden = partHidden.clone();
         return d;
     }
 
@@ -338,6 +342,7 @@ public final class XenoCooldownHudConfig {
             partBold[i] = d.partBold != null && i < d.partBold.length && d.partBold[i];
             String storedFont = d.partFont != null && i < d.partFont.length ? d.partFont[i] : null;
             partFont[i] = storedFont == null || storedFont.isBlank() ? DEFAULT_FONT : storedFont;
+            partHidden[i] = d.partHidden != null && i < d.partHidden.length && d.partHidden[i];
         }
     }
 
@@ -368,5 +373,6 @@ public final class XenoCooldownHudConfig {
         public int[] partColor = new int[Part.COUNT];
         public boolean[] partBold = new boolean[Part.COUNT];
         public String[] partFont = new String[Part.COUNT];
+        public boolean[] partHidden = new boolean[Part.COUNT];
     }
 }

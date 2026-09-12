@@ -299,6 +299,20 @@ dependencies {
     // back with CustomNPCs.
     compileOnly "curse.maven:cnpc-gecko-addon-970162:7272203"
 
+    // MMO Econ - the server-side-only economy mod backing the sign shops. runtimeOnly, never
+    // implementation: XenoPixels must compile, and must still load, with MMO Econ absent. Nothing
+    // references it directly -- every call goes through compat/mmoecon/MmoEconBridge, which is
+    // reflective and gated on the mmoecon mod id. It is not bundled and not required by the
+    // production jar; it is here so a dev run can exercise the integration.
+    runtimeOnly "curse.maven:mmo-econ-${mmoecon_project_id}:${mmoecon_file_id}"
+
+    // WorldEdit - plot region selection. compileOnly because the project has to build without it,
+    // and optional at runtime: every use lives behind compat/worldedit/WorldEditBridge, which is
+    // gated on the class being present. Modrinth project 1u6JkXh5:WTAFvuRx is 7.3.8 for
+    // MC 1.21-1.21.1 and ships no browsable creator maven, so it comes from the Modrinth maven
+    // already declared above.
+    compileOnly "maven.modrinth:${worldedit_project_id}:${worldedit_version_id}"
+
     // Controlify - gamepad support. Only its public `dev.isxander.controlify.api` surface is
     // compiled against, plus dev.isxander.controlify.rumble for vibration (see the caveat in
     // client/pad/XenoPadRumble.java). Optional at runtime: everything that touches Controlify

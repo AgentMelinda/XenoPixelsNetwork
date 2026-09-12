@@ -199,9 +199,7 @@ public final class HakaiChannelSystem {
 
         channel.ticksElapsed++;
         float progress = channel.ticksElapsed / (float) channel.totalTicks;
-        if (channel.ticksElapsed == 1 || channel.ticksElapsed % 20 == 0) {
-            DmzAnimHelper.broadcastHakaiHold(caster);
-        }
+        net.bullettrain.xenopixelsmod.compat.npc.NpcDissolve.apply(target, progress);
         if (channel.ticksElapsed % 2 == 0) {
             HakaiFx.tick(level, caster, target, progress);
             caster.displayClientMessage(progressBar(progress), true);
@@ -211,6 +209,7 @@ public final class HakaiChannelSystem {
             boolean forceErase = channel.forceErase;
             ACTIVE.remove(caster.getUUID());
             clearGlow(caster, channel);
+            net.bullettrain.xenopixelsmod.compat.npc.NpcDissolve.clear(target);
             finish(level, caster, target, forceErase);
         }
     }
@@ -225,8 +224,10 @@ public final class HakaiChannelSystem {
         }
         restore.keepBelow = Math.min(1.0f, restore.keepBelow + restore.step);
         HakaiFx.restore(level, target, restore.keepBelow);
+        net.bullettrain.xenopixelsmod.compat.npc.NpcDissolve.apply(target, 1.0f - restore.keepBelow);
         if (restore.keepBelow >= 1.0f) {
             HakaiFx.reveal(target);
+            net.bullettrain.xenopixelsmod.compat.npc.NpcDissolve.clear(target);
             RESTORES.remove(caster.getUUID());
         }
     }
@@ -241,8 +242,24 @@ public final class HakaiChannelSystem {
 
     private static void beginRestore(ServerPlayer caster, int targetId, float keepBelow) {
         float start = Math.max(0.02f, Math.min(1.0f, keepBelow));
-        if (start >= 0.98f) return;
-        float step = (1.0f - start) / 40.0f;
+        Entity raw = caster.level().getEntity(targetId);
+        if (start >= 0.98f) {
+            if (raw instanceof LivingEntity living) {
+                net.bullettrain.xenopixelsmod.compat.npc.NpcDissolve.clear(living);
+            }
+            return;
+        }
+        // The restore is driven by the caster's own tick. If they disconnect the ramp is lost,
+        // so the effect is cleared here instead of being left to expire on its 10-tick duration.
+        int restoreTicks = XenoServerConfig.hakaiFadeRestoreTicks;
+        if (restoreTicks <= 0) {
+            if (raw instanceof LivingEntity living) {
+                HakaiFx.reveal(living);
+                net.bullettrain.xenopixelsmod.compat.npc.NpcDissolve.clear(living);
+            }
+            return;
+        }
+        float step = (1.0f - start) / restoreTicks;
         RESTORES.put(caster.getUUID(), new Restore(targetId, start, Math.max(0.01f, step)));
     }
 
@@ -275,6 +292,7 @@ public final class HakaiChannelSystem {
 
         HakaiFx.burst(level, target, true);
         HakaiFx.reveal(target);
+        net.bullettrain.xenopixelsmod.compat.npc.NpcDissolve.clear(target);
         if (target instanceof Player
                 || net.bullettrain.xenopixelsmod.compat.npc.NpcCounterpartSync.isCustomNpc(target)) {
             eraseLivingTarget(target);
@@ -349,9 +367,24 @@ public final class HakaiChannelSystem {
     public static void onLogout(PlayerEvent.PlayerLoggedOutEvent event) {
         if (event.getEntity() instanceof ServerPlayer player) {
             clearGlow(player, ACTIVE.remove(player.getUUID()));
-            RESTORES.remove(player.getUUID());
+            Restore pending = RESTORES.remove(player.getUUID());
+            if (pending != null) {
+                dropRestore(player, pending);
+            }
         } else if (event.getEntity() != null) {
             ACTIVE.remove(event.getEntity().getUUID());
+        }
+    }
+
+    /**
+     * Clears a pending restore's effect on the target. Nothing can advance the ramp once the
+     * caster is gone, and the effect would otherwise fade the body out over its own duration.
+     */
+    private static void dropRestore(ServerPlayer caster, Restore restore) {
+        Entity raw = caster.level().getEntity(restore.targetId);
+        if (raw instanceof LivingEntity living) {
+            HakaiFx.reveal(living);
+            net.bullettrain.xenopixelsmod.compat.npc.NpcDissolve.clear(living);
         }
     }
 
@@ -366,6 +399,12 @@ public final class HakaiChannelSystem {
         for (Map.Entry<UUID, Channel> entry : ACTIVE.entrySet()) {
             ServerPlayer caster = event.getServer().getPlayerList().getPlayer(entry.getKey());
             clearGlow(caster, entry.getValue());
+        }
+        for (Map.Entry<UUID, Restore> entry : RESTORES.entrySet()) {
+            ServerPlayer caster = event.getServer().getPlayerList().getPlayer(entry.getKey());
+            if (caster != null) {
+                dropRestore(caster, entry.getValue());
+            }
         }
         ACTIVE.clear();
         RESTORES.clear();

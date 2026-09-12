@@ -77,6 +77,16 @@ public final class XenoHudCommands {
                         DoubleArgumentType.getDouble(ctx, "value"), apply)));
     }
 
+    private static int openPartsEditor(CommandSourceStack source) {
+        if (!XenoClientConfig.hudEditEnabled) {
+            source.sendFailure(Component.literal("HUD edit disabled in client config"));
+            return 0;
+        }
+        Minecraft mc = Minecraft.getInstance();
+        mc.execute(() -> mc.setScreen(new XenoElementsEditScreen(mc.screen, HudSurfaces.PANEL)));
+        return 1;
+    }
+
     private static void register(CommandDispatcher<CommandSourceStack> dispatcher) {
         dispatcher.register(Commands.literal("xenohud")
                 .then(Commands.literal("toggle")
@@ -204,6 +214,9 @@ public final class XenoHudCommands {
                         .then(Commands.literal("neon")
                                 .executes(ctx -> setMenuMode(ctx, DmzMenuMode.NEON,
                                         "neon (the newer our-style stats page; the rest themed)")))
+                        .then(Commands.literal("v3")
+                                .executes(ctx -> setMenuMode(ctx, DmzMenuMode.SCREEN,
+                                        "screen (XenoHUD V3; alias 'v3')")))
                         // The replacement screen was called 'bt3' before the theming existed.
                         .then(Commands.literal("bt3")
                                 .executes(ctx -> setMenuMode(ctx, DmzMenuMode.SCREEN,
@@ -259,10 +272,7 @@ public final class XenoHudCommands {
                                                 "HUD edit disabled in client config"));
                                         return 0;
                                     }
-                                    Minecraft mc = Minecraft.getInstance();
-                                    mc.execute(() -> mc.setScreen(
-                                            new XenoElementsEditScreen(mc.screen, HudSurfaces.PANEL)));
-                                    return 1;
+                                    return openPartsEditor(ctx.getSource());
                                 }))
                         .executes(ctx -> {
                             ctx.getSource().sendSuccess(() -> Component.literal(
@@ -569,13 +579,127 @@ public final class XenoHudCommands {
                                     "Usage: /xenohud cd <edit|show|hide|reset|shape>"), false);
                             return 1;
                         }))
+                .then(Commands.literal("v3")
+                        .requires(XenoPermissions.require(XenoPermissions.XENOHUD_EDIT))
+                        .then(Commands.literal("edit")
+                                .executes(ctx -> {
+                                    if (!XenoClientConfig.hudEditEnabled) {
+                                        ctx.getSource().sendFailure(Component.literal(
+                                                "HUD edit disabled in client config"));
+                                        return 0;
+                                    }
+                                    XenoHudConfig.dmzMenuMode = DmzMenuMode.SCREEN;
+                                    XenoHudConfig.save();
+                                    Minecraft mc = Minecraft.getInstance();
+                                    mc.execute(() -> mc.setScreen(new XenoElementsEditScreen(
+                                            mc.screen, HudSurfaces.DMZ_SCREEN)));
+                                    return 1;
+                                }))
+                        .then(Commands.literal("reset")
+                                .executes(ctx -> {
+                                    net.bullettrain.xenopixelsmod.client.config.XenoDmzScreenConfig.resetParts();
+                                    net.bullettrain.xenopixelsmod.client.config.XenoDmzScreenConfig.save();
+                                    ctx.getSource().sendSuccess(() -> Component.literal(
+                                            "XenoHUD V3 menu layout reset"), false);
+                                    return 1;
+                                }))
+                        .executes(ctx -> {
+                            ctx.getSource().sendSuccess(() -> Component.literal(
+                                    "Usage: /xenohud v3 <edit|reset>"), false);
+                            return 1;
+                        }))
+                .then(Commands.literal("neon")
+                        .requires(XenoPermissions.require(XenoPermissions.XENOHUD_EDIT))
+                        .then(Commands.literal("edit")
+                                .executes(ctx -> {
+                                    if (!XenoClientConfig.hudEditEnabled) {
+                                        ctx.getSource().sendFailure(Component.literal(
+                                                "HUD edit disabled in client config"));
+                                        return 0;
+                                    }
+                                    XenoHudConfig.dmzMenuMode = DmzMenuMode.NEON;
+                                    XenoHudConfig.save();
+                                    Minecraft mc = Minecraft.getInstance();
+                                    mc.execute(() -> mc.setScreen(new XenoElementsEditScreen(
+                                            mc.screen, HudSurfaces.DMZ_NEON)));
+                                    return 1;
+                                }))
+                        .then(Commands.literal("reset")
+                                .executes(ctx -> {
+                                    net.bullettrain.xenopixelsmod.client.config.XenoDmzNeonConfig.resetParts();
+                                    net.bullettrain.xenopixelsmod.client.config.XenoDmzNeonConfig.save();
+                                    ctx.getSource().sendSuccess(() -> Component.literal(
+                                            "Neon V3 menu layout reset"), false);
+                                    return 1;
+                                }))
+                        .executes(ctx -> {
+                            ctx.getSource().sendSuccess(() -> Component.literal(
+                                    "Usage: /xenohud neon <edit|reset>"), false);
+                            return 1;
+                        }))
+                .then(Commands.literal("master")
+                        .requires(XenoPermissions.require(XenoPermissions.XENOHUD_EDIT))
+                        .then(Commands.literal("edit")
+                                .executes(ctx -> {
+                                    if (!XenoClientConfig.hudEditEnabled) {
+                                        ctx.getSource().sendFailure(Component.literal(
+                                                "HUD edit disabled in client config"));
+                                        return 0;
+                                    }
+                                    Minecraft mc = Minecraft.getInstance();
+                                    mc.execute(() -> mc.setScreen(
+                                            new XenoElementsEditScreen(mc.screen, HudSurfaces.MASTER)));
+                                    return 1;
+                                }))
+                        .then(Commands.literal("reset")
+                                .executes(ctx -> {
+                                    net.bullettrain.xenopixelsmod.client.config.XenoMasterMenuConfig.resetParts();
+                                    net.bullettrain.xenopixelsmod.client.config.XenoMasterMenuConfig.save();
+                                    ctx.getSource().sendSuccess(() -> Component.literal(
+                                            "Master menu layout reset"), false);
+                                    return 1;
+                                }))
+                        .executes(ctx -> {
+                            ctx.getSource().sendSuccess(() -> Component.literal(
+                                    "Usage: /xenohud master <edit|reset>"), false);
+                            return 1;
+                        }))
                 .executes(ctx -> {
                     ctx.getSource().sendSuccess(
                             () -> Component.literal(
-                                    "Usage: /xenohud <toggle|show|hide|edit|reset|renderer|techrenderer|party|techhud|cd>"),
+                                    "Usage: /xenohud <toggle|show|hide|edit|reset|renderer|menus|techrenderer|party|techhud|cd|v3|master>"),
                             false);
                     return 1;
                 }));
+
+        dispatcher.register(Commands.literal("xenoparts")
+                .requires(XenoPermissions.require(XenoPermissions.XENOHUD_EDIT))
+                .then(Commands.literal("global")
+                        .then(Commands.literal("push")
+                                .requires(XenoPermissions.require(XenoPermissions.XENOPARTS_GLOBAL))
+                                .executes(ctx -> {
+                                    net.bullettrain.xenopixelsmod.network.HudPartsNetwork.pushFromClient(
+                                            net.bullettrain.xenopixelsmod.client.hud.HudPartsClient.snapshotJson());
+                                    ctx.getSource().sendSuccess(() -> Component.literal(
+                                            "Publishing this client's HUD/menu parts as the server global…"),
+                                            false);
+                                    return 1;
+                                }))
+                        .then(Commands.literal("clear")
+                                .requires(XenoPermissions.require(XenoPermissions.XENOPARTS_GLOBAL))
+                                .executes(ctx -> {
+                                    net.bullettrain.xenopixelsmod.network.HudPartsNetwork.clearFromClient();
+                                    ctx.getSource().sendSuccess(() -> Component.literal(
+                                            "Clearing the server global HUD parts…"), false);
+                                    return 1;
+                                }))
+                        .executes(ctx -> {
+                            ctx.getSource().sendSuccess(() -> Component.literal(
+                                    "Usage: /xenoparts global <push|clear>  — push sends YOUR current layout to every joiner"),
+                                    false);
+                            return 1;
+                        }))
+                .executes(ctx -> openPartsEditor(ctx.getSource())));
 
         dispatcher.register(Commands.literal("xenoclient")
                 .then(Commands.literal("reload")

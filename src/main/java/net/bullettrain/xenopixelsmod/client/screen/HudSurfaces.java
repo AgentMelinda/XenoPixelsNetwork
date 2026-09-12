@@ -9,6 +9,7 @@ import net.bullettrain.xenopixelsmod.client.config.XenoCooldownHudConfig;
 import net.bullettrain.xenopixelsmod.client.config.XenoHotbarConfig;
 import net.bullettrain.xenopixelsmod.client.config.XenoDmzNeonConfig;
 import net.bullettrain.xenopixelsmod.client.config.XenoDmzScreenConfig;
+import net.bullettrain.xenopixelsmod.client.config.XenoMasterMenuConfig;
 import net.bullettrain.xenopixelsmod.client.config.XenoHudConfig;
 import net.bullettrain.xenopixelsmod.client.config.XenoPartyHudConfig;
 import net.minecraft.client.gui.GuiGraphics;
@@ -31,6 +32,7 @@ public final class HudSurfaces {
     public static final int PARTY = 3;
     public static final int DMZ_SCREEN = 4;
     public static final int DMZ_NEON = 5;
+    public static final int MASTER = 6;
 
     private HudSurfaces() {}
 
@@ -45,6 +47,7 @@ public final class HudSurfaces {
         @Override public int[] color() { return XenoHudConfig.partColor; }
         @Override public boolean[] bold() { return XenoHudConfig.partBold; }
         @Override public String[] font() { return XenoHudConfig.partFont; }
+        @Override public boolean[] hidden() { return XenoHudConfig.partHidden; }
         @Override public int defaultColor(int part) { return XenoHudConfig.defaultPartColor(part); }
         @Override public void resetPart(int part) { XenoHudConfig.resetPart(part); }
         @Override public void resetAll() { XenoHudConfig.resetParts(); }
@@ -76,6 +79,7 @@ public final class HudSurfaces {
         @Override public int[] color() { return XenoCooldownHudConfig.partColor; }
         @Override public boolean[] bold() { return XenoCooldownHudConfig.partBold; }
         @Override public String[] font() { return XenoCooldownHudConfig.partFont; }
+        @Override public boolean[] hidden() { return XenoCooldownHudConfig.partHidden; }
         @Override public int defaultColor(int part) { return XenoCooldownHudConfig.defaultPartColor(part); }
         @Override public void resetPart(int part) { XenoCooldownHudConfig.resetPart(part); }
         @Override public void resetAll() { XenoCooldownHudConfig.resetTextLayout(); }
@@ -106,6 +110,7 @@ public final class HudSurfaces {
         @Override public int[] color() { return XenoHotbarConfig.partColor; }
         @Override public boolean[] bold() { return XenoHotbarConfig.partBold; }
         @Override public String[] font() { return XenoHotbarConfig.partFont; }
+        @Override public boolean[] hidden() { return XenoHotbarConfig.partHidden; }
         @Override public int defaultColor(int part) { return XenoHotbarConfig.defaultPartColor(part); }
         @Override public void resetPart(int part) { XenoHotbarConfig.resetPart(part); }
         @Override public void resetAll() { XenoHotbarConfig.resetParts(); }
@@ -136,6 +141,7 @@ public final class HudSurfaces {
         @Override public int[] color() { return XenoPartyHudConfig.partColor; }
         @Override public boolean[] bold() { return XenoPartyHudConfig.partBold; }
         @Override public String[] font() { return XenoPartyHudConfig.partFont; }
+        @Override public boolean[] hidden() { return XenoPartyHudConfig.partHidden; }
         @Override public int defaultColor(int part) { return XenoPartyHudConfig.defaultPartColor(part); }
         @Override public void resetPart(int part) { XenoPartyHudConfig.resetPart(part); }
         @Override public void resetAll() { XenoPartyHudConfig.resetParts(); }
@@ -175,6 +181,7 @@ public final class HudSurfaces {
         @Override public int[] color() { return XenoDmzScreenConfig.partColor; }
         @Override public boolean[] bold() { return XenoDmzScreenConfig.partBold; }
         @Override public String[] font() { return XenoDmzScreenConfig.partFont; }
+        @Override public boolean[] hidden() { return XenoDmzScreenConfig.partHidden; }
         @Override public int defaultColor(int part) { return XenoDmzScreenConfig.defaultPartColor(part); }
         @Override public void resetPart(int part) { XenoDmzScreenConfig.resetPart(part); }
         @Override public void resetAll() { XenoDmzScreenConfig.resetParts(); }
@@ -200,9 +207,14 @@ public final class HudSurfaces {
      * <p>Its own surface, not a second view of {@link #DMZ_SCREEN_LAYOUT}. The two rebuilds have
      * different pieces in different places and are kept side by side to be compared, so editing one
      * must not move the other.
+     *
+     * <p>Named for the character page specifically, because that is the whole of what it edits.
+     * NEON mode also dresses the other five V-menus, but those stay DragonMineZ's own screens with
+     * their textures replaced -- their controls, scroll regions and hitboxes are DMZ's, and nothing
+     * here can move them. Calling this surface "DMZ Neon" implied otherwise.
      */
     public static final PartLayout DMZ_NEON_LAYOUT = new PartLayout() {
-        @Override public String name() { return "DMZ Neon"; }
+        @Override public String name() { return "Neon Character"; }
         @Override public int partCount() { return XenoDmzNeonConfig.Part.COUNT; }
         @Override public String partName(int part) { return XenoDmzNeonConfig.Part.NAMES[part]; }
         @Override public int[] x() { return XenoDmzNeonConfig.partX; }
@@ -211,6 +223,7 @@ public final class HudSurfaces {
         @Override public int[] color() { return XenoDmzNeonConfig.partColor; }
         @Override public boolean[] bold() { return XenoDmzNeonConfig.partBold; }
         @Override public String[] font() { return XenoDmzNeonConfig.partFont; }
+        @Override public boolean[] hidden() { return XenoDmzNeonConfig.partHidden; }
         @Override public int defaultColor(int part) { return XenoDmzNeonConfig.defaultPartColor(part); }
         @Override public void resetPart(int part) { XenoDmzNeonConfig.resetPart(part); }
         @Override public void resetAll() { XenoDmzNeonConfig.resetParts(); }
@@ -230,7 +243,42 @@ public final class HudSurfaces {
         }
     };
 
+    /**
+     * The MyNPCs / CustomNPCs skill-master interact menu (MASTER + FORMS).
+     *
+     * <p>One client layout for both NPC mods: they open the same {@code DmzFormTrainerScreen}.
+     */
+    public static final PartLayout MASTER_LAYOUT = new PartLayout() {
+        @Override public String name() { return "Master"; }
+        @Override public int partCount() { return XenoMasterMenuConfig.Part.COUNT; }
+        @Override public String partName(int part) { return XenoMasterMenuConfig.Part.NAMES[part]; }
+        @Override public int[] x() { return XenoMasterMenuConfig.partX; }
+        @Override public int[] y() { return XenoMasterMenuConfig.partY; }
+        @Override public float[] scale() { return XenoMasterMenuConfig.partScale; }
+        @Override public int[] color() { return XenoMasterMenuConfig.partColor; }
+        @Override public boolean[] bold() { return XenoMasterMenuConfig.partBold; }
+        @Override public String[] font() { return XenoMasterMenuConfig.partFont; }
+        @Override public boolean[] hidden() { return XenoMasterMenuConfig.partHidden; }
+        @Override public int defaultColor(int part) { return XenoMasterMenuConfig.defaultPartColor(part); }
+        @Override public void resetPart(int part) { XenoMasterMenuConfig.resetPart(part); }
+        @Override public void resetAll() { XenoMasterMenuConfig.resetParts(); }
+        @Override public boolean customLayout() { return XenoMasterMenuConfig.customLayout; }
+        @Override public void setCustomLayout(boolean on) { XenoMasterMenuConfig.customLayout = on; }
+        @Override public int clampOffset(int v) { return XenoMasterMenuConfig.clampPartOffset(v); }
+        @Override public void save() { XenoMasterMenuConfig.save(); }
+
+        @Override
+        public void drawPreview(GuiGraphics g, int w, int h) {
+            XenoMasterMenuPreview.render(g, w, h);
+        }
+
+        @Override
+        public int[] bounds() {
+            return XenoMasterMenuPreview.bounds();
+        }
+    };
+
     public static final PartLayout[] ALL =
             {PANEL_LAYOUT, CHIPS_LAYOUT, KI_MENU_LAYOUT, PARTY_LAYOUT, DMZ_SCREEN_LAYOUT,
-                    DMZ_NEON_LAYOUT};
+                    DMZ_NEON_LAYOUT, MASTER_LAYOUT};
 }

@@ -15,10 +15,13 @@ import com.dragonminez.common.stats.StatsProvider;
 import com.dragonminez.common.stats.character.Character;
 import com.dragonminez.common.stats.character.Resources;
 import com.dragonminez.common.stats.character.Stats;
+import com.mojang.blaze3d.systems.RenderSystem;
 import net.bullettrain.xenopixelsmod.client.config.XenoDmzNeonConfig;
 import net.bullettrain.xenopixelsmod.client.config.XenoDmzNeonConfig.Part;
 import net.bullettrain.xenopixelsmod.client.hud.XenoNeonAtlas;
 import net.bullettrain.xenopixelsmod.client.hud.XenoNeonAtlas.Sprite;
+import net.bullettrain.xenopixelsmod.client.screen.neon.NeonPartTransform.Block;
+import net.bullettrain.xenopixelsmod.client.screen.neon.NeonPartTransform.Rect;
 import net.bullettrain.xenopixelsmod.client.screen.StatText;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.screens.Screen;
@@ -34,11 +37,9 @@ import java.util.function.Supplier;
 /**
  * The neon rebuild of DragonMineZ's character screen, opened by {@code /xenohud menus neon}.
  *
- * <p>Built from `dragonminez_our_style_clean_example_dimensions_2.zip`, whose panels are single
- * slabs: {@code INFO_PANEL} and {@code STATS_PANEL} already contain their frame, header, icons and
- * every row shell. So this screen draws two sprites and then writes the readouts into the row bands
- * {@code tools/gen_dmz_neon_atlas.py} measured off that art. Nothing here positions a row by hand,
- * and the generator's anchor overlay is the proof the bands are where the rows are.
+ * <p>Built from the tracked transparent V3 single-elements kit. Panels, headers, rows, multiplier
+ * fields, plus controls, scan ring, nameplate, navigation bases, and divider are separate sprites.
+ * The generated atlas owns their shared logical geometry; changing values are always rendered live.
  *
  * <p>Kept alongside {@code XenoDmzStatsScreen} rather than replacing it. That screen is the first
  * rebuild, from the older HD kit; both stay reachable so they can be compared in play.
@@ -98,20 +99,18 @@ public class XenoNeonStatsScreen extends ScaledScreen {
      * DragonMineZ actually has, and the tooltip says so.
      */
     private enum NavButton {
-        CHARACTER("Character", XenoNeonAtlas.NAV_CHARACTER, null),
-        SKILLS("Skills", XenoNeonAtlas.NAV_SKILLS, SkillsMenuScreen::new),
-        QUESTS("Quests", XenoNeonAtlas.NAV_QUESTS, QuestTreeScreen::new),
-        MINIGAMES("Minigames", XenoNeonAtlas.NAV_ITEMS, MinigamesScreen::new),
-        PARTY("Party", XenoNeonAtlas.NAV_PARTY, PartyMenuScreen::new),
-        SETTINGS("Settings", XenoNeonAtlas.NAV_SETTINGS, ConfigMenuScreen::new);
+        CHARACTER("Character", null),
+        SKILLS("Skills", SkillsMenuScreen::new),
+        QUESTS("Quests", QuestTreeScreen::new),
+        MINIGAMES("Minigames", MinigamesScreen::new),
+        PARTY("Party", PartyMenuScreen::new),
+        SETTINGS("Settings", ConfigMenuScreen::new);
 
         private final String label;
-        private final Sprite sprite;
         private final Supplier<Screen> target;
 
-        NavButton(String label, Sprite sprite, Supplier<Screen> target) {
+        NavButton(String label, Supplier<Screen> target) {
             this.label = label;
-            this.sprite = sprite;
             this.target = target;
         }
     }
@@ -141,6 +140,9 @@ public class XenoNeonStatsScreen extends ScaledScreen {
     private static final int ORB_GAP = 4;
     /** Text sits this far below its band's top edge; the bands are 9-10px and the font is 9px. */
     private static final int TEXT_INSET = 1;
+    /** Where each group's header sits, relative to the panels' top edge. */
+    private static final int STAT_HEADER_Y = 72;
+    private static final int STATISTICS_HEADER_Y = 3;
 
     private int infoX;
     private int statsX;
@@ -185,7 +187,7 @@ public class XenoNeonStatsScreen extends ScaledScreen {
 
     @Override
     public void render(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
-        this.renderBackground(graphics, mouseX, mouseY, partialTick);
+        renderBackground(graphics, mouseX, mouseY, partialTick);
         int uiMouseX = (int) Math.round(toUiX(mouseX));
         int uiMouseY = (int) Math.round(toUiY(mouseY));
         beginUiScale(graphics);
@@ -193,8 +195,7 @@ public class XenoNeonStatsScreen extends ScaledScreen {
             StatsData data = stats();
 
             sprite(graphics, XenoNeonAtlas.NAMEPLATE, nameplateX, nameplateY, Part.NAMEPLATE);
-            sprite(graphics, XenoNeonAtlas.INFO_PANEL, infoX, panelsY, Part.INFO_PANEL);
-            sprite(graphics, XenoNeonAtlas.STATS_PANEL, statsX, panelsY, Part.STATS_PANEL);
+            renderPanelChrome(graphics);
             sprite(graphics, XenoNeonAtlas.SCAN_RING, ringX, ringY, Part.SCAN_RING);
             renderOrbs(graphics);
             renderNav(graphics, uiMouseX, uiMouseY);
@@ -220,7 +221,7 @@ public class XenoNeonStatsScreen extends ScaledScreen {
 
     @Override
     public void renderBackground(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
-        renderTransparentBackground(graphics);
+        // Intentionally no dimming layer: every V3 asset carries its own RGBA transparency.
     }
 
     @Override
@@ -240,7 +241,58 @@ public class XenoNeonStatsScreen extends ScaledScreen {
         }
     }
 
-    /** Level, TPs, Form, Class and the remaining assignable points, in the left slab's top block. */
+    private void renderPanelChrome(GuiGraphics graphics) {
+        Block info = infoBlock();
+        Block stats = statBlock();
+        Block statistics = statisticsBlock();
+        Block summary = summaryBlock();
+
+        // The panel is its group: scaling INFO_PANEL resizes the slab and takes its header and
+        // basic-information rows with it, instead of leaving them floating at their old size.
+        drawBlockSprite(graphics, XenoNeonAtlas.INFO_PANEL, infoX, panelsY, info);
+        sprite(graphics, XenoNeonAtlas.STATS_PANEL, statsX, panelsY, Part.STATS_PANEL);
+        sprite(graphics, XenoNeonAtlas.INFO_HEADER, infoX + 3, panelsY + 2, Part.INFO_PANEL, info);
+        sprite(graphics, XenoNeonAtlas.INFO_STATS_HEADER, infoX + 10, panelsY + STAT_HEADER_Y,
+                Part.STAT_ROWS, stats);
+        sprite(graphics, XenoNeonAtlas.STATISTICS_HEADER, statsX + 8,
+                panelsY + STATISTICS_HEADER_Y, Part.STATISTICS, statistics);
+        sprite(graphics, XenoNeonAtlas.DIVIDER, ringX - 3, panelsY + 20, Part.SCAN_RING);
+        for (int[] row : XenoNeonAtlas.INFO_ROWS) {
+            sprite(graphics, XenoNeonAtlas.BASIC_ROW, infoX + 6, panelsY + row[0],
+                    Part.INFO_PANEL, info);
+        }
+        for (int i = 0; i < XenoNeonAtlas.STAT_ROWS.length; i++) {
+            int y = panelsY + XenoNeonAtlas.STAT_ROWS[i][0];
+            drawBlockSprite(graphics, XenoNeonAtlas.STAT_ROW, infoX - 1, y, stats);
+            drawBlockSprite(graphics, XenoNeonAtlas.MULTIPLIER_FIELD, infoX + 75, y + 1, stats);
+            sprite(graphics, XenoNeonAtlas.PLUS, infoX + XenoNeonAtlas.PLUS_X,
+                    y + XenoNeonAtlas.PLUS_Y, Part.PLUS_BUTTON, stats);
+        }
+        for (int[] row : XenoNeonAtlas.STATISTIC_ROWS) {
+            drawBlockSprite(graphics, XenoNeonAtlas.STATISTIC_ROW, statsX - 1, panelsY + row[0],
+                    statistics);
+        }
+        for (int[] row : XenoNeonAtlas.SUMMARY_ROWS) {
+            drawBlockSprite(graphics, XenoNeonAtlas.STATISTIC_ROW, statsX - 1, panelsY + row[0],
+                    summary);
+        }
+    }
+
+    /**
+     * A sprite that <em>is</em> part of its group's own body -- a row shell, the panel slab.
+     *
+     * <p>Carries the group's transform and nothing else. {@link #sprite(GuiGraphics, Sprite, int,
+     * int, int, Block)} is for a piece that sits inside a group but has a part of its own to scale
+     * by as well, such as the {@code +} button; using that here would apply the group's scale twice.
+     */
+    private void drawBlockSprite(GuiGraphics graphics, Sprite sprite, int x, int y, Block block) {
+        if (block.hidden()) {
+            return;
+        }
+        draw(graphics, sprite, block.map(x, y, sprite.width(), sprite.height()), block.part());
+    }
+
+    /** Level, TPs, Form and Class, in the left panel's basic-information block. */
     private void renderInformation(GuiGraphics graphics, StatsData data) {
         Character character = data.getCharacter();
         Resources resources = data.getResources();
@@ -249,18 +301,18 @@ public class XenoNeonStatsScreen extends ScaledScreen {
                 {"TPs", resources == null ? "" : StatText.format(resources.getTrainingPoints())},
                 {"Form", character == null || character.getActiveForm().isBlank()
                         ? "Base" : StatText.title(character.getActiveForm())},
-                {"Class", character == null ? "" : StatText.title(character.getCharacterClass())},
-                {"Points", Integer.toString(data.getRemainingAssignableStats())}};
+                {"Class", character == null ? "" : StatText.title(character.getCharacterClass())}};
 
+        Block info = infoBlock();
         int count = Math.min(rows.length, XenoNeonAtlas.INFO_ROWS.length);
         for (int i = 0; i < count; i++) {
             int y = panelsY + XenoNeonAtlas.INFO_ROWS[i][0] + TEXT_INSET;
             text(graphics, rows[i][0], infoX + XenoNeonAtlas.INFO_LABEL_X, y,
-                    Part.INFO_LABEL, XenoNeonAtlas.LABEL);
+                    Part.INFO_LABEL, XenoNeonAtlas.LABEL, info);
             // Class is the one information row the reference render colours; the rest read white.
             int colour = "Class".equals(rows[i][0]) ? XenoNeonAtlas.RED : XenoNeonAtlas.VALUE;
             text(graphics, rows[i][1], infoX + XenoNeonAtlas.INFO_VALUE_X, y,
-                    Part.INFO_VALUE, colour);
+                    Part.INFO_VALUE, colour, info);
         }
     }
 
@@ -277,19 +329,23 @@ public class XenoNeonStatsScreen extends ScaledScreen {
         }
         boolean spendable = data.getRemainingAssignableStats() > 0;
         StatRow[] values = StatRow.values();
+        Block block = statBlock();
 
         for (int i = 0; i < XenoNeonAtlas.STAT_ROWS.length; i++) {
-            int top = statRowY(i);
-            int y = top + TEXT_INSET;
+            int y = Math.round(statRowY(i)) + TEXT_INSET;
             boolean last = i >= values.length;
 
             int tint = last || !spendable ? 0x60FFFFFF
                     : overPlus(mouseX, mouseY, i) ? 0xFFB8FFFF : 0xFFFFFFFF;
-            if (tint != 0xFFFFFFFF) {
+            if (tint != 0xFFFFFFFF && !NeonPartTransform.hidden(Part.PLUS_BUTTON)
+                    && !block.hidden()) {
                 // The shells are part of the panel art, so only the button needs dimming, and it is
-                // dimmed rather than hidden so no row moves when the last point is spent.
-                graphics.fill(plusX(), plusY(i), plusX() + XenoNeonAtlas.PLUS_WIDTH,
-                        plusY(i) + XenoNeonAtlas.PLUS_HEIGHT,
+                // dimmed rather than hidden so no row moves when the last point is spent. Drawn on
+                // the same rectangle the button itself uses, so the dim tracks it at any scale --
+                // and skipped entirely when the button is hidden, which used to leave a floating
+                // grey square where the control had been.
+                Rect plus = plusRect(i);
+                graphics.fill(plus.left(), plus.top(), plus.right(), plus.bottom(),
                         last || !spendable ? 0x50000000 : 0x30FFFFFF);
             }
 
@@ -310,15 +366,16 @@ public class XenoNeonStatsScreen extends ScaledScreen {
                 colour = row.colour;
             }
 
-            int rowX = infoX + XenoDmzNeonConfig.partX(Part.STAT_ROWS);
-            text(graphics, label, rowX + XenoNeonAtlas.STAT_LABEL_X, y, Part.STAT_LABEL, colour);
+            // In the group's own unscaled space; the group applies its offset and scale.
+            text(graphics, label, infoX + XenoNeonAtlas.STAT_LABEL_X, y, Part.STAT_LABEL, colour,
+                    block);
             String mult = StatText.multiplier(multiplier);
-            int right = rowX + XenoNeonAtlas.STAT_RIGHT_X;
+            int right = infoX + XenoNeonAtlas.STAT_RIGHT_X;
             right(graphics, mult, right, y, Part.STAT_MULTIPLIER,
                     StatText.isNeutral(multiplier) ? StatText.MULTIPLIER_NEUTRAL | 0xFF000000
-                            : XenoNeonAtlas.GOLD);
+                            : XenoNeonAtlas.GOLD, block);
             right(graphics, value, right - width(mult, Part.STAT_MULTIPLIER) - 4, y,
-                    Part.STAT_VALUE, XenoNeonAtlas.VALUE);
+                    Part.STAT_VALUE, XenoNeonAtlas.VALUE, block);
         }
     }
 
@@ -327,16 +384,15 @@ public class XenoNeonStatsScreen extends ScaledScreen {
         double[] statistics = {
                 data.getMeleeDamage(), data.getStrikeDamage(), data.getMaxStamina(),
                 data.getDefense(), data.getMaxHealth(), data.getKiDamage(), data.getMaxEnergy()};
+        Block block = statisticsBlock();
         int count = Math.min(statistics.length, XenoNeonAtlas.STATISTIC_ROWS.length);
         for (int i = 0; i < count; i++) {
-            int blockX = statsX + XenoDmzNeonConfig.partX(Part.STATISTICS);
-            int y = panelsY + XenoDmzNeonConfig.partY(Part.STATISTICS)
-                    + XenoNeonAtlas.STATISTIC_ROWS[i][0] + TEXT_INSET;
-            text(graphics, STATISTICS[i].label(), blockX + XenoNeonAtlas.STATISTIC_LABEL_X, y,
-                    Part.STATISTIC_LABEL, XenoNeonAtlas.LABEL);
+            int y = panelsY + XenoNeonAtlas.STATISTIC_ROWS[i][0] + TEXT_INSET;
+            text(graphics, STATISTICS[i].label(), statsX + XenoNeonAtlas.STATISTIC_LABEL_X, y,
+                    Part.STATISTIC_LABEL, XenoNeonAtlas.LABEL, block);
             right(graphics, StatText.format(statistics[i]),
-                    blockX + XenoNeonAtlas.STATISTIC_RIGHT_X, y, Part.STATISTIC_VALUE,
-                    STATISTICS[i].colour());
+                    statsX + XenoNeonAtlas.STATISTIC_RIGHT_X, y, Part.STATISTIC_VALUE,
+                    STATISTICS[i].colour(), block);
         }
 
         String[][] summary = {
@@ -344,15 +400,15 @@ public class XenoNeonStatsScreen extends ScaledScreen {
                 {"Gravity", StatText.multiplier(data.getGravityStatMultiplier())},
                 {"TP Multiplier", StatText.multiplier(data.getTpTotalMultiplier())}};
         int[] colours = {XenoNeonAtlas.VALUE, XenoNeonAtlas.ORANGE, XenoNeonAtlas.GOLD};
+        Block summaryGroup = summaryBlock();
         int rows = Math.min(summary.length, XenoNeonAtlas.SUMMARY_ROWS.length);
         for (int i = 0; i < rows; i++) {
-            int blockX = statsX + XenoDmzNeonConfig.partX(Part.SUMMARY);
-            int y = panelsY + XenoDmzNeonConfig.partY(Part.SUMMARY)
-                    + XenoNeonAtlas.SUMMARY_ROWS[i][0] + TEXT_INSET;
-            text(graphics, summary[i][0], blockX + XenoNeonAtlas.SUMMARY_LABEL_X, y,
-                    Part.SUMMARY_LABEL, i == 1 ? XenoNeonAtlas.ORANGE : XenoNeonAtlas.LABEL);
-            right(graphics, summary[i][1], blockX + XenoNeonAtlas.SUMMARY_RIGHT_X, y,
-                    Part.SUMMARY_VALUE, colours[i]);
+            int y = panelsY + XenoNeonAtlas.SUMMARY_ROWS[i][0] + TEXT_INSET;
+            text(graphics, summary[i][0], statsX + XenoNeonAtlas.SUMMARY_LABEL_X, y,
+                    Part.SUMMARY_LABEL, i == 1 ? XenoNeonAtlas.ORANGE : XenoNeonAtlas.LABEL,
+                    summaryGroup);
+            right(graphics, summary[i][1], statsX + XenoNeonAtlas.SUMMARY_RIGHT_X, y,
+                    Part.SUMMARY_VALUE, colours[i], summaryGroup);
         }
     }
 
@@ -380,11 +436,14 @@ public class XenoNeonStatsScreen extends ScaledScreen {
             return;
         }
         LocalPlayer player = this.minecraft.player;
-        int centreX = ringX + XenoNeonAtlas.SCAN_RING.width() / 2
-                + XenoDmzNeonConfig.partX(Part.SCAN_RING) + XenoDmzNeonConfig.partX(Part.CHARACTER);
-        int bottomY = ringY + XenoNeonAtlas.SCAN_RING.height() - 8
-                + XenoDmzNeonConfig.partY(Part.SCAN_RING) + XenoDmzNeonConfig.partY(Part.CHARACTER);
-        int size = Math.max(8, XenoNeonAtlas.SCAN_RING.height() / 3);
+        Rect ring = spriteRect(XenoNeonAtlas.SCAN_RING, ringX, ringY, Part.SCAN_RING);
+        float characterScale = XenoDmzNeonConfig.partScale(Part.CHARACTER);
+        int centreX = Math.round(ring.x() + ring.width() / 2.0f)
+                + XenoDmzNeonConfig.partX(Part.CHARACTER);
+        int bottomY = Math.round(ring.y() + ring.height() - 8.0f)
+                + XenoDmzNeonConfig.partY(Part.CHARACTER);
+        int size = Math.max(8, Math.round(XenoNeonAtlas.SCAN_RING.height() / 3.0f
+                * XenoDmzNeonConfig.partScale(Part.SCAN_RING) * characterScale));
 
         float lookX = (float) Math.atan((toScreenCoord(centreX) - mouseX) / 40.0f);
         float lookY = (float) Math.atan((toScreenCoord(bottomY - size) - mouseY) / 40.0f);
@@ -422,19 +481,17 @@ public class XenoNeonStatsScreen extends ScaledScreen {
     private void renderNav(GuiGraphics graphics, int mouseX, int mouseY) {
         int x = navX;
         for (NavButton button : NavButton.values()) {
-            sprite(graphics, button.sprite, x, navY, Part.NAV_ROW);
-            int drawX = x + XenoDmzNeonConfig.partX(Part.NAV_ROW);
-            int drawY = navY + XenoDmzNeonConfig.partY(Part.NAV_ROW);
+            sprite(graphics, XenoNeonAtlas.NAV_BASE, x, navY, Part.NAV_ROW);
+            Rect rect = spriteRect(XenoNeonAtlas.NAV_BASE, x, navY, Part.NAV_ROW);
+            centred(graphics, button.label, x + XenoNeonAtlas.NAV_BASE.width() / 2,
+                    navY + 8, Part.NAV_ROW, XenoNeonAtlas.LABEL);
             if (button == NavButton.CHARACTER) {
-                // This screen. Underlined so the row reads as a tab strip rather than six links.
-                graphics.fill(drawX, drawY + button.sprite.height(),
-                        drawX + button.sprite.width(), drawY + button.sprite.height() + 1,
+                graphics.fill(rect.left(), rect.bottom(), rect.right(), rect.bottom() + 1,
                         XenoNeonAtlas.GOLD);
             } else if (overNav(button, mouseX, mouseY)) {
-                graphics.fill(drawX, drawY, drawX + button.sprite.width(),
-                        drawY + button.sprite.height(), 0x40FFFFFF);
+                graphics.fill(rect.left(), rect.top(), rect.right(), rect.bottom(), 0x40FFFFFF);
             }
-            x += button.sprite.width() + NAV_GAP;
+            x += XenoNeonAtlas.NAV_BASE.width() + NAV_GAP;
         }
     }
 
@@ -476,47 +533,90 @@ public class XenoNeonStatsScreen extends ScaledScreen {
         return super.mouseClicked(mouseX, mouseY, button);
     }
 
-    /** The top of one stat row shell, with the row block's own offset applied. */
-    private int statRowY(int row) {
-        return panelsY + XenoDmzNeonConfig.partY(Part.STAT_ROWS) + XenoNeonAtlas.STAT_ROWS[row][0];
+    /**
+     * The stat-row group: the STATS header and the seven row shells under it.
+     *
+     * <p>A group rather than seven independent sprites, so resizing it keeps the rows evenly spaced
+     * and carries their labels, values and {@code +} buttons with them.
+     */
+    private Block statBlock() {
+        int[][] rows = XenoNeonAtlas.STAT_ROWS;
+        float top = panelsY + STAT_HEADER_Y;
+        float bottom = panelsY + rows[rows.length - 1][0] + rows[rows.length - 1][1];
+        return new Block(Part.STAT_ROWS, infoX - 1, top,
+                XenoNeonAtlas.STAT_ROW.width(), bottom - top);
     }
 
-    private int plusX() {
-        return infoX + XenoDmzNeonConfig.partX(Part.STAT_ROWS) + XenoNeonAtlas.PLUS_X
-                + XenoDmzNeonConfig.partX(Part.PLUS_BUTTON);
+    /** The left panel and the basic-information rows printed on it. */
+    private Block infoBlock() {
+        return new Block(Part.INFO_PANEL, infoX, panelsY,
+                XenoNeonAtlas.INFO_PANEL.width(), XenoNeonAtlas.INFO_PANEL.height());
     }
 
-    private int plusY(int row) {
-        return statRowY(row) + XenoNeonAtlas.PLUS_Y + XenoDmzNeonConfig.partY(Part.PLUS_BUTTON);
+    /** The right panel's derived-statistics group: its header and its seven rows. */
+    private Block statisticsBlock() {
+        int[][] rows = XenoNeonAtlas.STATISTIC_ROWS;
+        float top = panelsY + STATISTICS_HEADER_Y;
+        float bottom = panelsY + rows[rows.length - 1][0] + rows[rows.length - 1][1];
+        return new Block(Part.STATISTICS, statsX - 1, top,
+                XenoNeonAtlas.STATISTIC_ROW.width(), bottom - top);
+    }
+
+    /** The summary box under the statistics. */
+    private Block summaryBlock() {
+        int[][] rows = XenoNeonAtlas.SUMMARY_ROWS;
+        float top = panelsY + rows[0][0];
+        float bottom = panelsY + rows[rows.length - 1][0] + rows[rows.length - 1][1];
+        return new Block(Part.SUMMARY, statsX - 1, top,
+                XenoNeonAtlas.STATISTIC_ROW.width(), bottom - top);
+    }
+
+    /** The top of one stat row shell, in the row group's own unscaled space. */
+    private float statRowY(int row) {
+        return panelsY + XenoNeonAtlas.STAT_ROWS[row][0];
+    }
+
+    /**
+     * The {@code +} button's rectangle, exactly as it is drawn.
+     *
+     * <p>Through the row group, so the button tracks its row at any group scale. It used to take the
+     * group's offset but not its scale, which left the hit area behind whenever the group was
+     * resized -- the button moved and the click did not.
+     */
+    private Rect plusRect(int row) {
+        return NeonPartTransform.rect(XenoNeonAtlas.PLUS.width(), XenoNeonAtlas.PLUS.height(),
+                infoX + XenoNeonAtlas.PLUS_X, Math.round(statRowY(row)) + XenoNeonAtlas.PLUS_Y,
+                Part.PLUS_BUTTON, statBlock());
     }
 
     private boolean overPlus(double mouseX, double mouseY, int row) {
-        if (row < 0 || row >= XenoNeonAtlas.STAT_ROWS.length) {
+        if (row < 0 || row >= XenoNeonAtlas.STAT_ROWS.length
+                || XenoDmzNeonConfig.partHidden[Part.PLUS_BUTTON]
+                || XenoDmzNeonConfig.partHidden[Part.STAT_ROWS]) {
             return false;
         }
-        int x = plusX();
-        int y = plusY(row);
-        return mouseX >= x && mouseX < x + XenoNeonAtlas.PLUS_WIDTH
-                && mouseY >= y && mouseY < y + XenoNeonAtlas.PLUS_HEIGHT;
+        return plusRect(row).contains(mouseX, mouseY);
     }
 
     private boolean overNav(NavButton button, int mouseX, int mouseY) {
-        int x = navX + XenoDmzNeonConfig.partX(Part.NAV_ROW);
-        int y = navY + XenoDmzNeonConfig.partY(Part.NAV_ROW);
+        if (XenoDmzNeonConfig.partHidden[Part.NAV_ROW]) {
+            return false;
+        }
+        int x = navX;
         for (NavButton candidate : NavButton.values()) {
             if (candidate == button) {
                 break;
             }
-            x += candidate.sprite.width() + NAV_GAP;
+            x += XenoNeonAtlas.NAV_BASE.width() + NAV_GAP;
         }
-        return mouseX >= x && mouseX < x + button.sprite.width()
-                && mouseY >= y && mouseY < y + button.sprite.height();
+        return spriteRect(XenoNeonAtlas.NAV_BASE, x, navY, Part.NAV_ROW)
+                .contains(mouseX, mouseY);
     }
 
     private static int navWidth() {
         int width = -NAV_GAP;
-        for (NavButton button : NavButton.values()) {
-            width += button.sprite.width() + NAV_GAP;
+        for (NavButton ignored : NavButton.values()) {
+            width += XenoNeonAtlas.NAV_BASE.width() + NAV_GAP;
         }
         return width;
     }
@@ -537,10 +637,47 @@ public class XenoNeonStatsScreen extends ScaledScreen {
         }
     }
 
-    /** A sprite whose own part can move it. */
+    /** A standalone sprite, scaled around its own centre, at the rectangle used for input. */
     private void sprite(GuiGraphics graphics, Sprite sprite, int x, int y, int part) {
-        blit(graphics, sprite, x + XenoDmzNeonConfig.partX(part),
-                y + XenoDmzNeonConfig.partY(part));
+        draw(graphics, sprite, spriteRect(sprite, x, y, part), part);
+    }
+
+    /** A sprite belonging to a group, carrying the group's transform as well as its own. */
+    private void sprite(GuiGraphics graphics, Sprite sprite, int x, int y, int part, Block block) {
+        if (block.hidden()) {
+            return;
+        }
+        draw(graphics, sprite, NeonPartTransform.rect(sprite.width(), sprite.height(),
+                x, y, part, block), part);
+    }
+
+    private void draw(GuiGraphics graphics, Sprite sprite, Rect rect, int part) {
+        if (XenoDmzNeonConfig.partHidden[part]) {
+            return;
+        }
+        // From the rectangle rather than from the scale, so what is drawn is exactly what the
+        // hit-test measured -- a group's scale is already folded into the width.
+        float scaleX = rect.width() / sprite.width();
+        float scaleY = rect.height() / sprite.height();
+        int tint = XenoDmzNeonConfig.partColor(part, 0xFFFFFFFF);
+        float alpha = (tint >>> 24 & 0xFF) / 255.0f;
+        float red = (tint >>> 16 & 0xFF) / 255.0f;
+        float green = (tint >>> 8 & 0xFF) / 255.0f;
+        float blue = (tint & 0xFF) / 255.0f;
+        graphics.pose().pushPose();
+        graphics.pose().translate(rect.x(), rect.y(), 0.0f);
+        graphics.pose().scale(scaleX, scaleY, 1.0f);
+        RenderSystem.setShaderColor(red, green, blue, alpha);
+        try {
+            blit(graphics, sprite, 0, 0);
+        } finally {
+            RenderSystem.setShaderColor(1.0f, 1.0f, 1.0f, 1.0f);
+            graphics.pose().popPose();
+        }
+    }
+
+    private static Rect spriteRect(Sprite sprite, int x, int y, int part) {
+        return NeonPartTransform.rect(sprite.width(), sprite.height(), x, y, part);
     }
 
     private void blit(GuiGraphics graphics, Sprite sprite, int x, int y) {
@@ -556,22 +693,52 @@ public class XenoNeonStatsScreen extends ScaledScreen {
                 .withFont(XenoDmzNeonConfig.partFontLocation(part)));
     }
 
+    /** How wide a readout comes out, at whatever scale its part and its group give it. */
     private int width(String text, int part) {
-        return (int) (this.font.width(styled(text, part)) * XenoDmzNeonConfig.partScale(part));
+        return width(text, part, null);
+    }
+
+    private int width(String text, int part, Block block) {
+        float scale = block == null ? XenoDmzNeonConfig.partScale(part)
+                : NeonPartTransform.textScale(part, block);
+        return (int) (this.font.width(styled(text, part)) * scale);
     }
 
     private void text(GuiGraphics graphics, String text, int x, int y, int part, int designColour) {
-        draw(graphics, text, x, y, part, designColour);
+        draw(graphics, text, x, y, part, designColour, null);
+    }
+
+    private void text(GuiGraphics graphics, String text, int x, int y, int part, int designColour,
+                      Block block) {
+        draw(graphics, text, x, y, part, designColour, block);
     }
 
     private void right(GuiGraphics graphics, String text, int rightEdge, int y, int part,
                        int designColour) {
-        draw(graphics, text, rightEdge - width(text, part), y, part, designColour);
+        right(graphics, text, rightEdge, y, part, designColour, null);
+    }
+
+    /**
+     * A right-aligned readout.
+     *
+     * <p>Measured at the same scale it is drawn at, so a value still ends on its column when its
+     * group is resized instead of sliding off the shell.
+     */
+    private void right(GuiGraphics graphics, String text, int rightEdge, int y, int part,
+                       int designColour, Block block) {
+        if (block == null) {
+            draw(graphics, text, rightEdge - width(text, part), y, part, designColour, null);
+            return;
+        }
+        // Aligned in the group's own unscaled space, so the group's scale is not applied twice --
+        // once to the alignment offset here and again when the position is mapped.
+        float unscaled = this.font.width(styled(text, part)) * XenoDmzNeonConfig.partScale(part);
+        draw(graphics, text, Math.round(rightEdge - unscaled), y, part, designColour, block);
     }
 
     private void centred(GuiGraphics graphics, String text, int centreX, int y, int part,
                          int designColour) {
-        draw(graphics, text, centreX - width(text, part) / 2, y, part, designColour);
+        draw(graphics, text, centreX - width(text, part) / 2, y, part, designColour, null);
     }
 
     /**
@@ -579,16 +746,33 @@ public class XenoNeonStatsScreen extends ScaledScreen {
      *
      * <p>{@code designColour} is the colour this particular row has in the reference render. It is
      * what shows unless the elements editor's override is on, because the design colours several of
-     * these kinds per row — the stat labels alone run red, green, magenta and cyan.
+     * these kinds per row -- the stat labels alone run red, green, magenta and cyan.
+     *
+     * <p>{@code block} is the group the readout belongs to, or null for one that stands alone. A
+     * grouped readout is positioned in its group's space and drawn at both scales, which is what
+     * keeps a label on its row shell when the group is resized. The two multiply rather than either
+     * replacing the other: the part's own scale still means the text's own size.
      */
-    private void draw(GuiGraphics graphics, String text, int x, int y, int part, int designColour) {
-        if (text == null || text.isEmpty()) {
+    private void draw(GuiGraphics graphics, String text, int x, int y, int part, int designColour,
+                      Block block) {
+        if (text == null || text.isEmpty() || XenoDmzNeonConfig.partHidden[part]
+                || (block != null && block.hidden())) {
             return;
         }
-        float scale = XenoDmzNeonConfig.partScale(part);
+        float scale;
+        float drawX;
+        float drawY;
+        if (block == null) {
+            scale = XenoDmzNeonConfig.partScale(part);
+            drawX = x + XenoDmzNeonConfig.partX(part);
+            drawY = y + XenoDmzNeonConfig.partY(part);
+        } else {
+            scale = NeonPartTransform.textScale(part, block);
+            drawX = block.mapX(x + XenoDmzNeonConfig.partX(part));
+            drawY = block.mapY(y + XenoDmzNeonConfig.partY(part));
+        }
         graphics.pose().pushPose();
-        graphics.pose().translate(x + XenoDmzNeonConfig.partX(part),
-                y + XenoDmzNeonConfig.partY(part), 0);
+        graphics.pose().translate(drawX, drawY, 0);
         graphics.pose().scale(scale, scale, 1f);
         graphics.drawString(this.font, styled(text, part), 0, 0,
                 XenoDmzNeonConfig.partColor(part, designColour), false);

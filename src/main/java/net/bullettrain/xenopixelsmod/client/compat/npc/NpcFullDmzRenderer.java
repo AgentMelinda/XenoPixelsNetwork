@@ -141,7 +141,14 @@ public final class NpcFullDmzRenderer {
         try {
             float npcScale = Math.max(0.05f, NpcDisplayApply.getSize(owner) / 5.0f);
             pose.scale(npcScale, npcScale, npcScale);
-            renderer.render(proxy, entityYaw, partialTick, pose, buffers, packedLight);
+            MultiBufferSource faded = net.bullettrain.xenopixelsmod.client.combat.CombatBodyFade.wrapHakai(
+                    buffers, owner, partialTick);
+            net.bullettrain.xenopixelsmod.client.combat.CombatBodyFade.begin(owner);
+            try {
+                renderer.render(proxy, entityYaw, partialTick, pose, faded, packedLight);
+            } finally {
+                net.bullettrain.xenopixelsmod.client.combat.CombatBodyFade.end();
+            }
         } finally {
             RENDER_CONTEXT.remove();
             pose.popPose();
@@ -274,6 +281,13 @@ public final class NpcFullDmzRenderer {
      * -- an existing entry keeps its level and active flag and only has maxLevel rewritten.
      */
     private static void applySkill(StatsData stats, String id, boolean active, int level) {
+        // Fly is the one id this mod owns outright -- it also drives NPC navigation, so it must
+        // survive even when DMZ's skills config has no entry for it. Every other id has to come
+        // from DMZ's own config: registering an unknown one would leave a phantom entry in the
+        // synthetic proxy's skill map that DMZ can never resolve.
+        if (!NpcSkillSet.FLY.equals(id) && !NpcSkillSet.isKnown(id)) {
+            return;
+        }
         int maxLevel = Math.max(1, NpcSkillSet.maxLevelOf(id));
         stats.getSkills().registerDefaultSkill(id, maxLevel);
         stats.getSkills().setSkillLevel(id, Math.max(1, Math.min(maxLevel, level)));
@@ -478,7 +492,11 @@ public final class NpcFullDmzRenderer {
             // IPlayerAnimatable by mixin, so javac can prove a final class does not implement it and
             // rejects the instanceof outright.
             if (proxy instanceof com.dragonminez.client.animation.IPlayerAnimatable animatable) {
-                animatable.dragonminez$playMeleeAnimation(pending.animation(), false, pending.speed());
+                NpcAnimationClient.apply(proxy, animatable, pending);
+                if (pending.hold() && !pending.stop()) {
+                    net.bullettrain.xenopixelsmod.client.combat.ScriptAnimSpeedClient.put(
+                            owner.getUUID(), pending.speed());
+                }
                 NpcAnimationClient.consume(owner.getUUID(), pending);
             } else if (ANIMATION_DELIVERY_FAILURE_LOGGED.compareAndSet(false, true)) {
                 XenoPixelsMod.LOGGER.warn(

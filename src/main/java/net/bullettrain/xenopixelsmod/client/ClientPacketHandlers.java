@@ -31,4 +31,38 @@ public final class ClientPacketHandlers {
                                       float stamina, float maxStamina) {
         XenoClientData.update(health, maxHealth, ki, maxKi, stamina, maxStamina);
     }
+
+    /**
+     * Sink for {@code NpcProfileSaveResultPacket}. A rejected wand save is otherwise invisible:
+     * the editor closes on Apply regardless, so the only signal the player gets is this notice.
+     */
+    public static void handleNpcProfileSaveResult(boolean saved, String reason) {
+        NpcProfileSaveClientState.accept(saved, reason);
+        if (saved || !NpcProfileSaveClientState.consumeNotice()) {
+            return;
+        }
+        net.minecraft.client.Minecraft minecraft = net.minecraft.client.Minecraft.getInstance();
+        if (minecraft != null && minecraft.gui != null) {
+            String text = reason == null || reason.isEmpty() ? "NPC save rejected" : reason;
+            minecraft.gui.getChat().addMessage(net.minecraft.network.chat.Component.literal(text));
+        }
+    }
+
+    public static void openDmzTrainer(int entityId, String name,
+                                      net.bullettrain.xenopixelsmod.dmz.form.DmzTrainerMenu menu) {
+        var resolved = menu == null
+                ? net.bullettrain.xenopixelsmod.dmz.form.DmzTrainerMenu.EMPTY : menu;
+        String locale = locale();
+        net.minecraft.client.Minecraft.getInstance().setScreen(
+                new net.bullettrain.xenopixelsmod.client.screen.DmzFormTrainerScreen(entityId, name,
+                        resolved.resolveTitle(locale, name), resolved.resolveBody(locale),
+                        resolved.entries()));
+    }
+
+    /** The player's selected language; the client is the only side that knows it. */
+    private static String locale() {
+        net.minecraft.client.Minecraft minecraft = net.minecraft.client.Minecraft.getInstance();
+        return minecraft == null || minecraft.getLanguageManager() == null
+                ? "en_us" : minecraft.getLanguageManager().getSelected();
+    }
 }

@@ -226,6 +226,25 @@ public final class PartyManager {
         return null;
     }
 
+    public static boolean shareQuests(ServerPlayer player) {
+        UUID partyId = partyOf(player);
+        if (partyId == null || player.getServer() == null) return false;
+        return PartyMetadataSavedData.get(player.getServer()).shareQuests(partyId);
+    }
+
+    public static String toggleShareQuests(ServerPlayer leader) {
+        if (!isLeader(leader)) return "Only the party leader can change quest sharing";
+        UUID partyId = partyOf(leader);
+        if (partyId == null) return "You are not in a party";
+        boolean on = PartyMetadataSavedData.get(leader.getServer()).toggleShareQuests(partyId);
+        touch(leader.getServer(), partyId);
+        syncParty(leader.getServer(), partyId);
+        broadcast(leader.getServer(), partyId, on
+                ? "§eParty quest sharing ON §7— @dp rewards go to every online member"
+                : "§eParty quest sharing OFF §7— only the player who turns in the quest is rewarded");
+        return null;
+    }
+
     public static String toggleFriendlyFire(ServerPlayer leader) {
         if (!isLeader(leader)) return "Only the party leader can change friendly fire";
         UUID partyId = partyOf(leader);
@@ -402,7 +421,7 @@ public final class PartyManager {
                 : last + XenoPartyConfig.idleExpirySeconds * 1000L;
         PartyObjectiveSnapshot objective = PartyObjectives.snapshot(viewer, partyId);
         ModNetwork.sendToPlayer(viewer, new PartySyncPacket(partyId, members, party.isPvpEnabled(),
-                expiresAt, pendingInviteName(viewer), objective));
+                expiresAt, pendingInviteName(viewer), objective, metadata.shareQuests(partyId)));
     }
 
     private static List<PartySyncPacket.Member> snapshotMembers(MinecraftServer server,

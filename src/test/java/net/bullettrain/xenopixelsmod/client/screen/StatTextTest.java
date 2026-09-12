@@ -21,22 +21,21 @@ class StatTextTest {
     }
 
     @Test
-    void abbreviationKicksInAtEachThreshold() {
-        assertEquals("10.0K", StatText.format(10_000));
-        assertEquals("1.00M", StatText.format(1_000_000));
-        assertEquals("1.00B", StatText.format(1_000_000_000));
+    void largeValuesStayExact() {
+        assertEquals("10000", StatText.format(10_000));
+        assertEquals("1000000", StatText.format(1_000_000));
+        assertEquals("1000000000", StatText.format(1_000_000_000));
     }
 
     @Test
-    void negativesAbbreviateOnMagnitudeNotSign() {
-        // Buffs and debuffs can drive a displayed stat negative; the sign must survive.
-        assertEquals("-1.00M", StatText.format(-1_000_000));
+    void negativesKeepSignAndExactDigits() {
+        assertEquals("-1000000", StatText.format(-1_000_000));
         assertEquals("-42", StatText.format(-42));
     }
 
     @Test
-    void battlePowerStaysReadableAtDragonMineZScale() {
-        assertEquals("2.50B", StatText.format(2_500_000_000.0));
+    void battlePowerStaysExactAtDragonMineZScale() {
+        assertEquals("2500000000", StatText.format(2_500_000_000.0));
     }
 
     @Test
@@ -144,13 +143,12 @@ class StatTextTest {
         // themed panel abbreviates it to fit beside the multiplier column. It used to come out as
         // "1000.00M", which sits next to the stock panel's "999,999,999" and reads as a bigger,
         // different number.
-        assertEquals("1.00B", StatText.format(999_999_999));
-        assertEquals("1.00M", StatText.format(999_999));
-        assertEquals("1.00M", StatText.format(999_990));
-        assertEquals("-1.00B", StatText.format(-999_999_999));
-        // Just below the rounding boundary, the unit is unchanged.
-        assertEquals("999.99M", StatText.format(999_994_999));
-        assertEquals("999.9K", StatText.format(999_949));
+        assertEquals("999999999", StatText.format(999_999_999));
+        assertEquals("999999", StatText.format(999_999));
+        assertEquals("999990", StatText.format(999_990));
+        assertEquals("-999999999", StatText.format(-999_999_999));
+        assertEquals("999994999", StatText.format(999_994_999));
+        assertEquals("999949", StatText.format(999_949));
     }
 
     @Test

@@ -1,7 +1,1140 @@
 {
   "generator": "tools/gen_dmz_menu_themes.py",
   "source_archive": "dragonmine_complete_ui_elements_master_bundle",
-  "dmz_contract": "dragonminez-2.1.3.jar",
+  "dmz_jar": "dragonminez-2.1.3.jar",
+  "dmz_contract": {
+    "com.dragonminez.client.gui.character.CharacterStatsScreen": {
+      "blits": [
+        {
+          "line": 323,
+          "texture": "dragonminez:textures/gui/menu/menubig.png",
+          "x": "12 + leftOffset",
+          "y": "centerY - 105",
+          "u": "0.0F",
+          "v": "0.0F",
+          "width": "141",
+          "height": "213",
+          "texture_size": [
+            "256",
+            "256"
+          ]
+        },
+        {
+          "line": 324,
+          "texture": "dragonminez:textures/gui/menu/menubig.png",
+          "x": "29 + leftOffset",
+          "y": "centerY - 95",
+          "u": "142.0F",
+          "v": "22.0F",
+          "width": "107",
+          "height": "21",
+          "texture_size": [
+            "256",
+            "256"
+          ]
+        },
+        {
+          "line": 325,
+          "texture": "dragonminez:textures/gui/menu/menubig.png",
+          "x": "43 + leftOffset",
+          "y": "centerY - 28",
+          "u": "142.0F",
+          "v": "0.0F",
+          "width": "79",
+          "height": "21",
+          "texture_size": [
+            "256",
+            "256"
+          ]
+        },
+        {
+          "line": 326,
+          "texture": "dragonminez:textures/gui/menu/menubig.png",
+          "x": "this.getUiWidth() - 158 + rightOffset",
+          "y": "centerY - 105",
+          "u": "0.0F",
+          "v": "0.0F",
+          "width": "141",
+          "height": "213",
+          "texture_size": [
+            "256",
+            "256"
+          ]
+        },
+        {
+          "line": 327,
+          "texture": "dragonminez:textures/gui/menu/menubig.png",
+          "x": "this.getUiWidth() - 141 + rightOffset",
+          "y": "centerY - 95",
+          "u": "142.0F",
+          "v": "22.0F",
+          "width": "107",
+          "height": "21",
+          "texture_size": [
+            "256",
+            "256"
+          ]
+        },
+        {
+          "line": 328,
+          "texture": "dragonminez:textures/gui/menu/menusmall.png",
+          "x": "centerX - 70",
+          "y": "8 + topOffset",
+          "u": "0.0F",
+          "v": "95.0F",
+          "width": "145",
+          "height": "58",
+          "texture_size": [
+            "256",
+            "256"
+          ]
+        }
+      ],
+      "widgets": [
+        {
+          "line": 170,
+          "texture": "dragonminez:textures/gui/buttons/characterbuttons.png",
+          "uv": [
+            0,
+            0
+          ],
+          "hover_uv": [
+            0,
+            10
+          ],
+          "sample_size": [
+            10,
+            10
+          ]
+        },
+        {
+          "line": 221,
+          "texture": "dragonminez:textures/gui/buttons/characterbuttons.png",
+          "uv": [
+            0,
+            0
+          ],
+          "hover_uv": [
+            0,
+            10
+          ],
+          "sample_size": [
+            10,
+            10
+          ]
+        }
+      ]
+    },
+    "com.dragonminez.client.gui.character.SkillsMenuScreen": {
+      "blits": [
+        {
+          "line": 898,
+          "texture": "<expression> icon",
+          "x": "nx + (int)(4.0F * this.formsZoom)",
+          "y": "ny + (int)(4.0F * this.formsZoom)",
+          "u": "0.0F",
+          "v": "0.0F",
+          "width": "(int)(24.0F * this.formsZoom)",
+          "height": "(int)(24.0F * this.formsZoom)",
+          "texture_size": [
+            "(int)(24.0F * this.formsZoom)",
+            "(int)(24.0F * this.formsZoom)"
+          ]
+        },
+        {
+          "line": 925,
+          "texture": "dragonminez:textures/gui/quest/exclamation_mark_quest.png",
+          "x": "exX",
+          "y": "exY",
+          "width": "(int)(6.0F * this.formsZoom)",
+          "height": "(int)(15.0F * this.formsZoom)",
+          "u": "0.0F",
+          "v": "0.0F",
+          "source_size": [
+            "97",
+            "250"
+          ],
+          "texture_size": [
+            "97",
+            "250"
+          ]
+        },
+        {
+          "line": 1089,
+          "texture": "dragonminez:textures/gui/menu/menubig.png",
+          "x": "panelX",
+          "y": "panelY",
+          "u": "0.0F",
+          "v": "0.0F",
+          "width": "141",
+          "height": "213",
+          "texture_size": [
+            "256",
+            "256"
+          ]
+        },
+        {
+          "line": 1090,
+          "texture": "dragonminez:textures/gui/menu/menubig.png",
+          "x": "panelX + 17",
+          "y": "panelY + 10",
+          "u": "142.0F",
+          "v": "22.0F",
+          "width": "107",
+          "height": "21",
+          "texture_size": [
+            "256",
+            "256"
+          ]
+        },
+        {
+          "line": 1185,
+          "texture": "dragonminez:textures/gui/menu/menusmall.png",
+          "x": "panelX",
+          "y": "panelY",
+          "u": "0.0F",
+          "v": "0.0F",
+          "width": "141",
+          "height": "94",
+          "texture_size": [
+            "256",
+            "256"
+          ]
+        },
+        {
+          "line": 1186,
+          "texture": "dragonminez:textures/gui/menu/menubig.png",
+          "x": "panelX + 17",
+          "y": "panelY + 10",
+          "u": "142.0F",
+          "v": "22.0F",
+          "width": "107",
+          "height": "21",
+          "texture_size": [
+            "256",
+            "256"
+          ]
+        },
+        {
+          "line": 1187,
+          "texture": "dragonminez:textures/gui/menu/menusmall.png",
+          "x": "panelX",
+          "y": "panelY + 96",
+          "u": "0.0F",
+          "v": "0.0F",
+          "width": "141",
+          "height": "94",
+          "texture_size": [
+            "256",
+            "256"
+          ]
+        },
+        {
+          "line": 1188,
+          "texture": "dragonminez:textures/gui/menu/menusmall.png",
+          "x": "panelX",
+          "y": "panelY + 190",
+          "u": "0.0F",
+          "v": "154.0F",
+          "width": "141",
+          "height": "32",
+          "texture_size": [
+            "256",
+            "256"
+          ]
+        },
+        {
+          "line": 1190,
+          "texture": "dragonminez:textures/gui/menu/menubig.png",
+          "x": "panelX",
+          "y": "panelY",
+          "u": "0.0F",
+          "v": "0.0F",
+          "width": "141",
+          "height": "213",
+          "texture_size": [
+            "256",
+            "256"
+          ]
+        },
+        {
+          "line": 1191,
+          "texture": "dragonminez:textures/gui/menu/menubig.png",
+          "x": "panelX + 17",
+          "y": "panelY + 10",
+          "u": "142.0F",
+          "v": "22.0F",
+          "width": "107",
+          "height": "21",
+          "texture_size": [
+            "256",
+            "256"
+          ]
+        }
+      ],
+      "widgets": [
+        {
+          "line": 224,
+          "texture": "dragonminez:textures/gui/menu/menubig.png",
+          "uv": [
+            142,
+            44
+          ],
+          "hover_uv": [
+            142,
+            44
+          ]
+        },
+        {
+          "line": 240,
+          "texture": "dragonminez:textures/gui/menu/menubig.png",
+          "uv": [
+            170,
+            44
+          ],
+          "hover_uv": [
+            170,
+            44
+          ]
+        },
+        {
+          "line": 256,
+          "texture": "dragonminez:textures/gui/menu/menubig.png",
+          "uv": [
+            198,
+            44
+          ],
+          "hover_uv": [
+            198,
+            44
+          ]
+        },
+        {
+          "line": 275,
+          "texture": "dragonminez:textures/gui/menu/menubig.png",
+          "uv": [
+            226,
+            44
+          ],
+          "hover_uv": [
+            226,
+            44
+          ]
+        },
+        {
+          "line": 472,
+          "texture": "dragonminez:textures/gui/buttons/characterbuttons.png",
+          "uv": [
+            0,
+            0
+          ],
+          "hover_uv": [
+            0,
+            10
+          ],
+          "sample_size": [
+            10,
+            10
+          ]
+        },
+        {
+          "line": 518,
+          "texture": "dragonminez:textures/gui/buttons/characterbuttons.png",
+          "uv": [
+            162,
+            0
+          ],
+          "hover_uv": [
+            162,
+            20
+          ],
+          "sample_size": [
+            20,
+            20
+          ]
+        },
+        {
+          "line": 537,
+          "texture": "dragonminez:textures/gui/buttons/characterbuttons.png",
+          "uv": [
+            0,
+            28
+          ],
+          "hover_uv": [
+            0,
+            48
+          ],
+          "sample_size": [
+            74,
+            20
+          ]
+        },
+        {
+          "line": 555,
+          "texture": "dragonminez:textures/gui/buttons/characterbuttons.png",
+          "uv": [
+            182,
+            0
+          ],
+          "hover_uv": [
+            182,
+            20
+          ],
+          "sample_size": [
+            20,
+            20
+          ]
+        },
+        {
+          "line": 584,
+          "texture": "dragonminez:textures/gui/buttons/characterbuttons.png",
+          "uv": [
+            10,
+            0
+          ],
+          "hover_uv": [
+            10,
+            10
+          ],
+          "sample_size": [
+            10,
+            10
+          ]
+        },
+        {
+          "line": 607,
+          "texture": "dragonminez:textures/gui/buttons/characterbuttons.png",
+          "uv": [
+            152,
+            0
+          ],
+          "hover_uv": [
+            152,
+            10
+          ],
+          "sample_size": [
+            10,
+            10
+          ]
+        },
+        {
+          "line": 633,
+          "texture": "dragonminez:textures/gui/buttons/characterbuttons.png",
+          "uv": [
+            0,
+            28
+          ],
+          "hover_uv": [
+            0,
+            48
+          ],
+          "sample_size": [
+            74,
+            20
+          ]
+        },
+        {
+          "line": 658,
+          "texture": "dragonminez:textures/gui/buttons/characterbuttons.png",
+          "uv": [
+            0,
+            28
+          ],
+          "hover_uv": [
+            0,
+            48
+          ],
+          "sample_size": [
+            74,
+            20
+          ]
+        }
+      ]
+    },
+    "com.dragonminez.client.gui.character.QuestTreeScreen": {
+      "blits": [
+        {
+          "line": 1954,
+          "texture": "dragonminez:textures/gui/quest/reward_generic.png",
+          "x": "iconX",
+          "y": "blockTop",
+          "u": "0.0F",
+          "v": "0.0F",
+          "width": "iconSize",
+          "height": "iconSize",
+          "texture_size": [
+            "iconSize",
+            "iconSize"
+          ]
+        },
+        {
+          "line": 2418,
+          "texture": "dragonminez:textures/gui/menu/questmenu.png",
+          "x": "drawX",
+          "y": "panel.y",
+          "width": "drawW",
+          "height": "panel.height",
+          "u": "(float)srcU",
+          "v": "(float)srcV",
+          "source_size": [
+            "srcW",
+            "srcH"
+          ],
+          "texture_size": [
+            "512",
+            "512"
+          ]
+        },
+        {
+          "line": 2579,
+          "texture": "dragonminez:textures/gui/quest/exclamation_mark_quest.png",
+          "x": "iconDrawX",
+          "y": "iconDrawY",
+          "width": "6",
+          "height": "15",
+          "u": "0.0F",
+          "v": "0.0F",
+          "source_size": [
+            "97",
+            "250"
+          ],
+          "texture_size": [
+            "97",
+            "250"
+          ]
+        }
+      ],
+      "widgets": [
+        {
+          "line": 943,
+          "texture": "dragonminez:textures/gui/buttons/characterbuttons.png",
+          "uv": [
+            0,
+            28
+          ],
+          "hover_uv": [
+            0,
+            48
+          ],
+          "sample_size": [
+            74,
+            20
+          ]
+        },
+        {
+          "line": 993,
+          "texture": "dragonminez:textures/gui/buttons/characterbuttons.png",
+          "uv": [
+            0,
+            28
+          ],
+          "hover_uv": [
+            0,
+            48
+          ],
+          "sample_size": [
+            74,
+            20
+          ]
+        },
+        {
+          "line": 1137,
+          "texture": "dragonminez:textures/gui/buttons/characterbuttons.png",
+          "uv": [
+            0,
+            28
+          ],
+          "hover_uv": [
+            0,
+            48
+          ],
+          "sample_size": [
+            74,
+            20
+          ]
+        }
+      ]
+    },
+    "com.dragonminez.client.gui.character.MinigamesScreen": {
+      "blits": [
+        {
+          "line": 235,
+          "texture": "dragonminez:textures/gui/menu/menubig.png",
+          "x": "12",
+          "y": "centerY - 105",
+          "u": "0.0F",
+          "v": "0.0F",
+          "width": "141",
+          "height": "213",
+          "texture_size": [
+            "256",
+            "256"
+          ]
+        },
+        {
+          "line": 236,
+          "texture": "dragonminez:textures/gui/menu/menubig.png",
+          "x": "29",
+          "y": "centerY - 95",
+          "u": "142.0F",
+          "v": "22.0F",
+          "width": "107",
+          "height": "21",
+          "texture_size": [
+            "256",
+            "256"
+          ]
+        },
+        {
+          "line": 278,
+          "texture": "dragonminez:textures/gui/menu/menubig.png",
+          "x": "this.getUiWidth() - 158",
+          "y": "centerY - 105",
+          "u": "0.0F",
+          "v": "0.0F",
+          "width": "141",
+          "height": "213",
+          "texture_size": [
+            "256",
+            "256"
+          ]
+        },
+        {
+          "line": 279,
+          "texture": "dragonminez:textures/gui/menu/menubig.png",
+          "x": "this.getUiWidth() - 141",
+          "y": "centerY - 95",
+          "u": "142.0F",
+          "v": "22.0F",
+          "width": "107",
+          "height": "21",
+          "texture_size": [
+            "256",
+            "256"
+          ]
+        }
+      ],
+      "widgets": [
+        {
+          "line": 72,
+          "texture": "dragonminez:textures/gui/buttons/menubuttons.png",
+          "uv": [
+            0,
+            50
+          ],
+          "hover_uv": [
+            0,
+            50
+          ],
+          "sample_size": [
+            105,
+            20
+          ]
+        },
+        {
+          "line": 82,
+          "texture": "dragonminez:textures/gui/buttons/characterbuttons.png",
+          "uv": [
+            32,
+            0
+          ],
+          "hover_uv": [
+            32,
+            14
+          ],
+          "sample_size": [
+            8,
+            14
+          ]
+        },
+        {
+          "line": 91,
+          "texture": "dragonminez:textures/gui/buttons/characterbuttons.png",
+          "uv": [
+            20,
+            0
+          ],
+          "hover_uv": [
+            20,
+            14
+          ],
+          "sample_size": [
+            8,
+            14
+          ]
+        }
+      ]
+    },
+    "com.dragonminez.client.gui.character.PartyMenuScreen": {
+      "blits": [
+        {
+          "line": 272,
+          "texture": "dragonminez:textures/gui/menu/menubig.png",
+          "x": "leftX",
+          "y": "panelY",
+          "u": "0.0F",
+          "v": "0.0F",
+          "width": "141",
+          "height": "213",
+          "texture_size": [
+            "256",
+            "256"
+          ]
+        },
+        {
+          "line": 273,
+          "texture": "dragonminez:textures/gui/menu/menubig.png",
+          "x": "leftX + 17",
+          "y": "panelY + 10",
+          "u": "142.0F",
+          "v": "22.0F",
+          "width": "107",
+          "height": "21",
+          "texture_size": [
+            "256",
+            "256"
+          ]
+        },
+        {
+          "line": 274,
+          "texture": "dragonminez:textures/gui/menu/menubig.png",
+          "x": "rightX",
+          "y": "panelY",
+          "u": "0.0F",
+          "v": "0.0F",
+          "width": "141",
+          "height": "213",
+          "texture_size": [
+            "256",
+            "256"
+          ]
+        },
+        {
+          "line": 275,
+          "texture": "dragonminez:textures/gui/menu/menubig.png",
+          "x": "rightX + 17",
+          "y": "panelY + 10",
+          "u": "142.0F",
+          "v": "22.0F",
+          "width": "107",
+          "height": "21",
+          "texture_size": [
+            "256",
+            "256"
+          ]
+        },
+        {
+          "line": 276,
+          "texture": "dragonminez:textures/gui/menu/menubig.png",
+          "x": "rightX + 31",
+          "y": "panelY + 77",
+          "u": "142.0F",
+          "v": "0.0F",
+          "width": "79",
+          "height": "21",
+          "texture_size": [
+            "256",
+            "256"
+          ]
+        }
+      ],
+      "widgets": [
+        {
+          "line": 143,
+          "texture": "dragonminez:textures/gui/buttons/characterbuttons.png",
+          "uv": [
+            32,
+            0
+          ],
+          "hover_uv": [
+            32,
+            14
+          ],
+          "sample_size": [
+            8,
+            14
+          ]
+        },
+        {
+          "line": 151,
+          "texture": "dragonminez:textures/gui/buttons/characterbuttons.png",
+          "uv": [
+            20,
+            0
+          ],
+          "hover_uv": [
+            20,
+            14
+          ],
+          "sample_size": [
+            8,
+            14
+          ]
+        },
+        {
+          "line": 159,
+          "texture": "dragonminez:textures/gui/buttons/characterbuttons.png",
+          "uv": [
+            0,
+            28
+          ],
+          "hover_uv": [
+            0,
+            48
+          ],
+          "sample_size": [
+            74,
+            20
+          ]
+        }
+      ]
+    },
+    "com.dragonminez.client.gui.character.ConfigMenuScreen": {
+      "blits": [
+        {
+          "line": 558,
+          "texture": "dragonminez:textures/gui/menu/menubig.png",
+          "x": "leftPanelX",
+          "y": "centerY - 105",
+          "u": "0.0F",
+          "v": "0.0F",
+          "width": "141",
+          "height": "213",
+          "texture_size": [
+            "256",
+            "256"
+          ]
+        },
+        {
+          "line": 559,
+          "texture": "dragonminez:textures/gui/menu/menubig.png",
+          "x": "leftPanelX + 17",
+          "y": "centerY - 95",
+          "u": "142.0F",
+          "v": "22.0F",
+          "width": "107",
+          "height": "21",
+          "texture_size": [
+            "256",
+            "256"
+          ]
+        },
+        {
+          "line": 607,
+          "texture": "dragonminez:textures/gui/menu/menubig.png",
+          "x": "rightPanelX",
+          "y": "centerY - 105",
+          "u": "0.0F",
+          "v": "0.0F",
+          "width": "141",
+          "height": "213",
+          "texture_size": [
+            "256",
+            "256"
+          ]
+        },
+        {
+          "line": 608,
+          "texture": "dragonminez:textures/gui/menu/menubig.png",
+          "x": "rightPanelX + 17",
+          "y": "centerY - 95",
+          "u": "142.0F",
+          "v": "22.0F",
+          "width": "107",
+          "height": "21",
+          "texture_size": [
+            "256",
+            "256"
+          ]
+        }
+      ],
+      "widgets": [
+        {
+          "line": 415,
+          "texture": "dragonminez:textures/gui/buttons/characterbuttons.png",
+          "uv": [
+            0,
+            28
+          ],
+          "hover_uv": [
+            0,
+            48
+          ],
+          "sample_size": [
+            74,
+            20
+          ]
+        },
+        {
+          "line": 427,
+          "texture": "dragonminez:textures/gui/buttons/characterbuttons.png",
+          "uv": [
+            142,
+            0
+          ],
+          "hover_uv": [
+            142,
+            10
+          ],
+          "sample_size": [
+            10,
+            10
+          ]
+        },
+        {
+          "line": 442,
+          "texture": "dragonminez:textures/gui/buttons/characterbuttons.png",
+          "uv": [
+            0,
+            0
+          ],
+          "hover_uv": [
+            0,
+            10
+          ],
+          "sample_size": [
+            10,
+            10
+          ]
+        }
+      ]
+    },
+    "com.dragonminez.client.gui.character.util.BaseMenuScreen": {
+      "blits": [],
+      "widgets": [
+        {
+          "line": 113,
+          "texture": "dragonminez:textures/gui/buttons/menubuttons.png",
+          "uv": [
+            120,
+            0
+          ],
+          "hover_uv": [
+            120,
+            20
+          ],
+          "sample_size": [
+            20,
+            20
+          ]
+        },
+        {
+          "line": 124,
+          "texture": "dragonminez:textures/gui/buttons/menubuttons.png",
+          "uv": [
+            0,
+            0
+          ],
+          "hover_uv": [
+            0,
+            20
+          ],
+          "sample_size": [
+            20,
+            20
+          ]
+        },
+        {
+          "line": 135,
+          "texture": "dragonminez:textures/gui/buttons/menubuttons.png",
+          "uv": [
+            20,
+            0
+          ],
+          "hover_uv": [
+            20,
+            20
+          ],
+          "sample_size": [
+            20,
+            20
+          ]
+        },
+        {
+          "line": 146,
+          "texture": "dragonminez:textures/gui/buttons/menubuttons.png",
+          "uv": [
+            60,
+            0
+          ],
+          "hover_uv": [
+            60,
+            20
+          ],
+          "sample_size": [
+            20,
+            20
+          ]
+        },
+        {
+          "line": 157,
+          "texture": "dragonminez:textures/gui/buttons/menubuttons.png",
+          "uv": [
+            140,
+            0
+          ],
+          "hover_uv": [
+            140,
+            20
+          ],
+          "sample_size": [
+            20,
+            20
+          ]
+        },
+        {
+          "line": 168,
+          "texture": "dragonminez:textures/gui/buttons/menubuttons.png",
+          "uv": [
+            100,
+            0
+          ],
+          "hover_uv": [
+            100,
+            20
+          ],
+          "sample_size": [
+            20,
+            20
+          ]
+        }
+      ]
+    }
+  },
+  "neon": {
+    "fallbacks": [
+      {
+        "page": "skills",
+        "element": "left header",
+        "reason": "no untitled header bar ships in this pack; DragonMineZ's own header pixels are kept"
+      },
+      {
+        "page": "skills",
+        "element": "right header",
+        "reason": "no untitled header bar ships in this pack; DragonMineZ's own header pixels are kept"
+      },
+      {
+        "page": "quests",
+        "element": "header",
+        "reason": "the quest_tree pack's chapter title bar carries baked example text ('Chapter Title', 'Difficulty: ???') and no untitled variant ships; DragonMineZ's own header pixels are kept"
+      },
+      {
+        "page": "skills",
+        "element": "characterbuttons increase",
+        "reason": "no self-contained plate for this cell in the skills_information pack; the shared Neon widget art is kept"
+      },
+      {
+        "page": "skills",
+        "element": "characterbuttons decrease",
+        "reason": "no self-contained plate for this cell in the skills_information pack; the shared Neon widget art is kept"
+      },
+      {
+        "page": "skills",
+        "element": "characterbuttons action",
+        "reason": "no self-contained plate for this cell in the skills_information pack; the shared Neon widget art is kept"
+      },
+      {
+        "page": "skills",
+        "element": "characterbuttons next",
+        "reason": "no self-contained plate for this cell in the skills_information pack; the shared Neon widget art is kept"
+      },
+      {
+        "page": "skills",
+        "element": "characterbuttons prev",
+        "reason": "no self-contained plate for this cell in the skills_information pack; the shared Neon widget art is kept"
+      },
+      {
+        "page": "quests",
+        "element": "characterbuttons increase",
+        "reason": "no self-contained plate for this cell in the quest_tree pack; the shared Neon widget art is kept"
+      },
+      {
+        "page": "quests",
+        "element": "characterbuttons decrease",
+        "reason": "no self-contained plate for this cell in the quest_tree pack; the shared Neon widget art is kept"
+      },
+      {
+        "page": "quests",
+        "element": "characterbuttons action",
+        "reason": "no self-contained plate for this cell in the quest_tree pack; the shared Neon widget art is kept"
+      },
+      {
+        "page": "quests",
+        "element": "characterbuttons next",
+        "reason": "no self-contained plate for this cell in the quest_tree pack; the shared Neon widget art is kept"
+      },
+      {
+        "page": "quests",
+        "element": "characterbuttons prev",
+        "reason": "no self-contained plate for this cell in the quest_tree pack; the shared Neon widget art is kept"
+      },
+      {
+        "page": "minigames",
+        "element": "characterbuttons increase",
+        "reason": "no self-contained plate for this cell in the minigames pack; the shared Neon widget art is kept"
+      },
+      {
+        "page": "minigames",
+        "element": "characterbuttons decrease",
+        "reason": "no self-contained plate for this cell in the minigames pack; the shared Neon widget art is kept"
+      },
+      {
+        "page": "minigames",
+        "element": "characterbuttons next",
+        "reason": "no self-contained plate for this cell in the minigames pack; the shared Neon widget art is kept"
+      },
+      {
+        "page": "minigames",
+        "element": "characterbuttons prev",
+        "reason": "no self-contained plate for this cell in the minigames pack; the shared Neon widget art is kept"
+      },
+      {
+        "page": "party",
+        "element": "characterbuttons increase",
+        "reason": "no self-contained plate for this cell in the server_menu pack; the shared Neon widget art is kept"
+      },
+      {
+        "page": "party",
+        "element": "characterbuttons decrease",
+        "reason": "no self-contained plate for this cell in the server_menu pack; the shared Neon widget art is kept"
+      },
+      {
+        "page": "party",
+        "element": "characterbuttons next",
+        "reason": "no self-contained plate for this cell in the server_menu pack; the shared Neon widget art is kept"
+      },
+      {
+        "page": "party",
+        "element": "characterbuttons prev",
+        "reason": "no self-contained plate for this cell in the server_menu pack; the shared Neon widget art is kept"
+      },
+      {
+        "page": "settings",
+        "element": "characterbuttons increase",
+        "reason": "no self-contained plate for this cell in the options pack; the shared Neon widget art is kept"
+      },
+      {
+        "page": "settings",
+        "element": "characterbuttons decrease",
+        "reason": "no self-contained plate for this cell in the options pack; the shared Neon widget art is kept"
+      },
+      {
+        "page": "settings",
+        "element": "characterbuttons action",
+        "reason": "no self-contained plate for this cell in the options pack; the shared Neon widget art is kept"
+      },
+      {
+        "page": "settings",
+        "element": "characterbuttons next",
+        "reason": "no self-contained plate for this cell in the options pack; the shared Neon widget art is kept"
+      },
+      {
+        "page": "settings",
+        "element": "characterbuttons prev",
+        "reason": "no self-contained plate for this cell in the options pack; the shared Neon widget art is kept"
+      }
+    ]
+  },
   "scale": 4,
   "smooth_filter": false,
   "aspect_crop": {
@@ -231,6 +1364,625 @@
       },
       "stock": "assets/dragonminez/textures/gui/menu/menubig.png",
       "sha256": "d56ea22c933ba26f0b3b7733c028095eb949f065ae8f5ec49f6f2663e5dd9564"
+    },
+    "neon/minigames_characterbuttons.png": {
+      "screen": "com.dragonminez.client.gui.character.MinigamesScreen",
+      "shared_base": "dragonminez/textures/gui/buttons/characterbuttons.png (our-style)",
+      "page_cells": {
+        "action": {
+          "source": "03_dragonmine_other_menus_clean_and_example/dragonmine_other_menus_single_elements/minigames/02_rows_buttons/start_button_clean.png",
+          "crop": [
+            0,
+            0,
+            145,
+            50
+          ],
+          "note": "the start button plate; a separate element sits at x>=156",
+          "uv": [
+            0,
+            28
+          ],
+          "hover_uv": [
+            0,
+            48
+          ],
+          "sample_size": [
+            74,
+            20
+          ],
+          "source_border": 11,
+          "corner_scale": 1.6,
+          "target_border": [
+            18,
+            18
+          ]
+        }
+      },
+      "sha256": "e47f997afda72cfec4164124137ddd4337729ff24ea9f88a24b01a47fcf0be4c"
+    },
+    "neon/minigames_left.png": {
+      "screen": "com.dragonminez.client.gui.character.MinigamesScreen",
+      "bundle_group": "minigames",
+      "panel": {
+        "source": "03_dragonmine_other_menus_clean_and_example/dragonmine_other_menus_single_elements/minigames/01_panels/clean_list_panel.png",
+        "crop": [
+          4,
+          48,
+          197,
+          258
+        ],
+        "cap": null,
+        "crop_size": [
+          193,
+          210
+        ],
+        "uv": [
+          0,
+          0,
+          141,
+          213
+        ],
+        "note": "list body, below the pack's own 'MINIGAMES' title bar",
+        "source_border": 42,
+        "corner_scale": 2.9223,
+        "target_border": [
+          123,
+          123
+        ]
+      },
+      "header": {
+        "source": "03_dragonmine_other_menus_clean_and_example/dragonmine_other_menus_single_elements/minigames/03_headers_accents/title_bar_clean.png",
+        "crop": [
+          10,
+          0,
+          204,
+          51
+        ],
+        "cap": null,
+        "crop_size": [
+          194,
+          51
+        ],
+        "uv": [
+          142,
+          22,
+          107,
+          21
+        ],
+        "note": "title bar; the sliver at x<10 belongs to the element beside it",
+        "source_border": 11,
+        "corner_scale": 1.6471,
+        "target_border": [
+          18,
+          18
+        ]
+      },
+      "stock": "assets/dragonminez/textures/gui/menu/menubig.png",
+      "sha256": "55a22b76219edebbb3be3eeadd3bd9e801310676b41f4ab71e94b04a66ee90f0"
+    },
+    "neon/minigames_right.png": {
+      "screen": "com.dragonminez.client.gui.character.MinigamesScreen",
+      "bundle_group": "minigames",
+      "panel": {
+        "source": "03_dragonmine_other_menus_clean_and_example/dragonmine_other_menus_single_elements/minigames/01_panels/clean_detail_panel.png",
+        "crop": [
+          0,
+          0,
+          297,
+          264
+        ],
+        "cap": null,
+        "crop_size": [
+          297,
+          264
+        ],
+        "uv": [
+          0,
+          0,
+          141,
+          213
+        ],
+        "note": "detail frame, which carries no title of its own; the 'SCROLLBAR / ACCENTS' caption below y=264 is dropped",
+        "source_border": 58,
+        "corner_scale": 1.899,
+        "target_border": [
+          110,
+          110
+        ]
+      },
+      "header": {
+        "source": "03_dragonmine_other_menus_clean_and_example/dragonmine_other_menus_single_elements/minigames/03_headers_accents/title_bar_clean.png",
+        "crop": [
+          10,
+          0,
+          204,
+          51
+        ],
+        "cap": null,
+        "crop_size": [
+          194,
+          51
+        ],
+        "uv": [
+          142,
+          22,
+          107,
+          21
+        ],
+        "note": "title bar; the sliver at x<10 belongs to the element beside it",
+        "source_border": 11,
+        "corner_scale": 1.6471,
+        "target_border": [
+          18,
+          18
+        ]
+      },
+      "stock": "assets/dragonminez/textures/gui/menu/menubig.png",
+      "sha256": "d66ccf6be556fdc92f094f303b78222b5f65bbe0e2436ec6a871a7c40c37206c"
+    },
+    "neon/party_characterbuttons.png": {
+      "screen": "com.dragonminez.client.gui.character.PartyMenuScreen",
+      "shared_base": "dragonminez/textures/gui/buttons/characterbuttons.png (our-style)",
+      "page_cells": {
+        "action": {
+          "source": "03_dragonmine_other_menus_clean_and_example/dragonmine_other_menus_single_elements/server_menu/02_rows_buttons/clean_stats_button.png",
+          "crop": [
+            17,
+            0,
+            188,
+            39
+          ],
+          "note": "the stats button plate; its caption sits below y=39",
+          "uv": [
+            0,
+            28
+          ],
+          "hover_uv": [
+            0,
+            48
+          ],
+          "sample_size": [
+            74,
+            20
+          ],
+          "source_border": 9,
+          "corner_scale": 1.731,
+          "target_border": [
+            16,
+            16
+          ]
+        }
+      },
+      "sha256": "598d051c5d361eb1ead9cf0cf2532ffdeb6d1a00759df4c4ba45532f2f6d1959"
+    },
+    "neon/party_left.png": {
+      "screen": "com.dragonminez.client.gui.character.PartyMenuScreen",
+      "bundle_group": "server_menu",
+      "panel": {
+        "source": "03_dragonmine_other_menus_clean_and_example/dragonmine_other_menus_single_elements/server_menu/01_panels/clean_left_panel.png",
+        "crop": [
+          0,
+          59,
+          203,
+          362
+        ],
+        "cap": [
+          17,
+          14
+        ],
+        "crop_size": [
+          203,
+          303
+        ],
+        "uv": [
+          0,
+          0,
+          141,
+          213
+        ],
+        "note": "list body, below the pack's own 'SERVER' title bar; this file's frame starts at y=17 because a 'LEFT PANEL (CLEAN)' caption occupies the rows above it",
+        "source_border": 45,
+        "corner_scale": 2.7783,
+        "target_border": [
+          125,
+          125
+        ]
+      },
+      "header": {
+        "source": "03_dragonmine_other_menus_clean_and_example/dragonmine_other_menus_single_elements/server_menu/03_headers_accents/clean_header_bar.png",
+        "crop": [
+          16,
+          0,
+          324,
+          69
+        ],
+        "cap": null,
+        "crop_size": [
+          308,
+          69
+        ],
+        "uv": [
+          142,
+          22,
+          107,
+          21
+        ],
+        "note": "header bar; the accent rule below y=69 is a separate element",
+        "source_border": 15,
+        "corner_scale": 1.2174,
+        "target_border": [
+          18,
+          18
+        ]
+      },
+      "stock": "assets/dragonminez/textures/gui/menu/menubig.png",
+      "sha256": "7d793128aaf0658e4119f740270b380a272d7597ca66c4cdc6169b3d2feddc33"
+    },
+    "neon/party_right.png": {
+      "screen": "com.dragonminez.client.gui.character.PartyMenuScreen",
+      "bundle_group": "server_menu",
+      "panel": {
+        "source": "03_dragonmine_other_menus_clean_and_example/dragonmine_other_menus_single_elements/server_menu/01_panels/clean_left_panel.png",
+        "crop": [
+          0,
+          59,
+          203,
+          362
+        ],
+        "cap": [
+          17,
+          14
+        ],
+        "crop_size": [
+          203,
+          303
+        ],
+        "uv": [
+          0,
+          0,
+          141,
+          213
+        ],
+        "note": "the left panel's body reused: the pack's right panel has example content painted into it -- a '???' heading, a progress row and prev/next arrows",
+        "source_border": 45,
+        "corner_scale": 2.7783,
+        "target_border": [
+          125,
+          125
+        ]
+      },
+      "header": {
+        "source": "03_dragonmine_other_menus_clean_and_example/dragonmine_other_menus_single_elements/server_menu/03_headers_accents/clean_header_bar.png",
+        "crop": [
+          16,
+          0,
+          324,
+          69
+        ],
+        "cap": null,
+        "crop_size": [
+          308,
+          69
+        ],
+        "uv": [
+          142,
+          22,
+          107,
+          21
+        ],
+        "note": "header bar; the accent rule below y=69 is a separate element",
+        "source_border": 15,
+        "corner_scale": 1.2174,
+        "target_border": [
+          18,
+          18
+        ]
+      },
+      "stock": "assets/dragonminez/textures/gui/menu/menubig.png",
+      "sha256": "7d793128aaf0658e4119f740270b380a272d7597ca66c4cdc6169b3d2feddc33"
+    },
+    "neon/quests.png": {
+      "screen": "com.dragonminez.client.gui.character.QuestTreeScreen",
+      "bundle_group": "quest_tree",
+      "panel": {
+        "source": "03_dragonmine_other_menus_clean_and_example/dragonmine_other_menus_single_elements/quest_tree/01_panels/clean_left_quest_panel.png",
+        "crop": [
+          7,
+          50,
+          205,
+          274
+        ],
+        "cap": null,
+        "crop_size": [
+          198,
+          224
+        ],
+        "uv": [
+          0,
+          1,
+          298,
+          426
+        ],
+        "note": "panel body, below the pack's own 'Quest Tree' title bar; the 'NODE ELEMENTS' swatch row below y=274 is a sheet label. No cap: this frame's top rule runs through its \u609f badge, so the body is left open at the top and DragonMineZ's own chrome sits across it",
+        "source_border": 44,
+        "corner_scale": 6.0202,
+        "target_border": [
+          265,
+          265
+        ]
+      },
+      "stock": "assets/dragonminez/textures/gui/menu/questmenu.png",
+      "sha256": "9033373a17bd3f73ddbf0b40ce723617436b7cc7af23aaabd93059e607d4d90f"
+    },
+    "neon/quests_characterbuttons.png": {
+      "screen": "com.dragonminez.client.gui.character.QuestTreeScreen",
+      "shared_base": "dragonminez/textures/gui/buttons/characterbuttons.png (our-style)",
+      "page_cells": {},
+      "sha256": "3d6623752099fd7e8c37112e70a171bb557cfd1ae00d68badb70958851a35248"
+    },
+    "neon/settings_characterbuttons.png": {
+      "screen": "com.dragonminez.client.gui.character.ConfigMenuScreen",
+      "shared_base": "dragonminez/textures/gui/buttons/characterbuttons.png (our-style)",
+      "page_cells": {},
+      "sha256": "3d6623752099fd7e8c37112e70a171bb557cfd1ae00d68badb70958851a35248"
+    },
+    "neon/settings_left.png": {
+      "screen": "com.dragonminez.client.gui.character.ConfigMenuScreen",
+      "bundle_group": "options",
+      "panel": {
+        "source": "03_dragonmine_other_menus_clean_and_example/dragonmine_other_menus_single_elements/options/01_panels/options_panel_clean.png",
+        "crop": [
+          0,
+          38,
+          228,
+          296
+        ],
+        "cap": [
+          12,
+          10
+        ],
+        "crop_size": [
+          228,
+          258
+        ],
+        "uv": [
+          0,
+          0,
+          141,
+          213
+        ],
+        "note": "options body, below the pack's own 'Options' title bar",
+        "source_border": 50,
+        "corner_scale": 2.4737,
+        "target_border": [
+          124,
+          124
+        ]
+      },
+      "header": {
+        "source": "03_dragonmine_other_menus_clean_and_example/dragonmine_other_menus_single_elements/options/03_headers_accents/header_bar_clean.png",
+        "crop": [
+          0,
+          0,
+          221,
+          42
+        ],
+        "cap": null,
+        "crop_size": [
+          221,
+          42
+        ],
+        "uv": [
+          142,
+          22,
+          107,
+          21
+        ],
+        "note": "header bar; the caption below y=42 is a sheet label",
+        "source_border": 9,
+        "corner_scale": 1.9367,
+        "target_border": [
+          17,
+          17
+        ]
+      },
+      "stock": "assets/dragonminez/textures/gui/menu/menubig.png",
+      "sha256": "326acc1549b3c52e67b0e2d9a286f4b02729114a93a98fc883efffd7c3db02b0"
+    },
+    "neon/settings_right.png": {
+      "screen": "com.dragonminez.client.gui.character.ConfigMenuScreen",
+      "bundle_group": "options",
+      "panel": {
+        "source": "03_dragonmine_other_menus_clean_and_example/dragonmine_other_menus_single_elements/options/01_panels/options_panel_clean.png",
+        "crop": [
+          0,
+          38,
+          228,
+          296
+        ],
+        "cap": [
+          12,
+          10
+        ],
+        "crop_size": [
+          228,
+          258
+        ],
+        "uv": [
+          0,
+          0,
+          141,
+          213
+        ],
+        "note": "the options body reused: the pack's values panel has a toggle pill and a scrollbar painted into it, and DragonMineZ draws its own there",
+        "source_border": 50,
+        "corner_scale": 2.4737,
+        "target_border": [
+          124,
+          124
+        ]
+      },
+      "header": {
+        "source": "03_dragonmine_other_menus_clean_and_example/dragonmine_other_menus_single_elements/options/03_headers_accents/header_bar_clean.png",
+        "crop": [
+          0,
+          0,
+          221,
+          42
+        ],
+        "cap": null,
+        "crop_size": [
+          221,
+          42
+        ],
+        "uv": [
+          142,
+          22,
+          107,
+          21
+        ],
+        "note": "header bar; the caption below y=42 is a sheet label",
+        "source_border": 9,
+        "corner_scale": 1.9367,
+        "target_border": [
+          17,
+          17
+        ]
+      },
+      "stock": "assets/dragonminez/textures/gui/menu/menubig.png",
+      "sha256": "326acc1549b3c52e67b0e2d9a286f4b02729114a93a98fc883efffd7c3db02b0"
+    },
+    "neon/skills_characterbuttons.png": {
+      "screen": "com.dragonminez.client.gui.character.SkillsMenuScreen",
+      "shared_base": "dragonminez/textures/gui/buttons/characterbuttons.png (our-style)",
+      "page_cells": {},
+      "sha256": "3d6623752099fd7e8c37112e70a171bb557cfd1ae00d68badb70958851a35248"
+    },
+    "neon/skills_left.png": {
+      "screen": "com.dragonminez.client.gui.character.SkillsMenuScreen",
+      "bundle_group": "skills_information",
+      "panel": {
+        "source": "03_dragonmine_other_menus_clean_and_example/dragonmine_other_menus_single_elements/skills_information/01_panels/clean_left_panel.png",
+        "crop": [
+          0,
+          38,
+          240,
+          209
+        ],
+        "cap": null,
+        "crop_size": [
+          240,
+          171
+        ],
+        "uv": [
+          0,
+          0,
+          141,
+          213
+        ],
+        "note": "panel body, below the pack's own 'Skills' title bar; the 'Clean (Empty)' sheet caption below y=209 is dropped too. No cap: this frame's top rule and its title band overlap, so the body is left open at the top",
+        "source_border": 38,
+        "corner_scale": 2.35,
+        "target_border": [
+          89,
+          89
+        ]
+      },
+      "stock": "assets/dragonminez/textures/gui/menu/menubig.png",
+      "sha256": "b17cf460528b0f7628fb190cd073b418bc554b78d39c02e97baf7da8f3d6b9bf"
+    },
+    "neon/skills_right.png": {
+      "screen": "com.dragonminez.client.gui.character.SkillsMenuScreen",
+      "bundle_group": "skills_information",
+      "panel": {
+        "source": "03_dragonmine_other_menus_clean_and_example/dragonmine_other_menus_single_elements/skills_information/01_panels/clean_detail_panel.png",
+        "crop": [
+          0,
+          0,
+          222,
+          105
+        ],
+        "cap": null,
+        "crop_size": [
+          222,
+          105
+        ],
+        "uv": [
+          0,
+          0,
+          141,
+          213
+        ],
+        "note": "detail frame, which carries no title of its own; its bottom rule is at y=104 and the 'Clean (Empty)' sheet caption sits below that",
+        "source_border": 23,
+        "corner_scale": 2.5405,
+        "target_border": [
+          58,
+          58
+        ]
+      },
+      "stock": "assets/dragonminez/textures/gui/menu/menubig.png",
+      "sha256": "169dfeadc71a0310090aea3fc5e6b9f9cc5e92a10c8d7acf2cc0157714b917d2"
+    },
+    "neon/skills_top.png": {
+      "screen": "com.dragonminez.client.gui.character.SkillsMenuScreen",
+      "bundle_group": "skills_information",
+      "panel": {
+        "source": "03_dragonmine_other_menus_clean_and_example/dragonmine_other_menus_single_elements/skills_information/01_panels/clean_detail_panel.png",
+        "crop": [
+          0,
+          0,
+          222,
+          105
+        ],
+        "cap": null,
+        "crop_size": [
+          222,
+          105
+        ],
+        "uv": [
+          0,
+          0,
+          141,
+          94
+        ],
+        "note": "the same detail frame, for MENU_SMALL's 141x94 box",
+        "source_border": 23,
+        "corner_scale": 2.5405,
+        "target_border": [
+          58,
+          58
+        ]
+      },
+      "strip": {
+        "source": "03_dragonmine_other_menus_clean_and_example/dragonmine_other_menus_single_elements/skills_information/01_panels/clean_bottom_strip.png",
+        "crop": [
+          12,
+          0,
+          270,
+          19
+        ],
+        "cap": null,
+        "crop_size": [
+          258,
+          19
+        ],
+        "uv": [
+          0,
+          154,
+          141,
+          32
+        ],
+        "note": "the strip alone; the divider at y>=25 and its caption are sheet furniture",
+        "source_border": 4,
+        "corner_scale": 2.186,
+        "target_border": [
+          9,
+          9
+        ]
+      },
+      "stock": "assets/dragonminez/textures/gui/menu/menusmall.png",
+      "sha256": "c67a140ff23f6f741e2d9dda37003111f103c74cb90eb72b526534f7e1fc206e"
     },
     "party_left.png": {
       "panel": {

@@ -37,6 +37,9 @@ public class XenoPixelsMod {
         net.bullettrain.xenopixelsmod.sound.ModSounds.register(modEventBus);
         XenoCapabilities.register(modEventBus);
         ModNetwork.register();
+        net.bullettrain.xenopixelsmod.network.form.FormEditorNetwork.register();
+        net.bullettrain.xenopixelsmod.network.HudPartsNetwork.register();
+        net.bullettrain.xenopixelsmod.network.AnimClipsNetwork.register();
 
         ModCreativeModTabs.register(modEventBus); // -- creative tab register
 
@@ -133,6 +136,7 @@ public class XenoPixelsMod {
                 net.bullettrain.xenopixelsmod.client.config.XenoAuraConfig.load();
                 net.bullettrain.xenopixelsmod.client.config.XenoDmzScreenConfig.load();
                 net.bullettrain.xenopixelsmod.client.config.XenoDmzNeonConfig.load();
+                net.bullettrain.xenopixelsmod.client.config.XenoMasterMenuConfig.load();
                 // Wire GUIs without loading client classes on dedicated server
                 net.bullettrain.xenopixelsmod.client.ClientScreens.openTargetTool = () ->
                         net.minecraft.client.Minecraft.getInstance().setScreen(

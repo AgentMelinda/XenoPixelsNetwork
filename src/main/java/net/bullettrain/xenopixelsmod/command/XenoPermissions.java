@@ -125,6 +125,12 @@ public final class XenoPermissions {
     public static final PermissionNode<Boolean> XENOAURA_OTHERS =
             op("xenoaura.others", "Use /xenoaura on|off|toggle <player>");
     public static final PermissionNode<Boolean> XENOAURA_SET = XENOAURA_SELF;
+    public static final PermissionNode<Boolean> STACK_SELF =
+            client("stack.self", "Use /stack player on|off|toggle on yourself");
+    public static final PermissionNode<Boolean> STACK_OTHERS =
+            op("stack.others", "Use /stack player on|off|toggle on another player");
+    public static final PermissionNode<Boolean> STACK_NPC =
+            op("stack.npc", "Use /stack npc on|off|toggle on a CustomNPC");
 
     // -------------------------------------------------------------------------
     // /xenopixels npcprofile  (server — OP default; also runs via NPC-mod script
@@ -150,6 +156,10 @@ public final class XenoPermissions {
             client("xenohud.hide", "Use /xenohud hide");
     public static final PermissionNode<Boolean> XENOHUD_EDIT =
             client("xenohud.edit", "Use /xenohud edit");
+    public static final PermissionNode<Boolean> XENOPARTS_GLOBAL =
+            op("xenoparts.global", "Publish / clear the server-wide HUD parts layout");
+    public static final PermissionNode<Boolean> XENOANIM_GLOBAL =
+            op("xenoanim.global", "Publish clips and bind live animation slots for every joiner");
     public static final PermissionNode<Boolean> XENOHUD_RESET =
             client("xenohud.reset", "Use /xenohud reset");
     public static final PermissionNode<Boolean> XENOHUD_RENDERER =
@@ -249,14 +259,16 @@ public final class XenoPermissions {
                 }
                 return Boolean.TRUE.equals(PermissionAPI.getPermission(player, node));
             } catch (Throwable t) {
-                return fallbackLevel(source, node);
+                return playerFallback(source, node);
             }
         }
 
-        return fallbackLevel(source, node);
+        // Non-player sources (command blocks, NPC-script executeCommand) get no
+        // client-default allowance; they must hold permission level 2.
+        return source.hasPermission(2);
     }
 
-    private static boolean fallbackLevel(CommandSourceStack source, PermissionNode<Boolean> node) {
+    private static boolean playerFallback(CommandSourceStack source, PermissionNode<Boolean> node) {
         if (CLIENT_DEFAULT_ALLOW.contains(node)) {
             return true;
         }

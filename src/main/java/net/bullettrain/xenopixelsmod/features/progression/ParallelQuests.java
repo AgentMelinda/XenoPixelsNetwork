@@ -23,8 +23,11 @@ public final class ParallelQuests {
     public record QuestDef(String id, String title, String desc, int target) {}
 
     public static String start(ServerPlayer player, String questId) {
+        if (questId != null && questId.toLowerCase().startsWith("npc:")) {
+            return "Take that CustomNPCs quest from the NPC — /xenoquest cannot accept it for you";
+        }
         QuestDef def = QUESTS.get(questId == null ? "" : questId.toLowerCase());
-        if (def == null) return "Unknown quest. Try: kill_mobs, kill_players, dummy_session";
+        if (def == null) return "Unknown quest. Try: kill_mobs, kill_players, dummy_session or see npc: ids from /xenoquest list";
         XenoPlayerData data = XenoCapabilities.get(player).orElse(null);
         if (data == null) return "No player data";
         if (data.hasActiveQuest()) {

@@ -28,6 +28,12 @@ public final class XenoPartyConfig {
      */
     public static int maxMembers = 5;
     public static boolean friendlyFireDefault = false;
+    /**
+     * When false, CNPC {@code @dp} quest rewards stay on the player who turned the quest in.
+     * Leaders can still enable sharing per party. Default off so a strong player cannot farm
+     * for a weak friend.
+     */
+    public static boolean questShareDefault = false;
     public static int pingDurationTicks = 20 * 8;
     public static double pingRange = 96.0;
 
@@ -45,6 +51,7 @@ public final class XenoPartyConfig {
             idleExpirySeconds = Math.max(0, d.idleExpirySeconds);
             maxMembers = Math.max(2, Math.min(PartySyncPacket.MAX_MEMBERS, d.maxMembers));
             friendlyFireDefault = d.friendlyFireDefault;
+            questShareDefault = d.questShareDefault;
             pingDurationTicks = Math.max(20, Math.min(20 * 60, d.pingDurationTicks));
             pingRange = Math.max(8.0, Math.min(512.0, d.pingRange));
         } catch (IOException e) {
@@ -57,6 +64,7 @@ public final class XenoPartyConfig {
         d.idleExpirySeconds = idleExpirySeconds;
         d.maxMembers = maxMembers;
         d.friendlyFireDefault = friendlyFireDefault;
+        d.questShareDefault = questShareDefault;
         d.pingDurationTicks = pingDurationTicks;
         d.pingRange = pingRange;
         try {
@@ -73,6 +81,7 @@ public final class XenoPartyConfig {
         int idleExpirySeconds = 30 * 60;
         int maxMembers = 5;
         boolean friendlyFireDefault;
+        boolean questShareDefault;
         int pingDurationTicks = 20 * 8;
         double pingRange = 96.0;
     }

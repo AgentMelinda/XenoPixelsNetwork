@@ -28,7 +28,7 @@ import java.util.OptionalInt;
 import java.util.Locale;
 
 /** NPC-safe counterpart to DMZ's CharacterCustomizationScreen. */
-public final class GuiNpcDmzAppearance extends GuiNPCInterface2 implements ITextfieldListener {
+public final class GuiNpcDmzAppearance extends GuiNPCInterface2 implements ITextfieldListener, NpcPreviewOwner {
     private static final int TAB_BODY = 0;
     private static final int TAB_FACE = 1;
     private static final int TAB_STYLE = 2;
@@ -87,6 +87,8 @@ public final class GuiNpcDmzAppearance extends GuiNPCInterface2 implements IText
     private static final int ID_HAIR_STYLE = 236;
     private static final int PICKER_OFFSET = 500;
     private static final int PREVIEW_X = 278;
+    /** Right edge of the appearance panel's usable width; the preview panel starts past it. */
+    private static final int HAIR_ROW_END = 270;
     private static final int PREVIEW_Y = 28;
     private static final int PREVIEW_W = 134;
     private static final int PREVIEW_H = 140;
@@ -219,13 +221,30 @@ public final class GuiNpcDmzAppearance extends GuiNPCInterface2 implements IText
         // DragonMineZ's own character-creation hair styles; H0 hands back to the hair code.
         // Cycles forward and wraps -- NpcHairBridge.cycleStyle wraps through 0, so one button
         // still reaches every style.
-        addButton(new GuiButtonNop(this, ID_HAIR_STYLE, x + 176, y, 22, 16,
-                hairStyleLabel(styleId)));
+        String styleLabel = hairStyleLabel(styleId);
+        addButton(new GuiButtonNop(this, ID_HAIR_STYLE, x + 176, y,
+                hairStyleButtonWidth(styleLabel, HAIR_ROW_END - 176), 16, styleLabel));
     }
 
-    /** Compact enough for a 22px button: H0 is the custom hair code, H1+ are DMZ's own styles. */
+    /**
+     * "H0" is the custom hair code; "H1"+ are DragonMineZ's own character-creation styles. The
+     * short form is the one the DMZ appearance tab uses, so the two screens read the same.
+     */
     private static String hairStyleLabel(int styleId) {
         return "H" + Math.max(0, styleId);
+    }
+
+    /**
+     * The style button is as wide as its own label, so "H0" does not draw a 66px button around a
+     * two-character caption and a two-digit style is never squeezed. {@code maxWidth} keeps the
+     * control inside the row, which ends where the preview panel begins.
+     */
+    static int hairStyleButtonWidth(String label, int maxWidth) {
+        Minecraft client = Minecraft.getInstance();
+        int text = client == null || client.font == null
+                ? 6 * label.length()
+                : client.font.width(label);
+        return Mth.clamp(text + 12, 24, Math.max(24, maxWidth));
     }
 
     private void toggle(int id, String label, int x, int y, boolean value) {
@@ -512,7 +531,7 @@ public final class GuiNpcDmzAppearance extends GuiNPCInterface2 implements IText
         int top = guiTop + PREVIEW_Y;
         int right = left + PREVIEW_W;
         int bottom = top + PREVIEW_H;
-        graphics.fill(left, top, right, bottom, 0xCC101218);
+        graphics.fill(left, top, right, bottom, 0xFF101218);
         graphics.fill(left, top, right, top + 1, 0xFFB98235);
         graphics.fill(left, bottom - 1, right, bottom, 0xFFB98235);
         graphics.fill(left, top, left + 1, bottom, 0xFFB98235);

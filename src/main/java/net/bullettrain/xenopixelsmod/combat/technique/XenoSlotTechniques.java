@@ -7,6 +7,7 @@ import com.dragonminez.common.stats.techniques.PredefinedTechniques;
 import com.dragonminez.common.stats.techniques.StrikeAttackData;
 import net.bullettrain.xenopixelsmod.XenoPixelsMod;
 import net.bullettrain.xenopixelsmod.config.XenoServerConfig;
+import net.bullettrain.xenopixelsmod.features.progression.CombatSkills;
 import net.bullettrain.xenopixelsmod.network.Bt3CombatPacket;
 import net.minecraft.server.level.ServerPlayer;
 
@@ -45,11 +46,13 @@ public final class XenoSlotTechniques {
     }
 
     /**
-     * Grants all three to a player.
+     * Grants every Xeno slot technique the player has actually earned in the skill tree.
      *
      * <p>They are Xeno entries injected into DMZ's registry, so no DMZ progression path can ever
-     * unlock them — the same reasoning as {@link XenoRushTechniques#unlockRushTechniques}, which is
-     * why this is not gated behind a permission either.
+     * unlock them — the xenoskill system is the only grant, and a technique the player has not
+     * unlocked there is deliberately left locked. Safe to call repeatedly; {@code unlockTechnique}
+     * is idempotent, so this doubles as the re-grant that makes a freshly bought skill appear in
+     * DMZ's technique list without a relog.
      */
     public static void unlock(ServerPlayer player) {
         if (player == null || !XenoServerConfig.xenoSlotTechniquesEnabled) return;
@@ -57,11 +60,36 @@ public final class XenoSlotTechniques {
         if (data == null || data.getTechniques() == null) return;
         var techniques = data.getTechniques();
         for (String id : IDS) {
+            if (!unlocked(player, id)) continue;
             StrikeAttackData strike = PredefinedTechniques.STRIKE_REGISTRY.get(id);
             if (strike != null) {
                 techniques.unlockTechnique(strike);
             }
         }
+    }
+
+    /** Whether the xenoskill system has unlocked {@code id} for {@code player}. */
+    public static boolean unlocked(ServerPlayer player, String id) {
+        if (player == null || id == null) return false;
+        if (HAKAI.equals(id)) return CombatSkills.hakaiUnlocked(player);
+        if (ZANZOKEN.equals(id)) return CombatSkills.zanzokenUnlocked(player);
+        if (MULTIFORM.equals(id)) return CombatSkills.multiFormUnlocked(player);
+        return false;
+    }
+
+    /** The skill-tree name of a slot technique, for refusal messages. */
+    public static String skillName(String id) {
+        if (HAKAI.equals(id)) return "Hakai";
+        if (ZANZOKEN.equals(id)) return "Zanzoken";
+        if (MULTIFORM.equals(id)) return "Shi Shin No Ken";
+        return "That technique";
+    }
+
+    /** Tells the player which skill gates {@code id}. */
+    public static void refuseLocked(ServerPlayer player, String id) {
+        player.displayClientMessage(net.minecraft.network.chat.Component.literal(
+                "§7" + skillName(id) + ": unlock it in the skill tree first ("
+                        + id.substring(id.indexOf(':') + 1) + ")"), true);
     }
 
     /** True for the three Xeno-owned slot ids, so nothing else is ever intercepted. */
@@ -85,6 +113,12 @@ public final class XenoSlotTechniques {
      */
     public static boolean cast(ServerPlayer player, String id) {
         if (player == null || id == null) return false;
+        if (!isSlotTechniqueId(id)) return false;
+        // Refusing still counts as handled: DMZ must not run its own strike for an id we own.
+        if (!unlocked(player, id)) {
+            refuseLocked(player, id);
+            return true;
+        }
         if (HAKAI.equals(id)) {
             // Null target: resolve from where the caster is looking, exactly as the held key does.
             Bt3CombatPacket.startHakai(player, null);

@@ -19,39 +19,60 @@ public final class FlightPlanResultPacket {
     }
 
     public FlightPlanResultPacket(FriendlyByteBuf buf) {
-        int revision = buf.readVarInt();
+        int revision = readBoundedCount(buf, Integer.MAX_VALUE, "revision");
         BallisticFlightPlan.Settings settings = BallisticFlightPlan.Settings.load(buf.readNbt());
-        Vec3 launch = new Vec3(buf.readDouble(), buf.readDouble(), buf.readDouble());
-        Vec3 target = new Vec3(buf.readDouble(), buf.readDouble(), buf.readDouble());
+        Vec3 launch = readFiniteVec3(buf, "launch");
+        Vec3 target = readFiniteVec3(buf, "target");
         long shipId = buf.readLong();
         boolean feasible = buf.readBoolean();
         String status = buf.readUtf(512);
-        double azimuth = buf.readDouble();
-        double elevation = buf.readDouble();
-        double required = buf.readDouble();
-        double available = buf.readDouble();
-        double eta = buf.readDouble();
-        double apex = buf.readDouble();
-        double impact = buf.readDouble();
-        double miss = buf.readDouble();
+        double azimuth = readFinite(buf, "azimuth");
+        double elevation = readFinite(buf, "elevation");
+        double required = readFinite(buf, "required speed");
+        double available = readFinite(buf, "available speed");
+        double eta = readFinite(buf, "ETA");
+        double apex = readFinite(buf, "apex");
+        double impact = readFinite(buf, "impact speed");
+        double miss = readFinite(buf, "predicted miss");
         List<String> warnings = new ArrayList<>();
-        int warningCount = Math.min(16, buf.readVarInt());
+        int warningCount = readBoundedCount(buf, 16, "warning");
         for (int i = 0; i < warningCount; i++) warnings.add(buf.readUtf(512));
         List<BallisticFlightPlan.Sample> samples = new ArrayList<>();
-        int sampleCount = Math.min(128, buf.readVarInt());
+        int sampleCount = readBoundedCount(buf, 128, "sample");
         for (int i = 0; i < sampleCount; i++) {
-            samples.add(new BallisticFlightPlan.Sample(buf.readDouble(), buf.readDouble(),
-                    buf.readDouble(), buf.readDouble(), buf.readEnum(BallisticFlightPlan.Phase.class),
+            samples.add(new BallisticFlightPlan.Sample(readFinite(buf, "sample fraction"),
+                    readFinite(buf, "sample x"), readFinite(buf, "sample y"),
+                    readFinite(buf, "sample z"), buf.readEnum(BallisticFlightPlan.Phase.class),
                     buf.readBoolean()));
         }
         List<Vec3> waypoints = new ArrayList<>();
-        int pointCount = Math.min(BallisticFlightPlan.MAX_CONTROLLER_WAYPOINTS, buf.readVarInt());
+        int pointCount = readBoundedCount(buf, BallisticFlightPlan.MAX_CONTROLLER_WAYPOINTS,
+                "controller waypoint");
         for (int i = 0; i < pointCount; i++) {
-            waypoints.add(new Vec3(buf.readDouble(), buf.readDouble(), buf.readDouble()));
+            waypoints.add(readFiniteVec3(buf, "controller waypoint"));
         }
         this.result = new BallisticFlightPlan.Result(revision, settings, launch, target, shipId,
                 feasible, status, azimuth, elevation, required, available, eta, apex,
                 impact, miss, warnings, samples, waypoints);
+    }
+
+    private static int readBoundedCount(FriendlyByteBuf buf, int maximum, String field) {
+        int value = buf.readVarInt();
+        if (value < 0 || value > maximum) {
+            throw new IllegalArgumentException(field + " count outside 0-" + maximum + ": " + value);
+        }
+        return value;
+    }
+
+    private static double readFinite(FriendlyByteBuf buf, String field) {
+        double value = buf.readDouble();
+        if (!Double.isFinite(value)) throw new IllegalArgumentException(field + " must be finite");
+        return value;
+    }
+
+    private static Vec3 readFiniteVec3(FriendlyByteBuf buf, String field) {
+        return new Vec3(readFinite(buf, field + " x"), readFinite(buf, field + " y"),
+                readFinite(buf, field + " z"));
     }
 
     public void encode(FriendlyByteBuf buf) {

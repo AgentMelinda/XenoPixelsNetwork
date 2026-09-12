@@ -56,11 +56,15 @@ public final class XenoPartyScreen extends UnblurredScreen {
         addRenderableWidget(Button.builder(Component.literal("Leave"), b -> send(
                 PartyActionPacket.Action.LEAVE)).bounds(left + 90, actionY, 62, 20).build());
         addRenderableWidget(Button.builder(Component.literal("PvP"), b -> send(
-                PartyActionPacket.Action.TOGGLE_PVP)).bounds(left + 158, actionY, 54, 20).build());
+                PartyActionPacket.Action.TOGGLE_PVP)).bounds(left + 158, actionY, 40, 20).build());
+        addRenderableWidget(Button.builder(
+                Component.literal(ClientParty.state().shareQuests() ? "Quest share ON" : "Quest share OFF"),
+                b -> send(PartyActionPacket.Action.TOGGLE_SHARE_QUESTS))
+                .bounds(left + 202, actionY, 108, 20).build());
         addRenderableWidget(Button.builder(Component.literal("Promote"), b -> memberAction(
-                PartyActionPacket.Action.PROMOTE)).bounds(left + 218, actionY, 72, 20).build());
+                PartyActionPacket.Action.PROMOTE)).bounds(left + 314, actionY, 64, 20).build());
         addRenderableWidget(Button.builder(Component.literal("Kick"), b -> memberAction(
-                PartyActionPacket.Action.KICK)).bounds(left + 296, actionY, 54, 20).build());
+                PartyActionPacket.Action.KICK)).bounds(left + 382, actionY, 44, 20).build());
         addRenderableWidget(Button.builder(Component.literal("Disband"), b -> send(
                 PartyActionPacket.Action.DISBAND)).bounds(left + panelW - 84, actionY, 70, 20).build());
 
@@ -89,6 +93,7 @@ public final class XenoPartyScreen extends UnblurredScreen {
         long remaining = state.expiresAtMs() <= 0 ? 0 : Math.max(0, state.expiresAtMs() - System.currentTimeMillis());
         String status = state.partyId() == null ? "Not currently in a party"
                 : "Friendly fire: " + (state.friendlyFire() ? "ON" : "OFF")
+                + "  •  Quest share: " + (state.shareQuests() ? "ON" : "OFF")
                 + "  •  idle expiry " + (remaining / 60000) + ":" + String.format("%02d", (remaining / 1000) % 60);
         graphics.drawString(font, status, left + 14, 100, 0xFFB8D8EA, false);
 

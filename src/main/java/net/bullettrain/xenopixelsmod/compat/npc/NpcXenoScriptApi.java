@@ -3,6 +3,7 @@ package net.bullettrain.xenopixelsmod.compat.npc;
 import noppes.npcs.api.entity.ICustomNpc;
 import noppes.npcs.api.entity.IEntity;
 import noppes.npcs.api.entity.IPlayer;
+import noppes.npcs.api.event.PlayerEvent;
 import net.bullettrain.xenopixelsmod.command.XenoPointsCommands;
 import net.bullettrain.xenopixelsmod.network.ModNetwork;
 import net.bullettrain.xenopixelsmod.network.packet.DmzLockOnPacket;
@@ -20,7 +21,7 @@ import java.util.Map;
 /** Explicit, server-side XenoPixels bridge exposed to CustomNPCs scripts as {@code XenoPixels}. */
 public final class NpcXenoScriptApi {
     public static final NpcXenoScriptApi INSTANCE = new NpcXenoScriptApi();
-    private static final String VERSION = "16";
+    private static final String VERSION = "20";
     private static final EquipmentSlot[] ARMOR_SLOTS = {
             EquipmentSlot.HEAD, EquipmentSlot.CHEST, EquipmentSlot.LEGS, EquipmentSlot.FEET };
 
@@ -366,6 +367,106 @@ public final class NpcXenoScriptApi {
         return names.toArray(new String[0]);
     }
 
+    // ---------------------------------------------------------------- studio clips
+
+    /**
+     * Plays a Xeno Anim Studio clip on this NPC.
+     *
+     * <p>Takes the bare clip name ({@code "my_jab"}) or the full animation name
+     * ({@code "combat.xeno_my_jab"}). The clip must be one this mod ships or one published to the
+     * server with {@code /xenoanim global push} - a clip that only exists in one player's config
+     * folder is not something the server can ask everyone to draw.
+     *
+     * @return false when the NPC is not drawn in Full DragonMineZ appearance, or the clip is unknown
+     */
+    public boolean playClip(ICustomNpc npc, String clip) {
+        return net.bullettrain.xenopixelsmod.api.anim.XenoAnimApi.playClip(require(npc), clip);
+    }
+
+    /** As {@link #playClip(ICustomNpc, String)}, at a playback multiplier. */
+    public boolean playClip(ICustomNpc npc, String clip, float speed) {
+        return net.bullettrain.xenopixelsmod.api.anim.XenoAnimApi.playClip(require(npc), clip, speed);
+    }
+
+    /** Plays {@code clip} and cuts it after {@code durationTicks}. */
+    public boolean playClip(ICustomNpc npc, String clip, float speed, int durationTicks) {
+        return net.bullettrain.xenopixelsmod.api.anim.XenoAnimApi.playClip(
+                require(npc), clip, speed, durationTicks);
+    }
+
+    /**
+     * Plays {@code clip} at {@code speed}. After {@code durationTicks} the pose returns to idle
+     * unless {@code hold} is true, in which case the last authored frame stays until
+     * {@link #stopClip(ICustomNpc)} or another play.
+     */
+    public boolean playClip(ICustomNpc npc, String clip, float speed, int durationTicks, boolean hold) {
+        return net.bullettrain.xenopixelsmod.api.anim.XenoAnimApi.playClip(
+                require(npc), clip, speed, durationTicks, hold);
+    }
+
+    public boolean playClip(IPlayer<?> player, String clip) {
+        return playClipOn(living(player), clip, 1.0f, 0, false);
+    }
+
+    public boolean playClip(IPlayer<?> player, String clip, float speed) {
+        return playClipOn(living(player), clip, speed, 0, false);
+    }
+
+    public boolean playClip(IPlayer<?> player, String clip, float speed, int durationTicks) {
+        return playClipOn(living(player), clip, speed, durationTicks, false);
+    }
+
+    public boolean playClip(IPlayer<?> player, String clip, float speed, int durationTicks, boolean hold) {
+        return playClipOn(living(player), clip, speed, durationTicks, hold);
+    }
+
+    /**
+     * Stops a scripted clip, including one already on DragonMineZ's KI controller.
+     */
+    public boolean stopClip(ICustomNpc npc) {
+        return net.bullettrain.xenopixelsmod.api.anim.XenoAnimApi.stopClip(require(npc));
+    }
+
+    public boolean stopClip(IPlayer<?> player) {
+        LivingEntity living = living(player);
+        return living != null && net.bullettrain.xenopixelsmod.api.anim.XenoAnimApi.stopClip(living);
+    }
+
+    public boolean canPlayClip(ICustomNpc npc) {
+        return net.bullettrain.xenopixelsmod.api.anim.XenoAnimApi.canPlay(require(npc));
+    }
+
+    public boolean canPlayClip(IPlayer<?> player) {
+        LivingEntity living = living(player);
+        return living != null && net.bullettrain.xenopixelsmod.api.anim.XenoAnimApi.canPlay(living);
+    }
+
+    /** Authored length in ticks, or {@code -1} when the server does not know it. */
+    public int clipDuration(String clip) {
+        return net.bullettrain.xenopixelsmod.api.anim.XenoAnimApi.clipDuration(clip);
+    }
+
+    private static boolean playClipOn(LivingEntity target, String clip, float speed,
+                                      int durationTicks, boolean hold) {
+        return target != null && net.bullettrain.xenopixelsmod.api.anim.XenoAnimApi.playClip(
+                target, clip, speed, durationTicks, hold);
+    }
+
+    /** Every clip name {@link #playClip} accepts, including the server's published library. */
+    public String[] listClips() {
+        return net.bullettrain.xenopixelsmod.api.anim.XenoAnimApi.listClips().toArray(new String[0]);
+    }
+
+    /** Just the clips published to this server, as bare names. */
+    public String[] listLibraryClips() {
+        return net.bullettrain.xenopixelsmod.api.anim.XenoAnimApi.listLibraryClips()
+                .toArray(new String[0]);
+    }
+
+    public boolean isClipAvailable(String clip) {
+        return net.bullettrain.xenopixelsmod.api.anim.XenoAnimApi.isClipAvailable(clip);
+    }
+
     /** Melee swing, using a flight clip when the NPC is on the flying navigator. */
     public boolean playMelee(ICustomNpc npc) {
         NpcKiAim.playMelee(require(npc));
@@ -376,17 +477,16 @@ public final class NpcXenoScriptApi {
      * Selects the animation that will play when CustomNPCs' next real melee attack lands.
      *
      * <p>Full DragonMineZ NPCs require a name from {@link #listAnimations()}. Gecko custom-model
-     * NPCs accept an animation name authored in that model. The selection remains active until a
-     * script replaces or clears it; merely selecting it never causes damage.
+     * NPCs accept an animation name authored in that model. The selection is stored on the NPC's
+     * combat profile (the wand Atk field) until a script replaces or clears it; merely selecting
+     * it never causes damage.
      */
     public boolean setMeleeAnimation(ICustomNpc npc, String animation) {
-        return NpcMeleeDamage.setAnimation(require(npc), animation);
+        return NpcMeleeDamage.persist(require(npc), animation);
     }
 
     public boolean clearMeleeAnimation(ICustomNpc npc) {
-        LivingEntity entity = require(npc);
-        NpcMeleeDamage.clearAnimation(entity.getUUID());
-        return true;
+        return NpcMeleeDamage.persist(require(npc), "");
     }
 
     /**
@@ -432,6 +532,133 @@ public final class NpcXenoScriptApi {
      */
     public boolean clearTailColor(ICustomNpc npc) {
         return mutate(npc, p -> p.appearance.tailUseRaceColor = true);
+    }
+
+    /** Returns the current mutable message while a CustomNPCs {@code chat(event)} script runs. */
+    public String getChatMessage(PlayerEvent.ChatEvent event) {
+        return event == null || event.message == null ? "" : event.message;
+    }
+
+    /**
+     * Replaces the message CustomNPCs writes back after {@code chat(event)}.
+     *
+     * <p>CustomNPCs' chat event is not cancellable, so unlike My NPCs there is no
+     * {@code cancelChat} -- a script suppresses chat by rewriting the message instead.
+     */
+    public boolean setChatMessage(PlayerEvent.ChatEvent event, String message) {
+        if (event == null || message == null || message.length() > 256) return false;
+        event.message = message;
+        return true;
+    }
+
+    /** Moves the NPC to absolute world coordinates without vanish's energy or cooldown cost. */
+    public boolean teleport(ICustomNpc npc, double x, double y, double z) {
+        LivingEntity e = require(npc);
+        if (!Double.isFinite(x) || !Double.isFinite(y) || !Double.isFinite(z)) return false;
+        e.teleportTo(x, y, z);
+        NpcAppearanceFx.sync(e);
+        return true;
+    }
+
+    /** Moves the NPC onto an entity's position, keeping the NPC's current facing. */
+    public boolean teleportToEntity(ICustomNpc npc, IEntity target) {
+        LivingEntity t = living(target);
+        return t != null && teleport(npc, t.getX(), t.getY(), t.getZ());
+    }
+
+    /** Moves the NPC onto a player's position, keeping the NPC's current facing. */
+    public boolean teleportToPlayer(ICustomNpc npc, IPlayer<?> player) {
+        if (player == null) return false;
+        ServerPlayer target = player.getMCEntity();
+        return target != null && teleport(npc, target.getX(), target.getY(), target.getZ());
+    }
+
+    /**
+     * Plays a sound at an explicit world position with vanilla's volume-scaled audible radius.
+     *
+     * <p>My NPCs has no {@code world.playSoundAt} at all, and CustomNPCs' version sends to a fixed
+     * 16-block radius regardless of volume. Both are covered here.
+     */
+    public boolean playSoundAt(ICustomNpc npc, double x, double y, double z,
+                               String sound, float volume, float pitch) {
+        LivingEntity e = require(npc);
+        if (!(e.level() instanceof ServerLevel level)) return false;
+        if (!Double.isFinite(x) || !Double.isFinite(y) || !Double.isFinite(z)) return false;
+        var id = net.minecraft.resources.ResourceLocation.tryParse(safe(sound));
+        if (id == null) return false;
+        var event = net.minecraft.core.registries.BuiltInRegistries.SOUND_EVENT.get(id);
+        if (event == null) return false;
+        level.playSound(null, x, y, z, event, net.minecraft.sounds.SoundSource.HOSTILE,
+                Math.max(0.0f, volume), pitch);
+        return true;
+    }
+
+    /** Plays a sound only for one player, regardless of distance. */
+    public boolean playSoundFor(IPlayer<?> player, String sound, float volume, float pitch) {
+        if (player == null) return false;
+        ServerPlayer target = player.getMCEntity();
+        if (target == null) return false;
+        var id = net.minecraft.resources.ResourceLocation.tryParse(safe(sound));
+        if (id == null) return false;
+        var event = net.minecraft.core.registries.BuiltInRegistries.SOUND_EVENT.get(id);
+        if (event == null) return false;
+        target.playNotifySound(event, net.minecraft.sounds.SoundSource.HOSTILE,
+                Math.max(0.0f, volume), pitch);
+        return true;
+    }
+
+    /** Current appearance mode: {@code OFF}, {@code OVERLAY} or {@code FULL}. */
+    public String getAppearanceMode(ICustomNpc npc) {
+        return NpcCombatProfile.read(require(npc)).appearance.mode.name();
+    }
+
+    /** Sets the appearance mode; an unrecognized name falls back to {@code OFF}. */
+    public boolean setAppearanceMode(ICustomNpc npc, String mode) {
+        NpcDmzAppearance.Mode parsed = NpcDmzAppearance.Mode.parse(safe(mode));
+        return mutateAppearance(npc, p -> p.appearance.mode = parsed);
+    }
+
+    /** Every editable appearance color, as hex strings. */
+    public Map<String, Object> getAppearanceColors(ICustomNpc npc) {
+        NpcDmzAppearance a = NpcCombatProfile.read(require(npc)).appearance;
+        Map<String, Object> out = new LinkedHashMap<>();
+        out.put("bodyColor", a.bodyColor);
+        out.put("bodyColor2", a.bodyColor2);
+        out.put("bodyColor3", a.bodyColor3);
+        out.put("eyeColor1", a.eye1Color);
+        out.put("eyeColor2", a.eye2Color);
+        return out;
+    }
+
+    public boolean setBodyColor(ICustomNpc npc, String hex) { return setAppearanceColor(npc, hex, ColorField.BODY_1); }
+    public boolean setBodyColor2(ICustomNpc npc, String hex) { return setAppearanceColor(npc, hex, ColorField.BODY_2); }
+    public boolean setBodyColor3(ICustomNpc npc, String hex) { return setAppearanceColor(npc, hex, ColorField.BODY_3); }
+    public boolean setEyeColor1(ICustomNpc npc, String hex) { return setAppearanceColor(npc, hex, ColorField.EYE_1); }
+    public boolean setEyeColor2(ICustomNpc npc, String hex) { return setAppearanceColor(npc, hex, ColorField.EYE_2); }
+
+    private enum ColorField { BODY_1, BODY_2, BODY_3, EYE_1, EYE_2 }
+
+    private boolean setAppearanceColor(ICustomNpc npc, String hex, ColorField field) {
+        var parsed = NpcCombatProfile.parseHexColor(hex);
+        if (parsed.isEmpty()) return false;
+        String canonical = NpcCombatProfile.formatHex(parsed.getAsInt());
+        return mutateAppearance(npc, p -> {
+            switch (field) {
+                case BODY_1 -> p.appearance.bodyColor = canonical;
+                case BODY_2 -> p.appearance.bodyColor2 = canonical;
+                case BODY_3 -> p.appearance.bodyColor3 = canonical;
+                case EYE_1 -> p.appearance.eye1Color = canonical;
+                case EYE_2 -> p.appearance.eye2Color = canonical;
+            }
+        });
+    }
+
+    /** Like {@link #mutate}, plus the appearance re-sync so clients pick the change up. */
+    private boolean mutateAppearance(ICustomNpc npc, ProfileEdit edit) {
+        LivingEntity e = require(npc); NpcCombatProfile p = NpcCombatProfile.read(e);
+        edit.apply(p); p.write(e);
+        NpcAppearanceFx.sync(e);
+        return true;
     }
 
     public List<String> listFormGroups(String race) { return NpcFormLookup.groups(race); }

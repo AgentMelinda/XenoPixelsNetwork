@@ -1,11 +1,15 @@
 package net.bullettrain.xenopixelsmod.client.compat.npc.mynpcs.gui;
 
+import net.bullettrain.xenopixelsmod.client.compat.npc.gui.NpcPreviewPanel;
+import net.bullettrain.xenopixelsmod.client.compat.npc.gui.NpcPreviewOwner;
+
 import com.dragonminez.common.config.FormConfig;
 import net.bullettrain.xenopixelsmod.compat.npc.NpcCombatProfile;
 import net.bullettrain.xenopixelsmod.compat.npc.NpcFormLookup;
 import net.bullettrain.xenopixelsmod.network.ModNetwork;
 import net.bullettrain.xenopixelsmod.network.packet.NpcProfileSavePacket;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.world.entity.Entity;
 import espi.mynpcs.client.gui.util.GuiNPCInterface2;
 import espi.mynpcs.entity.EntityNPCInterface;
@@ -15,7 +19,7 @@ import espi.mynpcs.shared.client.gui.components.GuiTextFieldNop;
 import espi.mynpcs.shared.client.gui.listeners.ITextfieldListener;
 
 /** Selects and activates DMZ stack forms (Kaioken and config-added stacks) for an NPC. */
-public final class GuiNpcDmzStack extends GuiNPCInterface2 implements ITextfieldListener {
+public final class GuiNpcDmzStack extends GuiNPCInterface2 implements ITextfieldListener, NpcPreviewOwner {
     private static final int PREV_GROUP = 1;
     private static final int NEXT_GROUP = 2;
     private static final int PREV_FORM = 3;
@@ -27,6 +31,7 @@ public final class GuiNpcDmzStack extends GuiNPCInterface2 implements ITextfield
     private static final int BACK = 9;
 
     private NpcCombatProfile draft;
+    private final NpcPreviewPanel previewPanel = new NpcPreviewPanel(npc, null);
 
     public GuiNpcDmzStack(EntityNPCInterface npc, NpcCombatProfile source) {
         super(npc, GuiNpcDmzMenuButton.MENU_ID);
@@ -62,6 +67,7 @@ public final class GuiNpcDmzStack extends GuiNPCInterface2 implements ITextfield
         addButton(new GuiButtonNop(this, REMOVE_STACK, x + 94, y + 142, 88, 18, "Unstack"));
         addButton(new GuiButtonNop(this, AURA_STYLE, x + 190, y + 142, 104, 18, "Stack Aura..."));
         addButton(new GuiButtonNop(this, BACK, guiLeft + 350, guiTop + 174, 58, 18, "Back"));
+        previewPanel.profile(draft);
     }
 
     private void cycleRow(String label, int previous, int next, int x, int y, String value) {
@@ -69,6 +75,47 @@ public final class GuiNpcDmzStack extends GuiNPCInterface2 implements ITextfield
         addButton(new GuiButtonNop(this, previous, x + 82, y, 22, 18, "<"));
         addLabel(new GuiLabel(previous + 220, clip(value, 27), x + 116, y + 4, 0xFFD36A));
         addButton(new GuiButtonNop(this, next, x + 286, y, 22, 18, ">"));
+    }
+
+    @Override
+    public void render(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
+        super.render(graphics, mouseX, mouseY, partialTick);
+        if (!hasSubGui()) {
+            previewPanel.render(graphics, getFontRenderer(), guiLeft, guiTop, partialTick);
+        }
+    }
+
+    @Override
+    public boolean mouseClicked(double mouseX, double mouseY, int button) {
+        if (!hasSubGui() && previewPanel.mouseClicked(guiLeft, guiTop, mouseX, mouseY, button)) {
+            return true;
+        }
+        return super.mouseClicked(mouseX, mouseY, button);
+    }
+
+    @Override
+    public boolean mouseDragged(double mouseX, double mouseY, int button,
+                                double dragX, double dragY) {
+        if (!hasSubGui() && previewPanel.mouseDragged(mouseX, mouseY, button, dragX, dragY)) {
+            return true;
+        }
+        return super.mouseDragged(mouseX, mouseY, button, dragX, dragY);
+    }
+
+    @Override
+    public boolean mouseReleased(double mouseX, double mouseY, int button) {
+        if (!hasSubGui() && previewPanel.mouseReleased(button)) {
+            return true;
+        }
+        return super.mouseReleased(mouseX, mouseY, button);
+    }
+
+    @Override
+    public boolean mouseScrolled(double mouseX, double mouseY, double scrollX, double scrollY) {
+        if (!hasSubGui() && previewPanel.mouseScrolled(guiLeft, guiTop, mouseX, mouseY, scrollY)) {
+            return true;
+        }
+        return super.mouseScrolled(mouseX, mouseY, scrollX, scrollY);
     }
 
     @Override

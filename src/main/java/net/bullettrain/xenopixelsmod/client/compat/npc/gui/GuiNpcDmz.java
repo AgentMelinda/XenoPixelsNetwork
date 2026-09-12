@@ -3,10 +3,13 @@ package net.bullettrain.xenopixelsmod.client.compat.npc.gui;
 import com.dragonminez.common.config.FormConfig;
 import net.bullettrain.xenopixelsmod.client.compat.npc.NpcAppearanceClient;
 import net.bullettrain.xenopixelsmod.compat.npc.NpcCombatProfile;
+import net.bullettrain.xenopixelsmod.compat.npc.NpcDmzAppearance;
 import net.bullettrain.xenopixelsmod.compat.npc.NpcFormLookup;
 import net.bullettrain.xenopixelsmod.compat.npc.NpcHairBridge;
 import net.bullettrain.xenopixelsmod.network.ModNetwork;
 import net.bullettrain.xenopixelsmod.network.packet.NpcProfileSavePacket;
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.world.entity.Entity;
 import noppes.npcs.client.gui.SubGuiColorSelector;
@@ -25,7 +28,7 @@ import java.util.OptionalInt;
  * CustomNPCs wand editor tab for {@link NpcCombatProfile}. Uses the same
  * {@link GuiNPCInterface2} shell as Display/Stats/AI. Does not invent a CNPC {@code EnumGuiType}.
  */
-public final class GuiNpcDmz extends GuiNPCInterface2 implements ITextfieldListener {
+public final class GuiNpcDmz extends GuiNPCInterface2 implements ITextfieldListener, NpcPreviewOwner {
     private static final int ID_RACE = 1;
     private static final int ID_STR = 2;
     private static final int ID_SKP = 3;
@@ -52,6 +55,7 @@ public final class GuiNpcDmz extends GuiNPCInterface2 implements ITextfieldListe
     private static final int ID_STACK_APPLY = 26;
     private static final int ID_KNOCKABLE = 27;
     private static final int ID_PUNCHABLE = 28;
+    private static final int ID_FORMS = 29;
     private static final int ID_GROUP_PREV = 30;
     private static final int ID_GROUP_NEXT = 31;
     private static final int ID_FORM_PREV = 32;
@@ -60,9 +64,13 @@ public final class GuiNpcDmz extends GuiNPCInterface2 implements ITextfieldListe
     private static final int ID_STACK_GROUP_NEXT = 35;
     private static final int ID_STACK_PREV = 36;
     private static final int ID_STACK_NEXT = 37;
+    private static final int ID_MELEE_ANIM = 38;
+    private static final int ID_MELEE_PREV = 39;
+    private static final int ID_MELEE_NEXT = 40;
     private static final int PICKER_OFFSET = 500;
 
     private int colorTarget = -1;
+    private final NpcPreviewPanel previewPanel = new NpcPreviewPanel(npc, this::openPreviewAuraColor);
 
     public GuiNpcDmz(EntityNPCInterface npc) {
         super(npc, GuiNpcDmzMenuButton.MENU_ID);
@@ -121,7 +129,8 @@ public final class GuiNpcDmz extends GuiNPCInterface2 implements ITextfieldListe
         addLabel(new GuiLabel(121, "Hair", right + 146, y2 + 3, 0xFFFFFF));
         y2 += row;
 
-        addButton(new GuiButtonNop(this, ID_CUSTOMIZE, left, y + 24, 180, 18, "Customize DMZ Appearance"));
+        addButton(new GuiButtonNop(this, ID_CUSTOMIZE, left, y + 24, 118, 18, "Appearance"));
+        addButton(new GuiButtonNop(this, ID_FORMS, left + 122, y + 24, 58, 18, "Forms"));
         addButton(new GuiButtonNop(this, ID_STACKS, left, y + 46, 180, 18, "DMZ Stack Forms"));
 
         int combatY = y + 68;
@@ -129,6 +138,12 @@ public final class GuiNpcDmz extends GuiNPCInterface2 implements ITextfieldListe
         addButton(new GuiButtonYesNo(this, ID_KNOCKABLE, left + 42, combatY, 44, boxH, p.knockable));
         addLabel(new GuiLabel(123, "Damage", left + 94, combatY + 3, 0xFFFFFF));
         addButton(new GuiButtonYesNo(this, ID_PUNCHABLE, left + 140, combatY, 44, boxH, p.punchable));
+        addLabel(new GuiLabel(124, "HP " + net.bullettrain.xenopixelsmod.compat.npc.NpcVitalitySync.displayedMaxHealth(p),
+                left, combatY + 16, 0xFFAAAAAA));
+        addLabel(new GuiLabel(ID_MELEE_ANIM + 200, "Atk", left, combatY + 30, 0xFFFFFF));
+        textBox(ID_MELEE_ANIM, left + 28, combatY + 27, 118, boxH, displayMelee(p.meleeAnimation), 64);
+        addButton(new GuiButtonNop(this, ID_MELEE_PREV, left + 148, combatY + 27, 14, boxH, "<"));
+        addButton(new GuiButtonNop(this, ID_MELEE_NEXT, left + 164, combatY + 27, 14, boxH, ">"));
 
         addLabel(new GuiLabel(ID_HAIR_COLOR + 200, "Color", right, y2 + 3, 0xFFFFFF));
         textBox(ID_HAIR_COLOR, right + 40, y2, 70, boxH, p.hairColor, 32);
@@ -139,6 +154,7 @@ public final class GuiNpcDmz extends GuiNPCInterface2 implements ITextfieldListe
         addLabel(new GuiLabel(ID_HAIR_CODE + 200, "Code", right, y2 + 3, 0xFFFFFF));
         // CNPC GuiTextFieldNop caps at 500 in its constructor — setMaxLength BEFORE setValue.
         textBox(ID_HAIR_CODE, right + 32, y2, 166, boxH, p.hairCode, 262144);
+        previewPanel.profile(p);
     }
 
 
@@ -162,7 +178,13 @@ public final class GuiNpcDmz extends GuiNPCInterface2 implements ITextfieldListe
             p.energy = appearance.energy();
             p.auraColor = appearance.auraColor();
             p.auraScale = appearance.auraScale();
+            NpcDmzAppearance.Mode localMode = p.appearance == null
+                    ? NpcDmzAppearance.Mode.OFF : p.appearance.mode;
             p.appearance = appearance.appearance().copy();
+            if (localMode != NpcDmzAppearance.Mode.OFF
+                    && p.appearance.mode == NpcDmzAppearance.Mode.OFF) {
+                p.appearance.mode = localMode;
+            }
             // applyVisualOptions also overlays the draft selectedFormGroup/Id (and stack
             // equivalents) from the last-received network snapshot -- which cannot possibly
             // reflect a Group/Form cycle click from earlier in this same tick. Without this,
@@ -211,6 +233,13 @@ public final class GuiNpcDmz extends GuiNPCInterface2 implements ITextfieldListe
         return y + row;
     }
 
+    private static String displayMelee(String value) {
+        if (value == null || value.isBlank()) {
+            return "";
+        }
+        return value.startsWith("combat.xeno_") ? value.substring("combat.xeno_".length()) : value;
+    }
+
     private static String clip(String value, int max) {
         if (value == null || value.isBlank()) {
             return "-";
@@ -254,6 +283,53 @@ public final class GuiNpcDmz extends GuiNPCInterface2 implements ITextfieldListe
     }
 
     @Override
+    public void render(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
+        super.render(graphics, mouseX, mouseY, partialTick);
+        if (!hasSubGui()) {
+            previewPanel.render(graphics, getFontRenderer(), guiLeft, guiTop, partialTick);
+        }
+    }
+
+    @Override
+    public boolean mouseClicked(double mouseX, double mouseY, int button) {
+        if (!hasSubGui() && previewPanel.mouseClicked(guiLeft, guiTop, mouseX, mouseY, button)) {
+            return true;
+        }
+        return super.mouseClicked(mouseX, mouseY, button);
+    }
+
+    @Override
+    public boolean mouseDragged(double mouseX, double mouseY, int button,
+                                double dragX, double dragY) {
+        if (!hasSubGui() && previewPanel.mouseDragged(mouseX, mouseY, button, dragX, dragY)) {
+            return true;
+        }
+        return super.mouseDragged(mouseX, mouseY, button, dragX, dragY);
+    }
+
+    @Override
+    public boolean mouseReleased(double mouseX, double mouseY, int button) {
+        if (!hasSubGui() && previewPanel.mouseReleased(button)) {
+            return true;
+        }
+        return super.mouseReleased(mouseX, mouseY, button);
+    }
+
+    @Override
+    public boolean mouseScrolled(double mouseX, double mouseY, double scrollX, double scrollY) {
+        if (!hasSubGui() && previewPanel.mouseScrolled(guiLeft, guiTop, mouseX, mouseY, scrollY)) {
+            return true;
+        }
+        return super.mouseScrolled(mouseX, mouseY, scrollX, scrollY);
+    }
+
+    /** Routes the visualizer's swatch button through the same aura field the Stats tab edits. */
+    private void openPreviewAuraColor(int currentRgb) {
+        colorTarget = ID_AURA_COLOR;
+        setSubGui(new NpcColorPicker(currentRgb));
+    }
+
+    @Override
     public void unFocused(GuiTextFieldNop field) {
         pullFromFields(editorProfile()).write(npc);
         send(NpcProfileSavePacket.Action.SAVE);
@@ -282,6 +358,11 @@ public final class GuiNpcDmz extends GuiNPCInterface2 implements ITextfieldListe
             p.knockable = yes.getBoolean();
         } else if (button.id == ID_PUNCHABLE && button instanceof GuiButtonYesNo yes) {
             p.punchable = yes.getBoolean();
+        } else if (button.id == ID_FORMS) {
+            p.write(npc);
+            send(NpcProfileSavePacket.Action.SAVE);
+            Minecraft.getInstance().setScreen(new GuiNpcDmzForms(npc));
+            return;
         } else if (button.id == ID_GROUP_PREV || button.id == ID_GROUP_NEXT) {
             cycleGroup(p, button.id == ID_GROUP_NEXT ? 1 : -1);
         } else if (button.id == ID_FORM_PREV || button.id == ID_FORM_NEXT) {
@@ -290,6 +371,9 @@ public final class GuiNpcDmz extends GuiNPCInterface2 implements ITextfieldListe
             cycleStackGroup(p, button.id == ID_STACK_GROUP_NEXT ? 1 : -1);
         } else if (button.id == ID_STACK_PREV || button.id == ID_STACK_NEXT) {
             cycleStackForm(p, button.id == ID_STACK_NEXT ? 1 : -1);
+        } else if (button.id == ID_MELEE_PREV || button.id == ID_MELEE_NEXT) {
+            p.meleeAnimation = NpcCombatProfile.stepMeleeAnimation(
+                    p.meleeAnimation, button.id == ID_MELEE_NEXT ? 1 : -1);
         }
         if (button.id == ID_TRANSFORM) {
             NpcFormLookup.grantMastery(p, p.selectedFormGroup, p.selectedFormId);
@@ -300,7 +384,8 @@ public final class GuiNpcDmz extends GuiNPCInterface2 implements ITextfieldListe
         if (button.id == ID_GROUP_PREV || button.id == ID_GROUP_NEXT
                 || button.id == ID_FORM_PREV || button.id == ID_FORM_NEXT
                 || button.id == ID_STACK_GROUP_PREV || button.id == ID_STACK_GROUP_NEXT
-                || button.id == ID_STACK_PREV || button.id == ID_STACK_NEXT) {
+                || button.id == ID_STACK_PREV || button.id == ID_STACK_NEXT
+                || button.id == ID_MELEE_PREV || button.id == ID_MELEE_NEXT) {
             send(NpcProfileSavePacket.Action.SAVE);
             init();
             return;
@@ -435,6 +520,7 @@ public final class GuiNpcDmz extends GuiNPCInterface2 implements ITextfieldListe
         if (p.hairCode != null && !p.hairCode.isBlank()) {
             p.hairEnabled = true;
         }
+        p.meleeAnimation = text(ID_MELEE_ANIM, p.meleeAnimation == null ? "" : p.meleeAnimation).trim();
         String techs = text(ID_TECH, "");
         p.techniques.clear();
         if (!techs.isBlank()) {

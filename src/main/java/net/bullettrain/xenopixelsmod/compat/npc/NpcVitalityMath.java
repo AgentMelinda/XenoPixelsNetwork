@@ -3,22 +3,32 @@ package net.bullettrain.xenopixelsmod.compat.npc;
 /** Pure calculations used by {@link NpcVitalitySync}. */
 final class NpcVitalityMath {
     static final int MAX_HEALTH = 1_048_576;
+    /**
+     * Vanilla {@code Attributes.MAX_HEALTH} base. DragonMineZ adds {@code getHealthBonus()} on
+     * top as an {@code ADD_VALUE} modifier, so a player's displayed HP is {@code 20 + bonus}.
+     */
+    static final int VANILLA_BASE = 20;
 
     private NpcVitalityMath() {}
 
-    static int authoritativeMaxHealth(int vitality, double formMultiplier) {
-        return clampMaxHealth(scaledVitality(vitality, formMultiplier));
+    /**
+     * DMZ {@code StatsData.getHealthBonus}: {@code vit * vitScaling * formVitMult}, then the
+     * vanilla 20 is added the same way {@code StatsEvents.applyHealthBonus} does for players.
+     */
+    static int authoritativeMaxHealth(int vitality, double formMultiplier, double vitScaling) {
+        return clampMaxHealth(VANILLA_BASE + scaledVitality(vitality, formMultiplier, vitScaling));
     }
 
-    static int hybridMaxHealth(int baseHealth, int vitality, double formMultiplier) {
-        return clampMaxHealth(Math.max(1L, baseHealth) + scaledVitality(vitality, formMultiplier));
+    static int hybridMaxHealth(int baseHealth, int vitality, double formMultiplier,
+                               double vitScaling) {
+        return clampMaxHealth(Math.max(1L, baseHealth)
+                + scaledVitality(vitality, formMultiplier, vitScaling));
     }
 
-    private static double scaledVitality(int vitality, double formMultiplier) {
-        double multiplier = Double.isFinite(formMultiplier) && formMultiplier > 0.0
-                ? formMultiplier
-                : 1.0;
-        return Math.max(0L, vitality) * multiplier;
+    private static double scaledVitality(int vitality, double formMultiplier, double vitScaling) {
+        double form = Double.isFinite(formMultiplier) && formMultiplier > 0.0 ? formMultiplier : 1.0;
+        double scale = Double.isFinite(vitScaling) && vitScaling > 0.0 ? vitScaling : 1.0;
+        return Math.max(0L, vitality) * form * scale;
     }
 
     private static int clampMaxHealth(double calculated) {

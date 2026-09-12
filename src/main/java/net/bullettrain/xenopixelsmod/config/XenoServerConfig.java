@@ -2,6 +2,8 @@ package net.bullettrain.xenopixelsmod.config;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
+import com.google.gson.JsonObject;
+import com.google.gson.JsonParser;
 import net.bullettrain.xenopixelsmod.XenoPixelsMod;
 import net.neoforged.fml.loading.FMLPaths;
 
@@ -40,13 +42,14 @@ public final class XenoServerConfig {
      * safe without a bump — but the file is never rewritten, so the keys stay invisible and nobody
      * can discover or tune them. A bump is what gets them written out.
      */
-    private static final int CURRENT_CONFIG_VERSION = 14;
+    private static final int CURRENT_CONFIG_VERSION = 15;
 
     // --- HUD / DMZ ---
     /** When false, clients block DMZ vanilla HUD overlays. */
     public static boolean dmzHudEnabled = false;
     /** Install/patch DMZ form JSON + skill offerings on boot. */
     public static boolean dmzContentBootstrap = true;
+    public static boolean dmzFormProtectedEditOverride = false;
     /** Recover quest-spawned DMZ saga enemies when the stock spawn silently fails. */
     public static boolean dmzSagaSpawnCompat = true;
     /**
@@ -293,6 +296,11 @@ public final class XenoServerConfig {
     public static boolean rushAutoEquipSlots = false;
     /** Zanzoken: the afterimage dodge. */
     public static boolean zanzokenEnabled = true;
+    /**
+     * When true, a press only arms a short window and the ring appears if a living hit lands
+     * inside it. When false, the press builds the ring immediately.
+     */
+    public static boolean zanzokenRequireTiming = true;
     /** Ki spent on the press, whether or not the dodge lands. */
     public static float zanzokenKiCost = 20.0f;
     /** How long a press stays live. Short on purpose: this is a read, not a stance. */
@@ -343,6 +351,44 @@ public final class XenoServerConfig {
      * a single knockback impulse or the damage allowance above is meaningless.
      */
     public static double hakaiMoveInterruptDistance = 3.0;
+    /** Fade the Hakai victim's body as the channel charges. */
+    public static boolean hakaiFadeEnabled = true;
+    /**
+     * Lowest alpha the fade may reach. 0 lets the body disappear entirely; the 0.02 default
+     * leaves a faint silhouette so the target is still readable at full charge.
+     */
+    public static float hakaiFadeMinAlpha = 0.02f;
+    /**
+     * Shape of the fade ramp, as an exponent on the remaining charge fraction.
+     * 1.0 is the linear default; above 1 holds the body opaque longer and fades it late;
+     * below 1 front-loads the fade.
+     */
+    public static float hakaiFadeCurve = 1.0f;
+    /** Ticks the body takes to fade back to solid after an interrupted or cancelled channel. */
+    public static int hakaiFadeRestoreTicks = 40;
+    /** Longest restore ramp: 6000 ticks = 5 minutes at 20 tps. */
+    public static final int HAKAI_FADE_RESTORE_TICKS_MAX = 6000;
+    /**
+     * Wipe versus channel. {@code 2} finishes the head-to-feet ghost at half charge.
+     * Channel length and ki cost are unchanged.
+     */
+    public static float hakaiFadeSpeed = 1.0f;
+    /** Soft height of the dissolve line, as a fraction of body height. */
+    public static float hakaiFadeBand = 0.30f;
+    /** Packed RGB for Hakai dust / silhouette fill. */
+    public static int hakaiFxColor = 0xF233F2;
+    /** Packed RGB for Hakai outline / sparks. */
+    public static int hakaiFxRimColor = 0xFF73FF;
+    /** Master off-switch for Hakai dust / silhouette particles. Body fade and anim stay. */
+    public static boolean hakaiFxEnabled = true;
+    /** Dust / sparks / caster aura from {@code HakaiFx}. */
+    public static boolean hakaiDustEnabled = true;
+    /** Particle silhouette stamp that wipes head-to-feet with the fade. */
+    public static boolean hakaiSilhouetteEnabled = true;
+    /** Packed RGB for the silhouette fill. Dust still uses {@link #hakaiFxColor}. */
+    public static int hakaiSilhouetteColor = 0xF233F2;
+    /** Packed RGB for the glowing outline on a Hakai target. */
+    public static int hakaiGlowColor = 0xFF73FF;
     public static float sparkingBuildPerHit = 6.0f;
     public static float sparkingBuildOnHurt = 3.0f;
     /**
@@ -854,10 +900,13 @@ public final class XenoServerConfig {
             save();
             return;
         }
-        try (Reader reader = Files.newBufferedReader(path())) {
-            Data data = GSON.fromJson(reader, Data.class);
+        try {
+            String raw = Files.readString(path());
+            JsonObject json = JsonParser.parseString(raw).getAsJsonObject();
+            boolean promoted = XenoServerConfigKeys.promoteCanonicalFields(json);
+            Data data = GSON.fromJson(json, Data.class);
             if (data == null) return;
-            boolean migrated = data.configVersion < CURRENT_CONFIG_VERSION;
+            boolean migrated = data.configVersion < CURRENT_CONFIG_VERSION || promoted;
             apply(data);
             if (migrated) {
                 // Guard stays enabled; the client now owns it on a dedicated non-Use key.
@@ -925,7 +974,7 @@ public final class XenoServerConfig {
                 }
                 save();
             }
-        } catch (IOException e) {
+        } catch (IOException | RuntimeException e) {
             XenoPixelsMod.LOGGER.warn("Failed to load server config", e);
         }
     }
@@ -956,6 +1005,7 @@ public final class XenoServerConfig {
         d.configVersion = CURRENT_CONFIG_VERSION;
         d.dmzHudEnabled = dmzHudEnabled;
         d.dmzContentBootstrap = dmzContentBootstrap;
+        d.dmzFormProtectedEditOverride = dmzFormProtectedEditOverride;
         d.dmzSagaSpawnCompat = dmzSagaSpawnCompat;
         d.npcSayEnabled = npcSayEnabled;
         d.npcCommandsIgnoreCommandBlockSetting = npcCommandsIgnoreCommandBlockSetting;
@@ -994,6 +1044,19 @@ public final class XenoServerConfig {
         d.hakaiChannelTicks = hakaiChannelTicks;
         d.hakaiPoiseFraction = hakaiPoiseFraction;
         d.hakaiMoveInterruptDistance = hakaiMoveInterruptDistance;
+        d.hakaiFadeEnabled = hakaiFadeEnabled;
+        d.hakaiFadeMinAlpha = hakaiFadeMinAlpha;
+        d.hakaiFadeCurve = hakaiFadeCurve;
+        d.hakaiFadeRestoreTicks = hakaiFadeRestoreTicks;
+        d.hakaiFadeSpeed = hakaiFadeSpeed;
+        d.hakaiFadeBand = hakaiFadeBand;
+        d.hakaiFxColor = hakaiFxColor;
+        d.hakaiFxRimColor = hakaiFxRimColor;
+        d.hakaiFxEnabled = hakaiFxEnabled;
+        d.hakaiDustEnabled = hakaiDustEnabled;
+        d.hakaiSilhouetteEnabled = hakaiSilhouetteEnabled;
+        d.hakaiSilhouetteColor = hakaiSilhouetteColor;
+        d.hakaiGlowColor = hakaiGlowColor;
         d.bt3TransformImpactEnabled = bt3TransformImpactEnabled;
         d.trainingDummyEnabled = trainingDummyEnabled;
         d.parallelQuestEnabled = parallelQuestEnabled;
@@ -1021,6 +1084,7 @@ public final class XenoServerConfig {
         d.rushAutoUnlock = rushAutoUnlock;
         d.rushAutoEquipSlots = rushAutoEquipSlots;
         d.zanzokenEnabled = zanzokenEnabled;
+        d.zanzokenRequireTiming = zanzokenRequireTiming;
         d.zanzokenKiCost = zanzokenKiCost;
         d.zanzokenWindowTicks = zanzokenWindowTicks;
         d.zanzokenIFramesTicks = zanzokenIFramesTicks;
@@ -1203,6 +1267,7 @@ public final class XenoServerConfig {
         if (d == null) return;
         dmzHudEnabled = d.dmzHudEnabled;
         dmzContentBootstrap = d.dmzContentBootstrap;
+        dmzFormProtectedEditOverride = d.dmzFormProtectedEditOverride;
         dmzSagaSpawnCompat = d.dmzSagaSpawnCompat;
         npcSayEnabled = d.npcSayEnabled;
         npcCommandsIgnoreCommandBlockSetting = d.npcCommandsIgnoreCommandBlockSetting;
@@ -1236,6 +1301,7 @@ public final class XenoServerConfig {
         bt3SparkingEnabled = d.bt3SparkingEnabled;
         hakaiEnabled = d.hakaiEnabled;
         hakaiTargetGlow = d.hakaiTargetGlow;
+        hakaiFadeEnabled = d.hakaiFadeEnabled;
         bt3TransformImpactEnabled = d.bt3TransformImpactEnabled;
         trainingDummyEnabled = d.trainingDummyEnabled;
         parallelQuestEnabled = d.parallelQuestEnabled;
@@ -1270,6 +1336,7 @@ public final class XenoServerConfig {
         rushAutoUnlock = d.rushAutoUnlock;
         rushAutoEquipSlots = d.rushAutoEquipSlots;
         zanzokenEnabled = d.zanzokenEnabled;
+        zanzokenRequireTiming = d.zanzokenRequireTiming == null || d.zanzokenRequireTiming;
         zanzokenKiCost = Math.max(0f, d.zanzokenKiCost);
         zanzokenWindowTicks = Math.max(1, d.zanzokenWindowTicks);
         zanzokenIFramesTicks = Math.max(0, d.zanzokenIFramesTicks);
@@ -1299,6 +1366,21 @@ public final class XenoServerConfig {
                 : Math.max(0f, Math.min(1f, d.hakaiPoiseFraction));
         hakaiMoveInterruptDistance = d.hakaiMoveInterruptDistance == null ? 3.0
                 : Math.max(0.5, Math.min(32.0, d.hakaiMoveInterruptDistance));
+        hakaiFadeMinAlpha = Math.max(0f, Math.min(1f, d.hakaiFadeMinAlpha));
+        hakaiFadeCurve = d.hakaiFadeCurve <= 0f ? 1.0f
+                : Math.max(0.25f, Math.min(4.0f, d.hakaiFadeCurve));
+        hakaiFadeRestoreTicks = Math.max(0, Math.min(HAKAI_FADE_RESTORE_TICKS_MAX, d.hakaiFadeRestoreTicks));
+        hakaiFadeSpeed = d.hakaiFadeSpeed <= 0f ? 1.0f
+                : Math.max(0.25f, Math.min(4.0f, d.hakaiFadeSpeed));
+        hakaiFadeBand = d.hakaiFadeBand <= 0f ? 0.30f
+                : Math.max(0.04f, Math.min(0.5f, d.hakaiFadeBand));
+        hakaiFxColor = d.hakaiFxColor == 0 ? 0xF233F2 : d.hakaiFxColor & 0xFFFFFF;
+        hakaiFxRimColor = d.hakaiFxRimColor == 0 ? 0xFF73FF : d.hakaiFxRimColor & 0xFFFFFF;
+        hakaiFxEnabled = d.hakaiFxEnabled == null || d.hakaiFxEnabled;
+        hakaiDustEnabled = d.hakaiDustEnabled == null || d.hakaiDustEnabled;
+        hakaiSilhouetteEnabled = d.hakaiSilhouetteEnabled == null || d.hakaiSilhouetteEnabled;
+        hakaiSilhouetteColor = d.hakaiSilhouetteColor == 0 ? 0xF233F2 : d.hakaiSilhouetteColor & 0xFFFFFF;
+        hakaiGlowColor = d.hakaiGlowColor == 0 ? 0xFF73FF : d.hakaiGlowColor & 0xFFFFFF;
         sparkingBuildPerHit = Math.max(0f, d.sparkingBuildPerHit);
         sparkingBuildOnHurt = Math.max(0f, d.sparkingBuildOnHurt);
         sparkingDurationTicks = Math.max(20, Math.min(1200, d.sparkingDurationTicks <= 0 ? 200 : d.sparkingDurationTicks));
@@ -1649,6 +1731,26 @@ public final class XenoServerConfig {
         save();
     }
 
+    public static void setHakaiFadeEnabled(boolean enabled) {
+        hakaiFadeEnabled = enabled;
+        save();
+    }
+
+    public static void setHakaiFadeMinAlpha(float minAlpha) {
+        hakaiFadeMinAlpha = Math.max(0f, Math.min(1f, minAlpha));
+        save();
+    }
+
+    public static void setHakaiFadeCurve(float curve) {
+        hakaiFadeCurve = Math.max(0.25f, Math.min(4.0f, curve));
+        save();
+    }
+
+    public static void setHakaiFadeRestoreTicks(int ticks) {
+        hakaiFadeRestoreTicks = Math.max(0, Math.min(HAKAI_FADE_RESTORE_TICKS_MAX, ticks));
+        save();
+    }
+
     /** {@code chaseMaxRange <= 0} means no distance cap. */
     public static boolean chaseRangeUnlimited() {
         return chaseMaxRange <= 0.0;
@@ -1956,6 +2058,22 @@ public final class XenoServerConfig {
         guidanceCameraRate = nonNegativeFinite(d.guidanceCameraRate, 0.38f);
         guidanceHoldGraceTicks = Math.max(0, Math.min(40, d.guidanceHoldGraceTicks));
         guidanceLookRayMin = nonNegativeFinite(d.guidanceLookRayMin, 8.0f);
+        hakaiFadeEnabled = d.hakaiFadeEnabled;
+        hakaiFadeMinAlpha = Math.max(0f, Math.min(1f, d.hakaiFadeMinAlpha));
+        hakaiFadeCurve = d.hakaiFadeCurve <= 0f ? 1.0f
+                : Math.max(0.25f, Math.min(4.0f, d.hakaiFadeCurve));
+        hakaiFadeRestoreTicks = Math.max(0, Math.min(HAKAI_FADE_RESTORE_TICKS_MAX, d.hakaiFadeRestoreTicks));
+        hakaiFadeSpeed = d.hakaiFadeSpeed <= 0f ? 1.0f
+                : Math.max(0.25f, Math.min(4.0f, d.hakaiFadeSpeed));
+        hakaiFadeBand = d.hakaiFadeBand <= 0f ? 0.30f
+                : Math.max(0.04f, Math.min(0.5f, d.hakaiFadeBand));
+        hakaiFxColor = d.hakaiFxColor == 0 ? 0xF233F2 : d.hakaiFxColor & 0xFFFFFF;
+        hakaiFxRimColor = d.hakaiFxRimColor == 0 ? 0xFF73FF : d.hakaiFxRimColor & 0xFFFFFF;
+        hakaiFxEnabled = d.hakaiFxEnabled == null || d.hakaiFxEnabled;
+        hakaiDustEnabled = d.hakaiDustEnabled == null || d.hakaiDustEnabled;
+        hakaiSilhouetteEnabled = d.hakaiSilhouetteEnabled == null || d.hakaiSilhouetteEnabled;
+        hakaiSilhouetteColor = d.hakaiSilhouetteColor == 0 ? 0xF233F2 : d.hakaiSilhouetteColor & 0xFFFFFF;
+        hakaiGlowColor = d.hakaiGlowColor == 0 ? 0xFF73FF : d.hakaiGlowColor & 0xFFFFFF;
         applyGuidanceOverrides();
     }
 
@@ -2178,6 +2296,7 @@ public final class XenoServerConfig {
         public int configVersion;
         public boolean dmzHudEnabled = false;
         public boolean dmzContentBootstrap = true;
+        public boolean dmzFormProtectedEditOverride = false;
         public boolean dmzSagaSpawnCompat = true;
         public boolean npcSayEnabled = true;
         public boolean npcCommandsIgnoreCommandBlockSetting = false;
@@ -2237,6 +2356,7 @@ public final class XenoServerConfig {
         public boolean rushAutoUnlock = true;
         public boolean rushAutoEquipSlots = false;
         public boolean zanzokenEnabled = true;
+        public Boolean zanzokenRequireTiming;
         public float zanzokenKiCost = 20.0f;
         public int zanzokenWindowTicks = 8;
         public int zanzokenIFramesTicks = 10;
@@ -2262,6 +2382,19 @@ public final class XenoServerConfig {
         public int hakaiChannelTicks = 40;
         public Float hakaiPoiseFraction;
         public Double hakaiMoveInterruptDistance;
+        public boolean hakaiFadeEnabled = true;
+        public float hakaiFadeMinAlpha = 0.02f;
+        public float hakaiFadeCurve = 1.0f;
+        public int hakaiFadeRestoreTicks = 40;
+        public float hakaiFadeSpeed = 1.0f;
+        public float hakaiFadeBand = 0.30f;
+        public int hakaiFxColor = 0xF233F2;
+        public int hakaiFxRimColor = 0xFF73FF;
+        public Boolean hakaiFxEnabled;
+        public Boolean hakaiDustEnabled;
+        public Boolean hakaiSilhouetteEnabled;
+        public int hakaiSilhouetteColor = 0xF233F2;
+        public int hakaiGlowColor = 0xFF73FF;
         public float sparkingBuildPerHit = 6.0f;
         public float sparkingBuildOnHurt = 3.0f;
         public int sparkingDurationTicks = 200;

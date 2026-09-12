@@ -1,6 +1,4 @@
 {
-  "parent": "item/generated",
-  "textures": {
-    "layer0": "xenopixelsmod:item/super_soul_finisher"
-  }
+  "parent": "minecraft:item/generated",
+  "textures": { "layer0": "minecraft:item/ender_pearl" }
 }

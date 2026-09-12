@@ -35,5 +35,7 @@ public final class XenoHudRegistration {
         // health bars punch through reads as a rendering glitch instead of a hit.
         event.registerAbove(DMZ_TOP, ResourceLocation.fromNamespaceAndPath(XenoPixelsMod.MOD_ID, "xeno_combat_flash"),
                 new net.bullettrain.xenopixelsmod.client.combat.fx.CombatFlashOverlay()::render);
+        event.registerAbove(DMZ_TOP, ResourceLocation.fromNamespaceAndPath(XenoPixelsMod.MOD_ID, "xeno_plot_hud"),
+                net.bullettrain.xenopixelsmod.client.plot.PlotHudOverlay::render);
     }
 }

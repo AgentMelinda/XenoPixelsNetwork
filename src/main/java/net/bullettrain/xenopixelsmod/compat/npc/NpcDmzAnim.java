@@ -10,21 +10,27 @@ import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.LivingEntity;
 
 /**
- * Plays one of this mod's combat clips on an NPC.
+ * Plays one of this mod's combat clips on an NPC or a player.
  *
- * <p>Only NPCs drawn in Full DragonMineZ appearance can show these: that mode renders through a
- * synthetic player, which is the only thing DragonMineZ's animation system will pose. A humanoid or
- * Gecko custom-model NPC keeps using {@link NpcGeckoAnim}, and this returns false for it rather
- * than pretending to have done something.
+ * <p>NPCs must be drawn in Full DragonMineZ appearance: that mode renders through a synthetic
+ * player, which is the only thing DragonMineZ's animation system will pose. A humanoid or Gecko
+ * custom-model NPC keeps using {@link NpcGeckoAnim}, and this returns false for it rather than
+ * pretending to have done something. A {@link ServerPlayer} already has that rig.
  *
- * <p>Sent to every player who can see the NPC, following the same nearby-players broadcast
+ * <p>Sent to every player who can see the target, following the same nearby-players broadcast
  * {@code NpcAuraFx} uses - these packets are cosmetic and keyed by UUID, so there is nothing to
  * reconcile if one is missed.
  */
 public final class NpcDmzAnim {
 
     /** Matches the tracking distance DragonMineZ's own cosmetics are sent at. */
-    private static final double BROADCAST_RANGE = 96.0;
+    public static final double BROADCAST_RANGE = 96.0;
+
+    /** Play as DragonMineZ KI play-and-hold (scripted studio clips). */
+    public static final int FLAG_HOLD = 1;
+
+    /** Client should call {@code stopKiAnimation} rather than only drop a queued clip. */
+    public static final int FLAG_STOP = 2;
 
     private NpcDmzAnim() {
     }
@@ -37,6 +43,12 @@ public final class NpcDmzAnim {
                 && NpcCombatProfile.read(npc).appearance.mode == NpcDmzAppearance.Mode.FULL);
     }
 
+    /** NPCs in Full mode, clones, or a live server player. */
+    public static boolean canBroadcast(LivingEntity target) {
+        return target != null && target.isAlive()
+                && (target instanceof ServerPlayer || canAnimate(target));
+    }
+
     public static boolean play(LivingEntity npc, String animation) {
         return play(npc, animation, 1.0f);
     }
@@ -46,22 +58,38 @@ public final class NpcDmzAnim {
      *         a script gets an answer either way rather than silence
      */
     public static boolean play(LivingEntity npc, String animation, float speed) {
-        if (!canAnimate(npc) || !(npc.level() instanceof ServerLevel level)) {
-            return false;
-        }
         String name = animation == null ? "" : animation.trim();
         if (!Bt3AnimationCatalog.isPlayable(name)) {
             return false;
         }
+        return broadcast(npc, name, speed, 0);
+    }
+
+    /**
+     * Cancels a queued clip and stops a KI-hold that is already on the controller.
+     *
+     * @return false when this target cannot show these clips at all
+     */
+    public static boolean stop(LivingEntity npc) {
+        return broadcast(npc, net.bullettrain.xenopixelsmod.client.compat.npc.NpcAnimationClient.STOP,
+                1.0f, FLAG_STOP);
+    }
+
+    /**
+     * Sends one clip packet to every player in range. {@code flags} is {@link #FLAG_HOLD},
+     * {@link #FLAG_STOP}, or zero for the short melee path combo punches still use.
+     */
+    public static boolean broadcast(LivingEntity target, String animation, float speed, int flags) {
+        if (!canBroadcast(target) || !(target.level() instanceof ServerLevel level)) {
+            return false;
+        }
         NpcAnimationPacket packet = new NpcAnimationPacket(
-                npc.getUUID(), name, Math.max(0.15f, Math.min(4.0f, speed)));
+                target.getUUID(), animation, Math.max(0.15f, Math.min(4.0f, speed)), flags);
         for (ServerPlayer viewer : level.players()) {
-            if (viewer.distanceToSqr(npc) <= BROADCAST_RANGE * BROADCAST_RANGE) {
+            if (viewer.distanceToSqr(target) <= BROADCAST_RANGE * BROADCAST_RANGE) {
                 ModNetwork.sendToPlayer(viewer, packet);
             }
         }
-        // Nobody in range is still a success: the move happened, there was simply no one to show
-        // it to. Only an unplayable name or an NPC that cannot show these clips is a failure.
         return true;
     }
 

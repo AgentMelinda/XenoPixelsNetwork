@@ -61,6 +61,7 @@ public final class XenoHotbarConfig {
     public static final boolean[] partBold = new boolean[Part.COUNT];
     /** Font per element, so a readout can use a fixed-width face while its label stays default. */
     public static final String[] partFont = new String[Part.COUNT];
+    public static final boolean[] partHidden = new boolean[Part.COUNT];
 
     /** The independently positionable pieces of a ki menu row and its header. */
     public static final class Part {
@@ -180,6 +181,7 @@ public final class XenoHotbarConfig {
         partBold[part] = false;
         partColor[part] = DEFAULT_PART_COLOR[part];
         partFont[part] = DEFAULT_FONT;
+        partHidden[part] = false;
     }
 
     public static void resetParts() {
@@ -188,6 +190,7 @@ public final class XenoHotbarConfig {
         java.util.Arrays.fill(partY, 0);
         java.util.Arrays.fill(partScale, 1.0f);
         java.util.Arrays.fill(partBold, false);
+        java.util.Arrays.fill(partHidden, false);
         java.util.Arrays.fill(partFont, DEFAULT_FONT);
         System.arraycopy(DEFAULT_PART_COLOR, 0, partColor, 0, Part.COUNT);
     }
@@ -225,6 +228,7 @@ public final class XenoHotbarConfig {
                 // Pre-v1 stored the old default for every part; only untouched ones move over, so a
                 // deliberately chosen font survives.
                 if (fromVersion < 1 && LEGACY_DEFAULT_FONT_V0.equals(stored)) stored = DEFAULT_FONT;
+                partHidden[i] = data.partHidden != null && i < data.partHidden.length && data.partHidden[i];
                 partFont[i] = stored;
             }
             if (migrated) save();
@@ -250,6 +254,7 @@ public final class XenoHotbarConfig {
         data.partColor = partColor.clone();
         data.partBold = partBold.clone();
         data.partFont = partFont.clone();
+        data.partHidden = partHidden.clone();
         try {
             Files.createDirectories(PATH.getParent());
             try (Writer writer = Files.newBufferedWriter(PATH)) {
@@ -291,5 +296,6 @@ public final class XenoHotbarConfig {
         int[] partColor = new int[Part.COUNT];
         boolean[] partBold = new boolean[Part.COUNT];
         String[] partFont = new String[Part.COUNT];
+        boolean[] partHidden = new boolean[Part.COUNT];
     }
 }

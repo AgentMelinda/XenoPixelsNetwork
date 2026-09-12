@@ -11,7 +11,6 @@ import net.bullettrain.xenopixelsmod.capability.XenoPlayerData;
 import net.bullettrain.xenopixelsmod.config.XenoServerConfig;
 import net.bullettrain.xenopixelsmod.features.progression.CombatSkills;
 import net.bullettrain.xenopixelsmod.features.progression.ParallelQuests;
-import net.bullettrain.xenopixelsmod.features.progression.ProgressionEvents;
 import net.bullettrain.xenopixelsmod.features.progression.SuperSoulCatalog;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
@@ -19,9 +18,6 @@ import net.minecraft.commands.SharedSuggestionProvider;
 import net.minecraft.commands.arguments.EntityArgument;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.world.entity.EntityType;
-import net.minecraft.world.entity.decoration.ArmorStand;
-import net.minecraft.world.level.Level;
 import net.neoforged.neoforge.event.RegisterCommandsEvent;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.Mod;
@@ -90,9 +86,19 @@ public final class ProgressionCommands {
                         .executes(ctx -> soulClear(ctx.getSource())))
                 .then(Commands.literal("status")
                         .executes(ctx -> soulStatus(ctx.getSource())))
+                .then(Commands.literal("give")
+                        .then(Commands.argument("id", StringArgumentType.word())
+                                .suggests(SOUL_IDS)
+                                .executes(ctx -> soulGive(ctx.getSource(),
+                                        StringArgumentType.getString(ctx, "id"),
+                                        ctx.getSource().getPlayer()))
+                                .then(Commands.argument("player", EntityArgument.player())
+                                        .executes(ctx -> soulGive(ctx.getSource(),
+                                                StringArgumentType.getString(ctx, "id"),
+                                                EntityArgument.getPlayer(ctx, "player"))))))
                 .executes(ctx -> {
                     ctx.getSource().sendSuccess(() -> Component.literal(
-                            "Usage: /xenosoul <list|equip <id>|clear|status>"), false);
+                            "Usage: /xenosoul <list|equip <id>|give <id> [player]|clear|status>"), false);
                     return 1;
                 }));
 
@@ -172,25 +178,13 @@ public final class ProgressionCommands {
             src.sendFailure(Component.literal("Players only"));
             return 0;
         }
-        Level level = p.level();
-        ArmorStand stand = EntityType.ARMOR_STAND.create(level);
-        if (stand == null) {
-            src.sendFailure(Component.literal("Failed to create dummy"));
+        String err = net.bullettrain.xenopixelsmod.features.progression.TrainingDummySpawner.spawn(p);
+        if (err != null) {
+            src.sendFailure(Component.literal(err));
             return 0;
         }
-        stand.moveTo(p.getX() + p.getLookAngle().x * 2.5, p.getY(), p.getZ() + p.getLookAngle().z * 2.5,
-                p.getYRot(), 0);
-        stand.setInvulnerable(false);
-        stand.setInvisible(false);
-        stand.setNoGravity(false);
-        stand.setShowArms(true);
-        stand.setNoBasePlate(false);
-        stand.setHealth(stand.getMaxHealth());
-        ProgressionEvents.tagAsDummy(stand);
-        level.addFreshEntity(stand);
-        XenoCapabilities.get(p).ifPresent(XenoPlayerData::resetDummySession);
         src.sendSuccess(() -> Component.literal(
-                "§eTraining Dummy spawned. Punch it — session damage shows on action bar. /xenotrain reset"), true);
+                "§eTraining Dummy (your ghost clone) spawned. Punch it — session damage on the action bar. /xenotrain dismiss"), true);
         return 1;
     }
 
@@ -218,8 +212,8 @@ public final class ProgressionCommands {
     private static int dismissShadow(CommandSourceStack src) {
         ServerPlayer p = src.getPlayer();
         if (p == null) return 0;
-        int n = net.bullettrain.xenopixelsmod.features.progression.ShadowDummyTraining.dismissNearby(p, 64);
-        src.sendSuccess(() -> Component.literal("§7Dismissed " + n + " training shadow dummy(ies)"), false);
+        int n = net.bullettrain.xenopixelsmod.features.progression.TrainingDummySpawner.dismissOwn(p, 64);
+        src.sendSuccess(() -> Component.literal("§7Dismissed " + n + " training dummy(ies)"), false);
         return 1;
     }
 
@@ -279,6 +273,36 @@ public final class ProgressionCommands {
             src.sendSuccess(() -> Component.literal("§7Super Soul cleared"), true);
             net.bullettrain.xenopixelsmod.effect.XenoStatusEffectSync.sync(p);
         });
+        return 1;
+    }
+
+    private static int soulGive(CommandSourceStack src, String id, ServerPlayer target) {
+        if (target == null) {
+            src.sendFailure(Component.literal("Players only"));
+            return 0;
+        }
+        SuperSoulCatalog.SoulDef def = SuperSoulCatalog.get(id);
+        if (def == null) {
+            src.sendFailure(Component.literal("Unknown soul. /xenosoul list"));
+            return 0;
+        }
+        net.minecraft.world.item.Item item = switch (def.id()) {
+            case "warrior" -> net.bullettrain.xenopixelsmod.item.ModsItems.SUPER_SOUL_WARRIOR.get();
+            case "iron" -> net.bullettrain.xenopixelsmod.item.ModsItems.SUPER_SOUL_IRON.get();
+            case "spark" -> net.bullettrain.xenopixelsmod.item.ModsItems.SUPER_SOUL_SPARK.get();
+            case "finisher" -> net.bullettrain.xenopixelsmod.item.ModsItems.SUPER_SOUL_FINISHER.get();
+            case "balanced" -> net.bullettrain.xenopixelsmod.item.ModsItems.SUPER_SOUL_BALANCED.get();
+            default -> null;
+        };
+        if (item == null) {
+            src.sendFailure(Component.literal("Soul item is not registered"));
+            return 0;
+        }
+        if (!target.addItem(new net.minecraft.world.item.ItemStack(item))) {
+            target.drop(new net.minecraft.world.item.ItemStack(item), false);
+        }
+        src.sendSuccess(() -> Component.literal("Gave Super Soul: " + def.title()
+                + " to " + target.getGameProfile().getName()), true);
         return 1;
     }
 
@@ -355,6 +379,17 @@ public final class ProgressionCommands {
             sb.append("  §b").append(q.id()).append(" §f").append(q.title())
                     .append(" §7— ").append(q.desc()).append('\n');
         }
+        ServerPlayer player = src.getPlayer();
+        if (player != null) {
+            var npc = net.bullettrain.xenopixelsmod.compat.npc.NpcCnpcQuests.active(player);
+            if (!npc.isEmpty()) {
+                sb.append("CustomNPCs active:\n");
+                for (var e : npc) {
+                    sb.append("  §d").append(net.bullettrain.xenopixelsmod.compat.npc.NpcCnpcQuests.formatListLine(e))
+                            .append('\n');
+                }
+            }
+        }
         src.sendSuccess(() -> Component.literal(sb.toString().trim()), false);
         return 1;
     }
@@ -377,7 +412,13 @@ public final class ProgressionCommands {
     private static int questStatus(CommandSourceStack src) {
         ServerPlayer p = src.getPlayer();
         if (p == null) return 0;
-        src.sendSuccess(() -> Component.literal(ParallelQuests.status(p)), false);
+        StringBuilder sb = new StringBuilder(ParallelQuests.status(p));
+        var npc = net.bullettrain.xenopixelsmod.compat.npc.NpcCnpcQuests.active(p);
+        for (var e : npc) {
+            sb.append('\n').append("CNPC: ").append(
+                    net.bullettrain.xenopixelsmod.compat.npc.NpcCnpcQuests.formatListLine(e));
+        }
+        src.sendSuccess(() -> Component.literal(sb.toString()), false);
         return 1;
     }
 

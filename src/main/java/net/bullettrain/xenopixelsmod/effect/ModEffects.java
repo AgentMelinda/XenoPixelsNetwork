@@ -43,6 +43,13 @@ public final class ModEffects {
     public static final DeferredHolder<MobEffect, MobEffect> SPARKING_READY = EFFECTS.register(
             "sparking_ready", () -> new XenoMobEffect(MobEffectCategory.BENEFICIAL, 0xFFEE88));
 
+    /**
+     * Hidden Hakai dissolve. Amplifier 0..255 is erase progress; vanilla syncs it to tracker
+     * clients and the victim. No icon, no particles — the body fade is the readout.
+     */
+    public static final DeferredHolder<MobEffect, MobEffect> HAKAI_DISSOLVE = EFFECTS.register(
+            "hakai_dissolve", () -> new XenoMobEffect(MobEffectCategory.HARMFUL, 0xB266FF));
+
     private ModEffects() {}
 
     public static void register(IEventBus bus) {

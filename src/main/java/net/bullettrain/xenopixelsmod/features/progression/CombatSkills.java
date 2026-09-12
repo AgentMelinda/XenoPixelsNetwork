@@ -21,6 +21,10 @@ public final class CombatSkills {
     public static final String GUIDE = "guide";       // lock-on homing range / turn
     /** Gates whether Hakai can be used at all -- not a stacking buff like the others. */
     public static final String HAKAI = "hakai";
+    /** Gates whether Zanzoken can be used at all -- a one-shot unlock, like {@link #HAKAI}. */
+    public static final String ZANZOKEN = "zanzoken";
+    /** Gates whether Shi Shin No Ken (Multiform) can be used at all -- a one-shot unlock. */
+    public static final String MULTIFORM = "multiform";
 
     public static final Map<String, SkillDef> DEFS = new LinkedHashMap<>();
 
@@ -37,6 +41,10 @@ public final class CombatSkills {
                 "Hold Left Alt (or Mouse 5) to home lock-on ki, barrages, and surged beams", 1, 3));
         DEFS.put(HAKAI, new SkillDef(HAKAI, "Hakai",
                 "Unlocks Hakai (hold J, or /xenohakai use)", 3, 1));
+        DEFS.put(ZANZOKEN, new SkillDef(ZANZOKEN, "Zanzoken",
+                "Unlocks Zanzoken (read a swing to dodge, leaving afterimages)", 3, 1));
+        DEFS.put(MULTIFORM, new SkillDef(MULTIFORM, "Shi Shin No Ken",
+                "Unlocks Shi Shin No Ken (divide into four bodies)", 3, 1));
     }
 
     private CombatSkills() {}
@@ -71,6 +79,14 @@ public final class CombatSkills {
         return level(player, HAKAI) >= 1;
     }
 
+    public static boolean zanzokenUnlocked(ServerPlayer player) {
+        return level(player, ZANZOKEN) >= 1;
+    }
+
+    public static boolean multiFormUnlocked(ServerPlayer player) {
+        return level(player, MULTIFORM) >= 1;
+    }
+
     /**
      * Progress toward the next Wave Mastery level, awarded for sustaining a beam.
      *
@@ -98,7 +114,7 @@ public final class CombatSkills {
     public static String tryUnlock(ServerPlayer player, String skillId) {
         SkillDef def = DEFS.get(skillId == null ? "" : skillId.toLowerCase());
         if (def == null) {
-            return "Unknown skill. Try: power, guard, sparking, ultimate, beam, barrage, guide, hakai";
+            return "Unknown skill. Try: power, guard, sparking, ultimate, beam, barrage, guide, hakai, zanzoken, multiform";
         }
         XenoPlayerData data = XenoCapabilities.get(player).orElse(null);
         if (data == null) return "No player data";
@@ -112,6 +128,9 @@ public final class CombatSkills {
         }
         data.setSkillPoints(data.getSkillPoints() - cost);
         data.setSkillLevel(def.id, cur + 1);
+        // A slot technique is granted to DMZ by the skill system, so a fresh unlock has to be
+        // pushed through now or it would only appear after a relog.
+        net.bullettrain.xenopixelsmod.combat.technique.XenoSlotTechniques.unlock(player);
         return null;
     }
 }

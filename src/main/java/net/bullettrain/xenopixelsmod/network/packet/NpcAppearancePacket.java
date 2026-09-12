@@ -11,6 +11,8 @@ import java.util.function.Supplier;
 /** Server-to-client form identity + stats + DMZ hair used by the CustomNPC appearance bridge. */
 public final class NpcAppearancePacket {
     private static final int HAIR_CHUNK = NpcCombatProfile.HAIR_CODE_CHUNK;
+    /** Cap on decoded hair chunks; the writer never emits more than this, so a larger count is forged. */
+    private static final int MAX_HAIR_CHUNKS = 64;
     private final UUID entityUuid;
     private final String race;
     private final String formGroup;
@@ -156,7 +158,7 @@ public final class NpcAppearancePacket {
     }
 
     private static String readChunks(FriendlyByteBuf buf) {
-        int n = buf.readVarInt();
+        int n = Math.min(MAX_HAIR_CHUNKS, buf.readVarInt());
         if (n <= 0) {
             return "";
         }

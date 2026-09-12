@@ -243,11 +243,20 @@ public final class BallisticPlanOptimizer {
         }
         if (settings.autoEnabled()
                 && settings.mode() == BallisticFlightPlan.FlightMode.GUIDED_BOOST_GLIDE) {
-            int generated = 0;
-            // Twelve world-space corridor nodes are enough for short terrain following and
-            // remain constant-cost on 300 km routes. Probing never loads a chunk.
-            for (int i = 1; i <= 12; i++) {
-                double f = i / 13.0;
+            int reservedAfterAuto = (settings.phaseLayerEnabled() ? 2 : 0) + 1;
+            int budget = Math.max(0, BallisticFlightPlan.MAX_CONTROLLER_WAYPOINTS
+                    - points.size() - reservedAfterAuto);
+            double horizontalRange = Math.hypot(target.x - launch.x, target.z - launch.z);
+            double spacing = switch (settings.profile()) {
+                case TERRAIN_FOLLOWING -> 1_000.0;
+                case DIRECT, LOW_ARC -> 4_000.0;
+                case TOP_ATTACK -> 2_000.0;
+                default -> 2_500.0;
+            };
+            int desired = Math.max(2, (int) Math.ceil(horizontalRange / spacing) - 1);
+            int generated = Math.min(budget, desired);
+            for (int i = 1; i <= generated; i++) {
+                double f = i / (double) (generated + 1);
                 double y = profileCorridorY(settings, launch.y, target.y, apexY, f);
                 if (settings.altitudeLayerEnabled()) y = Math.max(y, settings.minimumClearanceY());
                 if (terrainProbe != null) {
@@ -257,9 +266,12 @@ public final class BallisticPlanOptimizer {
                     if (Double.isFinite(surface)) y = Math.max(y, surface + 48.0);
                 }
                 points.add(pointOnTrack(launch, target, f, y));
-                generated++;
             }
             if (generated > 0) warnings.add("AUTO generated " + generated + " world-space corridor waypoints");
+            if (generated < desired) {
+                warnings.add("AUTO corridor resolution limited to " + generated
+                        + " nodes by the controller waypoint budget");
+            }
         }
         if (settings.phaseLayerEnabled()) {
             double cruiseY = profileCorridorY(settings, launch.y, target.y, apexY,
@@ -275,8 +287,26 @@ public final class BallisticPlanOptimizer {
         if (settings.autoEnabled()) {
             points.sort(Comparator.comparingDouble(p -> trackFraction(launch, target, p)));
         }
-        points.add(target);
-        return List.copyOf(points);
+        List<Vec3> normalized = new ArrayList<>(Math.min(
+                BallisticFlightPlan.MAX_CONTROLLER_WAYPOINTS, points.size() + 1));
+        for (Vec3 point : points) {
+            if (point == null || !finite(point)) continue;
+            if (!normalized.isEmpty() && normalized.get(normalized.size() - 1).distanceToSqr(point) < 1.0e-4) {
+                continue;
+            }
+            if (normalized.size() >= BallisticFlightPlan.MAX_CONTROLLER_WAYPOINTS - 1) break;
+            normalized.add(point);
+        }
+        if (normalized.isEmpty() || normalized.get(normalized.size() - 1).distanceToSqr(target) >= 1.0e-4) {
+            normalized.add(target);
+        } else {
+            normalized.set(normalized.size() - 1, target);
+        }
+        return List.copyOf(normalized);
+    }
+
+    private static boolean finite(Vec3 point) {
+        return Double.isFinite(point.x) && Double.isFinite(point.y) && Double.isFinite(point.z);
     }
 
     private static double plannedCorridorY(double launchY, double targetY, double apexY,

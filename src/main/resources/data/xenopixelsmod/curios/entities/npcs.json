@@ -1,0 +1,25 @@
+{
+  "replace": false,
+  "entities": [
+    "customnpcs:customnpc",
+    "customnpcs:customnpc64x32",
+    "customnpcs:customnpcalex",
+    "customnpcs:customnpcclassic",
+    "mynpcs:customnpc",
+    "mynpcs:customnpc64x32",
+    "mynpcs:customnpcalex",
+    "mynpcs:customnpcclassic"
+  ],
+  "slots": [
+    "curio",
+    "head",
+    "necklace",
+    "back",
+    "body",
+    "bracelet",
+    "hands",
+    "ring",
+    "belt",
+    "charm"
+  ]
+}

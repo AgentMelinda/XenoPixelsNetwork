@@ -117,8 +117,21 @@ public class ModNetwork {
      * tracking a player, so the Sparking aura needs its own signal to be visible on anyone but the
      * local player.
      * <p>62: appended {@code SparkingChargePacket} for the owner HUD's staged Max Power charge.
+     * <p>64: appended {@code NpcProfileSaveResultPacket}, the server's answer to a wand
+     * {@code NpcProfileSavePacket}. Every guard in that packet returned silently, so a save
+     * rejected for permission, range, or a stale entity id looked exactly like one that saved.
+     * <p>65: appended {@code HakaiFadePacket} (entity dissolve amplifier). Mob effects are not
+     * a reliable tracker-client signal — same lesson as protocol 61 for Sparking.
+     * {@code SyncServerConfigPacket} appended the four {@code hakaiFade*} knobs.
+     * <p>66: {@code SyncServerConfigPacket} appended {@code hakaiFadeSpeed}, {@code hakaiFadeBand},
+     * {@code hakaiFxColor}, and {@code hakaiFxRimColor}. Restore-tick ceiling is still a VarInt;
+     * only the allowed range moved.
+     * <p>67: {@code SyncServerConfigPacket} appended {@code hakaiFxEnabled}, {@code hakaiDustEnabled},
+     * {@code hakaiSilhouetteEnabled}, {@code hakaiSilhouetteColor}, and {@code hakaiGlowColor}.
+     * <p>68: {@code NpcAnimationPacket} appended a flags byte (KI play-and-hold and a real
+     * controller stop) so a scripted studio clip can run for a duration and then idle.
      */
-    private static final String PROTOCOL = "63";
+    private static final String PROTOCOL = "68";
 
     public static final SimpleChannel CHANNEL = NetworkRegistry.ChannelBuilder
             .named(ResourceLocation.fromNamespaceAndPath(XenoPixelsMod.MOD_ID, "main"))
@@ -393,6 +406,22 @@ public class ModNetwork {
                 .decoder(SparkingChargePacket::new)
                 .encoder(SparkingChargePacket::encode)
                 .consumerMainThread(SparkingChargePacket::handle)
+                .add();
+
+        CHANNEL.messageBuilder(
+                        net.bullettrain.xenopixelsmod.network.packet.NpcProfileSaveResultPacket.class, id++,
+                        NetworkDirection.PLAY_TO_CLIENT)
+                .decoder(net.bullettrain.xenopixelsmod.network.packet.NpcProfileSaveResultPacket::new)
+                .encoder(net.bullettrain.xenopixelsmod.network.packet.NpcProfileSaveResultPacket::encode)
+                .consumerMainThread(net.bullettrain.xenopixelsmod.network.packet.NpcProfileSaveResultPacket::handle)
+                .add();
+
+        CHANNEL.messageBuilder(
+                        net.bullettrain.xenopixelsmod.network.packet.HakaiFadePacket.class, id++,
+                        NetworkDirection.PLAY_TO_CLIENT)
+                .decoder(net.bullettrain.xenopixelsmod.network.packet.HakaiFadePacket::new)
+                .encoder(net.bullettrain.xenopixelsmod.network.packet.HakaiFadePacket::encode)
+                .consumerMainThread(net.bullettrain.xenopixelsmod.network.packet.HakaiFadePacket::handle)
                 .add();
 
         XenoPixelsMod.LOGGER.info("ModNetwork: registered {} packet types (protocol {})", id, PROTOCOL);

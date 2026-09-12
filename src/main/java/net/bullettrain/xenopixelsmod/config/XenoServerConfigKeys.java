@@ -95,6 +95,59 @@ public final class XenoServerConfigKeys {
                 () -> (float) XenoServerConfig.hakaiMoveInterruptDistance,
                 v -> XenoServerConfig.hakaiMoveInterruptDistance = Math.max(0.5, Math.min(32.0, v)),
                 "hakaimove");
+        bool("hakaiFadeEnabled", "Fade the Hakai victim's body as the channel charges",
+                () -> XenoServerConfig.hakaiFadeEnabled,
+                v -> XenoServerConfig.hakaiFadeEnabled = v,
+                "hakaifade");
+        flt("hakaiFadeMinAlpha", "Lowest alpha a fading Hakai body may reach (0 = invisible)",
+                () -> XenoServerConfig.hakaiFadeMinAlpha,
+                v -> XenoServerConfig.hakaiFadeMinAlpha = Math.max(0f, Math.min(1f, v)),
+                "hakaifademin");
+        flt("hakaiFadeCurve", "Hakai fade ramp exponent (1 = linear, >1 fades late, <1 fades early)",
+                () -> XenoServerConfig.hakaiFadeCurve,
+                v -> XenoServerConfig.hakaiFadeCurve = Math.max(0.25f, Math.min(4.0f, v)),
+                "hakaifadecurve");
+        integer("hakaiFadeRestoreTicks", "Ticks a Hakai body takes to fade back to solid",
+                () -> XenoServerConfig.hakaiFadeRestoreTicks,
+                v -> XenoServerConfig.hakaiFadeRestoreTicks = Math.max(0,
+                        Math.min(XenoServerConfig.HAKAI_FADE_RESTORE_TICKS_MAX, v)),
+                "hakaifaderestore");
+        flt("hakaiFadeSpeed", "Hakai wipe versus channel (2 = ghost gone at half charge)",
+                () -> XenoServerConfig.hakaiFadeSpeed,
+                v -> XenoServerConfig.hakaiFadeSpeed = Math.max(0.25f, Math.min(4.0f, v)),
+                "hakaifadespeed");
+        flt("hakaiFadeBand", "Soft height of the Hakai dissolve line (fraction of body)",
+                () -> XenoServerConfig.hakaiFadeBand,
+                v -> XenoServerConfig.hakaiFadeBand = Math.max(0.04f, Math.min(0.5f, v)),
+                "hakaifadeband");
+        rgb("hakaiFxColor", "Packed RGB for Hakai dust and silhouette fill",
+                () -> XenoServerConfig.hakaiFxColor,
+                v -> XenoServerConfig.hakaiFxColor = v & 0xFFFFFF,
+                "hakaicolor");
+        rgb("hakaiFxRimColor", "Packed RGB for Hakai outline and sparks",
+                () -> XenoServerConfig.hakaiFxRimColor,
+                v -> XenoServerConfig.hakaiFxRimColor = v & 0xFFFFFF,
+                "hakairim");
+        bool("hakaiFxEnabled", "Hakai dust and silhouette particles",
+                () -> XenoServerConfig.hakaiFxEnabled,
+                v -> XenoServerConfig.hakaiFxEnabled = v,
+                "hakaifx");
+        bool("hakaiDustEnabled", "Hakai dust / sparks / caster aura",
+                () -> XenoServerConfig.hakaiDustEnabled,
+                v -> XenoServerConfig.hakaiDustEnabled = v,
+                "hakaidust");
+        bool("hakaiSilhouetteEnabled", "Hakai particle silhouette fill",
+                () -> XenoServerConfig.hakaiSilhouetteEnabled,
+                v -> XenoServerConfig.hakaiSilhouetteEnabled = v,
+                "hakaisilhouette");
+        rgb("hakaiSilhouetteColor", "Packed RGB for Hakai silhouette fill",
+                () -> XenoServerConfig.hakaiSilhouetteColor,
+                v -> XenoServerConfig.hakaiSilhouetteColor = v & 0xFFFFFF,
+                "hakaisilhouettecolor");
+        rgb("hakaiGlowColor", "Packed RGB for the Hakai target outline",
+                () -> XenoServerConfig.hakaiGlowColor,
+                v -> XenoServerConfig.hakaiGlowColor = v & 0xFFFFFF,
+                "hakaiglowcolor");
         bool("bt3ChaseDashEnabled", "Chase dash",
                 () -> XenoServerConfig.bt3ChaseDashEnabled,
                 v -> XenoServerConfig.bt3ChaseDashEnabled = v,
@@ -263,6 +316,11 @@ public final class XenoServerConfigKeys {
                 () -> XenoServerConfig.zanzokenEnabled,
                 v -> XenoServerConfig.zanzokenEnabled = v,
                 "zanzoken");
+        bool("zanzokenRequireTiming",
+                "Zanzoken only fires if a punch lands during the press window. Off: ring on press.",
+                () -> XenoServerConfig.zanzokenRequireTiming,
+                v -> XenoServerConfig.zanzokenRequireTiming = v,
+                "zanzokentiming", "zanzokenwindowrequired");
         flt("zanzokenKiCost", "Ki spent per Zanzoken press",
                 () -> XenoServerConfig.zanzokenKiCost,
                 v -> XenoServerConfig.zanzokenKiCost = Math.max(0f, v),
@@ -395,6 +453,11 @@ public final class XenoServerConfigKeys {
                 () -> XenoServerConfig.dmzContentBootstrap,
                 v -> XenoServerConfig.dmzContentBootstrap = v,
                 "bootstrap");
+        bool("dmzFormProtectedEditOverride",
+                "DANGER: allow validated Form Studio writes to native/bundled DMZ groups",
+                () -> XenoServerConfig.dmzFormProtectedEditOverride,
+                v -> XenoServerConfig.dmzFormProtectedEditOverride = v,
+                "formeditoverride", "dmzformoverride");
         bool("trainingDummyEnabled", "Training dummy",
                 () -> XenoServerConfig.trainingDummyEnabled,
                 v -> XenoServerConfig.trainingDummyEnabled = v,
@@ -634,7 +697,7 @@ public final class XenoServerConfigKeys {
                     key.applyRaw.accept(parsed ? "true" : "false");
                 }
                 case INT -> {
-                    int parsed = Integer.parseInt(value);
+                    int parsed = parseIntOrHex(value);
                     key.applyRaw.accept(Integer.toString(parsed));
                 }
                 case FLOAT -> {
@@ -662,16 +725,49 @@ public final class XenoServerConfigKeys {
 
     public static List<String> suggest(String prefix) {
         String p = prefix == null ? "" : prefix.toLowerCase(Locale.ROOT);
-        List<String> out = new ArrayList<>();
-        for (String alias : ALIAS.keySet()) {
-            if (alias.startsWith(p)) out.add(alias);
+        java.util.LinkedHashSet<String> unique = new java.util.LinkedHashSet<>();
+        for (Key key : BY_ID.values()) {
+            if (key.id.toLowerCase(Locale.ROOT).startsWith(p)) unique.add(key.id);
         }
-        for (String id : BY_ID.keySet()) {
-            String lower = id.toLowerCase(Locale.ROOT);
-            if (lower.startsWith(p) && !out.contains(lower)) out.add(lower);
+        for (Map.Entry<String, String> alias : ALIAS.entrySet()) {
+            if (!alias.getKey().startsWith(p)) continue;
+            Key key = BY_ID.get(alias.getValue());
+            if (key != null) unique.add(key.id);
         }
+        List<String> out = new ArrayList<>(unique);
         Collections.sort(out);
         return out;
+    }
+
+    /**
+     * Copies leftover alias JSON keys onto the canonical {@code Data} field name, then drops
+     * the aliases. Canonical wins when both are present — that is the field {@code apply()} reads.
+     *
+     * @return true if the object was mutated
+     */
+    public static boolean promoteCanonicalFields(com.google.gson.JsonObject json) {
+        if (json == null || json.entrySet().isEmpty()) return false;
+        Map<String, String> present = new LinkedHashMap<>();
+        for (String key : json.keySet()) {
+            present.put(key.toLowerCase(Locale.ROOT), key);
+        }
+        boolean changed = false;
+        for (Map.Entry<String, String> alias : List.copyOf(ALIAS.entrySet())) {
+            String aliasLower = alias.getKey();
+            String canonical = alias.getValue();
+            if (canonical == null || aliasLower.equals(canonical.toLowerCase(Locale.ROOT))) continue;
+            String jsonAlias = present.get(aliasLower);
+            if (jsonAlias == null) continue;
+            String jsonCanonical = present.get(canonical.toLowerCase(Locale.ROOT));
+            if (jsonCanonical == null) {
+                json.add(canonical, json.get(jsonAlias));
+                present.put(canonical.toLowerCase(Locale.ROOT), canonical);
+            }
+            json.remove(jsonAlias);
+            present.remove(aliasLower);
+            changed = true;
+        }
+        return changed;
     }
 
     public static List<Key> all() {
@@ -696,8 +792,25 @@ public final class XenoServerConfigKeys {
                                 String... aliases) {
         Key key = new Key(id, Kind.INT, help,
                 () -> Integer.toString(get.get()),
-                raw -> set.accept(Integer.parseInt(raw)));
+                raw -> set.accept(parseIntOrHex(raw)));
         register(key, aliases);
+    }
+
+    private static void rgb(String id, String help, Supplier<Integer> get, Consumer<Integer> set,
+                            String... aliases) {
+        Key key = new Key(id, Kind.INT, help,
+                () -> String.format("0x%06X", get.get() & 0xFFFFFF),
+                raw -> set.accept(parseIntOrHex(raw) & 0xFFFFFF));
+        register(key, aliases);
+    }
+
+    /** Decimal, {@code 0xRRGGBB}, or {@code #RRGGBB}. */
+    static int parseIntOrHex(String value) {
+        String trimmed = value.trim();
+        if (trimmed.startsWith("0x") || trimmed.startsWith("0X") || trimmed.startsWith("#")) {
+            return Integer.decode(trimmed);
+        }
+        return Integer.parseInt(trimmed);
     }
 
     private static void flt(String id, String help, Supplier<Float> get, Consumer<Float> set,

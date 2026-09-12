@@ -40,6 +40,9 @@ public final class PartyCommands {
                         PartyManager.disband(self(ctx.getSource())), "Party disbanded")))
                 .then(Commands.literal("pvp").executes(ctx -> action(ctx.getSource(),
                         PartyManager.toggleFriendlyFire(self(ctx.getSource())), "Friendly-fire setting changed")))
+                .then(Commands.literal("questshare").executes(ctx -> action(ctx.getSource(),
+                        PartyManager.toggleShareQuests(self(ctx.getSource())),
+                        "Party quest sharing toggled")))
                 .then(Commands.literal("ping").executes(ctx -> {
                     ctx.getSource().sendFailure(Component.literal("Use the H party-ping key while locked on or aiming at a target"));
                     return 0;
@@ -60,7 +63,7 @@ public final class PartyCommands {
                 .then(Commands.literal("list").executes(ctx -> list(ctx.getSource())))
                 .executes(ctx -> {
                     ctx.getSource().sendSuccess(() -> Component.literal(
-                            "§bXenoParty§7: invite, accept, decline, leave, list, kick, promote, disband, pvp, ping, objective, screen"), false);
+                            "§bXenoParty§7: invite, accept, decline, leave, list, kick, promote, disband, pvp, questshare, ping, objective, screen"), false);
                     return 1;
                 });
     }

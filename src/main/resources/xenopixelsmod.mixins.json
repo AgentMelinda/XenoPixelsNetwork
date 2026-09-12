@@ -36,13 +36,15 @@
     "common.TechniquesChargeCapMixin",
     "common.TechniquesEquipMixin",
     "common.TickHandlerChargeCeilingMixin",
-    "common.VanillaCombatAttributeCapMixin"
+    "common.VanillaCombatAttributeCapMixin",
+    "common.SignShopUpdateMixin"
   ],
   "client": [
     "client.MinecraftFistOwnershipMixin",
     "client.MinecraftPadUseMixin",
     "client.LocalPlayerPadInputMixin",
     "client.PlayerAttackHelperGateMixin",
+    "client.ClientLanguageFormNameMixin",
     "client.ClientStatsEventsMixin",
     "client.DeleteTechniqueConfirmMixin",
     "client.DmzCameraShakeViewMixin",
@@ -61,13 +63,19 @@
     "client.DmzMenuPreviewLookMixin",
     "client.DmzPortraitAnimationStateMixin",
     "client.DmzZanzokenPlayerFadeMixin",
+    "client.DmzStudioPoseMixin",
+    "client.LivingHakaiFadeMixin",
+    "client.EntityRenderDispatcherHakaiFadeMixin",
+    "client.EntityHakaiGlowColorMixin",
     "client.DmzPortraitFlightMixin",
+    "client.DmzScriptAnimSpeedMixin",
     "client.GuiGraphicsDmzMenuThemeMixin",
     "client.ScreenDmzMenuBackgroundMixin",
     "client.PauseScreenMixin",
     "client.SableRenderSectionCompiledMixin",
     "client.TechniqueChargeOverlayCapMixin",
-    "client.TitleScreenMixin"
+    "client.TitleScreenMixin",
+    "client.SignRendererShopMixin"
   ],
   "injectors": {
     "defaultRequire": 1

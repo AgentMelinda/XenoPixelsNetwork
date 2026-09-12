@@ -2,6 +2,8 @@ package net.bullettrain.xenopixelsmod.mixin.client;
 
 import com.dragonminez.client.render.firstperson.dto.FirstPersonManager;
 import net.bullettrain.xenopixelsmod.client.camera.ContraptionControlCamera;
+import net.bullettrain.xenopixelsmod.client.combat.HakaiFade;
+import net.minecraft.client.Minecraft;
 import net.minecraft.world.entity.player.Player;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
@@ -22,6 +24,13 @@ public abstract class DmzFirstPersonCamOnControlMixin {
     private static void xenopixels$disableOnControlCam(Player player, CallbackInfoReturnable<Boolean> cir) {
         if (ContraptionControlCamera.active()) {
             cir.setReturnValue(false);
+            return;
+        }
+        Minecraft mc = Minecraft.getInstance();
+        if (player != null && player == mc.player
+                && mc.options.getCameraType().isFirstPerson()
+                && HakaiFade.dissolving(player)) {
+            cir.setReturnValue(true);
         }
     }
 }

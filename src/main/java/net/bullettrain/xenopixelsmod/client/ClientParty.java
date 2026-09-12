@@ -20,7 +20,7 @@ public final class ClientParty {
 
     public static void accept(PartySyncPacket packet) {
         state = new State(packet.partyId(), List.copyOf(packet.members()), packet.friendlyFire(),
-                packet.expiresAtMs(), packet.pendingInviteFrom(), packet.objective());
+                packet.expiresAtMs(), packet.pendingInviteFrom(), packet.objective(), packet.shareQuests());
     }
 
     public static State state() { return state; }
@@ -66,9 +66,10 @@ public final class ClientParty {
     }
 
     public record State(UUID partyId, List<PartySyncPacket.Member> members, boolean friendlyFire,
-                        long expiresAtMs, String pendingInviteFrom, PartyObjectiveSnapshot objective) {
+                        long expiresAtMs, String pendingInviteFrom, PartyObjectiveSnapshot objective,
+                        boolean shareQuests) {
         private static final State EMPTY = new State(null, List.of(), false, 0L, "",
-                PartyObjectiveSnapshot.EMPTY);
+                PartyObjectiveSnapshot.EMPTY, false);
 
         /** Searches this snapshot's own roster, not whatever the global state happens to be now. */
         public boolean isLeader(UUID id) {

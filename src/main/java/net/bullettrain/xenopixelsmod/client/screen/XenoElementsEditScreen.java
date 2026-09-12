@@ -46,6 +46,7 @@ public class XenoElementsEditScreen extends UnblurredScreen {
     private final int[][] priorColor;
     private final boolean[][] priorBold;
     private final String[][] priorFont;
+    private final boolean[][] priorHidden;
     private final boolean[] priorCustom;
 
     private int surface;
@@ -72,6 +73,7 @@ public class XenoElementsEditScreen extends UnblurredScreen {
         priorColor = new int[n][];
         priorBold = new boolean[n][];
         priorFont = new String[n][];
+        priorHidden = new boolean[n][];
         priorCustom = new boolean[n];
         selectedPerSurface = new int[n];
         for (int i = 0; i < n; i++) {
@@ -82,6 +84,7 @@ public class XenoElementsEditScreen extends UnblurredScreen {
             priorColor[i] = s.color().clone();
             priorBold[i] = s.bold().clone();
             priorFont[i] = s.font().clone();
+            priorHidden[i] = s.hidden().clone();
             priorCustom[i] = s.customLayout();
         }
         // Only the tab being opened is switched on. Turning all three on would change how the other
@@ -158,7 +161,7 @@ public class XenoElementsEditScreen extends UnblurredScreen {
                 .bounds(f[2], fontY, f[3], 20).build());
 
         // Style row: size, weight and colour.
-        int[] s = rowSlots(new int[]{52, 52, 34, 44, 36, 90});
+        int[] s = rowSlots(new int[]{48, 48, 30, 40, 36, 52, 78});
         this.addRenderableWidget(Button.builder(Component.literal("Size -"), b -> nudgeScale(-0.05f))
                 .bounds(s[0], styleY, s[1], 20).build());
         this.addRenderableWidget(Button.builder(Component.literal("Size +"), b -> nudgeScale(0.05f))
@@ -173,7 +176,15 @@ public class XenoElementsEditScreen extends UnblurredScreen {
             active().color()[selected()] = active().defaultColor(selected());
             if (hexBox != null) hexBox.syncFromValue();
         }).bounds(s[8], styleY, s[9], 20).build());
-        hexBox = new HexColorBox(this.font, s[10], styleY, s[11],
+        this.addRenderableWidget(Button.builder(
+                        Component.literal(active().hidden()[selected()] ? "Show" : "Hide"),
+                        b -> {
+                            boolean[] h = active().hidden();
+                            h[selected()] = !h[selected()];
+                            rebuildWidgets();
+                        })
+                .bounds(s[10], styleY, s[11], 20).build());
+        hexBox = new HexColorBox(this.font, s[12], styleY, s[13],
                 () -> active().color()[selected()],
                 v -> active().color()[selected()] = v);
         this.addRenderableWidget(hexBox);
@@ -242,6 +253,7 @@ public class XenoElementsEditScreen extends UnblurredScreen {
             System.arraycopy(priorColor[i], 0, s.color(), 0, n);
             System.arraycopy(priorBold[i], 0, s.bold(), 0, n);
             System.arraycopy(priorFont[i], 0, s.font(), 0, n);
+            System.arraycopy(priorHidden[i], 0, s.hidden(), 0, n);
             s.setCustomLayout(priorCustom[i]);
         }
     }
@@ -268,6 +280,7 @@ public class XenoElementsEditScreen extends UnblurredScreen {
                         + "  x=" + s.x()[part] + "  y=" + s.y()[part]
                         + String.format("  %.2fx", s.scale()[part])
                         + (s.bold()[part] ? "  BOLD" : "")
+                        + (s.hidden()[part] ? "  HIDDEN" : "")
                         + String.format("  #%08X", s.color()[part])
                         + "  " + s.font()[part],
                 this.width / 2, 22, s.color()[part]);

@@ -163,6 +163,7 @@ public final class XenoHudConfig {
 
     /** Per-element bold. Minecraft's bold is a synthetic double-draw, so it also thickens. */
     public static final boolean[] partBold = new boolean[Part.COUNT];
+    public static final boolean[] partHidden = new boolean[Part.COUNT];
 
     /**
      * Font for HUD text, as a {@code namespace:path} font id.
@@ -287,6 +288,7 @@ public final class XenoHudConfig {
         partBold[part] = DEFAULT_PART_BOLD[part];
         partColor[part] = DEFAULT_PART_COLOR[part];
         partFont[part] = DEFAULT_FONT;
+        partHidden[part] = false;
     }
 
     public static void resetParts() {
@@ -297,6 +299,11 @@ public final class XenoHudConfig {
         System.arraycopy(DEFAULT_PART_SCALE, 0, partScale, 0, Part.COUNT);
         System.arraycopy(DEFAULT_PART_BOLD, 0, partBold, 0, Part.COUNT);
         java.util.Arrays.fill(partFont, DEFAULT_FONT);
+        java.util.Arrays.fill(partHidden, false);
+    }
+
+    public static boolean hidden(int part) {
+        return part >= 0 && part < partHidden.length && partHidden[part];
     }
 
     /** Top-left corner. Previously a {@code -1} sentinel resolved to top-right on first render. */
@@ -472,6 +479,7 @@ public final class XenoHudConfig {
                     stored = DEFAULT_FONT;
                 }
                 partFont[i] = stored;
+                partHidden[i] = data.partHidden != null && i < data.partHidden.length && data.partHidden[i];
             }
             if (data.fontId != null && !data.fontId.isBlank()) fontId = data.fontId;
             if (migrated) save();
@@ -504,6 +512,7 @@ public final class XenoHudConfig {
         data.partScale = partScale.clone();
         data.partBold = partBold.clone();
         data.partFont = partFont.clone();
+        data.partHidden = partHidden.clone();
         data.fontId = fontId;
         try {
             Files.createDirectories(PATH.getParent());
@@ -610,6 +619,7 @@ public final class XenoHudConfig {
         float[] partScale = new float[Part.COUNT];
         boolean[] partBold = new boolean[Part.COUNT];
         String[] partFont = new String[Part.COUNT];
+        boolean[] partHidden = new boolean[Part.COUNT];
         String fontId = "minecraft:default";
     }
 }

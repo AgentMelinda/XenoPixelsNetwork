@@ -16,7 +16,7 @@ import java.util.function.Supplier;
 public final class PartyActionPacket {
     public enum Action {
         REQUEST_SYNC, INVITE, ACCEPT, ACCEPT_CONFIRM, DECLINE, LEAVE, DISBAND, TOGGLE_PVP,
-        KICK, PROMOTE, CHAT, START_OBJECTIVE, PING
+        KICK, PROMOTE, CHAT, START_OBJECTIVE, PING, TOGGLE_SHARE_QUESTS
     }
 
     /** Cached because {@code values()} allocates a fresh array on every decode. */
@@ -88,6 +88,7 @@ public final class PartyActionPacket {
                 yield target == null ? "That party member is offline" : PartyManager.promote(sender, target);
             }
             case PING -> ping(sender, msg.entityId);
+            case TOGGLE_SHARE_QUESTS -> PartyManager.toggleShareQuests(sender);
         };
         if (error == null) return;
         // Every successful path already resyncs the whole party, which includes the sender, so an

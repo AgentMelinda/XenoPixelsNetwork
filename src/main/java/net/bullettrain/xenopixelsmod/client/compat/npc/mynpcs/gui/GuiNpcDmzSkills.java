@@ -1,11 +1,15 @@
 package net.bullettrain.xenopixelsmod.client.compat.npc.mynpcs.gui;
 
+import net.bullettrain.xenopixelsmod.client.compat.npc.gui.NpcPreviewPanel;
+import net.bullettrain.xenopixelsmod.client.compat.npc.gui.NpcPreviewOwner;
+
 import net.bullettrain.xenopixelsmod.client.compat.npc.NpcAppearanceClient;
 import net.bullettrain.xenopixelsmod.compat.npc.NpcCombatProfile;
 import net.bullettrain.xenopixelsmod.compat.npc.NpcSkillSet;
 import net.bullettrain.xenopixelsmod.network.ModNetwork;
 import net.bullettrain.xenopixelsmod.network.packet.NpcProfileSavePacket;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.world.entity.Entity;
 import espi.mynpcs.client.gui.util.GuiNPCInterface2;
 import espi.mynpcs.entity.EntityNPCInterface;
@@ -24,14 +28,8 @@ import java.util.List;
  * {@link GuiNpcDmzAuraEditor}'s Apply/Cancel transaction shape. The id list is read from DMZ's
  * own config through {@link NpcSkillSet#knownIds()} rather than hard-coded, so a pack that adds
  * or removes skills is reflected here automatically.
- *
- * <p>The My NPCs twin of the CustomNPCs screen of the same name. These cannot be one class:
- * they extend {@code GuiNPCInterface2} and implement {@code ITextfieldListener}, and the two
- * mods ship those under different packages, so inheritance cannot be bridged reflectively
- * the way the rest of the NPC touchpoints are. Identical but for the types they name --
- * fix bugs in both.
  */
-public final class GuiNpcDmzSkills extends GuiNPCInterface2 implements ITextfieldListener {
+public final class GuiNpcDmzSkills extends GuiNPCInterface2 implements ITextfieldListener, NpcPreviewOwner {
     private static final int PREV_PAGE = 1;
     private static final int NEXT_PAGE = 2;
     private static final int APPLY = 3;
@@ -45,6 +43,7 @@ public final class GuiNpcDmzSkills extends GuiNPCInterface2 implements ITextfiel
     private final NpcCombatProfile original;
     private NpcCombatProfile draft;
     private int page;
+    private final NpcPreviewPanel previewPanel = new NpcPreviewPanel(npc, null);
 
     public GuiNpcDmzSkills(EntityNPCInterface npc, NpcCombatProfile source) {
         super(npc, GuiNpcDmzMenuButton.MENU_ID);
@@ -73,6 +72,7 @@ public final class GuiNpcDmzSkills extends GuiNPCInterface2 implements ITextfiel
             return;
         }
 
+        previewPanel.profile(draft);
         int rowY = y + 26;
         for (int row = 0; row < ROWS_PER_PAGE; row++) {
             int index = page * ROWS_PER_PAGE + row;
@@ -92,6 +92,47 @@ public final class GuiNpcDmzSkills extends GuiNPCInterface2 implements ITextfiel
             addLabel(new GuiLabel(400 + row, "/ " + max, x + 238, rowY + 5, 0xAAAAAA));
             rowY += 21;
         }
+    }
+
+    @Override
+    public void render(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
+        super.render(graphics, mouseX, mouseY, partialTick);
+        if (!hasSubGui()) {
+            previewPanel.render(graphics, getFontRenderer(), guiLeft, guiTop, partialTick);
+        }
+    }
+
+    @Override
+    public boolean mouseClicked(double mouseX, double mouseY, int button) {
+        if (!hasSubGui() && previewPanel.mouseClicked(guiLeft, guiTop, mouseX, mouseY, button)) {
+            return true;
+        }
+        return super.mouseClicked(mouseX, mouseY, button);
+    }
+
+    @Override
+    public boolean mouseDragged(double mouseX, double mouseY, int button,
+                                double dragX, double dragY) {
+        if (!hasSubGui() && previewPanel.mouseDragged(mouseX, mouseY, button, dragX, dragY)) {
+            return true;
+        }
+        return super.mouseDragged(mouseX, mouseY, button, dragX, dragY);
+    }
+
+    @Override
+    public boolean mouseReleased(double mouseX, double mouseY, int button) {
+        if (!hasSubGui() && previewPanel.mouseReleased(button)) {
+            return true;
+        }
+        return super.mouseReleased(mouseX, mouseY, button);
+    }
+
+    @Override
+    public boolean mouseScrolled(double mouseX, double mouseY, double scrollX, double scrollY) {
+        if (!hasSubGui() && previewPanel.mouseScrolled(guiLeft, guiTop, mouseX, mouseY, scrollY)) {
+            return true;
+        }
+        return super.mouseScrolled(mouseX, mouseY, scrollX, scrollY);
     }
 
     @Override
@@ -131,9 +172,13 @@ public final class GuiNpcDmzSkills extends GuiNPCInterface2 implements ITextfiel
                     ? yes.getBoolean() : draft.skills.isActive(id);
             int level = integer(LEVEL_BASE + row, Math.max(1, draft.skills.level(id)));
             // Only store skills an author actually touched, so an NPC's NBT does not carry an
-            // entry for every skill DMZ ships.
-            if (on || draft.skills.has(id)) {
-                draft.skills.set(id, on, level);
+            // entry for every skill DMZ ships. An untouched row that is switched off clears
+            // instead of being ignored, otherwise the toggle reads as dead for the 40+ ids DMZ
+            // ships that this NPC never configured.
+            if (on) {
+                draft.skills.set(id, true, level);
+            } else if (draft.skills.has(id)) {
+                draft.skills.remove(id);
             }
             if (NpcSkillSet.FLY.equals(id)) {
                 // Fly also drives CustomNPCs' navigator through NpcFlightBridge, which reads the

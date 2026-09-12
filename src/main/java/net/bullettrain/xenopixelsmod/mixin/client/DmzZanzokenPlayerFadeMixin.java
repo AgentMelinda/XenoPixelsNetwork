@@ -5,11 +5,17 @@ import com.dragonminez.client.render.EntityPreviewRenderContext;
 import com.llamalad7.mixinextras.injector.wrapmethod.WrapMethod;
 import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
 import com.mojang.blaze3d.vertex.PoseStack;
-import net.bullettrain.xenopixelsmod.client.combat.ZanzokenFade;
+import net.bullettrain.xenopixelsmod.client.combat.CombatBodyFade;
+import net.bullettrain.xenopixelsmod.client.combat.HakaiFade;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.player.AbstractClientPlayer;
 import net.minecraft.client.renderer.MultiBufferSource;
+import net.minecraft.client.renderer.RenderType;
+import net.minecraft.resources.ResourceLocation;
 import org.spongepowered.asm.mixin.Mixin;
+import org.spongepowered.asm.mixin.injection.At;
+import org.spongepowered.asm.mixin.injection.Inject;
+import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
 /**
  * Fades a fighter's real body while their Zanzoken images stand around them.
@@ -66,8 +72,35 @@ public abstract class DmzZanzokenPlayerFadeMixin {
                                             float partialTick, PoseStack pose,
                                             MultiBufferSource buffers, int packedLight,
                                             Operation<Void> original) {
-        original.call(player, entityYaw, partialTick, pose,
-                xeno$faded(player, partialTick, buffers), packedLight);
+        MultiBufferSource faded = buffers;
+        try {
+            faded = xeno$faded(player, partialTick, buffers);
+        } catch (RuntimeException ignored) {
+            faded = buffers;
+        }
+        boolean fading = faded != buffers;
+        if (fading) CombatBodyFade.begin(player);
+        try {
+            original.call(player, entityYaw, partialTick, pose, faded, packedLight);
+        } finally {
+            if (fading) CombatBodyFade.end();
+        }
+    }
+
+    @Inject(
+            method = "getRenderType",
+            at = @At("HEAD"),
+            cancellable = true,
+            remap = false,
+            require = 0
+    )
+    private void xeno$translucentWhenFading(AbstractClientPlayer animatable, ResourceLocation texture,
+                                            MultiBufferSource bufferSource, float partialTick,
+                                            CallbackInfoReturnable<RenderType> cir) {
+        if (texture == null || CombatBodyFade.outlinePass(bufferSource)) return;
+        if (CombatBodyFade.isWrapped(bufferSource) || CombatBodyFade.fading(animatable)) {
+            cir.setReturnValue(RenderType.entityTranslucent(texture, true));
+        }
     }
 
     private static MultiBufferSource xeno$faded(AbstractClientPlayer player, float partialTick,
@@ -81,6 +114,9 @@ public abstract class DmzZanzokenPlayerFadeMixin {
         if (mc.level == null || mc.level.getEntity(player.getId()) != player) {
             return buffers;
         }
-        return ZanzokenFade.wrap(buffers, ZanzokenFade.alpha(player, partialTick));
+        if (HakaiFade.dissolving(player)) {
+            return CombatBodyFade.wrapHakai(buffers, player, partialTick);
+        }
+        return CombatBodyFade.wrap(buffers, CombatBodyFade.alpha(player, partialTick));
     }
 }

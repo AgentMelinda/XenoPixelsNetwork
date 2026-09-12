@@ -1,6 +1,8 @@
 package net.bullettrain.xenopixelsmod.client.screen;
 
+import net.bullettrain.xenopixelsmod.client.config.DmzMenuMode;
 import net.bullettrain.xenopixelsmod.client.config.XenoClientConfig;
+import net.bullettrain.xenopixelsmod.client.config.XenoHudConfig;
 import net.bullettrain.xenopixelsmod.client.content.XenoContentCatalog;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
@@ -31,9 +33,12 @@ public class XenoMenuScreen extends UnblurredScreen {
         }
 
         int cx = this.width / 2;
-        int cy = this.height / 2;
-        int y = cy - 112;
         int row = 26;
+        int visibleRows = (XenoClientConfig.contentScreensEnabled ? 3 : 0)
+                + (XenoClientConfig.hudEditEnabled
+                ? 3 + (XenoClientConfig.cooldownHudEnabled ? 1 : 0) : 0)
+                + (XenoClientConfig.joinServerButton ? 1 : 0) + 1;
+        int y = Math.max(62, (this.height - visibleRows * row) / 2);
         XenoContentCatalog.Catalog catalog = XenoContentCatalog.get();
 
         if (XenoClientConfig.contentScreensEnabled) {
@@ -58,6 +63,20 @@ public class XenoMenuScreen extends UnblurredScreen {
             y += row;
             this.addRenderableWidget(Button.builder(Component.literal("§9TECH HUD LAYOUT"), b ->
                             this.minecraft.setScreen(new XenoHotbarEditScreen(this)))
+                    .bounds(cx - 100, y, 200, 22).build());
+            y += row;
+            this.addRenderableWidget(Button.builder(Component.literal("§bXENOHUD V3 MENU PARTS"), b -> {
+                        XenoHudConfig.dmzMenuMode = DmzMenuMode.SCREEN;
+                        XenoHudConfig.save();
+                        this.minecraft.setScreen(new XenoElementsEditScreen(this, HudSurfaces.DMZ_SCREEN));
+                    })
+                    .bounds(cx - 100, y, 200, 22).build());
+            y += row;
+            this.addRenderableWidget(Button.builder(Component.literal("§dNEON V3 MENU PARTS"), b -> {
+                        XenoHudConfig.dmzMenuMode = DmzMenuMode.NEON;
+                        XenoHudConfig.save();
+                        this.minecraft.setScreen(new XenoElementsEditScreen(this, HudSurfaces.DMZ_NEON));
+                    })
                     .bounds(cx - 100, y, 200, 22).build());
             y += row;
             if (XenoClientConfig.cooldownHudEnabled) {

@@ -12,6 +12,13 @@ import java.util.Map;
 import java.util.function.Supplier;
 
 public class SyncServerConfigPacket {
+    /**
+     * Upper bound on decoded map entries. Real configs hold at most a few hundred form
+     * multipliers; an unbounded {@code readVarInt()} count would let a forged packet grow
+     * these maps until the buffer is exhausted.
+     */
+    private static final int MAX_MAP_ENTRIES = 4096;
+
     private final XenoServerConfig.Data data;
 
     public SyncServerConfigPacket(XenoServerConfig.Data data) {
@@ -198,6 +205,19 @@ public class SyncServerConfigPacket {
         buf.writeFloat(d.comboLauncherUp);
         buf.writeFloat(d.comboLauncherHoriz);
         buf.writeDouble(d.hakaiMaxRange);
+        buf.writeBoolean(d.hakaiFadeEnabled);
+        buf.writeFloat(d.hakaiFadeMinAlpha);
+        buf.writeFloat(d.hakaiFadeCurve);
+        buf.writeVarInt(d.hakaiFadeRestoreTicks);
+        buf.writeFloat(d.hakaiFadeSpeed);
+        buf.writeFloat(d.hakaiFadeBand);
+        buf.writeInt(d.hakaiFxColor);
+        buf.writeInt(d.hakaiFxRimColor);
+        buf.writeBoolean(d.hakaiFxEnabled == null || d.hakaiFxEnabled);
+        buf.writeBoolean(d.hakaiDustEnabled == null || d.hakaiDustEnabled);
+        buf.writeBoolean(d.hakaiSilhouetteEnabled == null || d.hakaiSilhouetteEnabled);
+        buf.writeInt(d.hakaiSilhouetteColor);
+        buf.writeInt(d.hakaiGlowColor);
     }
 
     public static SyncServerConfigPacket decode(FriendlyByteBuf buf) {
@@ -380,6 +400,19 @@ public class SyncServerConfigPacket {
         d.comboLauncherUp = buf.readFloat();
         d.comboLauncherHoriz = buf.readFloat();
         d.hakaiMaxRange = buf.readDouble();
+        d.hakaiFadeEnabled = buf.readBoolean();
+        d.hakaiFadeMinAlpha = buf.readFloat();
+        d.hakaiFadeCurve = buf.readFloat();
+        d.hakaiFadeRestoreTicks = buf.readVarInt();
+        d.hakaiFadeSpeed = buf.readFloat();
+        d.hakaiFadeBand = buf.readFloat();
+        d.hakaiFxColor = buf.readInt();
+        d.hakaiFxRimColor = buf.readInt();
+        d.hakaiFxEnabled = buf.readBoolean();
+        d.hakaiDustEnabled = buf.readBoolean();
+        d.hakaiSilhouetteEnabled = buf.readBoolean();
+        d.hakaiSilhouetteColor = buf.readInt();
+        d.hakaiGlowColor = buf.readInt();
         return new SyncServerConfigPacket(d);
     }
 
@@ -413,7 +446,7 @@ public class SyncServerConfigPacket {
     }
 
     private static Map<String, Integer> readIntMap(FriendlyByteBuf buf) {
-        int n = buf.readVarInt();
+        int n = Math.max(0, Math.min(MAX_MAP_ENTRIES, buf.readVarInt()));
         Map<String, Integer> map = new LinkedHashMap<>();
         for (int i = 0; i < n; i++) {
             String k = buf.readUtf(64);
@@ -428,7 +461,7 @@ public class SyncServerConfigPacket {
     }
 
     private static Map<String, Float> readFormMap(FriendlyByteBuf buf) {
-        int n = buf.readVarInt();
+        int n = Math.max(0, Math.min(MAX_MAP_ENTRIES, buf.readVarInt()));
         Map<String, Float> map = new LinkedHashMap<>();
         for (int i = 0; i < n; i++) {
             String k = buf.readUtf(256);
@@ -457,7 +490,7 @@ public class SyncServerConfigPacket {
     }
 
     private static Map<String, Map<String, Float>> readNestedFormMap(FriendlyByteBuf buf) {
-        int n = buf.readVarInt();
+        int n = Math.max(0, Math.min(MAX_MAP_ENTRIES, buf.readVarInt()));
         Map<String, Map<String, Float>> map = new LinkedHashMap<>();
         for (int i = 0; i < n; i++) {
             String k = buf.readUtf(256);

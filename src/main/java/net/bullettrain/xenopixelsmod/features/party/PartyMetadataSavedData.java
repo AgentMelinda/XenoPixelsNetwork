@@ -29,7 +29,12 @@ public final class PartyMetadataSavedData extends SavedData {
         for (int i = 0; i < list.size(); i++) {
             CompoundTag entry = list.getCompound(i);
             if (!entry.hasUUID("PartyId")) continue;
-            result.values.put(entry.getUUID("PartyId"), new Meta(entry.getLong("LastActivityMs")));
+            Meta meta = new Meta(entry.getLong("LastActivityMs"));
+            if (entry.contains("ShareQuests")) {
+                meta.shareQuestsSet = true;
+                meta.shareQuests = entry.getBoolean("ShareQuests");
+            }
+            result.values.put(entry.getUUID("PartyId"), meta);
         }
         return result;
     }
@@ -41,6 +46,9 @@ public final class PartyMetadataSavedData extends SavedData {
             CompoundTag entry = new CompoundTag();
             entry.putUUID("PartyId", value.getKey());
             entry.putLong("LastActivityMs", value.getValue().lastActivityMs);
+            if (value.getValue().shareQuestsSet) {
+                entry.putBoolean("ShareQuests", value.getValue().shareQuests);
+            }
             list.add(entry);
         }
         tag.put("Parties", list);
@@ -58,6 +66,24 @@ public final class PartyMetadataSavedData extends SavedData {
         setDirty();
     }
 
+    public boolean shareQuests(UUID partyId) {
+        Meta meta = partyId == null ? null : values.get(partyId);
+        if (meta == null || !meta.shareQuestsSet) {
+            return net.bullettrain.xenopixelsmod.config.XenoPartyConfig.questShareDefault;
+        }
+        return meta.shareQuests;
+    }
+
+    public boolean toggleShareQuests(UUID partyId) {
+        if (partyId == null) return net.bullettrain.xenopixelsmod.config.XenoPartyConfig.questShareDefault;
+        Meta meta = values.computeIfAbsent(partyId, ignored -> new Meta(System.currentTimeMillis()));
+        boolean next = !shareQuests(partyId);
+        meta.shareQuests = next;
+        meta.shareQuestsSet = true;
+        setDirty();
+        return next;
+    }
+
     public void remove(UUID partyId) {
         if (partyId != null && values.remove(partyId) != null) setDirty();
     }
@@ -68,6 +94,8 @@ public final class PartyMetadataSavedData extends SavedData {
 
     private static final class Meta {
         private long lastActivityMs;
+        private boolean shareQuestsSet;
+        private boolean shareQuests;
 
         private Meta(long lastActivityMs) {
             this.lastActivityMs = lastActivityMs;

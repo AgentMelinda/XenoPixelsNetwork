@@ -51,6 +51,10 @@ public class XenoCloneEntity extends LivingEntity {
 
     /** A Zanzoken image: it does not follow, it stays exactly where it was placed. */
     public static final int SLOT_STATIONARY = -1;
+    /** Punching dummy: player-shaped, see-through, not a Zanzoken ring copy. */
+    public static final int SLOT_TRAINING = -3;
+    /** Fighting shadow: player look + ki/melee at the trainer. */
+    public static final int SLOT_SHADOW_FIGHT = -4;
 
     /** How far a Multi-Form copy stands from its fighter. */
     public static final double FORMATION_RADIUS = 2.2;
@@ -94,8 +98,14 @@ public class XenoCloneEntity extends LivingEntity {
         this.entityData.set(SLOT, slot);
         this.lifetime = Math.max(1, lifetimeTicks);
         this.entityData.set(LIFETIME, this.lifetime);
-        this.travelTicks = slot == SLOT_STATIONARY ? 0 : TRAVEL_TICKS;
-        this.entityData.set(TRAVEL, slot == SLOT_STATIONARY ? 1.0f : 0.0f);
+        this.travelTicks = (slot == SLOT_STATIONARY || slot == SLOT_TRAINING
+                || slot == SLOT_SHADOW_FIGHT) ? 0 : TRAVEL_TICKS;
+        this.entityData.set(TRAVEL, (slot == SLOT_STATIONARY || slot == SLOT_TRAINING
+                || slot == SLOT_SHADOW_FIGHT) ? 1.0f : 0.0f);
+        if (slot == SLOT_TRAINING || slot == SLOT_SHADOW_FIGHT) {
+            this.noPhysics = false;
+            this.setNoGravity(true);
+        }
         this.healthCapacity = Math.max(0f, health);
         // Vanilla max-health attributes have a floor of one; current health need not.
         this.getAttribute(Attributes.MAX_HEALTH).setBaseValue(Math.max(1f, healthCapacity));
@@ -184,7 +194,9 @@ public class XenoCloneEntity extends LivingEntity {
         if (this.level().isClientSide()) {
             return;
         }
-        if (!isAlive() || ++this.age >= this.lifetime) {
+        int slot = slot();
+        if (slot != SLOT_TRAINING && slot != SLOT_SHADOW_FIGHT
+                && (!isAlive() || ++this.age >= this.lifetime)) {
             this.discard();
             return;
         }
@@ -195,10 +207,21 @@ public class XenoCloneEntity extends LivingEntity {
             return;
         }
 
-        int slot = slot();
+        if (slot == SLOT_TRAINING || slot == SLOT_SHADOW_FIGHT) {
+            if (!isAlive()) setHealth(getMaxHealth());
+            float yaw = net.bullettrain.xenopixelsmod.combat.ZanzokenLook.yawToward(
+                    getX(), getZ(), owner.getX(), owner.getZ(), owner.getYRot() + 180f);
+            setYRot(yaw);
+            setYHeadRot(yaw);
+            this.yBodyRot = yaw;
+            if (slot == SLOT_SHADOW_FIGHT && owner instanceof net.minecraft.server.level.ServerPlayer trainer) {
+                net.bullettrain.xenopixelsmod.features.progression.ShadowDummyTraining.tickFight(this, trainer);
+            }
+            return;
+        }
         if (slot == SLOT_STATIONARY) {
-            // A ring copy keeps the facing it was spawned with — inward, at the target it has
-            // surrounded. Turning with the fighter would break the encirclement it exists to sell.
+            mimicOwner(owner);
+            aimRingCopy(owner);
             return;
         }
 
@@ -274,10 +297,48 @@ public class XenoCloneEntity extends LivingEntity {
         }
     }
 
+    private double ringCenterX;
+    private double ringCenterZ;
+    private double ringRadius;
+
+    public void setRing(double centerX, double centerZ, double radius) {
+        this.ringCenterX = centerX;
+        this.ringCenterZ = centerZ;
+        this.ringRadius = Math.max(0.5, radius);
+    }
+
+    private void mimicOwner(Player owner) {
+        setPose(owner.getPose());
+        setShiftKeyDown(owner.isShiftKeyDown());
+        setSprinting(owner.isSprinting());
+        setSwimming(owner.isSwimming());
+        this.swinging = owner.swinging;
+        this.swingTime = owner.swingTime;
+        this.attackAnim = owner.attackAnim;
+        this.oAttackAnim = owner.oAttackAnim;
+        this.yBodyRotO = this.yBodyRot;
+        this.yBodyRot = owner.yBodyRot;
+    }
+
+    private void aimRingCopy(Player owner) {
+        boolean inward = net.bullettrain.xenopixelsmod.combat.ZanzokenLook.faceCenter(
+                owner.getYRot(), owner.getX(), owner.getZ(),
+                getX(), getZ(), ringCenterX, ringCenterZ, ringRadius);
+        float yaw = inward
+                ? net.bullettrain.xenopixelsmod.combat.ZanzokenLook.yawToward(
+                        getX(), getZ(), ringCenterX, ringCenterZ, owner.getYRot())
+                : owner.getYRot();
+        float pitch = inward ? 0.0f : owner.getXRot();
+        setYRot(yaw);
+        setYHeadRot(yaw);
+        this.yBodyRot = yaw;
+        setXRot(pitch);
+    }
+
     /** These bodies belong to a live session, never to a saved world or a reused entity id. */
     @Override
     public boolean shouldBeSaved() {
-        return false;
+        return slot() == SLOT_TRAINING || slot() == SLOT_SHADOW_FIGHT;
     }
 
     @Override
@@ -300,7 +361,7 @@ public class XenoCloneEntity extends LivingEntity {
 
     @Override
     public boolean canBeCollidedWith() {
-        return false;
+        return slot() == SLOT_TRAINING || slot() == SLOT_SHADOW_FIGHT;
     }
 
     @Override
@@ -343,6 +404,12 @@ public class XenoCloneEntity extends LivingEntity {
         super.readAdditionalSaveData(tag);
         this.lifetime = Math.max(1, tag.getInt("XenoCloneLifetime"));
         this.age = tag.getInt("XenoCloneAge");
+        if (tag.hasUUID("XenoCloneOwner")) this.ownerUuid = tag.getUUID("XenoCloneOwner");
+        if (tag.contains("XenoCloneSlot")) this.entityData.set(SLOT, tag.getInt("XenoCloneSlot"));
+        if (slot() == SLOT_TRAINING) {
+            this.noPhysics = false;
+            this.setNoGravity(true);
+        }
     }
 
     @Override
@@ -350,6 +417,8 @@ public class XenoCloneEntity extends LivingEntity {
         super.addAdditionalSaveData(tag);
         tag.putInt("XenoCloneLifetime", this.lifetime);
         tag.putInt("XenoCloneAge", this.age);
+        if (ownerUuid != null) tag.putUUID("XenoCloneOwner", ownerUuid);
+        tag.putInt("XenoCloneSlot", slot());
     }
 
 }

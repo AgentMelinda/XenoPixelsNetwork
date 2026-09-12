@@ -22,15 +22,22 @@ public final class PartySyncPacket {
     private final long expiresAtMs;
     private final String pendingInviteFrom;
     private final PartyObjectiveSnapshot objective;
+    private final boolean shareQuests;
 
     public PartySyncPacket(UUID partyId, List<Member> members, boolean friendlyFire, long expiresAtMs,
                            String pendingInviteFrom, PartyObjectiveSnapshot objective) {
+        this(partyId, members, friendlyFire, expiresAtMs, pendingInviteFrom, objective, false);
+    }
+
+    public PartySyncPacket(UUID partyId, List<Member> members, boolean friendlyFire, long expiresAtMs,
+                           String pendingInviteFrom, PartyObjectiveSnapshot objective, boolean shareQuests) {
         this.partyId = partyId;
         this.members = members == null ? List.of() : List.copyOf(members);
         this.friendlyFire = friendlyFire;
         this.expiresAtMs = expiresAtMs;
         this.pendingInviteFrom = safe(pendingInviteFrom, MAX_TEXT);
         this.objective = objective == null ? PartyObjectiveSnapshot.EMPTY : objective;
+        this.shareQuests = shareQuests;
     }
 
     public PartySyncPacket(FriendlyByteBuf buf) {
@@ -45,6 +52,7 @@ public final class PartySyncPacket {
         objective = new PartyObjectiveSnapshot(
                 buf.readUtf(64), buf.readUtf(128), buf.readUtf(MAX_TEXT),
                 buf.readVarInt(), buf.readVarInt(), buf.readUtf(32), buf.readBoolean());
+        shareQuests = buf.isReadable() && buf.readBoolean();
     }
 
     public void encode(FriendlyByteBuf buf) {
@@ -63,6 +71,7 @@ public final class PartySyncPacket {
         buf.writeVarInt(Math.max(0, objective.goal()));
         buf.writeUtf(safe(objective.state(), 32), 32);
         buf.writeBoolean(objective.canStart());
+        buf.writeBoolean(shareQuests);
     }
 
     public UUID partyId() { return partyId; }
@@ -71,6 +80,7 @@ public final class PartySyncPacket {
     public long expiresAtMs() { return expiresAtMs; }
     public String pendingInviteFrom() { return pendingInviteFrom; }
     public PartyObjectiveSnapshot objective() { return objective; }
+    public boolean shareQuests() { return shareQuests; }
 
     public static void handle(PartySyncPacket msg, Supplier<NetworkEvent.Context> ctx) {
         ctx.get().enqueueWork(() -> ClientScreens.receiveParty.accept(msg));

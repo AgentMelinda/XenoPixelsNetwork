@@ -270,6 +270,7 @@ public final class XenoCloneSystem {
             float yaw = ringFacing(target, x, z);
             clone.moveTo(x, target.getY(), z, yaw, 0f);
             clone.configure(owner, XenoCloneEntity.SLOT_STATIONARY, lifetimeTicks, 1.0f);
+            clone.setRing(target.getX(), target.getZ(), radius);
             if (level.addFreshEntity(clone)) {
                 track(clone);
                 placed.add(clone);

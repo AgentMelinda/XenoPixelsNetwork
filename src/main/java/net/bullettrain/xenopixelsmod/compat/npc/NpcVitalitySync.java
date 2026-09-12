@@ -6,6 +6,8 @@ import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.Tag;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.world.entity.ai.attributes.AttributeInstance;
+import net.minecraft.world.entity.ai.attributes.Attributes;
 
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
@@ -54,13 +56,15 @@ public final class NpcVitalitySync {
             }
 
             double multiplier = vitalityMultiplier(profile);
+            double vitScaling = vitalityScaling(profile);
             int targetMax = XenoServerConfig.npcDmzStatsAuthoritative
-                    ? NpcVitalityMath.authoritativeMaxHealth(profile.vitality, multiplier)
-                    : NpcVitalityMath.hybridMaxHealth(baseMax, profile.vitality, multiplier);
+                    ? NpcVitalityMath.authoritativeMaxHealth(profile.vitality, multiplier, vitScaling)
+                    : NpcVitalityMath.hybridMaxHealth(baseMax, profile.vitality, multiplier, vitScaling);
             float oldHealth = living.getHealth();
             float oldMax = living.getMaxHealth();
 
             setMaxHealth.invoke(stats, targetMax);
+            pushLivingMaxHealth(living, targetMax);
             persistent.putInt(TAG_BASE_MAX_HEALTH, baseMax);
             persistent.putInt(TAG_LAST_MAX_HEALTH, targetMax);
 
@@ -100,6 +104,7 @@ public final class NpcVitalitySync {
             float oldHealth = living.getHealth();
             float oldMax = living.getMaxHealth();
             stats.getClass().getMethod("setMaxHealth", int.class).invoke(stats, baseMax);
+            pushLivingMaxHealth(living, baseMax);
             persistent.remove(TAG_BASE_MAX_HEALTH);
             persistent.remove(TAG_LAST_MAX_HEALTH);
             living.setHealth(NpcVitalityMath.preserveHealthPercent(
@@ -109,9 +114,50 @@ public final class NpcVitalitySync {
         }
     }
 
+    /**
+     * The HP a wand / Stats tab should display for this profile: vanilla 20 + VIT ×
+     * form VIT × race {@code VIT_scaling}, matching {@code StatsData.getHealthBonus}.
+     */
+    public static int displayedMaxHealth(NpcCombatProfile profile) {
+        if (profile == null) return NpcVitalityMath.VANILLA_BASE;
+        return NpcVitalityMath.authoritativeMaxHealth(
+                profile.vitality, vitalityMultiplier(profile), vitalityScaling(profile));
+    }
+
+    private static void pushLivingMaxHealth(LivingEntity living, int targetMax) {
+        AttributeInstance attribute = living.getAttribute(Attributes.MAX_HEALTH);
+        if (attribute != null && Math.abs(attribute.getBaseValue() - targetMax) > 0.01) {
+            attribute.setBaseValue(targetMax);
+        }
+    }
+
     private static double vitalityMultiplier(NpcCombatProfile profile) {
         try {
             return NpcFormLookup.multiplier(profile, "VIT");
+        } catch (Throwable ignored) {
+            return 1.0;
+        }
+    }
+
+    /**
+     * Race/class {@code VIT_scaling} from DragonMineZ's live {@code RaceStatsConfig}.
+     * Warrior is 1.2 in the 2.1.3 race stats files; the Java default is 1.0 if the config is absent.
+     */
+    static double vitalityScaling(NpcCombatProfile profile) {
+        if (profile == null) return 1.0;
+        try {
+            String race = profile.raceId == null || profile.raceId.isBlank() ? "human" : profile.raceId;
+            String characterClass = "warrior";
+            if (profile.appearance != null && profile.appearance.characterClass != null
+                    && !profile.appearance.characterClass.isBlank()) {
+                characterClass = profile.appearance.characterClass;
+            }
+            var raceConfig = com.dragonminez.common.config.ConfigManager.getRaceStats(race);
+            if (raceConfig == null) return 1.0;
+            var scaling = raceConfig.getClassStats(characterClass).getStatScaling();
+            if (scaling == null || scaling.getVitalityScaling() == null) return 1.0;
+            double value = scaling.getVitalityScaling();
+            return Double.isFinite(value) && value > 0.0 ? value : 1.0;
         } catch (Throwable ignored) {
             return 1.0;
         }

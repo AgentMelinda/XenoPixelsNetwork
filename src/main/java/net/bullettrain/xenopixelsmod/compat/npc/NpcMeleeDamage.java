@@ -47,10 +47,11 @@ public final class NpcMeleeDamage {
         }
         String name = animation.trim();
         if (NpcDmzAnim.canAnimate(attacker)) {
-            if (!net.bullettrain.xenopixelsmod.combat.anim.Bt3AnimationCatalog.isPlayable(name)) {
+            String resolved = net.bullettrain.xenopixelsmod.api.anim.XenoAnimApi.resolve(name);
+            if (resolved == null) {
                 return false;
             }
-            MELEE_ANIMATIONS.put(attacker.getUUID(), new MeleeAnimation(AnimationKind.DMZ, name));
+            MELEE_ANIMATIONS.put(attacker.getUUID(), new MeleeAnimation(AnimationKind.DMZ, resolved));
             return true;
         }
         if (NpcGeckoAnim.canAnimate(attacker)) {
@@ -65,6 +66,43 @@ public final class NpcMeleeDamage {
             MELEE_ANIMATIONS.remove(npcId);
             NEXT_IS_RIGHT.remove(npcId);
         }
+    }
+
+    /** Applies the profile's stored melee clip (or the default punches when it is blank). */
+    public static void applyProfile(LivingEntity entity, NpcCombatProfile profile) {
+        if (entity == null) {
+            return;
+        }
+        String anim = profile == null || profile.meleeAnimation == null
+                ? "" : profile.meleeAnimation.trim();
+        if (anim.isBlank()) {
+            MELEE_ANIMATIONS.remove(entity.getUUID());
+            return;
+        }
+        setAnimation(entity, anim);
+    }
+
+    /**
+     * Stores {@code animation} on the NPC's profile so it survives reload, then applies it.
+     * Blank clears the selection.
+     */
+    public static boolean persist(LivingEntity entity, String animation) {
+        if (entity == null || !NpcCombatProfile.hasProfile(entity)) {
+            return false;
+        }
+        String value = animation == null ? "" : animation.trim();
+        if (!value.isEmpty()) {
+            String resolved = net.bullettrain.xenopixelsmod.api.anim.XenoAnimApi.resolve(value);
+            if (resolved != null) {
+                value = resolved;
+            } else if (!NpcGeckoAnim.canAnimate(entity)) {
+                return false;
+            }
+        }
+        NpcCombatProfile profile = NpcCombatProfile.read(entity);
+        profile.meleeAnimation = value;
+        profile.write(entity);
+        return true;
     }
 
     /**

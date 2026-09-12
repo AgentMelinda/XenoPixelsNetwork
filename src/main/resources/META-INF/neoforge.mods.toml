@@ -31,11 +31,27 @@ versionRange="${minecraft_version_range}"
 ordering="NONE"
 side="BOTH"
 
+# DragonMineZ — hard dependency, but deliberately NOT ordered.
+#
+# ordering="AFTER" put a dragonminez -> xenopixelsmod edge in FML's mod-sort graph. A third-party
+# DMZ addon that declares itself AFTER xenopixelsmod and BEFORE dragonminez then closes a loop and
+# FML refuses to boot the whole instance with "Detected a mod dependency cycle: dmzcustomforms,
+# dragonminez, xenopixelsmod" (observed 2026-09-11). DragonMineZ 2.1.3 itself declares no ordering
+# toward this mod, so dropping our edge is enough to make that loop impossible.
+#
+# Nothing here needs the edge, because both couplings are already ordered by FML's own phases
+# rather than by mod sort order (verified against dragonminez-2.1.3):
+#   * DMZCommon.init calls ConfigManager.initialize() in DragonMineZ's mod constructor, and this
+#     mod's constructor only builds registries and network channels — it reads no DMZ config.
+#   * ModCommonEvents.commonSetup runs `new PredefinedTechniques().init()` synchronously during
+#     parallel dispatch, while XenoRushTechniques/XenoSlotTechniques register from inside
+#     FMLCommonSetupEvent#enqueueWork, which FML drains only after that phase finishes.
+# Keep it "required" so the version floor is still enforced; only the ordering edge is dropped.
 [[dependencies.${mod_id}]]
 modId="dragonminez"
 type="required"
 versionRange="[2.1.3,)"
-ordering="AFTER"
+ordering="NONE"
 side="BOTH"
 
 [[dependencies.${mod_id}]]

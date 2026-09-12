@@ -47,6 +47,8 @@ public final class ClientConnectionState {
         ClientChaseFlightState.reset();
         SparkingClientState.clear();
         SparkingChargeClientState.clear();
+        net.bullettrain.xenopixelsmod.client.combat.HakaiFade.clear();
+        net.bullettrain.xenopixelsmod.client.anim.XenoTechniqueAnimBindingsClient.clear();
         XenoAuraScaling.clear();
         CombatFxClient.reset();
         AfterimageGhostRenderer.clear();

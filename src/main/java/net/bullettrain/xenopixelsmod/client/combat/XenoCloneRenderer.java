@@ -43,7 +43,11 @@ public class XenoCloneRenderer extends LivingEntityRenderer<XenoCloneEntity, Pla
         // The fighter's real DragonMineZ body, drawn through their own renderer against a proxy
         // identity of this copy's own. Falls straight back to the vanilla model below if the
         // bridge declines, so a copy is never invisible and the frame is never at risk.
-        float alpha = clone.slot() == XenoCloneEntity.SLOT_STATIONARY
+        float alpha = clone.slot() == XenoCloneEntity.SLOT_TRAINING
+                ? net.bullettrain.xenopixelsmod.features.progression.TrainingDummySpawner.GHOST_ALPHA
+                : clone.slot() == XenoCloneEntity.SLOT_SHADOW_FIGHT
+                ? 0.72f
+                : clone.slot() == XenoCloneEntity.SLOT_STATIONARY
                 ? AfterimageFade.alpha(XenoServerConfig.zanzokenGhostFadeMode,
                         XenoServerConfig.zanzokenGhostAlpha,
                         clone.tickCount + partialTick, clone.lifetimeTicks())
@@ -66,7 +70,9 @@ public class XenoCloneRenderer extends LivingEntityRenderer<XenoCloneEntity, Pla
     @Override
     protected net.minecraft.client.renderer.RenderType getRenderType(
             XenoCloneEntity clone, boolean bodyVisible, boolean translucent, boolean glowing) {
-        if (clone.slot() == XenoCloneEntity.SLOT_STATIONARY) {
+        if (clone.slot() == XenoCloneEntity.SLOT_STATIONARY
+                || clone.slot() == XenoCloneEntity.SLOT_TRAINING
+                || clone.slot() == XenoCloneEntity.SLOT_SHADOW_FIGHT) {
             return net.minecraft.client.renderer.RenderType.entityTranslucent(getTextureLocation(clone));
         }
         return super.getRenderType(clone, bodyVisible, translucent, glowing);

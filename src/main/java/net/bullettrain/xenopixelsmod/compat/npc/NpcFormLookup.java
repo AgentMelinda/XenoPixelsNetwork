@@ -3,6 +3,8 @@ package net.bullettrain.xenopixelsmod.compat.npc;
 import com.dragonminez.common.config.ConfigManager;
 import com.dragonminez.common.config.FormConfig;
 import com.dragonminez.common.stats.extras.FormMasteries;
+import net.bullettrain.xenopixelsmod.dmz.form.DmzFormKind;
+import net.bullettrain.xenopixelsmod.dmz.form.DmzFormPreviewOverrides;
 
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -87,6 +89,8 @@ public final class NpcFormLookup {
 
     public static FormConfig.FormData stackForm(String group, String form) {
         if (group == null || group.isBlank() || form == null || form.isBlank()) return null;
+        FormConfig.FormData preview = DmzFormPreviewOverrides.get(DmzFormKind.STACK, "", group, form);
+        if (preview != null) return preview;
         try {
             return ConfigManager.getStackForm(group, form);
         } catch (Throwable ignored) {
@@ -119,6 +123,8 @@ public final class NpcFormLookup {
         if (group == null || group.isBlank() || form == null || form.isBlank()) {
             return null;
         }
+        FormConfig.FormData preview = DmzFormPreviewOverrides.get(DmzFormKind.NORMAL, race, group, form);
+        if (preview != null) return preview;
         try {
             FormConfig.FormData data = ConfigManager.getForm(race, group, form);
             if (data != null) {

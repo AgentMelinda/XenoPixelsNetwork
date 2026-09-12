@@ -31,8 +31,10 @@ class DmzMenuModeTest {
     }
 
     @Test
-    void bt3StillMeansTheFirstRebuild() {
+    void aliasesMeanTheFirstRebuild() {
         assertEquals(DmzMenuMode.SCREEN, DmzMenuMode.parse("bt3", DmzMenuMode.STOCK));
+        assertEquals(DmzMenuMode.SCREEN, DmzMenuMode.parse("v3", DmzMenuMode.STOCK));
+        assertEquals(DmzMenuMode.SCREEN, DmzMenuMode.parse(" V3 ", DmzMenuMode.STOCK));
     }
 
     @Test

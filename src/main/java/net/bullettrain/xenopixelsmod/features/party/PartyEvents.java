@@ -21,6 +21,11 @@ public final class PartyEvents {
     }
 
     @SubscribeEvent
+    public static void onServerStarting(net.neoforged.neoforge.event.server.ServerStartingEvent event) {
+        net.bullettrain.xenopixelsmod.compat.npc.NpcPartyQuestObjectives.register();
+    }
+
+    @SubscribeEvent
     public static void onRegisterCommands(RegisterCommandsEvent event) {
         event.getDispatcher().register(PartyCommands.build());
         event.getDispatcher().register(PartyCommands.chatAlias());

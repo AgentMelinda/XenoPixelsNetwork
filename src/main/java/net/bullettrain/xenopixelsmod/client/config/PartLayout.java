@@ -39,6 +39,9 @@ public interface PartLayout {
 
     String[] font();
 
+    /** Per-element hide flags. A hidden part is skipped at draw time. */
+    boolean[] hidden();
+
     int defaultColor(int part);
 
     /** Restore one element's position, size, weight, colour and font. */

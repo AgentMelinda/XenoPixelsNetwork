@@ -1,7 +1,7 @@
 # XenoPixels CustomNPC scripting guide for server co-owners
 
 This guide documents the server-side `XenoPixels` global implemented by
-`NpcXenoScriptApi` version 4. It is intended for CustomNPCs JavaScript hooks such as
+`NpcXenoScriptApi` version 18. It is intended for CustomNPCs JavaScript hooks such as
 `init(event)`, `timer(event)`, `damaged(event)` and `died(event)`.
 
 ## Quick safety rules
@@ -13,7 +13,7 @@ This guide documents the server-side `XenoPixels` global implemented by
   `listStackForms` instead of guessing.
 - Colors may use `#RRGGBB`. Examples below use that format.
 - Transform durations are ticks; 20 ticks are approximately one second.
-- Check the installed bridge with `XenoPixels.getVersion()`; this document expects `"4"`.
+- Check the installed bridge with `XenoPixels.getVersion()`; this document expects `"18"`.
 
 ## Minimal fighter setup
 
@@ -229,7 +229,19 @@ set posed for Budokai Tenkaichi 3 and authored to fit one mash beat. `playAnimat
 name, so it can reach any generation regardless of that setting.
 
 A Full-appearance NPC also throws alternating left and right punch clips on its own ordinary melee
-attacks, with no script involved.
+attacks, with no script involved. The DMZ wand **Atk** field (or `XenoPixels.setMeleeAnimation`)
+replaces that default with a published studio clip; empty restores the punches.
+
+Studio clips on an NPC or a player:
+
+```js
+XenoPixels.playClip(npc, "my_jab", 1.0, 40);
+XenoPixels.playClip(event.player, "newhakaipose", 1.0, 60, true);
+XenoPixels.stopClip(event.player);
+```
+
+The clip must be shipped or published with `/xenoanim global push`. `clipDuration(name)` is the
+authored length in ticks, or `-1` when the server does not know it.
 
 `speed` is clamped to 0.15-4.0. Calling `playAnimation` again before the previous clip finishes
 restarts it, so pace the calls rather than firing one every tick.
@@ -354,7 +366,61 @@ getHair(npc)
 setHairEnabled(npc, enabled)
 setHairCode(npc, code)
 setHairColor(npc, color)
+getAppearanceMode(npc)
+setAppearanceMode(npc, mode)
+getAppearanceColors(npc)
+setBodyColor(npc, hex)
+setBodyColor2(npc, hex)
+setBodyColor3(npc, hex)
+setEyeColor1(npc, hex)
+setEyeColor2(npc, hex)
+teleport(npc, x, y, z)
+teleportToEntity(npc, target)
+teleportToPlayer(npc, player)
+playSound(npc, sound, volume, pitch)
+playSoundAt(npc, x, y, z, sound, volume, pitch)
+playSoundFor(player, sound, volume, pitch)
+getChatMessage(event)
+setChatMessage(event, message)
 ```
+
+## Teleport, sound, appearance and chat
+
+```js
+// Absolute position, with no vanish cooldown or energy cost.
+XenoPixels.teleport(event.npc, 120.5, 64.0, -330.25);
+XenoPixels.teleportToEntity(event.npc, event.npc.getAttackTarget());
+XenoPixels.teleportToPlayer(event.npc, somePlayer);
+
+// Loud sounds reach every player inside the volume-scaled radius. CustomNPCs' own
+// world.playSoundAt always stops at 16 blocks, so it cannot carry a boss roar.
+XenoPixels.playSound(event.npc, "minecraft:entity.ender_dragon.death", 4.0, 1.0);
+XenoPixels.playSoundAt(event.npc, 100, 70, 100, "minecraft:entity.generic.explode", 2.0, 1.0);
+XenoPixels.playSoundFor(somePlayer, "minecraft:ui.toast.challenge_complete", 1.0, 1.0);
+
+// Appearance mode is "OFF", "OVERLAY" or "FULL".
+XenoPixels.setAppearanceMode(event.npc, "FULL");
+var colors = XenoPixels.getAppearanceColors(event.npc);
+
+XenoPixels.setBodyColor(event.npc, "#4A90D9");
+XenoPixels.setBodyColor2(event.npc, "#2C5F91");
+XenoPixels.setBodyColor3(event.npc, "#1B3A5C");
+XenoPixels.setEyeColor1(event.npc, "#FFFFFF");
+XenoPixels.setEyeColor2(event.npc, "#111111");
+
+// chat(event) is not cancellable in CustomNPCs, so a script suppresses a line by
+// rewriting the message rather than cancelling the event.
+function chat(event) {
+    if (XenoPixels.getChatMessage(event).indexOf("!") >= 0)
+        XenoPixels.setChatMessage(event, "[NPC] " + event.message);
+}
+```
+
+`setAppearanceMode` accepts `OFF`, `OVERLAY` or `FULL` and falls back to `OFF` for an
+unrecognized name. Every color setter takes `#RRGGBB`, stores the canonical form, and returns
+`false` for a value it cannot parse. The sound methods return `false` for an unknown sound ID, a
+non-finite position, or an NPC that is not a live server-side entity. `teleport` keeps the NPC's
+current facing; use `vanishBehind` when the point is to arrive behind a target.
 
 ## In-game API inspection
 

@@ -44,10 +44,26 @@ public final class NpcSkillSet {
 
     /**
      * Max level DMZ allows for a skill, taken from the length of its cost table — the same
-     * source {@code Skills.calculateMaxLevel} uses. Returns 1 when the config is unavailable,
-     * which still lets the skill be switched on.
+     * source {@code Skills.calculateMaxLevel} uses.
+     *
+     * <p>Returns {@code 1} when the config is unavailable, which still lets the skill be
+     * switched on. That fallback is a display convenience only: anything that clamps a level
+     * must call {@link #configuredMaxLevel} instead, because clamping against this value would
+     * rewrite every level above 1 to 1 for any id DMZ ships no cost table for.
      */
     public static int maxLevelOf(String id) {
+        int configured = configuredMaxLevel(id);
+        return configured > 0 ? configured : 1;
+    }
+
+    /**
+     * Max level DMZ's cost table actually declares, or {@code 0} when it declares none.
+     *
+     * <p>The zero is the whole point: a missing cost table means the real maximum is unknown,
+     * not that it is one. {@link #maxLevelOf} folds that case into 1 for display, so callers
+     * that would otherwise discard an author's edit must ask this method and skip the clamp.
+     */
+    public static int configuredMaxLevel(String id) {
         String key = canonical(id);
         if (key.isEmpty()) {
             return 0;
@@ -62,7 +78,7 @@ public final class NpcSkillSet {
             }
         } catch (Throwable ignored) {
         }
-        return 1;
+        return 0;
     }
 
     /** Every skill id DMZ's config knows about, for script listings and the editor GUI. */
@@ -181,6 +197,13 @@ public final class NpcSkillSet {
     }
 
     private static int clampLevel(String key, int level) {
-        return Math.max(1, Math.min(maxLevelOf(key), level));
+        int configured = configuredMaxLevel(key);
+        // No cost table means the maximum is unknown, so the requested level is kept rather than
+        // collapsed to 1. Clamping against maxLevelOf's display fallback here was what silently
+        // threw away every level an author typed for an id DMZ ships no costs for.
+        if (configured <= 0) {
+            return Math.max(1, level);
+        }
+        return Math.max(1, Math.min(configured, level));
     }
 }

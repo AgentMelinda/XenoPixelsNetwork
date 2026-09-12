@@ -108,6 +108,7 @@
   "effect.xenopixelsmod.sparking": "Sparking",
   "effect.xenopixelsmod.combat_training": "Combat Training",
   "effect.xenopixelsmod.sparking_ready": "Sparking Ready",
+  "effect.xenopixelsmod.hakai_dissolve": "Hakai",
   "feature.xenopixelsmod.charge_overcharge": "Charge Overcharge",
   "feature.xenopixelsmod.charge_overcharge.desc": "Hold ki techniques past DragonMineZ's 175% cap. /xenoki cap <percent> sets the ceiling. Craters stay off until /xenoki grief true.",
   "key.xenopixelsmod.pad.desc": "Gamepad binding for %s",
@@ -131,5 +132,7 @@
   "message.xenopixelsmod.pad.flight_search": "Search Fly",
   "message.xenopixelsmod.pad.flight_combat": "Combat Fly",
   "screen.xenopixelsmod.dmz_stats": "Character",
-  "screen.xenopixelsmod.dmz_neon": "Character"
+  "screen.xenopixelsmod.dmz_neon": "Character",
+  "role.dragonminez.skill_master": "DMZ Skill Master",
+  "config.xenopixels.sparking": "Sparking"
 }

@@ -21,6 +21,13 @@ public final class NpcQuestCompletionSync {
             if (methods.length == 0) return;
             Object data = methods[0].invoke(null, player);
             methods[1].invoke(data, true);
+            if (net.bullettrain.xenopixelsmod.config.XenoServerConfig.parallelQuestEnabled) {
+                net.bullettrain.xenopixelsmod.capability.XenoCapabilities.get(player).ifPresent(xeno -> {
+                    xeno.addSkillPoints(2);
+                    player.displayClientMessage(net.minecraft.network.chat.Component.literal(
+                            "§a§lCNPC quest complete §7(+2 skill points)"), false);
+                });
+            }
         } catch (ReflectiveOperationException | RuntimeException failure) {
             if (WARNED.add(playerDataClassName)) {
                 XenoPixelsMod.LOGGER.warn("Could not immediately persist/sync an NPC quest completion: {}",

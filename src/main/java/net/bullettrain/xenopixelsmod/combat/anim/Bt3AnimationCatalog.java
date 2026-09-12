@@ -203,6 +203,7 @@ public final class Bt3AnimationCatalog {
      */
     public static Set<String> playableAnimationNames() {
         Set<String> all = new LinkedHashSet<>(CUSTOM_NAMES);
+        all.addAll(DYNAMIC_NAMES);
         for (Bt3AnimationIntent intent : ENTRIES.keySet()) {
             for (int gen = GEN_MIN; gen <= GEN_MAX; gen++) {
                 all.add(clipFor(intent, gen).name());
@@ -213,6 +214,31 @@ public final class Bt3AnimationCatalog {
 
     public static boolean isPlayable(String animation) {
         return animation != null && playableAnimationNames().contains(animation.trim());
+    }
+
+    /**
+     * Authored length of {@code animation} in seconds, or {@code -1} when this catalog does not
+     * know it. Library clips are resolved through {@code XenoClipLibrary.durationTicks}.
+     */
+    public static float authoredSeconds(String animation) {
+        if (animation == null || animation.isBlank()) {
+            return -1.0f;
+        }
+        String name = animation.trim();
+        for (Entry entry : ENTRIES.values()) {
+            for (int gen = GEN_MIN; gen <= 3; gen++) {
+                Clip clip = entry.forGeneration(gen);
+                if (clip != null && name.equals(clip.name())) {
+                    return clip.seconds();
+                }
+            }
+        }
+        for (Clip clip : GEN4.values()) {
+            if (clip != null && name.equals(clip.name())) {
+                return clip.seconds();
+            }
+        }
+        return -1.0f;
     }
 
     private static Clip clip(String name, float seconds) {
@@ -235,6 +261,31 @@ public final class Bt3AnimationCatalog {
 
     private static void v4(Bt3AnimationIntent intent, String suffix, float seconds) {
         GEN4.put(intent, xenoClip(suffix + "_v4", seconds));
+    }
+
+    /**
+     * Clip names that exist only at runtime - the server's studio-clip library.
+     *
+     * <p>The shipped table above stays authoritative for everything it names. This is the one way a
+     * name that is not compiled in can still pass {@link #isPlayable}, which is what lets an NPC
+     * play a clip somebody authored in game.
+     */
+    private static final Set<String> DYNAMIC_NAMES =
+            java.util.concurrent.ConcurrentHashMap.newKeySet();
+
+    /** Adds one runtime clip name. Ignores anything outside this mod's prefix. */
+    public static void registerDynamicAnimation(String name) {
+        if (name != null && name.startsWith("combat.xeno_")) {
+            DYNAMIC_NAMES.add(name.trim());
+        }
+    }
+
+    public static void clearDynamicAnimations() {
+        DYNAMIC_NAMES.clear();
+    }
+
+    public static Set<String> dynamicAnimationNames() {
+        return Collections.unmodifiableSet(new LinkedHashSet<>(DYNAMIC_NAMES));
     }
 
     private static void register(String... names) {

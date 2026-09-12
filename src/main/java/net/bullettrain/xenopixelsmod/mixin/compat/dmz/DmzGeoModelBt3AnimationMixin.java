@@ -2,6 +2,8 @@ package net.bullettrain.xenopixelsmod.mixin.compat.dmz;
 
 import com.dragonminez.client.model.DMZPlayerModel;
 import net.bullettrain.xenopixelsmod.XenoPixelsMod;
+import net.bullettrain.xenopixelsmod.client.anim.StudioAnimLookup;
+import net.bullettrain.xenopixelsmod.client.anim.XenoStudioClipCache;
 import net.bullettrain.xenopixelsmod.client.combat.anim.Bt3AnimationBinding;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Unique;
@@ -17,10 +19,9 @@ import software.bernie.geckolib.model.GeoModel;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
- * Safety net: if GeckoLib's primary + DMZ fallback files do not contain a {@code combat.xeno_*}
- * clip, look it up in the file this mod already baked. GeckoLib loads every animation
- * JSON under {@code assets/<modid>/animations} at resource reload, so the clip is in
- * {@link GeckoLibCache} even when {@code getAnimationResourceFallbacks} never listed our file.
+ * Studio / library clips win over a shipped {@code combat.xeno_*} of the same name so an
+ * in-game edit can play without rewriting {@code bt3_combat.animation.json}. If neither
+ * cache has it, fall back to the GeckoLib-baked file this mod already ships.
  */
 @Mixin(value = GeoModel.class, remap = false)
 public abstract class DmzGeoModelBt3AnimationMixin {
@@ -37,10 +38,19 @@ public abstract class DmzGeoModelBt3AnimationMixin {
             cancellable = true)
     private void xeno$lookupBt3(GeoAnimatable animatable, String name,
                                 CallbackInfoReturnable<Animation> cir) {
-        if (cir.getReturnValue() != null || name == null || !name.startsWith("combat.xeno_")) {
+        if (name == null || !name.startsWith("combat.xeno_")) {
             return;
         }
         if (!((Object) this instanceof DMZPlayerModel)) {
+            return;
+        }
+        Animation studio = XenoStudioClipCache.get(name);
+        Animation preferred = StudioAnimLookup.preferStudio(name, studio, cir.getReturnValue());
+        if (preferred != null && preferred != cir.getReturnValue()) {
+            cir.setReturnValue(preferred);
+            return;
+        }
+        if (cir.getReturnValue() != null) {
             return;
         }
         BakedAnimations baked = GeckoLibCache.getBakedAnimations()

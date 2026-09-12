@@ -5,6 +5,7 @@ import net.bullettrain.xenopixelsmod.compat.npc.NpcAuraFx;
 import net.bullettrain.xenopixelsmod.compat.npc.NpcCombatProfile;
 import net.bullettrain.xenopixelsmod.compat.npc.NpcCounterpartSync;
 import net.bullettrain.xenopixelsmod.compat.npc.NpcTransformSystem;
+import net.bullettrain.xenopixelsmod.network.ModNetwork;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.server.level.ServerLevel;
@@ -63,12 +64,20 @@ public final class NpcProfileSavePacket {
                 return;
             }
             Entity raw = level.getEntity(msg.entityId);
-            if (!(raw instanceof LivingEntity living) || !living.isAlive()
-                    || !NpcCounterpartSync.isCustomNpc(living)
-                    || !player.hasPermissions(2)) {
+            if (!(raw instanceof LivingEntity living)) {
+                reply(player, false, NpcProfileSaveResultPacket.GONE);
+                return;
+            }
+            if (!living.isAlive() || !NpcCounterpartSync.isCustomNpc(living)) {
+                reply(player, false, NpcProfileSaveResultPacket.NOT_EDITABLE);
+                return;
+            }
+            if (!player.hasPermissions(2)) {
+                reply(player, false, NpcProfileSaveResultPacket.NOT_PERMITTED);
                 return;
             }
             if (player.distanceToSqr(living) > 64.0 * 64.0) {
+                reply(player, false, NpcProfileSaveResultPacket.TOO_FAR);
                 return;
             }
             NpcCombatProfile authoritative = NpcCombatProfile.read(living);
@@ -86,8 +95,13 @@ public final class NpcProfileSavePacket {
             } else if (msg.action == Action.UNSTACK) {
                 NpcTransformSystem.unstack(living);
             }
+            reply(player, true, NpcProfileSaveResultPacket.OK);
         });
         ctx.get().setPacketHandled(true);
+    }
+
+    private static void reply(ServerPlayer player, boolean saved, String reason) {
+        ModNetwork.sendToPlayer(player, new NpcProfileSaveResultPacket(saved, reason));
     }
 
     /**

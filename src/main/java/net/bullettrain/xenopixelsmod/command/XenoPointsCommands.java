@@ -89,7 +89,10 @@ public final class XenoPointsCommands {
                     : "No online player matches: " + rawTarget));
             return 0;
         }
-        return apply(source, java.util.List.of(resolved), rawAmount, operation);
+        java.util.List<ServerPlayer> targets = NpcTargetToken.isDialogPlayer(rawTarget)
+                ? net.bullettrain.xenopixelsmod.compat.npc.NpcPartyReward.recipients(resolved)
+                : java.util.List.of(resolved);
+        return apply(source, targets, rawAmount, operation);
     }
 
     private static ServerPlayer resolve(CommandSourceStack source, String rawTarget) {
