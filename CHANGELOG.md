@@ -5,9 +5,9 @@
 - Race Character Maker studio: 22px gutter pagers, category-scoped colours
   (Body Skin/Skin2/Skin3, Eyes Eye1/Eye2, Hair, Aura), seven-channel live preview,
   merge-save for custom packs, and world HUD hidden while `/xenomaker` is open.
-- CI: compile and package `jarJar` + `serverJar` without the full `build` test gate.
-  That gate currently requires untracked generator sources. Tag `v*.*.*` still
-  publishes GitHub Releases.
+- CI: compile and package `jar` + `jarJar` + `serverJar` without the full `build`
+  test gate. That gate currently requires untracked generator sources. Tag `v*.*.*`
+  still publishes GitHub Releases.
 
 ## 0.5.1-1.21.1 — 2026-10-04
 

@@ -45,11 +45,12 @@ jobs:
 
       # `build` runs :test. Twelve tests currently require untracked generator sources
       # (tools/effekseer/*, tools/guidance_v2_art, examples/customnpcs, docs/xeno-npc-schema.md)
-      # that are not in this git tree, so :test fails on a clean checkout. Package the
-      # client JiJ jar and the server jar without that gate.
+      # that are not in this git tree, so :test fails on a clean checkout. `jarJar` only
+      # stages nested libs; `:jar` writes the client artifact. Package both plus the
+      # server jar without that gate.
       - name: Package client and server jars
         run: |
-          ./gradlew jarJar serverJar --no-daemon -PofflineMcMeta \
+          ./gradlew jar jarJar serverJar --no-daemon -PofflineMcMeta \
             -PdmzJar=libs/dragonminez-2.1.3.jar
 
       - name: Verify ModernUI is nested in the client jar

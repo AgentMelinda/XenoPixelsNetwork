@@ -39,10 +39,11 @@ jobs:
 
       # `build` runs :test. Twelve tests currently require untracked generator sources
       # that are not in this git tree, so tag publishes died on :test after compile
-      # already succeeded. Package the client JiJ jar and the server jar without that gate.
+      # already succeeded. `jarJar` only stages nested libs; `:jar` writes the client
+      # artifact. Package both plus the server jar without the test gate.
       - name: Package client and server jars
         run: |
-          ./gradlew jarJar serverJar --no-daemon -PofflineMcMeta \
+          ./gradlew jar jarJar serverJar --no-daemon -PofflineMcMeta \
             -PdmzJar=libs/dragonminez-2.1.3.jar
 
       - name: Verify release artifacts
@@ -55,6 +56,14 @@ jobs:
             exit 1
           fi
           echo "Verified: ${jars[*]}"
+          printf '%s\n' "${jars[@]}" | grep -q 'xenopixelsmod-Server-' || {
+            echo "Missing server jar"
+            exit 1
+          }
+          printf '%s\n' "${jars[@]}" | grep -v 'xenopixelsmod-Server-' | grep -q 'xenopixelsmod-' || {
+            echo "Missing client jar (jarJar stages nested libs; :jar writes the artifact)"
+            exit 1
+          }
 
       - name: Upload build artifacts
         uses: actions/upload-artifact@v7
