@@ -31,6 +31,9 @@
 - `41cfea6322f0e32db93ffdff085848bdd6aff709`: release preparation sets `mod_version=0.5.7-1.21.1` and checks exact matching
   client/server artifacts before publishing. Server nesting is restricted to
   metadata plus AAA Particles. The release tag must match the version property.
+- `567e7439aee4a161b2aa74f3235210cd84bcf594`: record the release-preparation
+  commit. Annotated tag `v0.5.7-1.21.1` points to this commit; tag object is
+  `b6d58e8d632e71a58f3743116af442952691759a`. Branch and tag were pushed.
 - Public API and sequential main ModNetwork packet IDs are unchanged. Taotto
   uses its own `xenopixelsmod:taotto` channel, protocol 1, sender-owned apply requests,
   and additive player capability NBT. Existing DMZ tattooType is not overwritten.
@@ -68,6 +71,17 @@
   observed. This proves startup and pack registration, not maker interaction.
 - Exact new mixin target descriptors/field validated against pinned DMZ jar by
   javap and `MakerMixinTargetTest`.
+- Tag workflow [Build And Release](https://github.com/AgentMelinda/XenoPixelsNetwork/actions/runs/37205827548)
+  completed successfully for `567e7439aee4a161b2aa74f3235210cd84bcf594`, as did
+  [branch Build](https://github.com/AgentMelinda/XenoPixelsNetwork/actions/runs/37205825962).
+- [Release v0.5.7-1.21.1](https://github.com/AgentMelinda/XenoPixelsNetwork/releases/tag/v0.5.7-1.21.1)
+  was published at 2026-10-04 13:31:35 UTC with exactly two jars. Downloaded both
+  into `build/release-proof/0.5.7`; hashes match the GitHub asset SHA-256 digests:
+  client 69,222,728 bytes, `a85b0e8b8a307c10637fc2c2a27718a964b379e92adad5bfdb86f450e12770ed`;
+  server 45,075,884 bytes, `f15745c4356c387e85595f628195e8869611a849e84fdf231d74c5536e86913a`.
+  Required new classes and all three client mixin registrations are present.
+  Published server nesting also contains exactly metadata plus AAA Particles.
+  These Linux CI hashes differ from the separately recorded local Windows jars.
 
 ## Not verified
 
@@ -85,14 +99,12 @@
   they did not stop startup and were not changed here.
 - Existing release workflow skips test execution because clean-checkout tests
   reference untracked generator inputs. This task preserves that existing policy;
-  local full tests passed. CI publication evidence must be checked separately.
+  local full tests passed. Successful CI packaging is not a CI test-suite claim.
 
 ## Next steps
 
-1. Commit reviewed release metadata, push 1.21.1, create and push annotated
-   `v0.5.7-1.21.1`. Its push triggers Build And Release; inspect its conclusion
-   and verify the two published jars. CI jar hashes can differ from local Windows
-   output; record CI asset hashes separately.
+1. Release publication and downloaded artifact checks are complete. Keep the
+   published tag fixed; subsequent handoff-only changes do not change its jars.
 2. Exercise the unverified interactive and multiplayer cases in a disposable
    world before claiming those runtime behaviors verified.
 3. Preserve the unrelated dirty paths and both excluded XenoNPCs directories.
