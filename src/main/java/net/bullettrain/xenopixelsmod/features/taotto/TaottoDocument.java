@@ -27,7 +27,9 @@ public final class TaottoDocument {
     }
 
     public static TaottoDocument blank() {
-        return new TaottoDocument(DEFAULT_SIZE);
+        TaottoDocument document = new TaottoDocument(DEFAULT_SIZE);
+        document.fitPaint();
+        return document;
     }
 
     public static TaottoDocument ofSize(int size) {
@@ -70,8 +72,49 @@ public final class TaottoDocument {
     }
 
     public void scale(float scale) {
+        PaintBounds bounds = paintBounds();
+        float centerX = (bounds.minX() + bounds.maxX()) / 2f;
+        float centerY = (bounds.minY() + bounds.maxY()) / 2f;
+        float previous = this.scale;
         this.scale = Math.max(MIN_SCALE, Math.min(MAX_SCALE, Float.isFinite(scale) ? scale : 1f));
+        if (hasPaint()) {
+            offsetU += centerX * (previous - this.scale);
+            offsetV += centerY * (previous - this.scale);
+        } else {
+            offsetU = offsetV = 0f;
+        }
         clampOffset();
+    }
+
+    /** Fit the painted area, ignoring empty canvas margins, and center it on the part. */
+    public void fitPaint() {
+        PaintBounds bounds = paintBounds();
+        TaottoBodyPart.UvIsland island = part.front();
+        scale = Math.max(MIN_SCALE, Math.min(MAX_SCALE,
+                Math.min(island.w() / (float) bounds.width(), island.h() / (float) bounds.height())));
+        offsetU = (island.w() - bounds.width() * scale) / 2f - bounds.minX() * scale;
+        offsetV = (island.h() - bounds.height() * scale) / 2f - bounds.minY() * scale;
+        clampOffset();
+    }
+
+    public PaintBounds paintBounds() {
+        int minX = size, minY = size, maxX = 0, maxY = 0;
+        for (int y = 0; y < size; y++) {
+            for (int x = 0; x < size; x++) {
+                if ((pixels[y * size + x] >>> 24) == 0) continue;
+                minX = Math.min(minX, x);
+                minY = Math.min(minY, y);
+                maxX = Math.max(maxX, x + 1);
+                maxY = Math.max(maxY, y + 1);
+            }
+        }
+        return minX == size ? new PaintBounds(0, 0, size, size)
+                : new PaintBounds(minX, minY, maxX, maxY);
+    }
+
+    public record PaintBounds(int minX, int minY, int maxX, int maxY) {
+        public int width() { return maxX - minX; }
+        public int height() { return maxY - minY; }
     }
 
     public void dragBy(float du, float dv) {
@@ -129,8 +172,8 @@ public final class TaottoDocument {
                 }
                 int destW = Math.max(1, Math.round(s));
                 int destH = Math.max(1, Math.round(s));
-                int baseX = island.u() + Math.round(offsetU + x * s);
-                int baseY = island.v() + Math.round(offsetV + y * s);
+                int baseX = island.u() + (int) Math.floor(offsetU + x * s);
+                int baseY = island.v() + (int) Math.floor(offsetV + y * s);
                 for (int oy = 0; oy < destH; oy++) {
                     for (int ox = 0; ox < destW; ox++) {
                         int dx = baseX + ox;
@@ -169,7 +212,8 @@ public final class TaottoDocument {
         doc.part(TaottoBodyPart.fromName(tag.getString("Part")));
         doc.offsetU = tag.getFloat("U");
         doc.offsetV = tag.getFloat("V");
-        doc.scale(tag.contains("Scale") ? tag.getFloat("Scale") : 1f);
+        float storedScale = tag.contains("Scale") ? tag.getFloat("Scale") : 1f;
+        doc.scale = Math.max(MIN_SCALE, Math.min(MAX_SCALE, Float.isFinite(storedScale) ? storedScale : 1f));
         doc.clampOffset();
         return doc;
     }
@@ -190,23 +234,15 @@ public final class TaottoDocument {
 
     private void clampOffset() {
         TaottoBodyPart.UvIsland island = part.front();
-        float paintedW = size * scale;
-        float paintedH = size * scale;
-        float maxU = Math.max(0f, island.w() - Math.min(paintedW, island.w()));
-        float maxV = Math.max(0f, island.h() - Math.min(paintedH, island.h()));
+        PaintBounds bounds = paintBounds();
+        // If paint fits, keep it inside the part. If oversized, allow panning across it.
+        float left = -bounds.minX() * scale;
+        float right = island.w() - bounds.maxX() * scale;
+        float top = -bounds.minY() * scale;
+        float bottom = island.h() - bounds.maxY() * scale;
         if (!Float.isFinite(offsetU)) offsetU = 0f;
         if (!Float.isFinite(offsetV)) offsetV = 0f;
-        if (offsetU < 0f) {
-            offsetU = 0f;
-        }
-        if (offsetV < 0f) {
-            offsetV = 0f;
-        }
-        if (offsetU > maxU) {
-            offsetU = maxU;
-        }
-        if (offsetV > maxV) {
-            offsetV = maxV;
-        }
+        offsetU = Math.max(Math.min(left, right), Math.min(Math.max(left, right), offsetU));
+        offsetV = Math.max(Math.min(top, bottom), Math.min(Math.max(top, bottom), offsetV));
     }
 }

@@ -2,6 +2,16 @@
 
 ## Unreleased
 
+## 0.5.8-1.21.1 — 2026-10-04
+
+- Fix Taotto dragging being pinned by transparent canvas margins. Placement bounds now
+  follow the painted area, with negative offsets supported and oversized paint allowed to pan.
+- New tattoo canvases start fitted to the torso. **Fit paint** centers and scales the painted
+  area on the selected part; scaling preserves its center. The placement panel is centered
+  and shows a selection outline for movement between skin pixels.
+- Fix fractional-scale paint disappearing at the bottom/right placement boundary and ignore
+  horizontal-only wheel events. Interactive feel remains unverified in game.
+
 ## 0.5.7-1.21.1 — 2026-10-04
 
 - Race Maker: per-race hair catalog and authored body types. Hair Editor **Save Pack** writes

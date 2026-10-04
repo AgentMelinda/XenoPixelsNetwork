@@ -117,7 +117,7 @@ public final class TaottoMakerScreen extends ScaledScreen {
         placeH = 140;
         previewX = placeX + placeW + 8;
         previewY = canvasY;
-        footerY = Math.max(canvasY + canvasPx, previewY + previewH) + 8;
+        footerY = Math.max(Math.max(canvasY + canvasPx, previewY + previewH), placeY + placeH + 80) + 8;
 
         clearWidgets();
 
@@ -165,6 +165,14 @@ public final class TaottoMakerScreen extends ScaledScreen {
                     document.scale(document.scale() * 1.25f);
                     previewDirty = true;
                     status = "Scale " + formatScale();
+                    statusColor = MUTED;
+                }));
+
+        addRenderableWidget(new AtlasButton(placeX, placeY + placeH + 56,
+                Component.literal("Fit paint"), TOOL, b -> {
+                    document.fitPaint();
+                    previewDirty = true;
+                    status = "Paint fitted and centered on " + document.part().label() + ".";
                     statusColor = MUTED;
                 }));
 
@@ -275,8 +283,8 @@ public final class TaottoMakerScreen extends ScaledScreen {
         float sx = (placeW - 16f) / Math.max(1, island.w());
         float sy = (placeH - 16f) / Math.max(1, island.h());
         float scale = Math.min(sx, sy);
-        int ix = placeX + 8;
-        int iy = placeY + 8;
+        int ix = placeX + (placeW - Math.round(island.w() * scale)) / 2;
+        int iy = placeY + (placeH - Math.round(island.h() * scale)) / 2;
         int iw = Math.round(island.w() * scale);
         int ih = Math.round(island.h() * scale);
         graphics.fill(ix, iy, ix + iw, iy + ih, 0xFF3D5A45);
@@ -289,7 +297,23 @@ public final class TaottoMakerScreen extends ScaledScreen {
                         ix + Math.round((x + 1) * scale), iy + Math.round((y + 1) * scale), color);
             }
         }
-        graphics.drawString(font, "Drag", placeX, placeY - 12, MUTED, false);
+        if (document.hasPaint()) {
+            // Show fractional movement between skin pixels instead of appearing stuck.
+            var bounds = document.paintBounds();
+            int left = Math.max(ix, Math.min(ix + iw - 1,
+                    ix + Math.round((document.offsetU() + bounds.minX() * document.scale()) * scale)));
+            int top = Math.max(iy, Math.min(iy + ih - 1,
+                    iy + Math.round((document.offsetV() + bounds.minY() * document.scale()) * scale)));
+            int right = Math.max(left + 1, Math.min(ix + iw,
+                    ix + Math.round((document.offsetU() + bounds.maxX() * document.scale()) * scale)));
+            int bottom = Math.max(top + 1, Math.min(iy + ih,
+                    iy + Math.round((document.offsetV() + bounds.maxY() * document.scale()) * scale)));
+            graphics.fill(left, top, right, top + 1, GOLD);
+            graphics.fill(left, bottom - 1, right, bottom, GOLD);
+            graphics.fill(left, top, left + 1, bottom, GOLD);
+            graphics.fill(right - 1, top, right, bottom, GOLD);
+        }
+        graphics.drawString(font, "Drag paint", placeX, placeY - 12, MUTED, false);
     }
 
     private void paintAt(double uiMx, double uiMy) {
@@ -343,17 +367,19 @@ public final class TaottoMakerScreen extends ScaledScreen {
         }
         double uiMx = toUiX(mouseX);
         double uiMy = toUiY(mouseY);
-        if (painting) {
+        if (button == 0 && painting) {
             paintAt(uiMx, uiMy);
             return true;
         }
-        if (dragging) {
+        if (button == 0 && dragging) {
             TaottoBodyPart.UvIsland island = document.part().front();
             float scaleX = (placeW - 16f) / Math.max(1, island.w());
             float scaleY = (placeH - 16f) / Math.max(1, island.h());
             float scale = Math.min(scaleX, scaleY);
             previewDirty = true;
             document.dragBy((float) (toUiX(dx) / Math.max(0.01f, scale)), (float) (toUiY(dy) / Math.max(0.01f, scale)));
+            status = "Drag paint to place it; scroll to scale, or Fit paint to recenter.";
+            statusColor = MUTED;
             return true;
         }
         return super.mouseDragged(mouseX, mouseY, button, dx, dy);
@@ -375,7 +401,8 @@ public final class TaottoMakerScreen extends ScaledScreen {
             return true;
         }
         if (inPlace(toUiX(mouseX), toUiY(mouseY))) {
-            document.scale(document.scale() * (scrollY > 0 ? 1.25f : 0.8f));
+            if (scrollY == 0) return true;
+            document.scale(document.scale() * (float) Math.pow(1.25, scrollY));
             previewDirty = true;
             status = "Scale " + formatScale();
             statusColor = MUTED;

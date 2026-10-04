@@ -63,7 +63,7 @@ class TaottoDocumentTest {
         assertEquals(0, doc.paintedCount());
         assertFalse(doc.hasPaint());
         assertEquals(TaottoBodyPart.TORSO, doc.part());
-        assertEquals(1f, doc.scale(), 1e-5f);
+        assertEquals(0.25f, doc.scale(), 1e-5f);
     }
 
     @Test
@@ -127,6 +127,8 @@ class TaottoDocumentTest {
     @Test
     void dragClampsInsideTheIsland() {
         TaottoDocument doc = TaottoDocument.blank();
+        doc.scale(1f);
+        doc.setPixel(0, 0, 0xFFFFFFFF);
         doc.part(TaottoBodyPart.HEAD);
         doc.dragBy(1000f, 1000f);
         TaottoBodyPart.UvIsland island = TaottoBodyPart.HEAD.front();
@@ -135,5 +137,70 @@ class TaottoDocumentTest {
         doc.dragBy(-1000f, -1000f);
         assertEquals(0f, doc.offsetU(), 1e-4f);
         assertEquals(0f, doc.offsetV(), 1e-4f);
+    }
+
+    @Test
+    void sparsePaintMovesEvenWhenTheTransparentCanvasIsLargerThanThePart() {
+        TaottoDocument doc = TaottoDocument.ofSize(32);
+        doc.setPixel(0, 0, 0xFFFFFFFF);
+        doc.dragBy(3, 5);
+        assertEquals(3f, doc.offsetU());
+        assertEquals(5f, doc.offsetV());
+        var island = doc.part().front();
+        assertEquals(0xFFFFFFFF, doc.bakeOverlay(64)[(island.v() + 5) * 64 + island.u() + 3]);
+    }
+
+    @Test
+    void paintInMiddleOfCanvasCanMoveUsingNegativeOffsetsAndPersist() {
+        TaottoDocument doc = TaottoDocument.ofSize(32);
+        doc.setPixel(16, 16, 0xFFFFFFFF);
+        doc.offsetU(-14);
+        doc.offsetV(-13);
+        doc.dragBy(2, 3);
+        var island = doc.part().front();
+        assertEquals(0xFFFFFFFF, doc.bakeOverlay(64)[(island.v() + 6) * 64 + island.u() + 4]);
+        CompoundTag tag = new CompoundTag();
+        doc.saveNbt(tag);
+        var loaded = TaottoDocument.loadNbt(tag);
+        assertEquals(doc.offsetU(), loaded.offsetU());
+        assertEquals(doc.offsetV(), loaded.offsetV());
+    }
+
+    @Test
+    void oversizedPaintCanBePannedAndReversed() {
+        TaottoDocument doc = TaottoDocument.ofSize(32);
+        doc.setPixel(0, 0, 0xFFFF0000);
+        doc.setPixel(31, 31, 0xFF00FF00);
+        doc.dragBy(-5, -7);
+        assertEquals(-5f, doc.offsetU());
+        assertEquals(-7f, doc.offsetV());
+        doc.dragBy(2, 3);
+        assertEquals(-3f, doc.offsetU());
+        assertEquals(-4f, doc.offsetV());
+    }
+
+    @Test
+    void fitUsesPaintedBoundsAndZoomKeepsPaintCentered() {
+        TaottoDocument doc = TaottoDocument.ofSize(32);
+        doc.setPixel(14, 16, 0xFFFFFFFF);
+        doc.setPixel(17, 19, 0xFFFFFFFF);
+        doc.fitPaint();
+        assertEquals(2f, doc.scale());
+        assertEquals(4f, doc.offsetU() + 16 * doc.scale());
+        assertEquals(6f, doc.offsetV() + 18 * doc.scale());
+        doc.scale(1f);
+        assertEquals(4f, doc.offsetU() + 16 * doc.scale());
+        assertEquals(6f, doc.offsetV() + 18 * doc.scale());
+    }
+
+    @Test
+    void fractionalScaleDoesNotLosePaintAtTheRightOrBottomEdge() {
+        TaottoDocument doc = TaottoDocument.blank();
+        doc.setPixel(0, 0, 0xFFFFFFFF);
+        doc.dragBy(1000, 1000);
+        var island = doc.part().front();
+        int[] overlay = doc.bakeOverlay(64);
+        assertEquals(0xFFFFFFFF,
+                overlay[(island.v() + island.h() - 1) * 64 + island.u() + island.w() - 1]);
     }
 }

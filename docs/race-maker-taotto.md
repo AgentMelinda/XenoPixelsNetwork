@@ -18,7 +18,10 @@ under `config/xenopixelsmod/race_assets/`.
 
 Open **Taotto** from the maker hub or run `/xenomaker taotto`. Paint pixels on the
 canvas, choose a body part, adjust scale, and drag the placement preview. The
-draft appears in the maker's character preview before **Apply**. Apply saves one
+**Fit paint** control centers the painted area on the selected part. New canvases
+start fitted to the torso. Dragging ignores transparent margins, oversized paint
+can pan across the part, and scaling preserves the painted area's center (0.5.8).
+The draft appears in the maker's character preview before **Apply**. Apply saves one
 overlay for your player and requests server synchronization. **Clear**, followed
 by **Apply**, removes it. Placement is clipped to the selected part's front face.
 This overlay is separate from DragonMineZ's existing tattoo preset selection.
