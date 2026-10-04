@@ -23,6 +23,9 @@
 
 ## Changes
 
+- Implementation/release commit: `8fbe8ff2ebc8efa4a3c6944080fb53f3a855c45e`,
+  author `jacky yuval <gitlab_admin_263562@gitlab.xpn.co.il>`. Branch and annotated
+  tag `v0.5.8-1.21.1` pushed to AgentMelinda/XenoPixelsNetwork; tag points to this commit.
 - Placement was pinned because offsets were clamped against the entire 32x32
   canvas, including transparent margins. Bounds now follow opaque paint. Fitting
   paint stays inside the part; oversized paint can pan. Negative offsets support
@@ -53,6 +56,17 @@
   SHA-256 08bd2820591e43336fac73a32d65d4564763a9086d808cb0a78d925be199c932.
   Only entries below META-INF/jarjar are metadata.json and AAA Particles.
 - `git diff --check` passed for reviewed task paths.
+- Tag [Build And Release](https://github.com/AgentMelinda/XenoPixelsNetwork/actions/runs/37208435879)
+  and [branch Build](https://github.com/AgentMelinda/XenoPixelsNetwork/actions/runs/37208434049)
+  succeeded for the implementation commit.
+- [Published release](https://github.com/AgentMelinda/XenoPixelsNetwork/releases/tag/v0.5.8-1.21.1):
+  2026-10-04 14:14:32 UTC. Downloaded both jars into build/release-proof/0.5.8;
+  each SHA-256 matched GitHub's asset digest. Client: 69,225,102 bytes,
+  be9b8259e8153204c55d7752d8ef57b90ea9b5d00930e2ce14e72efcf135e767.
+  Server: 45,078,258 bytes,
+  7cb1ded5d176510cc956d472b29cd7e4d5dea11020709091cf5d43f310a1156f.
+  Corrected PaintBounds class is present in both. Server nesting is exactly
+  metadata and AAA Particles. CI hashes are separate from local Windows hashes.
 
 ## Not verified
 
@@ -64,8 +78,8 @@
 
 ## Next steps
 
-1. Push reviewed commit and annotated v0.5.8-1.21.1 tag, check tag workflow, and
-   download published client/server assets to verify their hashes and nesting.
+1. Publication and artifact verification are complete. Keep the published tag
+   fixed; subsequent handoff-only commits do not change its release jars.
 2. Restart with the corrected client jar. Test a small design drawn in the middle
    of the canvas, drag it on torso/limbs, zoom and Fit paint, then Apply/reopen.
 3. Preserve the excluded folders and unrelated dirty work.
