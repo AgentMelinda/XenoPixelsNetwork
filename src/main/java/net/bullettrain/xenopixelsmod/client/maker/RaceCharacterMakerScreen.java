@@ -8,8 +8,11 @@ import net.bullettrain.xenopixelsmod.client.ui.atlas.ColorSwatch;
 import net.bullettrain.xenopixelsmod.client.ui.atlas.InlineColorPicker;
 import net.bullettrain.xenopixelsmod.client.ui.atlas.XenoAtlasSprites;
 import net.bullettrain.xenopixelsmod.command.XenoPermissions;
+import net.bullettrain.xenopixelsmod.dmz.race.RaceLabelRegistry;
+import net.bullettrain.xenopixelsmod.dmz.race.RaceLabels;
 import net.bullettrain.xenopixelsmod.dmz.race.RacePackService;
 import net.bullettrain.xenopixelsmod.dmz.race.RacePackTemplate;
+import net.bullettrain.xenopixelsmod.network.race.RaceLabelNetwork;
 import net.bullettrain.xenopixelsmod.hair.HairMakerDocument;
 import net.bullettrain.xenopixelsmod.hair.HairPresetImport;
 import net.minecraft.client.Minecraft;
@@ -103,6 +106,8 @@ public final class RaceCharacterMakerScreen extends ScaledScreen {
     private String hairColorHex = "#2B1B0E";
     private String auraHex = "#7FFFFF";
     private String createIdText = "";
+    private String displayNameText = "";
+    private String descriptionText = "";
 
     private int originX;
     private int originY;
@@ -135,6 +140,8 @@ public final class RaceCharacterMakerScreen extends ScaledScreen {
     private int tileW;
     private int tileH;
     private EditBox createIdBox;
+    private EditBox displayNameBox;
+    private EditBox descriptionBox;
 
     public RaceCharacterMakerScreen(Screen parent) {
         super(Component.literal("Race Character Maker"));
@@ -148,7 +155,7 @@ public final class RaceCharacterMakerScreen extends ScaledScreen {
 
     @Override
     protected int getMinGuiHeight() {
-        return 500;
+        return 528;
     }
 
     @Override
@@ -171,10 +178,11 @@ public final class RaceCharacterMakerScreen extends ScaledScreen {
 
         int contentW = categoryW + 8 + gridW + 8 + previewW;
         int colorStackH = 64;
+        int labelRowH = 22;
         int footerH = 24;
         int contentH = bannerH + 8 + raceCardH + 30
                 + Math.max(categoryH, Math.max(gridH, previewH))
-                + colorStackH + footerH + 24;
+                + colorStackH + labelRowH + footerH + 24;
         originX = Math.max(8, (getUiWidth() - contentW) / 2);
         originY = Math.max(4, (getUiHeight() - contentH) / 2);
 
@@ -232,7 +240,26 @@ public final class RaceCharacterMakerScreen extends ScaledScreen {
 
         colorY = previewY + previewH + 8;
         addCategoryColorSlots(colorY);
-        footerY = Math.max(categoryY + categoryH, colorY + COLOR_STRIP_H) + 8;
+        int labelY = Math.max(categoryY + categoryH, colorY + COLOR_STRIP_H) + 6;
+        int contentRight = previewX + previewW;
+        displayNameBox = new EditBox(font, originX, labelY, 132, 16,
+                Component.literal("displayName"));
+        displayNameBox.setMaxLength(RaceLabelRegistry.MAX_NAME);
+        displayNameBox.setHint(Component.literal("Display name"));
+        displayNameBox.setValue(displayNameText == null ? "" : displayNameText);
+        displayNameBox.setResponder(v -> displayNameText = v == null ? "" : v);
+        addRenderableWidget(displayNameBox);
+        int descX = originX + 136;
+        int descW = Math.max(80, contentRight - descX);
+        descriptionBox = new EditBox(font, descX, labelY, descW, 16,
+                Component.literal("description"));
+        descriptionBox.setMaxLength(RaceLabelRegistry.MAX_DESC);
+        descriptionBox.setHint(Component.literal("Description (race picker)"));
+        descriptionBox.setValue(descriptionText == null ? "" : descriptionText);
+        descriptionBox.setResponder(v -> descriptionText = v == null ? "" : v);
+        addRenderableWidget(descriptionBox);
+
+        footerY = labelY + 20;
         int compact = AtlasButton.nativeWidth(TOOL);
         int g = 4;
         createIdBox = new EditBox(font, originX, footerY, 88, 16,
@@ -254,7 +281,7 @@ public final class RaceCharacterMakerScreen extends ScaledScreen {
                     "Requires " + XenoPermissions.MAKER_RACE_CREATE.getNodeName())));
         } else {
             create.setTooltip(Tooltip.create(Component.literal(
-                    "Writes races/<id>/ via RacePackService then ConfigManager.reload().")));
+                    "Writes races/<id>/character.json plus Display name / Description literals (not en_us keys).")));
         }
         addRenderableWidget(create);
 
@@ -263,7 +290,8 @@ public final class RaceCharacterMakerScreen extends ScaledScreen {
                 Component.literal("Save"), TOOL, b -> saveRace());
         save.active = CREATE_RACE_READY && mayCreateRace() && custom;
         save.setTooltip(Tooltip.create(Component.literal(custom
-                ? "Merge colours and part indices into races/" + selectedRace + "/character.json."
+                ? "Merge colours, parts, and Display name / Description into races/"
+                + selectedRace + "/."
                 : "Select a created (custom) race pack to edit and save.")));
         addRenderableWidget(save);
 
@@ -607,6 +635,9 @@ public final class RaceCharacterMakerScreen extends ScaledScreen {
             noseType = parts.noseType();
             mouthType = parts.mouthType();
             tattooType = parts.tattooType();
+            RaceLabels labels = loaded.labels();
+            displayNameText = labels.displayName() == null ? "" : labels.displayName();
+            descriptionText = labels.description() == null ? "" : labels.description();
         });
     }
 
@@ -675,12 +706,14 @@ public final class RaceCharacterMakerScreen extends ScaledScreen {
             return;
         }
         RacePackService.CreateResult result =
-                RacePackService.updateRacePack(selectedRace, currentTemplate(), currentParts());
+                RacePackService.updateRacePack(selectedRace, currentTemplate(), currentParts(),
+                        currentLabels(selectedRace));
         if (!result.ok()) {
             status = result.message();
             statusColor = WARN;
             return;
         }
+        pushLabelsToServer(result.raceId());
         boolean loaded = reloadDmz("Saved " + result.raceId());
         if (!loaded) {
             return;
@@ -704,12 +737,13 @@ public final class RaceCharacterMakerScreen extends ScaledScreen {
         }
         String id = createIdBox == null ? createIdText : createIdBox.getValue();
         RacePackService.CreateResult result =
-                RacePackService.createRacePack(id, currentTemplate(), currentParts());
+                RacePackService.createRacePack(id, currentTemplate(), currentParts(), currentLabels(id));
         if (!result.ok()) {
             status = result.message();
             statusColor = WARN;
             return;
         }
+        pushLabelsToServer(result.raceId());
         String reloadNote = "";
         try {
             ConfigManager.reload();
@@ -719,8 +753,10 @@ public final class RaceCharacterMakerScreen extends ScaledScreen {
         } catch (Throwable t) {
             reloadNote = " Pack written but ConfigManager.reload failed: " + t.getMessage();
         }
-        status = "Created " + result.raceId() + " at "
-                + RacePackService.characterRelativePath(result.raceId()) + "."
+        String shown = RaceLabelRegistry.displayName(result.raceId());
+        status = "Created " + result.raceId()
+                + (shown.isBlank() ? "" : " (“" + shown + "”)")
+                + " at " + RacePackService.characterRelativePath(result.raceId()) + "."
                 + reloadNote + " Save is on — this is a custom pack.";
         statusColor = OK;
         refreshRaces();
@@ -755,6 +791,24 @@ public final class RaceCharacterMakerScreen extends ScaledScreen {
     private RacePackService.RacePartDefaults currentParts() {
         return new RacePackService.RacePartDefaults(
                 bodyType, Math.max(1, hairPreset), eyesType, noseType, mouthType, tattooType);
+    }
+
+    private RaceLabels currentLabels(String raceId) {
+        String name = displayNameBox == null ? displayNameText : displayNameBox.getValue();
+        String desc = descriptionBox == null ? descriptionText : descriptionBox.getValue();
+        return new RaceLabels(raceId == null ? "" : raceId,
+                name == null ? "" : name, desc == null ? "" : desc);
+    }
+
+    private void pushLabelsToServer(String raceId) {
+        RaceLabels labels = currentLabels(raceId);
+        if (labels.hasLiteral()) {
+            try {
+                RaceLabelNetwork.save(raceId, labels.displayName(), labels.description());
+            } catch (Throwable ignored) {
+                // Dedicated-server sync is best-effort; sidecar already landed locally.
+            }
+        }
     }
 
     private boolean reloadDmz(String prefix) {
@@ -796,6 +850,12 @@ public final class RaceCharacterMakerScreen extends ScaledScreen {
     private void rebuild() {
         if (createIdBox != null) {
             createIdText = createIdBox.getValue();
+        }
+        if (displayNameBox != null) {
+            displayNameText = displayNameBox.getValue();
+        }
+        if (descriptionBox != null) {
+            descriptionText = descriptionBox.getValue();
         }
         colorPicker.close();
         init();
@@ -959,6 +1019,14 @@ public final class RaceCharacterMakerScreen extends ScaledScreen {
     static String displayRace(String id) {
         if (id == null || id.isBlank()) {
             return "?";
+        }
+        try {
+            String labeled = RaceLabelRegistry.displayName(id);
+            if (labeled != null && !labeled.isBlank()) {
+                return labeled;
+            }
+        } catch (Throwable ignored) {
+            // Registry is empty in unit tests without a snapshot.
         }
         return switch (id.toLowerCase(Locale.ROOT)) {
             case "frostdemon" -> "Arcosian";

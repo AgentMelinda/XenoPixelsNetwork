@@ -115,6 +115,16 @@ public final class RacePackService {
 
     public static CreateResult createRacePack(Path dmzConfigRoot, String raceId, RacePackTemplate template,
                                               RacePartDefaults parts) {
+        return createRacePack(dmzConfigRoot, raceId, template, parts, null);
+    }
+
+    public static CreateResult createRacePack(String raceId, RacePackTemplate template, RacePartDefaults parts,
+                                              RaceLabels labels) {
+        return createRacePack(defaultDmzRoot(), raceId, template, parts, labels);
+    }
+
+    public static CreateResult createRacePack(Path dmzConfigRoot, String raceId, RacePackTemplate template,
+                                              RacePartDefaults parts, RaceLabels labels) {
         Objects.requireNonNull(dmzConfigRoot, "dmzConfigRoot");
         RacePackTemplate pack = template == null ? RacePackTemplate.defaults() : template;
         RacePartDefaults appearance = parts == null ? RacePartDefaults.defaults() : parts;
@@ -139,10 +149,16 @@ public final class RacePackService {
             Path character = raceDir.resolve("character.json");
             Files.writeString(character, GSON.toJson(skeletonCharacter(key, pack, appearance)),
                     StandardCharsets.UTF_8);
+            writeLabelsIfPresent(dmzConfigRoot, key, labels);
             return CreateResult.ok(key, character, formsDir);
         } catch (IOException e) {
             return CreateResult.fail("Failed to write race pack: " + e.getMessage());
         }
+    }
+
+    /** True for the six DragonMineZ built-in races that this service must never overwrite. */
+    public static boolean isDefaultRace(String raceId) {
+        return DEFAULT_RACES.contains(normal(raceId));
     }
 
     /** True when {@code races/<id>/character.json} exists and is not a DMZ default race. */
@@ -177,6 +193,16 @@ public final class RacePackService {
 
     public static CreateResult updateRacePack(Path dmzConfigRoot, String raceId, RacePackTemplate template,
                                               RacePartDefaults parts) {
+        return updateRacePack(dmzConfigRoot, raceId, template, parts, null);
+    }
+
+    public static CreateResult updateRacePack(String raceId, RacePackTemplate template, RacePartDefaults parts,
+                                              RaceLabels labels) {
+        return updateRacePack(defaultDmzRoot(), raceId, template, parts, labels);
+    }
+
+    public static CreateResult updateRacePack(Path dmzConfigRoot, String raceId, RacePackTemplate template,
+                                              RacePartDefaults parts, RaceLabels labels) {
         Objects.requireNonNull(dmzConfigRoot, "dmzConfigRoot");
         RacePackTemplate pack = template == null ? RacePackTemplate.defaults() : template;
         RacePartDefaults appearance = parts == null ? RacePartDefaults.defaults() : parts;
@@ -202,10 +228,18 @@ public final class RacePackService {
             JsonObject root = readJsonObject(character).orElseGet(() -> skeletonCharacter(key, pack, appearance));
             mergeAppearance(root, key, pack, appearance);
             Files.writeString(character, GSON.toJson(root), StandardCharsets.UTF_8);
+            writeLabelsIfPresent(dmzConfigRoot, key, labels);
             return CreateResult.ok(key, character, formsDir);
         } catch (IOException e) {
             return CreateResult.fail("Failed to update race pack: " + e.getMessage());
         }
+    }
+
+    private static void writeLabelsIfPresent(Path dmzConfigRoot, String raceId, RaceLabels labels) {
+        if (labels == null) {
+            return;
+        }
+        RaceLabelRegistry.writeSidecar(dmzConfigRoot, raceId, labels.displayName(), labels.description());
     }
 
     static void mergeAppearance(JsonObject root, String raceId, RacePackTemplate template,
@@ -287,7 +321,8 @@ public final class RacePackService {
                     integer(root, "defaultNoseType", 0),
                     integer(root, "defaultMouthType", 0),
                     integer(root, "defaultTattooType", 0));
-            return Optional.of(new LoadedCharacter(key, template, parts));
+            return Optional.of(new LoadedCharacter(key, template, parts,
+                    RaceLabelRegistry.readSidecar(dmzConfigRoot, key)));
         } catch (Exception e) {
             return Optional.empty();
         }
@@ -427,7 +462,15 @@ public final class RacePackService {
     }
 
     /** Parsed custom pack used by Race Character Maker to edit a created race. */
-    public record LoadedCharacter(String raceId, RacePackTemplate template, RacePartDefaults parts) {
+    public record LoadedCharacter(String raceId, RacePackTemplate template, RacePartDefaults parts,
+                                  RaceLabels labels) {
+        public LoadedCharacter(String raceId, RacePackTemplate template, RacePartDefaults parts) {
+            this(raceId, template, parts, RaceLabels.blank(raceId));
+        }
+
+        public RaceLabels labels() {
+            return labels == null ? RaceLabels.blank(raceId) : labels;
+        }
     }
 
     /** Outcome of {@link #createRacePack(String, RacePackTemplate)}. */

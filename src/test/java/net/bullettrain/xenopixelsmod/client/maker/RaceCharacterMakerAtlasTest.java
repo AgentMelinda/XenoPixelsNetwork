@@ -87,12 +87,23 @@ class RaceCharacterMakerAtlasTest {
         assertEquals("xenopixelsmod.maker.open", XenoPermissions.MAKER_OPEN.getNodeName());
         assertEquals("xenopixelsmod.maker.race.create",
                 XenoPermissions.MAKER_RACE_CREATE.getNodeName());
+        assertEquals("xenopixelsmod.race.edit", XenoPermissions.RACE_EDIT.getNodeName());
+        assertEquals("xenopixelsmod.race.give", XenoPermissions.RACE_GIVE.getNodeName());
     }
 
     @Test
     void frostdemonDisplaysAsArcosian() {
         assertEquals("Arcosian", RaceCharacterMakerScreen.displayRace("frostdemon"));
         assertEquals("Saiyan", RaceCharacterMakerScreen.displayRace("saiyan"));
+    }
+
+    @Test
+    void displayRacePrefersLiteralOverFolderId() {
+        net.bullettrain.xenopixelsmod.dmz.race.RaceLabelRegistry.applySnapshot("{}");
+        net.bullettrain.xenopixelsmod.dmz.race.RaceLabelRegistry.put("10", "Bloodline", "desc");
+        assertEquals("Bloodline", RaceCharacterMakerScreen.displayRace("10"));
+        net.bullettrain.xenopixelsmod.dmz.race.RaceLabelRegistry.applySnapshot("{}");
+        assertEquals("10", RaceCharacterMakerScreen.displayRace("10"));
     }
 
     @Test

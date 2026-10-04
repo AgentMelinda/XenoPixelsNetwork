@@ -106,6 +106,10 @@ public final class XenoPermissions {
             client("maker.open", "Open Unified Maker Studio (/xenomaker)");
     public static final PermissionNode<Boolean> MAKER_RACE_CREATE =
             op("maker.race.create", "Create a new race pack from Race Character Maker");
+    public static final PermissionNode<Boolean> RACE_EDIT =
+            op("race.edit", "Use /xenorace name|desc|list — set custom race picker literals");
+    public static final PermissionNode<Boolean> RACE_GIVE =
+            op("race.give", "Use /xenorace give — assign a race to a player");
 
     // -------------------------------------------------------------------------
     // /xenoform  (server — OP default)

@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.5.3-1.21.1 — 2026-10-04
+
+- Race Maker Display name and Description fields. Custom packs store those literals in
+  `config/dragonminez/races/<id>/xeno_labels.json` (not `en_us.json`). The language mixin
+  serves `race.dragonminez.<id>` and `.desc` so the DMZ race picker shows the name.
+- Server: `/xenorace name <id> <display name>`, `/xenorace desc <id> <description>`,
+  `/xenorace give <players> <id>`, `/xenorace list`. Labels sync to clients on login.
+
 ## 0.5.2-1.21.1 — 2026-10-04
 
 - Race Character Maker studio: 22px gutter pagers, category-scoped colours

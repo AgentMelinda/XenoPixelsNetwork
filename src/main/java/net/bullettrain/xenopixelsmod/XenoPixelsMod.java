@@ -42,6 +42,7 @@ public class XenoPixelsMod {
         // XenoAPI (xenoapi.npcs.api) over native NPCs; holds no world, resolves the server per call.
         net.bullettrain.xenopixelsmod.npc.script.api.xeno.NativeNpcApi.register();
         net.bullettrain.xenopixelsmod.network.form.FormEditorNetwork.register();
+        net.bullettrain.xenopixelsmod.network.race.RaceLabelNetwork.register();
         net.bullettrain.xenopixelsmod.network.HudPartsNetwork.register();
         net.bullettrain.xenopixelsmod.network.AnimClipsNetwork.register();
         net.bullettrain.xenopixelsmod.network.GuidanceV2Network.register();
