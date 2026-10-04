@@ -31,7 +31,7 @@ public final class MakerPreviewController {
     private static final int GLOW_PAD = 3;
     private static final int WELL_FILL = 0xCC0A1210;
     private static final int WELL_EDGE = 0xFF00C853;
-    private static final int LABEL = 0xFFFFC14A;
+
     private static final int MUTED = 0xFF8AA090;
     /** Selected strand edge outline (hollow — no filled cube tint). */
     private static final int SEGMENT_EDGE = 0xFF00E676;
@@ -360,11 +360,11 @@ public final class MakerPreviewController {
             player.yHeadRotO = headRotO;
         }
 
-        // Label above the clipped model so status stays readable.
-        g.drawString(font, drew
-                        ? ("3D · yaw " + Math.round(yaw) + " · zoom " + Math.round(zoom * 100) + "%")
-                        : "3D failed — see log",
-                x + 6, y + 6, LABEL, false);
+        // The well is the 3D model only. Screens own titles above the box so
+        // "3D · zoom" never stacks on "Preview" / "Your character".
+        if (!drew) {
+            g.drawCenteredString(font, "3D failed — see log", x + w / 2, y + 8, 0xFFFF8A80);
+        }
     }
 
     private void refreshBoundPlayer() {

@@ -22,16 +22,10 @@ public final class XenoMakerHubScreen extends ScaledScreen {
     private static final String BANNER = "banner_top";
     /** Wide row face — taller hit/label clarity than {@code pill_button} (90×24). */
     private static final String NAV = "mynpcs_button_row_w128";
-    /** Fits under the gold banner inside the 320-tall editor frame. */
-    private static final String PREVIEW = "xeno_maker_hair_preview";
-
     private static final XenoAtlasSprites.Theme CHROME = XenoAtlasSprites.Theme.GOLD;
     private static final XenoAtlasSprites.Theme INNER = XenoAtlasSprites.Theme.GREEN;
 
     private static final int GOLD_TEXT = 0xFFFFC14A;
-    private static final int LIGHT = 0xFFE7EDF3;
-    private static final int MUTED = 0xFF6E9680;
-    private static final int OK = 0xFF9AFFB0;
     /** Extra air between stacked nav buttons so labels never ghost into the next face. */
     private static final int NAV_GAP = 14;
 
@@ -95,9 +89,9 @@ public final class XenoMakerHubScreen extends ScaledScreen {
         // which overflows the orange panel (hair + well past the border).
         int innerPad = 20;
         previewX = navX + btnW + 16;
-        previewY = bannerY + bannerH + 16;
+        previewY = bannerY + bannerH + 22;
         previewW = Math.max(96, frameX + frameW - innerPad - previewX);
-        previewH = Math.max(96, frameY + frameH - 36 - previewY);
+        previewH = Math.max(96, frameY + frameH - 28 - previewY);
 
         clearWidgets();
 
@@ -156,13 +150,11 @@ public final class XenoMakerHubScreen extends ScaledScreen {
             XenoAtlasSprites.setTheme(CHROME);
             super.render(graphics, (int) toUiX(mouseX), (int) toUiY(mouseY), partialTick);
 
-            // Well + entity are sized to the gold inner rect; MakerPreviewController scissors hair.
+            // Title sits above the well. The green box is the 3D model only.
+            graphics.drawString(font, "Your character", previewX, previewY - 12, GOLD_TEXT, false);
             XenoAtlasSprites.setTheme(INNER);
             preview.render(graphics, previewX, previewY, previewW, previewH, partialTick);
-            graphics.drawString(font, "Your character", previewX + 8, previewY + 6, GOLD_TEXT, false);
 
-            graphics.drawString(font, "Gold chrome · green preview",
-                    frameX + 24, frameY + frameH - 22, OK, false);
             endUiScale(graphics);
         } finally {
             XenoAtlasSprites.setTheme(previous);

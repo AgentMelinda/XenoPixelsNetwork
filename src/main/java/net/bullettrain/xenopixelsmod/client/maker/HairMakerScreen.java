@@ -897,7 +897,8 @@ public final class HairMakerScreen extends ScaledScreen {
 
             outliner.render(graphics, font, document, listX, listY, listW, listH);
 
-            graphics.drawString(font, "Viewport · " + viewportTool.label(),
+            graphics.drawString(font, "Viewport · " + viewportTool.label()
+                            + " · " + Math.round(preview.zoom() * 100) + "%",
                     previewX + 10, previewY + 8, GOLD, false);
             graphics.drawString(font, displayStyle(document.style()) + " · " + document.face()
                             + "[" + document.strandIndex() + "]",
