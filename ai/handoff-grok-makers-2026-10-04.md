@@ -1,8 +1,8 @@
 # Handoff — Grok makers and 0.5.7 release
 
-**Date:** 2026-10-04  
-**Repository:** C:\XenoPixelsNetwork_qwen  
-**Branch:** 1.21.1  
+**Date:** 2026-10-04
+**Repository:** C:\XenoPixelsNetwork_qwen
+**Branch:** 1.21.1
 **Implementation HEAD:** e7969c4e2492de10b1d7952098e9cf351214ac44
 
 ## Current state
@@ -28,7 +28,7 @@
   Taotto painter, form multiplier controls, and restore live maker previews.
   Fix 1.21.1 resource-pack APIs and resource cache reloads; add three exact-target
   client mixins and tests for state restoration, catalog paths, placement and NBT.
-- Release preparation sets `mod_version=0.5.7-1.21.1` and checks exact matching
+- `41cfea6322f0e32db93ffdff085848bdd6aff709`: release preparation sets `mod_version=0.5.7-1.21.1` and checks exact matching
   client/server artifacts before publishing. Server nesting is restricted to
   metadata plus AAA Particles. The release tag must match the version property.
 - Public API and sequential main ModNetwork packet IDs are unchanged. Taotto
