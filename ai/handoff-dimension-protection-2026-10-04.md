@@ -8,6 +8,8 @@
 
 **Implementation HEAD:** `2a1dc605c77f47a5cb282fabbb28acedd291a4c3`
 
+**Release tag commit:** `bada37940d931839fbca9dd66efc29aefe177561`
+
 ## Current state
 
 - Baseline/upstream before work: `b137cfb09507ebc97e1d2c3ac7f1fea0cab5545f`.
@@ -100,6 +102,25 @@ establish which jar is installed on the user's affected server.
 
 Local hashes describe the verified local build, not a claim of byte equality with CI artifacts.
 
+### Publication completed
+
+- Branch and annotated tag pushed under the configured identity. Tag object:
+  `1c84685a90c8ea26d1a2c418745a8e0944398247`; peeled commit is the release tag commit above.
+- [Build run 37230334935](https://github.com/AgentMelinda/XenoPixelsNetwork/actions/runs/37230334935): success.
+- [Build And Release run 37230336990](https://github.com/AgentMelinda/XenoPixelsNetwork/actions/runs/37230336990): success.
+- [Published v0.5.9-1.21.1](https://github.com/AgentMelinda/XenoPixelsNetwork/releases/tag/v0.5.9-1.21.1):
+  public, non-draft release with both client/server artifacts.
+- Downloaded published artifacts to `build/release-verification-v0.5.9` and computed their hashes:
+
+| Published artifact | Bytes | SHA-256 |
+|---|---:|---|
+| `xenopixelsmod-0.5.9-1.21.1.jar` | 69,248,274 | `0f244abe0254a8609b75214cc614e819e9ce9cdae478e40ec879f199123401c1` |
+| `xenopixelsmod-Server-0.5.9-1.21.1.jar` | 45,101,430 | `259e0a746e96594116e57bdb41d94d5ed6469b6776f8b8f25153f02e23e26490` |
+
+Published server content verified: new conversion config and command argument registration exist;
+only AAA Particles and metadata are nested. Client/server compilation and release artifact checks
+passed in CI. No matching owner client/server was restarted or updated by this task.
+
 ### Fresh runtime
 
 Command: `.\gradlew.bat runServer -I build/yawp-proof/isolated.init.gradle
@@ -136,8 +157,8 @@ reflection and a required storage config. Earlier logs are retained as failures,
 
 ## Next steps
 
-1. Push the reviewed branch and `v0.5.9-1.21.1` tag, observe Build/Build And Release outcomes, and
-   record final remote commit/workflow/release references in a follow-up handoff update.
+1. Keep `v0.5.9-1.21.1` fixed on its released commit. Publication and artifact verification are
+   complete; this follow-up handoff update belongs on the branch without moving the tag.
 2. Install matching client/server release artifacts and use `docs/dimension-protection.md`.
 3. Obtain the affected server details and inspect its native YAWP tracking/active/flag/bypass state
    before claiming that live ordinary block-breaking/placing report is resolved.
