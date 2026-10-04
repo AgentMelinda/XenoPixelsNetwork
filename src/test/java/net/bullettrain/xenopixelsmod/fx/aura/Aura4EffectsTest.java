@@ -8,7 +8,7 @@ import java.nio.file.Path;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * 2026-10-04: aura4 lean column (tools/effekseer/efkgen/effects/aura4.py). Same nearest-colour
+ * 2026-10-04: aura4 cheaper plume (tools/effekseer/efkgen/effects/aura4.py). Same nearest-colour
  * and brightness rule as aura3; v4 plays these instead of dense {@code aura_out_*}.
  */
 class Aura4EffectsTest {

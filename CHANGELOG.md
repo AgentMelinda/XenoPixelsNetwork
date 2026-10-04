@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.5.5-1.21.1 — 2026-10-04
+
+- HD aura **v4** plume: `aura4` plays OuterA + Edge smoke again (the v1 wall), with normal blend,
+  one column instead of OuterA+OuterB, no DustRing, slower spawn and smaller sprites. Still does
+  not play dense `aura_out_*`. v1–v3 unchanged. **FPS not verified in a running game.**
+
 ## 0.5.4-1.21.1 — 2026-10-04
 
 - HD aura **v4** (new client default): v3 spiked silhouette + punch edges + sparking, plus a

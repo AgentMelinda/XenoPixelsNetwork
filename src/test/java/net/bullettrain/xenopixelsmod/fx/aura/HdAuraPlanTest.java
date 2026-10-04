@@ -140,7 +140,7 @@ class HdAuraPlanTest {
         assertTrue(HdAuraPlan.silhouetteBox("v4"));
         assertTrue(HdAuraPlan.playsSilhouette("v4"));
         assertTrue(HdAuraPlan.playsV1Inner("v4"));
-        assertFalse(HdAuraPlan.playsV1Outer("v4"), "v4 must not spawn the dense v1 smoke column");
+        assertFalse(HdAuraPlan.playsV1Outer("v4"), "v4 must not spawn dense aura_out_*; it uses aura4 plume");
         assertTrue(HdAuraPlan.playsLeanOuter("v4"));
         assertTrue(HdAuraPlan.silhouetteEffect("aura4/aura4_ffd700"));
         assertTrue(HdAuraPlan.silhouetteEffect("aura4/aura4_ffd700_nz"));

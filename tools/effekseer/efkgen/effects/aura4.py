@@ -5,11 +5,12 @@ under the spiked silhouette. That column reads as a smoke plume and fills the sc
 large additive quads — client FPS drops in built areas.
 
 v4 keeps v3's silhouette (played by the game from aura3/) and the v1 inner shell (aura_in_*),
-and replaces aura_out_* with this lean column:
-  - one closer puff layer (today's Mid, smaller, normal blend)
+and replaces aura_out_* with this cheaper plume that still reads as the v1 smoke wall:
+  - OuterA + Edge puffs (the plume), normal blend, ~2x slower spawn, ~25% smaller sprites
+  - one Mid layer, smaller
   - tongues and fibres at about half the v1 rate
   - additive embers only
-  - no OuterA / OuterB / Edge / DustRing
+  - no OuterB (second overlapping column) / DustRing (large ground quad)
 
 Do not mutate aura.py. Same 10-tick / EMIT=30 contract. Authored as a feet-up column like v1;
 the game applies the v1 box/drop. _nz copies skip Z-test for your own third-person overlay.
@@ -18,7 +19,7 @@ from pathlib import Path
 
 from .. import textures as tx
 from ..project import (T, circle, color_range, common, easing_color, node, pva_location, rng,
-                       scale_ease, scale_xyz_ease, span, sprite)
+                       scale_ease, scale_xyz_ease, span, spin, sprite)
 from . import aura as v1
 from . import aura2 as v2
 
@@ -50,6 +51,7 @@ def puffs(name, colours, radius, height, size, every, life=(28, 40), rise=(0.01,
     return node(name, CommonValues=v1.emitter(span(*life), every),
                 LocationValues=pva_location(location={'Y': span(*height)},
                                             velocity={'Y': span(*rise)}),
+                RotationValues=spin((-180, 180), (-1.2, 1.2)),
                 ScalingValues=scale_ease(span(size[0], size[1]), span(size[1] * 1.2, size[1] * 1.4)),
                 GenerationLocationValues=circle(*radius),
                 RendererCommonValues=r, DrawingValues=d)
@@ -72,12 +74,18 @@ def tongues(name, colours, radius, height, size_start, size_end, every, life=(16
 
 def aura4(hexcode):
     c = v1.rgb_of(hexcode)
-    body = v1.mix(c, v1.WHITE, 0.15) if v1.luma(c) < 0.18 else v1.vivid(c)
-    rim = v1.mix(c, v1.WHITE, 0.4) if v1.luma(c) < 0.18 else v1.deep(c)
+    dark = v1.luma(c) < 0.18
+    body = v1.mix(c, v1.WHITE, 0.15) if dark else v1.vivid(c)
+    rim = v1.mix(c, v1.WHITE, 0.4) if dark else v1.deep(c)
     parts = [
-        # One closer puff layer (v1 Mid, smaller, slower) — not the OuterA/B/Edge smoke wall.
+        # The v1 smoke wall: one OuterA (v1 also stacked OuterB on top of this).
+        puffs('OuterA', (body, rim), (0.95, 1.35), (0.0, 3.3),
+              (0.9, 1.25), 1.0, life=(28, 42), alpha=(110, 0)),
+        # Ragged rim so the column still reads as a plume, not a tube.
+        puffs('Edge', (v1.deep(c) if not dark else rim, rim), (1.25, 1.55), (0.1, 3.4),
+              (0.65, 0.9), 1.4, life=(28, 40), alpha=(100, 0)),
         puffs('Mid', (v1.mix(body, v1.hot(c), 0.6), body), (0.7, 1.05), (0.0, 2.8),
-              (0.5, 0.75), 1.2, alpha=(90, 0)),
+              (0.55, 0.8), 1.2, alpha=(90, 0)),
         tongues('EdgePoints', (body, rim), (1.05, 1.4), (0.2, 2.8),
                 ((0.45, 0.7), (0.7, 1.05)), ((0.3, 0.45), (1.05, 1.45)),
                 1.0, life=(14, 22), rise=(0.03, 0.05)),

@@ -252,7 +252,7 @@ public final class HdAuraPlan {
         return silhouetteBox(variant);
     }
 
-    /** v4 plays the lean outer column ({@code aura4/aura4_*}) instead of {@code aura_out_*}. */
+    /** v4 plays the cheaper plume ({@code aura4/aura4_*}) instead of {@code aura_out_*}. */
     public static boolean playsLeanOuter(String variant) {
         return "v4".equals(parseVariant(variant));
     }

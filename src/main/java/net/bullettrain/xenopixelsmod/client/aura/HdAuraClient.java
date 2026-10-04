@@ -40,7 +40,7 @@ import java.util.concurrent.ConcurrentHashMap;
 /**
  * Plays the generated HD aura on whoever DragonMineZ is showing an aura for, on this client
  * only: v1 {@code aura_in_}/{@code aura_out_}, v2 {@code aura2/}, v3 {@code aura3/} plus dense
- * v1, v4 {@code aura3/} plus lean {@code aura4/}. No packets; every client decides for itself
+ * v1, v4 {@code aura3/} plus cheaper {@code aura4/} plume. No packets; every client decides for itself
  * ({@code /xenoaura dmz|hd|both} and {@code v1|v2|v3|v4}). Each effect is bound to the entity
  * (it follows it every frame, upright) and re-sent every 10 ticks, cross-fading like Sparking.
  */
@@ -254,7 +254,7 @@ public final class HdAuraClient {
         return "v3".equalsIgnoreCase(XenoClientConfig.auraVariant);
     }
 
-    /** Variant 4: v3 silhouette plus lean v1 column (no dense {@code aura_out_*} smoke). */
+    /** Variant 4: v3 silhouette plus cheaper v1-style plume (no dense {@code aura_out_*}). */
     public static boolean variant4() {
         return "v4".equalsIgnoreCase(XenoClientConfig.auraVariant);
     }
@@ -327,7 +327,7 @@ public final class HdAuraClient {
             if (HdAuraPlan.playsV1Outer(XenoClientConfig.auraVariant)
                     || HdAuraPlan.playsLeanOuter(XenoClientConfig.auraVariant)
                     || HdAuraPlan.playsV1Inner(XenoClientConfig.auraVariant)) {
-                // v3: dense v1 outer billow + inner. v4: lean outer + inner (no aura_out smoke).
+                // v3: dense v1 outer billow + inner. v4: cheaper aura4 plume + inner.
                 float[] v1Shape = HdAuraPlan.shape(false);
                 float[] v1Stretch = new float[] {raw[0] * v1Shape[0], raw[1] * v1Shape[1]};
                 for (HdAuraPlan.Aura aura : HdAuraPlan.plan(plan, extras, XenoClientConfig.auraLayers)) {
