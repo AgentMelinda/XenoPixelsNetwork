@@ -153,7 +153,10 @@
     "compat.dmz.DmzAuraLayersInvoker",
     "compat.dmz.DmzHdAuraQueueMixin",
     "compat.dmz.DmzHdAuraFpDrawMixin",
-    "compat.dmz.DmzKiActionsSecondAuraMixin"
+    "compat.dmz.DmzKiActionsSecondAuraMixin",
+    "compat.dmz.DmzTaottoOverlayMixin",
+    "compat.dmz.DmzRaceCatalogHairMixin",
+    "compat.dmz.DmzMakerFormPreviewMixin"
   ],
   "injectors": {
     "defaultRequire": 0

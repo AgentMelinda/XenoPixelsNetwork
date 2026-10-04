@@ -78,6 +78,14 @@ public final class ClientScreens {
     public static Runnable openFormMaker = () -> {
     };
 
+    /** Taotto per-pixel tattoo painter ({@code /xenomaker taotto}). */
+    public static Runnable openTaottoMaker = () -> {
+    };
+
+    /** Client overlay bake from Taotto sync. */
+    public static java.util.function.BiConsumer<java.util.UUID, CompoundTag> receiveTaotto = (id, tag) -> {
+    };
+
     /** Alias for {@link #openFormMaker} (pre-Task-11 stub name). */
     public static Runnable openXenoMakerFormsStub = () -> {
     };

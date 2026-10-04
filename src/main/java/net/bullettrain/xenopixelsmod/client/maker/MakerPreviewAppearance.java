@@ -18,6 +18,8 @@ import net.minecraft.world.entity.player.Player;
  * ({@code NpcFullDmzRenderer#syncCharacter} / {@link HairApplyService} mirror path).
  */
 public final class MakerPreviewAppearance {
+    private com.dragonminez.common.config.FormConfig.FormData formData;
+    private String race;
     private Integer hairIndex;
     private CustomHair hair;
     private String hairColor;
@@ -49,6 +51,7 @@ public final class MakerPreviewAppearance {
             return a;
         }
         HairApplyService.ApplyPlan plan = HairApplyService.plan(document);
+        a.activeForm(null, null);
         a.hairIndex = plan.hairIndex();
         a.hair = HairApplyService.toCustomHair(plan);
         tintSelectedStrand(a.hair, document.face(), document.strandIndex());
@@ -72,6 +75,18 @@ public final class MakerPreviewAppearance {
             return;
         }
         strand.setColor(SEGMENT_HIGHLIGHT_COLOR);
+    }
+
+    public MakerPreviewAppearance formData(com.dragonminez.common.config.FormConfig.FormData data) {
+        this.formData = data;
+        return this;
+    }
+
+    public com.dragonminez.common.config.FormConfig.FormData formData() { return formData; }
+
+    public MakerPreviewAppearance race(String race) {
+        this.race = blankToNull(race);
+        return this;
     }
 
     public MakerPreviewAppearance hair(CustomHair hair) {
@@ -158,7 +173,8 @@ public final class MakerPreviewAppearance {
     }
 
     public boolean isEmpty() {
-        return hair == null
+        return race == null
+                && hair == null
                 && hairColor == null
                 && bodyColor == null
                 && bodyColor2 == null
@@ -178,11 +194,15 @@ public final class MakerPreviewAppearance {
 
     /** Snapshot current Character fields that this appearance may overwrite. */
     public Snapshot snapshot(Player player) {
-        Character c = characterOf(player);
+        return snapshotCharacter(characterOf(player));
+    }
+
+    Snapshot snapshotCharacter(Character c) {
         if (c == null) {
             return Snapshot.EMPTY;
         }
         return new Snapshot(
+                c.getRace(),
                 c.getHairId(),
                 copyHair(c.getHairBase()),
                 copyHair(c.getHairSSJ()),
@@ -202,14 +222,23 @@ public final class MakerPreviewAppearance {
                 c.getTattooType(),
                 c.getGender(),
                 c.hasActiveForm() ? c.getActiveFormGroup() : null,
-                c.hasActiveForm() ? c.getActiveForm() : null);
+                c.hasActiveForm() ? c.getActiveForm() : null,
+                c.isRenderHairBase(),
+                c.hasActiveStackForm() ? c.getActiveStackFormGroup() : null,
+                c.hasActiveStackForm() ? c.getActiveStackForm() : null);
     }
 
     /** Apply this appearance onto the player's Character (preview only). */
     public void apply(Player player) {
-        Character c = characterOf(player);
+        applyCharacter(characterOf(player));
+    }
+
+    void applyCharacter(Character c) {
         if (c == null || isEmpty()) {
             return;
+        }
+        if (race != null) {
+            c.setRace(race);
         }
         if (hair != null) {
             CustomHair copy = hair.copy();
@@ -258,6 +287,7 @@ public final class MakerPreviewAppearance {
         if (gender != null) {
             c.setGender(gender);
         }
+        if (clearForm || formData != null) c.clearActiveStackForm();
         if (clearForm) {
             c.clearActiveForm();
         } else if (formGroup != null && formId != null) {
@@ -266,23 +296,20 @@ public final class MakerPreviewAppearance {
     }
 
     public void restore(Player player, Snapshot snapshot) {
-        Character c = characterOf(player);
+        restoreCharacter(characterOf(player), snapshot);
+    }
+
+    void restoreCharacter(Character c, Snapshot snapshot) {
         if (c == null || snapshot == null || snapshot == Snapshot.EMPTY) {
             return;
         }
+        c.setRace(snapshot.race);
         c.setHairId(snapshot.hairId);
-        if (snapshot.hairBase != null) {
-            c.setHairBase(snapshot.hairBase.copy());
-        }
-        if (snapshot.hairSsj != null) {
-            c.setHairSSJ(snapshot.hairSsj.copy());
-        }
-        if (snapshot.hairSsj2 != null) {
-            c.setHairSSJ2(snapshot.hairSsj2.copy());
-        }
-        if (snapshot.hairSsj3 != null) {
-            c.setHairSSJ3(snapshot.hairSsj3.copy());
-        }
+        c.setHairBase(copyHair(snapshot.hairBase));
+        c.setHairSSJ(copyHair(snapshot.hairSsj));
+        c.setHairSSJ2(copyHair(snapshot.hairSsj2));
+        c.setHairSSJ3(copyHair(snapshot.hairSsj3));
+        c.setRenderHairBase(snapshot.renderHairBase);
         if (snapshot.hairColor != null) {
             c.setHairColor(snapshot.hairColor);
         }
@@ -317,6 +344,8 @@ public final class MakerPreviewAppearance {
         } else {
             c.setActiveForm(snapshot.formGroup, snapshot.formId);
         }
+        if (snapshot.stackGroup == null || snapshot.stackId == null) c.clearActiveStackForm();
+        else c.setActiveStackForm(snapshot.stackGroup, snapshot.stackId);
     }
 
     public static Character characterOf(Player player) {
@@ -337,6 +366,7 @@ public final class MakerPreviewAppearance {
     }
 
     public record Snapshot(
+            String race,
             int hairId,
             CustomHair hairBase,
             CustomHair hairSsj,
@@ -356,11 +386,14 @@ public final class MakerPreviewAppearance {
             int tattooType,
             String gender,
             String formGroup,
-            String formId) {
+            String formId,
+            boolean renderHairBase,
+            String stackGroup,
+            String stackId) {
         public static final Snapshot EMPTY = new Snapshot(
-                0, null, null, null, null,
+                null, 0, null, null, null, null,
                 null, null, null, null, null, null, null,
                 0, 0, 0, 0, 0,
-                null, null, null);
+                null, null, null, false, null, null);
     }
 }

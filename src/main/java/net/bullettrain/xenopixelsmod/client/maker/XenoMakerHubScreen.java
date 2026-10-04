@@ -101,6 +101,8 @@ public final class XenoMakerHubScreen extends ScaledScreen {
         addRenderableWidget(navButton(navX, y, "Form Maker", b -> openForms()));
         y += btnH + NAV_GAP;
         addRenderableWidget(navButton(navX, y, "Hair Editor", b -> openHair()));
+        y += btnH + NAV_GAP;
+        addRenderableWidget(navButton(navX, y, "Taotto", b -> openTaotto()));
         y += btnH + NAV_GAP + 8;
         addRenderableWidget(navButton(navX, y, "Close", b -> onClose()));
 
@@ -129,6 +131,12 @@ public final class XenoMakerHubScreen extends ScaledScreen {
     private void openHair() {
         if (minecraft != null) {
             minecraft.setScreen(new HairMakerScreen(this));
+        }
+    }
+
+    private void openTaotto() {
+        if (minecraft != null) {
+            minecraft.setScreen(new TaottoMakerScreen(this));
         }
     }
 

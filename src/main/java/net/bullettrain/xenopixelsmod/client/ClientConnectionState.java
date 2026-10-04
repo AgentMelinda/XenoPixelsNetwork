@@ -40,6 +40,7 @@ public final class ClientConnectionState {
     }
 
     public static void reset() {
+        net.bullettrain.xenopixelsmod.client.maker.TaottoClientOverlays.clearAll();
         XenoServerClientState.clear();
         ClientParty.clearAll();
         ClientFlightState.clear();

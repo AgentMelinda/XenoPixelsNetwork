@@ -52,14 +52,15 @@ class RaceCharacterMakerAtlasTest {
     @Test
     void categoriesMatchScreenshotContract() {
         RaceMakerParts.Category[] cats = RaceMakerParts.Category.values();
-        assertEquals(7, cats.length);
+        assertEquals(8, cats.length);
         assertEquals("Body", cats[0].label());
         assertEquals("Eyes", cats[1].label());
         assertEquals("Mouth", cats[2].label());
         assertEquals("Hair", cats[3].label());
-        assertEquals("Aura", cats[4].label());
-        assertEquals("Clothes", cats[5].label());
-        assertEquals("Extra", cats[6].label());
+        assertEquals("Tattoo", cats[4].label());
+        assertEquals("Aura", cats[5].label());
+        assertEquals("Clothes", cats[6].label());
+        assertEquals("Extra", cats[7].label());
     }
 
     @Test
@@ -110,6 +111,16 @@ class RaceCharacterMakerAtlasTest {
     void glowTargetIncludesPartCategory() {
         assertNotNull(MakerPreviewController.GlowTarget.PART_CATEGORY);
         assertNotNull(MakerPreviewController.GlowTarget.RACE_CARD);
+    }
+
+    @Test
+    void tattooCategoryIncludesTaottoPart() {
+        assertEquals("tattoo:taotto", RaceMakerParts.TAOTTO_PART);
+        java.util.List<String> tattoos = RaceMakerParts.partIds(
+                RaceMakerParts.Category.TATTOO, "saiyan", "male");
+        assertTrue(tattoos.contains(RaceMakerParts.TAOTTO_PART)
+                || MakerPresetCatalog.partIds(RaceMakerParts.Category.TATTOO, "saiyan", "male")
+                .contains(RaceMakerParts.TAOTTO_PART));
     }
 
     @Test
@@ -199,7 +210,7 @@ class RaceCharacterMakerAtlasTest {
     @Test
     void presetCatalogWiredForCyclerLabels() {
         List<String> cats = MakerPresetCatalog.categoryLabels();
-        assertEquals(7, cats.size());
+        assertEquals(8, cats.size());
         assertFalse(MakerPresetCatalog.FALLBACK_BODY.isEmpty());
         assertFalse(MakerPresetCatalog.FALLBACK_HAIR.isEmpty());
         // Aura stays empty — no invented fallback.

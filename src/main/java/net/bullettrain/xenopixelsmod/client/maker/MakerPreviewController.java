@@ -324,9 +324,10 @@ public final class MakerPreviewController {
         boolean drew = false;
         try {
             appearance.apply(player);
-            EntityPreviewRenderContext.renderEntityInInventory(
-                    g, entityX, entityY, (float) scale,
-                    translation, pose, camera, player);
+            net.bullettrain.xenopixelsmod.dmz.form.MakerFormPreviewContext.draw(
+                    MakerPreviewAppearance.characterOf(player), appearance.formData(),
+                    () -> EntityPreviewRenderContext.renderEntityInInventory(
+                            g, entityX, entityY, (float) scale, translation, pose, camera, player));
             drew = true;
         } catch (RuntimeException | LinkageError ex) {
             g.drawCenteredString(font, "Preview error", x + w / 2, y + h / 2 - 4, 0xFFFF8A80);

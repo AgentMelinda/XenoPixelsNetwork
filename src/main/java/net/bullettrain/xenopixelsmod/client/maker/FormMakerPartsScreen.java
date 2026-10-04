@@ -316,7 +316,7 @@ public final class FormMakerPartsScreen extends ScaledScreen {
     }
 
     private void scheduleAppearance() {
-        MakerPreviewAppearance appearance = new MakerPreviewAppearance();
+        MakerPreviewAppearance appearance = new MakerPreviewAppearance().race(documentRace());
         String hairColor = fieldValue("hairColor");
         String auraColor = fieldValue("auraColor");
         if (hairColor != null && !hairColor.isBlank()) {
@@ -344,6 +344,9 @@ public final class FormMakerPartsScreen extends ScaledScreen {
             if (hair != null) {
                 appearance.hair(hair);
             }
+        }
+        if (document != null) {
+            appearance.activeForm(document.group(), document.form()).formData(document.previewData());
         }
         preview.setAppearance(appearance);
         preview.markDirty();

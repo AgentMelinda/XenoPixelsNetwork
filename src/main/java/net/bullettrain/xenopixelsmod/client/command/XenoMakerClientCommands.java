@@ -34,7 +34,9 @@ public final class XenoMakerClientCommands {
                 .then(Commands.literal("forms")
                         .executes(ctx -> openForms(ctx.getSource())))
                 .then(Commands.literal("hair")
-                        .executes(ctx -> openHair(ctx.getSource()))));
+                        .executes(ctx -> openHair(ctx.getSource())))
+                .then(Commands.literal("taotto")
+                        .executes(ctx -> openTaotto(ctx.getSource()))));
     }
 
     private static int openHub(CommandSourceStack source) {
@@ -62,6 +64,13 @@ public final class XenoMakerClientCommands {
         ClientScreens.openHairMaker.run();
         source.sendSuccess(() -> Component.literal(
                 "Opened Hair Editor (PR-D7; path READY / runtime unverified)."), false);
+        return 1;
+    }
+
+    private static int openTaotto(CommandSourceStack source) {
+        ClientScreens.openTaottoMaker.run();
+        source.sendSuccess(() -> Component.literal(
+                "Opened Taotto (per-pixel tattoo; additive overlay)."), false);
         return 1;
     }
 }

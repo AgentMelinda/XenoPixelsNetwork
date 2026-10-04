@@ -43,6 +43,7 @@ public class XenoPixelsMod {
         net.bullettrain.xenopixelsmod.npc.script.api.xeno.NativeNpcApi.register();
         net.bullettrain.xenopixelsmod.network.form.FormEditorNetwork.register();
         net.bullettrain.xenopixelsmod.network.race.RaceLabelNetwork.register();
+        net.bullettrain.xenopixelsmod.network.taotto.TaottoNetwork.register();
         net.bullettrain.xenopixelsmod.network.HudPartsNetwork.register();
         net.bullettrain.xenopixelsmod.network.AnimClipsNetwork.register();
         net.bullettrain.xenopixelsmod.network.GuidanceV2Network.register();
@@ -220,6 +221,13 @@ public class XenoPixelsMod {
                     mc.setScreen(new net.bullettrain.xenopixelsmod.client.maker.FormMakerScreen(
                             mc.screen));
                 };
+                net.bullettrain.xenopixelsmod.client.ClientScreens.openTaottoMaker = () -> {
+                    var mc = net.minecraft.client.Minecraft.getInstance();
+                    mc.setScreen(new net.bullettrain.xenopixelsmod.client.maker.TaottoMakerScreen(
+                            mc.screen));
+                };
+                net.bullettrain.xenopixelsmod.client.ClientScreens.receiveTaotto =
+                        net.bullettrain.xenopixelsmod.client.maker.TaottoClientOverlays::accept;
                 net.bullettrain.xenopixelsmod.client.ClientScreens.openXenoMakerFormsStub =
                         net.bullettrain.xenopixelsmod.client.ClientScreens.openFormMaker;
                 net.bullettrain.xenopixelsmod.client.ClientScreens.openXenoMakerHairStub =

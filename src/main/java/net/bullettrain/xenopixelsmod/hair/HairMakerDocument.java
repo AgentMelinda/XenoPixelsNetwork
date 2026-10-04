@@ -384,6 +384,138 @@ public final class HairMakerDocument {
         return true;
     }
 
+    /** Catalog payload: current-style CustomHair JSON (no export envelope). */
+    public JsonObject toCatalogJson() {
+        return toCustomHairJson(name, globalColor, true);
+    }
+
+    public static HairMakerDocument fromCatalogJson(JsonObject hair) {
+        HairMakerDocument doc = new HairMakerDocument();
+        if (hair == null) {
+            return doc;
+        }
+        if (hair.has("name") && !hair.get("name").isJsonNull()) {
+            doc.name(hair.get("name").getAsString());
+        }
+        if (hair.has("globalColor") && !hair.get("globalColor").isJsonNull()) {
+            doc.globalColor(hair.get("globalColor").getAsString());
+        }
+        if (!hair.has("faces") || !hair.get("faces").isJsonObject()) {
+            return doc;
+        }
+        JsonObject faceMap = hair.getAsJsonObject("faces");
+        doc.faces.clear();
+        for (int faceIdx = 0; faceIdx < FACE_NAMES.size(); faceIdx++) {
+            String faceName = FACE_NAMES.get(faceIdx);
+            List<HairStrandModel> list = new ArrayList<>();
+            if (faceMap.has(faceName) && faceMap.get(faceName).isJsonArray()) {
+                JsonArray arr = faceMap.getAsJsonArray(faceName);
+                for (int i = 0; i < arr.size(); i++) {
+                    if (arr.get(i).isJsonObject()) {
+                        list.add(fromStrandJson(arr.get(i).getAsJsonObject(), faceIdx * 100 + i));
+                    }
+                }
+            }
+            if (list.isEmpty()) {
+                int[] cfg = FACE_CONFIG.get(faceName);
+                for (int i = 0; i < cfg[0]; i++) {
+                    HairStrandModel strand = new HairStrandModel(faceIdx * 100 + i);
+                    strand.rotationX(cfg[1]);
+                    strand.rotationY(cfg[2]);
+                    strand.rotationZ(cfg[3]);
+                    list.add(strand);
+                }
+            }
+            doc.faces.put(faceName, list);
+        }
+        doc.face = "TOP";
+        int firstVisible = 0;
+        List<HairStrandModel> top = doc.faceStrands("TOP");
+        for (int i = 0; i < top.size(); i++) {
+            if (top.get(i).visible()) {
+                firstVisible = i;
+                break;
+            }
+        }
+        doc.strandIndex = firstVisible;
+        return doc;
+    }
+
+    public static HairMakerDocument fromProjectJson(JsonObject project) {
+        if (project == null) {
+            return new HairMakerDocument();
+        }
+        String style = project.has("style") ? project.get("style").getAsString() : "Base";
+        JsonObject hairSet = project.has("hairSet") && project.get("hairSet").isJsonObject()
+                ? project.getAsJsonObject("hairSet") : null;
+        JsonObject hair = null;
+        if (hairSet != null && hairSet.has(style) && hairSet.get(style).isJsonObject()) {
+            hair = hairSet.getAsJsonObject(style);
+        } else if (hairSet != null && hairSet.has("Base") && hairSet.get("Base").isJsonObject()) {
+            hair = hairSet.getAsJsonObject("Base");
+        }
+        HairMakerDocument doc = fromCatalogJson(hair);
+        doc.style(style);
+        if (project.has("presetColor") && !project.get("presetColor").isJsonNull()) {
+            doc.globalColor(project.get("presetColor").getAsString());
+        }
+        if (project.has("face") && !project.get("face").isJsonNull()) {
+            doc.face(project.get("face").getAsString());
+        }
+        return doc;
+    }
+
+    private static HairStrandModel fromStrandJson(JsonObject o, int fallbackId) {
+        int id = o.has("id") ? o.get("id").getAsInt() : fallbackId;
+        HairStrandModel strand = new HairStrandModel(id);
+        if (o.has("length")) {
+            strand.length(o.get("length").getAsInt());
+        }
+        if (o.has("lengthScale")) {
+            strand.lengthScale(o.get("lengthScale").getAsFloat());
+        }
+        if (o.has("rotationX")) {
+            strand.rotationX(o.get("rotationX").getAsFloat());
+        }
+        if (o.has("rotationY")) {
+            strand.rotationY(o.get("rotationY").getAsFloat());
+        }
+        if (o.has("rotationZ")) {
+            strand.rotationZ(o.get("rotationZ").getAsFloat());
+        }
+        if (o.has("scaleX")) {
+            strand.scaleX(o.get("scaleX").getAsFloat());
+        }
+        if (o.has("scaleY")) {
+            strand.scaleY(o.get("scaleY").getAsFloat());
+        }
+        if (o.has("scaleZ")) {
+            strand.scaleZ(o.get("scaleZ").getAsFloat());
+        }
+        if (o.has("cubeWidth")) {
+            strand.cubeWidth(o.get("cubeWidth").getAsFloat());
+        }
+        if (o.has("cubeHeight")) {
+            strand.cubeHeight(o.get("cubeHeight").getAsFloat());
+        }
+        if (o.has("cubeDepth")) {
+            strand.cubeDepth(o.get("cubeDepth").getAsFloat());
+        }
+        if (o.has("curveX")) {
+            strand.curveX(o.get("curveX").getAsFloat());
+        }
+        if (o.has("curveY")) {
+            strand.curveY(o.get("curveY").getAsFloat());
+        }
+        if (o.has("curveZ")) {
+            strand.curveZ(o.get("curveZ").getAsFloat());
+        }
+        if (o.has("color") && !o.get("color").isJsonNull()) {
+            strand.color(o.get("color").getAsString());
+        }
+        return strand;
+    }
+
     private JsonObject toCustomHairJson(String hairName, String color, boolean useCurrentFaces) {
         JsonObject hair = new JsonObject();
         hair.addProperty("version", 5);

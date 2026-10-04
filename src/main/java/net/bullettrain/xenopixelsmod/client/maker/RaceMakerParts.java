@@ -3,8 +3,10 @@ package net.bullettrain.xenopixelsmod.client.maker;
 import net.bullettrain.xenopixelsmod.client.npc.NpcAppearanceParts;
 import net.bullettrain.xenopixelsmod.compat.npc.NpcDmzAppearance;
 import net.bullettrain.xenopixelsmod.compat.npc.NpcHairBridge;
+import net.bullettrain.xenopixelsmod.dmz.race.RaceAppearanceCatalog;
 
 import java.util.ArrayList;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
 
@@ -27,6 +29,7 @@ public final class RaceMakerParts {
         EYES("Eyes"),
         MOUTH("Mouth"),
         HAIR("Hair"),
+        TATTOO("Tattoo"),
         AURA("Aura"),
         CLOTHES("Clothes"),
         EXTRA("Extra");
@@ -72,11 +75,13 @@ public final class RaceMakerParts {
         Category cat = category == null ? Category.BODY : category;
         String race = raceId == null ? "human" : raceId.trim().toLowerCase(Locale.ROOT);
         String gen = gender == null || gender.isBlank() ? "male" : gender.trim().toLowerCase(Locale.ROOT);
+        RaceAppearanceCatalog catalog = catalogFor(race);
         return switch (cat) {
-            case BODY -> indexParts("body", maxBody(race, gen));
+            case BODY -> bodyParts(race, gen, catalog);
             case EYES -> indexParts("eyes", NpcAppearanceParts.maxEyesType(race));
             case MOUTH -> indexParts("mouth", NpcAppearanceParts.maxMouthType(race));
-            case HAIR -> hairParts();
+            case HAIR -> hairParts(catalog);
+            case TATTOO -> tattooParts(race);
             case AURA, CLOTHES -> List.of();
             case EXTRA -> extraParts(race);
         };
@@ -112,7 +117,38 @@ public final class RaceMakerParts {
         return NpcAppearanceParts.maxBodyType(race, appearance);
     }
 
-    private static List<String> hairParts() {
+    public static final String TAOTTO_PART = "tattoo:taotto";
+
+    private static RaceAppearanceCatalog catalogFor(String race) {
+        try {
+            return RaceAppearanceCatalog.loadLive(race);
+        } catch (Throwable ignored) {
+            return null;
+        }
+    }
+
+    private static List<String> bodyParts(String race, String gender, RaceAppearanceCatalog catalog) {
+        List<String> live = indexParts("body", maxBody(race, gender));
+        if (catalog == null || catalog.bodiesFor(gender).isEmpty()) {
+            return live;
+        }
+        LinkedHashSet<String> ids = new LinkedHashSet<>();
+        ids.add("body:0");
+        for (RaceAppearanceCatalog.BodyType body : catalog.bodiesFor(gender)) {
+            ids.add("body:" + body.index());
+        }
+        ids.addAll(live);
+        return List.copyOf(ids);
+    }
+
+    private static List<String> hairParts(RaceAppearanceCatalog catalog) {
+        if (catalog != null && !catalog.hairs().isEmpty()) {
+            List<String> out = new ArrayList<>(catalog.hairs().size());
+            for (RaceAppearanceCatalog.HairStyle style : catalog.hairs()) {
+                out.add("hair:catalog:" + style.id());
+            }
+            return List.copyOf(out);
+        }
         int count = NpcHairBridge.presetCount();
         if (count <= 0) {
             return List.of();
@@ -124,15 +160,15 @@ public final class RaceMakerParts {
         return List.copyOf(out);
     }
 
-    private static List<String> extraParts(String race) {
+    private static List<String> tattooParts(String race) {
         List<String> out = new ArrayList<>();
-        for (String id : indexParts("extra:nose", NpcAppearanceParts.maxNoseType(race))) {
-            out.add(id);
-        }
-        for (String id : indexParts("extra:tattoo", NpcAppearanceParts.maxTattooType(race))) {
-            out.add(id);
-        }
+        out.add(TAOTTO_PART);
+        out.addAll(indexParts("tattoo", NpcAppearanceParts.maxTattooType(race)));
         return List.copyOf(out);
+    }
+
+    private static List<String> extraParts(String race) {
+        return indexParts("extra:nose", NpcAppearanceParts.maxNoseType(race));
     }
 
     private static List<String> indexParts(String prefix, int max) {

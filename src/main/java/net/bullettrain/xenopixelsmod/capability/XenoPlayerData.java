@@ -63,6 +63,18 @@ public class XenoPlayerData {
     /** Native player timers (XenoAPI IPlayer.getTimers), kept apart from stored script data. */
     private CompoundTag scriptTimers = new CompoundTag();
     public CompoundTag scriptTimers() { return scriptTimers; }
+    private net.bullettrain.xenopixelsmod.features.taotto.TaottoDocument taotto =
+            net.bullettrain.xenopixelsmod.features.taotto.TaottoDocument.blank();
+
+    public net.bullettrain.xenopixelsmod.features.taotto.TaottoDocument taotto() {
+        return taotto;
+    }
+
+    public void taotto(net.bullettrain.xenopixelsmod.features.taotto.TaottoDocument document) {
+        this.taotto = document == null
+                ? net.bullettrain.xenopixelsmod.features.taotto.TaottoDocument.blank()
+                : document;
+    }
     /** Shared dialogue ids the player has opened, for availability before/after gates. */
     private final Set<String> viewedDialogues = new LinkedHashSet<>();
     private static final int MAX_VIEWED_DIALOGUES = 4096;
@@ -393,6 +405,7 @@ public class XenoPlayerData {
         this.bankAccounts.clear();
         other.bankAccounts.forEach((id, account) -> this.bankAccounts.put(id,
                 net.bullettrain.xenopixelsmod.npc.bank.BankAccount.load(id, account.save())));
+        this.taotto = other.taotto.copy();
     }
 
     public void saveNBT(CompoundTag tag) {
@@ -458,6 +471,9 @@ public class XenoPlayerData {
         tag.putLong("DummyTotal", dummyTotalDamage);
         tag.putLong("DummySession", dummySessionDamage);
         tag.putInt("DummyHits", dummyHits);
+        CompoundTag taottoTag = new CompoundTag();
+        taotto.saveNbt(taottoTag);
+        tag.put("Taotto", taottoTag);
     }
 
     public void loadNBT(CompoundTag tag) {
@@ -546,6 +562,10 @@ public class XenoPlayerData {
         dummyTotalDamage = tag.getLong("DummyTotal");
         dummySessionDamage = tag.getLong("DummySession");
         dummyHits = tag.getInt("DummyHits");
+        if (tag.contains("Taotto", Tag.TAG_COMPOUND)) {
+            taotto = net.bullettrain.xenopixelsmod.features.taotto.TaottoDocument.loadNbt(
+                    tag.getCompound("Taotto"));
+        }
     }
 
     /**

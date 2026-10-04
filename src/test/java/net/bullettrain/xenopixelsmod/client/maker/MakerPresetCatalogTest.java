@@ -63,6 +63,12 @@ class MakerPresetCatalogTest {
             assertEquals(MakerPresetCatalog.FALLBACK_EXTRA,
                     MakerPresetCatalog.labels(RaceMakerParts.Category.EXTRA, "saiyan", "male"));
         }
+        if (RaceMakerParts.partIds(RaceMakerParts.Category.TATTOO, "saiyan", "male").isEmpty()
+                || RaceMakerParts.partIds(RaceMakerParts.Category.TATTOO, "saiyan", "male")
+                .equals(List.of(RaceMakerParts.TAOTTO_PART))) {
+            List<String> tattoo = MakerPresetCatalog.labels(RaceMakerParts.Category.TATTOO, "saiyan", "male");
+            assertTrue(tattoo.contains("Taotto") || tattoo.get(0).equals("Taotto"));
+        }
     }
 
     @Test
@@ -89,7 +95,7 @@ class MakerPresetCatalogTest {
     @Test
     void categoryLabelsMatchScreenshotContract() {
         List<String> cats = MakerPresetCatalog.categoryLabels();
-        assertEquals(List.of("Body", "Eyes", "Mouth", "Hair", "Aura", "Clothes", "Extra"), cats);
+        assertEquals(List.of("Body", "Eyes", "Mouth", "Hair", "Tattoo", "Aura", "Clothes", "Extra"), cats);
     }
 
     @Test

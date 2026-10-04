@@ -44,10 +44,13 @@ public final class MakerPresetCatalog {
             "Default", "Soft", "Spiky", "Wild", "Long", "Short",
             "SSJ-style", "SSJ2-style", "SSJ3-style");
 
-    /** Documented Extra (nose + tattoo) fallback when TextureCounter returns 0. */
+    /** Documented Extra (nose) fallback when TextureCounter returns 0. */
     public static final List<String> FALLBACK_EXTRA = List.of(
-            "Nose 1", "Nose 2", "Nose 3",
-            "Tattoo 1", "Tattoo 2", "Tattoo 3", "Tattoo 4");
+            "Nose 1", "Nose 2", "Nose 3");
+
+    /** Documented Tattoo fallback matching the DMZ wizard 6-tile grid, plus Taotto. */
+    public static final List<String> FALLBACK_TATTOO = List.of(
+            "Taotto", "Tattoo 1", "Tattoo 2", "Tattoo 3", "Tattoo 4", "Tattoo 5", "Tattoo 6");
 
     private MakerPresetCatalog() {
     }
@@ -109,6 +112,15 @@ public final class MakerPresetCatalog {
         if (id.startsWith("extra:tattoo:")) {
             return "Tattoo " + id.substring("extra:tattoo:".length());
         }
+        if (id.equals(RaceMakerParts.TAOTTO_PART) || id.equals("tattoo:taotto")) {
+            return "Taotto";
+        }
+        if (id.startsWith("hair:catalog:")) {
+            return "Hair " + id.substring("hair:catalog:".length());
+        }
+        if (id.startsWith("tattoo:")) {
+            return "Tattoo " + id.substring("tattoo:".length());
+        }
         if (id.startsWith("body:")) {
             return "Body " + id.substring("body:".length());
         }
@@ -131,6 +143,7 @@ public final class MakerPresetCatalog {
             case EYES -> FALLBACK_EYES;
             case MOUTH -> FALLBACK_MOUTH;
             case HAIR -> FALLBACK_HAIR;
+            case TATTOO -> FALLBACK_TATTOO;
             case EXTRA -> FALLBACK_EXTRA;
             case AURA, CLOTHES -> List.of();
         };
@@ -142,12 +155,13 @@ public final class MakerPresetCatalog {
             case EYES -> numberedIds("eyes", 1, FALLBACK_EYES.size());
             case MOUTH -> numberedIds("mouth", 1, FALLBACK_MOUTH.size());
             case HAIR -> numberedIds("hair", 1, FALLBACK_HAIR.size());
-            case EXTRA -> {
+            case TATTOO -> {
                 List<String> out = new ArrayList<>();
-                out.addAll(numberedIds("extra:nose", 1, 3));
-                out.addAll(numberedIds("extra:tattoo", 1, 4));
+                out.add(RaceMakerParts.TAOTTO_PART);
+                out.addAll(numberedIds("tattoo", 1, 6));
                 yield List.copyOf(out);
             }
+            case EXTRA -> numberedIds("extra:nose", 1, 3);
             case AURA, CLOTHES -> List.of();
         };
     }

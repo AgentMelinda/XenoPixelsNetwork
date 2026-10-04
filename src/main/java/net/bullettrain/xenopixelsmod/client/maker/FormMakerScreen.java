@@ -33,7 +33,8 @@ import java.util.UUID;
  * <p>Chrome: gold {@code banner_top}; green Task-9 panels {@code xeno_maker_form_list},
  * {@code xeno_maker_form_settings}, right-column {@code xeno_maker_hair_preview}. Controls:
  * {@link AtlasCycle} race/group, {@link ColorSwatch}+{@link InlineColorPicker} for verified
- * colour fields, true-player {@link MakerPreviewController} with live hair/aura override.
+ * colour fields, compact STR/SKP/STM/DEF/VIT/PWR/ENE/SPD multiplier grid from FormData,
+ * true-player {@link MakerPreviewController} with live hair/aura override.
  * Save via existing {@link FormEditorNetwork#save} only — no invented form schema keys.
  *
  * <p>Parts sub-screen: {@link FormMakerPartsScreen}.
@@ -70,6 +71,25 @@ public final class FormMakerScreen extends ScaledScreen {
             "hairColor",
             DmzFormDocument.SCALE_UNIFORM
     );
+
+    /**
+     * DragonMineZ {@code FormConfig.FormData} stat multipliers that exist on 2.1.3.
+     * HUD RES is {@code (defMultiplier + stmMultiplier) / 2}; there is no {@code resMultiplier}.
+     */
+    public static final List<String> STAT_MULTIPLIER_KEYS = List.of(
+            "strMultiplier",
+            "skpMultiplier",
+            "stmMultiplier",
+            "defMultiplier",
+            "vitMultiplier",
+            "pwrMultiplier",
+            "eneMultiplier",
+            "speedMultiplier"
+    );
+
+    private static final int PRIMARY_ROW = 18;
+    private static final int STAT_ROW = 16;
+    private static final int STAT_COLS = 2;
 
     private final Screen parent;
     private final MakerPreviewController preview = new MakerPreviewController();
@@ -195,7 +215,7 @@ public final class FormMakerScreen extends ScaledScreen {
     }
 
     private void schedulePreview() {
-        MakerPreviewAppearance appearance = new MakerPreviewAppearance();
+        MakerPreviewAppearance appearance = new MakerPreviewAppearance().race(race);
         String hair = fieldValue("hairColor");
         String aura = fieldValue("auraColor");
         if (hair != null && !hair.isBlank()) {
@@ -207,6 +227,7 @@ public final class FormMakerScreen extends ScaledScreen {
         if (group != null && !group.isBlank() && selectedForm != null && !selectedForm.isBlank()) {
             appearance.activeForm(group, selectedForm);
         }
+        if (document != null) appearance.formData(document.previewData());
         preview.setAppearance(appearance);
         preview.markDirty();
     }
@@ -224,7 +245,7 @@ public final class FormMakerScreen extends ScaledScreen {
             if (field == null) {
                 continue;
             }
-            if (y + 20 > settingsY + settingsH - 8) {
+            if (y + PRIMARY_ROW > settingsY + settingsH - 8) {
                 break;
             }
             if (field.kind() == DmzFormDocument.Kind.COLOR) {
@@ -251,14 +272,45 @@ public final class FormMakerScreen extends ScaledScreen {
                     rebuild();
                 }).narrationLabel(Component.literal(field.label())));
             } else {
-                EditBox box = new EditBox(font, boxX, y, boxW, 16, Component.literal(field.label()));
+                EditBox box = new EditBox(font, boxX, y, boxW, 14, Component.literal(field.label()));
                 box.setMaxLength(field.kind() == DmzFormDocument.Kind.JSON ? 8192 : 256);
                 box.setValue(field.value() == null ? "" : field.value());
                 String fieldKey = field.key();
                 box.setResponder(raw -> applyVerifiedField(fieldKey, raw));
                 addRenderableWidget(box);
             }
-            y += 22;
+            y += PRIMARY_ROW;
+        }
+        addStatMultiplierWidgets(y);
+    }
+
+    private void addStatMultiplierWidgets(int startY) {
+        if (document == null) {
+            return;
+        }
+        int colW = Math.max(72, (settingsW - 16) / STAT_COLS);
+        int i = 0;
+        for (String key : STAT_MULTIPLIER_KEYS) {
+            DmzFormDocument.Field field = fieldOf(key);
+            if (field == null) {
+                continue;
+            }
+            int col = i % STAT_COLS;
+            int row = i / STAT_COLS;
+            int x = settingsX + 8 + col * colW;
+            int y = startY + 2 + row * STAT_ROW;
+            if (y + STAT_ROW > settingsY + settingsH - 4) {
+                break;
+            }
+            int boxX = x + 28;
+            int boxW = Math.max(36, colW - 32);
+            EditBox box = new EditBox(font, boxX, y, boxW, 12, Component.literal(statAbbrev(key)));
+            box.setMaxLength(16);
+            box.setValue(field.value() == null ? "" : field.value());
+            String fieldKey = field.key();
+            box.setResponder(raw -> applyVerifiedField(fieldKey, raw));
+            addRenderableWidget(box);
+            i++;
         }
     }
 
@@ -537,11 +589,27 @@ public final class FormMakerScreen extends ScaledScreen {
             if (field == null) {
                 continue;
             }
-            if (y + 20 > settingsY + settingsH - 8) {
+            if (y + PRIMARY_ROW > settingsY + settingsH - 8) {
                 break;
             }
-            graphics.drawString(font, shortLabel(field.label()), settingsX + 10, y + 4, MUTED, false);
-            y += 22;
+            graphics.drawString(font, shortLabel(field.label()), settingsX + 10, y + 3, MUTED, false);
+            y += PRIMARY_ROW;
+        }
+        int colW = Math.max(72, (settingsW - 16) / STAT_COLS);
+        int i = 0;
+        for (String key : STAT_MULTIPLIER_KEYS) {
+            if (fieldOf(key) == null) {
+                continue;
+            }
+            int col = i % STAT_COLS;
+            int row = i / STAT_COLS;
+            int x = settingsX + 8 + col * colW;
+            int yy = y + 2 + row * STAT_ROW;
+            if (yy + STAT_ROW > settingsY + settingsH - 4) {
+                break;
+            }
+            graphics.drawString(font, statAbbrev(key), x, yy + 2, GOLD, false);
+            i++;
         }
     }
 
@@ -589,6 +657,25 @@ public final class FormMakerScreen extends ScaledScreen {
     private String fieldValue(String key) {
         DmzFormDocument.Field field = fieldOf(key);
         return field == null || field.value() == null ? "" : field.value();
+    }
+
+    /** HUD-style abbrev for a verified {@code FormData} {@code *Multiplier} key. */
+    public static String statAbbrev(String key) {
+        if (key == null || !key.endsWith("Multiplier")) {
+            return "";
+        }
+        String stem = key.substring(0, key.length() - "Multiplier".length());
+        return switch (stem) {
+            case "str" -> "STR";
+            case "skp" -> "SKP";
+            case "stm" -> "STM";
+            case "def" -> "DEF";
+            case "vit" -> "VIT";
+            case "pwr" -> "PWR";
+            case "ene" -> "ENE";
+            case "speed" -> "SPD";
+            default -> stem.toUpperCase(Locale.ROOT);
+        };
     }
 
     private static String shortLabel(String label) {

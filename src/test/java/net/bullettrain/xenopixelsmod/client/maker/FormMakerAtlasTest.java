@@ -5,6 +5,7 @@ import net.bullettrain.xenopixelsmod.dmz.form.DmzFormDocument;
 import net.bullettrain.xenopixelsmod.dmz.form.DmzFormKind;
 import org.junit.jupiter.api.Test;
 
+import java.util.List;
 import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -114,5 +115,33 @@ class FormMakerAtlasTest {
         for (String key : FormMakerScreen.SETTINGS_KEYS) {
             assertTrue(known.contains(key), "settings key missing from draft fields: " + key);
         }
+    }
+
+    @Test
+    void statMultiplierKeysAreVerifiedFormDataFields() {
+        DmzFormDocument document = DmzFormDocument.create(DmzFormKind.NORMAL, "saiyan");
+        Set<String> known = FormMakerScreen.knownFieldKeys(document);
+        assertEquals(List.of(
+                "strMultiplier", "skpMultiplier", "stmMultiplier", "defMultiplier",
+                "vitMultiplier", "pwrMultiplier", "eneMultiplier", "speedMultiplier"),
+                FormMakerScreen.STAT_MULTIPLIER_KEYS);
+        for (String key : FormMakerScreen.STAT_MULTIPLIER_KEYS) {
+            assertTrue(known.contains(key), "stat multiplier missing from FormData: " + key);
+        }
+        assertFalse(FormMakerScreen.STAT_MULTIPLIER_KEYS.contains("resMultiplier"),
+                "RES is (DEF+STM)/2 in DMZ; there is no resMultiplier field");
+        assertEquals("STR", FormMakerScreen.statAbbrev("strMultiplier"));
+        assertEquals("SPD", FormMakerScreen.statAbbrev("speedMultiplier"));
+        document.update("strMultiplier", "3.25");
+        assertEquals("3.25", fieldValue(document, "strMultiplier"));
+    }
+
+    private static String fieldValue(DmzFormDocument document, String key) {
+        for (DmzFormDocument.Field field : document.fields()) {
+            if (key.equals(field.key())) {
+                return field.value();
+            }
+        }
+        return null;
     }
 }

@@ -8,10 +8,12 @@ import net.bullettrain.xenopixelsmod.client.ui.atlas.ColorSwatch;
 import net.bullettrain.xenopixelsmod.client.ui.atlas.InlineColorPicker;
 import net.bullettrain.xenopixelsmod.client.ui.atlas.XenoAtlasSprites;
 import net.bullettrain.xenopixelsmod.command.XenoPermissions;
+import net.bullettrain.xenopixelsmod.dmz.race.RaceAppearanceCatalog;
 import net.bullettrain.xenopixelsmod.dmz.race.RaceLabelRegistry;
 import net.bullettrain.xenopixelsmod.dmz.race.RaceLabels;
 import net.bullettrain.xenopixelsmod.dmz.race.RacePackService;
 import net.bullettrain.xenopixelsmod.dmz.race.RacePackTemplate;
+import net.bullettrain.xenopixelsmod.hair.HairApplyService;
 import net.bullettrain.xenopixelsmod.network.race.RaceLabelNetwork;
 import net.bullettrain.xenopixelsmod.hair.HairMakerDocument;
 import net.bullettrain.xenopixelsmod.hair.HairPresetImport;
@@ -90,6 +92,7 @@ public final class RaceCharacterMakerScreen extends ScaledScreen {
     private int eyesType;
     private int mouthType;
     private int hairPreset = 1;
+    private String selectedHairStyleId = "";
     private int noseType;
     private int tattooType;
     private List<String> raceIds = List.of();
@@ -300,9 +303,24 @@ public final class RaceCharacterMakerScreen extends ScaledScreen {
 
         AtlasButton hairEditor = new AtlasButton(originX + 92 + (compact + g) * 3, footerY,
                 Component.literal("Hair Editor"), TOOL, b -> openHairEditor());
-        hairEditor.setTooltip(Tooltip.create(Component.literal(
-                "Opens Hair Studio on the live player mesh. Does not write this pack's character.json.")));
+        hairEditor.setTooltip(Tooltip.create(Component.literal(custom
+                ? "Edit this race's hair catalog. Save Pack writes the style into the race pack."
+                : "Opens Hair Studio on the live player mesh.")));
         addRenderableWidget(hairEditor);
+
+        AtlasButton addBody = new AtlasButton(originX + 92 + (compact + g) * 4, footerY,
+                Component.literal("Add Body"), TOOL, b -> addBodyType());
+        addBody.active = custom && mayCreateRace();
+        addBody.setTooltip(Tooltip.create(Component.literal(custom
+                ? "Author a new body type PNG into this race pack (TextureCounter path)."
+                : "Create a custom race pack first.")));
+        addRenderableWidget(addBody);
+
+        AtlasButton taotto = new AtlasButton(originX + 92 + (compact + g) * 5, footerY,
+                Component.literal("Taotto"), TOOL, b -> openTaotto());
+        taotto.setTooltip(Tooltip.create(Component.literal(
+                "Per-pixel tattoo painter. Scale and drag the finished tattoo onto a body part.")));
+        addRenderableWidget(taotto);
 
         schedulePreview();
     }
@@ -333,7 +351,7 @@ public final class RaceCharacterMakerScreen extends ScaledScreen {
             case EYES -> List.of("Eye 1", "Eye 2");
             case HAIR -> List.of("Hair");
             case AURA -> List.of("Aura");
-            default -> List.of();
+            case TATTOO, MOUTH, CLOTHES, EXTRA -> List.of();
         };
     }
 
@@ -435,6 +453,8 @@ public final class RaceCharacterMakerScreen extends ScaledScreen {
 
     private void schedulePreview() {
         MakerPreviewAppearance appearance = new MakerPreviewAppearance()
+                .race(selectedRace)
+                .activeForm(null, null)
                 .bodyColor(skinColorHex)
                 .bodyColor2(skin2Hex)
                 .bodyColor3(skin3Hex)
@@ -448,7 +468,17 @@ public final class RaceCharacterMakerScreen extends ScaledScreen {
                 .mouthType(mouthType)
                 .noseType(noseType)
                 .tattooType(tattooType);
-        if (hairPreset > 0) {
+        if (!selectedHairStyleId.isBlank()) {
+            try {
+                var catalog = RaceAppearanceCatalog.loadLive(selectedRace);
+                var style = catalog.hairById(selectedHairStyleId);
+                if (style != null) {
+                    HairMakerDocument catalogHair = catalog.readHair(RacePackService.dmzRoot(), style);
+                    appearance.hair(HairApplyService.toCustomHair(HairApplyService.plan(catalogHair)));
+                }
+            } catch (Throwable ignored) {
+            }
+        } else if (hairPreset > 0) {
             var hair = HairPresetImport.fetchPreset(hairPreset, "Base");
             if (hair != null) {
                 appearance.hair(hair);
@@ -584,6 +614,7 @@ public final class RaceCharacterMakerScreen extends ScaledScreen {
     private void selectRace(String race, boolean announce) {
         selectedRace = race == null ? "saiyan" : race.trim().toLowerCase(Locale.ROOT);
         selectedPartId = "";
+        selectedHairStyleId = "";
         boolean custom = RacePackService.isCustomPack(selectedRace);
         if (custom) {
             applyLoadedPack(selectedRace);
@@ -673,6 +704,15 @@ public final class RaceCharacterMakerScreen extends ScaledScreen {
     }
 
     private void applyPartToSlots(String partId) {
+        if (RaceMakerParts.TAOTTO_PART.equals(partId)) {
+            openTaotto();
+            return;
+        }
+        if (category == RaceMakerParts.Category.HAIR && partId != null && partId.startsWith("hair:catalog:")) {
+            selectedHairStyleId = partId.substring("hair:catalog:".length());
+            hairPreset = 0;
+            return;
+        }
         int index = RaceMakerParts.parseIndex(partId);
         if (index < 0) {
             return;
@@ -681,12 +721,14 @@ public final class RaceCharacterMakerScreen extends ScaledScreen {
             case BODY -> bodyType = index;
             case EYES -> eyesType = index;
             case MOUTH -> mouthType = index;
-            case HAIR -> hairPreset = Math.max(1, index);
+            case HAIR -> {
+                selectedHairStyleId = "";
+                hairPreset = Math.max(1, index);
+            }
+            case TATTOO -> tattooType = index;
             case EXTRA -> {
                 if (partId != null && partId.contains("nose")) {
                     noseType = index;
-                } else if (partId != null && partId.contains("tattoo")) {
-                    tattooType = index;
                 }
             }
             default -> {
@@ -773,18 +815,89 @@ public final class RaceCharacterMakerScreen extends ScaledScreen {
     private void openHairEditor() {
         HairMakerDocument doc = HairMakerDocument.oneStrandDemo();
         try {
-            HairMakerDocument seeded = new HairMakerDocument();
-            if (hairPreset > 0 && HairPresetImport.loadIntoDocument(seeded, hairPreset, "Base")) {
-                doc = seeded;
+            if (!selectedHairStyleId.isBlank() && RacePackService.isCustomPack(selectedRace)) {
+                RaceAppearanceCatalog catalog = RaceAppearanceCatalog.loadLive(selectedRace);
+                var style = catalog.hairById(selectedHairStyleId);
+                if (style != null) {
+                    doc = catalog.readHair(RacePackService.dmzRoot(), style);
+                }
+            } else {
+                HairMakerDocument seeded = new HairMakerDocument();
+                if (hairPreset > 0 && HairPresetImport.loadIntoDocument(seeded, hairPreset, "Base")) {
+                    doc = seeded;
+                }
             }
         } catch (Throwable ignored) {
-            // HairManager is only live inside a DMZ client.
+            // HairManager / catalog IO is only live inside a DMZ client.
         }
         if (hairColorHex != null && !hairColorHex.isBlank()) {
             doc.globalColor(hairColorHex);
         }
+        java.util.function.Consumer<HairMakerDocument> sink = RacePackService.isCustomPack(selectedRace)
+                && mayCreateRace() ? this::saveHairToCatalog : null;
         if (minecraft != null) {
-            minecraft.setScreen(new HairMakerScreen(this, doc));
+            minecraft.setScreen(new HairMakerScreen(this, doc, sink));
+        }
+    }
+
+    private void saveHairToCatalog(HairMakerDocument document) {
+        if (!RacePackService.isCustomPack(selectedRace)) {
+            status = "Pick a created race pack to store hair styles.";
+            statusColor = WARN;
+            return;
+        }
+        try {
+            RaceAppearanceCatalog catalog = RaceAppearanceCatalog.loadLive(selectedRace);
+            if (!selectedHairStyleId.isBlank() && catalog.hairById(selectedHairStyleId) != null) {
+                catalog.updateHairStyle(RacePackService.dmzRoot(), selectedHairStyleId, document);
+            } else {
+                var style = catalog.addHairStyle(RacePackService.dmzRoot(), document.name(), document);
+                selectedHairStyleId = style.id();
+            }
+            catalog.save(RacePackService.dmzRoot());
+            status = "Saved hair style into races/" + selectedRace + "/catalog/.";
+            statusColor = OK;
+            schedulePreview();
+            refreshParts();
+        } catch (Exception e) {
+            status = "Hair catalog save failed: " + e.getMessage();
+            statusColor = WARN;
+        }
+    }
+
+    private void addBodyType() {
+        if (!mayCreateRace() || !RacePackService.isCustomPack(selectedRace)) {
+            status = "Create a custom race pack first, then Add Body.";
+            statusColor = WARN;
+            return;
+        }
+        try {
+            RaceAppearanceCatalog catalog = RaceAppearanceCatalog.loadLive(selectedRace);
+            var body = catalog.addGeneratedBody(RacePackService.dmzRoot(), gender, skinColorHex);
+            catalog.save(RacePackService.dmzRoot());
+            ConfigManager.reload();
+            RaceAssetPackClient.reload().whenComplete((ignored, error) -> {
+                if (error != null) {
+                    status = "Body saved; texture reload failed: " + error.getMessage();
+                    statusColor = WARN;
+                }
+            });
+            bodyType = body.index();
+            selectedPartId = "body:" + body.index();
+            status = "Added " + body.label() + " (" + body.texturePath() + "). Reloading textures for the DMZ wizard.";
+            statusColor = OK;
+            refreshParts();
+            schedulePreview();
+            rebuild();
+        } catch (Exception e) {
+            status = "Add Body failed: " + e.getMessage();
+            statusColor = WARN;
+        }
+    }
+
+    private void openTaotto() {
+        if (minecraft != null) {
+            minecraft.setScreen(new TaottoMakerScreen(this));
         }
     }
 

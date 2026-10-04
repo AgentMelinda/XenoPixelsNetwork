@@ -334,6 +334,10 @@ public final class RacePackService {
         return key.isEmpty() ? "races/?/character.json" : "races/" + key + "/character.json";
     }
 
+    public static Path dmzRoot() {
+        return defaultDmzRoot();
+    }
+
     static Path defaultDmzRoot() {
         return FMLPaths.CONFIGDIR.get().resolve("dragonminez");
     }

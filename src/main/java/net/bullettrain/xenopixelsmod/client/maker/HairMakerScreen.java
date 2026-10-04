@@ -62,6 +62,7 @@ public final class HairMakerScreen extends ScaledScreen {
 
     private final Screen parent;
     private final HairMakerDocument document;
+    private final java.util.function.Consumer<HairMakerDocument> packSink;
     private final MakerPreviewController preview = new MakerPreviewController();
     private final InlineColorPicker colorPicker = new InlineColorPicker();
     private final HairOutlinerPanel outliner = new HairOutlinerPanel();
@@ -124,9 +125,15 @@ public final class HairMakerScreen extends ScaledScreen {
     }
 
     public HairMakerScreen(Screen parent, HairMakerDocument document) {
+        this(parent, document, null);
+    }
+
+    public HairMakerScreen(Screen parent, HairMakerDocument document,
+                           java.util.function.Consumer<HairMakerDocument> packSink) {
         super(Component.literal("Hair Editor"));
         this.parent = parent;
         this.document = document == null ? new HairMakerDocument() : document;
+        this.packSink = packSink;
     }
 
     @Override
@@ -243,6 +250,13 @@ public final class HairMakerScreen extends ScaledScreen {
                 Component.literal("Undo"), TOOL, b -> undoEdit()));
         addRenderableWidget(new AtlasButton(originX + (compact + g) * 3, footerY,
                 Component.literal("Close"), TOOL, b -> onClose()));
+        if (packSink != null) {
+            AtlasButton pack = new AtlasButton(originX + (compact + g) * 4, footerY,
+                    Component.literal("Save Pack"), TOOL, b -> saveToRacePack());
+            pack.setTooltip(Tooltip.create(Component.literal(
+                    "Write this style into the race pack hair catalog.")));
+            addRenderableWidget(pack);
+        }
 
         int right = originX + contentW - compact;
         addRenderableWidget(new AtlasButton(right - (compact + g) * 3, footerY,
@@ -732,7 +746,11 @@ public final class HairMakerScreen extends ScaledScreen {
     private void schedulePreview() {
         // Always rebuild appearance from the document when dirty so style/preset loads show.
         if (appearanceDirty) {
-            preview.setAppearance(MakerPreviewAppearance.fromHair(document));
+            MakerPreviewAppearance appearance = MakerPreviewAppearance.fromHair(document);
+            if (parent instanceof RaceCharacterMakerScreen raceMaker) {
+                appearance.race(raceMaker.selectedRace());
+            }
+            preview.setAppearance(appearance);
             appearanceDirty = false;
         } else {
             // Still nudge a redraw (yaw / glow) without reallocating CustomHair.
@@ -824,6 +842,20 @@ public final class HairMakerScreen extends ScaledScreen {
             statusColor = OK;
         } catch (Exception e) {
             status = "Apply failed: " + e.getMessage();
+            statusColor = WARN;
+        }
+    }
+
+    private void saveToRacePack() {
+        if (packSink == null) {
+            return;
+        }
+        try {
+            packSink.accept(document);
+            status = "Saved style into the race pack hair catalog.";
+            statusColor = OK;
+        } catch (Exception e) {
+            status = "Pack save failed: " + e.getMessage();
             statusColor = WARN;
         }
     }
