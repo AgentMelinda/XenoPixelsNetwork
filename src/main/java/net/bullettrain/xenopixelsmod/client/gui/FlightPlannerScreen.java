@@ -239,14 +239,20 @@ public final class FlightPlannerScreen extends UnblurredScreen {
                 .tooltip(Tooltip.create(Component.literal(
                         "Desired world Y for the cruise phase. Use 0 to let the flight planner choose automatically.")))
                 .bounds(panelX + 88, panelY + 146, 70, 18).build());
+        engineApexBox = box(panelX + 12, panelY + 166, 70, Integer.toString(openData.apexY()));
+        engineApexBox.setHint(Component.literal("Guide Y"));
+        addRenderableWidget(Button.builder(Component.literal("SET GUIDE Y"), b -> setEngineApex())
+                .tooltip(Tooltip.create(Component.literal(
+                        "World Y to climb to before the missile starts steering. 0 = automatic loft.")))
+                .bounds(panelX + 88, panelY + 166, 70, 18).build());
         addRenderableWidget(Button.builder(Component.literal("3. BUILD + CHECK ROUTE"), b -> autoTuneForDistance())
                 .tooltip(Tooltip.create(Component.literal("Automatically builds the route and immediately checks it on the server.")))
-                .bounds(panelX + 12, panelY + 172, 146, 22).build());
+                .bounds(panelX + 12, panelY + 188, 146, 20).build());
         addRenderableWidget(Button.builder(Component.literal("4. FIND ENGINES (OPTIONAL)"), b -> {
                     ModNetwork.sendToServer(GuidanceControlPacket.pairNearby(openData.computerPos()));
                     notice = "Engine search requested. Launch when the checked route is ready.";
                 }).tooltip(Tooltip.create(Component.literal("Pairs this mod's thrusters and supported engines from other mods.")))
-                .bounds(panelX + 12, panelY + 200, 146, 20).build());
+                .bounds(panelX + 12, panelY + 210, 146, 18).build());
     }
 
     private void initEasyFlight() {
@@ -756,11 +762,19 @@ public final class FlightPlannerScreen extends UnblurredScreen {
     }
 
     private void setEngineApex() {
+        if (engineApexBox == null) {
+            return;
+        }
         try {
             int value = Math.max(0, Integer.parseInt(engineApexBox.getValue().trim()));
+            engineApexBox.setValue(Integer.toString(value));
             ModNetwork.sendToServer(GuidanceControlPacket.setApexY(openData.computerPos(), value));
-            notice = value == 0 ? "Legacy apex override disabled" : "Engine apex set to " + value;
-        } catch (NumberFormatException ex) { notice = "Apex must be a whole world Y"; }
+            notice = value == 0
+                    ? "Guide Y AUTO — loft from range, then steer"
+                    : "Guide Y " + value + " — climb here, then start guidance";
+        } catch (NumberFormatException ex) {
+            notice = "Guide Y must be a whole world Y (0 = auto)";
+        }
     }
 
     private void setEngineCruise() {
@@ -888,6 +902,9 @@ public final class FlightPlannerScreen extends UnblurredScreen {
         captureVisibleFields();
         if (tab == Tab.EASY && !isFlightUi()) {
             ModNetwork.sendToServer(GuidanceControlPacket.setCruiseY(openData.computerPos(), easyCruiseY));
+            if (engineApexBox != null) {
+                setEngineApex();
+            }
         }
         BallisticFlightPlan.TrajectoryProfile requestedEasyProfile = tab == Tab.EASY
                 ? settings.profile() : BallisticFlightPlan.TrajectoryProfile.AUTO;

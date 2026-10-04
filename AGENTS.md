@@ -58,7 +58,8 @@ skill playbook before changing code, resources, build logic, binaries, or releas
 - The standalone API boundary check is `./gradlew buildApiExampleAddon -PofflineMcMeta`.
 - Runtime API startup/packet proof is `./gradlew runApiTestClient`; inspect a fresh
   `run/logs/latest.log` rather than relying only on task exit status.
-- Confirm the server jar has zero entries below `META-INF/jarjar/`.
+- Confirm the server jar's only entries below `META-INF/jarjar/` are `metadata.json` and the
+  AAA Particles jar (owner decision, 2026-10-02). Modern UI and Nashorn must not appear there.
 - Do not fix unrelated failures while validating a focused change; report them separately.
 
 ## Handoffs

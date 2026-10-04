@@ -39,7 +39,18 @@ public final class PlotLease extends SavedData {
     private static final String FILE_NAME = "xenopixels_plot_leases";
     private static final String KEY_LEASES = "Leases";
 
-    /** One running lease. {@code nextDueTick} is a server tick count, not a wall clock. */
+    /**
+     * One running lease.
+     *
+     * <p>{@code nextDueTick} is a <b>game time</b> - {@code Level.getGameTime()}, which is persisted
+     * in {@code level.dat}. It used to be {@code MinecraftServer.getTickCount()}, a plain field that
+     * restarts at 0 on every launch and is never written to disk, so after a restart every stored
+     * deadline was compared against a clock that had gone back to zero and no existing lease was
+     * charged again until the server's uptime passed the value recorded before the restart. On a
+     * server restarted daily, a long-standing lease effectively never came due.
+     *
+     * <p>A lease stored under the old scheme comes due at once, which is correct: it was overdue.
+     */
     public record Lease(ResourceLocation dimension, int minX, int minZ,
                         UUID renter, UUID owner,
                         double pricePerPeriod, int periodTicks, long nextDueTick) {
@@ -220,7 +231,7 @@ public final class PlotLease extends SavedData {
         for (Lease lease : due) {
             ServerPlayer renter = server.getPlayerList().getPlayer(lease.renter());
             long units = MmoEconBridge.toUnits(lease.pricePerPeriod());
-            Outcome outcome = decide(renter != null, economy,
+            Outcome outcome = decide(renter != null, economy && units >= 0L,
                     renter != null && economy && MmoEconBridge.hasFunds(renter.getUUID(), units));
             if (outcome == Outcome.RENEWED && !MmoEconBridge.withdraw(lease.renter(), units)) {
                 // Funds were confirmed a moment ago; a failure here is still a failure to pay.

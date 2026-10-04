@@ -53,14 +53,17 @@ public final class NpcGeckoHaloLayer extends GeoRenderLayer<EntityCustomModel> {
         if (!visual.haloOn) {
             return;
         }
-        String headBone = surrogate.headBoneName;
-        if (headBone == null || headBone.isBlank()) {
-            headBone = "head";
+        String appearanceBone = "";
+        if (state.appearance() != null) {
+            appearanceBone = state.appearance().activeHeadBone;
         }
-        if (!headBone.equals(bone.getName())) {
+        String headBone = NpcGeckoHeadAttach.resolveBone(surrogate.headBoneName, appearanceBone);
+        if (!NpcGeckoHeadAttach.matches(headBone, bone.getName())) {
             return;
         }
         poseStack.pushPose();
+        // Same live-head attach as NpcDmzHairLayer / DMZHairLayer: GeckoLib already
+        // prepped the bone matrix; only move to the pivot in that rotated space.
         RenderUtil.translateToPivotPoint(poseStack, bone);
         poseStack.translate(0.0, HALO_HEIGHT, 0.0);
         Matrix4f matrix = poseStack.last().pose();

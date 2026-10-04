@@ -1,6 +1,8 @@
 package net.bullettrain.xenopixelsmod.client;
 
+import net.bullettrain.xenopixelsmod.client.guidance.GuidanceV2Client;
 import net.bullettrain.xenopixelsmod.client.gui.FlightPlannerScreen;
+import net.bullettrain.xenopixelsmod.client.gui.FlightPlannerV2Screen;
 import net.minecraft.client.Minecraft;
 import net.minecraft.core.BlockPos;
 
@@ -15,10 +17,15 @@ public final class ClientGuidance {
                             double gravitySi, double dragCoefficient,
                             BlockPos missileBase, BlockPos missileCenter, BlockPos missileNose,
                             double guidanceStopDistance) {
-        Minecraft.getInstance().setScreen(new FlightPlannerScreen(new ClientScreens.GuidanceOpenData(
+        ClientScreens.GuidanceOpenData data = new ClientScreens.GuidanceOpenData(
                 computerPos, x, y, z, status, pairedThrusters, speedLevel, apexY, cruiseY,
                 fleetChannel, salvoIntervalTicks, gravitySi, dragCoefficient,
-                missileBase, missileCenter, missileNose, guidanceStopDistance)));
+                missileBase, missileCenter, missileNose, guidanceStopDistance);
+        if (GuidanceV2Client.isV2()) {
+            Minecraft.getInstance().setScreen(new FlightPlannerV2Screen(data));
+            return;
+        }
+        Minecraft.getInstance().setScreen(new FlightPlannerScreen(data));
     }
 
     public static void open(BlockPos computerPos, int x, int y, int z,

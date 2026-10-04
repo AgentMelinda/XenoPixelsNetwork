@@ -25,4 +25,9 @@ public final class AnimClipsEvents {
             AnimClipsNetwork.sendTo(player);
         }
     }
+
+    @SubscribeEvent
+    public static void onPlayerLogout(PlayerEvent.PlayerLoggedOutEvent event) {
+        CombatStateAnim.forget(event.getEntity().getUUID());
+    }
 }

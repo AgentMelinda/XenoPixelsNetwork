@@ -27,6 +27,8 @@ import java.util.Map;
 public final class NpcSkillSet {
     /** The one id this mod references directly, because flight also drives NPC navigation. */
     public static final String FLY = "fly";
+    /** DMZ's Ki Sense skill id, used by the optional retaliation lock-on behavior. */
+    public static final String KI_SENSE = "kisense";
 
     private static final String TAG_ID = "Id";
     private static final String TAG_ACTIVE = "On";
@@ -93,6 +95,15 @@ public final class NpcSkillSet {
         } catch (Throwable ignored) {
         }
         return List.of();
+    }
+
+    /** DMZ's skills config object (or null), so a cache can tell when it has been reloaded. */
+    static Object configIdentity() {
+        try {
+            return ConfigManager.getSkillsConfig();
+        } catch (Throwable ignored) {
+            return null;
+        }
     }
 
     /** True when DMZ's config recognises this id. */

@@ -1,7 +1,7 @@
 # XenoPixels CustomNPC scripting guide for server co-owners
 
 This guide documents the server-side `XenoPixels` global implemented by
-`NpcXenoScriptApi` version 18. It is intended for CustomNPCs JavaScript hooks such as
+`NpcXenoScriptApi` version 28 (updated 2026-09-28). It is intended for CustomNPCs JavaScript hooks such as
 `init(event)`, `timer(event)`, `damaged(event)` and `died(event)`.
 
 ## Quick safety rules
@@ -13,7 +13,213 @@ This guide documents the server-side `XenoPixels` global implemented by
   `listStackForms` instead of guessing.
 - Colors may use `#RRGGBB`. Examples below use that format.
 - Transform durations are ticks; 20 ticks are approximately one second.
-- Check the installed bridge with `XenoPixels.getVersion()`; this document expects `"18"`.
+- Check the installed bridge with `XenoPixels.getVersion()`; this document expects `"28"`.
+  Charge moves need `23` or later, `XenoPixels.bubble` needs `28`.
+- `XenoPixels.say(player, text)` is a private chat line. For a speech bubble over a player
+  (or any entity) use `XenoPixels.bubble(player, text[, color[, shape]])`.
+- Native Xeno NPCs (no CustomNPCs or MyNPCs needed) have more: see [XenoAPI](XenoAPI).
+- Charged punch / kick (`startChargePunch` / `startChargeKick`) needs a combat
+  profile (`setProfile`) on a live server-side NPC. It is not `setKiCharge`
+  (that still scales KI techniques).
+- Nashorn leaves Java `String[]` as a Java object. `.length` and `[i]` work;
+  `.join` does not. Use `XenoPixels.joinNames(list)` or copy into a JS array first.
+
+## Example scripts
+
+Paste one file per tab. **Enabled = Yes**, then close the GUI so it saves.
+
+**NPC Scripts tab** (`examples/customnpcs/`):
+
+| File | What it does |
+| --- | --- |
+| `xenopixels_say_greeter.js` | Right-click bubbles (`npc.say`) |
+| `xenopixels_simple_puncher.js` | Profile + native CustomNPCs melee |
+| `xenopixels_custom_punches.js` | Picks a punch clip on `meleeAttack` |
+| `xenopixels_combo_rush.js` | Authored rush: jabs → vanish → flying kick → kamehameha (real hits, no charge) |
+| `xenopixels_charge_melee.js` | Right-click charged punch (v23) |
+| `xenopixels_charge_kick.js` | Right-click charged kick; cycles up / down bias |
+| `xenopixels_charge_counter.js` | Starts a charge when the NPC is hit |
+| `xenopixels_charge_brain.js` | Combat Brain on — brain starts charges in melee |
+| `xenopixels_state_clips.js` | Bind studio clips to transform / punch / charge slots |
+| `xenopixels_play_clips.js` | Right-click playlist of `/xenoanim global push` clips |
+| `xenopixels_ssj1_to_ssj3_clips.js` | Right-click SSJ1→2→3; binds TRANSFORM then `ascend` |
+| `xenopixels_ssj_show.js` | Simple SSJ climb without custom clips |
+| `xenopixels_full_saiyan.js` | Full fighter sample |
+
+**Global → Player Scripts** (dedicated: `/xenopixels playerscripts` after save):
+
+| File | What it does |
+| --- | --- |
+| `xenopixels_player_say.js` | Private welcome via `XenoPixels.say` |
+| `xenopixels_player_chat.js` | `#` rewrite, `!ping` cancel, `!announce` broadcast |
+| `xenoapi_player_bubbles.js` | Speech bubbles over the player on join, chat, death and level up (v28) |
+
+These examples are not in-world proof. If `getVersion()` is below `23`, charge
+and `broadcast` are missing on that JAR.
+
+## New in v28 (2026-09-28)
+
+**Speech bubbles over players.** `XenoPixels.say(player, text)` is unchanged: a private chat line
+only that player sees. The new call puts a bubble over any entity, players included, that
+everyone nearby sees:
+
+```js
+function login(event) {
+    XenoPixels.say(event.player, "Welcome back!");                        // private line
+    XenoPixels.bubble(event.player, "Hello everyone!", "gold", "shout");  // bubble
+}
+```
+
+| Call | Result |
+| --- | --- |
+| `XenoPixels.bubble(entity, text)` | bubble in the default look |
+| `XenoPixels.bubble(entity, text, color)` | `blue`, `gold`, `green`, `red` |
+| `XenoPixels.bubble(entity, text, color, shape)` | `rounded`, `thought`, `shout`, `banner` |
+
+It respects `/xenopixels npcsay` like the NPC bubbles. Press F5 to see your own bubble. A server
+and client older than v28 do not have it; check first:
+
+```js
+if (typeof XenoPixels.bubble !== "function") XenoPixels.say(event.player, "Need API v28");
+```
+
+**Once a second from a player script.** The player `tick` hook fires every 10 game ticks
+(half a second). Act on every second call:
+
+```js
+var halfSeconds = 0;
+function tick(event) {
+    if (++halfSeconds % 2 !== 0) return;
+    XenoPixels.bubble(event.player, "Online " + (halfSeconds / 2) + "s", "gold");
+}
+```
+
+**Native Xeno NPCs only** (not in the CustomNPCs / MyNPCs bridge): set or toggle any editor
+setting by key (`setDmz`, `toggleDmz`, `listDmz`), Ki Sense (`setKiSense`,
+`setKiSenseLockOn`, `isKiSenseLockedOn`), identity and respawn (`setTitle`, `setRole`,
+`setHome`, `setRespawn`), colored names and titles (`&6Goku`, `&#FF8800Title`), Forge
+scripts, and red chat for script errors. All of it is on the [XenoAPI](XenoAPI) page.
+
+## Player script: say on init (paste this first)
+
+`XenoPixels.say(player, text)` is a **private literal system line** to that
+player. Do not use `player.message()` — My NPCs / CustomNPCs treat that text as
+a translation key and the line does not show. It is not public chat and not an
+NPC bubble. Public chat is `XenoPixels.broadcast(player, text)`. Public rewrite
+is `setChatMessage` in `chat(event)`. Hide the typed line with
+`XenoPixels.cancelChat(event)` (CustomNPCs `ChatEvent` is cancellable; the
+signed `ServerChatEvent` is cancelled by the chat mixin or the LOWEST fallback).
+
+On a dedicated server, after pasting player scripts, run
+`/xenopixels playerscripts` (op) and confirm `HasStart=true`,
+`serverStarted=true`, `enabled=true`, and `XenoPixels=true`. `enable` writes
+the global Enabled flag if the GUI copy did not.
+
+Paste `examples/customnpcs/xenopixels_player_say.js` into **Global → Player
+Scripts**, set **Enabled = Yes**, and close the GUI so it saves. Public chat
+demo: `examples/customnpcs/xenopixels_player_chat.js`.
+
+```js
+function init(event) {
+    speak(event.player);
+}
+
+function login(event) {
+    speak(event.player);
+}
+
+function logout(event) {
+    if (event.player) {
+        event.player.getTempdata().remove("xeno_said");
+    }
+}
+
+function speak(player) {
+    if (player == null) return;
+    if (typeof XenoPixels === "undefined" || typeof XenoPixels.say !== "function") {
+        return;
+    }
+    var temp = player.getTempdata();
+    if (temp.has("xeno_said")) return;
+    temp.put("xeno_said", 1);
+
+    XenoPixels.say(player, "XenoPixels v" + XenoPixels.getVersion() + " — scripts loaded.");
+    XenoPixels.say(player, "Welcome back, " + player.getName() + ".");
+    XenoPixels.say(player, "These lines are private. Public chat is unchanged.");
+}
+```
+
+NPC bubbles stay `npc.say("...")` on the NPC Script tab, or
+`XenoPixels.say(npc, "...")` which honors `/xenopixels npcsay`.
+
+## Right-click speech (NPC tab)
+
+NPC bubbles are `npc.say("...")` or `XenoPixels.say(npc, "...")`. They show to
+players within about 20 blocks. XenoPixels can mute them with
+`/xenopixels npcsay off`; leave them on with `/xenopixels npcsay on`.
+
+Paste the whole script from `examples/customnpcs/xenopixels_say_greeter.js` into
+the NPC **Scripts** tab, set **Enabled = Yes**, and save. Right-click is
+`interact(event)`.
+
+```js
+"use strict";
+
+var T_FOLLOWUP = 9301;
+
+function init(event) {
+    var npc = event.npc;
+    var data = npc.getStoreddata();
+    data.put("xeno_clicks", 0);
+    data.put("xeno_talking", 0);
+
+    if (typeof XenoPixels === "undefined") {
+        npc.say("XenoPixels is not loaded on this server.");
+        return;
+    }
+
+    npc.say("XenoPixels v" + XenoPixels.getVersion() + " — right-click me.");
+}
+
+function interact(event) {
+    var npc = event.npc;
+    var player = event.player;
+    if (player == null) return;
+
+    var data = npc.getStoreddata();
+    if (Number(data.get("xeno_talking")) === 1) {
+        npc.say("Hold on, I am still talking.");
+        return;
+    }
+
+    var clicks = Number(data.get("xeno_clicks")) + 1;
+    data.put("xeno_clicks", clicks);
+    data.put("xeno_talking", 1);
+
+    var name = player.getName();
+    npc.say("Hey, " + name + ". That is click " + clicks + ".");
+
+    npc.getTimers().forceStart(T_FOLLOWUP, 40, false);
+}
+
+function timer(event) {
+    if (event.id != T_FOLLOWUP) return;
+
+    var npc = event.npc;
+    npc.say("Come back if you want to hear it again.");
+    npc.getStoreddata().put("xeno_talking", 0);
+}
+
+function died(event) {
+    var data = event.npc.getStoreddata();
+    data.put("xeno_clicks", 0);
+    data.put("xeno_talking", 0);
+}
+```
+
+`init` runs when the NPC loads. Right-click greets the player by name and counts
+clicks. After 40 ticks the timer says the follow-up. A second click during that
+wait gets “still talking.”
 
 ## Minimal fighter setup
 
@@ -232,6 +438,53 @@ A Full-appearance NPC also throws alternating left and right punch clips on its 
 attacks, with no script involved. The DMZ wand **Atk** field (or `XenoPixels.setMeleeAnimation`)
 replaces that default with a published studio clip; empty restores the punches.
 
+Combat and transform **states** can use a published studio clip (script API v22). Bind per NPC
+(persists on the profile) or server-wide (same map as `/xenoanim bind`):
+
+```js
+XenoPixels.setStateClip(npc, "TRANSFORM", "ssj3_pose");
+XenoPixels.setStateClip(npc, "PUNCH", "my_jab");
+XenoPixels.setStateClip(npc, "CHARGE_PUNCH", "my_charge");
+XenoPixels.setStateClip(npc, "CHARGE_PUNCH_FIRE", "my_release");
+XenoPixels.setStateClip(npc, "CHARGE_KICK", "my_kick_charge");
+XenoPixels.setStateClip(npc, "CHARGE_KICK_FIRE", "my_kick_release");
+XenoPixels.setStateClip(event.player, "CHARGE_PUNCH", "my_charge");
+XenoPixels.bindStateSlot("CHARGE_PUNCH", "my_charge"); // everyone
+XenoPixels.playState(npc, "CHARGE_PUNCH");             // play now
+XenoPixels.listStateSlots();
+XenoPixels.joinNames(XenoPixels.listStateSlots()); // Nashorn: Java arrays have no .join
+```
+
+`TRANSFORM` plays for the hold when the NPC (or a player with a bind) changes form.
+`PUNCH` is the same store as `setMeleeAnimation`. Charge slots replace the stock DMZ
+charge-hold / release poses when that move actually happens. `playState` fires the bound
+clip without waiting for the move.
+
+Charged punch / kick (script API v23) is a real hold clock, not only a pose:
+
+```js
+XenoPixels.startChargePunch(npc, 24);           // auto-release at 24 ticks
+XenoPixels.startChargeKick(npc, 0, 1);          // hold until release; +1 up / -1 down
+XenoPixels.releaseCharge(npc);
+XenoPixels.getChargePercent(npc);               // 0-100 while holding
+XenoPixels.getChargeStyle(npc);                 // "punch" | "kick" | ""
+XenoPixels.cancelCharge(npc);
+```
+
+`durationTicks <= 0` holds until `releaseCharge` or the server `chargeMaxTicks` cap.
+A new start replaces the old hold. Percent is `0–100` against `chargeMaxTicks`;
+the cone fires on release (or auto-release) and uses the locked or attack target
+when present. `setKiCharge` is unrelated KI technique scaling.
+
+The NPC must already have `setProfile`. Without a profile, start returns `false`.
+Combat Brain (`setCombatBrain(npc, true)`) starts the same punch/kick in the melee
+band when a strike does not fire. Leave the brain off if the script should own
+every charge.
+
+NPC-tab samples: `xenopixels_charge_melee.js` (punch), `xenopixels_charge_kick.js`
+(kick + bias), `xenopixels_charge_counter.js` (on `damaged`),
+`xenopixels_charge_brain.js` (brain only).
+
 Studio clips on an NPC or a player:
 
 ```js
@@ -241,7 +494,9 @@ XenoPixels.stopClip(event.player);
 ```
 
 The clip must be shipped or published with `/xenoanim global push`. `clipDuration(name)` is the
-authored length in ticks, or `-1` when the server does not know it.
+authored length in ticks, or `-1` when the server does not know it. One-shots (`hold` false)
+use the same melee packet as Full NPC punches; `hold` true keeps the last frame until
+`stopClip`. The NPC needs `setProfile` plus Full appearance (and the player model).
 
 `speed` is clamped to 0.15-4.0. Calling `playAnimation` again before the previous clip finishes
 restarts it, so pace the calls rather than firing one every tick.
@@ -294,7 +549,9 @@ var blocking = XenoPixels.isGuarding(npc);
 
 If you would rather the NPC pick these moves on its own, turn on the built-in brain with
 `XenoPixels.setCombatBrain(npc, true)` instead of scripting them — it is off by default so a
-scripted NPC does exactly what its script says.
+scripted NPC does exactly what its script says. Missing `BrainVersion` is v1. `setBrainVersion(npc, "v2")`
+selects the saga-style stack; look-at `/xenobrain v1|v2` and `/xenopixels npcprofile brain v1|v2`
+do the same.
 
 ## Complete public method reference
 
@@ -351,11 +608,43 @@ vanishBehind(npc, target)
 vanishLeft(npc, target)
 vanishRight(npc, target)
 chase(npc, target)
+meleeHit(npc, target)
+meleeHit(npc, target, scale)
 backstep(npc, target)
 zBurst(npc, target)
 setGuard(npc, on)
 isGuarding(npc)
 setCombatBrain(npc, on)
+setBrainVersion(npc, version)
+getBrainVersion(npc)
+setStateClip(npc, slot, clip)
+setStateClip(player, slot, clip)
+getStateClip(npc, slot)
+clearStateClip(npc, slot)
+playState(npc, slot)
+listStateSlots()
+joinNames(names)
+joinNames(names, separator)
+bindStateSlot(slot, clip)
+startChargePunch(npc, durationTicks)
+startChargeKick(npc, durationTicks)
+startChargeKick(npc, durationTicks, verticalBias)
+releaseCharge(npc)
+cancelCharge(npc)
+isCharging(npc)
+getChargePercent(npc)
+getChargeStyle(npc)
+playClip(npc, name)
+playClip(npc, name, speed)
+playClip(npc, name, speed, ticks)
+playClip(npc, name, speed, ticks, hold)
+playClip(player, name)
+playClip(player, name, speed)
+playClip(player, name, speed, ticks)
+playClip(player, name, speed, ticks, hold)
+stopClip(npc)
+stopClip(player)
+clipDuration(name)
 getCurrentEnergy(npc)
 getMaxEnergy(npc)
 getCurrentStamina(npc)
@@ -382,6 +671,11 @@ playSoundAt(npc, x, y, z, sound, volume, pitch)
 playSoundFor(player, sound, volume, pitch)
 getChatMessage(event)
 setChatMessage(event, message)
+cancelChat(event)
+isChatCancelled(event)
+say(player, message)
+broadcast(player, message)
+say(npc, message)
 ```
 
 ## Teleport, sound, appearance and chat
@@ -408,12 +702,19 @@ XenoPixels.setBodyColor3(event.npc, "#1B3A5C");
 XenoPixels.setEyeColor1(event.npc, "#FFFFFF");
 XenoPixels.setEyeColor2(event.npc, "#111111");
 
-// chat(event) is not cancellable in CustomNPCs, so a script suppresses a line by
-// rewriting the message rather than cancelling the event.
+// getChatMessage is the typed line (raw text, not "<Name> rest").
+// setChatMessage rewrites the public line via chat.type.text, not an empty key.
+// cancelChat hides the typed line. broadcast sends a new public line.
 function chat(event) {
-    if (XenoPixels.getChatMessage(event).indexOf("!") >= 0)
-        XenoPixels.setChatMessage(event, "[NPC] " + event.message);
+    var raw = XenoPixels.getChatMessage(event);
+    if (raw.indexOf("!") === 0) {
+        XenoPixels.cancelChat(event);
+        return;
+    }
+    if (raw.indexOf("#") === 0)
+        XenoPixels.setChatMessage(event, "[NPC] " + raw.substring(1).trim());
 }
+XenoPixels.broadcast(event.player, "Public line to every player.");
 ```
 
 `setAppearanceMode` accepts `OFF`, `OVERLAY` or `FULL` and falls back to `OFF` for an

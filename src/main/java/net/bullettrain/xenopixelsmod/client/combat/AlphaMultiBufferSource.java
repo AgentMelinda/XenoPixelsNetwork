@@ -207,7 +207,12 @@ final class AlphaMultiBufferSource implements MultiBufferSource {
     private record AlphaVertexConsumer(VertexConsumer delegate, float alpha) implements VertexConsumer {
         @Override
         public VertexConsumer addVertex(float x, float y, float z) {
-            delegate.addVertex(x, y, z);
+            try {
+                delegate.addVertex(x, y, z);
+            } catch (IllegalStateException ignored) {
+                // GUI / Iris one-shot builders can already be ended; skipping the vertex
+                // is better than taking the client down with "Not building!".
+            }
             return this;
         }
 
@@ -293,7 +298,11 @@ final class AlphaMultiBufferSource implements MultiBufferSource {
             lastX = x;
             lastY = y;
             lastZ = z;
-            delegate.addVertex(x, y, z);
+            try {
+                delegate.addVertex(x, y, z);
+            } catch (IllegalStateException ignored) {
+                // Same one-shot GUI / Iris guard as AlphaVertexConsumer.
+            }
             return this;
         }
 

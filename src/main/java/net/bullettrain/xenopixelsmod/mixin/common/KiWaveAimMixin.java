@@ -6,6 +6,10 @@ import net.minecraft.network.syncher.EntityDataAccessor;
 import org.spongepowered.asm.mixin.Final;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
+import org.spongepowered.asm.mixin.injection.At;
+import org.spongepowered.asm.mixin.injection.Inject;
+import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
+import net.minecraft.world.entity.LivingEntity;
 
 /**
  * Target: {@code KiWaveEntity} synched {@code FIXED_YAW}/{@code FIXED_PITCH}.
@@ -16,6 +20,13 @@ import org.spongepowered.asm.mixin.Shadow;
  */
 @Mixin(value = KiWaveEntity.class, remap = false)
 public abstract class KiWaveAimMixin implements KiFixedAim {
+
+    @Inject(method = "updatePositionRelativeToOwner(Lnet/minecraft/world/entity/LivingEntity;Z)V",
+            at = @At("TAIL"), remap = false)
+    private void xenopixels$refreshNpcWaveAim(LivingEntity owner, boolean casting, CallbackInfo ci) {
+        net.bullettrain.xenopixelsmod.compat.npc.NpcKiAttackDispatcher.refreshWaveAim(
+                (KiWaveEntity) (Object) this, owner);
+    }
 
     @Shadow
     @Final

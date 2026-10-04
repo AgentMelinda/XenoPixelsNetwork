@@ -1,0 +1,14 @@
+{
+  "schema": "xenopixels.hair.export.v1",
+  "capturedAt": "2026-10-03",
+  "apply": "blocked",
+  "applyNote": "PR-D7c blocked: do not write CustomizationManager hair_style_* slots as DMZ codec apply.",
+  "codes": {
+    "single": "DMZ1:1GvGyFz6AQlfu1KbjcySQHWzV8SSgA3Kt5Xuo78pzlGTo6UORAV8aqqO",
+    "singleStyle": "Base",
+    "full": "DMZF1:wgrWI0rlKkPAMUmdycDc3Sen9KOUamlwk90CWj1EhZmfNBRxxebvJYKYwSKr21J0bXW76NEIsWiUI48eYeF5i06AV5ujJTt4a7AQz66YiRu4xQGkaobNBtFXt3MULtbFjCF1s"
+  },
+  "strandFields": ["id", "visible", "length", "lengthScale", "rotationX", "rotationY", "rotationZ", "scaleX", "scaleY", "scaleZ", "cubeWidth", "cubeHeight", "cubeDepth", "curveX", "curveY", "curveZ", "color"],
+  "forbiddenFields": ["connected", "movable"],
+  "note": "Compact sample for Java JSON parse smoke. Full project fixtures live under tools/dmz-hair-builder-site/fixtures/hair/."
+}

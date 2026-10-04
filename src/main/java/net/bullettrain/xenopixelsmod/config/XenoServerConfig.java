@@ -5,6 +5,7 @@ import com.google.gson.GsonBuilder;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import net.bullettrain.xenopixelsmod.XenoPixelsMod;
+import net.bullettrain.xenopixelsmod.combat.clone.CloneDetectRange;
 import net.neoforged.fml.loading.FMLPaths;
 
 import java.io.IOException;
@@ -41,10 +42,57 @@ public final class XenoServerConfig {
      * <p>New fields deserialize to their {@code Data} defaults in an older file, so behaviour is
      * safe without a bump — but the file is never rewritten, so the keys stay invisible and nobody
      * can discover or tune them. A bump is what gets them written out.
+     *
+     * <p>Bumped to 18 (2026-09-20) so {@code combatControllerMode} is written to existing files;
+     * it deserializes to {@code legacy} when absent, so pre-18 files keep the old controller.
+     *
+     * <p>Bumped to 19 (2026-09-20) so combo-route keys are written; missing keys keep defaults
+     * ({@code comboRoutesEnabled=false}).
+     *
+     * <p>Bumped to 20 (2026-09-20) for rush knockback distance / vertical-path keys.
+     *
+     * <p>Bumped to 21 (2026-09-20) for unlimited rush-combo range ({@code 0} = no cap).
+     *
+     * <p>Bumped to 22 (2026-09-20) so rush-combo knockback launches diagonally upward.
+     *
+     * <p>Bumped to 23 (2026-09-20) for independent rush vs lift combo knock travel keys.
+     *
+     * <p>Bumped to 24 (2026-09-26) for the XenoNPC size-linked hitbox switch.
+     *
+     * <p>Bumped to 27 (2026-10-03) for {@code tournamentOutOfBoundsLose} (default false; geometry-only v1).
+     * Bumped to 26 (2026-10-03) for tournament queue+KotH keys ({@code tournamentEnabled=false}).
      */
-    private static final int CURRENT_CONFIG_VERSION = 15;
+    private static final int CURRENT_CONFIG_VERSION = 27;
 
     // --- HUD / DMZ ---
+    /**
+     * When true, {@code /kill} cannot remove a Xeno NPC.
+     *
+     * <p>This guards only the {@code kill()} entry point, not damage: NPCs stay defeatable in
+     * ordinary combat. It exists because one selector could otherwise wipe a world's NPCs by
+     * accident, and because a killed NPC respawns anyway - deletion is its own action.
+     */
+    public static boolean xenoNpcKillCommandImmune = true;
+
+    /**
+     * Whether a dialogue option may run a server command.
+     *
+     * <p>Off by default. A datapack dialogue executing commands is a genuine escalation path -
+     * anyone who can add a datapack could hand players arbitrary command access through an NPC -
+     * so it is an explicit opt-in rather than something a pack turns on for you.
+     */
+    public static boolean xenoNpcDialogueCommands = false;
+
+    /**
+     * Whether one system at a time is allowed to steer an NPC.
+     *
+     * <p>On. Off restores the previous free-for-all, where the leash, the role brain's own home
+     * pull, the patrol walker and the combat teleports all moved the same NPC in the same tick -
+     * which is what made them shudder in place. Kept switchable rather than deleted so the old
+     * behaviour can be compared in play if the arbitration turns out to cause something worse.
+     */
+    public static boolean npcMovementArbitration = true;
+
     /** When false, clients block DMZ vanilla HUD overlays. */
     public static boolean dmzHudEnabled = false;
     /** Install/patch DMZ form JSON + skill offerings on boot. */
@@ -57,6 +105,33 @@ public final class XenoServerConfig {
      * Also silences {@code executeCommand} admin/OP feedback from NPC scripts.
      */
     public static boolean npcSayEnabled = true;
+
+    /**
+     * NPC wand screens (editor, appearance, dialogue, script, pickers, form maker) drawn at the
+     * vanilla GUI Scale. Off restores DragonMineZ's adaptive menu scale, which doubles the screen at
+     * low GUI Scale, so GUI Scale 1 and 2 looked identical and the editor always filled the window.
+     * Read from this machine's own config file, so each client chooses. 2026-09-30 owner: "gui scale
+     * dosn't effect npc want gui".
+     */
+    public static boolean npcGuiFollowsGuiScale = true;
+
+    /**
+     * Speech and dialogue bubbles of native Xeno NPCs drawn from the NPC's own renderer, in the
+     * entity render pass, the way DragonMineZ's ki-sense BP meter draws above a player (from its
+     * name-tag pose: up, camera orientation, mirrored scale, depth test off). Off keeps the separate
+     * level-stage pass for them. CustomNPCs/MyNPCs NPCs always use the level-stage pass. Read from
+     * this machine's own config file. 2026-09-30 owner: "bubles are not showing on right click an
+     * npc" (1.20.1, where the level-stage pass drew nothing).
+     */
+    public static boolean npcBubblesInEntityPass = false;
+
+    /**
+     * Native Xeno NPCs advance their own arm-swing timer in {@code aiStep}, as vanilla
+     * {@code Monster} does. On 1.20.1 {@code PathfinderMob} never calls {@code updateSwingTime()},
+     * so a swing started (swinging=true) but swingTime stayed -1 and the arm never moved (measured
+     * 2026-10-01 on the client; owner: "he may swing but no animztion"). Off keeps the old tick.
+     */
+    public static boolean npcSwingTimeInAiStep = false;
 
     /**
      * Lets NPC-run commands work on a server that has command blocks switched off.
@@ -79,6 +154,8 @@ public final class XenoServerConfig {
     public static boolean npcCommandsIgnoreCommandBlockSetting = false;
 
     // --- Combat master switches ---
+    /** Selects the combat controller. Legacy preserves the pre-manual Xeno/DMZ behavior. */
+    public static String combatControllerMode = "legacy";
     public static boolean bt3CombatEnabled = true;
     public static boolean bt3ComboEnabled = true;
     public static boolean bt3CinematicRushEnabled = true;
@@ -143,6 +220,12 @@ public final class XenoServerConfig {
     public static boolean migrateCustomNpcsWorldData = true;
     /** Make profiled NPCs use only their DMZ/Xeno combat profile, not stacked native NPC stats. */
     public static boolean npcDmzStatsAuthoritative = true;
+    /** Selects profiled NPC attack damage: dmz, mynpc, or numeric. */
+    public static String npcDamageMode = "dmz";
+    /** Damage used when {@link #npcDamageMode} is numeric. */
+    public static float npcNumericDamage = 10.0f;
+    /** Make native XenoNPC collision follow the Display Size multiplier by default. */
+    public static boolean xenoNpcSizeScalesHitbox = true;
     /** Script tick cadence for both supported NPC mods. One runs scripted tick hooks every tick. */
     public static int npcScriptTickInterval = 1;
     /** Air chase / rush chain after knockup. */
@@ -170,6 +253,19 @@ public final class XenoServerConfig {
     public static boolean parallelQuestEnabled = true;
     /** Mentor pairing assist ({@code /xenomentor}). */
     public static boolean mentorEnabled = true;
+
+    // --- Tournament (queue + KotH) ---
+    /** Master switch for {@code /xenotourney}. Off by default. */
+    public static boolean tournamentEnabled = false;
+    /** Dimension id string for static arenas, e.g. {@code minecraft:overworld}. */
+    public static String tournamentArenaDimension = "minecraft:overworld";
+    /** Static arena BlockPos list as {@code x,y,z;x,y,z;…}. */
+    public static String tournamentArenaPositions = "0,64,0;8,64,0";
+    /**
+     * When true, leaving the active match AABB during a fight would auto-lose (follow-on).
+     * v1 stores bounds only; leave false until auto-KO PR ships.
+     */
+    public static boolean tournamentOutOfBoundsLose = false;
 
     // --- Copycat glowstone power ---
     /** Require Forge Energy for copycat glowstone light. False keeps the block always lit. */
@@ -203,6 +299,74 @@ public final class XenoServerConfig {
      * <p>With this false the terminal phase is arithmetically identical to the original code.
      */
     public static boolean missileTerminalGravityCompensation = false;
+
+    // --- Effekseer effects (AAA Particles): Hakai, missiles, DMZ punches ---
+    /** Master switch; off brings the vanilla particles back for these uses. */
+    public static boolean effekseerEnabled = true;
+    /** Punch / guard hit effects (player and NPC). */
+    public static boolean effekseerPunches = true;
+    /** Hakai channel and erase effects. */
+    public static boolean effekseerHakai = true;
+    /** Missile thruster and explosion effects (tube and ship missiles). */
+    public static boolean effekseerMissiles = true;
+    /** Blocks: players farther away are not sent punch or Hakai effects. */
+    public static int effekseerRange = 64;
+    /** Blocks: range for missile thrusters and explosions. */
+    public static int effekseerMissileRange = 256;
+    /** Server-wide cap on punch effects per tick; the rest are skipped. */
+    public static int effekseerPunchesPerTick = 24;
+    /** Size of the punch hit effects (heavy hits are 1.6x this). 1.0 is the effect's own size. */
+    public static float effekseerPunchScale = 0.3f;
+    /** Size of the Hakai channel and erase effects. 1.0 is the effect's own size. */
+    public static float effekseerHakaiScale = 1.0f;
+    /** Size of the missile thruster and explosion effects. 1.0 is the effect's own size. */
+    public static float effekseerMissileScale = 1.0f;
+    /** Sparking aura and start burst effects; off brings the vanilla dust aura back. */
+    public static boolean effekseerSparking = true;
+    /** Ship thruster block plumes; off brings the vanilla flame and smoke plume back. */
+    public static boolean effekseerShipThrusters = true;
+    /** Size of the Sparking effects (on top of body size). */
+    public static float effekseerSparkingScale = 1.0f;
+    /** Size of the ship thruster plume (on top of throttle). */
+    public static float effekseerThrusterScale = 1.0f;
+    /** Size of the missile explosion (every warhead, tube and ship). 2026-09-29 owner: 15. */
+    public static float effekseerExplosionScale = 15.0f;
+    /** Sparking ground aura: false = the classic bright look (default), true = the steadier one. */
+    public static boolean effekseerSparkingSmooth = false;
+    /** A ki attack's explosion plays the punch impact instead of DMZ's explosion visual. */
+    public static boolean effekseerKiImpacts = true;
+    /** Size of that impact (on top of the blast's own size). */
+    public static float effekseerKiImpactScale = 1.0f;
+    /**
+     * Per-effect size on top of its category size, keyed by slot folder name (for example
+     * {@code missile_explosion}); /xenoset <slot> <scale>. 2026-09-29 owner: sparking_flight 3.5.
+     */
+    public static final Map<String, Float> effekseerSlotScales = new ConcurrentHashMap<>(DEFAULT_SLOT_SCALES());
+
+    static Map<String, Float> DEFAULT_SLOT_SCALES() {
+        Map<String, Float> m = new LinkedHashMap<>();
+        m.put("sparking_flight", 3.5f);
+        m.put("ki_impact", 0.5f);      // 2026-09-29 owner
+        return m;
+    }
+
+    private static String slotKey(net.bullettrain.xenopixelsmod.fx.effek.EffectSlot slot) {
+        return slot.name().toLowerCase(java.util.Locale.ROOT);
+    }
+
+    public static float slotScale(net.bullettrain.xenopixelsmod.fx.effek.EffectSlot slot) {
+        Float v = effekseerSlotScales.get(slotKey(slot));
+        return v != null ? v : DEFAULT_SLOT_SCALES().getOrDefault(slotKey(slot), 1.0f);
+    }
+
+    public static void setSlotScale(net.bullettrain.xenopixelsmod.fx.effek.EffectSlot slot, float value) {
+        effekseerSlotScales.put(slotKey(slot), clampSlotScale(value, slot));
+    }
+
+    static float clampSlotScale(float v, net.bullettrain.xenopixelsmod.fx.effek.EffectSlot slot) {
+        return Float.isFinite(v) ? Math.max(0.05f, Math.min(50.0f, v))
+                : DEFAULT_SLOT_SCALES().getOrDefault(slotKey(slot), 1.0f);
+    }
 
     // --- Thruster impulse guard ---
     /**
@@ -289,6 +453,51 @@ public final class XenoServerConfig {
      * them. Players who already have them keep them - the unlock was written to their saved stats.
      */
     public static boolean rushAutoUnlock = true;
+    /** Master switch for grant-gated combo-route strikes. Off by default. */
+    public static boolean comboRoutesEnabled = false;
+    /** 3 or 4 hits per string. */
+    public static int comboRouteHitCount = 3;
+    public static boolean comboRouteAutoReapproach = true;
+    public static int comboRouteMaxReapproach = 1;
+    /**
+     * How far a rush-combo may start. {@code 0} or negative is unlimited — no max.
+     */
+    public static double comboRouteRange = 16.0;
+    /**
+     * How close the attacker must be to land combo hits after the rush-in.
+     * {@code 0} or negative is unlimited.
+     */
+    public static double comboRouteHitRange = 4.5;
+    public static int comboRouteApproachTimeoutTicks = 40;
+    public static int comboRouteHitTicks = 6;
+    public static double comboRouteKiCost = 25.0;
+    public static int comboRouteCooldownTicks = 80;
+    public static boolean comboRoutePvpEnabled = true;
+    public static boolean comboRoutePveEnabled = true;
+    public static boolean comboRouteBlockBreak = false;
+    public static boolean rushcomboEnabled = true;
+    public static boolean liftcomboEnabled = true;
+    /** Horizontal knockback on Xeno rush left/right strikes. */
+    public static double rushKnockbackLeftRight = 0.35;
+    public static double rushKnockbackLeftRightUp = 0.12;
+    public static double rushKnockbackBreaker = 0.75;
+    public static double rushKnockbackBreakerUp = 0.85;
+    public static double rushKnockbackFinisher = 1.55;
+    public static double rushKnockbackFinisherUp = 0.55;
+    public static double rushKnockbackDown = 0.8;
+    /** Absolute look pitch (degrees) that collapses knockback into a vertical line. */
+    public static double rushKnockbackVerticalPitch = 50.0;
+    public static double comboRouteKnockbackDistance = 1.65;
+    public static double comboRouteKnockbackUp = 1.85;
+    public static double comboRouteKnockbackDown = 0.8;
+    /** Rush-combo finisher send distance (XZ away). Mirrors {@link #comboRouteKnockbackDistance}. */
+    public static double rushComboKnockTravel = 1.65;
+    public static double rushComboKnockUp = 1.85;
+    public static double rushComboKnockDown = 0.8;
+    /** Lift-combo finisher send distance (XZ away). Independent of the rush trio. */
+    public static double liftComboKnockTravel = 0.4;
+    public static double liftComboKnockUp = 0.9;
+    public static double liftComboKnockDown = 0.8;
     /**
      * Legacy serialized setting retained for config compatibility. Rush techniques are never
      * auto-equipped because an empty slot may represent an explicit player unbind.
@@ -324,6 +533,81 @@ public final class XenoServerConfig {
     public static boolean multiFormEnabled = true;
     public static int multiFormBodies = 4;
     public static float multiFormKiCost = 60.0f;
+    /** How far a Multi-Form copy stands from the fighter. Clamped 0.5–16. */
+    public static float multiFormRadius = 2.2f;
+    /** {@code clone} uses CloneCombatBridge; {@code brain} uses NpcCombatBrain on copies. */
+    public static String multiFormAi = "clone";
+    public static final float MULTI_FORM_RADIUS_MIN = 0.5f;
+    public static final float MULTI_FORM_RADIUS_MAX = 16.0f;
+    public static final float MULTI_FORM_RADIUS_DEFAULT = 2.2f;
+    /** Copies fight whoever just hit the split fighter or a copy. */
+    public static boolean multiFormRetaliate = true;
+    /**
+     * fsync the region directories after an explicit save.
+     *
+     * <p>A write that has returned still sits in the OS page cache until the system chooses to write
+     * it out, so a killed server loses it even though the save reported success. On for the explicit
+     * {@code /xenosave} and {@code /xenorestart} paths, which are exactly the moments an operator is
+     * about to take the server down. It is not free on a large world, so it is a switch rather than
+     * an assumption.
+     */
+    public static boolean saveFsync = true;
+
+    /** Copies pick a nearby hostile when there is no lock-on and no retaliate target. */
+    public static boolean multiFormHostile = false;
+    /**
+     * Copies fight whatever the split fighter is looking at, ahead of the lock-on.
+     *
+     * <p>On by default because without it most characters cannot direct their copies at all: a
+     * DragonMineZ lock needs the {@code kisense} skill and is dropped within a few ticks without it,
+     * and the retaliate and hostile slots never fire against something passive. Pointing at a target
+     * was the only thing left that reads as an instruction.
+     */
+    public static boolean multiFormLook = true;
+    /** Copies may vanish (teleport dodge) like combat-brain NPCs. */
+    public static boolean multiFormVanish = true;
+    /**
+     * How far from the split fighter copies still notice and fight a target.
+     * Default matches the old hardcoded 32-block leash.
+     */
+    public static double multiFormDetectRange = CloneDetectRange.DEFAULT;
+    /**
+     * Minimum distance to a living victim before brain NPCs may ki-deflect. 0 = any range.
+     * Default 7 matches the close-range no-deflect band.
+     */
+    public static double brainDeflectMinDistance = 7.0;
+    public static final double BRAIN_DEFLECT_MIN_DISTANCE_MAX = 32.0;
+    /**
+     * How close an NPC must be to its target before melee attacks start, in blocks centre to
+     * centre. This is the global fallback used when an NPC has no per-NPC "Melee Range" set
+     * (see {@code NpcCombatProfile.npcMeleeRange}, which still wins when it is above zero).
+     * Default 1.0 means an NPC only strikes once it is essentially touching its opponent;
+     * set it to 4.5 to restore DragonMineZ's old shared melee band.
+     */
+    public static double npcAttackStartRadius = 1.0;
+    /**
+     * NPC melee measures reach across the ground and allows {@link #npcMeleeHeightReach} blocks of
+     * air between the hitboxes (2026-09-29, NPCs could not hit a target a block up or down). Off
+     * restores the old straight foot-to-foot distance.
+     */
+    public static boolean npcMeleeHeightRule = true;
+    /**
+     * Blocks of air allowed between an NPC's and its target's hitboxes for a melee hit. 0.5 (was
+     * 1.5, 2026-09-30 "attacks the air if we are same x and z but different y"): a jumping target
+     * or one on its head still counts, one standing well above its head does not.
+     */
+    public static double npcMeleeHeightReach = 0.5;
+    public static final double NPC_ATTACK_START_RADIUS_MIN = 0.5;
+    public static final double NPC_ATTACK_START_RADIUS_MAX = 16.0;
+    /** Whether a player (only) can destroy a standing Zanzoken ring image. */
+    public static boolean zanzokenRingHitable = true;
+    /** When a player pops one ring image, take the rest of the ring with it. */
+    public static boolean zanzokenRingDisperseAll = true;
+    /**
+     * How far from the fighter nearby AI can be fooled onto Zanzoken afterimages.
+     * Default matches the old hardcoded 32-block scatter.
+     */
+    public static double zanzokenDetectRange = CloneDetectRange.DEFAULT;
     public static float sonicSwayStaminaCost = 6.0f;
     public static int sonicSwayIFramesTicks = 8;
     public static int sonicSwayCooldownTicks = 18;
@@ -351,6 +635,54 @@ public final class XenoServerConfig {
      * a single knockback impulse or the damage allowance above is meaningless.
      */
     public static double hakaiMoveInterruptDistance = 3.0;
+    /** {@code single} (the original one-target Hakai) or {@code area} (a sphere where you look). */
+    public static String hakaiMode = "single";
+    /** Area Hakai sphere radius, blocks. */
+    public static double hakaiAreaRadius = 5.0;
+    /** Most living things one area Hakai erases. */
+    public static int hakaiAreaMaxTargets = 16;
+    /** Area Hakai also erases the blocks in its sphere (no drops; plots and claims can veto). */
+    public static boolean hakaiBlocks = true;
+    /** Area Hakai also erases Sable ship blocks inside the sphere. */
+    public static boolean hakaiShips = true;
+    /** Most blocks one area Hakai erases. */
+    public static int hakaiBlockLimit = 4096;
+    /** A radius-500 sphere holds tens of millions of blocks; the limit may go that far. */
+    public static final int HAKAI_BLOCK_LIMIT_MAX = 100_000_000;
+    /** Blocks that start fading per tick, so a building does not stall the server. */
+    public static int hakaiBlocksPerTick = 48;
+    /** Ticks each block cracks and fades before it vanishes. */
+    public static int hakaiBlockFadeTicks = 20;
+    /** Everything but bedrock can be erased; false spares every unbreakable block (the first rule). */
+    public static boolean hakaiBlocksUnbreakable = true;
+    /** Size of the area Hakai's own effect, on top of the sphere's size. */
+    public static float hakaiAreaFxScale = 1.0f;
+    /** Area Hakai never erases blocks of a DragonMineZ structure (Kami's Lookout, Goku's house...). */
+    public static boolean hakaiSpareDmzStructures = true;
+    /** {@code sphere} (the blocks in the sphere) or {@code raze} (the building down to the ground). */
+    public static String hakaiBlockShape = "sphere";
+    /** God-form passives (2026-09-29): the master switch, then each one. See FormPassives. */
+    public static boolean formPassives = true;
+    public static boolean ueImmunity = true;
+    public static boolean uePenetration = true;
+    public static boolean ueProjectileAura = true;
+    public static boolean uePunchBreak = true;
+    public static boolean hakaiMantle = true;
+    /** The mantle also stops punches and kicks pushing its wearer (2026-10-02 owner). */
+    public static boolean hakaiMantleNoKnockback = true;
+    /** Training dummies pay a skill point at 25, 100 and 250 hits (off since 2026-10-02). */
+    public static boolean trainingDummySkillPoints = false;
+    public static boolean uiDodge = true;
+    /** Multiplies every Ultra Instinct dodge chance (0-2). */
+    public static float uiDodgeScale = 1.0f;
+    /** Hakaishin also needs Hakai unlocked; off: /dmzform alone grants it (2026-09-29). */
+    public static boolean hakaishinNeedsHakai = false;
+    /** Dimensions where Hakai never erases blocks (comma list): DMZ's placed worlds by default. */
+    /** Blocks Hakai never erases anywhere (comma list): the Otherworld cloud by default. */
+    public static String hakaiSparedBlocks = "dragonminez:otherworld_cloud";
+    public static String hakaiSparedDimensions = "dragonminez:otherworld,dragonminez:time_chamber,dragonminez:sacredkaiplanet";
+    /** How far above (and below) the look point the raze shape reaches, in blocks. */
+    public static int hakaiRazeHeight = 48;
     /** Fade the Hakai victim's body as the channel charges. */
     public static boolean hakaiFadeEnabled = true;
     /**
@@ -537,6 +869,11 @@ public final class XenoServerConfig {
     /** Independent caps for DMZ's synchronous cubic block scans. */
     public static float kiDestructionMaxRadius = 32.0f;
     public static int kiDestructionBlocksPerTick = 4096;
+    /**
+     * Hard cap on {@code KiExplosionEntity} max radius after overcharge / charge scaling.
+     * {@code 0} leaves it uncapped. Block work still uses {@link #kiDestructionMaxRadius}.
+     */
+    public static float kiExplosionMaxRadius = 64.0f;
 
     // --- Balance ---
     public static double vanishMaxRange = 7.0;
@@ -584,6 +921,14 @@ public final class XenoServerConfig {
     public static float kickDownRangeBonus = 4.0f;
     /** Horizontal kick launch multiplier (mash + charged). */
     public static float kickKnockbackScale = 1.0f;
+    /** Charged punch knockback distance (1.0 = the original shove). */
+    public static float chargePunchKnockback = 1.0f;
+    /** Throw the charged-punch target in an arc (parabola) instead of the small hop. */
+    public static boolean chargePunchParabolic = false;
+    /** Upward launch speed of that arc at full charge (half at the weakest). */
+    public static float chargePunchArcHeight = 1.0f;
+    /** Strength of a single click of the charged-kick key (holding charges past it). */
+    public static float kickTapCharge = 0.5f;
     /**
      * Every Nth hold-R mash beat is a charged-kick knockback. {@code 0} disables.
      * W-tap launcher still works.
@@ -972,11 +1317,23 @@ public final class XenoServerConfig {
                     XenoPixelsMod.LOGGER.info(
                             "Config migration: hakaiChannelTicks 80 -> 40 (DBS-length channel).");
                 }
+                double migratedHeightReach = migrateNpcMeleeHeightReach(data.configVersion, npcMeleeHeightReach);
+                if (migratedHeightReach != npcMeleeHeightReach) {
+                    npcMeleeHeightReach = migratedHeightReach;
+                    XenoPixelsMod.LOGGER.info(
+                            "Config migration: npcMeleeHeightReach 1.5 -> 0.5 so NPCs approach"
+                                    + " a target on another floor before punching. Other values are preserved.");
+                }
                 save();
             }
         } catch (IOException | RuntimeException e) {
             XenoPixelsMod.LOGGER.warn("Failed to load server config", e);
         }
+    }
+
+    /** 2026-09-30: narrow the obsolete default once; preserve other tuning and later overrides. */
+    static double migrateNpcMeleeHeightReach(int configVersion, double value) {
+        return configVersion < 25 && value == 1.5 ? 0.5 : value;
     }
 
     /** Multipliers are bounded so a stray config cannot make a player untouchable. */
@@ -1000,15 +1357,27 @@ public final class XenoServerConfig {
         }
     }
 
+    /** Hakai / missile effect size: 0.05-5, 1.0 when missing or not a number. */
+    static float effectScale(float v) {
+        return Float.isFinite(v) ? Math.max(0.05f, Math.min(5.0f, v)) : 1.0f;
+    }
+
     public static Data snapshot() {
         Data d = new Data();
         d.configVersion = CURRENT_CONFIG_VERSION;
+        d.xenoNpcKillCommandImmune = xenoNpcKillCommandImmune;
+        d.xenoNpcDialogueCommands = xenoNpcDialogueCommands;
+        d.npcMovementArbitration = npcMovementArbitration;
         d.dmzHudEnabled = dmzHudEnabled;
         d.dmzContentBootstrap = dmzContentBootstrap;
         d.dmzFormProtectedEditOverride = dmzFormProtectedEditOverride;
         d.dmzSagaSpawnCompat = dmzSagaSpawnCompat;
         d.npcSayEnabled = npcSayEnabled;
+        d.npcGuiFollowsGuiScale = npcGuiFollowsGuiScale;
+        d.npcBubblesInEntityPass = npcBubblesInEntityPass;
+        d.npcSwingTimeInAiStep = npcSwingTimeInAiStep;
         d.npcCommandsIgnoreCommandBlockSetting = npcCommandsIgnoreCommandBlockSetting;
+        d.combatControllerMode = normalizedCombatControllerMode();
         d.bt3CombatEnabled = bt3CombatEnabled;
         d.bt3ComboEnabled = bt3ComboEnabled;
         d.bt3CinematicRushEnabled = bt3CinematicRushEnabled;
@@ -1031,6 +1400,9 @@ public final class XenoServerConfig {
         d.protectMastersFromCombatKnockback = protectMastersFromCombatKnockback;
         d.migrateCustomNpcsWorldData = migrateCustomNpcsWorldData;
         d.npcDmzStatsAuthoritative = npcDmzStatsAuthoritative;
+        d.npcDamageMode = normalizedNpcDamageMode();
+        d.npcNumericDamage = npcNumericDamage;
+        d.xenoNpcSizeScalesHitbox = xenoNpcSizeScalesHitbox;
         d.npcScriptTickInterval = npcScriptTickInterval;
         d.bt3RushChainEnabled = bt3RushChainEnabled;
         d.bt3SonicSwayEnabled = bt3SonicSwayEnabled;
@@ -1044,6 +1416,32 @@ public final class XenoServerConfig {
         d.hakaiChannelTicks = hakaiChannelTicks;
         d.hakaiPoiseFraction = hakaiPoiseFraction;
         d.hakaiMoveInterruptDistance = hakaiMoveInterruptDistance;
+        d.hakaiMode = hakaiMode;
+        d.hakaiAreaRadius = hakaiAreaRadius;
+        d.hakaiAreaMaxTargets = hakaiAreaMaxTargets;
+        d.hakaiBlocks = hakaiBlocks;
+        d.hakaiShips = hakaiShips;
+        d.hakaiBlockLimit = hakaiBlockLimit;
+        d.hakaiBlocksPerTick = hakaiBlocksPerTick;
+        d.hakaiBlockFadeTicks = hakaiBlockFadeTicks;
+        d.hakaiBlocksUnbreakable = hakaiBlocksUnbreakable;
+        d.hakaiAreaFxScale = hakaiAreaFxScale;
+        d.hakaiSpareDmzStructures = hakaiSpareDmzStructures;
+        d.hakaiBlockShape = hakaiBlockShape;
+        d.formPassives = formPassives;
+        d.ueImmunity = ueImmunity;
+        d.uePenetration = uePenetration;
+        d.ueProjectileAura = ueProjectileAura;
+        d.uePunchBreak = uePunchBreak;
+        d.hakaiMantle = hakaiMantle;
+        d.hakaiMantleNoKnockback = hakaiMantleNoKnockback;
+        d.trainingDummySkillPoints = trainingDummySkillPoints;
+        d.uiDodge = uiDodge;
+        d.uiDodgeScale = uiDodgeScale;
+        d.hakaishinNeedsHakai = hakaishinNeedsHakai;
+        d.hakaiSparedDimensions = hakaiSparedDimensions;
+        d.hakaiSparedBlocks = hakaiSparedBlocks;
+        d.hakaiRazeHeight = hakaiRazeHeight;
         d.hakaiFadeEnabled = hakaiFadeEnabled;
         d.hakaiFadeMinAlpha = hakaiFadeMinAlpha;
         d.hakaiFadeCurve = hakaiFadeCurve;
@@ -1061,12 +1459,35 @@ public final class XenoServerConfig {
         d.trainingDummyEnabled = trainingDummyEnabled;
         d.parallelQuestEnabled = parallelQuestEnabled;
         d.mentorEnabled = mentorEnabled;
+        d.tournamentEnabled = tournamentEnabled;
+        d.tournamentArenaDimension = tournamentArenaDimension;
+        d.tournamentArenaPositions = tournamentArenaPositions;
+        d.tournamentOutOfBoundsLose = tournamentOutOfBoundsLose;
         d.copycatForgeEnergyEnabled = copycatForgeEnergyEnabled;
         d.copycatEnergyCapacity = copycatEnergyCapacity;
         d.copycatMaxReceiveFePerTick = copycatMaxReceiveFePerTick;
         d.copycatEnergyUseFePerTick = copycatEnergyUseFePerTick;
         d.missileMaxApexY = missileMaxApexY;
         d.missileTerminalGravityCompensation = missileTerminalGravityCompensation;
+        d.effekseerEnabled = effekseerEnabled;
+        d.effekseerPunches = effekseerPunches;
+        d.effekseerHakai = effekseerHakai;
+        d.effekseerMissiles = effekseerMissiles;
+        d.effekseerRange = effekseerRange;
+        d.effekseerMissileRange = effekseerMissileRange;
+        d.effekseerPunchesPerTick = effekseerPunchesPerTick;
+        d.effekseerPunchScale = effekseerPunchScale;
+        d.effekseerHakaiScale = effekseerHakaiScale;
+        d.effekseerMissileScale = effekseerMissileScale;
+        d.effekseerSparking = effekseerSparking;
+        d.effekseerShipThrusters = effekseerShipThrusters;
+        d.effekseerSparkingScale = effekseerSparkingScale;
+        d.effekseerThrusterScale = effekseerThrusterScale;
+        d.effekseerExplosionScale = effekseerExplosionScale;
+        d.effekseerSparkingSmooth = effekseerSparkingSmooth;
+        d.effekseerKiImpacts = effekseerKiImpacts;
+        d.effekseerKiImpactScale = effekseerKiImpactScale;
+        d.effekseerSlotScales = new LinkedHashMap<>(effekseerSlotScales);
         d.thrusterImpulseGuardEnabled = thrusterImpulseGuardEnabled;
         d.thrusterMaxImpulse = thrusterMaxImpulse;
         d.maxFlightSpeed = maxFlightSpeed;
@@ -1082,6 +1503,38 @@ public final class XenoServerConfig {
         d.rushKiCost = rushKiCost;
         d.rushCooldownTicks = rushCooldownTicks;
         d.rushAutoUnlock = rushAutoUnlock;
+        d.comboRoutesEnabled = comboRoutesEnabled;
+        d.comboRouteHitCount = comboRouteHitCount;
+        d.comboRouteAutoReapproach = comboRouteAutoReapproach;
+        d.comboRouteMaxReapproach = comboRouteMaxReapproach;
+        d.comboRouteRange = comboRouteRange;
+        d.comboRouteHitRange = comboRouteHitRange;
+        d.comboRouteApproachTimeoutTicks = comboRouteApproachTimeoutTicks;
+        d.comboRouteHitTicks = comboRouteHitTicks;
+        d.comboRouteKiCost = comboRouteKiCost;
+        d.comboRouteCooldownTicks = comboRouteCooldownTicks;
+        d.comboRoutePvpEnabled = comboRoutePvpEnabled;
+        d.comboRoutePveEnabled = comboRoutePveEnabled;
+        d.comboRouteBlockBreak = comboRouteBlockBreak;
+        d.rushcomboEnabled = rushcomboEnabled;
+        d.liftcomboEnabled = liftcomboEnabled;
+        d.rushKnockbackLeftRight = rushKnockbackLeftRight;
+        d.rushKnockbackLeftRightUp = rushKnockbackLeftRightUp;
+        d.rushKnockbackBreaker = rushKnockbackBreaker;
+        d.rushKnockbackBreakerUp = rushKnockbackBreakerUp;
+        d.rushKnockbackFinisher = rushKnockbackFinisher;
+        d.rushKnockbackFinisherUp = rushKnockbackFinisherUp;
+        d.rushKnockbackDown = rushKnockbackDown;
+        d.rushKnockbackVerticalPitch = rushKnockbackVerticalPitch;
+        d.comboRouteKnockbackDistance = rushComboKnockTravel;
+        d.comboRouteKnockbackUp = rushComboKnockUp;
+        d.comboRouteKnockbackDown = rushComboKnockDown;
+        d.rushComboKnockTravel = rushComboKnockTravel;
+        d.rushComboKnockUp = rushComboKnockUp;
+        d.rushComboKnockDown = rushComboKnockDown;
+        d.liftComboKnockTravel = liftComboKnockTravel;
+        d.liftComboKnockUp = liftComboKnockUp;
+        d.liftComboKnockDown = liftComboKnockDown;
         d.rushAutoEquipSlots = rushAutoEquipSlots;
         d.zanzokenEnabled = zanzokenEnabled;
         d.zanzokenRequireTiming = zanzokenRequireTiming;
@@ -1095,9 +1548,24 @@ public final class XenoServerConfig {
         d.zanzokenRingClones = zanzokenRingClones;
         d.zanzokenRingRadius = zanzokenRingRadius;
         d.zanzokenRingTicks = zanzokenRingTicks;
+        d.zanzokenRingHitable = zanzokenRingHitable;
+        d.zanzokenRingDisperseAll = zanzokenRingDisperseAll;
+        d.zanzokenDetectRange = zanzokenDetectRange;
         d.multiFormEnabled = multiFormEnabled;
         d.multiFormBodies = multiFormBodies;
         d.multiFormKiCost = multiFormKiCost;
+        d.multiFormRadius = multiFormRadius;
+        d.multiFormAi = multiFormAi;
+        d.multiFormRetaliate = multiFormRetaliate;
+        d.saveFsync = saveFsync;
+        d.multiFormHostile = multiFormHostile;
+        d.multiFormLook = multiFormLook;
+        d.multiFormVanish = multiFormVanish;
+        d.multiFormDetectRange = multiFormDetectRange;
+        d.brainDeflectMinDistance = brainDeflectMinDistance;
+        d.npcAttackStartRadius = npcAttackStartRadius;
+        d.npcMeleeHeightRule = npcMeleeHeightRule;
+        d.npcMeleeHeightReach = npcMeleeHeightReach;
         d.sonicSwayStaminaCost = sonicSwayStaminaCost;
         d.sonicSwayIFramesTicks = sonicSwayIFramesTicks;
         d.sonicSwayCooldownTicks = sonicSwayCooldownTicks;
@@ -1156,6 +1624,7 @@ public final class XenoServerConfig {
         d.kiFullGameplayScaling = kiFullGameplayScaling;
         d.kiDestructionMaxRadius = kiDestructionMaxRadius;
         d.kiDestructionBlocksPerTick = kiDestructionBlocksPerTick;
+        d.kiExplosionMaxRadius = kiExplosionMaxRadius;
         d.vanishMaxRange = vanishMaxRange;
         d.chaseMaxRange = chaseMaxRange;
         d.chaseFlightSpeed = chaseFlightSpeed;
@@ -1183,6 +1652,10 @@ public final class XenoServerConfig {
         d.kickDownLaunch = kickDownLaunch;
         d.kickDownRangeBonus = kickDownRangeBonus;
         d.kickKnockbackScale = kickKnockbackScale;
+        d.chargePunchKnockback = chargePunchKnockback;
+        d.chargePunchParabolic = chargePunchParabolic;
+        d.chargePunchArcHeight = chargePunchArcHeight;
+        d.kickTapCharge = kickTapCharge;
         d.comboLaunchKickEvery = comboLaunchKickEvery;
         d.comboMashIntervalTicks = comboMashIntervalTicks;
         d.comboAnimGeneration = comboAnimGeneration;
@@ -1265,12 +1738,19 @@ public final class XenoServerConfig {
 
     public static void apply(Data d) {
         if (d == null) return;
+        xenoNpcKillCommandImmune = d.xenoNpcKillCommandImmune;
+        xenoNpcDialogueCommands = d.xenoNpcDialogueCommands;
+        npcMovementArbitration = d.npcMovementArbitration;
         dmzHudEnabled = d.dmzHudEnabled;
         dmzContentBootstrap = d.dmzContentBootstrap;
         dmzFormProtectedEditOverride = d.dmzFormProtectedEditOverride;
         dmzSagaSpawnCompat = d.dmzSagaSpawnCompat;
         npcSayEnabled = d.npcSayEnabled;
+        npcGuiFollowsGuiScale = d.npcGuiFollowsGuiScale;
+        npcBubblesInEntityPass = d.npcBubblesInEntityPass;
+        npcSwingTimeInAiStep = d.npcSwingTimeInAiStep;
         npcCommandsIgnoreCommandBlockSetting = d.npcCommandsIgnoreCommandBlockSetting;
+        combatControllerMode = normalizeCombatControllerMode(d.combatControllerMode);
         bt3CombatEnabled = d.bt3CombatEnabled;
         bt3ComboEnabled = d.bt3ComboEnabled;
         bt3CinematicRushEnabled = d.bt3CinematicRushEnabled;
@@ -1293,6 +1773,10 @@ public final class XenoServerConfig {
         protectMastersFromCombatKnockback = d.protectMastersFromCombatKnockback;
         migrateCustomNpcsWorldData = d.migrateCustomNpcsWorldData;
         npcDmzStatsAuthoritative = d.npcDmzStatsAuthoritative == null || d.npcDmzStatsAuthoritative;
+        npcDamageMode = normalizeNpcDamageMode(d.npcDamageMode,
+                npcDmzStatsAuthoritative ? "dmz" : "mynpc");
+        npcNumericDamage = clampNpcNumericDamage(d.npcNumericDamage == null ? 10.0f : d.npcNumericDamage);
+        xenoNpcSizeScalesHitbox = d.xenoNpcSizeScalesHitbox == null || d.xenoNpcSizeScalesHitbox;
         npcScriptTickInterval = d.npcScriptTickInterval == null ? 1
                 : Math.max(1, Math.min(20, d.npcScriptTickInterval));
         bt3RushChainEnabled = d.bt3RushChainEnabled;
@@ -1306,6 +1790,14 @@ public final class XenoServerConfig {
         trainingDummyEnabled = d.trainingDummyEnabled;
         parallelQuestEnabled = d.parallelQuestEnabled;
         mentorEnabled = d.mentorEnabled;
+        tournamentEnabled = d.tournamentEnabled;
+        tournamentArenaDimension = d.tournamentArenaDimension == null || d.tournamentArenaDimension.isBlank()
+                ? "minecraft:overworld"
+                : d.tournamentArenaDimension.trim();
+        tournamentArenaPositions = d.tournamentArenaPositions == null || d.tournamentArenaPositions.isBlank()
+                ? "0,64,0;8,64,0"
+                : d.tournamentArenaPositions.trim();
+        tournamentOutOfBoundsLose = d.tournamentOutOfBoundsLose;
         copycatForgeEnergyEnabled = d.copycatForgeEnergyEnabled;
         copycatEnergyCapacity = Math.max(1_000,
                 d.copycatEnergyCapacity <= 0 ? 100_000 : d.copycatEnergyCapacity);
@@ -1315,6 +1807,35 @@ public final class XenoServerConfig {
                 d.copycatEnergyUseFePerTick < 0 ? 10 : d.copycatEnergyUseFePerTick);
         missileMaxApexY = Math.max(0.0, d.missileMaxApexY);
         missileTerminalGravityCompensation = d.missileTerminalGravityCompensation;
+        effekseerEnabled = d.effekseerEnabled;
+        effekseerPunches = d.effekseerPunches;
+        effekseerHakai = d.effekseerHakai;
+        effekseerMissiles = d.effekseerMissiles;
+        effekseerRange = Math.max(8, Math.min(512, d.effekseerRange));
+        effekseerMissileRange = Math.max(8, Math.min(2048, d.effekseerMissileRange));
+        effekseerPunchesPerTick = Math.max(1, Math.min(512, d.effekseerPunchesPerTick));
+        effekseerPunchScale = Float.isFinite(d.effekseerPunchScale)
+                ? Math.max(0.05f, Math.min(3.0f, d.effekseerPunchScale)) : 0.3f;
+        effekseerHakaiScale = effectScale(d.effekseerHakaiScale);
+        effekseerMissileScale = effectScale(d.effekseerMissileScale);
+        effekseerSparking = d.effekseerSparking;
+        effekseerShipThrusters = d.effekseerShipThrusters;
+        effekseerSparkingScale = effectScale(d.effekseerSparkingScale);
+        effekseerThrusterScale = effectScale(d.effekseerThrusterScale);
+        effekseerExplosionScale = Float.isFinite(d.effekseerExplosionScale)
+                ? Math.max(0.05f, Math.min(50.0f, d.effekseerExplosionScale)) : 15.0f;
+        effekseerSparkingSmooth = d.effekseerSparkingSmooth;
+        effekseerKiImpacts = d.effekseerKiImpacts;
+        effekseerKiImpactScale = effectScale(d.effekseerKiImpactScale);
+        effekseerSlotScales.clear();
+        effekseerSlotScales.putAll(DEFAULT_SLOT_SCALES());
+        if (d.effekseerSlotScales != null) {
+            for (net.bullettrain.xenopixelsmod.fx.effek.EffectSlot slot
+                    : net.bullettrain.xenopixelsmod.fx.effek.EffectSlot.values()) {
+                Float v = d.effekseerSlotScales.get(slotKey(slot));
+                if (v != null) effekseerSlotScales.put(slotKey(slot), clampSlotScale(v, slot));
+            }
+        }
         thrusterImpulseGuardEnabled = d.thrusterImpulseGuardEnabled;
         // A zero or negative cap would clamp every thruster to nothing; treat it as "unset".
         thrusterMaxImpulse = d.thrusterMaxImpulse > 0.0 ? d.thrusterMaxImpulse : 6_000.0;
@@ -1334,6 +1855,30 @@ public final class XenoServerConfig {
         rushKiCost = d.rushKiCost >= 0 ? d.rushKiCost : 25.0;
         rushCooldownTicks = Math.max(1, d.rushCooldownTicks);
         rushAutoUnlock = d.rushAutoUnlock;
+        comboRoutesEnabled = d.comboRoutesEnabled;
+        comboRouteHitCount = d.comboRouteHitCount < 4 ? 3 : 4;
+        comboRouteAutoReapproach = d.comboRouteAutoReapproach;
+        comboRouteMaxReapproach = Math.max(0, Math.min(1, d.comboRouteMaxReapproach));
+        comboRouteRange = Double.isFinite(d.comboRouteRange) ? d.comboRouteRange : 16.0;
+        comboRouteHitRange = Double.isFinite(d.comboRouteHitRange) ? d.comboRouteHitRange : 4.5;
+        comboRouteApproachTimeoutTicks = Math.max(10, d.comboRouteApproachTimeoutTicks <= 0 ? 40 : d.comboRouteApproachTimeoutTicks);
+        comboRouteHitTicks = Math.max(2, d.comboRouteHitTicks <= 0 ? 6 : d.comboRouteHitTicks);
+        comboRouteKiCost = d.comboRouteKiCost >= 0 ? d.comboRouteKiCost : 25.0;
+        comboRouteCooldownTicks = Math.max(1, d.comboRouteCooldownTicks <= 0 ? 80 : d.comboRouteCooldownTicks);
+        comboRoutePvpEnabled = d.comboRoutePvpEnabled;
+        comboRoutePveEnabled = d.comboRoutePveEnabled;
+        comboRouteBlockBreak = d.comboRouteBlockBreak;
+        rushcomboEnabled = d.rushcomboEnabled;
+        liftcomboEnabled = d.liftcomboEnabled;
+        rushKnockbackLeftRight = d.rushKnockbackLeftRight >= 0 ? d.rushKnockbackLeftRight : 0.35;
+        rushKnockbackLeftRightUp = d.rushKnockbackLeftRightUp >= 0 ? d.rushKnockbackLeftRightUp : 0.12;
+        rushKnockbackBreaker = d.rushKnockbackBreaker >= 0 ? d.rushKnockbackBreaker : 0.75;
+        rushKnockbackBreakerUp = d.rushKnockbackBreakerUp >= 0 ? d.rushKnockbackBreakerUp : 0.85;
+        rushKnockbackFinisher = d.rushKnockbackFinisher >= 0 ? d.rushKnockbackFinisher : 1.55;
+        rushKnockbackFinisherUp = d.rushKnockbackFinisherUp >= 0 ? d.rushKnockbackFinisherUp : 0.55;
+        rushKnockbackDown = d.rushKnockbackDown >= 0 ? d.rushKnockbackDown : 0.8;
+        rushKnockbackVerticalPitch = d.rushKnockbackVerticalPitch > 0 ? d.rushKnockbackVerticalPitch : 50.0;
+        applyComboKnockTravel(d);
         rushAutoEquipSlots = d.rushAutoEquipSlots;
         zanzokenEnabled = d.zanzokenEnabled;
         zanzokenRequireTiming = d.zanzokenRequireTiming == null || d.zanzokenRequireTiming;
@@ -1349,9 +1894,24 @@ public final class XenoServerConfig {
         zanzokenRingClones = Math.max(1, Math.min(16, d.zanzokenRingClones));
         zanzokenRingRadius = d.zanzokenRingRadius > 0 ? Math.min(12.0, d.zanzokenRingRadius) : 3.0;
         zanzokenRingTicks = Math.max(20, Math.min(1200, d.zanzokenRingTicks));
+        zanzokenRingHitable = d.zanzokenRingHitable;
+        zanzokenRingDisperseAll = d.zanzokenRingDisperseAll == null || d.zanzokenRingDisperseAll;
+        zanzokenDetectRange = CloneDetectRange.clamp(d.zanzokenDetectRange);
         multiFormEnabled = d.multiFormEnabled;
         multiFormBodies = Math.max(2, Math.min(8, d.multiFormBodies));
         multiFormKiCost = Math.max(0f, d.multiFormKiCost);
+        multiFormRadius = clampMultiFormRadius(d.multiFormRadius);
+        multiFormAi = normalizeMultiFormAi(d.multiFormAi);
+        multiFormRetaliate = d.multiFormRetaliate == null || d.multiFormRetaliate;
+        saveFsync = d.saveFsync == null || d.saveFsync;
+        multiFormHostile = d.multiFormHostile != null && d.multiFormHostile;
+        multiFormLook = d.multiFormLook == null || d.multiFormLook;
+        multiFormVanish = d.multiFormVanish == null || d.multiFormVanish;
+        multiFormDetectRange = CloneDetectRange.clamp(d.multiFormDetectRange);
+        brainDeflectMinDistance = clampBrainDeflectMinDistance(d.brainDeflectMinDistance);
+        npcAttackStartRadius = clampNpcAttackStartRadius(d.npcAttackStartRadius);
+        npcMeleeHeightRule = d.npcMeleeHeightRule;
+        npcMeleeHeightReach = clampNpcMeleeHeightReach(d.npcMeleeHeightReach);
         sonicSwayStaminaCost = Math.max(0f, d.sonicSwayStaminaCost);
         sonicSwayIFramesTicks = Math.max(2, Math.min(40, d.sonicSwayIFramesTicks <= 0 ? 8 : d.sonicSwayIFramesTicks));
         sonicSwayCooldownTicks = Math.max(5, Math.min(80, d.sonicSwayCooldownTicks <= 0 ? 18 : d.sonicSwayCooldownTicks));
@@ -1364,6 +1924,33 @@ public final class XenoServerConfig {
         hakaiChannelTicks = Math.max(10, Math.min(400, d.hakaiChannelTicks <= 0 ? 40 : d.hakaiChannelTicks));
         hakaiPoiseFraction = d.hakaiPoiseFraction == null ? 0.35f
                 : Math.max(0f, Math.min(1f, d.hakaiPoiseFraction));
+        hakaiMode = normaliseHakaiMode(d.hakaiMode);
+        hakaiAreaRadius = clampHakaiAreaRadius(d.hakaiAreaRadius);
+        hakaiAreaMaxTargets = Math.max(1, Math.min(64, d.hakaiAreaMaxTargets));
+        hakaiBlocks = d.hakaiBlocks;
+        hakaiShips = d.hakaiShips;
+        hakaiBlockLimit = Math.max(0, Math.min(HAKAI_BLOCK_LIMIT_MAX, d.hakaiBlockLimit));
+        hakaiBlocksPerTick = Math.max(1, Math.min(512, d.hakaiBlocksPerTick));
+        hakaiBlockFadeTicks = Math.max(0, Math.min(100, d.hakaiBlockFadeTicks));
+        hakaiBlocksUnbreakable = d.hakaiBlocksUnbreakable;
+        hakaiSpareDmzStructures = d.hakaiSpareDmzStructures;
+        hakaiBlockShape = normaliseHakaiBlockShape(d.hakaiBlockShape);
+        formPassives = d.formPassives;
+        ueImmunity = d.ueImmunity;
+        uePenetration = d.uePenetration;
+        ueProjectileAura = d.ueProjectileAura;
+        uePunchBreak = d.uePunchBreak;
+        hakaiMantle = d.hakaiMantle;
+        hakaiMantleNoKnockback = d.hakaiMantleNoKnockback;
+        trainingDummySkillPoints = d.trainingDummySkillPoints;
+        uiDodge = d.uiDodge;
+        hakaishinNeedsHakai = d.hakaishinNeedsHakai;
+        hakaiSparedBlocks = d.hakaiSparedBlocks == null ? "dragonminez:otherworld_cloud" : d.hakaiSparedBlocks;
+        hakaiSparedDimensions = d.hakaiSparedDimensions == null ? "dragonminez:otherworld,dragonminez:time_chamber,dragonminez:sacredkaiplanet" : d.hakaiSparedDimensions;
+        uiDodgeScale = Float.isFinite(d.uiDodgeScale) ? Math.max(0.0f, Math.min(2.0f, d.uiDodgeScale)) : 1.0f;
+        hakaiRazeHeight = Math.max(1, Math.min(256, d.hakaiRazeHeight));
+        hakaiAreaFxScale = Float.isFinite(d.hakaiAreaFxScale)
+                ? Math.max(0.1f, Math.min(5.0f, d.hakaiAreaFxScale)) : 1.0f;
         hakaiMoveInterruptDistance = d.hakaiMoveInterruptDistance == null ? 3.0
                 : Math.max(0.5, Math.min(32.0, d.hakaiMoveInterruptDistance));
         hakaiFadeMinAlpha = Math.max(0f, Math.min(1f, d.hakaiFadeMinAlpha));
@@ -1432,6 +2019,7 @@ public final class XenoServerConfig {
         kiFullGameplayScaling = d.kiFullGameplayScaling;
         kiDestructionMaxRadius = positiveFinite(d.kiDestructionMaxRadius, 32f);
         kiDestructionBlocksPerTick = Math.max(64, d.kiDestructionBlocksPerTick);
+        kiExplosionMaxRadius = nonNegativeFinite(d.kiExplosionMaxRadius, 64f);
         vanishMaxRange = d.vanishMaxRange > 0 ? d.vanishMaxRange : 7.0;
         chaseMaxRange = d.chaseMaxRange < 0 ? 0.0 : d.chaseMaxRange;
         chaseFlightSpeed = d.chaseFlightSpeed > 0 ? d.chaseFlightSpeed : 3.5;
@@ -1462,6 +2050,12 @@ public final class XenoServerConfig {
         kickUpLaunch = d.kickUpLaunch > 0 ? d.kickUpLaunch : 1.35f;
         kickDownLaunch = d.kickDownLaunch > 0 ? d.kickDownLaunch : 1.15f;
         kickDownRangeBonus = Math.max(0f, d.kickDownRangeBonus);
+        chargePunchKnockback = Float.isFinite(d.chargePunchKnockback)
+                ? Math.max(0f, Math.min(10f, d.chargePunchKnockback)) : 1.0f;
+        chargePunchParabolic = d.chargePunchParabolic;
+        chargePunchArcHeight = Float.isFinite(d.chargePunchArcHeight)
+                ? Math.max(0f, Math.min(5f, d.chargePunchArcHeight)) : 1.0f;
+        kickTapCharge = Float.isFinite(d.kickTapCharge) ? Math.max(0.25f, Math.min(1f, d.kickTapCharge)) : 0.5f;
         kickKnockbackScale = d.kickKnockbackScale > 0f
                 ? Math.max(0.1f, Math.min(8f, d.kickKnockbackScale)) : 1.0f;
         comboLaunchKickEvery = Math.max(0, Math.min(32, d.comboLaunchKickEvery));
@@ -1636,6 +2230,18 @@ public final class XenoServerConfig {
     }
 
     /**
+     * Caps the ki-explosion entity radius. {@link #kiExplosionMaxRadius} {@code 0} is uncapped.
+     * Block scans stay on {@link #kiDestructionRadiusLimit()}.
+     */
+    public static float clampKiExplosionRadius(float value) {
+        if (!Float.isFinite(value)) {
+            return 0.5f;
+        }
+        float radius = Math.max(0.5f, value);
+        return kiExplosionMaxRadius <= 0f ? radius : Math.min(radius, kiExplosionMaxRadius);
+    }
+
+    /**
      * Hold a ki wave or laser to its configured reach.
      *
      * <p>A non-positive {@link #beamSurgeMaxLength} means uncapped, which is the stock behaviour:
@@ -1696,6 +2302,158 @@ public final class XenoServerConfig {
         save();
     }
 
+    public static float clampedMultiFormRadius() {
+        return clampMultiFormRadius(multiFormRadius);
+    }
+
+    public static float clampMultiFormRadius(float radius) {
+        if (!Float.isFinite(radius) || radius <= 0f) {
+            return MULTI_FORM_RADIUS_DEFAULT;
+        }
+        return Math.max(MULTI_FORM_RADIUS_MIN, Math.min(MULTI_FORM_RADIUS_MAX, radius));
+    }
+
+    public static String normalizeMultiFormAi(String raw) {
+        if (raw == null) {
+            return "clone";
+        }
+        String v = raw.trim().toLowerCase(Locale.ROOT);
+        if ("brain".equals(v)) return "brain";
+        if ("multiform".equals(v) || "fork".equals(v)) return "multiform";
+        return "clone";
+    }
+
+    /** True while copies run the shared NPC combat brain. */
+    public static boolean multiFormUsesBrain() {
+        return "brain".equals(normalizeMultiFormAi(multiFormAi));
+    }
+
+    /**
+     * True while copies run the multi-form brain.
+     *
+     * <p>A third value rather than a replacement for {@code brain}: the two existing modes both work
+     * and are what anyone's current setup is using, so the new one has to be opted into and compared
+     * rather than swapped in underneath them.
+     */
+    public static boolean multiFormUsesMultiFormBrain() {
+        return "multiform".equals(normalizeMultiFormAi(multiFormAi));
+    }
+
+    public static void setMultiFormRadius(float radius) {
+        multiFormRadius = clampMultiFormRadius(radius);
+        save();
+    }
+
+    public static void setMultiFormAi(String ai) {
+        multiFormAi = normalizeMultiFormAi(ai);
+        save();
+    }
+
+    public static void setMultiFormRetaliate(boolean enabled) {
+        multiFormRetaliate = enabled;
+        save();
+    }
+
+    public static void setMultiFormHostile(boolean enabled) {
+        multiFormHostile = enabled;
+        save();
+    }
+
+    public static void setMultiFormLook(boolean enabled) {
+        multiFormLook = enabled;
+        save();
+    }
+
+    public static void setMultiFormVanish(boolean enabled) {
+        multiFormVanish = enabled;
+        save();
+    }
+
+    public static double clampedMultiFormDetectRange() {
+        return CloneDetectRange.clamp(multiFormDetectRange);
+    }
+
+    public static void setMultiFormDetectRange(double range) {
+        multiFormDetectRange = CloneDetectRange.clamp(range);
+        save();
+    }
+
+    public static double clampedZanzokenDetectRange() {
+        return CloneDetectRange.clamp(zanzokenDetectRange);
+    }
+
+    public static void setZanzokenDetectRange(double range) {
+        zanzokenDetectRange = CloneDetectRange.clamp(range);
+        save();
+    }
+
+    public static double clampedBrainDeflectMinDistance() {
+        return clampBrainDeflectMinDistance(brainDeflectMinDistance);
+    }
+
+    public static double clampBrainDeflectMinDistance(double range) {
+        if (!Double.isFinite(range) || range < 0.0) {
+            return 7.0;
+        }
+        return Math.min(BRAIN_DEFLECT_MIN_DISTANCE_MAX, range);
+    }
+
+    public static double clampedNpcAttackStartRadius() {
+        return clampNpcAttackStartRadius(npcAttackStartRadius);
+    }
+
+    public static String normaliseHakaiMode(String raw) {
+        return net.bullettrain.xenopixelsmod.combat.HakaiAreaRules.parseMode(raw)
+                == net.bullettrain.xenopixelsmod.combat.HakaiAreaRules.Mode.AREA ? "area" : "single";
+    }
+
+    public static String normaliseHakaiBlockShape(String raw) {
+        return net.bullettrain.xenopixelsmod.combat.HakaiAreaRules.parseShape(raw)
+                == net.bullettrain.xenopixelsmod.combat.HakaiAreaRules.Shape.RAZE ? "raze" : "sphere";
+    }
+
+    public static double clampHakaiAreaRadius(double r) {
+        if (!Double.isFinite(r)) return 5.0;
+        // 2026-09-29 owner: "remove limit ... i want to be able to set it to 500". 4096 reaches past
+        // any loaded chunk; the block scan is lazy (HakaiBlockScan), so a big radius does not freeze.
+        return Math.max(1.0, Math.min(4096.0, r));
+    }
+
+    public static double clampNpcMeleeHeightReach(double blocks) {
+        if (!Double.isFinite(blocks)) {
+            return 0.5;
+        }
+        return Math.max(0.0, Math.min(8.0, blocks));
+    }
+
+    public static double clampNpcAttackStartRadius(double radius) {
+        if (!Double.isFinite(radius)) {
+            return 1.0;
+        }
+        return Math.max(NPC_ATTACK_START_RADIUS_MIN,
+                Math.min(NPC_ATTACK_START_RADIUS_MAX, radius));
+    }
+
+    public static void setBt3SuperCounterEnabled(boolean enabled) {
+        bt3SuperCounterEnabled = enabled;
+        save();
+    }
+
+    public static void setSuperCounterWindowTicks(int ticks) {
+        superCounterWindowTicks = Math.max(4, Math.min(40, ticks));
+        save();
+    }
+
+    public static void setSuperCounterKiCost(float cost) {
+        superCounterKiCost = Math.max(0f, cost);
+        save();
+    }
+
+    public static void setSuperCounterDamageScale(float scale) {
+        superCounterDamageScale = scale > 0f ? scale : 1.35f;
+        save();
+    }
+
     public static void setLockOnThroughBlocks(boolean enabled) {
         lockOnThroughBlocks = enabled;
         save();
@@ -1709,6 +2467,62 @@ public final class XenoServerConfig {
     public static void setChaseFlightSpeed(double speed) {
         chaseFlightSpeed = Math.max(0.1, speed);
         save();
+    }
+
+    public static void setRushComboKnockTravel(double value) {
+        rushComboKnockTravel = Math.max(0.0, value);
+        comboRouteKnockbackDistance = rushComboKnockTravel;
+    }
+
+    public static void setRushComboKnockUp(double value) {
+        rushComboKnockUp = Math.max(0.0, value);
+        comboRouteKnockbackUp = rushComboKnockUp;
+    }
+
+    public static void setRushComboKnockDown(double value) {
+        rushComboKnockDown = Math.max(0.0, value);
+        comboRouteKnockbackDown = rushComboKnockDown;
+    }
+
+    public static void setLiftComboKnockTravel(double value) {
+        liftComboKnockTravel = Math.max(0.0, value);
+    }
+
+    public static void setLiftComboKnockUp(double value) {
+        liftComboKnockUp = Math.max(0.0, value);
+    }
+
+    public static void setLiftComboKnockDown(double value) {
+        liftComboKnockDown = Math.max(0.0, value);
+    }
+
+    private static void applyComboKnockTravel(Data d) {
+        if (d.configVersion < 22) {
+            if (d.comboRouteKnockbackUp <= 0.36) d.comboRouteKnockbackUp = 1.85;
+            if (d.comboRouteKnockbackDistance <= 1.21) d.comboRouteKnockbackDistance = 1.65;
+        }
+        double oldDist = d.comboRouteKnockbackDistance >= 0 ? d.comboRouteKnockbackDistance : 1.65;
+        double oldUp = d.comboRouteKnockbackUp >= 0 ? d.comboRouteKnockbackUp : 1.85;
+        double oldDown = d.comboRouteKnockbackDown >= 0 ? d.comboRouteKnockbackDown : 0.8;
+        rushComboKnockTravel = axisOrSeed(d.rushComboKnockTravel, oldDist);
+        rushComboKnockUp = axisOrSeed(d.rushComboKnockUp, oldUp);
+        rushComboKnockDown = axisOrSeed(d.rushComboKnockDown, oldDown);
+        comboRouteKnockbackDistance = rushComboKnockTravel;
+        comboRouteKnockbackUp = rushComboKnockUp;
+        comboRouteKnockbackDown = rushComboKnockDown;
+        var liftSeed = net.bullettrain.xenopixelsmod.combat.combo.ComboRouteCatalog
+                .bySkillId("liftcombo");
+        double seedDist = liftSeed != null ? liftSeed.finisherKnockback().horizontal() : 0.4;
+        double seedUp = liftSeed != null ? liftSeed.finisherKnockback().up() : 0.9;
+        double seedDown = liftSeed != null ? liftSeed.finisherKnockback().down() : 0.8;
+        liftComboKnockTravel = axisOrSeed(d.liftComboKnockTravel, seedDist);
+        liftComboKnockUp = axisOrSeed(d.liftComboKnockUp, seedUp);
+        liftComboKnockDown = axisOrSeed(d.liftComboKnockDown, seedDown);
+    }
+
+    private static double axisOrSeed(Double boxed, double seed) {
+        if (boxed == null || !Double.isFinite(boxed)) return Math.max(0.0, seed);
+        return Math.max(0.0, boxed);
     }
 
     public static void setHakaiEnabled(boolean enabled) {
@@ -1927,6 +2741,11 @@ public final class XenoServerConfig {
         save();
     }
 
+    public static void setKiExplosionMaxRadius(float radius) {
+        kiExplosionMaxRadius = nonNegativeFinite(radius, 64.0f);
+        save();
+    }
+
     public static void setKiFullGameplayScaling(boolean enabled) {
         kiFullGameplayScaling = enabled;
         save();
@@ -2027,6 +2846,7 @@ public final class XenoServerConfig {
         kiFullGameplayScaling = d.kiFullGameplayScaling;
         kiDestructionMaxRadius = positiveFinite(d.kiDestructionMaxRadius, 32f);
         kiDestructionBlocksPerTick = Math.max(64, d.kiDestructionBlocksPerTick);
+        kiExplosionMaxRadius = nonNegativeFinite(d.kiExplosionMaxRadius, 64f);
         beamSurgeEnabled = d.beamSurgeEnabled;
         beamSurgeKiPerTick = Math.max(0f, d.beamSurgeKiPerTick);
         beamSurgeStaminaPerTick = Math.max(0f, d.beamSurgeStaminaPerTick);
@@ -2292,14 +3112,56 @@ public final class XenoServerConfig {
         return 1.0 + (formMult - 1.0) * (double) m;
     }
 
+    public static String normalizedNpcDamageMode() {
+        return normalizeNpcDamageMode(npcDamageMode, npcDmzStatsAuthoritative ? "dmz" : "mynpc");
+    }
+
+    public static String normalizedCombatControllerMode() {
+        return normalizeCombatControllerMode(combatControllerMode);
+    }
+
+    public static String normalizeCombatControllerMode(String mode) {
+        return net.bullettrain.xenopixelsmod.combat.controller.CombatControllerMode.fromId(mode).id();
+    }
+
+    /** Typed view of {@link #combatControllerMode}; never null, unknown values read as legacy. */
+    public static net.bullettrain.xenopixelsmod.combat.controller.CombatControllerMode controllerMode() {
+        return net.bullettrain.xenopixelsmod.combat.controller.CombatControllerMode.fromId(combatControllerMode);
+    }
+
+    public static boolean isBt3ManualController() {
+        return "bt3_manual".equals(normalizedCombatControllerMode());
+    }
+
+    public static String normalizeNpcDamageMode(String mode, String fallback) {
+        String normalized = mode == null ? "" : mode.trim().toLowerCase(Locale.ROOT);
+        return switch (normalized) {
+            case "dmz" -> "dmz";
+            case "mynpc", "native" -> "mynpc";
+            case "numeric", "number" -> "numeric";
+            default -> fallback == null ? "dmz" : fallback;
+        };
+    }
+
+    public static float clampNpcNumericDamage(float value) {
+        return Float.isFinite(value) ? Math.max(0.0f, Math.min(100_000.0f, value)) : 10.0f;
+    }
+
     public static class Data {
         public int configVersion;
+        public boolean xenoNpcKillCommandImmune = true;
+        public boolean xenoNpcDialogueCommands = false;
+        public boolean npcMovementArbitration = true;
         public boolean dmzHudEnabled = false;
         public boolean dmzContentBootstrap = true;
         public boolean dmzFormProtectedEditOverride = false;
         public boolean dmzSagaSpawnCompat = true;
         public boolean npcSayEnabled = true;
+        public boolean npcGuiFollowsGuiScale = true;
+        public boolean npcBubblesInEntityPass = false;
+        public boolean npcSwingTimeInAiStep = false;
         public boolean npcCommandsIgnoreCommandBlockSetting = false;
+        public String combatControllerMode = "legacy";
         public boolean bt3CombatEnabled = true;
         public boolean bt3ComboEnabled = true;
         public boolean bt3CinematicRushEnabled = true;
@@ -2322,6 +3184,9 @@ public final class XenoServerConfig {
         public boolean protectMastersFromCombatKnockback = true;
         public boolean migrateCustomNpcsWorldData = true;
         public Boolean npcDmzStatsAuthoritative;
+        public String npcDamageMode = "dmz";
+        public Float npcNumericDamage = 10.0f;
+        public Boolean xenoNpcSizeScalesHitbox = true;
         public Integer npcScriptTickInterval;
         public boolean bt3RushChainEnabled = true;
         public boolean bt3SonicSwayEnabled = true;
@@ -2333,12 +3198,41 @@ public final class XenoServerConfig {
         public boolean trainingDummyEnabled = true;
         public boolean parallelQuestEnabled = true;
         public boolean mentorEnabled = true;
+        public boolean tournamentEnabled = false;
+        public String tournamentArenaDimension = "minecraft:overworld";
+        public String tournamentArenaPositions = "0,64,0;8,64,0";
+        public boolean tournamentOutOfBoundsLose = false;
         public boolean copycatForgeEnergyEnabled = false;
         public int copycatEnergyCapacity = 100_000;
         public int copycatMaxReceiveFePerTick = 1_000;
         public int copycatEnergyUseFePerTick = 10;
         public double missileMaxApexY = 950.0;
         public boolean missileTerminalGravityCompensation = false;
+        public boolean effekseerEnabled = true;
+        public boolean effekseerPunches = true;
+        public boolean effekseerHakai = true;
+        public boolean effekseerMissiles = true;
+        public int effekseerRange = 64;
+        public int effekseerMissileRange = 256;
+        public int effekseerPunchesPerTick = 24;
+        public float effekseerPunchScale = 0.3f;
+        public float effekseerHakaiScale = 1.0f;
+        public float effekseerMissileScale = 1.0f;
+        public boolean effekseerSparking = true;
+        public boolean effekseerShipThrusters = true;
+        public float effekseerSparkingScale = 1.0f;
+        public float effekseerThrusterScale = 1.0f;
+        public float effekseerExplosionScale = 15.0f;
+        public boolean effekseerSparkingSmooth = false;
+        public boolean effekseerKiImpacts = true;
+        public float effekseerKiImpactScale = 1.0f;
+        public Map<String, Float> effekseerSlotScales = DEFAULT_SLOT_SCALES();
+
+        /** This data's size for one effect (its default when the map does not name it). */
+        public float slotScale(net.bullettrain.xenopixelsmod.fx.effek.EffectSlot slot) {
+            Float v = effekseerSlotScales == null ? null : effekseerSlotScales.get(slotKey(slot));
+            return v != null ? v : DEFAULT_SLOT_SCALES().getOrDefault(slotKey(slot), 1.0f);
+        }
         public boolean thrusterImpulseGuardEnabled = true;
         public double thrusterMaxImpulse = 6_000.0;
         public double maxFlightSpeed = 28.0;
@@ -2354,6 +3248,38 @@ public final class XenoServerConfig {
         public double rushKiCost = 25.0;
         public int rushCooldownTicks = 40;
         public boolean rushAutoUnlock = true;
+        public boolean comboRoutesEnabled = false;
+        public int comboRouteHitCount = 3;
+        public boolean comboRouteAutoReapproach = true;
+        public int comboRouteMaxReapproach = 1;
+        public double comboRouteRange = 16.0;
+        public double comboRouteHitRange = 4.5;
+        public int comboRouteApproachTimeoutTicks = 40;
+        public int comboRouteHitTicks = 6;
+        public double comboRouteKiCost = 25.0;
+        public int comboRouteCooldownTicks = 80;
+        public boolean comboRoutePvpEnabled = true;
+        public boolean comboRoutePveEnabled = true;
+        public boolean comboRouteBlockBreak = false;
+        public boolean rushcomboEnabled = true;
+        public boolean liftcomboEnabled = true;
+        public double rushKnockbackLeftRight = 0.35;
+        public double rushKnockbackLeftRightUp = 0.12;
+        public double rushKnockbackBreaker = 0.75;
+        public double rushKnockbackBreakerUp = 0.85;
+        public double rushKnockbackFinisher = 1.55;
+        public double rushKnockbackFinisherUp = 0.55;
+        public double rushKnockbackDown = 0.8;
+        public double rushKnockbackVerticalPitch = 50.0;
+        public double comboRouteKnockbackDistance = 1.65;
+        public double comboRouteKnockbackUp = 1.85;
+        public double comboRouteKnockbackDown = 0.8;
+        public Double rushComboKnockTravel;
+        public Double rushComboKnockUp;
+        public Double rushComboKnockDown;
+        public Double liftComboKnockTravel;
+        public Double liftComboKnockUp;
+        public Double liftComboKnockDown;
         public boolean rushAutoEquipSlots = false;
         public boolean zanzokenEnabled = true;
         public Boolean zanzokenRequireTiming;
@@ -2367,9 +3293,24 @@ public final class XenoServerConfig {
         public int zanzokenRingClones = 6;
         public double zanzokenRingRadius = 3.0;
         public int zanzokenRingTicks = 200;
+        public boolean zanzokenRingHitable = true;
+        public Boolean zanzokenRingDisperseAll;
+        public double zanzokenDetectRange = CloneDetectRange.DEFAULT;
         public boolean multiFormEnabled = true;
         public int multiFormBodies = 4;
         public float multiFormKiCost = 60.0f;
+        public float multiFormRadius = 2.2f;
+        public String multiFormAi = "clone";
+        public Boolean multiFormRetaliate;
+        public Boolean saveFsync;
+        public Boolean multiFormHostile;
+        public Boolean multiFormLook;
+        public Boolean multiFormVanish;
+        public double multiFormDetectRange = CloneDetectRange.DEFAULT;
+        public double brainDeflectMinDistance = 7.0;
+        public double npcAttackStartRadius = 1.0;
+        public boolean npcMeleeHeightRule = true;
+        public double npcMeleeHeightReach = 0.5;
         public float sonicSwayStaminaCost = 6.0f;
         public int sonicSwayIFramesTicks = 8;
         public int sonicSwayCooldownTicks = 18;
@@ -2382,6 +3323,32 @@ public final class XenoServerConfig {
         public int hakaiChannelTicks = 40;
         public Float hakaiPoiseFraction;
         public Double hakaiMoveInterruptDistance;
+        public String hakaiMode = "single";
+        public double hakaiAreaRadius = 5.0;
+        public int hakaiAreaMaxTargets = 16;
+        public boolean hakaiBlocks = true;
+        public boolean hakaiShips = true;
+        public int hakaiBlockLimit = 4096;
+        public int hakaiBlocksPerTick = 48;
+        public int hakaiBlockFadeTicks = 20;
+        public boolean hakaiBlocksUnbreakable = true;
+        public float hakaiAreaFxScale = 1.0f;
+        public boolean hakaiSpareDmzStructures = true;
+        public String hakaiBlockShape = "sphere";
+        public boolean formPassives = true;
+        public boolean ueImmunity = true;
+        public boolean uePenetration = true;
+        public boolean ueProjectileAura = true;
+        public boolean uePunchBreak = true;
+        public boolean hakaiMantle = true;
+        public boolean hakaiMantleNoKnockback = true;
+        public boolean trainingDummySkillPoints = false;
+        public boolean uiDodge = true;
+        public float uiDodgeScale = 1.0f;
+        public boolean hakaishinNeedsHakai = false;
+        public String hakaiSparedBlocks = "dragonminez:otherworld_cloud";
+        public String hakaiSparedDimensions = "dragonminez:otherworld,dragonminez:time_chamber,dragonminez:sacredkaiplanet";
+        public int hakaiRazeHeight = 48;
         public boolean hakaiFadeEnabled = true;
         public float hakaiFadeMinAlpha = 0.02f;
         public float hakaiFadeCurve = 1.0f;
@@ -2451,6 +3418,7 @@ public final class XenoServerConfig {
         public boolean kiFullGameplayScaling = false;
         public float kiDestructionMaxRadius = 32.0f;
         public int kiDestructionBlocksPerTick = 4096;
+        public float kiExplosionMaxRadius = 64.0f;
         public double vanishMaxRange = 7.0;
         public double chaseMaxRange = 0.0;
         public double chaseFlightSpeed = 1.2;
@@ -2478,6 +3446,10 @@ public final class XenoServerConfig {
         public float kickDownLaunch = 1.15f;
         public float kickDownRangeBonus = 4.0f;
         public float kickKnockbackScale = 1.0f;
+        public float chargePunchKnockback = 1.0f;
+        public boolean chargePunchParabolic = false;
+        public float chargePunchArcHeight = 1.0f;
+        public float kickTapCharge = 0.5f;
         public int comboLaunchKickEvery = 5;
         public int comboMashIntervalTicks = 6;
         public int comboAnimGeneration = 4;

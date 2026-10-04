@@ -77,6 +77,21 @@ public final class XenoSlotTechniques {
         return false;
     }
 
+    /** Removes the corresponding Xeno technique from DMZ after a skill is revoked. */
+    public static void revoke(ServerPlayer player, String skillId) {
+        if (player == null || skillId == null || !XenoServerConfig.xenoSlotTechniquesEnabled) return;
+        String id = switch (skillId) {
+            case CombatSkills.HAKAI -> HAKAI;
+            case CombatSkills.ZANZOKEN -> ZANZOKEN;
+            case CombatSkills.MULTIFORM -> MULTIFORM;
+            default -> null;
+        };
+        if (id == null) return;
+        StatsProvider.get(StatsCapability.INSTANCE, player).ifPresent(data -> {
+            if (data.getTechniques() != null) data.getTechniques().removeTechnique(id);
+        });
+    }
+
     /** The skill-tree name of a slot technique, for refusal messages. */
     public static String skillName(String id) {
         if (HAKAI.equals(id)) return "Hakai";

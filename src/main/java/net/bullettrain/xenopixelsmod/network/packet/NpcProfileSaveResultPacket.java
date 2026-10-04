@@ -19,6 +19,9 @@ public record NpcProfileSaveResultPacket(boolean saved, String reason) {
     public static final String TOO_FAR = "NPC save rejected: NPC is more than 64 blocks away";
     public static final String NOT_EDITABLE = "NPC save rejected: target is not an editable NPC";
     public static final String GONE = "NPC save rejected: NPC is no longer loaded";
+    public static final String STALE = "NPC save rejected: the NPC changed, reopen the editor";
+    /** MyNPCs' Editing Mode: the NPC is locked and refuses edits until it is unlocked. */
+    public static final String LOCKED = "NPC save rejected: editing is locked on this NPC";
 
     public NpcProfileSaveResultPacket(FriendlyByteBuf buf) {
         this(buf.readBoolean(), buf.readUtf(256));

@@ -21,12 +21,13 @@ public final class NpcQuestCompletionSync {
             if (methods.length == 0) return;
             Object data = methods[0].invoke(null, player);
             methods[1].invoke(data, true);
+            // QuestRewardOriginPolicy reserves XenoSkill points for quests offered by native
+            // Xeno NPCs. A CNPC/Mynpc completion is a third-party giver, so the same declared
+            // reward routed through the policy pays 0 points; the grant is therefore not made
+            // here. The message stays informational only.
             if (net.bullettrain.xenopixelsmod.config.XenoServerConfig.parallelQuestEnabled) {
-                net.bullettrain.xenopixelsmod.capability.XenoCapabilities.get(player).ifPresent(xeno -> {
-                    xeno.addSkillPoints(2);
-                    player.displayClientMessage(net.minecraft.network.chat.Component.literal(
-                            "§a§lCNPC quest complete §7(+2 skill points)"), false);
-                });
+                player.displayClientMessage(net.minecraft.network.chat.Component.literal(
+                        "§a§lCNPC quest complete"), false);
             }
         } catch (ReflectiveOperationException | RuntimeException failure) {
             if (WARNED.add(playerDataClassName)) {

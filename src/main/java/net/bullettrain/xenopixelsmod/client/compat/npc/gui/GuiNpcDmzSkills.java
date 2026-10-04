@@ -12,7 +12,6 @@ import noppes.npcs.client.gui.util.GuiNPCInterface2;
 import noppes.npcs.entity.EntityNPCInterface;
 import noppes.npcs.shared.client.gui.components.GuiButtonNop;
 import noppes.npcs.shared.client.gui.components.GuiButtonYesNo;
-import noppes.npcs.shared.client.gui.components.GuiLabel;
 import noppes.npcs.shared.client.gui.components.GuiTextFieldNop;
 import noppes.npcs.shared.client.gui.listeners.ITextfieldListener;
 
@@ -37,6 +36,11 @@ public final class GuiNpcDmzSkills extends GuiNPCInterface2 implements ITextfiel
 
     private static final int ROWS_PER_PAGE = 7;
 
+    /** Text scale for every label on this screen; the raw skill ids run long at 1x. */
+    private static final float TEXT_SCALE = 0.8F;
+
+    private final java.util.List<LabelSpec> scaledLabels = new java.util.ArrayList<>();
+
     private final NpcCombatProfile original;
     private NpcCombatProfile draft;
     private int page;
@@ -57,15 +61,16 @@ public final class GuiNpcDmzSkills extends GuiNPCInterface2 implements ITextfiel
 
         int x = guiLeft + 10;
         int y = guiTop + 7;
-        addLabel(new GuiLabel(90, "DragonMineZ Skills", x, y + 4, 0xFFD36A));
-        addLabel(new GuiLabel(91, "Page " + (page + 1) + " / " + pages, x + 150, y + 4, 0xFFFFFF));
+        scaledLabels.clear();
+        scaledLabels.add(new LabelSpec("DragonMineZ Skills", x, y + 4, 0xFFD36A));
+        scaledLabels.add(new LabelSpec("Page " + (page + 1) + " / " + pages, x + 150, y + 4, 0xFFFFFF));
         addButton(new GuiButtonNop(this, PREV_PAGE, x + 220, y, 20, 18, "<"));
         addButton(new GuiButtonNop(this, NEXT_PAGE, x + 244, y, 20, 18, ">"));
         addButton(new GuiButtonNop(this, APPLY, guiLeft + 300, guiTop + 174, 52, 18, "Apply"));
         addButton(new GuiButtonNop(this, CANCEL, guiLeft + 356, guiTop + 174, 56, 18, "Cancel"));
 
         if (ids.isEmpty()) {
-            addLabel(new GuiLabel(92, "DragonMineZ skill config unavailable", x, y + 40, 0xFF8080));
+            scaledLabels.add(new LabelSpec("DragonMineZ skill config unavailable", x, y + 40, 0xFF8080));
             return;
         }
 
@@ -78,7 +83,7 @@ public final class GuiNpcDmzSkills extends GuiNPCInterface2 implements ITextfiel
             }
             String id = ids.get(index);
             int max = NpcSkillSet.maxLevelOf(id);
-            addLabel(new GuiLabel(300 + row, id, x, rowY + 5, 0xFFFFFF));
+            scaledLabels.add(new LabelSpec(id, x, rowY + 5, 0xFFFFFF));
             addButton(new GuiButtonYesNo(this, TOGGLE_BASE + row, x + 150, rowY, 48, 18,
                     draft.skills.isActive(id)));
             GuiTextFieldNop level = new GuiTextFieldNop(LEVEL_BASE + row, this, x + 204, rowY + 1,
@@ -86,7 +91,7 @@ public final class GuiNpcDmzSkills extends GuiNPCInterface2 implements ITextfiel
             level.setNumbersOnly();
             level.setMaxLength(3);
             addTextField(level);
-            addLabel(new GuiLabel(400 + row, "/ " + max, x + 238, rowY + 5, 0xAAAAAA));
+            scaledLabels.add(new LabelSpec("/ " + max, x + 238, rowY + 5, 0xAAAAAA));
             rowY += 21;
         }
     }
@@ -95,6 +100,7 @@ public final class GuiNpcDmzSkills extends GuiNPCInterface2 implements ITextfiel
     public void render(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
         super.render(graphics, mouseX, mouseY, partialTick);
         if (!hasSubGui()) {
+            renderScaledLabels(graphics);
             previewPanel.render(graphics, getFontRenderer(), guiLeft, guiTop, partialTick);
         }
     }
@@ -145,15 +151,18 @@ public final class GuiNpcDmzSkills extends GuiNPCInterface2 implements ITextfiel
             return;
         } else if (button.id == CANCEL) {
             NpcAppearanceClient.applyProfile(((Entity) npc).getUUID(), original);
+            persist(original);   // changes were autosaved; Cancel restores the server copy too
             goBack(original);
             return;
         }
+        persist(draft);
         reinit();
     }
 
     @Override
     public void unFocused(GuiTextFieldNop field) {
         pull();
+        persist(draft);
     }
 
     /** Reads every visible row back into the draft, so paging never loses an edit. */
@@ -195,8 +204,8 @@ public final class GuiNpcDmzSkills extends GuiNPCInterface2 implements ITextfiel
 
     private void persist(NpcCombatProfile profile) {
         profile.write(npc);
-        ModNetwork.sendToServer(new NpcProfileSavePacket(((Entity) npc).getId(), profile.toTag(),
-                NpcProfileSavePacket.Action.SAVE, profile.selectedFormGroup, profile.selectedFormId));
+        net.bullettrain.xenopixelsmod.client.npc.ClientNpcProfiles.save(((Entity) npc).getId(), profile.toTag(),
+                NpcProfileSavePacket.Action.SAVE, profile.selectedFormGroup, profile.selectedFormId);
     }
 
     private void goBack(NpcCombatProfile profile) {
@@ -205,7 +214,8 @@ public final class GuiNpcDmzSkills extends GuiNPCInterface2 implements ITextfiel
 
     @Override
     public void save() {
-        // Apply/Cancel own this editor transaction.
+        // Autosave: closing or switching tabs keeps the draft (MyNPCs behaviour).
+        persist(draft);
     }
 
     private int integer(int id, int fallback) {
@@ -222,5 +232,32 @@ public final class GuiNpcDmzSkills extends GuiNPCInterface2 implements ITextfiel
 
     private static NpcCombatProfile copy(NpcCombatProfile source) {
         return source == null ? new NpcCombatProfile() : NpcCombatProfile.fromTag(source.toTag());
+    }
+
+    /**
+     * Draws the queued label specs at {@link #TEXT_SCALE}. The third-party {@code GuiLabel} has no
+     * font or scale API and cannot be subclassed safely (verified against the pinned jars: the
+     * CNPC variant leaves {@code renderWidget} abstract, the MyNpcs variant marks it final, and
+     * {@code AbstractWidget.render} is final), so every label row is kept as a plain spec and
+     * painted here through a pose scale anchored on the label's own top-left. The text shrinks
+     * toward its origin and stays aligned with the toggle and level widgets on the same row.
+     */
+    private void renderScaledLabels(GuiGraphics graphics) {
+        if (scaledLabels.isEmpty()) {
+            return;
+        }
+        var font = Minecraft.getInstance().font;
+        float shift = 1.0F / TEXT_SCALE - 1.0F;
+        for (LabelSpec label : scaledLabels) {
+            graphics.pose().pushPose();
+            graphics.pose().scale(TEXT_SCALE, TEXT_SCALE, 1.0F);
+            graphics.pose().translate(label.x() * shift, label.y() * shift, 0.0F);
+            graphics.drawString(font, label.text(), label.x(), label.y(), label.color());
+            graphics.pose().popPose();
+        }
+    }
+
+    /** One scaled label row captured during {@link #init()}. */
+    private record LabelSpec(String text, int x, int y, int color) {
     }
 }

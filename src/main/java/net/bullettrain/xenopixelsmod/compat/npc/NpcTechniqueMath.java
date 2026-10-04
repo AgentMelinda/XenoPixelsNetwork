@@ -9,8 +9,12 @@ final class NpcTechniqueMath {
     private NpcTechniqueMath() {}
 
     static double kiCost(NpcCombatProfile profile, KiAttackData data) {
+        return kiCost(profile == null ? 0.0 : profile.kiDamage(), profile, data);
+    }
+
+    static double kiCost(double baseDamage, NpcCombatProfile profile, KiAttackData data) {
         if (profile == null || data == null) return Double.POSITIVE_INFINITY;
-        double output = Math.max(0.0, profile.kiDamage()) * data.getActualDamageMultiplier();
+        double output = Math.max(0.0, baseDamage) * data.getActualDamageMultiplier();
         double complexity = data.getActualSize() * 5.0
                 + data.getActualSpeed() * 5.0
                 + data.getActualArmorPenetration() * 0.2;
@@ -21,9 +25,13 @@ final class NpcTechniqueMath {
     }
 
     static double strikeCost(NpcCombatProfile profile, StrikeAttackData data) {
+        return strikeCost(profile == null ? 0.0 : profile.strikeDamage(), profile, data);
+    }
+
+    static double strikeCost(double baseDamage, NpcCombatProfile profile, StrikeAttackData data) {
         if (profile == null || data == null) return Double.POSITIVE_INFINITY;
         var config = ConfigManager.getTechniqueConfig().getStrikeConfig(data.getId());
-        double output = profile.strikeDamage() * data.getActualDamageMultiplier()
+        double output = baseDamage * data.getActualDamageMultiplier()
                 * Math.max(0.0, config.getDamageMultiplier());
         return Math.max(5.0, output * 0.35 * Math.max(0.0, config.getKiCostMultiplier()) / 2.0);
     }

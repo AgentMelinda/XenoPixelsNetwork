@@ -69,5 +69,8 @@
 - [Registrate (פחות JSON)](Advanced-05-Registrate)
 - [Forge Events](Advanced-06-Forge-Events)
 - [CustomNPCs + XenoPixels Scripting](Advanced-07-XenoPixels-CustomNPC-Scripting)
+- [XenoAPI scripting (English)](XenoAPI)
+- [CustomNPCs scripting (co-owner)](CustomNPCs-XenoPixels-Scripting-CoOwner)
+- [XenoPixels shops and plots](Xeno-Shops-and-Plots)
 
 </div>

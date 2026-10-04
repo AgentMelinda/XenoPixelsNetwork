@@ -11,8 +11,14 @@ public final class CloneCombatPolicy {
 
     public static Action decide(boolean active, boolean validTarget, double ownerDistance,
                                 double targetDistance, boolean visible, int cooldown) {
+        return decide(active, validTarget, ownerDistance, targetDistance, visible, cooldown, LEASH);
+    }
+
+    public static Action decide(boolean active, boolean validTarget, double ownerDistance,
+                                double targetDistance, boolean visible, int cooldown, double leash) {
+        double limit = CloneDetectRange.clamp(leash);
         if (!active || !validTarget || !Double.isFinite(ownerDistance)
-                || !Double.isFinite(targetDistance) || ownerDistance > LEASH) return Action.FORMATION;
+                || !Double.isFinite(targetDistance) || ownerDistance > limit) return Action.FORMATION;
         if (visible && targetDistance <= MELEE_RANGE) {
             return cooldown > 0 ? Action.RECOVER : Action.MELEE;
         }
@@ -39,6 +45,22 @@ public final class CloneCombatPolicy {
      */
     public static boolean shouldAbandon(int whiffStreak) {
         return whiffStreak >= MAX_WHIFFS;
+    }
+
+    /** True only while a lock-on body is actually present and alive. */
+    public static boolean hasLivingLock(boolean present, boolean alive) {
+        return present && alive;
+    }
+
+    /**
+     * Updates the miss counter after one swing. A connected hit resets; a miss (including a
+     * strike that fired but has not landed) counts toward {@link #shouldAbandon}.
+     */
+    public static int noteSwing(int whiffStreak, boolean connected) {
+        if (connected) {
+            return 0;
+        }
+        return whiffStreak + 1;
     }
 
     public static boolean canSpend(double energy, double stamina, double energyCost, double staminaCost) {

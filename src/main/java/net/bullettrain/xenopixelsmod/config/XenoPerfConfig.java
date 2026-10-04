@@ -20,6 +20,8 @@ import java.nio.file.Path;
 public final class XenoPerfConfig {
     private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
     private static final Path PATH = FMLPaths.CONFIGDIR.get().resolve("xenopixelsmod-perf.json");
+    /** Version 3 turns Sable cull off; older files saved it on. */
+    private static final int CURRENT_VERSION = 3;
 
     public static boolean perfEnabled = true;
 
@@ -30,6 +32,11 @@ public final class XenoPerfConfig {
     public static int forceChunksRadius = 1;
     public static int forceChunksDurationTicks = 20 * 20;
     public static double forceChunksPlayerRange = 0.0;
+    /**
+     * Keep a sliding force-loaded corridor around a live entity missile, a few chunks
+     * of lookahead, and the target. Default on; independent of {@link #forceChunksEnabled}.
+     */
+    public static boolean missileFlightTickets = true;
 
     // --- Ballistic guidance range ---
     /**
@@ -58,9 +65,9 @@ public final class XenoPerfConfig {
 
     /**
      * Clamp Create {@code collideEntities} queries on Sable ships (any size) and
-     * skip item/XP scans. Off restores stock Sable+Create behaviour.
+     * skip item/XP scans. Default off; opt in with {@code /xenoperf sablecull on}.
      */
-    public static boolean sableContraptionCullEnabled = true;
+    public static boolean sableContraptionCullEnabled = false;
     /** Half-extent cap (blocks) for a rebuilt query around a Sable contraption. */
     public static double sableContraptionMaxQueryExtent = 64.0;
 
@@ -73,7 +80,11 @@ public final class XenoPerfConfig {
         }
         try (Reader reader = Files.newBufferedReader(PATH)) {
             Data data = GSON.fromJson(reader, Data.class);
-            if (data != null) apply(data);
+            if (data != null) {
+                boolean migrateSableCullOff = data.version == null || data.version < 3;
+                apply(data);
+                if (migrateSableCullOff) save();
+            }
         } catch (IOException e) {
             XenoPixelsMod.LOGGER.warn("Failed to load perf config", e);
         }
@@ -92,13 +103,14 @@ public final class XenoPerfConfig {
 
     public static Data snapshot() {
         Data d = new Data();
-        d.version = 2;
+        d.version = CURRENT_VERSION;
         d.perfEnabled = perfEnabled;
         d.forceChunksEnabled = forceChunksEnabled;
         d.forceChunksTargetOnly = forceChunksTargetOnly;
         d.forceChunksRadius = forceChunksRadius;
         d.forceChunksDurationTicks = forceChunksDurationTicks;
         d.forceChunksPlayerRange = forceChunksPlayerRange;
+        d.missileFlightTickets = missileFlightTickets;
         d.ballisticMaxRangeBlocks = ballisticMaxRangeBlocks;
         d.thrusterPhysForceEnabled = thrusterPhysForceEnabled;
         d.thrusterForceAlways = thrusterForceAlways;
@@ -120,6 +132,7 @@ public final class XenoPerfConfig {
         forceChunksDurationTicks = Math.max(40, Math.min(20 * 120,
                 d.forceChunksDurationTicks <= 0 ? 400 : d.forceChunksDurationTicks));
         forceChunksPlayerRange = Math.max(0.0, d.forceChunksPlayerRange);
+        missileFlightTickets = d.missileFlightTickets;
         // 0 = unlimited; else clamp 1 km … 30_000 km (world half-extent)
         if (d.ballisticMaxRangeBlocks <= 0) {
             ballisticMaxRangeBlocks = 0;
@@ -137,7 +150,9 @@ public final class XenoPerfConfig {
         statsSyncHeartbeatTicks = Math.max(statsSyncIntervalTicks, Math.min(200,
                 d.statsSyncHeartbeatTicks <= 0 ? 40 : d.statsSyncHeartbeatTicks));
         statsSyncOnlyWhenDirty = d.statsSyncOnlyWhenDirty;
-        sableContraptionCullEnabled = d.sableContraptionCullEnabled;
+        // Version 2 wrote this on. Leave it off unless a current-version file opts in.
+        sableContraptionCullEnabled = d.version != null && d.version >= 3
+                && d.sableContraptionCullEnabled;
         sableContraptionMaxQueryExtent = Math.max(16.0, Math.min(256.0,
                 d.sableContraptionMaxQueryExtent <= 0 ? 64.0 : d.sableContraptionMaxQueryExtent));
     }
@@ -149,6 +164,7 @@ public final class XenoPerfConfig {
                 + " thrAlways=" + thrusterForceAlways
                 + " thrRange=" + thrusterForcePlayerRange
                 + " forceChunks=" + forceChunksEnabled
+                + " missileTickets=" + missileFlightTickets
                 + " targetOnly=" + forceChunksTargetOnly
                 + " radius=" + forceChunksRadius
                 + " statsSync=" + statsSyncIntervalTicks + "t"
@@ -170,6 +186,7 @@ public final class XenoPerfConfig {
         public int forceChunksRadius = 1;
         public int forceChunksDurationTicks = 400;
         public double forceChunksPlayerRange = 0.0;
+        public boolean missileFlightTickets = true;
         public int ballisticMaxRangeBlocks = 1_000_000;
         public boolean thrusterPhysForceEnabled = true;
         public boolean thrusterForceAlways = true;
@@ -177,7 +194,7 @@ public final class XenoPerfConfig {
         public int statsSyncIntervalTicks = 10;
         public int statsSyncHeartbeatTicks = 40;
         public boolean statsSyncOnlyWhenDirty = true;
-        public boolean sableContraptionCullEnabled = true;
+        public boolean sableContraptionCullEnabled = false;
         public double sableContraptionMaxQueryExtent = 64.0;
     }
 }

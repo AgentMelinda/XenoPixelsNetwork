@@ -1,0 +1,14 @@
+{
+  "title": "Wolf Trouble",
+  "description": "Drive off 5 wolves",
+  "target": 5,
+  "objective": "kill_type",
+  "parameter": "minecraft:wolf",
+  "reward": {
+    "skill_points": 1,
+    "experience": 40,
+    "items": [
+      { "id": "minecraft:cooked_beef", "count": 4 }
+    ]
+  }
+}

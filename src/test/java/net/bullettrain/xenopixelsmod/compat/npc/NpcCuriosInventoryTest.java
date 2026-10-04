@@ -1,5 +1,10 @@
 package net.bullettrain.xenopixelsmod.compat.npc;
 
+import java.util.ArrayList;
+import java.util.List;
+import net.minecraft.world.inventory.Slot;
+import net.neoforged.neoforge.items.IItemHandlerModifiable;
+import net.neoforged.neoforge.items.SlotItemHandler;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -31,5 +36,17 @@ class NpcCuriosInventoryTest {
         assertEquals(NpcCuriosInventory.slotX(0) + 2 * (NpcCuriosInventory.SLOT_SIZE
                 + NpcCuriosInventory.COL_GAP), NpcCuriosInventory.slotX(secondBank));
         assertEquals(NpcCuriosInventory.slotY(0), NpcCuriosInventory.slotY(secondBank));
+    }
+
+    @Test
+    void missingCapabilitySlotsStayModifiableForContainerSync() {
+        List<Slot> slots = new ArrayList<>();
+        NpcCuriosInventory.addSlots(null, slots::add);
+        assertEquals(NpcCuriosInventory.extraSlotCount(), slots.size());
+        for (Slot slot : slots) {
+            assertTrue(slot instanceof SlotItemHandler);
+            assertTrue(((SlotItemHandler) slot).getItemHandler() instanceof IItemHandlerModifiable,
+                    "SlotItemHandler.set casts to IItemHandlerModifiable on container sync");
+        }
     }
 }

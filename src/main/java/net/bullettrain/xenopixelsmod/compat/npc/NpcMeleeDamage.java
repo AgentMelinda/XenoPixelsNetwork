@@ -36,6 +36,12 @@ public final class NpcMeleeDamage {
     /** Script-selected animation used only when this NPC's real melee damage lands. */
     private static final java.util.Map<java.util.UUID, MeleeAnimation> MELEE_ANIMATIONS =
             new java.util.concurrent.ConcurrentHashMap<>();
+    /** Next attack-page slot index for {@link NpcMeleeAnimCycle}. */
+    private static final java.util.Map<java.util.UUID, Integer> SLOT_CURSOR =
+            new java.util.concurrent.ConcurrentHashMap<>();
+    /** One-shot damage scale for brain specials (heavy hit). */
+    private static final java.util.Map<java.util.UUID, Float> NEXT_SCALE =
+            new java.util.concurrent.ConcurrentHashMap<>();
 
     private NpcMeleeDamage() {
     }
@@ -64,7 +70,47 @@ public final class NpcMeleeDamage {
     public static void clearAnimation(java.util.UUID npcId) {
         if (npcId != null) {
             MELEE_ANIMATIONS.remove(npcId);
+            SLOT_CURSOR.remove(npcId);
             NEXT_IS_RIGHT.remove(npcId);
+            NEXT_SCALE.remove(npcId);
+        }
+    }
+
+    /**
+     * Deals a profile-scaled melee hit and plays the PUNCH clip. {@code scale} is a one-shot
+     * multiplier (1 = a normal punch, 1.75 = Heavy Hit).
+     *
+     * <p>Refuses, and answers {@code false}, when the target is out of reach or behind cover. This
+     * method had no distance test at all, so every caller could deal melee damage from any range:
+     * an NPC would stand off and swing at nothing while its victim took hits. The gate lives here
+     * rather than in each caller precisely because there are several of them - a brain, the clone
+     * AI and scripts - and only one of them needs to forget for the behaviour to come back. Callers
+     * that get {@code false} should fall through to a ranged choice; see
+     * {@link NpcCombatRanges#withinMelee}.
+     */
+    public static boolean hit(LivingEntity attacker, LivingEntity target, float scale) {
+        if (attacker == null || target == null || attacker.level().isClientSide()
+                || !attacker.isAlive() || !target.isAlive() || attacker == target) {
+            return false;
+        }
+        if (!NpcCombatRanges.withinMelee(attacker, target)) {
+            return false;
+        }
+        NEXT_SCALE.put(attacker.getUUID(), scale <= 0.0f ? 1.0f : scale);
+        try {
+            onMeleeAttempt(attacker);
+            boolean landed = target.hurt(attacker.damageSources().mobAttack(attacker), 1.0f);
+            if (landed) {
+                NpcCombatProfile profile = NpcCombatProfile.readCached(attacker);
+                if (profile.npcMeleeKnockback > 0.0f) {
+                    target.knockback(profile.npcMeleeKnockback,
+                            attacker.getX() - target.getX(), attacker.getZ() - target.getZ());
+                }
+                applyNpcMeleeEffect(target, profile);
+            }
+            return landed;
+        } finally {
+            NEXT_SCALE.remove(attacker.getUUID());
         }
     }
 
@@ -122,7 +168,19 @@ public final class NpcMeleeDamage {
      * an ordinary mob, and those fail the first test.
      */
     public static boolean playsOwnAttackAnimation(LivingEntity attacker) {
-        if (attacker == null || !NpcTypes.isNpc(attacker) || !NpcCombatProfile.hasProfile(attacker)) {
+        boolean nativeXenoNpc = attacker instanceof net.bullettrain.xenopixelsmod.npc.XenoNpcEntity;
+        if (attacker == null
+                || (!nativeXenoNpc && !NpcTypes.isNpc(attacker))
+                // A native XenoNPC can use its default profile before it has been explicitly
+                // saved. That profile carries the built-in ordered DMZ punches; compatibility
+                // NPCs still need an authored profile before this hook changes their swing.
+                || (!nativeXenoNpc && !NpcCombatProfile.hasProfile(attacker))) {
+            return false;
+        }
+        if (nativeXenoNpc && NpcCombatProfile.MODEL_GECKOLIB.equals(
+                NpcCombatProfile.normalizeModelKind(NpcCombatProfile.readCached(attacker).modelKind))) {
+            // Native melee goals do not call onMeleeAttempt. Preserve their swing event for
+            // ordinary GeckoLib attack clips; the controller ignores it during a scripted clip.
             return false;
         }
         MeleeAnimation selected = MELEE_ANIMATIONS.get(attacker.getUUID());
@@ -131,23 +189,45 @@ public final class NpcMeleeDamage {
                     ? NpcDmzAnim.canAnimate(attacker)
                     : NpcGeckoAnim.canAnimate(attacker);
         }
+        NpcCombatProfile profile = NpcCombatProfile.read(attacker);
+        if (NpcMeleeAnimCycle.hasEnabledClip(profile)
+                && (NpcDmzAnim.canAnimate(attacker) || NpcGeckoAnim.canAnimate(attacker))) {
+            return true;
+        }
         // No configured clip: the built-in punch only plays on the Full DragonMineZ path.
         return NpcDmzAnim.canAnimate(attacker);
     }
 
     public static void onMeleeAttempt(LivingEntity attacker) {
+        boolean nativeXenoNpc = attacker instanceof net.bullettrain.xenopixelsmod.npc.XenoNpcEntity;
         if (attacker == null || attacker.level().isClientSide
-                || !attacker.isAlive() || !NpcCombatProfile.hasProfile(attacker)) {
+                || !attacker.isAlive()
+                || (!nativeXenoNpc && !NpcCombatProfile.hasProfile(attacker))) {
             return;
         }
+        NpcCombatProfile profile = NpcCombatProfile.read(attacker);
+        // An explicit script selection owns this hit. The attack-page cycle is a fallback;
+        // otherwise meleeHit immediately replaces the script's jab with its default punch.
         MeleeAnimation selected = MELEE_ANIMATIONS.get(attacker.getUUID());
         if (selected != null) {
             boolean played = selected.kind() == AnimationKind.DMZ
                     ? NpcDmzAnim.play(attacker, selected.name())
                     : NpcGeckoAnim.play(attacker, selected.name());
-            if (played) {
+            if (played) return;
+        }
+        NpcMeleeAnimCycle.Pick pick = NpcMeleeAnimCycle.next(profile,
+                SLOT_CURSOR.getOrDefault(attacker.getUUID(), 0));
+        if (!pick.clip().isBlank()) {
+            SLOT_CURSOR.put(attacker.getUUID(), pick.nextCursor());
+            if (playNamed(attacker, pick.clip())) {
                 return;
             }
+        }
+        if (net.bullettrain.xenopixelsmod.anim.CombatStateAnim.hasCustom(attacker,
+                net.bullettrain.xenopixelsmod.combat.anim.TechniqueAnimSlot.PUNCH)
+                && net.bullettrain.xenopixelsmod.anim.CombatStateAnim.play(attacker,
+                net.bullettrain.xenopixelsmod.combat.anim.TechniqueAnimSlot.PUNCH)) {
+            return;
         }
         if (!NpcDmzAnim.canAnimate(attacker)) {
             // No swing of our own here. The NPC mods' melee goal already calls swing() immediately
@@ -163,20 +243,71 @@ public final class NpcMeleeDamage {
                 : net.bullettrain.xenopixelsmod.combat.anim.Bt3AnimationIntent.BODY_PUNCH_LEFT);
     }
 
-    @SubscribeEvent
+    private static boolean playNamed(LivingEntity attacker, String animation) {
+        if (attacker == null || animation == null || animation.isBlank()) {
+            return false;
+        }
+        String name = animation.trim();
+        if (NpcDmzAnim.canAnimate(attacker)) {
+            String resolved = net.bullettrain.xenopixelsmod.api.anim.XenoAnimApi.resolve(name);
+            if (resolved != null && NpcDmzAnim.play(attacker, resolved)) {
+                return true;
+            }
+        }
+        return NpcGeckoAnim.canAnimate(attacker) && NpcGeckoAnim.play(attacker, name);
+    }
+
+    /**
+     * HIGHEST, so the real damage is in place before DragonMineZ's {@code CombatEvent.onLivingHurt}
+     * (HIGH) records the hit as the player's {@code dmz_raw_damage}; its LOWEST
+     * {@code overrideVanillaArmorReduction} rebuilds the damage from that raw value less defense, so
+     * an amount set any later is thrown away. 2026-09-30 owner: "he still cant hit me".
+     */
+    @SubscribeEvent(priority = net.neoforged.bus.api.EventPriority.HIGHEST)
     public static void onNpcMelee(LivingDamageEvent.Pre event) {
         if (event.getSource().getEntity() instanceof LivingEntity attacker
                 && event.getSource().getDirectEntity() == attacker
                 && !MainDamageTypes.isStrikeAttackDamage(event.getSource())
-                && NpcCombatProfile.hasProfile(attacker)) {
+                && (NpcCombatProfile.hasProfile(attacker)
+                    || attacker instanceof net.bullettrain.xenopixelsmod.npc.XenoNpcEntity)) {
             NpcCombatProfile profile = NpcCombatProfile.read(attacker);
-            double staminaCost = Math.max(1.0, Math.ceil(profile.meleeDamage()
+            double meleeDamage = NpcDmzStats.meleeDamage(attacker, profile);
+            double staminaCost = Math.max(1.0, Math.ceil(meleeDamage
                     * ConfigManager.getCombatConfig().getStaminaConsumptionRatio()));
-            float damage = NpcResources.spendStamina(attacker, profile, staminaCost)
-                    ? profile.meleeDamage() : 1.0f;
-            float residual = XenoServerConfig.npcDmzStatsAuthoritative
-                    ? 0.0f : Math.max(0f, event.getOriginalDamage() - 1.0f);
-            event.setNewDamage(damage + residual);
+            // Tired makes a punch weaker, not meaningless. The cost rises with the damage while the
+            // pool is set by RES, so any NPC built to hit hard cannot pay in full -- and the old
+            // all-or-nothing spend then dropped the hit to a flat 1.0, which is why a character with
+            // enormous strength still scratched.
+            float dmzDamage = (float) (meleeDamage
+                    * NpcResources.spendStaminaPartial(attacker, profile, staminaCost));
+            float residual = Math.max(0f, event.getOriginalDamage() - 1.0f);
+            float damage = switch (XenoServerConfig.normalizedNpcDamageMode()) {
+                case "mynpc" -> event.getOriginalDamage();
+                case "numeric" -> XenoServerConfig.npcNumericDamage;
+                default -> dmzDamage;
+            };
+            if (XenoServerConfig.normalizedNpcDamageMode().equals("dmz")
+                    && !XenoServerConfig.npcDmzStatsAuthoritative) {
+                damage += residual;
+            }
+            if (profile.npcMeleeDamage > 0.0f) {
+                damage = profile.npcMeleeDamage;
+            }
+            float scale = NEXT_SCALE.getOrDefault(attacker.getUUID(), 1.0f);
+            event.setNewDamage(damage * scale);
+            if (attacker instanceof net.bullettrain.xenopixelsmod.npc.XenoNpcEntity npc) {
+                LivingEntity target = event.getEntity();
+                final float dealt = event.getNewDamage();
+                var scriptEvent = net.bullettrain.xenopixelsmod.npc.script.NpcScriptHost.fireEvent(
+                        npc, "meleeAttack", target instanceof net.minecraft.world.entity.player.Player
+                                ? target : null, null, target, dealt,
+                        n -> new xenoapi.npcs.api.event.NpcEvent.MeleeAttackEvent(n, target, dealt));
+                if (scriptEvent != null) {
+                    float scripted = scriptEvent.getDamage();
+                    event.setNewDamage(scriptEvent.isCanceled() || !Float.isFinite(scripted)
+                            ? 0.0f : Math.max(0.0f, scripted));
+                }
+            }
         }
 
         if (NpcCombatProfile.hasProfile(event.getEntity())) {
@@ -195,6 +326,28 @@ public final class NpcMeleeDamage {
                 mitigated *= GUARD_DAMAGE_MULTIPLIER;
             }
             event.setNewDamage((float) mitigated);
+            int resistance = NpcDamageCategory.resistanceFor(
+                    event.getSource(), defender);
+            if (resistance > 0) {
+                event.setNewDamage(event.getNewDamage() * (1.0f - resistance / 100.0f));
+            }
         }
+    }
+
+    private static void applyNpcMeleeEffect(LivingEntity target, NpcCombatProfile profile) {
+        if (target == null || profile == null || profile.npcMeleeEffect == null
+                || profile.npcMeleeEffect.isBlank()) {
+            return;
+        }
+        if ("minecraft:fire".equals(profile.npcMeleeEffect)) {
+            target.igniteForSeconds(Math.max(1, profile.npcMeleeEffectDuration / 20));
+            return;
+        }
+        net.minecraft.resources.ResourceLocation id = net.minecraft.resources.ResourceLocation
+                .tryParse(profile.npcMeleeEffect);
+        if (id == null) return;
+        net.minecraft.core.registries.BuiltInRegistries.MOB_EFFECT.getHolder(id).ifPresent(effect ->
+                target.addEffect(new net.minecraft.world.effect.MobEffectInstance(effect,
+                        profile.npcMeleeEffectDuration, profile.npcMeleeEffectAmplifier)));
     }
 }

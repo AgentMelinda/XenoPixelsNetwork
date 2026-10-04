@@ -1,0 +1,22 @@
+{
+  "interact": [
+    "Hey there, {player}.",
+    "Something you need?",
+    "Still here, I see.",
+    "Talk to me again and I'll start charging."
+  ],
+  "attack": [
+    "You asked for this!",
+    "Come on then."
+  ],
+  "kill": [
+    "Stay down."
+  ],
+  "killed": [
+    "...not bad."
+  ],
+  "random": [
+    "Hm.",
+    "Quiet today."
+  ]
+}

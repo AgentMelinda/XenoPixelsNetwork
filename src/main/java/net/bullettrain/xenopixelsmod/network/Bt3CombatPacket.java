@@ -73,7 +73,11 @@ public class Bt3CombatPacket {
         /** Sync ki charge percent to clones (0-100). Appended — do not reorder. */
         SYNC_KI_CHARGE,
         /** X-X-X then Dragon Dash button automatic cinematic rush. Appended — do not reorder. */
-        CINEMATIC_RUSH
+        CINEMATIC_RUSH,
+        /** Grant-gated rush-combo strike. Appended — do not reorder. */
+        RUSH_COMBO,
+        /** Grant-gated lift-combo strike. Appended — do not reorder. */
+        LIFT_COMBO
     }
 
     /** Fallback when config has not loaded yet. Prefer {@link XenoServerConfig#vanishGap}. */
@@ -146,6 +150,12 @@ public class Bt3CombatPacket {
         ctx.get().enqueueWork(() -> {
             ServerPlayer player = ctx.get().getSender();
             if (player == null) return;
+            // The controller mode owns the mash string: under bt3_manual the legacy COMBO_HIT /
+            // CINEMATIC_RUSH packets are refused outright, whatever the client believes.
+            if (!net.bullettrain.xenopixelsmod.combat.controller.LegacyActionPolicy.allowed(
+                    msg.action, XenoServerConfig.controllerMode())) {
+                return;
+            }
             if (msg.action == Action.SYNC_KI_CHARGE) {
                 // Protocol compatibility only. Older clients may still send this obsolete
                 // melee-charge message; it must not enter target validation or consume pacing.
@@ -173,7 +183,8 @@ public class Bt3CombatPacket {
                 return;
             }
             try {
-                if (!XenoServerConfig.bt3CombatEnabled || !player.isAlive() || player.isSpectator()
+                boolean comboAction = msg.action == Action.RUSH_COMBO || msg.action == Action.LIFT_COMBO;
+                if ((!XenoServerConfig.bt3CombatEnabled && !comboAction) || !player.isAlive() || player.isSpectator()
                         || player.getVehicle() instanceof net.bullettrain.xenopixelsmod.aero.seat.XenoPilotSeatEntity) return;
                 if ((msg.action == Action.COMBO_HIT || msg.action == Action.CHARGE_FIST
                         || msg.action == Action.CINEMATIC_RUSH)
@@ -207,7 +218,9 @@ public class Bt3CombatPacket {
                         && msg.action != Action.ULTIMATE
                         && msg.action != Action.HAKAI_CANCEL
                         && msg.action != Action.HAKAI_START
-                        && msg.action != Action.CHASE_STOP) {
+                        && msg.action != Action.CHASE_STOP
+                        && msg.action != Action.RUSH_COMBO
+                        && msg.action != Action.LIFT_COMBO) {
                     return;
                 }
                 // Never let BT3 tools hit DMZ masters
@@ -349,6 +362,10 @@ public class Bt3CombatPacket {
                     }
                     case HAKAI_START -> startHakai(player, target);
                     case HAKAI_CANCEL -> net.bullettrain.xenopixelsmod.combat.HakaiChannelSystem.cancel(player, null);
+                    case RUSH_COMBO -> net.bullettrain.xenopixelsmod.combat.technique.XenoComboStrikes
+                            .cast(player, net.bullettrain.xenopixelsmod.combat.technique.XenoComboStrikes.RUSH_COMBO, target);
+                    case LIFT_COMBO -> net.bullettrain.xenopixelsmod.combat.technique.XenoComboStrikes
+                            .cast(player, net.bullettrain.xenopixelsmod.combat.technique.XenoComboStrikes.LIFT_COMBO, target);
                 }
             } finally {
                 if (msg.action == Action.CHASE_DASH) ChaseFlightSystem.syncState(player);
@@ -438,6 +455,8 @@ net.bullettrain.xenopixelsmod.combat.VanishShadeFx.spawn(player, from);
     private static void handleUntargetedCharge(ServerPlayer player, Resources res, StatsData data,
                                                boolean kick, int chargePercent, int verticalBias) {
         float charge = Math.max(0.25f, Math.min(1f, chargePercent / 100f));
+        if (kick) charge = net.bullettrain.xenopixelsmod.combat.Bt3KickAndPunchRules.kickCharge(
+                charge, XenoServerConfig.kickTapCharge);
         float stamCost = kick
                 ? XenoServerConfig.kickReleaseStamina(charge, verticalBias)
                 : XenoServerConfig.fistReleaseStamina(charge);
@@ -487,7 +506,7 @@ net.bullettrain.xenopixelsmod.combat.VanishShadeFx.spawn(player, from);
                 CombatKnockback.add(living, flat.scale(kb).add(0, up, 0));
                 playHitSound(player, living, full);
             }
-            CombatFx.impact(player.serverLevel(), living, flat,
+            CombatFx.impact(player.serverLevel(), player, living, flat,
                     full ? CombatFx.Weight.HEAVY : CombatFx.Weight.LIGHT);
             anyHit = true;
         }
@@ -497,6 +516,9 @@ net.bullettrain.xenopixelsmod.combat.VanishShadeFx.spawn(player, from);
     private static void handleChargeAttack(ServerPlayer player, LivingEntity target, Resources res, StatsData data,
                                            boolean kick, int chargePercent, int verticalBias) {
         float charge = Math.max(0.25f, Math.min(1f, chargePercent / 100f));
+        // One click of the kick key is a proper kick; holding charges past it.
+        if (kick) charge = net.bullettrain.xenopixelsmod.combat.Bt3KickAndPunchRules.kickCharge(
+                charge, XenoServerConfig.kickTapCharge);
         double engageRange = kick ? kickHitRange(charge, verticalBias) : XenoServerConfig.chargeAttackRange;
         if (player.distanceTo(target) > engageRange + 1.5) return;
         float stamCost = kick
@@ -537,9 +559,11 @@ net.bullettrain.xenopixelsmod.combat.VanishShadeFx.spawn(player, from);
                     DragonHoming.open(player, target);
                 }
             } else {
-                double kb = 0.85 * (0.6 + charge);
-                double up = 0.18 + charge * 0.15;
-                CombatKnockback.add(target, kbFlat.scale(kb).add(0, up, 0));
+                // Distance and arc: /xenoset chargePunchKnockback, chargePunchParabolic,
+                // chargePunchArcHeight. The defaults are the original shove.
+                CombatKnockback.add(target, net.bullettrain.xenopixelsmod.combat.Bt3KickAndPunchRules
+                        .chargePunchKnockback(kbFlat, charge, XenoServerConfig.chargePunchKnockback,
+                                XenoServerConfig.chargePunchParabolic, XenoServerConfig.chargePunchArcHeight));
             }
         }
 
@@ -549,52 +573,25 @@ net.bullettrain.xenopixelsmod.combat.VanishShadeFx.spawn(player, from);
             playHitSound(player, target, full);
         }
         Vec3 blow = kbFlat.lengthSqr() > 1.0e-4 ? kbFlat : player.getLookAngle();
-        CombatFx.impact(player.serverLevel(), target, blow,
+        CombatFx.impact(player.serverLevel(), player, target, blow,
                 full ? CombatFx.Weight.HEAVY : CombatFx.Weight.LIGHT);
     }
 
-    /** Hit reach for charged kicks; S-hold extends range. */
-    private static double kickHitRange(float charge, int verticalBias) {
-        double base = Math.max(5.5, XenoServerConfig.chargeAttackRange + 0.75);
-        if (verticalBias < 0) {
-            base += XenoServerConfig.kickDownRangeBonus * (0.75 + 0.35 * charge);
-        }
-        return base;
+    /** Moved to {@link net.bullettrain.xenopixelsmod.combat.Bt3Landing}; kept for callers. */
+    public static double kickHitRange(float charge, int verticalBias) {
+        return net.bullettrain.xenopixelsmod.combat.Bt3Landing.kickHitRange(charge, verticalBias);
     }
 
-    /**
-     * +1 W = launch target upward, -1 S = smash downward, 0 = default arc.
-     */
-    private static Vec3 kickTargetLaunch(Vec3 awayFlat, float charge, int verticalBias) {
-        double horiz = (0.9 + charge) * (verticalBias == 0 ? 1.0 : 0.55)
-                * Math.max(0.1, XenoServerConfig.kickKnockbackScale);
-        double up;
-        if (verticalBias > 0) {
-            double scale = Math.max(0.1, XenoServerConfig.kickKnockbackScale);
-            double[] d = net.bullettrain.xenopixelsmod.combat.Bt3ComboChoreography.launcherDelta(
-                    awayFlat.x, awayFlat.z,
-                    XenoServerConfig.comboLauncherHoriz * scale,
-                    XenoServerConfig.comboLauncherUp);
-            return new Vec3(d[0], d[1], d[2]);
-        } else if (verticalBias < 0) {
-            up = -XenoServerConfig.kickDownLaunch * (0.7 + charge * 0.8);
-            horiz *= 0.65;
-        } else {
-            return ballArcLaunch(awayFlat, charge);
-        }
-        return awayFlat.normalize().scale(horiz).add(0, up, 0);
-    }
-
-    /** Ballistic hang-time arc for kicks (mash + charged). */
     private static Vec3 ballArcLaunch(Vec3 awayFlat, float charge) {
-        float c = Math.max(0.25f, Math.min(1.0f, charge));
-        double scale = Math.max(0.1, XenoServerConfig.kickKnockbackScale);
-        double horiz = Math.max(0.7, XenoServerConfig.comboLauncherHoriz * 1.5) * scale * (0.75 + 0.4 * c);
-        double up = Math.max(1.5, XenoServerConfig.comboLauncherUp * 0.95) * (0.8 + 0.35 * c);
-        double[] d = net.bullettrain.xenopixelsmod.combat.Bt3ComboChoreography.launcherDelta(
-                awayFlat.x, awayFlat.z, horiz, up);
-        return new Vec3(d[0], d[1], d[2]);
+        return net.bullettrain.xenopixelsmod.combat.Bt3Landing.ballArcLaunch(awayFlat, charge);
     }
+
+    /** Moved to {@link net.bullettrain.xenopixelsmod.combat.Bt3Landing}; kept for callers. */
+    public static Vec3 kickTargetLaunch(Vec3 awayFlat, float charge, int verticalBias) {
+        return net.bullettrain.xenopixelsmod.combat.Bt3Landing.kickTargetLaunch(awayFlat, charge, verticalBias);
+    }
+
+
 
     private static double kickVerticalImpulse(ServerPlayer player, float charge, int verticalBias, boolean aerialSelf) {
         if (verticalBias > 0) {
@@ -813,7 +810,7 @@ net.bullettrain.xenopixelsmod.combat.VanishShadeFx.spawn(player, from);
                 }
             }
             playHitSound(player, target, false);
-            CombatFx.impact(player.serverLevel(), target,
+            CombatFx.impact(player.serverLevel(), player, target,
                     target.position().subtract(player.position()), CombatFx.Weight.LIGHT);
         }
         player.displayClientMessage(net.minecraft.network.chat.Component.literal("§dRUSH CHAIN"), true);
@@ -1235,7 +1232,7 @@ net.bullettrain.xenopixelsmod.combat.VanishShadeFx.spawn(player, from);
                 playHitSound(player, target, finisher);
             }
             Vec3 blow = kbFlat.lengthSqr() > 1.0e-4 ? kbFlat : player.getLookAngle();
-            CombatFx.impact(player.serverLevel(), target, blow,
+            CombatFx.impact(player.serverLevel(), player, target, blow,
                     launcher || finisher ? CombatFx.Weight.HEAVY : CombatFx.Weight.LIGHT);
             if (beat.finisher()) {
                     net.bullettrain.xenopixelsmod.combat.Bt3CombatLimiter.resetCombo(player);
@@ -1269,7 +1266,20 @@ net.bullettrain.xenopixelsmod.combat.VanishShadeFx.spawn(player, from);
             hakaiFail(player, "Hakai: unlock it in the skill tree first (/xenoskills)");
             return;
         }
-        if (net.bullettrain.xenopixelsmod.combat.HakaiChannelSystem.isChanneling(player)) {
+        if (net.bullettrain.xenopixelsmod.combat.HakaiChannelSystem.isChanneling(player)
+                || net.bullettrain.xenopixelsmod.combat.HakaiAreaSystem.isChanneling(player)) {
+            return;
+        }
+        // /xenoset hakaiMode area: everything in a sphere where the player looks, no target needed.
+        if (net.bullettrain.xenopixelsmod.combat.HakaiAreaRules.parseMode(XenoServerConfig.hakaiMode)
+                == net.bullettrain.xenopixelsmod.combat.HakaiAreaRules.Mode.AREA) {
+            if (!XenoServerConfig.hakaiEnabled) {
+                hakaiFail(player, "Hakai is disabled");
+                return;
+            }
+            net.bullettrain.xenopixelsmod.combat.HakaiAreaSystem.start(player,
+                    net.bullettrain.xenopixelsmod.combat.HakaiAreaSystem.lookCentre(player,
+                            XenoServerConfig.hakaiMaxRange), true);
             return;
         }
         if (target == null) {
@@ -1351,137 +1361,27 @@ net.bullettrain.xenopixelsmod.combat.VanishShadeFx.spawn(player, from);
         player.fallDistance = 0f;
     }
 
-    /**
-     * BT3 vanish: land just past the target (their back relative to you),
-     * offset left (A) or right (D). Always at the target's height so you don't
-     * stay sky-high and "fly away".
-     *
-     * @param side -1 left, +1 right, 0 center-behind
-     */
+    /** Moved to {@link net.bullettrain.xenopixelsmod.combat.Bt3Landing}; kept for callers. */
     public static Vec3 vanishBehind(Entity player, LivingEntity target) {
-        return vanishBehind(player, target, 0);
+        return net.bullettrain.xenopixelsmod.combat.Bt3Landing.vanishBehind(player, target);
     }
 
+    /** Moved to {@link net.bullettrain.xenopixelsmod.combat.Bt3Landing}; kept for callers. */
     public static Vec3 vanishBehind(Entity player, LivingEntity target, int side) {
-        return vanishPoint(
-                player.getX(), player.getZ(),
-                target.getX(), target.getY(), target.getZ(),
-                target.yBodyRot, side,
-                Math.max(0.0, XenoServerConfig.vanishGap),
-                Math.max(0.0, XenoServerConfig.vanishSide),
-                Math.max(0.0, XenoServerConfig.vanishNearField));
+        return net.bullettrain.xenopixelsmod.combat.Bt3Landing.vanishBehind(player, target, side);
     }
 
-    /**
-     * The vanish landing point, as pure geometry.
-     *
-     * <p>At range the landing direction is the line you came in on, so you end up past the target
-     * on the far side from where you stood — the original behaviour, reproduced exactly once
-     * {@code sep >= nearField}.
-     *
-     * <p>Up close that line stops meaning anything. It used to be trusted down to a hundredth of a
-     * block, and a vector that short is noise: it flips between frames, and the client — which
-     * predicts this same landing from positions roughly a hundred milliseconds behind the
-     * server's — could compute a direction opposite to the one the server picked and get yanked
-     * across the target. Hovering directly above or below someone made it worse still, because the
-     * horizontal separation there is near zero while the fight is very much close range. So the
-     * closer you are, the more the direction comes from the target's own body facing, which is
-     * both the spot a vanish is supposed to land on and a value that is synchronised between
-     * client and server in a way a sub-block position delta is not. The two blend, so there is no
-     * snap as you cross the boundary, and {@code nearField} of zero disables the near-field
-     * behaviour entirely.
-     *
-     * @param targetBodyYawDeg the target's {@code yBodyRot}
-     * @param side             -1 left, +1 right, 0 centre-behind
-     */
+    /** Moved to {@link net.bullettrain.xenopixelsmod.combat.Bt3Landing}; kept for callers. */
     public static Vec3 vanishPoint(double px, double pz, double tx, double ty, double tz,
                                    float targetBodyYawDeg, int side,
                                    double gap, double sideOff, double nearField) {
-        double yaw = Math.toRadians(targetBodyYawDeg);
-        // Minecraft yaw: facing = (-sin, cos), so the target's back is the negation of that.
-        double backX = Math.sin(yaw);
-        double backZ = -Math.cos(yaw);
-
-        double ax = tx - px;
-        double az = tz - pz;
-        double sep = Math.sqrt(ax * ax + az * az);
-
-        double dirX;
-        double dirZ;
-        if (sep < 1.0e-6) {
-            dirX = backX;
-            dirZ = backZ;
-        } else {
-            double t = nearField <= 0.0 ? 1.0 : Math.min(1.0, sep / nearField);
-            double bx = ax / sep * t + backX * (1.0 - t);
-            double bz = az / sep * t + backZ * (1.0 - t);
-            double len = Math.sqrt(bx * bx + bz * bz);
-            if (len < 1.0e-6) {
-                // Approach and back point opposite ways and cancelled: you are already standing at
-                // their back while they face you, and their back is the answer anyway.
-                dirX = backX;
-                dirZ = backZ;
-            } else {
-                dirX = bx / len;
-                dirZ = bz / len;
-            }
-        }
-
-        double rightX = -dirZ;
-        double rightZ = dirX;
-        double s = side < 0 ? -sideOff : (side > 0 ? sideOff : 0.0);
-        return new Vec3(
-                tx + dirX * gap + rightX * s,
-                ty,
-                tz + dirZ * gap + rightZ * s);
+        return net.bullettrain.xenopixelsmod.combat.Bt3Landing.vanishPoint(px, pz, tx, ty, tz, targetBodyYawDeg, side,
+                gap, sideOff, nearField);
     }
 
-    /**
-     * {@link #vanishBehind} moved off anything solid.
-     *
-     * <p>Nothing on the vanish path used to check this, so a vanish aimed into terrain teleported
-     * the fighter into the terrain. The candidates are a fixed list rather than a search, because
-     * the attacking client runs this too in order to predict its own landing and any difference in
-     * the order the two sides try spots shows up as a rubber-band. A vanish with nowhere to go
-     * leaves the fighter standing where they were, which is a wasted move rather than a
-     * suffocation.
-     */
+    /** Moved to {@link net.bullettrain.xenopixelsmod.combat.Bt3Landing}; kept for callers. */
     public static Vec3 vanishLanding(Entity player, LivingEntity target, int side) {
-        Vec3 preferred = vanishBehind(player, target, side);
-        if (!XenoServerConfig.vanishOpenSpotSearch || isSpotOpen(player, preferred)) {
-            return preferred;
-        }
-        Vec3 centre = vanishBehind(player, target, 0);
-        double dirX = centre.x - target.getX();
-        double dirZ = centre.z - target.getZ();
-        double len = Math.sqrt(dirX * dirX + dirZ * dirZ);
-        if (len > 1.0e-6) {
-            double rightX = -dirZ / len;
-            double rightZ = dirX / len;
-            for (double lateral : new double[]{0.75, -0.75, 1.5, -1.5}) {
-                Vec3 candidate = new Vec3(
-                        preferred.x + rightX * lateral, preferred.y, preferred.z + rightZ * lateral);
-                if (isSpotOpen(player, candidate)) {
-                    return candidate;
-                }
-            }
-            for (double shrink : new double[]{0.75, 0.5}) {
-                Vec3 candidate = new Vec3(
-                        target.getX() + (preferred.x - target.getX()) * shrink,
-                        preferred.y,
-                        target.getZ() + (preferred.z - target.getZ()) * shrink);
-                if (isSpotOpen(player, candidate)) {
-                    return candidate;
-                }
-            }
-        }
-        if (side != 0) {
-            Vec3 mirrored = vanishBehind(player, target, -side);
-            if (isSpotOpen(player, mirrored)) {
-                return mirrored;
-            }
-        }
-        return player.position();
+        return net.bullettrain.xenopixelsmod.combat.Bt3Landing.vanishLanding(player, target, side);
     }
 
     private static Vec3 openRingLanding(Entity player, LivingEntity target, int preferred,
@@ -1496,19 +1396,9 @@ net.bullettrain.xenopixelsmod.combat.VanishShadeFx.spawn(player, from);
         return player.position();
     }
 
-    /** Land on the target (or {@link XenoServerConfig#chaseStopGap} short), at their height. */
+    /** Moved to {@link net.bullettrain.xenopixelsmod.combat.Bt3Landing}; kept for callers. */
     public static Vec3 chaseLanding(Entity player, LivingEntity target) {
-        Vec3 flat = new Vec3(target.getX() - player.getX(), 0, target.getZ() - player.getZ());
-        if (flat.lengthSqr() < 1.0e-4) {
-            flat = new Vec3(0, 0, 1);
-        } else {
-            flat = flat.normalize();
-        }
-        double gap = Math.max(0.0, XenoServerConfig.chaseStopGap);
-        return new Vec3(
-                target.getX() - flat.x * gap,
-                target.getY(),
-                target.getZ() - flat.z * gap);
+        return net.bullettrain.xenopixelsmod.combat.Bt3Landing.chaseLanding(player, target);
     }
 
     /** Step away from target horizontally; keep player Y for air combat. */
@@ -1539,15 +1429,9 @@ net.bullettrain.xenopixelsmod.combat.VanishShadeFx.spawn(player, from);
         return preferred;
     }
 
+    /** Moved to {@link net.bullettrain.xenopixelsmod.combat.Bt3Landing}; kept for callers. */
     public static boolean isSpotOpen(Entity player, Vec3 pos) {
-        if (player == null || pos == null || player.level() == null) {
-            return false;
-        }
-        var box = player.getBoundingBox().move(
-                pos.x - player.getX(),
-                pos.y - player.getY(),
-                pos.z - player.getZ());
-        return player.level().noCollision(player, box);
+        return net.bullettrain.xenopixelsmod.combat.Bt3Landing.isSpotOpen(player, pos);
     }
 
     static void playItSound(ServerPlayer player, double x, double y, double z, boolean leave) {

@@ -3,7 +3,8 @@
     "xenopixels_fan_ss",
     "xenopixels_divinity",
     "xenopixels_saga_forms",
-    "xenopixels_dark_frieza"
+    "xenopixels_dark_frieza",
+    "xenopixels_destroyer"
   ],
   "formSkillsRemove": [
     "ssj_legend",
@@ -56,6 +57,8 @@
         1,
         1,
         1,
+        1,
+        1,
         1
       ],
       "allowedRaces": []
@@ -90,6 +93,20 @@
         5000
       ],
       "allowedRaces": []
+    },
+    "xenopixels_destroyer": {
+      "costs": [
+        1
+      ],
+      "allowedRaces": []
+    },
+    "xenopixels_ikari": {
+      "costs": [
+        60000
+      ],
+      "allowedRaces": [
+        "saiyan"
+      ]
     }
   },
   "nonFormSkillOfferings": {
@@ -111,5 +128,8 @@
     "piccolo": [
       "sparking"
     ]
-  }
+  },
+  "stackSkillsAdd": [
+    "xenopixels_ikari"
+  ]
 }

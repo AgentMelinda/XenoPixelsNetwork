@@ -6,6 +6,7 @@ import com.mojang.brigadier.arguments.IntegerArgumentType;
 import com.mojang.brigadier.builder.LiteralArgumentBuilder;
 import net.bullettrain.xenopixelsmod.XenoPixelsMod;
 import net.bullettrain.xenopixelsmod.block.custom.WingPanelDebugRotation;
+import net.bullettrain.xenopixelsmod.client.guidance.GuidanceV2Client;
 import net.minecraft.client.Minecraft;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
@@ -65,17 +66,27 @@ public final class WingPanelDebugCommands {
                 .then(Commands.literal("orient")
                         .then(orientNode("normal"))
                         .then(orientNode("horizontal"))
-                        .then(orientNode("vertical")))
+                        .then(orientNode("vertical"))
+                        .then(Commands.literal("reset").executes(ctx -> resetOrient())))
                 .then(Commands.literal("status").executes(ctx -> {
                     double test = WingPanelDebugRotation.testDeflectDeg;
+                    boolean v2 = GuidanceV2Client.isV2();
                     feedback("§bdeflectaxis=§f" + WingPanelDebugRotation.deflectAxis.getSerializedName()
                             + " §bdeflectsign=§f" + (WingPanelDebugRotation.deflectNegated ? "-" : "+")
                             + " §bstatictwist=§f" + triple(WingPanelDebugRotation.staticTwistXDegrees,
                                     WingPanelDebugRotation.staticTwistYDegrees, WingPanelDebugRotation.staticTwistZDegrees)
                             + " §btestdeflect=§f" + (Double.isNaN(test) ? "off" : test + "°"));
-                    feedback("§borient §fnormal=" + triple(WingPanelDebugRotation.normalOrient)
-                            + " §fhorizontal=" + triple(WingPanelDebugRotation.horizontalOrient)
-                            + " §fvertical=" + triple(WingPanelDebugRotation.verticalOrient));
+                    if (v2) {
+                        feedback("§borient v2 extra §fnormal=" + triple(WingPanelDebugRotation.forkNormalOrient)
+                                + " §fhorizontal=" + triple(WingPanelDebugRotation.forkHorizontalOrient)
+                                + " §fvertical=" + triple(WingPanelDebugRotation.forkVerticalOrient)
+                                + " §7(added on top of flap facing)");
+                    } else {
+                        feedback("§borient §fnormal=" + triple(WingPanelDebugRotation.normalOrient)
+                                + " §fhorizontal=" + triple(WingPanelDebugRotation.horizontalOrient)
+                                + " §fvertical=" + triple(WingPanelDebugRotation.verticalOrient)
+                                + " §7(stock — /xenoguidance system v2 for fork extras)");
+                    }
                     return 1;
                 })));
     }
@@ -134,14 +145,46 @@ public final class WingPanelDebugCommands {
     }
 
     private static int setOrient(String type, int idx, int degrees) {
-        int[] target = switch (type) {
-            case "horizontal" -> WingPanelDebugRotation.horizontalOrient;
-            case "vertical" -> WingPanelDebugRotation.verticalOrient;
-            default -> WingPanelDebugRotation.normalOrient;
-        };
+        int[] target = orientTarget(type);
         target[idx] = degrees;
-        feedback("§bOrient " + type + ": §f" + triple(target));
+        feedback(GuidanceV2Client.isV2()
+                ? "§bOrient v2 extra " + type + ": §f" + triple(target) + " §7(on top of facing)"
+                : "§bOrient " + type + ": §f" + triple(target));
         return 1;
+    }
+
+    private static int resetOrient() {
+        if (GuidanceV2Client.isV2()) {
+            WingPanelDebugRotation.resetForkOrient();
+            feedback("§bOrient v2 extras reset to 0/0/0");
+            return 1;
+        }
+        setTriple(WingPanelDebugRotation.normalOrient, 0, -90, 180);
+        setTriple(WingPanelDebugRotation.horizontalOrient, 0, 0, 0);
+        setTriple(WingPanelDebugRotation.verticalOrient, 90, 180, 90);
+        feedback("§bOrient stock reset to defaults");
+        return 1;
+    }
+
+    private static int[] orientTarget(String type) {
+        boolean v2 = GuidanceV2Client.isV2();
+        return switch (type) {
+            case "horizontal" -> v2
+                    ? WingPanelDebugRotation.forkHorizontalOrient
+                    : WingPanelDebugRotation.horizontalOrient;
+            case "vertical" -> v2
+                    ? WingPanelDebugRotation.forkVerticalOrient
+                    : WingPanelDebugRotation.verticalOrient;
+            default -> v2
+                    ? WingPanelDebugRotation.forkNormalOrient
+                    : WingPanelDebugRotation.normalOrient;
+        };
+    }
+
+    private static void setTriple(int[] xyz, int x, int y, int z) {
+        xyz[0] = x;
+        xyz[1] = y;
+        xyz[2] = z;
     }
 
     private static String triple(int[] xyz) {

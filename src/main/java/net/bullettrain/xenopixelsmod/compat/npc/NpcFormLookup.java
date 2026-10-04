@@ -1,5 +1,7 @@
 package net.bullettrain.xenopixelsmod.compat.npc;
 
+import net.bullettrain.xenopixelsmod.XenoPixelsMod;
+
 import com.dragonminez.common.config.ConfigManager;
 import com.dragonminez.common.config.FormConfig;
 import com.dragonminez.common.stats.extras.FormMasteries;
@@ -17,6 +19,27 @@ import java.util.Map;
  */
 public final class NpcFormLookup {
     private NpcFormLookup() {}
+
+    /**
+     * Every race DragonMineZ has loaded, for the editor's race cycle.
+     *
+     * <p>Comes from {@code ConfigManager.getLoadedRaces()} rather than a list written here, so the
+     * cycle follows whatever races are actually installed - including ones added by a pack. Falls
+     * back to an empty list on any failure, and callers treat empty as "keep the typed value".
+     */
+    public static List<String> races() {
+        try {
+            List<String> loaded = ConfigManager.getLoadedRaces();
+            if (loaded == null || loaded.isEmpty()) {
+                return List.of();
+            }
+            List<String> sorted = new ArrayList<>(loaded);
+            sorted.sort(String::compareTo);
+            return sorted;
+        } catch (Throwable ignored) {
+            return List.of();
+        }
+    }
 
     public static List<String> groups(String race) {
         try {
@@ -212,14 +235,30 @@ public final class NpcFormLookup {
         return base * factor;
     }
 
+    /**
+     * Whether two forms may be stacked.
+     *
+     * <p>A throw answers <b>no</b>. It used to answer yes, which meant a DragonMineZ change that
+     * broke {@code isIncompatibleWith} would silently let an NPC stack two forms a pack had
+     * declared incompatible - and nothing would say so, because the exception was swallowed.
+     * Refusing a stack is visible and recoverable; granting one that a pack forbade is neither.
+     *
+     * <p>A missing form on either side is still yes: that is "nothing to be incompatible with",
+     * not a failed check.
+     */
     public static boolean compatible(NpcCombatProfile profile, FormConfig.FormData normal,
                                      String normalGroup, FormConfig.FormData stack, String stackGroup) {
         if (normal == null || stack == null) return true;
         try {
             return !normal.isIncompatibleWith(stackGroup, stack.getName())
                     && !stack.isIncompatibleWith(normalGroup, normal.getName());
-        } catch (Throwable ignored) {
-            return true;
+        } catch (Throwable t) {
+            // Logged rather than ignored: a silent refusal is as hard to diagnose as a silent
+            // permit, and this one only fires when a dependency has moved under us.
+            XenoPixelsMod.LOGGER.warn(
+                    "Form compatibility check failed for {} + {}; refusing the stack: {}",
+                    normal.getName(), stack.getName(), t.toString());
+            return false;
         }
     }
 

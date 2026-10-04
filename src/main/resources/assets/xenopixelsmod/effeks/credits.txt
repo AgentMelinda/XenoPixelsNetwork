@@ -1,0 +1,9 @@
+Stand-in effects (2026-09-28): Effekseer 1.80.6 samples, CC-0.
+Thanks to Effekseer (https://effekseer.github.io) and the sample authors (Tktk03 for ToonHit).
+hakai_channel, hakai_crumble, hakai_erase, hakai_palm: made for XenoPixels by tools/effekseer/gen_hakai_effects.py
+(generated textures; the veil follows the structure of the Effekseer 1.6 sample Aura01).
+Replace any <slot>/<slot>.efkefc with your own effect of the same name.
+missile_thruster, ship_thruster, sparking_aura, sparking_burst: made for XenoPixels by
+tools/effekseer/gen_effects.py (generated textures).
+aura, aura2, aura3: made for XenoPixels by tools/effekseer/gen_effects.py (generated textures;
+aura3 = spiked silhouette + punch/ki-blast edges + form-coloured sparking).

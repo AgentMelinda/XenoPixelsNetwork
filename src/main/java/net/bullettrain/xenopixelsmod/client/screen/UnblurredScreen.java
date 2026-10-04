@@ -15,6 +15,8 @@ public abstract class UnblurredScreen extends Screen {
 
     @Override
     public void renderBackground(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
-        this.renderTransparentBackground(graphics);
+        // renderTransparentBackground applies Minecraft's post-process blur. Keep the world
+        // sharp and add only the usual translucent menu dim behind the atlas screen.
+        graphics.fill(0, 0, width, height, 0x90000000);
     }
 }

@@ -1,0 +1,73 @@
+{
+  "schema": "xenopixels.hair.codec.vectors.v1",
+  "capturedAt": "2026-10-03",
+  "source": "tools/dmz-hair-builder-site/lib/dmz-codec.ts",
+  "note": "Export-only golden vectors. No connected boolean. Apply blocked (PR-D7c).",
+  "vectors": {
+    "empty_single": {
+      "id": "empty_single",
+      "description": "Empty CustomHair (all length 0) encoded as DMZ1",
+      "hair": {
+        "version": 5,
+        "name": "Empty Base",
+        "globalColor": "#171717",
+        "visibleStrandCount": 0
+      },
+      "dmzCode": "DMZ1:1GvGyFz6AQlfu1KbjcySQHWzV8SSgA3Kt5Xuo78pzlGTo6UORAV8aqqO",
+      "roundTripVisibleCount": 0
+    },
+    "one_strand_single": {
+      "id": "one_strand_single",
+      "description": "Single TOP[0] strand with length/curve/scale/rotation overrides as DMZ1",
+      "strand": {
+        "id": 400,
+        "visible": true,
+        "length": 4,
+        "lengthScale": 1.25,
+        "rotationX": 10,
+        "rotationY": -5,
+        "rotationZ": 15,
+        "scaleX": 1.1,
+        "scaleY": 1,
+        "scaleZ": 0.9,
+        "cubeWidth": 2.5,
+        "cubeHeight": 2,
+        "cubeDepth": 1.5,
+        "curveX": 2,
+        "curveY": -1,
+        "curveZ": 3,
+        "color": "#ffaa00"
+      },
+      "dmzCode": "DMZ1:4vt9vG0plPHu1iEcx2q4FgTz2hiArMAzdzNkR2RwCfbY4D5y6vCEXNEgpkpX2c7hSklIy9mWqYR5e6apAlp7eOXGHH9C7GSgdeiBmwfG63uYUNZJojhmUR4E7LZgJxs1QuoWHR3fIwK4uP9YregKXigXzO4kw3GRTWBmm7FTmDv3V3bTr69XiV5vfc",
+      "roundTripStrand": {
+        "id": 400,
+        "visible": true,
+        "length": 4,
+        "lengthScale": 1.25,
+        "rotationX": 10,
+        "rotationY": -5,
+        "rotationZ": 15,
+        "scaleX": 1.100000023841858,
+        "scaleY": 1,
+        "scaleZ": 0.8999999761581421,
+        "cubeWidth": 2.5,
+        "cubeHeight": 2,
+        "cubeDepth": 1.5,
+        "curveX": 2,
+        "curveY": -1,
+        "curveZ": 3,
+        "color": "#ffaa00"
+      }
+    },
+    "empty_full": {
+      "id": "empty_full",
+      "description": "Empty HairSet encoded as DMZF1",
+      "dmzCode": "DMZF1:wgrWI0rlKkPAMUmdycDc3Sen9KOUamlwk90CWj1EhZmfNBRxxebvJYKYwSKr21J0bXW76NEIsWiUI48eYeF5i06AV5ujJTt4a7AQz66YiRu4xQGkaobNBtFXt3MULtbFjCF1s"
+    },
+    "one_strand_full": {
+      "id": "one_strand_full",
+      "description": "HairSet with one strand on Base (cloned to other styles) as DMZF1",
+      "dmzCode": "DMZF1:10YAxLonx1z2cl2VUJWaAwy1YbZ2n9EXyi76QcU4Jbw8jP78xMUjcsKgSLrItveHy9nG0Gp5pfXWSXQFpgk6wqPD3AieNZgzGBmpjK25O0NwUx7Q6rT0G9dh2hGCO9UEOToyD7ENsQoeCkAUUV79qDOvwtQNa3uwqK5OXQgBT5PYZVWARhCS4bs3hJ6k2i2bQZLXgPTdlQNCR8Qm3uWlvhDRFsyT6y5zAYazDj8VXi0QNcGyiTwObfdj6XdmXMh1pu4iXAkRGVs"
+    }
+  }
+}

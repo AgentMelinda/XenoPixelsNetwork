@@ -7,6 +7,7 @@ import net.bullettrain.xenopixelsmod.client.anim.StudioClipBindings;
 import net.bullettrain.xenopixelsmod.client.anim.XenoAnimClip;
 import net.bullettrain.xenopixelsmod.client.anim.XenoAnimPlayer;
 import net.bullettrain.xenopixelsmod.client.anim.XenoAnimRecorder;
+import net.bullettrain.xenopixelsmod.client.anim.XenoClipChatClient;
 import net.bullettrain.xenopixelsmod.client.anim.XenoClipLibraryClient;
 import net.bullettrain.xenopixelsmod.client.anim.XenoStudioClipCache;
 import net.bullettrain.xenopixelsmod.client.anim.XenoTechniqueAnimBindingsClient;
@@ -52,6 +53,7 @@ public final class XenoAnimCommands {
                         .then(Commands.literal("stop").executes(ctx -> stop(ctx.getSource()))))
                 .then(Commands.literal("save").executes(ctx -> save(ctx.getSource())))
                 .then(Commands.literal("list").executes(ctx -> list(ctx.getSource())))
+                .then(Commands.literal("cliplist").executes(ctx -> clipList(ctx.getSource())))
                 .then(Commands.literal("play")
                         .then(Commands.argument("name", StringArgumentType.word())
                                 .suggests((c, b) -> {
@@ -120,11 +122,19 @@ public final class XenoAnimCommands {
                 .executes(ctx -> {
                     ctx.getSource().sendSuccess(() -> Component.literal(
                             "Usage: /xenoanim studio | play <name> [loop] | stopplay | record start "
-                                    + "[name] | save | list | bind <clip> <SLOT> | unbind <SLOT> "
+                                    + "[name] | save | list | cliplist | bind <clip> <SLOT> | unbind <SLOT> "
                                     + "| bindings | reload | global push|clear|list"),
                             false);
                     return 1;
                 }));
+        event.getDispatcher().register(Commands.literal("cliplist")
+                .executes(ctx -> clipList(ctx.getSource())));
+    }
+
+    private static int clipList(CommandSourceStack source) {
+        int lines = XenoClipChatClient.showList();
+        source.sendSuccess(() -> Component.literal("Clip list sent to chat (" + lines + " line(s))."), false);
+        return lines;
     }
 
     private static int start(CommandSourceStack source, String name) {

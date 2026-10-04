@@ -219,10 +219,10 @@ public class GuidanceControlPacket {
                     be.setDesiredApexY(ay);
                     if (ay <= 0) {
                         player.displayClientMessage(Component.literal(
-                                "§bLoft Y §fAUTO §7(physics/range) §8— " + be.getLastStatus()), true);
+                                "§bGuide Y §fAUTO §7(physics/range) §8— " + be.getLastStatus()), true);
                     } else {
                         player.displayClientMessage(Component.literal(String.format(
-                                "§bLoft Y §f%d §7(climb peak) §8— %s",
+                                "§bGuide Y §f%d §7(climb, then steer) §8— %s",
                                 ay, be.getLastStatus())), true);
                     }
                 }

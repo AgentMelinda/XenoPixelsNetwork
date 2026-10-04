@@ -92,6 +92,7 @@ public final class PlotSignInteraction {
             case NO_ECONOMY -> Component.literal("Plot sales need MMO Econ, which is not installed.");
             case INSUFFICIENT_FUNDS -> Component.literal("You cannot afford this plot.");
             case TRANSFER_FAILED -> Component.literal("The payment did not go through.");
+            case ROLLBACK_FAILED -> Component.literal("The purchase failed and the refund needs administrator attention.");
             case NOT_FOR_SALE -> Component.literal("That plot is not for sale.");
             case NO_PLOT -> Component.literal("No claimed plot at those coordinates.");
             case ALREADY_OWNER -> Component.literal("You already own that plot.");

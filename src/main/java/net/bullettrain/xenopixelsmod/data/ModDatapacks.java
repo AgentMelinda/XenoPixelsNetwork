@@ -13,10 +13,12 @@ import net.neoforged.neoforge.event.AddPackFindersEvent;
 /**
  * Optional built-in datapacks shipped inside the mod jar.
  *
- * <p><b>All of these are registered with {@code alwaysActive = false}</b>, so they exist in
- * {@code /datapack list available} and do nothing at all until an operator enables one. That is
- * deliberate: these override {@code minecraft:overworld}'s dimension type, and silently changing
- * a world's geometry on mod update would corrupt every existing save.
+ * <p>The overworld-height options remain available in {@code /datapack list available}, but must
+ * not be selected automatically for new worlds. Enabling the maximum-height pack alongside the
+ * standard-height pack makes its later dimension-type definition override the standard one while
+ * retaining vanilla's standard noise settings. That mismatch shifts terrain to the bottom of the
+ * expanded world and leaves most of the build range empty. With neither option selected, vanilla
+ * keeps its normal overworld geometry.
  *
  * <h2>Why a datapack rather than a mixin</h2>
  *
@@ -28,14 +30,19 @@ import net.neoforged.neoforge.event.AddPackFindersEvent;
  * build in <em>and</em> the original heightmap mismatch. A {@code dimension_type} override moves
  * all four together, because they are all read from it.
  *
- * <h2>Enabling one</h2>
+ * <h2>Enabling one for a new dedicated-server world</h2>
  *
- * <pre>
- * /datapack enable "file/xeno_max_overworld"
- * </pre>
+ * To force standard height when another mod changes it, add
+ * {@code mod/xenopixelsmod:datapacks/xeno_standard_overworld} to {@code initial-enabled-packs} in
+ * {@code server.properties} before first startup. The maximum-height pack is not intended for use
+ * with vanilla's standard noise settings. If a compatible worldgen setup is installed and an
+ * operator explicitly needs that dimension type, enable
+ * {@code mod/xenopixelsmod:datapacks/xeno_max_overworld} and ensure the standard-height pack is
+ * disabled.
  *
- * <p>Or add it to {@code level.dat}'s enabled-pack list before first load. It must be enabled at
- * world creation.
+ * <p>The packs remain available through {@code /datapack list available}. A height pack must be
+ * selected before the world is created; changing world height after chunks exist does not migrate
+ * those chunks.
  *
  * <p><b>Changing the height of an existing world does not migrate it.</b> Chunks already saved
  * carry heightmaps and section counts for the old geometry; loading them under new geometry
@@ -76,25 +83,28 @@ public final class ModDatapacks {
      */
     private static final String SHIP_MASSES = "xeno_ship_masses";
 
+    /** Height overrides require an explicit world-creation choice; keep them discoverable but opt out of auto-selection. */
+    private static final PackSource OPTIONAL_BUILT_IN = PackSource.create(PackSource.BUILT_IN::decorate, false);
+
     private ModDatapacks() {
     }
 
     @SubscribeEvent
     public static void addPackFinders(AddPackFindersEvent event) {
         if (event.getPackType() != PackType.SERVER_DATA) return;
-        register(event, STANDARD_OVERWORLD, "XenoPixels: standard overworld (-64 to 320)");
-        register(event, MAX_OVERWORLD, "XenoPixels: maximum overworld (-2032 to 2032)");
-        register(event, SHIP_MASSES, "XenoPixels: ship block masses (Sable)");
+        register(event, STANDARD_OVERWORLD, "XenoPixels: standard overworld (-64 to 320)", OPTIONAL_BUILT_IN);
+        register(event, MAX_OVERWORLD, "XenoPixels: maximum overworld (-2032 to 2032)", OPTIONAL_BUILT_IN);
+        register(event, SHIP_MASSES, "XenoPixels: ship block masses (Sable)", PackSource.BUILT_IN);
     }
 
-    private static void register(AddPackFindersEvent event, String folder, String displayName) {
+    private static void register(AddPackFindersEvent event, String folder, String displayName, PackSource source) {
         try {
             event.addPackFinders(
                     ResourceLocation.fromNamespaceAndPath(XenoPixelsMod.MOD_ID, "datapacks/" + folder),
                     PackType.SERVER_DATA,
                     Component.literal(displayName),
-                    PackSource.BUILT_IN,
-                    // Optional: present in the pack list, off until explicitly enabled.
+                    source,
+                    // Optional: present in the pack list, can be disabled when selected.
                     false,
                     Pack.Position.TOP);
         } catch (Throwable t) {

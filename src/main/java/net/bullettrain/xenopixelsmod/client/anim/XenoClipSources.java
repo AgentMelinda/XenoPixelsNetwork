@@ -8,6 +8,7 @@ import net.minecraft.server.packs.resources.Resource;
 
 import java.io.BufferedReader;
 import java.io.IOException;
+import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -15,15 +16,16 @@ import java.util.Optional;
 /**
  * Where the studio can open a clip from.
  *
- * <p>Three sources, all of which end up as an editable {@link XenoAnimClip}:
+ * <p>Each source ends up as an editable {@link XenoAnimClip}:
  *
  * <ul>
  *   <li>{@link Source#CONFIG} - clips saved by the studio itself.
  *   <li>{@link Source#SHIPPED} - the {@code combat.xeno_*} clips this mod ships.
  *   <li>{@link Source#DMZ} - DragonMineZ's own combat animations, for reference.
+ *   <li>{@link Source#SERVER} - clips received from the server, including NPC social gestures.
  * </ul>
  *
- * <p>The two file-backed sources are read through the resource manager, not out of the jar, so a
+ * <p>The shipped and DMZ sources are read through the resource manager, not out of the jar, so a
  * resource pack that overrides either file is what the studio opens. That is the reason there is no
  * separate "baked" source: {@code GeckoLibCache} holds compiled keyframes whose values may be molang
  * expressions rather than editable constants, and reading the file gives the same override-aware
@@ -34,7 +36,8 @@ public final class XenoClipSources {
     public enum Source {
         CONFIG("Saved"),
         SHIPPED("Shipped BT3"),
-        DMZ("DragonMineZ");
+        DMZ("DragonMineZ"),
+        SERVER("Server");
 
         public final String label;
 
@@ -59,6 +62,7 @@ public final class XenoClipSources {
     /** Every clip name the source offers, in file order. */
     public static List<String> list(Source source) {
         if (source == Source.CONFIG) return XenoAnimClip.listSavedNames();
+        if (source == Source.SERVER) return XenoClipLibraryClient.names();
         JsonObject animations = animations(fileOf(source));
         if (animations == null) return List.of();
         List<String> names = new ArrayList<>(animations.keySet());
@@ -75,6 +79,13 @@ public final class XenoClipSources {
      */
     public static XenoAnimClip load(Source source, String name) throws IOException {
         if (source == Source.CONFIG) return XenoAnimClip.load(name);
+        if (source == Source.SERVER) {
+            if (!XenoClipLibraryClient.names().contains(name)) {
+                throw new IOException("No server clip: " + name);
+            }
+            return XenoAnimClip.fromGeckoJson(name, Files.readString(
+                    XenoClipLibraryClient.dir().resolve(name + ".animation.json")));
+        }
         JsonObject animations = animations(fileOf(source));
         if (animations == null || !animations.has(name)) {
             throw new IOException("No animation " + name + " in " + fileOf(source));
@@ -83,7 +94,11 @@ public final class XenoClipSources {
     }
 
     public static ResourceLocation fileOf(Source source) {
-        return source == Source.DMZ ? DMZ_FILE : SHIPPED_FILE;
+        return switch (source) {
+            case SHIPPED -> SHIPPED_FILE;
+            case DMZ -> DMZ_FILE;
+            default -> throw new IllegalArgumentException(source + " is not a resource-pack source");
+        };
     }
 
     /** The {@code animations} object of a resource file, or null when it cannot be read. */

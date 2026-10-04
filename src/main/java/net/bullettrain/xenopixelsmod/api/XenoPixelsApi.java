@@ -33,6 +33,9 @@ package net.bullettrain.xenopixelsmod.api;
  *       falls through to guarding.
  *   <li>{@code StrikeInterceptEvent} - a DragonMineZ technique slot about to be diverted into a
  *       XenoPixels move. Cancelling hands the slot back to DragonMineZ.
+ *   <li>{@code MissileWarheadEvent} - a tube missile is about to explode. Cancelling skips the
+ *       vanilla blast so another mod can detonate its own warhead. Additive, so
+ *       {@link #API_VERSION} did not move; test for the class itself.
  * </ul>
  *
  * <h2>Adding your own content</h2>

@@ -31,6 +31,15 @@ public final class WingPanelDebugRotation {
     public static volatile int[] verticalOrient = {90, 180, 90};
 
     /**
+     * Extra degrees stacked on a fork panel's {@code FACING} mount. Start at zero so an untouched
+     * fork still matches the blockstate JSON. {@code /xenowing orient} writes these while guidance
+     * is v2; stock triples stay the v1 scratch pad.
+     */
+    public static volatile int[] forkNormalOrient = {0, 0, 0};
+    public static volatile int[] forkHorizontalOrient = {0, 0, 0};
+    public static volatile int[] forkVerticalOrient = {0, 0, 0};
+
+    /**
      * Axis the flap's live deflection rotates around, in the raw model frame (before the mount
      * orientation). The moving surface spans the full model X, is thin in Y, and its hinge line
      * runs along model-local <b>X</b> at Z = {@link WingPanelPose#HINGE_SEAM} — so {@code X} is the
@@ -61,5 +70,17 @@ public final class WingPanelDebugRotation {
     public static volatile double testDeflectDeg = Double.NaN;
 
     private WingPanelDebugRotation() {
+    }
+
+    public static void resetForkOrient() {
+        zero(forkNormalOrient);
+        zero(forkHorizontalOrient);
+        zero(forkVerticalOrient);
+    }
+
+    private static void zero(int[] xyz) {
+        xyz[0] = 0;
+        xyz[1] = 0;
+        xyz[2] = 0;
     }
 }

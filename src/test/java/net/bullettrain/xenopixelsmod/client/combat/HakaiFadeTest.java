@@ -143,13 +143,13 @@ class HakaiFadeTest {
     }
 
     @Test
-    void packetAmplifierIsStoredAndCleared() {
+    void packetAmplifierStoresZeroUntilTheSmoothClearCompletes() {
         HakaiFade.clear();
         try {
             HakaiFade.set(42, 128);
             assertEquals(128, HakaiFade.amplifierOf(42));
             HakaiFade.set(42, 0);
-            assertNull(HakaiFade.amplifierOf(42));
+            assertEquals(0, HakaiFade.amplifierOf(42));
             HakaiFade.set(7, 4000);
             assertEquals(255, HakaiFade.amplifierOf(7));
             HakaiFade.clear();
@@ -160,14 +160,46 @@ class HakaiFadeTest {
     }
 
     @Test
-    void firstPacketSnapsAndLaterPacketsLerp() {
+    void packetsEaseFromTheCurrentlyRenderedValueWithoutJumping() {
         HakaiFade.clear();
         try {
             HakaiFade.set(9, 64, 10L);
-            assertEquals(64.0f, HakaiFade.lerpedAmplifier(9, 0.5f, 10L), 1.0e-4f);
+            assertEquals(0.0f, HakaiFade.lerpedAmplifier(9, 0.0f, 10L), 1.0e-4f);
+            float rendered = HakaiFade.lerpedAmplifier(9, 0.0f, 11L);
+            assertEquals(32.0f, rendered, 1.0e-4f);
             HakaiFade.set(9, 192, 11L);
-            assertEquals(128.0f, HakaiFade.lerpedAmplifier(9, 0.5f, 11L), 1.0e-4f);
-            assertEquals(192.0f, HakaiFade.lerpedAmplifier(9, 1.0f, 11L), 1.0e-4f);
+            assertEquals(rendered, HakaiFade.lerpedAmplifier(9, 0.0f, 11L), 1.0e-4f);
+            assertEquals(112.0f, HakaiFade.lerpedAmplifier(9, 0.0f, 12L), 1.0e-4f);
+            assertEquals(192.0f, HakaiFade.lerpedAmplifier(9, 0.0f, 13L), 1.0e-4f);
+        } finally {
+            HakaiFade.clear();
+        }
+    }
+
+    @Test
+    void zeroPacketEasesToSolidBeforeStateIsRemoved() {
+        HakaiFade.clear();
+        try {
+            HakaiFade.set(12, 128, 20L);
+            assertEquals(128.0f, HakaiFade.lerpedAmplifier(12, 0.0f, 22L), 1.0e-4f);
+            HakaiFade.set(12, 0, 22L);
+            assertEquals(128.0f, HakaiFade.lerpedAmplifier(12, 0.0f, 22L), 1.0e-4f);
+            assertEquals(64.0f, HakaiFade.lerpedAmplifier(12, 0.0f, 23L), 1.0e-4f);
+            assertEquals(0.0f, HakaiFade.lerpedAmplifier(12, 0.0f, 24L), 1.0e-4f);
+            assertNull(HakaiFade.amplifierOf(12));
+        } finally {
+            HakaiFade.clear();
+        }
+    }
+
+    @Test
+    void staleOffscreenRenderSampleDoesNotOverrideElapsedInterpolation() {
+        HakaiFade.clear();
+        try {
+            HakaiFade.set(18, 100, 0L);
+            assertEquals(50.0f, HakaiFade.lerpedAmplifier(18, 0.0f, 1L), 1.0e-4f);
+            HakaiFade.set(18, 200, 10L);
+            assertEquals(100.0f, HakaiFade.lerpedAmplifier(18, 0.0f, 10L), 1.0e-4f);
         } finally {
             HakaiFade.clear();
         }

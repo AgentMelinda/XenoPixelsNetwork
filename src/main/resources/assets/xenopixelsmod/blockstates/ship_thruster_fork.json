@@ -1,0 +1,16 @@
+{
+  "variants": {
+    "facing=down,powered=false":  { "model": "xenopixelsmod:block/ship_thruster_fork", "x": 90 },
+    "facing=up,powered=false":    { "model": "xenopixelsmod:block/ship_thruster_fork", "x": 270 },
+    "facing=north,powered=false": { "model": "xenopixelsmod:block/ship_thruster_fork" },
+    "facing=south,powered=false": { "model": "xenopixelsmod:block/ship_thruster_fork", "y": 180 },
+    "facing=west,powered=false":  { "model": "xenopixelsmod:block/ship_thruster_fork", "y": 270 },
+    "facing=east,powered=false":  { "model": "xenopixelsmod:block/ship_thruster_fork", "y": 90 },
+    "facing=down,powered=true":   { "model": "xenopixelsmod:block/ship_thruster_on_fork", "x": 90 },
+    "facing=up,powered=true":     { "model": "xenopixelsmod:block/ship_thruster_on_fork", "x": 270 },
+    "facing=north,powered=true":  { "model": "xenopixelsmod:block/ship_thruster_on_fork" },
+    "facing=south,powered=true":  { "model": "xenopixelsmod:block/ship_thruster_on_fork", "y": 180 },
+    "facing=west,powered=true":   { "model": "xenopixelsmod:block/ship_thruster_on_fork", "y": 270 },
+    "facing=east,powered=true":   { "model": "xenopixelsmod:block/ship_thruster_on_fork", "y": 90 }
+  }
+}

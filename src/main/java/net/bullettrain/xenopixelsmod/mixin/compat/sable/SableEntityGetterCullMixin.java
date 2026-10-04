@@ -87,6 +87,10 @@ public abstract class SableEntityGetterCullMixin {
             require = 0
     )
     private void xenopixels$skipHugeFanOut(AABB box, Consumer<?> consumer, CallbackInfo ci) {
+        if (SableContraptionCull.isUnqueryable(box)) {
+            ci.cancel();
+            return;
+        }
         if (!SableContraptionCull.shouldSkipSableFanOut(this.level, box)) return;
         this.getIgnoringSubLevels(box, consumer);
         ci.cancel();
@@ -100,6 +104,10 @@ public abstract class SableEntityGetterCullMixin {
     )
     private void xenopixels$skipHugeTypedFanOut(EntityTypeTest<?, ?> test, AABB box,
                                                 AbortableIterationConsumer<?> consumer, CallbackInfo ci) {
+        if (SableContraptionCull.isUnqueryable(box)) {
+            ci.cancel();
+            return;
+        }
         if (!SableContraptionCull.shouldSkipSableFanOut(this.level, box)) return;
         this.getIgnoringSubLevels(test, box, consumer);
         ci.cancel();

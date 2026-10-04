@@ -2,6 +2,7 @@ package net.bullettrain.xenopixelsmod.mixin.common;
 
 import com.dragonminez.common.stats.StatsData;
 import com.dragonminez.common.stats.techniques.StrikeAttackData;
+import net.bullettrain.xenopixelsmod.combat.technique.XenoComboStrikes;
 import net.bullettrain.xenopixelsmod.combat.technique.XenoRushTechniques;
 import net.bullettrain.xenopixelsmod.config.XenoServerConfig;
 import org.spongepowered.asm.mixin.Mixin;
@@ -27,14 +28,24 @@ public abstract class StrikeAttackCostMixin {
 
     @Inject(method = "getCalculatedCost", at = @At("HEAD"), cancellable = true)
     private void xenopixels$rushCost(StatsData statsData, CallbackInfoReturnable<Double> cir) {
-        if (XenoRushTechniques.isRushId(((StrikeAttackData) (Object) this).getId())) {
+        String id = ((StrikeAttackData) (Object) this).getId();
+        if (XenoComboStrikes.isComboId(id)) {
+            cir.setReturnValue(Math.max(0.0, XenoServerConfig.comboRouteKiCost));
+            return;
+        }
+        if (XenoRushTechniques.isRushId(id)) {
             cir.setReturnValue(Math.max(0.0, XenoServerConfig.rushKiCost));
         }
     }
 
     @Inject(method = "getActualCooldown", at = @At("HEAD"), cancellable = true)
     private void xenopixels$rushCooldown(CallbackInfoReturnable<Integer> cir) {
-        if (XenoRushTechniques.isRushId(((StrikeAttackData) (Object) this).getId())) {
+        String id = ((StrikeAttackData) (Object) this).getId();
+        if (XenoComboStrikes.isComboId(id)) {
+            cir.setReturnValue(Math.max(1, XenoServerConfig.comboRouteCooldownTicks));
+            return;
+        }
+        if (XenoRushTechniques.isRushId(id)) {
             cir.setReturnValue(Math.max(1, XenoServerConfig.rushCooldownTicks));
         }
     }

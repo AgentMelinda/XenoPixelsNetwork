@@ -1,10 +1,12 @@
 package net.bullettrain.xenopixelsmod.client.combat.anim;
 
 import net.bullettrain.xenopixelsmod.combat.anim.Bt3AnimationIntent;
+import net.minecraft.resources.ResourceLocation;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
@@ -93,5 +95,39 @@ class Bt3AnimationBindingTest {
         assertTrue(dash.clipSeconds() * 20.0f < 6.0f, "this test needs a clip shorter than the beat");
         assertEquals(dash.speed(), Bt3AnimationBinding.mashSpeed(Bt3AnimationIntent.STEP_IN_DASH, 6),
                 1.0e-6f);
+    }
+
+    /**
+     * GeckoLib 4.9.2 throws if the last fallback is missing from its baked cache. An unbaked
+     * {@code bt3_combat.animation.json} must not be advertised.
+     */
+    @Test
+    void missingBakeDoesNotAdvertiseOurFileAsLastFallback() {
+        ResourceLocation combat = ResourceLocation.fromNamespaceAndPath(
+                "dragonminez", "animations/entity/races/combat.animation.json");
+        ResourceLocation[] dmz = {combat};
+        ResourceLocation[] out = Bt3AnimationBinding.withAnimationFileIfBaked(dmz, false);
+        assertSame(dmz, out);
+        for (ResourceLocation loc : out) {
+            assertTrue(!Bt3AnimationBinding.DMZ_ANIMATION_FILE.equals(loc),
+                    "unbaked bt3 file leaked into fallbacks");
+        }
+        ResourceLocation[] empty = Bt3AnimationBinding.withAnimationFileIfBaked(null, false);
+        assertEquals(0, empty.length);
+    }
+
+    @Test
+    void bakedFileIsAppendedOnce() {
+        ResourceLocation combat = ResourceLocation.fromNamespaceAndPath(
+                "dragonminez", "animations/entity/races/combat.animation.json");
+        ResourceLocation[] dmz = {combat};
+        ResourceLocation[] out = Bt3AnimationBinding.withAnimationFileIfBaked(dmz, true);
+        assertEquals(2, out.length);
+        assertEquals(combat, out[0]);
+        assertEquals(Bt3AnimationBinding.DMZ_ANIMATION_FILE, out[1]);
+        assertSame(out, Bt3AnimationBinding.withAnimationFileIfBaked(out, true));
+        ResourceLocation[] onlyOurs = Bt3AnimationBinding.withAnimationFileIfBaked(null, true);
+        assertEquals(1, onlyOurs.length);
+        assertEquals(Bt3AnimationBinding.DMZ_ANIMATION_FILE, onlyOurs[0]);
     }
 }

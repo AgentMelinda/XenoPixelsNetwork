@@ -48,6 +48,7 @@ public final class XenoFlightHudOverlay {
         Minecraft minecraft = Minecraft.getInstance();
         if (minecraft.player == null || minecraft.options.hideGui) return;
         if (!XenoClientConfig.flightHudEnabled) return;
+        if (net.bullettrain.xenopixelsmod.client.guidance.GuidanceV2Client.isV2()) return;
         if (!XenoFlightControls.seated()) return;
 
         AeroStateSnapshot state = ClientFlightState.get();

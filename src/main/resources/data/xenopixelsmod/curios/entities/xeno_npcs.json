@@ -1,0 +1,27 @@
+{
+  "replace": false,
+  "entities": [
+    "xenopixelsmod:xeno_npc_humanoid",
+    "xenopixelsmod:xeno_npc_creature",
+    "xenopixelsmod:xeno_npc_trader",
+    "xenopixelsmod:xeno_npc_guard",
+    "xenopixelsmod:xeno_npc_companion",
+    "xenopixelsmod:xeno_npc_quest",
+    "xenopixelsmod:xeno_npc_transporter",
+    "xenopixelsmod:xeno_npc_bank"
+  ],
+  "slots": [
+    "curio",
+    "head",
+    "necklace",
+    "back",
+    "body",
+    "bracelet",
+    "hands",
+    "ring",
+    "belt",
+    "charm",
+    "head_tech",
+    "weights"
+  ]
+}

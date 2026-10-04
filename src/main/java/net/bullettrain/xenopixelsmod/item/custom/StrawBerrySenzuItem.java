@@ -27,6 +27,10 @@ public class StrawBerrySenzuItem extends Item {
         if (entity instanceof Player player) {
             player.getCooldowns().addCooldown(this, COOLDOWN_TICKS);
         }
+        // Health, ki and stamina back to full (the Instant Health effect alone left ki and stamina).
+        if (entity instanceof net.minecraft.server.level.ServerPlayer serverPlayer) {
+            SenzuRestore.restore(serverPlayer);
+        }
 
         return result;
     }

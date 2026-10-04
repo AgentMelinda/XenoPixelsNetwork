@@ -47,6 +47,7 @@ class PlotSaleTest {
         assertNotNull(PlotSale.Result.valueOf("NO_ECONOMY"));
         assertNotNull(PlotSale.Result.valueOf("INSUFFICIENT_FUNDS"));
         assertNotNull(PlotSale.Result.valueOf("TRANSFER_FAILED"));
+        assertNotNull(PlotSale.Result.valueOf("ROLLBACK_FAILED"));
         assertNotNull(PlotSale.Result.valueOf("NOT_FOR_SALE"));
         assertNotNull(PlotSale.Result.valueOf("NO_PLOT"));
         assertNotNull(PlotSale.Result.valueOf("ALREADY_OWNER"));

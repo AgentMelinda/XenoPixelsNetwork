@@ -53,10 +53,22 @@ public final class NpcCloneConverter {
      * fields CustomNPCs inherits by extending a player-like entity, and NeoForge's attachment blob,
      * which holds capability data belonging to a mod id that will not be loaded.
      */
+    /**
+     * Keys that exist in a CustomNPCs clone and have nowhere to go in a My NPCs one.
+     *
+     * <p>The twelve {@code Companion*} keys used to be in here, on the premise that the fork had
+     * dropped the companion system. That premise was wrong: {@code espi.mynpcs.roles.RoleCompanion}
+     * reads every one of them, and the save files this converter was measured from prove it
+     * matters - a real clone carries {@code Role: 6}, which is {@code RoleType.COMPANION}, alongside
+     * {@code CompanionStage}, {@code CompanionCanAge}, {@code CompanionDefendOwner} and the rest.
+     * Dropping them while keeping {@code Role: 6} handed My NPCs a companion with its stage,
+     * talents, experience, inventory, age and owner all silently reset.
+     *
+     * <p>What remains here is genuinely unhomed: the player-only hunger fields, which a My NPCs
+     * entity has no concept of, and the NeoForge attachment blob, whose contents belong to whatever
+     * mod wrote them and cannot be meaningfully rehomed by us.
+     */
     private static final Set<String> CUSTOMNPCS_ONLY = Set.of(
-            "CompanionAge", "CompanionCanAge", "CompanionDefendOwner", "CompanionExp",
-            "CompanionHasInv", "CompanionID", "CompanionInventory", "CompanionJob",
-            "CompanionOwner", "CompanionOwnerName", "CompanionStage", "CompanionTalents",
             "foodExhaustionLevel", "foodLevel", "foodSaturationLevel", "foodTickTimer",
             "neoforge:attachments");
 

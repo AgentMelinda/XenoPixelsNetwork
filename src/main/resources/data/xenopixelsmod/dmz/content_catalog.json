@@ -111,7 +111,7 @@
       "id": "group_god",
       "title": "XenoPixels Gods Forms",
       "subtitle": "Beerus / Whis only · formType xenopixels_divinity",
-      "detail": "Super story mult ladder: SSG → SSB=SSR → SSBE=SSRE → UI Sign → MUI≈UE. /dmzform set xenopixels_divinity <1-8>. Beerus/Whis. Icons: gui/icons/xenopixels_divinity.png.",
+      "detail": "Super story mult ladder: SSG → SSB=SSR → SSBE=SSRE → UI Sign → MUI≈UE. /dmzform set xenopixels_divinity <1-10>. Beerus/Whis. Icons: gui/icons/xenopixels_divinity.png.",
       "accent": 4294952372
     },
     {
@@ -169,6 +169,20 @@
       "subtitle": "God Forms Lv.8 · STR 8.1 (= MUI)",
       "detail": "Purple destruction ego. Same peak STR as MUI (rival forms). Req: SSBE path.",
       "accent": 4286856165
+    },
+    {
+      "id": "ssb3",
+      "title": "Super Saiyan Blue 3",
+      "subtitle": "God Forms Lv.9 · STR 7.4",
+      "detail": "Blue with Super Saiyan 3 hair. Heavy ki drain. Req: SSB Evolution mastery 30.",
+      "accent": 4280923894
+    },
+    {
+      "id": "ssrose3",
+      "title": "Super Saiyan Rose 3",
+      "subtitle": "God Forms Lv.10 · STR 7.4",
+      "detail": "Rosé with Super Saiyan 3 hair. Heavy ki drain. Req: Rose Evolution mastery 30.",
+      "accent": 4294928820
     },
     {
       "id": "group_legendary",
@@ -241,6 +255,20 @@
       "subtitle": "Mash attack while locked",
       "detail": "5-hit string (maxComboSteps) with rising damage and a stronger finisher on the last hit. Small KI tax (comboKiCost / finisherKiCost). Toggle: bt3ComboEnabled / bt3FinisherEnabled.",
       "accent": 4290772992
+    },
+    {
+      "id": "rush_combo",
+      "title": "Rush Combo",
+      "subtitle": "Grant-only DMZ strike · 3/4 hits then re-rush",
+      "detail": "Listed in DragonMineZ strikes as xenopixelsmod:rush_combo. Operators grant with /xenoskill grant rushcombo <player>. Players cannot self-unlock. Toggle comboRoutesEnabled (off by default). Config: comboRouteHitCount 3|4, comboRouteAutoReapproach, comboRouteMaxReapproach 0|1.",
+      "accent": 4293212469
+    },
+    {
+      "id": "lift_combo",
+      "title": "Lift Combo",
+      "subtitle": "Grant-only DMZ strike · launch then chase",
+      "detail": "Listed as xenopixelsmod:lift_combo. Grant with /xenoskill grant liftcombo <player>. Ends in an upward launch and the existing chase. Toggle comboRoutesEnabled / liftcomboEnabled.",
+      "accent": 4288256409
     },
     {
       "id": "charge_fist",

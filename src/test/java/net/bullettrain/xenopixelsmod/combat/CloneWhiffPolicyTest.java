@@ -3,6 +3,7 @@ package net.bullettrain.xenopixelsmod.combat;
 import net.bullettrain.xenopixelsmod.combat.clone.CloneCombatPolicy;
 import org.junit.jupiter.api.Test;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -41,5 +42,18 @@ class CloneWhiffPolicyTest {
     void aNegativeCountNeverAbandons() {
         // Defensive: a reset that underflows must not read as "give up".
         assertFalse(CloneCombatPolicy.shouldAbandon(-1));
+    }
+
+    @Test
+    void aStrikeStyleMissAbandonsTheSameAsAHurtMiss() {
+        int strikeWhiffs = 0;
+        int hurtWhiffs = 0;
+        for (int i = 0; i < CloneCombatPolicy.MAX_WHIFFS; i++) {
+            strikeWhiffs = CloneCombatPolicy.noteSwing(strikeWhiffs, false);
+            hurtWhiffs = CloneCombatPolicy.noteSwing(hurtWhiffs, false);
+        }
+        assertEquals(hurtWhiffs, strikeWhiffs);
+        assertTrue(CloneCombatPolicy.shouldAbandon(strikeWhiffs));
+        assertEquals(0, CloneCombatPolicy.noteSwing(strikeWhiffs, true));
     }
 }

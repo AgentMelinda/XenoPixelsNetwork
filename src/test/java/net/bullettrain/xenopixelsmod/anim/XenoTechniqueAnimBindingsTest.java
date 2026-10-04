@@ -54,6 +54,8 @@ class XenoTechniqueAnimBindingsTest {
     void normalizeAcceptsIntentAndHakaiCaseInsensitively() {
         assertEquals("JAB_RIGHT", XenoTechniqueAnimBindings.normalizeSlot("jab_right"));
         assertEquals("HAKAI_HOLD", XenoTechniqueAnimBindings.normalizeSlot("  hakai_hold "));
+        assertEquals("CHARGE_PUNCH", XenoTechniqueAnimBindings.normalizeSlot("charge_punch"));
+        assertEquals("TRANSFORM", XenoTechniqueAnimBindings.normalizeSlot("transform"));
         assertEquals(Bt3AnimationIntent.HOOK_LEFT, XenoTechniqueAnimBindings.intentOf("hook_left"));
         assertNull(XenoTechniqueAnimBindings.normalizeSlot("nope"));
         assertNull(XenoTechniqueAnimBindings.normalizeSlot(null));

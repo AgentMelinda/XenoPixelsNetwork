@@ -113,6 +113,17 @@
 | [פתרון קריסת Mixin](Advanced-04-Mixin-Fix) | `MixinTransformerError` של VS |
 | [מעבר ל-Registrate](Advanced-05-Registrate) | רישום fluent + פחות JSON ידני |
 
+<div dir="ltr">
+
+### 📜 Scripting (English)
+
+| Page | What it covers |
+|---|---|
+| [XenoAPI — native Xeno NPC scripting](XenoAPI) | NPC, player and Forge scripts; hooks; `XenoAPI` and `XenoPixels` v28; bubbles, settings by key, Ki Sense, colored names; script errors; Java addons |
+| [CustomNPCs / MyNPCs scripting (co-owner)](CustomNPCs-XenoPixels-Scripting-CoOwner) | The `XenoPixels` global in CustomNPCs and MyNPCs scripts |
+
+</div>
+
 ---
 
 ## ✅ דרישות

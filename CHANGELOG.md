@@ -1,7 +1,214 @@
 # Changelog
 
+## 0.5.1-1.21.1 — 2026-10-04
+
+- Unified Maker Studio (`/xenomaker`): Race Character Maker, Form Maker, Hair Studio.
+  Race Maker Gender / Category / Race cyclers no longer share pixels. Created custom
+  races write `config/dragonminez/races/<id>/character.json`, show on the Race cycler
+  and green cards (`*`), load into the editor, and Save overwrites the pack.
+  Form Maker lists custom races first; Hair Studio compact chrome and live preview.
+- HD aura Motif Phase 1, tournament/roles Track A, and the rest of the unreleased
+  2026-10-03 maker work below.
+
 ## Unreleased — NPC saga combat and quest parity
 
+- 2026-10-03: Advanced Hair Editor (PR-D7, KD15 r3 Images 5–6). Client `HairMakerScreen`
+  supersedes the text-summary shell under `/xenomaker` / `/xenomaker hair` and `/xenohairui`.
+  Gold `banner_top` chrome; green Task-9 panels `xeno_maker_form_list` (style list:
+  Default Hair Style / Super Saiyan / …), `xeno_maker_form_settings` (length / curve /
+  scale / rotation + Hair Color / Extra Color), `xeno_maker_hair_preview` with true-player
+  `MakerPreviewController` (`GlowTarget.HAIR_SEGMENT`, `markDirty` ≤50 ms). `AtlasCycle` for
+  face / strand / DMZ creation hair presets (`MakerPresetCatalog` live or FALLBACK).
+  Connected = parenting label only (no boolean). Export `xenopixels.hair.export.v1`; Apply
+  via existing `HairApplyService` → `UpdateCustomHairC2S#handle`
+  (`path_ready_runtime_unverified`). Units: `HairMakerAtlasTest`, `HairApplyServiceTest`,
+  `HairCodecVectorsTest` / fixtures. **Not verified in a running game.**
+- 2026-10-03: Form Maker (PR-D6e, KD15 r3 Images 2–4). Client `FormMakerScreen` +
+  `FormMakerPartsScreen` under `/xenomaker` / `/xenomaker forms` (hub Forms button). Gold
+  `banner_top` chrome; green Task-9 panels `xeno_maker_form_list` / `form_settings` /
+  `preview_sm`. Form list glow (`GlowTarget.FORM_ROW`); Form Settings from verified
+  `DmzFormDocument` keys only (Aura Color/Type, Form Type, Model Scale, Race, Transformation
+  Animation, Hair Color — no invented schema keys; unknown fields ignored). Dual preview:
+  aura/form summary + full-body `MakerPreviewController` (`markDirty` ≤50 ms). Parts
+  sub-screen reuses RaceMakerParts-style categories over verified FormData appearance
+  keys. Save via existing `FormEditorNetwork.save`. `/xenoraceformui` unchanged. Units:
+  `FormMakerAtlasTest`. **Not verified in a running game.**
+- 2026-10-03: Unified Maker Studio chrome upgrade (owner). Gold frames/banners for hub +
+  Race editor title (`banner_top` / Theme.GOLD); green Task-9 maker panels stay green
+  inside Race. Advanced controls: `AtlasCycle` (category + presets + gender),
+  `ColorSwatch` + `InlineColorPicker` for Skin/Eyes/Hair (preview-local only — no invented
+  DMZ colour write-back). `MakerPresetCatalog.labels` — live from `RaceMakerParts` /
+  `TextureCounter` / `HairManager` when READY; documented FALLBACK (Body 1–8, Eyes 1–6,
+  Hair Default/SSJ-style names, etc.) when counts are 0; Aura/Clothes stay empty. Units:
+  `MakerPresetCatalogTest`, `RaceCharacterMakerAtlasTest`. **Not verified in a running game.**
+- 2026-10-03: Race Character Maker (PR-D6d, KD15 r3 Image 1). Client
+  `RaceCharacterMakerScreen` + hub `XenoMakerHubScreen` under `/xenomaker` (+ `race` /
+  `forms` / `hair`). Green atlas race cards / category column / part grid / full-body
+  `MakerPreviewController` (markDirty on change; PART_CATEGORY / RACE_CARD glow). Part
+  indices from `NpcAppearanceParts` / `TextureCounter` + `HairManager.getPresetCount`
+  via `RaceMakerParts`; Aura/Clothes grids empty with citation gaps. Create Race enabled
+  (Task 7 READY) via `RacePackService` then `ConfigManager.reload()`. Permissions
+  `MAKER_OPEN` / `MAKER_RACE_CREATE`. Hair hub button stubs to Task 12; Forms is Task 11
+  Form Maker. Existing `/xenoraceformui` and `/xenohairui` unchanged. Units:
+  `RaceCharacterMakerAtlasTest`. **Not verified in a running game.**
+- 2026-10-03: Maker preview controller (PR-D6b, KD20). Evidence
+  `docs/superpowers/evidence/2026-10-03-maker-preview-player-model.md` Verdict **READY** —
+  true local-player DMZ model via `EntityPreviewRenderContext#renderEntityInInventory`
+  (→ `InventoryScreen#renderEntityInInventory`), same path as DMZ
+  `HairEditorScreen#renderPlayerModel` (~L1091) and in-repo `CharacterPortraitCache` /
+  `XenoNeonStatsScreen`. `MakerPreviewController` binds `Minecraft.player`, glow target+id
+  (green rect chrome), `markDirty` → `PreviewDebounce` ≤50 ms. Units:
+  `PreviewDebounceTest.firesAfterFiftyMs`, `MakerPreviewControllerTest`. **Not verified in a
+  running game.**
+- 2026-10-03: HD-only blank-body fix — cancel DMZ only while `replacesDmzAura()` (HD healthy);
+  if HD fails this session the classic sheet returns. Local aura-active marks SEEN in TP too;
+  HD-only `plays()` includes recent sightings when second-aura is off. **Not verified in a running game.**
+- 2026-10-03: Tournament fight cells — DMZ `cell_arena` + WorldEdit bounds. SavedData
+  `TournamentArenaRegion` (spawn + AABB) preferred over config point list. Commands:
+  `/xenotourney arena locate [cell_arena]`, `bindcell`, `setfromwe`, `setspawn`,
+  `clear`/`clearall`; `/xenotourney arenas` lists cells. Default cell pad matches
+  structure clear (±28 xz). Config `tournamentOutOfBoundsLose=false` (geometry only;
+  auto leave-arena lose is follow-on). Units: `TournamentArenaRegionTest`.
+  **Not verified in a running game.**
+- 2026-10-03: Xeno Hair Studio chrome (from scratch, DMZ 2.1.3 pin) — Outliner | Viewport
+  (Grow/Rotate/Curve tools + XYZ pick + Alt-drag yaw) | Inspector; `HairEditHistory` Ctrl+Z/Y;
+  dirty-gated live preview. Design matched to DMZ 2.2-alpha ideas; **no copied 2.2 code/assets**.
+  Pixel paint deferred (next PR). **Not verified in a running game.**
+- 2026-10-03: Hair click-pick upgraded from flat 2D face-grid to projected strand XYZ —
+  `CustomHair.getStrandBasePosition` ×0.0625 (HairRenderer), head offset, body yaw, inventory
+  `scale`+`rotateZ(PI)`; tip estimate from length/cubeHeight; searches all faces. Still not a
+  full cube mesh raycast. **Not verified in a running game.**
+- 2026-10-03: Maker live visualizer + hair segment studio (Pass 1–2) — shared
+  `MakerPreviewLayout` right-column well (Form Maker no longer stacks preview over the
+  form list); `MakerPreviewAppearance` snapshot/apply/restore so hair/skin/eyes/aura/form
+  edits update the 3D model without Apply; Hair Editor gains Create / Weld (offset copy) /
+  Dup / Del, cube W/H/D editors, list + click-on-preview strand pick (`HairStrandPick`),
+  drag-yaw. Freeform mesh weld deferred (Pass 3). **Not verified in a running game.**
+- 2026-10-03: `/xenomaker` missing in-game — Brigadier `.requires(MAKER_OPEN)` hid the
+  client command when the source entity is a `LocalPlayer` (OP PermissionAPI path never
+  runs). Registration now matches `/xenohairui` (no `.requires`); `MAKER_OPEN` is
+  client/everyone default; Create Race stays OP via `MAKER_RACE_CREATE`. **Not verified in a running game.**
+- 2026-10-03: Maker Studio live visualizer visibility fix — empty Preview wells across
+  `/xenomaker` editors. `MakerPreviewController` now matches DMZ `HairEditorScreen#renderPlayerModel`
+  exactly (empty translation, z=150, scale ~h*0.55); draws a dark well always so a failed
+  entity draw is obvious; `DMZSkinLayer.PREVIEW_MODE` kept on. Hub/Race/Form/Hair/Parts all
+  draw `preview.render` **after** `super.render` so atlas widgets never cover the model;
+  hub + Parts upgraded to `xeno_maker_hair_preview` (280×240). **Not verified in a running game.**
+- 2026-10-03: Maker Studio hub/race/form UX pass — nav buttons no longer ghost-overlap
+  (`mynpcs_button_row_w128` / `_w96` with clear gaps instead of stacked `pill_button`);
+  hub + race/form use large green `xeno_maker_hair_preview` wells; `MakerPreviewController`
+  pose/scale aligned to Neon/HairEditor so the live player model is visible.
+  **Not verified in a running game.**
+- 2026-10-03: New race registration (PR-D6a, KD15 r3). Evidence
+  `docs/superpowers/evidence/2026-10-03-race-registration-path.md` Verdict **READY** —
+  DMZ `ConfigManager#loadAllRaces` scans `config/dragonminez/races/` for non-default
+  folders (`Custom race detected: {}`); UI uses `getLoadedRaces()`. `RacePackService`
+  writes `races/<id>/character.json` + `forms/` (setupDefaultCharacter-shaped skeleton).
+  Callers reload via `ConfigManager.reload()`. Units: `RacePackServiceTest`.
+  **Not verified in a running game.**
+- 2026-10-03: `/xenoaura hd` no longer lets classic DragonMineZ aura return in third person
+  or first person. `DmzHdAuraQueueMixin` used to cancel `addAura` only when `plays()` was
+  true (DMZ sheet could still queue); FP queue was never cancelled; AuraRenderer also had a
+  FP fallback draw that bypassed the queue. Fix: HD-only always cancels `addAura` +
+  `addFirstPersonAura`, and `DmzHdAuraFpDrawMixin` cancels `renderShaderFirstPersonAura`
+  (sparks unchanged). **Not verified in a running game.**
+- 2026-10-03: HD aura no longer slides a tick behind the body when flying or moving fast
+  (first person and third person). Root cause: third-person follow lerped from
+  `xOld`/`yOld`/`zOld`, which `absMoveTo` can leave stale while `xo`/`yo`/`zo` stay current;
+  AAA PreDraw also runs after Effekseer update, so a late root alone still reads one frame
+  behind. Fix: `HdAuraPlan.entityRenderPos` uses `xo` (same as `Entity.getPosition` /
+  Camera / DMZ), early `AFTER_ENTITIES` `onRenderFollow` before AAA draw, and PreDraw
+  refresh with the real render partial. FP still locks to the main camera each frame.
+  Units: `HdAuraPlanTest.entityRenderPosUsesXoNotStaleXOld`. **Not verified in a running game.**
+- 2026-10-03: First-person HD aura (v3) start/depth aligned to DragonMineZ
+  `AuraRenderer.executeAuraShaderDraw` FP path. Root cause: `0.45` is DMZ **alpha**, not
+  scale — FP scale is `normalizedScale * 3`. Placement now uses AAA head-space Basis
+  (`+Z` behind eyes; offset `{0,-0.6,-0.7}` = 0.7 in front), camera-lock `setRotation`, and
+  silhouette `CENTRE_Y=1.5` emitter nudge so the sprite centre hits the DMZ billboard centre.
+  Units: `HdAuraPlanTest.firstPersonUsesTheDmzCameraOverlay`. **Not verified in a running game.**
+- 2026-10-03: Hair in-game apply (PR-D7c, KD9). Evidence
+  `docs/superpowers/evidence/2026-10-03-hair-apply-path.md` Verdict **READY** (path cited;
+  runtime unverified) — `UpdateCustomHairC2S#handle` via `NetworkHandler#sendToServer` (DMZ
+  `HairEditorScreen#syncHairToServer` pattern). `HairApplyService` maps maker strands →
+  `CustomHair` (cube dims via `HairStrand#load` NBT `cw`/`ch`/`cd`); Apply enabled as
+  **replace-current-style** full slot overwrite (no load/merge from Character). **Not**
+  `CustomizationManager` `hair_style_*`. Export `apply=path_ready_runtime_unverified`; codes
+  still empty in-game. Units: `HairApplyServiceTest` (fake transport). **Not verified in a
+  running game.**
+- 2026-10-03: Hair green UI + visualizer (PR-D7b, KD9). Client `HairMakerScreen`
+  (`client.maker`) on Theme.GREEN atlas; strand list + length/rotation/scale/curve editors
+  map to lab `HairStrand` fields. Live preview depth: **text/summary** via reused
+  `PreviewDebounce` ≤50 ms — **not** a 3D hair renderer. Export writes Task 9
+  `xenopixels.hair.export.v1` JSON under `xenopixelsmod/hair-exports/` (DMZ codes empty
+  in-game; lab `npm run export:hair` encodes). Apply gated by PR-D7c (now READY — see above).
+  Connected = “Connected (parented cubes)” label only — **no** connected boolean. Open:
+  client `/xenohairui`. Units: `HairMakerDocumentTest`, `HairMakerAtlasTest`. **Not verified
+  in a running game.**
+- 2026-10-03: Hair codec / export (PR-D7a, KD9). Lab `dmz-codec.ts` golden vectors
+  (empty `DMZ1` + one-strand `DMZ1` / full `DMZF1`) under
+  `tools/dmz-hair-builder-site/fixtures/hair/` and `src/test/resources/hair/`. Export envelope
+  `xenopixels.hair.export.v1` via `lib/hair-export.ts` + `npm run export:hair` (file write /
+  download only). **No** new `connected` boolean; **no** CustomizationManager apply in D7a
+  (D7c cites `UpdateCustomHairC2S#handle`). Node: `cd tools/dmz-hair-builder-site && npm test`.
+  Java smoke: `HairCodecFixtureTest`. Evidence:
+  `docs/superpowers/evidence/2026-10-03-hair-codec-vectors.md`.
+- 2026-10-03: Race form-group green UI (PR-D6b, KD15). Client `RaceFormGroupMakerScreen`
+
+  (`client.maker`) on Theme.GREEN atlas (`xeno_editor_panel`, `panel_wide`, `pill_button`);
+  refuses unknown race via `RaceFormGroupGuard` message; **Open Editor** links to existing
+  `DmzFormMakerScreen` / `FormEditorNetwork.save` (does not rewrite `GuiNpcDmzFormEditor`).
+  Live preview depth: **document field summary** (auraColor / extraAuraColor / hairColor) with
+  `PreviewDebounce` ≤50 ms — **not** a Gecko/DMZ entity stand-in (no invented renderer API).
+  Open: client `/xenoraceformui [race] [group]`. Units: `PreviewDebounceTest`,
+  `RaceFormGroupMakerAtlasTest`. **Not verified in a running game.**
+- 2026-10-03: Race form-group maker IO (PR-D6a, KD15). `RaceFormGroupGuard` validates race /
+  group against known DMZ/Xeno races under `data/xenopixelsmod/dmz/races/` (saiyan, human,
+  namekian, frostdemon, majin, bioandroid) and installed form-group stems (or
+  `DmzFormMetadataRegistry` ownership). Rejects unknown race ids; does **not** create new race
+  folders or register new races. Editor saves still go through `FormEditorNetwork.save` →
+  `DmzFormEditorService.save` (bootstrap backup unchanged). Unit: `RaceFormGroupMakerIoTest`
+  (unknown race rejected; saiyan/`xenopixels_gods_forms` accepted; gods JSON FormConfig
+  round-trip). **Not verified in a running game.**
+- 2026-10-03: Angel as gods master (PR-D5). Evidence appendix
+  `docs/superpowers/evidence/2026-10-03-angel-trainer-offerings.md` confirms a player UUID
+  **can** be a `DmzFormMetadataRegistry.trainerOfferings` key (no invented DMZ unlock API).
+  Wire: `AngelTrainerGate` constrains offerings to group `xenopixels_gods_forms` / skill
+  formType `xenopixels_divinity`; `AngelTrainerEvents` opens `FormEditorNetwork.sendTrainerMenu`
+  on angel player interact; `TrainerPurchasePacket.purchase` accepts angel `ServerPlayer`
+  trainers and still applies evaluate → removeTrainingPoints → setSkillLevel → sync (never
+  `CombatSkills.grant` for forms). Unit: `AngelGodsOfferingsTest`. **Not verified in a running
+  game.**
+- 2026-10-03: Tournament green atlas UI (PR-D4). Client
+  `TournamentQueueScreen` (package `client.tournament`) shows queued names + active match
+  from the last S2C `QueueSnapshotPacket` on channel `tournament` protocol `"1"`. Reuses
+  existing green panels (`xeno_editor_panel`, `header_strip`, `panel_wide`, `pill_button`) —
+  no new PanelSpecs. Empty queue shows a clear empty state. **Open path:** server
+  `/xenotourney status` syncs the snapshot then sends S2C `OpenQueueScreenPacket` (msg id 1,
+  same channel/protocol — not a second protocol); dedicated client `/xenotourneyui` opens from
+  the cached snapshot without shadowing `/xenotourney join|leave|…`. No client win packet.
+  Unit smoke `TournamentQueueAtlasTest`. **Not verified in a running game.**
+- 2026-10-03: Tournament → Angel awards (PR-D3). Server `TournamentService.reportResult`
+  grants `PlayerRoleId.ANGEL` with source `tournament:<matchId>` only after match validity
+  checks succeed and when `tournamentEnabled=true`. Offline winners skip grant until online
+  (uses `PlayerRoleService.grant`). No client win path; auto-KO still not shipped. Unit-tested
+  in `TournamentAwardTest`. **Not verified in a running game.**
+- 2026-10-03: Tournament core (queue + KotH, static arenas, admin results).
+  `TournamentSavedData` (`xenopixels_tournament`) + `TournamentService` (MAX_QUEUED=12) +
+  dedicated channel `tournament` protocol `"1"` (not ModNetwork `"101"`). Commands:
+  `/xenotourney join|leave|status|result|arenas|start`. Config defaults
+  `tournamentEnabled=false`, arena dimension/positions. Admin `/xenotourney result` only —
+  **auto-KO not shipped** (follow-on despite D2a READY). Unit-tested queue cap + result
+  recording. **Not verified in a running game.**
+- 2026-10-03: Tournament KO evidence appendix
+  (`docs/superpowers/evidence/2026-10-03-tournament-ko-events.md`): NeoForge
+  `LivingDeathEvent` + `DamageSource.getEntity()`/`getDirectEntity()` verified for a later
+  auto-KO PR; verdict READY with match filters. No auto-KO shipped; admin `/xenotourney result`
+  remains until a follow-on implements the subscriber. **Not verified in a running game.**
+- 2026-10-03: Player roles foundation (`PlayerRoleSavedData` / `PlayerRoleService` /
+  `/xenorole get|set|clear`). Persists UUID → `none|angel` in overworld SavedData
+  `xenopixels_player_roles`; S2C sync on channel `player_roles` protocol `"1"` (not ModNetwork
+  `"101"`). Angel is cosmetic + future trainer gating only — no combat modifiers. Unit-tested
+  persistence round-trip. **Not verified in a running game.**
 - 2026-10-03: Client jar `xenopixelsmod-0.5.0-1.21.1.jar` rebuilt after Motif Phase 1 Java.
   SHA-256 `161857ECBBE62B68E7CD401C1E016528F9C1433B5747A7315DECD4A7A86F8572`, 64,869,850 bytes,
   LastWriteTime 2026-10-03 05:12:04. **Not verified in a running game.**

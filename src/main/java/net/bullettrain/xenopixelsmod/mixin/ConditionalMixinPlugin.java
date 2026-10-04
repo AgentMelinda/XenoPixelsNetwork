@@ -40,6 +40,9 @@ public class ConditionalMixinPlugin implements IMixinConfigPlugin {
             }
             return isModLoaded("sable");
         }
+        if (mixinClassName.contains(".compat.zfastnoise.")) {
+            return isModLoaded("zfastnoise");
+        }
         if (mixinClassName.contains(".compat.simulatedcoasters.")) {
             return isModLoaded("simulatedcoasters");
         }
@@ -62,9 +65,8 @@ public class ConditionalMixinPlugin implements IMixinConfigPlugin {
             return isModLoaded("aerostarcomp");
         }
         if (mixinClassName.contains(".compat.shared.")) {
-            // Backs redirect mixins in both .compat.customnpcs. and .compat.mynpcs. — apply
-            // whenever either mod (or both) is present.
-            return isModLoaded("customnpcs") || isModLoaded("mynpcs");
+            return SharedNpcMixinPolicy.shouldApply(mixinClassName,
+                    isModLoaded("customnpcs"), isModLoaded("mynpcs"));
         }
         if (mixinClassName.contains(".compat.cnpcgecko.")) {
             return isModLoaded("customnpcs") && isModLoaded("cnpcgeckoaddon");
@@ -116,6 +118,9 @@ public class ConditionalMixinPlugin implements IMixinConfigPlugin {
         // Classpath fallbacks (mixin apply / weird loaders)
         if ("sable".equals(modId)) {
             return isClassPresent("dev.ryanhcode.sable.api.SubLevelHelper");
+        }
+        if ("zfastnoise".equals(modId)) {
+            return isClassPresent("org.codeberg.zenxarch.fastnoise.FastNoiseMod");
         }
         if ("create".equals(modId)) {
             return isClassPresent("com.simibubi.create.Create");

@@ -9,7 +9,10 @@ import net.bullettrain.xenopixelsmod.aero.AeroLinkManager;
 import net.bullettrain.xenopixelsmod.aero.AeroPowerBudget;
 import net.bullettrain.xenopixelsmod.aero.AeroSubsystem;
 import net.bullettrain.xenopixelsmod.aero.ControllerMode;
+import net.bullettrain.xenopixelsmod.aero.GuidanceVersion;
 import net.bullettrain.xenopixelsmod.aero.control.AeroFlightCore;
+import net.bullettrain.xenopixelsmod.aero.v2.GuidanceV2Core;
+import net.bullettrain.xenopixelsmod.aero.v2.GuidanceV2State;
 import net.bullettrain.xenopixelsmod.aero.control.VectorMixer;
 import net.bullettrain.xenopixelsmod.aero.power.AeroEnergyStorage;
 import net.bullettrain.xenopixelsmod.block.custom.PilotSeatBlock;
@@ -54,11 +57,12 @@ import java.util.Set;
 public class PilotSeatBlockEntity extends BlockEntity implements AeroControlHost {
 
     /** How far the seat looks for engines to claim. */
-    private static final int ENGINE_SEARCH_RADIUS = 12;
 
     private final AeroBus aeroBus = new AeroBus();
     private final AeroEnergyStorage aeroEnergy = new AeroEnergyStorage();
     private final AeroFlightCore aeroCore = new AeroFlightCore();
+    private final GuidanceV2Core guidanceV2Core = new GuidanceV2Core();
+    private final GuidanceV2State guidanceV2 = new GuidanceV2State();
 
     private final Set<BlockPos> pairedThrusters = new LinkedHashSet<>();
     private final Set<BlockPos> linkedPanels = new LinkedHashSet<>();
@@ -98,6 +102,10 @@ public class PilotSeatBlockEntity extends BlockEntity implements AeroControlHost
         }
     }
 
+    public GuidanceV2State guidanceV2() {
+        return guidanceV2;
+    }
+
     @Override
     public boolean isCommandingFlight() {
         return false;
@@ -110,7 +118,8 @@ public class PilotSeatBlockEntity extends BlockEntity implements AeroControlHost
 
     @Override
     public int pairNearbyThrusters() {
-        int added = AeroLinkManager.pairNearby(level, worldPosition, ENGINE_SEARCH_RADIUS, pairedThrusters);
+        int added = AeroLinkManager.pairNearby(level, worldPosition,
+                net.bullettrain.xenopixelsmod.aero.AeroConfig.seatEngineRadius, pairedThrusters);
         setChanged();
         syncAero();
         return added;
@@ -239,10 +248,18 @@ public class PilotSeatBlockEntity extends BlockEntity implements AeroControlHost
 
         Vector3dc worldVelocity = VsShipHelper.velocity(serverLevel, ship);
         Vector3dc nose = noseVector();
-        boolean stalled = aeroCore.tick(aeroBus, ship, level, aeroLinks,
-                nose, bodyUp, nose,
-                aeroBus.yawDeg(), aeroBus.pitchDeg(), aeroBus.rollDeg(), aeroBus.throttle(),
-                worldVelocity, 0.05, linkedPanels);
+        boolean stalled;
+        if (GuidanceVersion.active().isV2()) {
+            stalled = guidanceV2Core.tick(aeroBus, ship, level, aeroLinks,
+                    nose, bodyUp, nose,
+                    aeroBus.yawDeg(), aeroBus.pitchDeg(), aeroBus.rollDeg(), aeroBus.throttle(),
+                    worldVelocity, 0.05, linkedPanels, guidanceV2.surfaceMode());
+        } else {
+            stalled = aeroCore.tick(aeroBus, ship, level, aeroLinks,
+                    nose, bodyUp, nose,
+                    aeroBus.yawDeg(), aeroBus.pitchDeg(), aeroBus.rollDeg(), aeroBus.throttle(),
+                    worldVelocity, 0.05, linkedPanels);
+        }
         aeroBus.reportAutopilot(0, 0, 0, worldVelocity.length(),
                 stalled ? "seat flight — STALL" : "seat flight");
     }
@@ -320,6 +337,7 @@ public class PilotSeatBlockEntity extends BlockEntity implements AeroControlHost
         ListTag panelList = new ListTag();
         for (BlockPos pos : linkedPanels) panelList.add(LongTag.valueOf(pos.asLong()));
         tag.put("LinkedPanels", panelList);
+        guidanceV2.save(tag);
     }
 
     @Override
@@ -345,6 +363,7 @@ public class PilotSeatBlockEntity extends BlockEntity implements AeroControlHost
                 }
             }
         }
+        guidanceV2.load(tag);
     }
 
     @Override

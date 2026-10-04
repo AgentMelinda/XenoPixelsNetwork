@@ -24,14 +24,26 @@ public final class XenoRushTechniqueEvents {
 
     @SubscribeEvent
     public static void onPlayerDataLoad(DMZEvent.PlayerDataLoadEvent event) {
-        XenoRushTechniques.unlockRushTechniques(event.getPlayer());
+        applyGrantedStrikes(event.getPlayer());
     }
 
     @SubscribeEvent
     public static void onPlayerLogin(net.neoforged.neoforge.event.entity.player.PlayerEvent.PlayerLoggedInEvent event) {
         if (event.getEntity() instanceof ServerPlayer player) {
+            applyGrantedStrikes(player);
+        }
+    }
+
+    /** Re-applies kit/combo strikes the player already earned. Never grants exclusive combos. */
+    static void applyGrantedStrikes(ServerPlayer player) {
+        if (player == null) return;
+        boolean auto = net.bullettrain.xenopixelsmod.config.XenoServerConfig.rushAutoUnlock;
+        int rushLevel = net.bullettrain.xenopixelsmod.features.progression.CombatSkills
+                .level(player, net.bullettrain.xenopixelsmod.features.progression.CombatSkills.RUSH);
+        if (XenoRushTechniques.shouldUnlockRushKit(auto, rushLevel)) {
             XenoRushTechniques.unlockRushTechniques(player);
         }
+        XenoComboStrikes.unlock(player);
     }
 
     @SubscribeEvent
@@ -42,37 +54,42 @@ public final class XenoRushTechniqueEvents {
         if (strike == null || player == null || target == null || !target.isAlive()) {
             return;
         }
+        if (!net.bullettrain.xenopixelsmod.command.XenoPermissions.hasPermission(
+                player, net.bullettrain.xenopixelsmod.command.XenoPermissions.SKILL_RUSH_USE)) {
+            return;
+        }
 
         String id = strike.getId();
-        double horizontal;
-        double upward;
+        if (!XenoRushTechniques.isRushId(id)) return;
+        double distance;
+        double up;
         boolean chase;
         if (XenoRushTechniques.RUSH_LEFT.equals(id) || XenoRushTechniques.RUSH_RIGHT.equals(id)) {
-            horizontal = 0.35;
-            upward = 0.12;
+            distance = net.bullettrain.xenopixelsmod.config.XenoServerConfig.rushKnockbackLeftRight;
+            up = net.bullettrain.xenopixelsmod.config.XenoServerConfig.rushKnockbackLeftRightUp;
             chase = false;
         } else if (XenoRushTechniques.RUSH_BREAKER.equals(id)) {
-            horizontal = 0.75;
-            upward = 0.85;
+            distance = net.bullettrain.xenopixelsmod.config.XenoServerConfig.rushKnockbackBreaker;
+            up = net.bullettrain.xenopixelsmod.config.XenoServerConfig.rushKnockbackBreakerUp;
             chase = true;
         } else if (XenoRushTechniques.RUSH_FINISHER.equals(id)) {
-            horizontal = 1.55;
-            upward = 0.55;
+            distance = net.bullettrain.xenopixelsmod.config.XenoServerConfig.rushKnockbackFinisher;
+            up = net.bullettrain.xenopixelsmod.config.XenoServerConfig.rushKnockbackFinisherUp;
             chase = true;
         } else {
             return;
         }
 
         Vec3 away = target.position().subtract(player.position());
-        Vec3 flat = new Vec3(away.x, 0.0, away.z);
-        if (flat.lengthSqr() < 1.0e-4) {
-            flat = new Vec3(player.getLookAngle().x, 0.0, player.getLookAngle().z);
-        }
-        if (flat.lengthSqr() < 1.0e-4) {
-            return;
-        }
-        CombatKnockback.add(target,
-                flat.normalize().scale(horizontal).add(0.0, upward, 0.0));
+        Vec3 look = player.getLookAngle();
+        double[] impulse = net.bullettrain.xenopixelsmod.combat.combo.RushKnockbackPath.impulse(
+                look.x, look.y, look.z,
+                away.x, away.y, away.z,
+                distance, up,
+                net.bullettrain.xenopixelsmod.config.XenoServerConfig.rushKnockbackDown,
+                net.bullettrain.xenopixelsmod.config.XenoServerConfig.rushKnockbackVerticalPitch,
+                player.getXRot());
+        CombatKnockback.add(target, new Vec3(impulse[0], impulse[1], impulse[2]));
         if (chase) {
             ChaseFlightSystem.startAutomatic(player, target);
         }

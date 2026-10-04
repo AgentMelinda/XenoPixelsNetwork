@@ -57,10 +57,12 @@ public final class HdAuraPlan {
 
     /**
      * First person (2026-10-03 owner: render like normal DMZ aura). DragonMineZ's first-person
-     * aura is a camera-space overlay ({@code pose identity; translate(0, -0.6, -0.7)} at 0.45
-     * alpha in {@code AuraRenderer.executeAuraShaderDraw}). HD copies use the same eye-space
-     * offset each frame, scaled by {@link #firstPersonScaleFactor()}, instead of a world-space
-     * egg at the feet (that filled the view, 2026-10-02 SSRose3).
+     * path in {@code AuraRenderer.executeAuraShaderDraw} is: pose identity;
+     * {@code translate(0, -0.6, -0.7)}; {@code scale(normalizedScale * 3)}; draw at
+     * {@code alpha * 0.45}. The 0.45 is <b>alpha</b>, not scale (misread until 2026-10-03 FP
+     * depth fix). HD copies use the same head-space offset + camera lock each frame via AAA's
+     * measured Basis ({@code +Z} behind the eyes), instead of a world-space egg at the feet
+     * (that filled the view, 2026-10-02 SSRose3).
      */
     public static boolean cameraSpaceInFirstPerson() {
         return true;
@@ -71,39 +73,102 @@ public final class HdAuraPlan {
         return !cameraSpaceInFirstPerson();
     }
 
-    /** Eye-space offset matching DragonMineZ: {x right, y up, z} with -Z forward. */
+    /**
+     * AAA / DMZ head-space offset for the FP overlay: {@code {x, y, z}} with AAA {@code +Z}
+     * behind the eyes (so {@code z = -0.7} is 0.7 in front — same as DMZ view-space
+     * {@code translate(0, -0.6, -0.7)} after identity).
+     */
     public static float[] firstPersonEyeOffset() {
         return new float[] {0.0f, -0.6f, -0.7f};
     }
 
     /**
-     * How large the HD aura is in first person relative to its third-person size. Matches DMZ's
-     * 0.45 first-person alpha so it does not read as a wall.
+     * DMZ FP scale multiplier on the normalized aura scale
+     * ({@code poseStack.scale(normalizedScaleX * 3, normalizedScaleY * 3, 1)}).
      */
     public static float firstPersonScaleFactor() {
+        return 3.0f;
+    }
+
+    /**
+     * DMZ FP alpha multiplier ({@code finalAlpha * 0.45} in {@code executeAuraShaderDraw}).
+     * Applied on top of layer alpha / brightness when the live path can express it.
+     */
+    public static float firstPersonAlphaFactor() {
         return 0.45f;
     }
 
     /**
-     * World position of the first-person HD aura from the camera eye and look angles (degrees,
-     * same as {@code Camera} / {@code Vec3.directionFromRotation}).
+     * Authored silhouette sprite centre above the emitter ({@code aura2.py} / {@code aura3.py}
+     * {@code CENTRE_Y = 1.5}). Used so FP placement puts that centre on DMZ's billboard centre.
+     */
+    public static float silhouetteCentreY() {
+        return 1.5f;
+    }
+
+    /**
+     * How far to pull the emitter down along camera-up (blocks) so a silhouette's authored
+     * centre lands on the DMZ FP billboard centre after {@code heightScale} is applied.
+     */
+    public static float firstPersonEmitterCentreNudge(boolean silhouette, float heightScale) {
+        return silhouette ? silhouetteCentreY() * Math.max(0.0f, heightScale) : 0.0f;
+    }
+
+    /**
+     * Effekseer / AAA rotation (radians) matching head-space
+     * {@code Basis.fromEuler(-pitch, PI - yaw, 0)} so the effect is camera-locked like DMZ's
+     * identity overlay.
+     */
+    public static float[] firstPersonRotationRadians(float xRotDeg, float yRotDeg) {
+        double pitch = Math.toRadians(xRotDeg);
+        double yaw = Math.toRadians(yRotDeg);
+        return new float[] {(float) (-pitch), (float) (Math.PI - yaw), 0.0f};
+    }
+
+    /**
+     * Render-interpolated entity feet, matching {@code Entity.getPosition(partial)} /
+     * Camera / DMZ ({@code lerp(partial, xo, getX())}).
+     *
+     * <p><b>Must use {@code xo}/{@code yo}/{@code zo}, never {@code xOld}/{@code yOld}/{@code zOld}.</b>
+     * {@code absMoveTo} and similar paths refresh {@code xo} without {@code xOld}, so lerping from
+     * {@code xOld} leaves the HD aura a tick behind when flying or moving fast (2026-10-03).
+     */
+    public static float[] entityRenderPos(double xo, double yo, double zo,
+                                          double x, double y, double z, float partial) {
+        return new float[] {
+                (float) net.minecraft.util.Mth.lerp(partial, xo, x),
+                (float) net.minecraft.util.Mth.lerp(partial, yo, y),
+                (float) net.minecraft.util.Mth.lerp(partial, zo, z)
+        };
+    }
+
+    /**
+     * World position of the first-person HD aura from the camera eye and look angles (degrees),
+     * using AAA 2.3.1 head-space Basis so {@link #firstPersonEyeOffset()} matches DMZ / flight
+     * aura conventions ({@code AaaHeadSpaceOffsetTest}).
      */
     public static float[] firstPersonWorldPos(double eyeX, double eyeY, double eyeZ, float xRot, float yRot) {
-        float[] o = firstPersonEyeOffset();
-        net.minecraft.world.phys.Vec3 forward = net.minecraft.world.phys.Vec3.directionFromRotation(xRot, yRot);
-        net.minecraft.world.phys.Vec3 worldUp = new net.minecraft.world.phys.Vec3(0.0, 1.0, 0.0);
-        net.minecraft.world.phys.Vec3 right = forward.cross(worldUp);
-        if (right.lengthSqr() < 1.0e-6) {
-            right = net.minecraft.world.phys.Vec3.directionFromRotation(0.0f, yRot + 90.0f);
-        } else {
-            right = right.normalize();
-        }
-        net.minecraft.world.phys.Vec3 up = right.cross(forward).normalize();
-        // Eye space +X right, +Y up, -Z forward.
-        double wx = eyeX + right.x * o[0] + up.x * o[1] + forward.x * (-o[2]);
-        double wy = eyeY + right.y * o[0] + up.y * o[1] + forward.y * (-o[2]);
-        double wz = eyeZ + right.z * o[0] + up.z * o[1] + forward.z * (-o[2]);
-        return new float[] {(float) wx, (float) wy, (float) wz};
+        return firstPersonWorldPos(eyeX, eyeY, eyeZ, xRot, yRot, firstPersonEyeOffset());
+    }
+
+    /**
+     * Like {@link #firstPersonWorldPos(double, double, double, float, float)} with an explicit
+     * head-space local offset (after centre-nudge).
+     */
+    public static float[] firstPersonWorldPos(double eyeX, double eyeY, double eyeZ, float xRot, float yRot,
+                                              float[] localOffset) {
+        float[] o = localOffset == null ? firstPersonEyeOffset() : localOffset;
+        double pitch = Math.toRadians(xRot);
+        double yaw = Math.toRadians(yRot);
+        net.minecraft.world.phys.Vec3 local = new net.minecraft.world.phys.Vec3(o[0], o[1], o[2]);
+        net.minecraft.world.phys.Vec3 world = mod.chloeprime.aaaparticles.common.util.Basis
+                .fromEuler(new net.minecraft.world.phys.Vec3(-pitch, Math.PI - yaw, 0.0))
+                .toGlobal(local);
+        return new float[] {
+                (float) (eyeX + world.x),
+                (float) (eyeY + world.y),
+                (float) (eyeZ + world.z)
+        };
     }
 
     /** @deprecated use {@link #firstPersonScaleFactor()} with camera-space placement */

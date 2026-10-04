@@ -301,14 +301,23 @@ public class ShipThrusterBlockEntity extends BlockEntity {
         forceCleared = false;
 
         if (level.isClientSide) {
-            if (power > 0.05 && (level.getGameTime() & 3) == 0) {
+            // The vanilla flame/smoke plume is the fallback: by default the server sends the
+            // Effekseer plume instead (effekseerShipThrusters).
+            if (power > 0.05 && (level.getGameTime() & 3) == 0
+                    && net.bullettrain.xenopixelsmod.fx.effek.ThrusterEffectRules.clientDrawsVanilla(
+                            net.bullettrain.xenopixelsmod.client.XenoServerClientState.get())) {
                 clientPlume();
             }
             return;
         }
 
-        // Server: lit blockstate for clients; no server particles
+        // Server: lit blockstate for clients, and the Effekseer plume.
         forcePoweredState(power > 0.05);
+        if (level instanceof ServerLevel plumeLevel
+                && net.bullettrain.xenopixelsmod.fx.effek.ThrusterEffectRules.pulseDue(
+                        plumeLevel.getGameTime() + (worldPosition.asLong() & 7), power)) {
+            serverPlume(plumeLevel);
+        }
 
         // Ballistic owns CoM thrust — thruster map must stay empty
         if (guidanceOwned) {
@@ -408,6 +417,36 @@ public class ShipThrusterBlockEntity extends BlockEntity {
      * reaching past it into Sable's internal client sub-level implementation would mean guessing
      * at an unverified API rather than using one actually confirmed to exist.
      */
+    /**
+     * The Effekseer rocket plume (slot {@code ship_thruster}), re-sent every 8 ticks while lit and
+     * staggered per block so a bank of thrusters does not pulse in step. Placed at the nozzle's
+     * real world pose: on a Sable ship the block's position is ship-local, so it goes through the
+     * ship's logical pose (the same transform {@link #playerNear} uses), and so does the exhaust
+     * direction.
+     */
+    private void serverPlume(ServerLevel sl) {
+        Direction exhaust = getBlockState().getValue(ShipThrusterBlock.FACING);
+        Vector3d pos = new Vector3d(worldPosition.getX() + 0.5, worldPosition.getY() + 0.5,
+                worldPosition.getZ() + 0.5);
+        Vector3d dir = new Vector3d(exhaust.getStepX(), exhaust.getStepY(), exhaust.getStepZ());
+        try {
+            ServerSubLevel ship = resolveShipCached(sl);
+            if (ship != null) {
+                pos = ship.logicalPose().transformPosition(pos);
+                ship.logicalPose().orientation().transform(dir);
+            }
+        } catch (Throwable ignored) {
+            // Ground blocks already use world coordinates.
+        }
+        Vec3 direction = new Vec3(dir.x, dir.y, dir.z);
+        if (direction.lengthSqr() < 1.0e-8) return;
+        direction = direction.normalize();
+        net.bullettrain.xenopixelsmod.fx.effek.XenoEffects.play(sl,
+                net.bullettrain.xenopixelsmod.fx.effek.EffectSlot.SHIP_THRUSTER,
+                net.bullettrain.xenopixelsmod.fx.effek.ThrusterEffectRules.nozzle(new Vec3(pos.x, pos.y, pos.z), direction),
+                direction, net.bullettrain.xenopixelsmod.fx.effek.ThrusterEffectRules.scale(power), -1);
+    }
+
     private void clientPlume() {
         if (level == null || power <= 0.05) return;
         Direction exhaust = getBlockState().getValue(ShipThrusterBlock.FACING);

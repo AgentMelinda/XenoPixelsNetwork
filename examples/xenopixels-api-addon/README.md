@@ -39,3 +39,11 @@ Exercise the corresponding gameplay feature for each counter:
 
 The sync helpers are exposed as `/xenoapitest sync_stats`, `sync_progression`, and
 `sync_resources`. Use resource sync only after the player has received full DMZ data.
+
+## XenoAPI probe
+
+`/xenoapitest xenoapi` uses only the packaged `xenoapi.npcs.api` contracts: `NpcAPI.IsAvailable()`,
+`NpcAPI.Instance().getIEntity(player)`, `IWorld.getClosestEntity(pos, 16, EntitiesType.NPC)`, and,
+for the closest native NPC, `say`, a one-shot `ITimers.forceStart(9501, 20, false)` and a temporary
+data write. It imports no XenoPixels internals. The addon also logs `XenoAPI available=` at
+construction. See `docs/native-xenoapi-adapters.md` in the XenoPixels repository for the capability table.

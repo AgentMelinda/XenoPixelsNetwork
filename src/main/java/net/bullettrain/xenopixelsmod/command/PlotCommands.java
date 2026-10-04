@@ -198,6 +198,7 @@ public final class PlotCommands {
             case NO_ECONOMY -> "MMO Econ is not installed, so the sale cannot settle.";
             case INSUFFICIENT_FUNDS -> "You cannot afford this plot.";
             case TRANSFER_FAILED -> "The payment failed; the plot was not transferred.";
+            case ROLLBACK_FAILED -> "The transfer failed during rollback; administrator repair is required.";
             case NOT_FOR_SALE -> "This plot is not for sale.";
             case ALREADY_OWNER -> "You already own this plot.";
             default -> "There is no claimed plot here.";
@@ -344,7 +345,7 @@ public final class PlotCommands {
         int periodTicks = (int) Math.max(1L, Math.round(periodSeconds * 20.0D));
         ServerLevel level = player.serverLevel();
         boolean started = PlotLease.get(level.getServer()).lease(
-                plot, player.getUUID(), price, periodTicks, level.getServer().getTickCount());
+                plot, player.getUUID(), price, periodTicks, level.getGameTime());
         if (!started) {
             source.sendFailure(Component.literal("Those lease terms are not usable."));
             return 0;
@@ -401,7 +402,10 @@ public final class PlotCommands {
             source.sendSuccess(() -> Component.literal("§7This plot is not leased."), false);
             return 0;
         }
-        long dueIn = Math.max(0L, lease.nextDueTick() - level.getServer().getTickCount());
+        // Game time, matching what wrote the deadline. Against getTickCount() this read as a huge
+        // "due in" right after a restart, which is the same bug as the lease never being charged -
+        // only this half was visible to the player.
+        long dueIn = Math.max(0L, lease.nextDueTick() - level.getGameTime());
         source.sendSuccess(() -> Component.literal(String.format(
                 "§bLease: §f%s§7 pays §f%s §7every §f%d ticks§7; next due in §f%d ticks",
                 lease.renter(), MmoEconBridge.format(MmoEconBridge.toUnits(lease.pricePerPeriod())),

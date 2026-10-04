@@ -8,6 +8,7 @@ import net.bullettrain.xenopixelsmod.network.packet.PartyPingPacket;
 import net.minecraft.core.BlockPos;
 
 import java.util.function.Consumer;
+import net.minecraft.nbt.CompoundTag;
 
 /**
  * Common-safe hooks for opening client screens.
@@ -46,6 +47,67 @@ public final class ClientScreens {
 
     public static Runnable openParty = () -> {
     };
+
+    /** Tournament queue UI from S2C open cue or client {@code /xenotourneyui}. */
+    public static Runnable openTournamentQueue = () -> {
+    };
+
+    /**
+     * Race form-group maker (green shell). Bound on the client; args are race then group
+     * (empty group → first installed group for that race).
+     */
+    public static java.util.function.BiConsumer<String, String> openRaceFormGroupMaker = (race, group) -> {
+    };
+
+    /**
+     * Advanced Hair Editor ({@code /xenohairui} and {@code /xenomaker hair}).
+     * Apply via UpdateCustomHairC2S (PR-D7c; path READY / runtime unverified).
+     */
+    public static Runnable openHairMaker = () -> {
+    };
+
+    /** Unified Maker Studio hub ({@code /xenomaker}). */
+    public static Runnable openXenoMakerHub = () -> {
+    };
+
+    /** Race Character Maker ({@code /xenomaker race}). */
+    public static Runnable openRaceCharacterMaker = () -> {
+    };
+
+    /** Form Maker ({@code /xenomaker forms}). */
+    public static Runnable openFormMaker = () -> {
+    };
+
+    /** Alias for {@link #openFormMaker} (pre-Task-11 stub name). */
+    public static Runnable openXenoMakerFormsStub = () -> {
+    };
+
+    /** Alias for {@link #openHairMaker} (pre-Task-12 stub name). */
+    public static Runnable openXenoMakerHairStub = () -> {
+    };
+
+    public static Consumer<XenoNpcOpenData> openXenoNpcEditor = data -> {
+    };
+
+    /** The scripter tool's air menu (Player / Forge / library scripts). */
+    public static Runnable openScriptHub = () -> {
+    };
+
+    /** Nearby NPCs list from the server (NPC wand, right-click the air). */
+    public static Consumer<java.util.List<net.bullettrain.xenopixelsmod.npc.NpcNearbyList.Entry>> openNpcNearby = entries -> {
+    };
+
+    /** An NPC's full server DMZ profile (NpcProfileRefreshPacket); the client stores it. */
+    public static java.util.function.BiConsumer<Integer, CompoundTag> receiveNpcProfile = (entityId, profile) -> {
+    };
+
+    /** Script screen opened by the scripting tool; carries the NPC and its current binding. */
+    public static Consumer<XenoNpcScriptOpenData> openXenoNpcScript = data -> {
+    };
+
+    public record XenoNpcOpenData(int entityId, CompoundTag data) {}
+
+    public record XenoNpcScriptOpenData(int entityId, net.minecraft.nbt.CompoundTag container) {}
 
     private ClientScreens() {
     }

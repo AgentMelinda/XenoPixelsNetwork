@@ -80,6 +80,15 @@ public final class XenoFormRegistry {
                 stats(8.0f, 8.0f, 6.2f, 1.12f, 1.12f, 1.35f, 1.35f, 8.0f));
         register("xenopixels_gods_forms", "ue", "Ultra Ego", TransformationType.VEGETA_TREE,
                 stats(8.4f, 8.4f, 5.8f, 1.15f, 1.15f, 1.32f, 1.28f, 8.4f));
+        // 2026-10-02 owner: Super Saiyan 3 of the two god lines, after their Evolution forms.
+        register("xenopixels_gods_forms", "ssb3", "Super Saiyan Blue 3", TransformationType.GOD_SAIYAN,
+                stats(7.4f, 7.4f, 5.6f, 1.16f, 1.16f, 1.34f, 1.36f, 7.4f));
+        register("xenopixels_gods_forms", "ssrose3", "Super Saiyan Rose 3", TransformationType.GOKU_BLACK,
+                stats(7.4f, 7.4f, 5.6f, 1.16f, 1.16f, 1.34f, 1.36f, 7.4f));
+
+        // --- Hakaishin (every race, after Hakai): the God of Destruction's mantle, see FormPassives ---
+        register("xenopixels_hakaishin", "hakaishin", "Hakaishin", TransformationType.VEGETA_TREE,
+                stats(8.6f, 8.6f, 6.4f, 1.22f, 1.22f, 1.4f, 1.4f, 8.2f));
 
         // --- Legendary ---
         register("xenopixels_saga_forms", "trunks_ikari", "Trunks Ikari", TransformationType.TURLES_FORM,
@@ -201,7 +210,8 @@ public final class XenoFormRegistry {
             case "ssg" -> 0xFFE53935;
             case "ssb" -> 0xFF1E88E5;
             case "ssbe" -> 0xFF1565C0;
-            case "ssrose", "ssrose_evolution" -> 0xFFFF69B4;
+            case "ssrose", "ssrose_evolution", "ssrose3" -> 0xFFFF69B4;
+            case "ssb3" -> 0xFF29B6F6;
             case "ui_sign", "ui" -> 0xFFECEFF1;
             case "ue" -> 0xFF7B1FA2;
             case "trunks_ikari" -> 0xFF90CAF9;

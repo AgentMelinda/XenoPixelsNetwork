@@ -6,3 +6,7 @@
 - Verify asset paths and dimensions from files rather than guessing.
 - Test affected screens or animations in a fresh client and separate unrelated shader/Veil warnings
   from regressions caused by the change.
+- For the generated panel atlas, its widget kit, and the ScaledScreen coordinate rules, read
+  `docs/atlas-ui-doco.md` before touching `client/ui/atlas/` or any screen that uses it.
+  Sprites there are blitted 1:1 and never stretched; a missing size is generated through
+  `tools/atlas-panels/xeno_extra_specs.py`, not scaled at runtime.

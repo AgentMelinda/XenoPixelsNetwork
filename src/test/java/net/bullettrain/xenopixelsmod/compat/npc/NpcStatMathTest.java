@@ -7,18 +7,20 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 class NpcStatMathTest {
     @Test
     void strengthDrivesMeleeAndUsesItsOwnFormMultiplier() {
-        assertEquals(101.0, NpcStatMath.meleeDamage(50, 2.0, 1.0), 1.0e-6);
+        // Scaling of 1.0 is "no race/class bonus", so these are the same numbers as before it
+        // became an argument -- the formula gained a factor, it did not change shape.
+        assertEquals(101.0, NpcStatMath.meleeDamage(50, 2.0, 1.0, 1.0), 1.0e-6);
     }
 
     @Test
     void strikePowerIncludesOneQuarterStrength() {
         assertEquals(126.0,
-                NpcStatMath.strikeDamage(50, 100, 2.0, 1.0, 1.0), 1.0e-6);
+                NpcStatMath.strikeDamage(50, 100, 2.0, 1.0, 1.0, 1.0, 1.0), 1.0e-6);
     }
 
     @Test
     void powerDrivesKiDamage() {
-        assertEquals(150.0, NpcStatMath.kiDamage(100, 3.0, 0.5), 1.0e-6);
+        assertEquals(150.0, NpcStatMath.kiDamage(100, 3.0, 1.0, 0.5), 1.0e-6);
     }
 
     @Test

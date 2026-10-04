@@ -18,7 +18,8 @@ import java.util.function.Consumer;
  * back on with {@code /xenobind} and gets the old behaviour back immediately, no restart and no
  * config file surgery.
  *
- * <p>Every route ships enabled, so nothing changes until a migration deliberately flips one.
+ * <p>Every route ships enabled, so nothing changes until a migration deliberately flips one - except
+ * {@link #MASH_LAUNCHER}, which the owner asked to have off.
  *
  * <p>Adding a route is one constant here plus one flag on {@link XenoClientConfig}; the command
  * and both input paths read this list rather than their own copies.
@@ -42,7 +43,18 @@ public enum Bt3DirectBind {
             () -> XenoClientConfig.bt3DirectSonicSwayRight,
             v -> XenoClientConfig.bt3DirectSonicSwayRight = v),
     SPARKING("sparking", "Sparking",
-            () -> XenoClientConfig.bt3DirectSparking, v -> XenoClientConfig.bt3DirectSparking = v);
+            () -> XenoClientConfig.bt3DirectSparking, v -> XenoClientConfig.bt3DirectSparking = v),
+    RUSHCOMBO("rushcombo", "Rush Combo",
+            () -> XenoClientConfig.bt3DirectRushcombo, v -> XenoClientConfig.bt3DirectRushcombo = v),
+    LIFTCOMBO("liftcombo", "Lift Combo",
+            () -> XenoClientConfig.bt3DirectLiftcombo, v -> XenoClientConfig.bt3DirectLiftcombo = v),
+    /**
+     * Tapping or holding W during a punch string launches the target (and holding it dashes after
+     * them). Off by default at the owner's request (2026-09-29): launching is W + the charged kick.
+     * The one route that ships off; {@code /xenobind mashlauncher on} brings it back.
+     */
+    MASH_LAUNCHER("mashlauncher", "Punch + W Launcher",
+            () -> XenoClientConfig.bt3DirectMashLauncher, v -> XenoClientConfig.bt3DirectMashLauncher = v);
 
     private final String id;
     private final String label;

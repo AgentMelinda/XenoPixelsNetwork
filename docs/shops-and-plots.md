@@ -1,5 +1,7 @@
 # Sign Shops + Plot System — Integration Research
 
+Player / staff how-to: [`docs/xeno-sign-shops-and-plots.md`](xeno-sign-shops-and-plots.md).
+
 **Research date:** 2026-09-12
 **Branch:** `1.21.1` · MC 1.21.1 · NeoForge 21.1.248 · Java 21 · mod id `xenopixelsmod`
 

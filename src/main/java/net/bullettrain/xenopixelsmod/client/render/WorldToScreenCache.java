@@ -39,7 +39,17 @@ public final class WorldToScreenCache {
     private WorldToScreenCache() {
     }
 
-    @SubscribeEvent
+    /**
+     * Captures the frame's camera.
+     *
+     * <p>{@code HIGHEST} priority is load-bearing, not tidiness. Consumers subscribe to this same
+     * event at this same stage — {@code DialogueBubbleRenderer} projects its option boxes here —
+     * and two {@code @EventBusSubscriber} classes at equal priority run in class-scan order, which
+     * is arbitrary. When a consumer won that race the cache was still invalid, {@link #project}
+     * returned null, every dialogue option came back unusable, and the bubbles could not be
+     * clicked at all while looking perfectly correct on screen.
+     */
+    @SubscribeEvent(priority = net.neoforged.bus.api.EventPriority.HIGHEST)
     public static void onRenderLevelStage(RenderLevelStageEvent event) {
         if (event.getStage() != RenderLevelStageEvent.Stage.AFTER_LEVEL) return;
         PROJECTION.set(event.getProjectionMatrix());

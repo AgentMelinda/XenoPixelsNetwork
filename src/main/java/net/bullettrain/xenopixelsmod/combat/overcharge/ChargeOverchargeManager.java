@@ -271,8 +271,7 @@ public final class ChargeOverchargeManager {
         if (projectile instanceof KiExplosionEntity explosion) {
             float boom = ChargeOverchargeMath.excessScale(percent,
                     XenoServerConfig.chargeOverchargeSizePerPercent);
-            float radius = Math.min(XenoServerConfig.kiDestructionRadiusLimit(),
-                    explosion.getMaxRadius() * boom);
+            float radius = XenoServerConfig.clampKiExplosionRadius(explosion.getMaxRadius() * boom);
             if (Math.abs(radius - explosion.getMaxRadius()) > KiProjectileApply.SIZE_EPSILON) {
                 explosion.setMaxRadius(radius);
             }

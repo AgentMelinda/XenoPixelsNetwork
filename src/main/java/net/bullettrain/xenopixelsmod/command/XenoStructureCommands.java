@@ -1,5 +1,6 @@
 package net.bullettrain.xenopixelsmod.command;
 
+import com.dragonminez.common.init.entities.questnpc.QuestNPCEntity;
 import com.dragonminez.server.world.structure.helper.DMZStructures;
 import com.dragonminez.server.world.structure.helper.StructureLocator;
 import com.dragonminez.server.world.structure.placement.StructureRepairManager;
@@ -10,17 +11,25 @@ import com.mojang.brigadier.arguments.StringArgumentType;
 import com.mojang.brigadier.suggestion.SuggestionProvider;
 import net.bullettrain.xenopixelsmod.XenoPixelsMod;
 import net.bullettrain.xenopixelsmod.config.XenoServerConfig;
+import net.bullettrain.xenopixelsmod.compat.dmz.DmzEntityCatalog;
 import net.bullettrain.xenopixelsmod.event.DmzMasterProtection;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
 import net.minecraft.commands.SharedSuggestionProvider;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.network.chat.ClickEvent;
 import net.minecraft.network.chat.Component;
+import net.minecraft.network.chat.HoverEvent;
+import net.minecraft.network.chat.MutableComponent;
+import net.minecraft.network.chat.Style;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.world.InteractionHand;
+import net.minecraft.world.InteractionResult;
 import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.level.levelgen.Heightmap;
 import net.minecraft.world.level.levelgen.structure.Structure;
 import net.minecraft.world.phys.AABB;
@@ -84,6 +93,15 @@ public final class XenoStructureCommands {
     private static final SuggestionProvider<CommandSourceStack> IDS =
             (ctx, b) -> SharedSuggestionProvider.suggest(BY_ID.keySet(), b);
 
+    /** Tab completion for one DragonMineZ group, read from the registry at completion time. */
+    private static SuggestionProvider<CommandSourceStack> dmzIds(DmzEntityCatalog.Group group) {
+        return (ctx, b) -> SharedSuggestionProvider.suggest(DmzEntityCatalog.ids(group), b);
+    }
+
+    /** The thirteen quest-giver identities DragonMineZ ships sidequests for. */
+    private static final SuggestionProvider<CommandSourceStack> QUEST_IDS =
+            (ctx, b) -> SharedSuggestionProvider.suggest(DmzEntityCatalog.QUEST_IDENTITIES, b);
+
     private static final SuggestionProvider<CommandSourceStack> MASTER_IDS =
             (ctx, b) -> {
                 List<String> ids = new ArrayList<>();
@@ -127,6 +145,67 @@ public final class XenoStructureCommands {
                         .executes(ctx -> repair(ctx.getSource())))
                 .then(Commands.literal("relocate")
                         .executes(ctx -> relocate(ctx.getSource())))
+                .then(Commands.literal("summon")
+                        // Grouped forms first. Brigadier matches literals before arguments, so
+                        // "summon master goku" takes this branch while "summon goku_house" still
+                        // falls through to the structure-master form below, unchanged.
+                        .then(Commands.literal("master")
+                                .then(Commands.argument("id", StringArgumentType.word())
+                                        .suggests(dmzIds(DmzEntityCatalog.Group.MASTER))
+                                        .executes(ctx -> summonDmz(ctx.getSource(),
+                                                DmzEntityCatalog.Group.MASTER,
+                                                StringArgumentType.getString(ctx, "id")))))
+                        .then(Commands.literal("saga")
+                                .then(Commands.argument("id", StringArgumentType.word())
+                                        .suggests(dmzIds(DmzEntityCatalog.Group.SAGA))
+                                        .executes(ctx -> summonDmz(ctx.getSource(),
+                                                DmzEntityCatalog.Group.SAGA,
+                                                StringArgumentType.getString(ctx, "id")))))
+                        .then(Commands.literal("mob")
+                                .then(Commands.argument("id", StringArgumentType.word())
+                                        .suggests(dmzIds(DmzEntityCatalog.Group.MOB))
+                                        .executes(ctx -> summonDmz(ctx.getSource(),
+                                                DmzEntityCatalog.Group.MOB,
+                                                StringArgumentType.getString(ctx, "id")))))
+                        .then(Commands.literal("quest")
+                                .then(Commands.argument("id", StringArgumentType.word())
+                                        .suggests(QUEST_IDS)
+                                        .executes(ctx -> summonQuestNpc(ctx.getSource(),
+                                                StringArgumentType.getString(ctx, "id")))))
+                        .then(Commands.argument("id", StringArgumentType.word())
+                                .suggests(MASTER_IDS)
+                                .executes(ctx -> summonMaster(ctx.getSource(),
+                                        StringArgumentType.getString(ctx, "id")))))
+                .then(Commands.literal("talk")
+                        .then(Commands.argument("id", StringArgumentType.word())
+                                .suggests(MASTER_IDS)
+                                .executes(ctx -> talkToMaster(ctx.getSource(),
+                                        StringArgumentType.getString(ctx, "id")))))
+                .then(Commands.literal("prerequisites")
+                        .then(Commands.literal("list")
+                                .executes(ctx -> listPrerequisites(ctx.getSource())))
+                        .then(Commands.literal("remove")
+                                .then(Commands.argument("id", StringArgumentType.word())
+                                        .suggests(MASTER_IDS)
+                                        .executes(ctx -> removePrerequisite(ctx.getSource(),
+                                                StringArgumentType.getString(ctx, "id")))))
+                        .then(Commands.literal("set")
+                                .then(Commands.argument("id", StringArgumentType.word())
+                                        .suggests(MASTER_IDS)
+                                        .then(Commands.argument("quest", StringArgumentType.word())
+                                                .then(Commands.argument("externalQuest", StringArgumentType.word())
+                                                        .then(Commands.argument("item", StringArgumentType.word())
+                                                                .then(Commands.argument("itemCount", IntegerArgumentType.integer(0, 999))
+                                                                        .then(Commands.argument("skill", StringArgumentType.word())
+                                                                                .then(Commands.argument("skillLevel", IntegerArgumentType.integer(0, 3))
+                                                                                        .executes(ctx -> setPrerequisite(ctx.getSource(),
+                                                                                                StringArgumentType.getString(ctx, "id"),
+                                                                                                StringArgumentType.getString(ctx, "quest"),
+                                                                                                StringArgumentType.getString(ctx, "externalQuest"),
+                                                                                                StringArgumentType.getString(ctx, "item"),
+                                                                                                IntegerArgumentType.getInteger(ctx, "itemCount"),
+                                                                                                StringArgumentType.getString(ctx, "skill"),
+                                                                                                IntegerArgumentType.getInteger(ctx, "skillLevel"))))))))))))
                 .then(Commands.literal("masters")
                         .executes(ctx -> listMasters(ctx.getSource(), false))
                         .then(Commands.literal("all")
@@ -150,8 +229,9 @@ public final class XenoStructureCommands {
                                                 StringArgumentType.getString(ctx, "id"), true)))))
                 .executes(ctx -> {
                     ctx.getSource().sendSuccess(() -> Component.literal(
-                            "Usage: /xenostructure list|locate <id>|place <id> [x y z]|repair|relocate"
-                                    + "|masters [all]|killdupes [all]|killmasters <all|id> [all]"),
+                            "Usage: /xenostructure list|locate <id>|place <id> [x y z]"
+                                    + "|summon <master>|summon master|saga|mob|quest <id>"
+                                    + "|talk <master>|prerequisites list|set <master> <quest|-> <external|-> <item|-> <count> <skill|-> <level>|repair|relocate|masters [all]|killdupes [all]|killmasters <all|id> [all]"),
                             false);
                     return 1;
                 }));
@@ -243,6 +323,209 @@ public final class XenoStructureCommands {
                 e.discard();
             }
         }
+    }
+
+    /**
+     * Spawns any DragonMineZ NPC in {@code group} at the caller.
+     *
+     * <p>Deliberately not routed through the vanilla {@code /summon} the master path uses. That
+     * works, but it cannot touch the entity afterwards, which the quest-NPC path needs - and doing
+     * both the same way means one spawn idiom to reason about. {@code create} then
+     * {@code addFreshEntity} is the same pair {@code XenoNpcWandItem} already uses.
+     */
+    private static int summonDmz(CommandSourceStack source, DmzEntityCatalog.Group group,
+                                 String rawId) {
+        EntityType<?> type = DmzEntityCatalog.type(group, rawId);
+        if (type == null) {
+            source.sendFailure(Component.literal(
+                    "Unknown DragonMineZ " + group.name().toLowerCase(Locale.ROOT)
+                            + " '" + rawId + "'"));
+            return 0;
+        }
+        Entity spawned = placeAtCaller(source, type);
+        if (spawned == null) {
+            source.sendFailure(Component.literal("Could not create " + type.getDescriptionId()));
+            return 0;
+        }
+        source.sendSuccess(() -> Component.literal("Summoned ")
+                .append(spawned.getDisplayName()), true);
+        return 1;
+    }
+
+    /**
+     * Spawns a DragonMineZ quest NPC carrying {@code identity}.
+     *
+     * <p>Bulma and the other quest givers are not entity types of their own - there is one
+     * {@code dragonminez:quest_npc} and its {@code QuestNpcId} says which character it is. Setting
+     * that is the whole difference between a generic NPC and one whose right-click opens
+     * DragonMineZ's quest dialogue: the screen is opened by DMZ's own {@code mobInteract}, not by
+     * us, so all this has to get right is the identity.
+     *
+     * <p>{@code saga_bulma} exists as well, but it is a story fighter with no dialogue - summoning
+     * that is {@code summon saga bulma}, and it is not the same thing.
+     */
+    private static int summonQuestNpc(CommandSourceStack source, String rawId) {
+        String identity = rawId == null ? "" : rawId.trim().toLowerCase(Locale.ROOT);
+        if (!DmzEntityCatalog.isQuestIdentity(identity)) {
+            source.sendFailure(Component.literal("Unknown quest giver '" + rawId
+                    + "'. DragonMineZ ships: "
+                    + String.join(", ", DmzEntityCatalog.QUEST_IDENTITIES)));
+            return 0;
+        }
+        EntityType<?> type = DmzEntityCatalog.questNpcType();
+        if (type == null) {
+            source.sendFailure(Component.literal("DragonMineZ has no quest_npc entity registered"));
+            return 0;
+        }
+        Entity spawned = placeAtCaller(source, type);
+        if (spawned == null) {
+            source.sendFailure(Component.literal("Could not create quest_npc"));
+            return 0;
+        }
+        if (!(spawned instanceof QuestNPCEntity npc)) {
+            // Registered under that id but not the class we expect: a DMZ change we should not
+            // paper over. The entity is left where it is rather than silently removed.
+            source.sendFailure(Component.literal(
+                    "dragonminez:quest_npc is not a QuestNPCEntity in this DragonMineZ build"));
+            return 0;
+        }
+        npc.setNpcId(identity);
+        npc.setHomePosition(npc.getX(), npc.getZ());
+        source.sendSuccess(() -> Component.literal("Summoned quest giver " + identity
+                + " - right-click to open their dialogue"), true);
+        return 1;
+    }
+
+    /** Creates {@code type} two blocks in front of the caller and adds it to the world. */
+    private static Entity placeAtCaller(CommandSourceStack source, EntityType<?> type) {
+        ServerLevel level = source.getLevel();
+        Entity entity = type.create(level);
+        if (entity == null) {
+            return null;
+        }
+        Vec3 look = Vec3.directionFromRotation(0.0f, source.getRotation().y);
+        Vec3 at = source.getPosition().add(look.scale(2.0));
+        entity.moveTo(at.x, source.getPosition().y, at.z, source.getRotation().y, 0.0f);
+        return level.addFreshEntity(entity) ? entity : null;
+    }
+
+    private static int summonMaster(CommandSourceStack source, String rawId) {
+        String type = resolveMasterType(rawId);
+        if (type == null || !type.startsWith("dragonminez:master_")) {
+            source.sendFailure(Component.literal("Unknown master '" + rawId + "'"));
+            return 0;
+        }
+        ServerLevel level = source.getLevel();
+        BlockPos pos = BlockPos.containing(source.getPosition());
+        Entity existing = findMasters(level).stream()
+                .filter(e -> type.equals(masterType(e)))
+                .min((a, b) -> Double.compare(a.distanceToSqr(source.getPosition()),
+                        b.distanceToSqr(source.getPosition())))
+                .orElse(null);
+        if (existing != null && existing.distanceToSqr(source.getPosition()) <= 32 * 32) {
+            source.sendFailure(Component.literal("A " + shortMaster(type) + " master is already nearby"));
+            return 0;
+        }
+        source.getServer().getCommands().performPrefixedCommand(source,
+                "summon " + type + " " + pos.getX() + " " + pos.getY() + " " + pos.getZ());
+        Entity summoned = findMasters(level).stream()
+                .filter(e -> type.equals(masterType(e)))
+                .min((a, b) -> Double.compare(a.distanceToSqr(source.getPosition()),
+                        b.distanceToSqr(source.getPosition())))
+                .orElse(null);
+        if (summoned == null || summoned.distanceToSqr(source.getPosition()) > 8 * 8) {
+            source.sendFailure(Component.literal("DragonMineZ did not create " + type));
+            return 0;
+        }
+        source.sendSuccess(() -> summonMenuMessage(shortMaster(type)), true);
+        return 1;
+    }
+
+    private static MutableComponent summonMenuMessage(String master) {
+        String normalized = master.toLowerCase(Locale.ROOT);
+        MutableComponent message = Component.literal("Summoned " + master + " — ");
+        message.append(menuAction("OPEN MENU", "talk " + normalized, 0x55FFFF));
+        if ("bulma".equals(normalized) || "saga_bulma".equals(normalized)) {
+            message.append(Component.literal("  "));
+            message.append(menuAction("BULMA QUESTS", "talk " + normalized, 0xFFAA55));
+            message.append(Component.literal("  "));
+            message.append(Component.literal("Saga/quest dialogue is provided by DragonMineZ when available.")
+                    .withStyle(Style.EMPTY.withColor(0xAAAAAA)));
+        }
+        return message;
+    }
+
+    private static MutableComponent menuAction(String label, String command, int color) {
+        return Component.literal("[" + label + "]").withStyle(style -> style
+                .withColor(color)
+                .withUnderlined(true)
+                .withClickEvent(new ClickEvent(ClickEvent.Action.RUN_COMMAND, "/xenostructure " + command))
+                .withHoverEvent(new HoverEvent(HoverEvent.Action.SHOW_TEXT,
+                        Component.literal("Open " + label.toLowerCase(Locale.ROOT)))));
+    }
+
+    private static int talkToMaster(CommandSourceStack source, String rawId) {
+        if (!(source.getEntity() instanceof net.minecraft.server.level.ServerPlayer player)) {
+            source.sendFailure(Component.literal("This command requires a player"));
+            return 0;
+        }
+        String type = resolveMasterType(rawId);
+        if (type == null) {
+            source.sendFailure(Component.literal("Unknown master '" + rawId + "'"));
+            return 0;
+        }
+        var gate = net.bullettrain.xenopixelsmod.features.progression.MasterPrerequisites.check(player, shortMaster(type));
+        if (!gate.allowed()) {
+            source.sendFailure(Component.literal(gate.message()));
+            return 0;
+        }
+        Entity master = findMasters(source.getLevel()).stream()
+                .filter(e -> type.equals(masterType(e)))
+                .min((a, b) -> Double.compare(a.distanceToSqr(player.getPosition(1.0f)),
+                        b.distanceToSqr(player.getPosition(1.0f))))
+                .orElse(null);
+        if (master == null || master.distanceToSqr(player.getPosition(1.0f)) > 8 * 8) {
+            source.sendFailure(Component.literal("No nearby " + rawId + " master to talk to"));
+            return 0;
+        }
+        InteractionResult result = master.interact(player, InteractionHand.MAIN_HAND);
+        if (result.consumesAction()) {
+            source.sendSuccess(() -> Component.literal("Opened " + shortMaster(type) + " master dialogue"), false);
+            return 1;
+        }
+        source.sendFailure(Component.literal("The master did not accept interaction"));
+        return 0;
+    }
+
+    private static int listPrerequisites(CommandSourceStack source) {
+        var entries = net.bullettrain.xenopixelsmod.features.progression.MasterPrerequisites.snapshot();
+        if (entries.isEmpty()) {
+            source.sendSuccess(() -> Component.literal("No master prerequisites configured"), false);
+            return 1;
+        }
+        entries.forEach((id, req) -> source.sendSuccess(() -> Component.literal(id + " -> quest="
+                + req.questId() + ", external=" + req.externalQuestTitle() + ", item=" + req.itemId()
+                + " x" + req.itemCount() + ", skill=" + req.skillId() + " Lv." + req.skillLevel()), false));
+        return entries.size();
+    }
+
+    private static int setPrerequisite(CommandSourceStack source, String id, String quest,
+                                       String external, String item, int itemCount, String skill, int level) {
+        net.bullettrain.xenopixelsmod.features.progression.MasterPrerequisites.put(id,
+                new net.bullettrain.xenopixelsmod.features.progression.MasterPrerequisites.Requirement(
+                        emptyArg(quest), emptyArg(external), emptyArg(item), itemCount, emptyArg(skill), level));
+        source.sendSuccess(() -> Component.literal("Saved prerequisites for " + id), true);
+        return 1;
+    }
+
+    private static int removePrerequisite(CommandSourceStack source, String id) {
+        net.bullettrain.xenopixelsmod.features.progression.MasterPrerequisites.remove(id);
+        source.sendSuccess(() -> Component.literal("Removed prerequisites for " + id), true);
+        return 1;
+    }
+
+    private static String emptyArg(String value) {
+        return "-".equals(value) ? "" : value;
     }
 
     private static int listMasters(CommandSourceStack source, boolean allDims) {
@@ -400,13 +683,17 @@ public final class XenoStructureCommands {
     private static String resolveMasterType(String raw) {
         if (raw == null) return null;
         String n = raw.toLowerCase(Locale.ROOT);
-        if (n.startsWith("dragonminez:")) return n;
-        if (n.startsWith("master_")) return "dragonminez:" + n;
+        if (n.startsWith("dragonminez:")) {
+            return MASTER_ENTITY.containsValue(n) ? n : null;
+        }
+        if (n.startsWith("master_")) {
+            return MASTER_ENTITY.containsValue("dragonminez:" + n) ? "dragonminez:" + n : null;
+        }
         String guess = "dragonminez:master_" + n;
         for (String type : MASTER_ENTITY.values()) {
             if (type.equals(guess) || shortMaster(type).equals(n)) return type;
         }
-        return guess;
+        return null;
     }
 
     private static Entity pickKeep(ServerLevel level, String typeId, List<Entity> list, Vec3 here) {

@@ -1,0 +1,13 @@
+{
+  "type": "minecraft:crafting_shapeless",
+  "category": "misc",
+  "ingredients": [
+    { "item": "xenopixelsmod:missile_large" },
+    { "item": "minecraft:iron_block" },
+    { "item": "minecraft:iron_block" }
+  ],
+  "result": {
+    "id": "xenopixelsmod:missile_mega",
+    "count": 1
+  }
+}

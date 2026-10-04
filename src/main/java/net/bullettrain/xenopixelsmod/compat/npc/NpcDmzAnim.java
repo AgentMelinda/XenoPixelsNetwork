@@ -12,16 +12,20 @@ import net.minecraft.world.entity.LivingEntity;
 /**
  * Plays one of this mod's combat clips on an NPC or a player.
  *
- * <p>NPCs must be drawn in Full DragonMineZ appearance: that mode renders through a synthetic
- * player, which is the only thing DragonMineZ's animation system will pose. A humanoid or Gecko
- * custom-model NPC keeps using {@link NpcGeckoAnim}, and this returns false for it rather than
- * pretending to have done something. A {@link ServerPlayer} already has that rig.
+ * <p>Full DragonMineZ NPCs use a synthetic player. Native Xeno NPCs with a GeckoLib model
+ * consume the same packets in their own renderer, with the combat animation file as a fallback.
+ * An external CustomNPCs Gecko model still uses {@link NpcGeckoAnim}. A {@link ServerPlayer}
+ * already has the DragonMineZ rig.
  *
  * <p>Sent to every player who can see the target, following the same nearby-players broadcast
  * {@code NpcAuraFx} uses - these packets are cosmetic and keyed by UUID, so there is nothing to
  * reconcile if one is missed.
  */
 public final class NpcDmzAnim {
+
+    private record LastClip(String name, long tick) {}
+    private static final java.util.Map<LivingEntity, LastClip> LAST_PLAY =
+            java.util.Collections.synchronizedMap(new java.util.WeakHashMap<>());
 
     /** Matches the tracking distance DragonMineZ's own cosmetics are sent at. */
     public static final double BROADCAST_RANGE = 96.0;
@@ -32,18 +36,35 @@ public final class NpcDmzAnim {
     /** Client should call {@code stopKiAnimation} rather than only drop a queued clip. */
     public static final int FLAG_STOP = 2;
 
+    /** Floor charge ring: punch (orange). Unused bits stay ignored on older clients. */
+    public static final int FLAG_CHARGE_PUNCH = 4;
+
+    /** Floor charge ring: kick (magenta). */
+    public static final int FLAG_CHARGE_KICK = 8;
+
+    /** Packet animation name that only starts/stops the charge ring. */
+    public static final String CHARGE_GLOW = "xeno:charge_glow";
+
     private NpcDmzAnim() {
     }
 
-    /** True when this NPC is drawn through the Full DragonMineZ path and can show these clips. */
+    /** True when a renderer for this NPC consumes Xeno combat clip packets. */
     public static boolean canAnimate(LivingEntity npc) {
-        return npc != null && npc.isAlive()
-                && (npc instanceof net.bullettrain.xenopixelsmod.combat.clone.XenoCloneEntity
-                || NpcCombatProfile.hasProfile(npc)
-                && NpcCombatProfile.read(npc).appearance.mode == NpcDmzAppearance.Mode.FULL);
+        if (npc == null || !npc.isAlive()) return false;
+        if (npc instanceof net.bullettrain.xenopixelsmod.combat.clone.XenoCloneEntity) return true;
+        if (!NpcCombatProfile.hasProfile(npc)) return false;
+        NpcCombatProfile profile = NpcCombatProfile.readCached(npc);
+        if (npc instanceof net.bullettrain.xenopixelsmod.npc.XenoNpcEntity) {
+            String kind = NpcCombatProfile.normalizeModelKind(profile.modelKind);
+            return NpcCombatProfile.MODEL_GECKOLIB.equals(kind)
+                    || NpcCombatProfile.MODEL_VANILLA.equals(kind)
+                    && profile.appearance.mode == NpcDmzAppearance.Mode.FULL;
+        }
+        return profile.appearance.mode == NpcDmzAppearance.Mode.FULL
+                && !NpcGeckoAnim.canAnimate(npc);
     }
 
-    /** NPCs in Full mode, clones, or a live server player. */
+    /** NPCs with a clip-consuming renderer, clones, or a live server player. */
     public static boolean canBroadcast(LivingEntity target) {
         return target != null && target.isAlive()
                 && (target instanceof ServerPlayer || canAnimate(target));
@@ -58,11 +79,20 @@ public final class NpcDmzAnim {
      *         a script gets an answer either way rather than silence
      */
     public static boolean play(LivingEntity npc, String animation, float speed) {
-        String name = animation == null ? "" : animation.trim();
-        if (!Bt3AnimationCatalog.isPlayable(name)) {
+        String name = net.bullettrain.xenopixelsmod.api.anim.XenoAnimApi.resolve(animation);
+        if (name == null || npc == null || !canBroadcast(npc)) {
             return false;
         }
-        return broadcast(npc, name, speed, 0);
+        // A script may call playAnimation immediately before meleeHit. The hit path then
+        // invokes the same selected clip in this tick; a second packet would restart the pose.
+        LastClip prior = LAST_PLAY.get(npc);
+        long tick = npc.level().getGameTime();
+        if (prior != null && prior.tick() == tick && prior.name().equals(name)) return true;
+        // One-shot melee. Studio names are registered on the client resolver when the
+        // library bakes; KI hold is only for playClip(..., hold=true) / transform holds.
+        if (!broadcast(npc, name, speed, 0)) return false;
+        LAST_PLAY.put(npc, new LastClip(name, tick));
+        return true;
     }
 
     /**
@@ -83,8 +113,11 @@ public final class NpcDmzAnim {
         if (!canBroadcast(target) || !(target.level() instanceof ServerLevel level)) {
             return false;
         }
+        float playSpeed = CHARGE_GLOW.equals(animation)
+                ? Math.max(1.0f, speed)
+                : Math.max(0.15f, Math.min(4.0f, speed));
         NpcAnimationPacket packet = new NpcAnimationPacket(
-                target.getUUID(), animation, Math.max(0.15f, Math.min(4.0f, speed)), flags);
+                target.getUUID(), animation, playSpeed, flags);
         for (ServerPlayer viewer : level.players()) {
             if (viewer.distanceToSqr(target) <= BROADCAST_RANGE * BROADCAST_RANGE) {
                 ModNetwork.sendToPlayer(viewer, packet);

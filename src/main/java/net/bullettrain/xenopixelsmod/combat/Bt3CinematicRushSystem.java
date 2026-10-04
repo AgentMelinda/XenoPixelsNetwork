@@ -179,7 +179,7 @@ public final class Bt3CinematicRushSystem {
         player.serverLevel().playSound(null, target.blockPosition(),
                 finisher ? SoundEvents.PLAYER_ATTACK_CRIT : SoundEvents.PLAYER_ATTACK_STRONG,
                 SoundSource.PLAYERS, finisher ? 1.15f : 0.8f, finisher ? 0.8f : 1.05f + index * 0.06f);
-        CombatFx.impact(player.serverLevel(), target, flat,
+        CombatFx.impact(player.serverLevel(), player, target, flat,
                 finisher ? CombatFx.Weight.HEAVY : CombatFx.Weight.LIGHT);
         return true;
     }

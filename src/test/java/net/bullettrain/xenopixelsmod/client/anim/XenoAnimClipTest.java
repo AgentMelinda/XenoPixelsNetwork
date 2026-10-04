@@ -318,4 +318,13 @@ class XenoAnimClipTest {
         AnimKey key = clip.trackIfPresent("head").rotation.at(0.5);
         assertEquals(30f, key.x, 0.001f);
     }
+
+    @Test
+    void animationNameForFileUsesTheBareClipName() {
+        assertEquals("combat.xeno_my_jab", XenoAnimClip.animationNameForFile("my_jab.animation.json"));
+        assertEquals("combat.xeno_my_jab", XenoAnimClip.animationNameForFile("server/my_jab"));
+        assertEquals("combat.xeno_my_jab_", XenoAnimClip.animationNameForFile("My Jab!"));
+        assertNull(XenoAnimClip.animationNameForFile(""));
+        assertNull(XenoAnimClip.animationNameForFile(null));
+    }
 }

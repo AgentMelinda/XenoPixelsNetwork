@@ -1,5 +1,6 @@
 package net.bullettrain.xenopixelsmod.compat.npc;
 
+import com.dragonminez.common.combat.clash.BeamClashManager;
 import com.dragonminez.common.compat.CameraAimHelper;
 import com.dragonminez.common.init.entities.ki.AbstractKiProjectile;
 import com.dragonminez.common.init.entities.ki.KiBlastEntity;
@@ -14,6 +15,7 @@ import net.bullettrain.xenopixelsmod.combat.technique.KiFixedAim;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.level.Level;
+import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
 
 /**
@@ -33,6 +35,34 @@ import net.minecraft.world.phys.Vec3;
  */
 public final class NpcKiAttackDispatcher {
     private NpcKiAttackDispatcher() {}
+    private static final ThreadLocal<Boolean> SCRIPT_RANGED_HOOK = ThreadLocal.withInitial(() -> false);
+    /**
+     * Last tick each NPC's rangedLaunched hook ran. The thread-local above cannot see a ki attack
+     * fired by a command the hook queued (1.21 runs it after the hook returned), so the hook also
+     * runs at most once per NPC per tick; otherwise hook -> command -> attack -> hook never ends.
+     */
+    private static final java.util.Map<java.util.UUID, Long> LAST_RANGED_HOOK = new java.util.concurrent.ConcurrentHashMap<>();
+
+    /** True for the first rangedLaunched hook of this NPC in {@code tick}; records it. */
+    public static boolean firstRangedHookThisTick(java.util.UUID npc, long tick) {
+        if (LAST_RANGED_HOOK.size() > 4096) LAST_RANGED_HOOK.clear();
+        Long last = LAST_RANGED_HOOK.put(npc, tick);
+        return last == null || last != tick;
+    }
+
+    private static void rangedHook(LivingEntity caster, LivingEntity target) {
+        if (!(caster instanceof net.bullettrain.xenopixelsmod.npc.XenoNpcEntity npc)
+                || SCRIPT_RANGED_HOOK.get()) return;
+        if (!firstRangedHookThisTick(npc.getUUID(), npc.level().getGameTime())) return;
+        SCRIPT_RANGED_HOOK.set(true);
+        try {
+            net.bullettrain.xenopixelsmod.npc.script.NpcScriptHost.fire(
+                    npc, "rangedLaunched", null, null, target, 0, n ->
+                            new xenoapi.npcs.api.event.NpcEvent.RangedLaunchedEvent(n, target, 0.0f));
+        } finally {
+            SCRIPT_RANGED_HOOK.remove();
+        }
+    }
 
     private static final int DEFAULT_COLOR = 0xFFFFFF;
     private static final int DEFAULT_CAST_TIME = 20;
@@ -53,53 +83,159 @@ public final class NpcKiAttackDispatcher {
     /** Fires DMZ's basic ki blast ball, scaled from the NPC's profile. */
     public static void fireKiBlast(LivingEntity caster, NpcCombatProfile profile, int durationTicks,
                                    LivingEntity aimAt, int colorOverride) {
+        if (caster == null || profile == null) return;
         float charge = profile.chargeFactor();
-        float damage = profile.kiDamage() * charge;
-        float speed = (1.2f + profile.kiPower * 0.02f) * Math.min(2.0f, charge);
-        float size = (0.5f + profile.kiPower * 0.01f) * charge;
         int color = resolveColor(profile, colorOverride, DEFAULT_COLOR);
+        // Two nested counts, as My NPCs has: a burst is a repeat over time, a shot is a spread
+        // released together. Burst Count alone could only ever produce a stream; Shot Count is what
+        // makes a volley. Total projectiles is the product, which is why both are capped at 16.
+        int bursts = NpcCombatProfile.clampNpcBurstCount(profile.npcRangedBurstCount);
+        int shots = NpcCombatProfile.clampNpcShotCount(profile.npcRangedShotCount);
+        int gap = NpcCombatProfile.clampNpcRangedDelay(profile.npcRangedBurstRate);
+        for (int burst = 0; burst < bursts; burst++) {
+            final int burstIndex = burst;
+            Runnable fire = () -> {
+                if (!caster.isAlive() || caster.isRemoved()
+                        || aimAt != null && !aimAt.isAlive()) return;
+                for (int shot = 0; shot < shots; shot++) {
+                    // Only the first projectile of the first burst poses the caster; posing once
+                    // per projectile would restart the animation several times in one tick.
+                    fireSingleKiBlast(caster, profile, durationTicks, aimAt, color, charge,
+                            shot, shots, burstIndex == 0 && shot == 0);
+                }
+            };
+            if (burst == 0 || !(caster.level() instanceof ServerLevel level)
+                    || level.getServer() == null) {
+                fire.run();
+            } else {
+                int tick = level.getServer().getTickCount() + burst * gap;
+                level.getServer().tell(new net.minecraft.server.TickTask(tick, fire));
+            }
+        }
+        rangedHook(caster, aimAt);
+    }
+
+    private static void fireSingleKiBlast(LivingEntity caster, NpcCombatProfile profile,
+                                         int durationTicks, LivingEntity aimAt, int color,
+                                         float charge, int shotIndex, int shotCount,
+                                         boolean poseCaster) {
+        float damage = profile.npcProjectileStrength > 0.0f
+                ? profile.npcProjectileStrength
+                : kiDamage(caster, profile) * charge;
+        float speed = profile.npcProjectileSpeed > 0.0f
+                ? profile.npcProjectileSpeed : NpcKiProjectileMath.blastSpeed(charge);
+        float size = profile.npcProjectileSize > 0.0f
+                ? profile.npcProjectileSize : NpcKiProjectileMath.blastSize(charge);
+        if (poseCaster) poseCaster(caster, aimAt);
+        playConfiguredSound(caster, profile.npcRangedFireSound);
         KiBlastEntity blast = new KiBlastEntity(caster.level(), caster);
-        poseCaster(caster, aimAt);
         blast.setupKiBlast(caster, damage, speed, color, size, DEFAULT_CAST_TIME);
         rescaleSpawnHeight(blast, caster);
         applyDuration(blast, durationTicks);
         applyKiColor(blast, color);
         aimAlongLook(blast, caster, aimAt);
+        if (shotCount > 1) {
+            // A bounded fan gives Shot Count/Burst Count a visible effect rather than placing
+            // several projectiles into one identical path.
+            float fan = (shotIndex - (shotCount - 1) / 2.0f) * 0.045f;
+            Vec3 motion = blast.getDeltaMovement();
+            double cos = Math.cos(fan);
+            double sin = Math.sin(fan);
+            blast.setDeltaMovement(motion.x * cos - motion.z * sin, motion.y,
+                    motion.x * sin + motion.z * cos);
+        }
+        if (profile.npcRangedIndirect) {
+            blast.setDeltaMovement(blast.getDeltaMovement().add(0.0, 0.08, 0.0));
+        }
+        NpcKiProjectileEffects.track(blast, profile);
     }
 
     /** Fires DMZ's beam-style wave attack, scaled from the NPC's profile. */
     public static void fireKiWave(LivingEntity caster, NpcCombatProfile profile, int durationTicks,
                                   LivingEntity aimAt, int colorOverride) {
         float charge = profile.chargeFactor();
-        fireKiWave(caster, profile.kiDamage() * charge,
-                (1.5f + profile.kiPower * 0.02f) * Math.min(2.0f, charge),
-                (0.6f + profile.kiPower * 0.015f) * charge, DEFAULT_CAST_TIME,
-                durationTicks, aimAt, resolveColor(profile, colorOverride, 0));
+        fireKiWave(caster, kiDamage(caster, profile) * charge,
+                NpcKiProjectileMath.waveSpeed(charge),
+                NpcKiProjectileMath.waveSize(charge), DEFAULT_CAST_TIME,
+                durationTicks, aimAt, resolveColor(profile, colorOverride, 0), false, null);
+        rangedHook(caster, aimAt);
+    }
+
+    /** Immediate MAJOR firing wave so DMZ can clash it with a player beam. */
+    public static boolean fireClashWave(LivingEntity caster, NpcCombatProfile profile,
+                                        LivingEntity aimAt) {
+        if (caster == null || profile == null || aimAt == null) {
+            return false;
+        }
+        if (!NpcResources.spendEnergy(caster, profile, 2.0)) {
+            return false;
+        }
+        float charge = profile.chargeFactor();
+        fireKiWave(caster, kiDamage(caster, profile) * charge,
+                NpcKiProjectileMath.waveSpeed(charge),
+                NpcKiProjectileMath.waveSize(charge), DEFAULT_CAST_TIME,
+                NpcBrainKiRotation.CLASH_WAVE_LIFE, aimAt, resolveColor(profile, 0, 0), true, null);
+        return true;
+    }
+
+    public static boolean isOwnerClashing(LivingEntity npc) {
+        return npc != null && BeamClashManager.isClashing(npc.getUUID());
+    }
+
+    public static boolean victimOwnsClashableBeam(LivingEntity victim) {
+        if (victim == null || !(victim.level() instanceof ServerLevel level)) {
+            return false;
+        }
+        AABB box = victim.getBoundingBox().inflate(80.0);
+        for (AbstractKiProjectile ki : level.getEntitiesOfClass(AbstractKiProjectile.class, box,
+                p -> !p.isRemoved() && p.getOwner() == victim && p.isClashableBeam())) {
+            return true;
+        }
+        return false;
     }
 
     /** Mirrors the exact charge and tunable values of a successfully released player wave. */
     public static void fireMirroredWave(LivingEntity caster, NpcCombatProfile profile,
                                         KiAttackData data, float chargeMultiplier,
                                         LivingEntity aimAt) {
+        fireMirroredWave(caster, profile, data, chargeMultiplier, aimAt, null);
+    }
+
+    public static void fireMirroredWave(LivingEntity caster, NpcCombatProfile profile,
+                                        KiAttackData data, float chargeMultiplier,
+                                        LivingEntity aimAt, Vec3 ownerLook) {
         if (caster == null || profile == null || data == null
                 || data.getKiType() != KiAttackData.KiType.WAVE) return;
         float charge = Math.max(0.5f, Math.min(2.0f, chargeMultiplier));
-        float damage = profile.kiDamage() * data.getDamageMultiplier()
+        float damage = kiDamage(caster, profile) * data.getDamageMultiplier()
                 * data.getConfiguredDamageMultiplier() * data.getOutputMultiplier() * charge;
-        fireKiWave(caster, damage, data.getActualSpeed() * Math.min(2.0f, charge),
-                data.getActualSize() * charge, data.getActualCastTime(),
-                NO_DURATION_OVERRIDE, aimAt, data.getColorInterior());
+        fireKiWave(caster, damage,
+                NpcKiProjectileMath.clampSpeed(data.getActualSpeed() * Math.min(2.0f, charge)),
+                NpcKiProjectileMath.clampSize(data.getActualSize() * charge), data.getActualCastTime(),
+                NO_DURATION_OVERRIDE, aimAt, data.getColorInterior(), false, ownerLook);
     }
 
     private static void fireKiWave(LivingEntity caster, float damage, float speed, float size,
-                                   int castTime, int durationTicks, LivingEntity aimAt, int color) {
+                                   int castTime, int durationTicks, LivingEntity aimAt, int color,
+                                   boolean clashImmediate, Vec3 ownerLook) {
         KiWaveEntity wave = new KiWaveEntity(caster.level(), caster);
-        poseCaster(caster, aimAt);
+        boolean crosshair = ownerLook != null && ownerLook.lengthSqr() > 1.0E-8;
+        if (crosshair) {
+            poseCasterLook(caster, ownerLook);
+        } else {
+            poseCaster(caster, aimAt);
+        }
         wave.setupKiHame(caster, damage, speed, size, castTime);
         rescaleSpawnHeight(wave, caster);
-        applyDuration(wave, durationTicks);
+        if (clashImmediate) {
+            wave.setFiring(true);
+            int life = durationTicks > 0 ? durationTicks : NpcBrainKiRotation.CLASH_WAVE_LIFE;
+            wave.setMaxLife(Math.max(life, NpcBrainKiRotation.CLASH_WAVE_LIFE));
+        } else {
+            applyDuration(wave, durationTicks);
+        }
         applyKiColor(wave, color);
-        aimAlongLook(wave, caster, aimAt);
+        aimAlongLook(wave, caster, crosshair ? null : aimAt);
     }
 
     /**
@@ -109,10 +245,27 @@ public final class NpcKiAttackDispatcher {
      * approximation this used to be. The active form's PWR multiplier is applied inside the
      * profile calculation; {@code chargeFactor()} remains the NPC-specific charge extension.
      */
-    private static float baseDamage(NpcCombatProfile profile) {
-        float base = profile.kiDamage();
+    private static float baseDamage(LivingEntity caster, NpcCombatProfile profile) {
+        float base = kiDamage(caster, profile);
         float charge = profile != null ? profile.chargeFactor() : 1.0f;
         return base * charge;
+    }
+
+    /**
+     * Real {@code StatsData.getKiDamage()} when the NPC carries an attached DragonMineZ blob;
+     * otherwise the profile stand-in that mirrors the same formula.
+     */
+    static float kiDamage(LivingEntity caster, NpcCombatProfile profile) {
+        if (caster != null) {
+            var data = NpcDmzStats.stats(caster);
+            if (data != null) {
+                double damage = data.getKiDamage();
+                if (Double.isFinite(damage) && damage >= 0.0) {
+                    return (float) Math.min(damage, Float.MAX_VALUE);
+                }
+            }
+        }
+        return profile == null ? 0.0f : profile.kiDamage();
     }
 
     /**
@@ -137,21 +290,22 @@ public final class NpcKiAttackDispatcher {
         // lookup and dispatch (lookup has always been case-insensitive).
         if (!supportsPredefinedTechnique(id) || caster == null || profile == null) return false;
         id = id.toLowerCase(java.util.Locale.ROOT);
-        KiAttackData data = PredefinedTechniqueLookup.find(id);
+        KiAttackData data = PredefinedTechniqueLookup.forNpc(id, profile);
         if (data == null) {
             return false;
         }
         if (!NpcKiCooldowns.ready(caster, data.getId())) {
             return false;
         }
-        if (!NpcResources.spendEnergy(caster, profile, NpcTechniqueMath.kiCost(profile, data))) {
+        if (!NpcResources.spendEnergy(caster, profile,
+                NpcTechniqueMath.kiCost(kiDamage(caster, profile), profile, data))) {
             return false;
         }
         Level level = caster.level();
         float charge = profile.chargeFactor();
-        float damage = baseDamage(profile) * data.getDamageMultiplier();
-        float speed = data.getSpeed() * Math.min(2.0f, charge);
-        float size = data.getSize() * charge;
+        float damage = baseDamage(caster, profile) * data.getDamageMultiplier();
+        float speed = NpcKiProjectileMath.clampSpeed(data.getSpeed() * Math.min(2.0f, charge));
+        float size = NpcKiProjectileMath.clampSize(data.getSize() * charge);
         int colorInterior = data.getColorInterior();
         int colorExterior = data.getColorExterior();
         int colorOutline = data.getColorOutline();
@@ -257,6 +411,7 @@ public final class NpcKiAttackDispatcher {
         applyKiColor(projectile, resolveColor(profile, colorOverride, 0));
         aimAlongLook(projectile, caster, aimAt);
         NpcKiCooldowns.consume(caster, data, charge);
+        rangedHook(caster, aimAt);
         return true;
     }
 
@@ -287,7 +442,9 @@ public final class NpcKiAttackDispatcher {
         if (projectile == null || caster == null) {
             return;
         }
-        float sizeScale = NpcDisplayApply.getSize(caster) / 5.0f;
+        // Was getSize()/5, so a native NPC scored 0 - and the early-out below compares against
+        // 1.0, so a zero scale sailed past it and repositioned the projectile onto the caster.
+        float sizeScale = NpcDisplayApply.sizeScale(caster);
         if (Math.abs(sizeScale - 1.0f) < 1.0e-3f) {
             return;
         }
@@ -306,12 +463,39 @@ public final class NpcKiAttackDispatcher {
         if (caster == null || target == null || !target.isAlive() || target == caster) {
             return;
         }
-        Vec3 dir = target.getEyePosition().subtract(caster.getEyePosition());
+        if (!shouldPoseForShot(caster, target)) return;
+        Vec3 dir = desiredAim(caster.getEyePosition(), caster, target, 1.2f);
         if (dir.lengthSqr() > 1.0E-8) {
-            dir = dir.normalize();
-            CameraAimHelper.store(caster, dir);
+            CameraAimHelper.store(caster, dir.normalize());
         }
         NpcKiAim.hold(caster, target, AIM_HOLD_TICKS);
+    }
+
+    private static boolean shouldPoseForShot(LivingEntity caster, LivingEntity target) {
+        if (caster == null || target == null || !target.isAlive()) return false;
+        String mode = NpcCombatProfile.canonicalNpcAimMode(
+                NpcCombatProfile.readCached(caster).npcRangedAimMode);
+        return switch (mode) {
+            case "distant" -> caster.distanceTo(target) > NpcCombatRanges.meleeReach(caster, target);
+            case "hidden" -> !caster.hasLineOfSight(target);
+            default -> false;
+        };
+    }
+
+    private static void playConfiguredSound(LivingEntity caster, String soundId) {
+        if (caster == null || caster.level().isClientSide()) return;
+        net.minecraft.sounds.SoundEvent sound = NpcCustomSounds.resolve(soundId);
+        if (sound != null) caster.level().playSound(null, caster.getX(), caster.getY(), caster.getZ(),
+                sound, net.minecraft.sounds.SoundSource.HOSTILE, 1.0f, 1.0f);
+    }
+
+    private static void poseCasterLook(LivingEntity caster, Vec3 look) {
+        if (caster == null || look == null || look.lengthSqr() < 1.0E-8) {
+            return;
+        }
+        Vec3 dir = look.normalize();
+        CameraAimHelper.store(caster, dir);
+        NpcKiAim.applyLook(caster, CameraAimHelper.yaw(dir), CameraAimHelper.pitch(dir));
     }
 
     /**
@@ -322,6 +506,9 @@ public final class NpcKiAttackDispatcher {
     static void aimAlongLook(AbstractKiProjectile projectile, LivingEntity caster, LivingEntity target) {
         if (projectile == null || caster == null) {
             return;
+        }
+        if (projectile instanceof KiWaveEntity && target != null && target != caster) {
+            projectile.getPersistentData().putUUID("XenoNpcWaveAimTarget", target.getUUID());
         }
         double moving = projectile.getDeltaMovement().length();
         float speed = moving > 1.0E-4 ? (float) moving : projectile.getKiSpeed();
@@ -339,12 +526,24 @@ public final class NpcKiAttackDispatcher {
         float pitch = CameraAimHelper.pitch(dir);
         projectile.setYRot(yaw);
         projectile.setXRot(pitch);
-        NpcKiAim.updateHold(caster, yaw, pitch);
+        if (shouldPoseForShot(caster, target)) NpcKiAim.updateHold(caster, yaw, pitch);
         if (projectile instanceof KiWaveEntity wave) {
             wave.setContinuousFollow(false);
         }
         if (projectile instanceof KiFixedAim aim) {
             aim.xenopixels$setFixedAim(yaw, pitch);
+        }
+    }
+
+    /** DMZ rewrites a charging wave's orientation from its owner every tick, including launch. */
+    public static void refreshWaveAim(KiWaveEntity wave, LivingEntity owner) {
+        if (wave.level().isClientSide() || !(wave.level() instanceof ServerLevel level)
+                || owner instanceof net.minecraft.world.entity.player.Player
+                || !wave.getPersistentData().hasUUID("XenoNpcWaveAimTarget")) return;
+        net.minecraft.world.entity.Entity found = level.getEntity(
+                wave.getPersistentData().getUUID("XenoNpcWaveAimTarget"));
+        if (found instanceof LivingEntity target && target.isAlive()) {
+            aimAlongLook(wave, owner, target);
         }
     }
 
@@ -362,7 +561,7 @@ public final class NpcKiAttackDispatcher {
      * <p>Aiming at {@code getEyePosition()} alone fires at where the target <em>is</em>, so
      * anything strafing is missed by construction. This solves the intercept with the same
      * {@link LeadCalculator} the player-facing lead marker uses, then blends between "no lead"
-     * and "full lead" by the NPC's own {@code aimAccuracy}, so a weak NPC can be authored to
+     * and "full lead" by the NPC's own {@code npcRangedAccuracy}, so a weak NPC can be authored to
      * miss on purpose.
      *
      * <p>{@code speed} arrives in blocks/tick (it is a delta-movement length), while the
@@ -380,15 +579,24 @@ public final class NpcKiAttackDispatcher {
         return look.lengthSqr() > 1.0E-8 ? look.normalize() : look;
     }
 
-    /** World point to shoot at: the target's eyes, pulled toward the intercept by accuracy. */
+    /** World point to shoot at: ordinary NPCs use eyes and authored accuracy; an active
+     * Ki Sense lock uses DMZ's midpoint and full lead at launch. No post-launch homing. */
     private static Vec3 leadPoint(Vec3 from, LivingEntity caster, LivingEntity target,
                                   float projectileSpeed) {
-        Vec3 eyes = target.getEyePosition();
+        boolean senseLocked = NpcTargetKeeper.isKiSenseLockedOn(caster, target);
+        Vec3 eyes = senseLocked
+                ? target.position().add(0.0, target.getBbHeight() * 0.5, 0.0)
+                : target.getEyePosition();
         if (projectileSpeed <= 0.0f || !(caster.level() instanceof ServerLevel level)) {
             return eyes;
         }
-        float accuracy = NpcCombatProfile.clampAimAccuracy(
-                NpcCombatProfile.readCached(caster).aimAccuracy);
+        float accuracy = NpcCombatProfile.clampNpcRangedAccuracy(
+                NpcCombatProfile.readCached(caster).npcRangedAccuracy);
+        if (senseLocked) {
+            accuracy = 1.0f;
+        } else if (NpcTargetKeeper.isRetaliating(caster, target)) {
+            accuracy = Math.max(accuracy, 0.95f);
+        }
         if (accuracy <= 0.0f) {
             return eyes;
         }

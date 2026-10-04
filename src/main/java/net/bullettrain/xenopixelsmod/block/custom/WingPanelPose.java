@@ -1,6 +1,7 @@
 package net.bullettrain.xenopixelsmod.block.custom;
 
 import com.mojang.math.Axis;
+import net.minecraft.core.Direction;
 import net.minecraft.world.level.block.state.BlockState;
 import org.joml.Matrix4f;
 
@@ -16,12 +17,12 @@ import org.joml.Matrix4f;
  * accident: {@code wing_panel_flap.json} is the small <i>fixed</i> stub, {@code wing_panel_base.json}
  * is the large <i>moving</i> surface — see {@code WingPanelBlockEntityRenderer.render}.
  *
- * <p>The panel's mounted look comes from a per-block-type orientation triple
+ * <p>Stock panels take their mount from a per-block-type orientation triple
  * ({@link WingPanelDebugRotation#normalOrient} / {@code horizontalOrient} / {@code verticalOrient}),
- * not from the {@code AXIS} blockstate property — {@code AXIS} now only drives Sable lift and the
- * hitbox. This is what replaced the old per-{@code AXIS} rotations that mimicked the {@code role=NONE}
- * blockstate JSON (those were only ever validated against a symmetric slab, where they were
- * invisible, and were wrong for the asymmetric two-piece model).
+ * not from {@code AXIS} — that property only drives Sable lift and the hitbox. Fork panels add a
+ * six-way {@code FACING}: the animated two-piece model must use the same X/Y rotations as
+ * {@code wing_panel_fork.json}, or a north-facing flap keeps its vertical hitbox while the
+ * renderer still draws a flat slab.
  *
  * <p>Pure matrix math: no client-only types, so the common {@link PanelConfiguratorItem} can call it
  * too. A {@code PoseStack} composes each call by post-multiplication exactly the way
@@ -43,10 +44,15 @@ public final class WingPanelPose {
 
     /** Transform for the fixed stub — mount orientation only, never deflects. */
     public static Matrix4f fixedMatrix(BlockState state) {
+        return fixedMatrix(state, 0);
+    }
+
+    public static Matrix4f fixedMatrix(BlockState state, int hingeDeg) {
         Matrix4f m = new Matrix4f();
         m.translate(0.5f, 0.5f, 0.5f);
         applyStaticTwist(m);
         applyOrientation(m, state);
+        applyHinge(m, hingeDeg);
         m.translate(-0.5f, -0.5f, -0.5f);
         return m;
     }
@@ -58,10 +64,15 @@ public final class WingPanelPose {
      * and the stub sit flush.
      */
     public static Matrix4f hingedMatrix(BlockState state, float deflectDeg) {
+        return hingedMatrix(state, deflectDeg, 0);
+    }
+
+    public static Matrix4f hingedMatrix(BlockState state, float deflectDeg, int hingeDeg) {
         Matrix4f m = new Matrix4f();
         m.translate(0.5f, 0.5f, 0.5f);
         applyStaticTwist(m);
         applyOrientation(m, state);
+        applyHinge(m, hingeDeg);
         m.translate(0.0f, 0.0f, (float) (HINGE_SEAM - 0.5));
         float liveDeg = WingPanelDebugRotation.deflectNegated ? -deflectDeg : deflectDeg;
         m.rotate(switch (WingPanelDebugRotation.deflectAxis) {
@@ -76,7 +87,8 @@ public final class WingPanelPose {
     /**
      * The panel's base mount orientation, one whole-degree {@code {x, y, z}} triple per block type,
      * applied so a vertex is rotated about X, then Y, then Z. Live-tuned with
-     * {@code /xenowing orient}.
+     * {@code /xenowing orient}. Fork panels start from {@link #facingOrient} so the animated mesh
+     * matches the hitbox, then add the v2 extra triple from {@code /xenowing}.
      */
     private static void applyOrientation(Matrix4f m, BlockState state) {
         int[] o = orientFor(state);
@@ -85,10 +97,102 @@ public final class WingPanelPose {
         if (o[0] != 0) m.rotate(Axis.XP.rotationDegrees(o[0]));
     }
 
-    private static int[] orientFor(BlockState state) {
+    /** Spin the small stub in the wing plane. Model +Z is the stub; this is a Y rotation. */
+    private static void applyHinge(Matrix4f m, int hingeDeg) {
+        int deg = Math.floorMod(hingeDeg, 360);
+        if (deg != 0) {
+            m.rotate(Axis.YP.rotationDegrees(deg));
+        }
+    }
+
+    /** World direction of the small stub after facing + hinge. */
+    public static Direction stubWorldDir(Direction facing, int hingeDeg) {
+        Matrix4f m = new Matrix4f();
+        int[] o = facingOrient(facing == null ? Direction.DOWN : facing);
+        if (o[2] != 0) m.rotate(Axis.ZP.rotationDegrees(o[2]));
+        if (o[1] != 0) m.rotate(Axis.YP.rotationDegrees(o[1]));
+        if (o[0] != 0) m.rotate(Axis.XP.rotationDegrees(o[0]));
+        applyHinge(m, hingeDeg);
+        org.joml.Vector3f v = m.transformDirection(0f, 0f, 1f, new org.joml.Vector3f());
+        return Direction.getNearest(v.x, v.y, v.z);
+    }
+
+    /**
+     * 0/90/180/270 hinge so the stub aims at {@code want}. If {@code want} is along the facing
+     * normal, {@code fallback} (then DOWN / SOUTH) is used.
+     */
+    public static int hingeToward(Direction facing, Direction want, Direction fallback) {
+        Direction target = want;
+        Direction face = facing == null ? Direction.UP : facing;
+        if (target == null || target.getAxis() == face.getAxis()) {
+            if (fallback != null && fallback.getAxis() != face.getAxis()) {
+                target = fallback;
+            } else if (face.getAxis().isHorizontal()) {
+                target = Direction.DOWN;
+            } else {
+                target = Direction.SOUTH;
+            }
+        }
+        int best = 0;
+        float bestDot = -2f;
+        for (int i = 0; i < 4; i++) {
+            int deg = i * 90;
+            Direction stub = stubWorldDir(face, deg);
+            float dot = stub.getStepX() * target.getStepX()
+                    + stub.getStepY() * target.getStepY()
+                    + stub.getStepZ() * target.getStepZ();
+            if (stub == target) {
+                return deg;
+            }
+            if (dot > bestDot) {
+                bestDot = dot;
+                best = deg;
+            }
+        }
+        return best;
+    }
+
+    static int[] orientFor(BlockState state) {
+        if (state.hasProperty(WingPanelForkBlock.FACING)) {
+            return composeForkOrient(state.getValue(WingPanelForkBlock.FACING), forkExtra(state));
+        }
         if (state.getBlock() instanceof WingFlapVerticalBlock) return WingPanelDebugRotation.verticalOrient;
         if (state.getBlock() instanceof WingFlapHorizontalBlock) return WingPanelDebugRotation.horizontalOrient;
         return WingPanelDebugRotation.normalOrient;
+    }
+
+    static int[] composeForkOrient(Direction facing, int[] extra) {
+        int[] base = facingOrient(facing);
+        if (extra == null) {
+            return base;
+        }
+        return new int[] {base[0] + extra[0], base[1] + extra[1], base[2] + extra[2]};
+    }
+
+    static int[] forkExtra(BlockState state) {
+        if (state.getBlock() instanceof WingFlapVerticalForkBlock) {
+            return WingPanelDebugRotation.forkVerticalOrient;
+        }
+        if (state.getBlock() instanceof WingFlapHorizontalForkBlock) {
+            return WingPanelDebugRotation.forkHorizontalOrient;
+        }
+        return WingPanelDebugRotation.forkNormalOrient;
+    }
+
+    /**
+     * Same X-then-Y rotations as the fork blockstate JSON ({@code facing=up} → {@code x:180},
+     * {@code facing=north} → {@code x:270}, …). Applied around the block centre so a 0°
+     * deflection matches the {@code ROLE=NONE} mesh.
+     */
+    public static int[] facingOrient(Direction facing) {
+        return switch (facing) {
+            case UP -> new int[] {180, 0, 0};
+            case DOWN -> new int[] {0, 0, 0};
+            case NORTH -> new int[] {270, 0, 0};
+            case SOUTH -> new int[] {270, 180, 0};
+            case WEST -> new int[] {270, 270, 0};
+            case EAST -> new int[] {270, 90, 0};
+        };
     }
 
     /**

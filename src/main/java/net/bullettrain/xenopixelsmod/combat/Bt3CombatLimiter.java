@@ -209,6 +209,17 @@ public final class Bt3CombatLimiter {
         }
     }
 
+    /**
+     * Drops the live string/rush state only. Cooldowns survive so a controller switch cannot be
+     * used to refresh an ultimate or Hakai timer.
+     */
+    public static void clearLiveState(ServerPlayer player) {
+        if (player == null) return;
+        UUID id = player.getUUID();
+        RUSH_STEP.remove(id);
+        COMBO.remove(id);
+    }
+
     @SubscribeEvent
     public static void onLogout(PlayerEvent.PlayerLoggedOutEvent event) {
         if (event.getEntity() instanceof ServerPlayer p) {

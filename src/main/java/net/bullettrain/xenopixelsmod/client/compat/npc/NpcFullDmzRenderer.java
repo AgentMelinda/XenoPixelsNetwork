@@ -27,6 +27,7 @@ import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.client.player.AbstractClientPlayer;
 import net.minecraft.client.renderer.MultiBufferSource;
+import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.item.ItemStack;
@@ -58,6 +59,8 @@ public final class NpcFullDmzRenderer {
     /** Active only while a synthetic NPC proxy is inside DMZ's renderer. */
     private static final ThreadLocal<RenderContext> RENDER_CONTEXT = new ThreadLocal<>();
     private static final AtomicBoolean ANIMATION_DELIVERY_FAILURE_LOGGED = new AtomicBoolean();
+    private static final AtomicBoolean RENDER_FAILURE_LOGGED = new AtomicBoolean();
+    private static final Map<UUID, Integer> LAST_PROXY_IDENTITY = new ConcurrentHashMap<>();
 
     private record RenderContext(StatsData stats, Character character,
                                  FormConfig.FormData activeForm,
@@ -68,6 +71,16 @@ public final class NpcFullDmzRenderer {
 
     private record TransformSnapshot(FormConfig.FormData targetForm, float progress,
                                      boolean hasHold) {}
+
+    /**
+     * True for the stand-in player a native Xeno NPC is drawn through. Its name would otherwise be
+     * drawn by the player renderer at player height, over tall DMZ hair; the Xeno NPC renderer
+     * draws the real nameplate (name, title, raised) instead.
+     */
+    public static boolean isXenoNpcProxy(net.minecraft.world.entity.Entity entity) {
+        return entity instanceof ProxyPlayer proxy
+                && proxy.owner instanceof net.bullettrain.xenopixelsmod.npc.XenoNpcEntity;
+    }
 
     private static final class ProxyPlayer extends AbstractClientPlayer {
         LivingEntity owner;
@@ -99,9 +112,55 @@ public final class NpcFullDmzRenderer {
                 && NpcCombatProfile.read(owner).appearance.mode == NpcDmzAppearance.Mode.FULL;
     }
 
+    /** Combat hair-yaw swap is local-player mash only; never apply it to a Full NPC proxy. */
+    public static boolean isNpcProxy(Object player) {
+        return player instanceof ProxyPlayer;
+    }
+
+    /**
+     * DMZ {@code processGhostAuras} looks up the shared CustomNPC entity id and evicts
+     * {@code AURA_CACHE} when that entity is not a {@code Player}. Hand back the
+     * synthetic proxy so a Full aura-on NPC keeps its fade while the camera orbits.
+     */
+    public static Player auraPlayerForEntity(Entity entity) {
+        if (!(entity instanceof LivingEntity living) || !living.isAlive()) {
+            return null;
+        }
+        if (!isFull(living) || !NpcAuraClient.isActive(living.getUUID())) {
+            return null;
+        }
+        return WORLD_PROXIES.get(living.getUUID());
+    }
+
     @SuppressWarnings({"rawtypes", "unchecked"})
     public static boolean render(LivingEntity owner, float entityYaw, float partialTick,
                                  PoseStack pose, MultiBufferSource buffers, int packedLight) {
+        return renderSafely(() -> renderUnsafe(owner, entityYaw, partialTick, pose, buffers, packedLight));
+    }
+
+    @FunctionalInterface
+    interface RenderOperation {
+        boolean render();
+    }
+
+    static boolean renderSafely(RenderOperation operation) {
+        if (operation == null) {
+            return false;
+        }
+        try {
+            return operation.render();
+        } catch (RuntimeException | LinkageError failure) {
+            // Optional NPC/DMZ state is untrusted input. Returning false lets the host renderer
+            // continue instead of cancelling it after a malformed hair/form payload.
+            if (RENDER_FAILURE_LOGGED.compareAndSet(false, true)) {
+                XenoPixelsMod.LOGGER.warn("XenoPixels NPC compatibility render failed; using host renderer", failure);
+            }
+            return false;
+        }
+    }
+
+    private static boolean renderUnsafe(LivingEntity owner, float entityYaw, float partialTick,
+                                        PoseStack pose, MultiBufferSource buffers, int packedLight) {
         if (!isFull(owner) || !(owner.level() instanceof ClientLevel level)) return false;
         NpcAppearanceClient.State state = NpcAppearanceClient.get(owner.getUUID());
         if (state == null) return false;
@@ -119,11 +178,13 @@ public final class NpcFullDmzRenderer {
         stats.getStatus().setAuraActive(aura);
         stats.getStatus().setPermanentAura(aura);
         NpcCombatProfile visual = visualProfile(state);
+        boolean flyingNow = liveFlight(owner, visual);
+        applyFlyPose(proxy, owner, flyingNow, partialTick);
         NATIVE_AURAS.put(owner.getUUID(), NpcAuraResolver.resolve(visual));
         stats.getStatus().setForceHalo(visual.haloOn);
         stats.getSkills().removeAllSkills();
         syncKiWeapon(stats, visual);
-        syncFlySkill(stats, visual);
+        syncFlySkill(stats, visual, flyingNow);
         TransformSnapshot transform = syncTransformHold(stats, owner, state, partialTick);
         FormConfig.FormData activeForm = resolveActiveForm(state);
         FormConfig.FormData activeStack = resolveActiveStackForm(visual);
@@ -139,13 +200,18 @@ public final class NpcFullDmzRenderer {
                 transform.hasHold() ? transform.progress() : Float.NaN, eyebrow,
                 tailColor(state.appearance())));
         try {
-            float npcScale = Math.max(0.05f, NpcDisplayApply.getSize(owner) / 5.0f);
+            // CustomNPCs stores its Display size on its own object, which NpcDisplayApply reads by
+            // reflection. A native Xeno NPC has no such object, so getSize answers 0 and the old
+            // max(0.05, 0/5) shrank it to a twentieth of its size. Size 0 means "unset", not
+            // "tiny": it renders at 1.0, which is also what DMZ's own size 5 works out to.
+            float npcScale = NpcDisplayApply.sizeScale(owner);
             pose.scale(npcScale, npcScale, npcScale);
             MultiBufferSource faded = net.bullettrain.xenopixelsmod.client.combat.CombatBodyFade.wrapHakai(
                     buffers, owner, partialTick);
             net.bullettrain.xenopixelsmod.client.combat.CombatBodyFade.begin(owner);
             try {
-                renderer.render(proxy, entityYaw, partialTick, pose, faded, packedLight);
+                float renderYaw = flyingNow ? proxy.yBodyRot : entityYaw;
+                renderer.render(proxy, renderYaw, partialTick, pose, faded, packedLight);
             } finally {
                 net.bullettrain.xenopixelsmod.client.combat.CombatBodyFade.end();
             }
@@ -179,7 +245,7 @@ public final class NpcFullDmzRenderer {
         stats.getStatus().setForceHalo(visual.haloOn);
         stats.getSkills().removeAllSkills();
         syncKiWeapon(stats, visual);
-        syncFlySkill(stats, visual);
+        syncFlySkill(stats, visual, visual.flySkillOn);
         NATIVE_AURAS.put(proxy.getUUID(), NpcAuraResolver.resolve(visual));
         AURA_FACTORS.put(stats, state.auraScale());
 
@@ -261,14 +327,19 @@ public final class NpcFullDmzRenderer {
      * when {@code FlySkillEvent.isFlyingFast} is true, which for a non-local player is exactly
      * "fly skill active, flight mode != 1, and moving faster than 0.55 blocks/tick".
      */
-    private static void syncFlySkill(StatsData stats, NpcCombatProfile visual) {
+    private static void syncFlySkill(StatsData stats, NpcCombatProfile visual, boolean flying) {
         // Fly keeps its own dedicated fields as well as living in the skill map, because it
-        // also drives CustomNPCs' navigator through NpcFlightBridge.
-        applySkill(stats, NpcSkillSet.FLY, visual.flySkillOn,
+        // also drives CustomNPCs' navigator through NpcFlightBridge. The ACTIVE flag follows the
+        // live flight state, not the authored toggle: DMZ reads it for the flight pose, so an
+        // NPC that has landed with Fly still enabled stands like a player who released F.
+        applySkill(stats, NpcSkillSet.FLY, flying,
                 NpcCombatProfile.clampFlySkillLevel(visual.flySkillLevel));
         for (java.util.Map.Entry<String, NpcSkillSet.Entry> entry : visual.skills.entries().entrySet()) {
             if (NpcSkillSet.FLY.equals(entry.getKey())) {
                 continue; // handled above, and the dedicated fields win
+            }
+            if (NpcCombatProfile.KI_WEAPON_SKILL.equals(entry.getKey())) {
+                continue; // syncKiWeapon: the KI Weapon toggle alone decides whether it shows
             }
             applySkill(stats, entry.getKey(), entry.getValue().active(), entry.getValue().level());
         }
@@ -377,8 +448,9 @@ public final class NpcFullDmzRenderer {
     private static float worldAuraFactor(LivingEntity owner, NpcAppearanceClient.State state) {
         // AuraRenderer already includes DMZ's resolved race/form model scaling. Only add
         // CustomNPC Display size and the explicit NPC aura-scale setting here.
-        float npcSize = Math.max(0.05f, NpcDisplayApply.getSize(owner) / 5.0f);
-        return npcSize * state.auraScale();
+        // Shared helper: a native Xeno NPC has no CustomNPCs display, so getSize answers 0 and
+        // the old max(0.05, 0/5) shrank the aura to a twentieth of its size.
+        return NpcDisplayApply.sizeScale(owner) * state.auraScale();
     }
 
     private static TransformSnapshot syncTransformHold(StatsData stats, LivingEntity owner,
@@ -409,7 +481,16 @@ public final class NpcFullDmzRenderer {
         PREVIEW_PROXIES.clear();
         AURA_FACTORS.clear();
         NATIVE_AURAS.clear();
+        LAST_PROXY_IDENTITY.clear();
         RENDER_CONTEXT.remove();
+    }
+
+    public static void forgetWorld(java.util.UUID id) {
+        if (id != null) {
+            WORLD_PROXIES.remove(id);
+            NATIVE_AURAS.remove(id);
+            LAST_PROXY_IDENTITY.remove(id);
+        }
     }
 
     private static ProxyPlayer worldProxy(LivingEntity owner, ClientLevel level,
@@ -484,8 +565,18 @@ public final class NpcFullDmzRenderer {
      */
     private static void playPendingAnimation(AbstractClientPlayer proxy, LivingEntity owner) {
         NpcAnimationClient.Pending pending = NpcAnimationClient.peek(owner.getUUID());
+        boolean queued = pending != null;
         if (pending == null) {
-            return;
+            int identity = System.identityHashCode(proxy);
+            Integer last = LAST_PROXY_IDENTITY.get(owner.getUUID());
+            if (last != null && last == identity) {
+                return;
+            }
+            pending = NpcAnimationClient.activeHold(owner.getUUID());
+            if (pending == null) {
+                LAST_PROXY_IDENTITY.put(owner.getUUID(), identity);
+                return;
+            }
         }
         try {
             // Declared as AbstractClientPlayer rather than ProxyPlayer on purpose: DragonMineZ adds
@@ -497,7 +588,12 @@ public final class NpcFullDmzRenderer {
                     net.bullettrain.xenopixelsmod.client.combat.ScriptAnimSpeedClient.put(
                             owner.getUUID(), pending.speed());
                 }
-                NpcAnimationClient.consume(owner.getUUID(), pending);
+                if (queued) {
+                    NpcAnimationClient.consume(owner.getUUID(), pending);
+                    NpcAnimationClient.xeno$traceOnce("drained by the Full renderer",
+                            pending.animation());
+                }
+                LAST_PROXY_IDENTITY.put(owner.getUUID(), System.identityHashCode(proxy));
             } else if (ANIMATION_DELIVERY_FAILURE_LOGGED.compareAndSet(false, true)) {
                 XenoPixelsMod.LOGGER.warn(
                         "Full DMZ NPC proxy does not implement IPlayerAnimatable; retaining {} for retry",
@@ -556,6 +652,11 @@ public final class NpcFullDmzRenderer {
             proxy.lastCopyStatsTick = copy.tickCount;
         }
         stats.getStatus().setAlive(copy.isAlive());
+        // Aura is the exception to the throttle above. Appearance changes on transform, which is why
+        // a second between refreshes is fine for it -- but an aura goes on and off constantly, and at
+        // a twenty-tick refresh a multi-form copy kept blazing for up to a full second after its
+        // owner powered down. On screen that reads as the copies having taken the owner's aura.
+        copyAuraState(stats.getStatus(), ownerStats.getStatus());
 
         syncWorldEntity(proxy, copy);
         syncArmor(proxy, owner);
@@ -579,6 +680,21 @@ public final class NpcFullDmzRenderer {
         return isolated;
     }
 
+    /**
+     * The four flags that decide whether an aura is drawn at all, refreshed every frame.
+     *
+     * <p>Four setters rather than another {@code copyFrom}: the whole-stats copy is what the
+     * throttle exists to avoid, and these are the only fields that change fast enough to be seen
+     * lagging.
+     */
+    private static void copyAuraState(com.dragonminez.common.stats.character.Status to,
+                                      com.dragonminez.common.stats.character.Status from) {
+        to.setAuraActive(from.isAuraActive());
+        to.setPermanentAura(from.isPermanentAura());
+        to.setActionCharging(from.isActionCharging());
+        to.setChargingKi(from.isChargingKi());
+    }
+
     /** How often a copy's appearance is re-read from its owner. */
     private static final int COPY_STATS_REFRESH_TICKS = 20;
 
@@ -597,7 +713,15 @@ public final class NpcFullDmzRenderer {
             // Render UUID belongs to the copy; getSkin delegates to the actual skin owner.
             GameProfile profile = new GameProfile(id, owner.getGameProfile().getName());
             profile.getProperties().putAll(owner.getGameProfile().getProperties());
-            return new ProxyPlayer(level, profile);
+            ProxyPlayer fresh = new ProxyPlayer(level, profile);
+            // Stamp the id at construction, not only in syncWorldEntity. A proxy is cached the
+            // moment it is built, and renderPlayerCopy can return before syncWorldEntity runs, which
+            // would leave a cached proxy carrying whatever Entity's own counter handed it. DMZ's
+            // aura queue de-duplicates by entity id, so a proxy holding an id that collides with a
+            // real player's suppresses that player's aura for the frame -- and the first-person aura
+            // is drawn after the third-person pass, so the owner is the one who loses it.
+            fresh.setId(copy.getId());
+            return fresh;
         });
     }
 
@@ -628,6 +752,14 @@ public final class NpcFullDmzRenderer {
         to.xo = from.xo;
         to.yo = from.yo;
         to.zo = from.zo;
+        // DMZ's remote fly-clip choice reads getX() - xOld (PlayerGeoAnimatableMixin
+        // #resolveFlyAnimation, checked with javap against the pinned 2.1.3 jar), not x - xo. The
+        // proxy is never ticked, so xOld stayed at the world spawn it was built at and the
+        // "movement" DMZ measured was spawn -> NPC: FLY_LEFT/RIGHT/BACK depending on where the
+        // NPC happened to be. That was the sideways, W+A / W+D look while chasing.
+        to.xOld = from.xo;
+        to.yOld = from.yo;
+        to.zOld = from.zo;
         to.tickCount = from.tickCount;
         to.yHeadRotO = from.yHeadRotO;
         to.yHeadRot = from.yHeadRot;
@@ -637,6 +769,7 @@ public final class NpcFullDmzRenderer {
         to.setXRot(from.getXRot());
         to.setYRot(from.getYRot());
         to.setDeltaMovement(from.getDeltaMovement());
+        to.yRotO = from.yRotO;
         to.setSprinting(from.isSprinting());
         to.setSwimming(from.isSwimming());
         to.setShiftKeyDown(from.isShiftKeyDown());
@@ -653,6 +786,87 @@ public final class NpcFullDmzRenderer {
         to.swingTime = from.swingTime;
         to.swingingArm = from.swingingArm;
         syncArmor(to, from);
+    }
+
+    /**
+     * Live flight rather than the authored skill toggle. The combat brain clears gravity while it
+     * owns the NPC's flight (claimFlight/land) and that flag is entity-synced to the client, so
+     * the pose ends the moment the NPC touches down even with Fly left enabled in the editor -
+     * the same contract as a player who lands while still in flight mode.
+     */
+    private static boolean liveFlight(LivingEntity owner, NpcCombatProfile visual) {
+        return visual != null && visual.flySkillOn && owner.isNoGravity() && !owner.onGround();
+    }
+
+    static void applyFlyPose(AbstractClientPlayer to, LivingEntity from, boolean flySkillOn) {
+        applyFlyPose(to, from, flySkillOn, 1.0f);
+    }
+
+    /**
+     * Per-owner smoothed flight yaw and pitch, advanced every frame. The travel direction only
+     * changes once per tick (x - xo is a per-tick delta), and the proxy's O-fields were set equal
+     * to the new values, so the body stepped 20 times a second and flipped between "face travel"
+     * and "face target" whenever speed crossed the fly epsilon. Weak keys: an unloaded NPC's
+     * entry goes with it.
+     */
+    private static final Map<LivingEntity, FlyState> FLY_YAW = new java.util.WeakHashMap<>();
+    /** Degrees per second the rendered flight body may turn. */
+    private static final float FLY_TURN_RATE = 540.0f;
+
+    private static final class FlyState {
+        float yaw;
+        float pitch;
+        long lastNanos;
+    }
+
+    static void applyFlyPose(AbstractClientPlayer to, LivingEntity from, boolean flySkillOn,
+                             float partialTick) {
+        if (to == null || from == null) {
+            return;
+        }
+        if (!flySkillOn) {
+            FLY_YAW.remove(from);
+            return;
+        }
+        NpcFlyPose.Snapshot snap = NpcFlyPose.forProxy(true,
+                from.getX() - from.xo, from.getY() - from.yo, from.getZ() - from.zo,
+                from.getDeltaMovement().x, from.getDeltaMovement().y, from.getDeltaMovement().z,
+                from.yBodyRot, from.getXRot(), from.yRotO);
+        // Moving: face the travel vector, so DMZ picks FLY_FRONT. Hovering: face where the
+        // server turned the body (the target), interpolated like any other entity.
+        float wantYaw = snap.travelLocked() ? snap.yBodyRot()
+                : net.minecraft.util.Mth.rotLerp(partialTick, from.yBodyRotO, from.yBodyRot);
+        float wantPitch = snap.travelLocked() ? snap.xRot() : 0.0f;
+        long now = System.nanoTime();
+        FlyState state = FLY_YAW.get(from);
+        if (state == null) {
+            state = new FlyState();
+            state.yaw = wantYaw;
+            state.pitch = wantPitch;
+            state.lastNanos = now;
+            FLY_YAW.put(from, state);
+        }
+        float seconds = Math.min(0.1f, Math.max(0.0f, (now - state.lastNanos) / 1.0e9f));
+        state.lastNanos = now;
+        float yaw = NpcFlyPose.slew(state.yaw, wantYaw, FLY_TURN_RATE * seconds);
+        float pitch = NpcFlyPose.slew(state.pitch, wantPitch, FLY_TURN_RATE * 0.5f * seconds);
+        state.yaw = yaw;
+        state.pitch = pitch;
+        to.yBodyRot = yaw;
+        to.yBodyRotO = yaw;
+        to.setYRot(yaw);
+        to.yRotO = yaw;
+        to.setXRot(pitch);
+        to.xRotO = pitch;
+        to.yHeadRot = yaw;
+        to.yHeadRotO = yaw;
+        if (snap.travelLocked()) {
+            double[] forward = NpcFlyPose.frontClipDelta(yaw,
+                    from.getX() - from.xo, from.getZ() - from.zo,
+                    from.getDeltaMovement().x, from.getDeltaMovement().z);
+            to.xOld = to.getX() - forward[0];
+            to.zOld = to.getZ() - forward[1];
+        }
     }
 
     /** Deliberately no swing state: the appearance preview should stand still and pose. */

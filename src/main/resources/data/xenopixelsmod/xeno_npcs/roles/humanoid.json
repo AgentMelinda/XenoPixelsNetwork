@@ -1,0 +1,14 @@
+{
+  "schema": 1,
+  "role": "humanoid",
+  "brain": "v5",
+  "body_family": "humanoid",
+  "decision_ticks": {
+    "combat": 10,
+    "active": 20,
+    "idle": 40
+  },
+  "refs": {
+    "lines": "xenopixelsmod:npcs/lines/default"
+  }
+}

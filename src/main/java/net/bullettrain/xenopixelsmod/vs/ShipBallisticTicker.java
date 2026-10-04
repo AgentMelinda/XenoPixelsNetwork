@@ -13,6 +13,7 @@ import net.minecraft.server.level.ServerLevel;
 import net.minecraft.sounds.SoundEvents;
 import net.minecraft.sounds.SoundSource;
 import net.minecraft.world.level.Level;
+import net.minecraft.world.phys.Vec3;
 import net.neoforged.neoforge.event.tick.ServerTickEvent;
 import net.neoforged.neoforge.server.ServerLifecycleHooks;
 import net.neoforged.bus.api.SubscribeEvent;
@@ -111,21 +112,31 @@ public final class ShipBallisticTicker {
         double px = pos.x(), py = pos.y(), pz = pos.z();
         long time = level.getGameTime();
 
-        // Chunk tickets: target preferred (vehicle skipped when forceChunksTargetOnly)
-        if (time % 40 == 0) {
-            MissileChunkLoadManager.forceNear(level, BlockPos.containing(px, py, pz), 1, 20 * 6,
-                    MissileChunkLoadManager.Role.VEHICLE);
-            MissileChunkLoadManager.forceNear(level,
-                    BlockPos.containing(ctrl.getTargetX(), ctrl.getTargetY(), ctrl.getTargetZ()),
-                    1, 20 * 10, MissileChunkLoadManager.Role.TARGET);
-        }
+        Vec3 shipPos = new Vec3(px, py, pz);
+        BlockPos shipTarget = BlockPos.containing(ctrl.getTargetX(), ctrl.getTargetY(), ctrl.getTargetZ());
+        Vec3 toward = new Vec3(ctrl.getTargetX() - px, 0.0, ctrl.getTargetZ() - pz);
+        MissileChunkLoadManager.trackLiveMissile(level, shipPos, toward, shipTarget);
 
         // Sparse COM plume every 10t (was 5) — fewer network packets
         MissilePhase phase = ctrl.getPhase();
         if ((phase == MissilePhase.BOOST || phase == MissilePhase.EJECT
-                || phase == MissilePhase.TERMINAL) && time % 10 == 0) {
-            level.sendParticles(ParticleTypes.FLAME, px, py, pz, 1, 0.35, 0.35, 0.35, 0.01);
-            level.sendParticles(ParticleTypes.SMOKE, px, py, pz, 1, 0.25, 0.25, 0.25, 0.005);
+                || phase == MissilePhase.TERMINAL)
+                && net.bullettrain.xenopixelsmod.fx.effek.MissileEffectRules.thrusterPulseDue(time)) {
+            // Effekseer exhaust at the tail, opposite the flight direction; vanilla puffs only
+            // when it does not play.
+            Vector3dc v = VsShipHelper.velocity(level, loaded);
+            Vec3 vel = v == null ? Vec3.ZERO : new Vec3(v.x(), v.y(), v.z());
+            Vec3 nozzle = net.bullettrain.xenopixelsmod.fx.effek.MissileEffectRules.nozzle(
+                    new Vec3(px, py, pz), vel, 2.5);
+            boolean effek = net.bullettrain.xenopixelsmod.fx.effek.XenoEffects.play(level,
+                    // A ship is not an entity, so its plume is positional: ship_thruster is
+                    // authored along +Z for exactly that (missile_thruster is the bound plume).
+                    net.bullettrain.xenopixelsmod.fx.effek.EffectSlot.SHIP_THRUSTER, nozzle,
+                    vel.lengthSqr() < 1.0e-6 ? new Vec3(0, -1, 0) : vel.reverse(), 1.5f, -1);
+            if (!effek && time % 10 == 0) {
+                level.sendParticles(ParticleTypes.FLAME, px, py, pz, 1, 0.35, 0.35, 0.35, 0.01);
+                level.sendParticles(ParticleTypes.SMOKE, px, py, pz, 1, 0.25, 0.25, 0.25, 0.005);
+            }
         }
 
         if (ctrl.consumeImpact()) {
@@ -150,7 +161,11 @@ public final class ShipBallisticTicker {
         }
         shutdownShipThrusters(level, ship);
 
-        level.sendParticles(ParticleTypes.CLOUD, x, y, z, 8, 0.6, 0.25, 0.6, 0.02);
+        if (!net.bullettrain.xenopixelsmod.fx.effek.XenoEffects.play(level,
+                net.bullettrain.xenopixelsmod.fx.effek.EffectSlot.MISSILE_EXPLOSION, new Vec3(x, y, z),
+                null, 1.0f, -1)) {  // size: effekseerExplosionScale (default 15)
+            level.sendParticles(ParticleTypes.CLOUD, x, y, z, 8, 0.6, 0.25, 0.6, 0.02);
+        }
         level.playSound(null, BlockPos.containing(x, y, z), SoundEvents.FIRE_EXTINGUISH,
                 SoundSource.BLOCKS, 1.0f, 0.9f);
 

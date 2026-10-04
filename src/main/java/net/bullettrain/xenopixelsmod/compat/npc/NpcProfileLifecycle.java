@@ -48,6 +48,9 @@ public final class NpcProfileLifecycle {
                 || !isCustomNpc(entity)) {
             return;
         }
+        if (entity instanceof LivingEntity living && NpcKiAttackDispatcher.isOwnerClashing(living)) {
+            return;
+        }
         if (mob.isNoAi()) {
             mob.setNoAi(false);
         }
@@ -66,7 +69,7 @@ public final class NpcProfileLifecycle {
             if (NpcCombatProfile.hasProfile(entity)) {
                 track(entity);
                 NpcCombatProfile profile = NpcCombatProfile.read(entity);
-                NpcCounterpartSync.force(entity, profile);
+                NpcCounterpartSync.forceLifecycle(entity, profile);
                 if (entity instanceof LivingEntity living) NpcFormAttributeSync.apply(living, profile);
             }
 
@@ -78,6 +81,33 @@ public final class NpcProfileLifecycle {
         NpcNegativeEffectPersistence.copyOnClone(event.getOriginal(), event.getEntity());
     }
 
+    /**
+     * A Xeno NPC says its KILL line when something dies to it.
+     *
+     * <p>Separate from {@link #onDeath} because that one is about the entity that <em>died</em> and
+     * bails early for anything that is not a CustomNPC - this is about its killer. The KILL
+     * category has been loadable from role definitions since lines existed and had no trigger, so
+     * a line written for it was never said.
+     */
+    @SubscribeEvent
+    public static void onKillSpeech(LivingDeathEvent event) {
+        if (event.getEntity().level().isClientSide()) {
+            return;
+        }
+        if (event.getSource().getEntity()
+                instanceof net.bullettrain.xenopixelsmod.npc.XenoNpcEntity killer
+                && killer != event.getEntity()) {
+            net.bullettrain.xenopixelsmod.npc.script.NpcScriptHost.fire(killer, "kill",
+                    event.getEntity() instanceof net.minecraft.world.entity.player.Player
+                            ? event.getEntity() : null, null, event.getEntity(), 0.0f,
+                    n -> new xenoapi.npcs.api.event.NpcEvent.KilledEntityEvent(n, event.getEntity()));
+            net.bullettrain.xenopixelsmod.npc.lines.XenoNpcSpeech.speak(killer,
+                    net.bullettrain.xenopixelsmod.npc.lines.XenoNpcLines.Category.KILL,
+                    event.getEntity() instanceof net.minecraft.world.entity.player.Player victim
+                            ? victim : null);
+        }
+    }
+
     @SubscribeEvent
     public static void onDeath(LivingDeathEvent event) {
         LivingEntity npc = event.getEntity();
@@ -87,6 +117,10 @@ public final class NpcProfileLifecycle {
         }
         NpcKiAim.cancel(npc);
         NpcKiCooldowns.clear(npc.getUUID());
+        NpcChargeMoves.cancel(npc);
+        NpcHakai.cancel(npc);
+        NpcCombatBrain.disengage(npc);
+        net.bullettrain.xenopixelsmod.compat.npc.brain.v2.NpcSagaCombatBrain.disengage(npc);
         NpcTransformSystem.cancel(npc);
         NpcStrikeDispatcher.cancel(npc.getUUID());
         NpcAuraFx.hide(npc);
@@ -104,11 +138,18 @@ public final class NpcProfileLifecycle {
             return;
         }
         Entity entity = event.getEntity();
+        net.bullettrain.xenopixelsmod.npc.NpcAiGoals.forget(entity.getUUID());
         if (entity instanceof LivingEntity living) {
             NpcNegativeEffectPersistence.beforeSave(living);
             NpcKiAim.cancel(living);
+            NpcChargeMoves.cancel(living);
+            NpcHakai.cancel(living);
+            NpcCombatBrain.disengage(living);
+            net.bullettrain.xenopixelsmod.compat.npc.brain.v2.NpcSagaCombatBrain.disengage(living);
         } else {
             NpcKiAim.cancel(entity.getUUID());
+            NpcChargeMoves.forget(entity.getUUID());
+            NpcHakai.forget(entity.getUUID());
         }
         NpcTransformSystem.cancel(entity.getUUID());
         NpcStrikeDispatcher.cancel(entity.getUUID());
@@ -117,6 +158,7 @@ public final class NpcProfileLifecycle {
         NpcTargetKeeper.forget(entity.getUUID());
         NpcCombatMoves.forget(entity.getUUID());
         NpcCombatBrain.forget(entity.getUUID());
+        net.bullettrain.xenopixelsmod.compat.npc.brain.v2.NpcSagaCombatBrain.forget(entity.getUUID());
         NpcMeleeDamage.clearAnimation(entity.getUUID());
         NpcKiAim.clearHardLock(entity.getUUID());
         NpcEntityLookup.forget(entity.getUUID());
@@ -143,21 +185,60 @@ public final class NpcProfileLifecycle {
                 // tick. The cache reparses whenever the stored tag is replaced, so the
                 // second call still sees a descend triggered by the drain tick.
                 NpcCombatProfile profile = NpcCombatProfile.readCached(npc);
+                NpcTargetKeeper.dropInvalidTarget(npc);
                 NpcFormDrainSystem.tick(npc, profile, serverTick);
                 profile = NpcCombatProfile.readCached(npc);
                 // Both of these already no-op or only matter over many ticks, so stagger them
                 // by entity id the way the aura sync below already is.
                 if (serverTick % 4 == Math.floorMod(npc.getId(), 4)) {
-                    NpcCounterpartSync.apply(npc, profile, false);
+                    NpcCounterpartSync.apply(npc, profile, false, false);
                 }
                 NpcResources.tick(npc, profile);
                 NpcNegativeEffectPersistence.capture(npc);
+                boolean aiEvading = npc instanceof Mob mob
+                        && net.bullettrain.xenopixelsmod.npc.NpcAiGoals.isEvading(mob);
+                if (profile.combatBrain && !aiEvading
+                        && !net.bullettrain.xenopixelsmod.npc.XenoNpcBehaviour.brainYieldsToLeash(npc)) {
+                    LivingEntity steerAt = NpcKiAim.hardLock(event.getServer(), npc);
+                    LivingEntity senseLocked = null;
+                    if (steerAt == null) {
+                        senseLocked = NpcTargetKeeper.kiSenseLockedTarget(event.getServer(), npc);
+                        steerAt = senseLocked;
+                    }
+                    if (steerAt == null) steerAt = npc instanceof Mob mob && mob.getTarget() != null
+                            && mob.getTarget().isAlive()
+                            ? mob.getTarget()
+                            : NpcTargetKeeper.victimOf(event.getServer(), npc, serverTick);
+                    steerAt = NpcTargetKeeper.fightTarget(npc, steerAt);
+                    if (steerAt != null && npc instanceof Mob mob && mob.getTarget() != steerAt) {
+                        mob.setTarget(steerAt);
+                    }
+                    if (profile.brainVersion != null && profile.brainVersion.usesSagaTree()) {
+                        net.bullettrain.xenopixelsmod.compat.npc.brain.v2.NpcSagaCombatBrain
+                                .steer(npc, profile, steerAt);
+                        net.bullettrain.xenopixelsmod.compat.npc.brain.v2.NpcSagaCombatBrain
+                                .tick(event.getServer(), npc, profile, steerAt, serverTick);
+                    } else {
+                        NpcCombatBrain.advance(npc, profile, serverTick);
+                        NpcCombatBrain.steer(npc, profile, steerAt);
+                    }
+                    if (senseLocked != null && steerAt == senseLocked) {
+                        NpcKiAim.trackKiSenseTarget(npc, senseLocked);
+                    }
+                } else if (net.bullettrain.xenopixelsmod.compat.npc.brain.v2.NpcSagaCombatBrain
+                        .directsFlight(npc.getUUID())) {
+                    // Combat can be disabled or interrupted while airborne. Restore gravity and
+                    // release the movement claim instead of leaving the NPC in permanent hover.
+                    net.bullettrain.xenopixelsmod.compat.npc.brain.v2.NpcSagaCombatBrain
+                            .disengage(npc);
+                }
                 // Target retention and autonomous combat are the two most expensive things
                 // here, so they run on their own staggered slot rather than every tick.
-                if (serverTick % 10 == Math.floorMod(npc.getId(), 10)) {
+                if (!aiEvading && serverTick % 10 == Math.floorMod(npc.getId(), 10)) {
                     LivingEntity victim = NpcTargetKeeper.tick(
                             event.getServer(), npc, serverTick);
-                    if (profile.combatBrain) {
+                    if (profile.combatBrain && (profile.brainVersion == null
+                            || !profile.brainVersion.usesSagaTree())) {
                         NpcCombatBrain.tick(event.getServer(), npc, profile, victim, serverTick);
                     }
                 }
@@ -193,7 +274,7 @@ public final class NpcProfileLifecycle {
             }
             repairAi(npc);
             NpcNegativeEffectPersistence.restore(npc);
-            NpcCounterpartSync.force(npc, NpcCombatProfile.read(npc));
+            NpcCounterpartSync.forceLifecycle(npc, NpcCombatProfile.read(npc));
             NpcAuraFx.sync(npc);
             it.remove();
         }

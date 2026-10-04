@@ -53,7 +53,10 @@ public class ShipVlsGuidanceBlock extends BaseEntityBlock {
 
     @Override
     public RenderShape getRenderShape(BlockState state) {
-        return RenderShape.MODEL;
+        // Cube model is the item / collision shape. In-world the GeckoLib BER draws the
+        // console; MODEL would also mesh the opaque cube and hide the small screen on
+        // most facings (verified: GeoBlockRenderer.translate(0.5, 0, 0.5) + cube mesh).
+        return RenderShape.ENTITYBLOCK_ANIMATED;
     }
 
     @Nullable

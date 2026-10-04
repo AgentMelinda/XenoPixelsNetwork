@@ -43,10 +43,41 @@ public final class XenoAuraConfig {
     public static double chargeHeight = 1.8;
     /** Extra width at a full power-up. Deliberately small — the silhouette is a pillar. */
     public static double chargeWidth = 0.25;
+    /** Extra height while charging ki, independent from the transformation column. */
+    public static double kiChargeHeight = 1.8;
+    /** Extra width while charging ki, independent from the transformation column. */
+    public static double kiChargeWidth = 0.25;
     /** Ticks a full rise takes. The fall back takes twice as long. */
     public static double rampTicks = 14.0;
 
     private XenoAuraConfig() {}
+
+    /**
+     * Ceilings for the tunables, shared by the config and {@code /xenohud aura}.
+     *
+     * <p>Raised a long way past anything playable, because the old ceilings of 12 were reachable in
+     * ordinary use and there was no way past them. They are not removed: aura size multiplies
+     * DragonMineZ's own model scale and feeds a shader draw, so a value with an extra zero in it
+     * costs a session rather than looking silly, and a mistyped number should not be able to do
+     * that.
+     *
+     * <p>They live here rather than in the command because the command was never the real limit. The
+     * values are loaded straight out of {@code xenopixelsmod-aura.json}, so anyone editing that file
+     * bypassed every bound the command enforced; {@link #load} now clamps against these too.
+     */
+    public static final double MAX_POWER = 256.0;
+    /** Extra height at a full power-up, the knob a transformation stretches. */
+    public static final double MAX_CHARGE_HEIGHT = 256.0;
+    public static final double MAX_CHARGE_WIDTH = 64.0;
+    public static final double MAX_GAIN = 64.0;
+    public static final double MAX_PIVOT = 1.0e12;
+    public static final double MAX_RAMP = 200.0;
+
+    /** A stored value, held inside its ceiling and never NaN. */
+    private static double clamp(double value, double max, double fallback) {
+        if (!Double.isFinite(value)) return fallback;
+        return Math.max(0.0, Math.min(max, value));
+    }
 
     public static void reset() {
         enabled = true;
@@ -55,6 +86,8 @@ public final class XenoAuraConfig {
         powerMax = 2.5;
         chargeHeight = 1.8;
         chargeWidth = 0.25;
+        kiChargeHeight = 1.8;
+        kiChargeWidth = 0.25;
         rampTicks = 14.0;
         save();
     }
@@ -65,12 +98,16 @@ public final class XenoAuraConfig {
             Data d = GSON.fromJson(reader, Data.class);
             if (d == null) return;
             enabled = d.enabled;
-            powerPivot = d.powerPivot;
-            powerGain = d.powerGain;
-            powerMax = d.powerMax;
-            chargeHeight = d.chargeHeight;
-            chargeWidth = d.chargeWidth;
-            rampTicks = d.rampTicks;
+            // Clamped on the way in. These are read straight from a file a player can edit, and an
+            // aura scale of 1e9 is a frozen client rather than a big aura.
+            powerPivot = Math.max(1.0, clamp(d.powerPivot, MAX_PIVOT, 1.0e6));
+            powerGain = clamp(d.powerGain, MAX_GAIN, 0.25);
+            powerMax = Math.max(1.0, clamp(d.powerMax, MAX_POWER, 2.5));
+            chargeHeight = clamp(d.chargeHeight, MAX_CHARGE_HEIGHT, 1.8);
+            chargeWidth = clamp(d.chargeWidth, MAX_CHARGE_WIDTH, 0.25);
+            kiChargeHeight = clamp(d.kiChargeHeight, MAX_CHARGE_HEIGHT, 1.8);
+            kiChargeWidth = clamp(d.kiChargeWidth, MAX_CHARGE_WIDTH, 0.25);
+            rampTicks = Math.max(1.0, clamp(d.rampTicks, MAX_RAMP, 14.0));
         } catch (IOException e) {
             XenoPixelsMod.LOGGER.warn("Failed to load aura config", e);
         }
@@ -84,6 +121,8 @@ public final class XenoAuraConfig {
         d.powerMax = powerMax;
         d.chargeHeight = chargeHeight;
         d.chargeWidth = chargeWidth;
+        d.kiChargeHeight = kiChargeHeight;
+        d.kiChargeWidth = kiChargeWidth;
         d.rampTicks = rampTicks;
         try {
             Files.createDirectories(PATH.getParent());
@@ -100,6 +139,8 @@ public final class XenoAuraConfig {
         double powerMax = 2.5;
         double chargeHeight = 1.8;
         double chargeWidth = 0.25;
+        double kiChargeHeight = 1.8;
+        double kiChargeWidth = 0.25;
         double rampTicks = 14.0;
     }
 }

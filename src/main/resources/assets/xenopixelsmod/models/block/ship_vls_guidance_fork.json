@@ -1,0 +1,9 @@
+{
+  "parent": "minecraft:block/orientable",
+  "textures": {
+    "particle": "xenopixelsmod:block/ship_vls_guidance_side_fork",
+    "top": "xenopixelsmod:block/ship_vls_guidance_top_fork",
+    "front": "xenopixelsmod:block/ship_vls_guidance_front_fork",
+    "side": "xenopixelsmod:block/ship_vls_guidance_side_fork"
+  }
+}

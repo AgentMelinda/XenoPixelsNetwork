@@ -167,13 +167,10 @@ public final class AeroFlightCore {
      * component along the lateral (right) axis is pitch error, along up is yaw error, along the
      * nose is roll error, since that is the axis each of those rotations happens around.
      *
-     * <p>The positions are copied out before any block is changed. Setting a block updates the
-     * plot's own lift-provider map, so iterating it while writing into it would be a
-     * modification during iteration.
-     *
      * <p>Only panels in {@code linkedPanels} are driven — a panel a hull happens to have
      * somewhere is not automatically this host's to command, matching the same ownership rule
-     * paired thrusters already enforce for thrust.
+     * paired thrusters already enforce for thrust. The Sable lift-provider index is not used
+     * here; fork {@code FACING} updates can drop a panel from that list without unlinking it.
      */
     private void updatePanelDeflections(AeroBus bus, ServerSubLevel ship, Level level,
                                         Vector3dc bodyNose, Vector3dc bodyUp, Set<BlockPos> linkedPanels) {
@@ -211,26 +208,13 @@ public final class AeroFlightCore {
         double yawErr = errorScratch.dot(upScratch);
         double rollErr = errorScratch.dot(noseScratch);
 
-        List<BlockPos> panels = null;
-        try {
-            for (var provider : ship.getPlot().getLiftProviders()) {
-                if (!(provider.state().getBlock() instanceof WingPanelBlock)) continue;
-                BlockPos pos = provider.pos().immutable();
-                if (!linkedPanels.contains(pos)) continue;
-                if (panels == null) panels = new ArrayList<>();
-                panels.add(pos);
-                if (panels.size() >= MAX_ANIMATED_PANELS) break;
-            }
-        } catch (Throwable ignored) {
-            return;
-        }
-        if (panels == null) {
-            AeroControlSurfaceTorque.sync(ship, List.of());
-            return;
-        }
-
-        List<AeroControlSurfaceTorque.PanelState> torquePanels = new ArrayList<>(panels.size());
-        for (BlockPos pos : panels) {
+        // Drive every linked panel from the host's own set. Requiring Sable's lift-provider
+        // index used to skip fork flaps after a FACING/property change (or abort the whole
+        // scan if one provider threw), which left role-assigned surfaces frozen at 0°.
+        List<AeroControlSurfaceTorque.PanelState> torquePanels = new ArrayList<>(
+                Math.min(linkedPanels.size(), MAX_ANIMATED_PANELS));
+        for (BlockPos pos : linkedPanels) {
+            if (torquePanels.size() >= MAX_ANIMATED_PANELS) break;
             WingPanelBlockEntity panel = resolvePanel(ship, level, pos);
             if (panel == null) continue;
             BlockState state = panel.getBlockState();

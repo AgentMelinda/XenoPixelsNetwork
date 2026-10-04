@@ -1,0 +1,11 @@
+{
+  "title": "Pay Respects",
+  "description": "Speak to three masters",
+  "target": 3,
+  "objective": "talk_to_npc",
+  "parameter": "master",
+  "reward": {
+    "skill_points": 1,
+    "experience": 20
+  }
+}

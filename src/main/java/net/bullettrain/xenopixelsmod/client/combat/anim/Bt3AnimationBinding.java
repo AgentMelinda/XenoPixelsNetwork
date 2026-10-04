@@ -142,7 +142,11 @@ public final class Bt3AnimationBinding {
 
     /**
      * Copies {@code existing} and appends {@link #DMZ_ANIMATION_FILE} if it is not already there.
-     * Used by the DragonMineZ player-model mixin so GeckoLib searches our file after DMZ's own.
+     *
+     * <p>GeckoLib 4.9.2 {@code GeoModel.getAnimation} throws {@code Unable to find animation file}
+     * when the <em>last</em> fallback is missing from {@code GeckoLibCache}. Callers must not
+     * append our file unless GeckoLib has already baked it; use
+     * {@link #withAnimationFileIfBaked(ResourceLocation[], boolean)}.
      */
     public static ResourceLocation[] withAnimationFile(ResourceLocation[] existing) {
         ResourceLocation ours = DMZ_ANIMATION_FILE;
@@ -158,6 +162,18 @@ public final class Bt3AnimationBinding {
         System.arraycopy(existing, 0, extended, 0, existing.length);
         extended[existing.length] = ours;
         return extended;
+    }
+
+    /**
+     * Same as {@link #withAnimationFile(ResourceLocation[])} when {@code baked} is true.
+     * When false, returns {@code existing} unchanged (or an empty array if it was null) so our
+     * file cannot become the last GeckoLib fallback on a cache miss.
+     */
+    public static ResourceLocation[] withAnimationFileIfBaked(ResourceLocation[] existing, boolean baked) {
+        if (!baked) {
+            return existing != null ? existing : new ResourceLocation[0];
+        }
+        return withAnimationFile(existing);
     }
 
     /**
@@ -210,6 +226,12 @@ public final class Bt3AnimationBinding {
             if (raw == null) return;
             for (String name : XenoStudioClipCache.names()) {
                 if (name != null && name.startsWith(XenoAnimClip.ANIMATION_PREFIX)) raw.add(name);
+            }
+            for (String file : net.bullettrain.xenopixelsmod.client.anim.XenoClipLibraryClient.names()) {
+                String playable = XenoAnimClip.animationNameForFile(file);
+                if (playable != null) {
+                    raw.add(playable);
+                }
             }
             for (String name : StudioClipBindings.boundAnimationNames()) {
                 if (XenoStudioClipCache.has(name)) raw.add(name);

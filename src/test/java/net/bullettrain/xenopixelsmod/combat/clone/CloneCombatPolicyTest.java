@@ -13,6 +13,15 @@ class CloneCombatPolicyTest {
         assertEquals(FORMATION, CloneCombatPolicy.decide(true, false, 1, 1, true, 0));
         assertEquals(FORMATION, CloneCombatPolicy.decide(true, true, 33, 1, true, 0));
         assertEquals(FORMATION, CloneCombatPolicy.decide(true, true, 1, Double.NaN, true, 0));
+        assertFalse(CloneCombatPolicy.hasLivingLock(false, true));
+        assertFalse(CloneCombatPolicy.hasLivingLock(true, false));
+        assertTrue(CloneCombatPolicy.hasLivingLock(true, true));
+        assertEquals(FORMATION, CloneCombatPolicy.decide(true,
+                CloneCombatPolicy.hasLivingLock(false, false), 1, 1, true, 0));
+        assertEquals(FORMATION, CloneCombatPolicy.decide(true,
+                CloneCombatPolicy.hasLivingLock(true, false), 1, 1, true, 0));
+        assertEquals(MELEE, CloneCombatPolicy.decide(true, true, 33, 1, true, 0, 64));
+        assertEquals(FORMATION, CloneCombatPolicy.decide(true, true, 65, 1, true, 0, 64));
     }
     @Test void pursueOccludedTargetsAndRespectAttackRangesAndRecovery() {
         assertEquals(APPROACH, CloneCombatPolicy.decide(true, true, 1, 1, false, 0));

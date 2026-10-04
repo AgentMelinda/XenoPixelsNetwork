@@ -76,16 +76,14 @@ public final class AnimClipsNetwork {
     public static void sendTo(ServerPlayer player) {
         if (player == null) return;
         sendBindings(player);
-        if (!XenoClipLibrary.isEmpty()) {
-            CHANNEL.sendToPlayer(new ApplyPacket(XenoClipLibrary.bundle()), player);
-        }
+        CHANNEL.sendToPlayer(new ApplyPacket(XenoClipLibrary.bundle()), player);
     }
 
     public static void broadcast(Iterable<ServerPlayer> players) {
-        ApplyPacket library = XenoClipLibrary.isEmpty() ? null : new ApplyPacket(XenoClipLibrary.bundle());
+        ApplyPacket library = new ApplyPacket(XenoClipLibrary.bundle());
         BindingsApplyPacket bindings = new BindingsApplyPacket(XenoTechniqueAnimBindings.writeCurrent());
         for (ServerPlayer player : players) {
-            if (library != null) CHANNEL.sendToPlayer(library, player);
+            CHANNEL.sendToPlayer(library, player);
             CHANNEL.sendToPlayer(bindings, player);
         }
     }
@@ -154,8 +152,9 @@ public final class AnimClipsNetwork {
                     return;
                 }
                 XenoClipLibrary.clear();
+                broadcast(player.getServer().getPlayerList().getPlayers());
                 player.displayClientMessage(Component.literal(
-                        "§7Animation library cleared - new joins receive nothing"), false);
+                        "§7Animation library cleared for all players"), false);
             });
             context.setPacketHandled(true);
         }

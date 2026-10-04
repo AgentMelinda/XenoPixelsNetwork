@@ -36,7 +36,18 @@ public final class TrainingDummySpawner {
         return null;
     }
 
+    /** Removes this player's own training dummies in range, of every kind. */
     public static int dismissOwn(ServerPlayer player, double range) {
+        return dismiss(player, range, false);
+    }
+
+    /**
+     * @param everyone true also removes other players' dummies (the operator's
+     *                 {@code /xenotrain dismiss all}). It used to be implied by being an
+     *                 operator, so an operator spawning or dismissing a dummy removed everyone's
+     *                 (2026-10-02 owner: "xenodismsis per player not all").
+     */
+    public static int dismiss(ServerPlayer player, double range, boolean everyone) {
         if (player == null || !(player.level() instanceof ServerLevel level)) return 0;
         int n = 0;
         AABB box = player.getBoundingBox().inflate(range);
@@ -45,13 +56,14 @@ public final class TrainingDummySpawner {
             if (clone.getPersistentData().hasUUID("xenopixelsmod_training_owner")
                     && !clone.getPersistentData().getUUID("xenopixelsmod_training_owner")
                     .equals(player.getUUID())
-                    && !player.hasPermissions(2)) {
+                    && !everyone) {
                 continue;
             }
             clone.discard();
             n++;
         }
-        n += ShadowDummyTraining.dismissNearby(player, range);
+        n += ShadowDummyTraining.dismissNearby(player, range, everyone);
+        n += TrainingNpc.dismissNearby(player, range, everyone);
         return n;
     }
 }

@@ -16,7 +16,7 @@ import java.util.function.Supplier;
 public final class XenoServerConfigKeys {
 
     public enum Kind {
-        BOOL, INT, FLOAT
+        BOOL, INT, FLOAT, TEXT
     }
 
     public static final class Result {
@@ -95,6 +95,107 @@ public final class XenoServerConfigKeys {
                 () -> (float) XenoServerConfig.hakaiMoveInterruptDistance,
                 v -> XenoServerConfig.hakaiMoveInterruptDistance = Math.max(0.5, Math.min(32.0, v)),
                 "hakaimove");
+        text("hakaiMode", "Which Hakai J casts: single (one target) or area (sphere where you look)",
+                () -> XenoServerConfig.hakaiMode,
+                v -> XenoServerConfig.hakaiMode = XenoServerConfig.normaliseHakaiMode(v),
+                "hakaitype");
+        flt("hakaiAreaRadius", "Area Hakai sphere radius in blocks (1-4096)",
+                () -> (float) XenoServerConfig.hakaiAreaRadius,
+                v -> XenoServerConfig.hakaiAreaRadius = XenoServerConfig.clampHakaiAreaRadius(v),
+                "hakairadius");
+        integer("hakaiAreaMaxTargets", "Most living things one area Hakai erases (1-64)",
+                () -> XenoServerConfig.hakaiAreaMaxTargets,
+                v -> XenoServerConfig.hakaiAreaMaxTargets = Math.max(1, Math.min(64, v)),
+                "hakaitargets");
+        bool("hakaiBlocks", "Area Hakai erases blocks in its sphere (plots and claims can veto)",
+                () -> XenoServerConfig.hakaiBlocks,
+                v -> XenoServerConfig.hakaiBlocks = v,
+                "hakaiblocks");
+        bool("hakaiShips", "Area Hakai erases Sable ship blocks in its sphere",
+                () -> XenoServerConfig.hakaiShips,
+                v -> XenoServerConfig.hakaiShips = v,
+                "hakaiships");
+        integer("hakaiBlockLimit", "Most blocks one area Hakai erases (0-100000000)",
+                () -> XenoServerConfig.hakaiBlockLimit,
+                v -> XenoServerConfig.hakaiBlockLimit = Math.max(0,
+                        Math.min(XenoServerConfig.HAKAI_BLOCK_LIMIT_MAX, v)),
+                "hakaiblocklimit");
+        integer("hakaiBlocksPerTick", "Blocks that start fading per tick (1-512)",
+                () -> XenoServerConfig.hakaiBlocksPerTick,
+                v -> XenoServerConfig.hakaiBlocksPerTick = Math.max(1, Math.min(512, v)),
+                "hakaiblockrate");
+        integer("hakaiBlockFadeTicks", "Ticks each block cracks and fades before vanishing (0-100)",
+                () -> XenoServerConfig.hakaiBlockFadeTicks,
+                v -> XenoServerConfig.hakaiBlockFadeTicks = Math.max(0, Math.min(100, v)),
+                "hakaiblockfade");
+        bool("hakaiBlocksUnbreakable", "Area Hakai erases unbreakable blocks too (never bedrock)",
+                () -> XenoServerConfig.hakaiBlocksUnbreakable,
+                v -> XenoServerConfig.hakaiBlocksUnbreakable = v,
+                "hakaiunbreakable");
+        flt("hakaiAreaFxScale", "Size of the area Hakai effect on top of its radius (0.1-5)",
+                () -> XenoServerConfig.hakaiAreaFxScale,
+                v -> XenoServerConfig.hakaiAreaFxScale = Math.max(0.1f, Math.min(5.0f, v)),
+                "hakaiareafx", "hakaifxradius");
+        bool("hakaiSpareDmzStructures", "Area Hakai never erases DragonMineZ structures",
+                () -> XenoServerConfig.hakaiSpareDmzStructures,
+                v -> XenoServerConfig.hakaiSpareDmzStructures = v,
+                "hakaisparedmz");
+        text("hakaiBlockShape", "Area Hakai blocks: sphere, or raze (the building down to the ground)",
+                () -> XenoServerConfig.hakaiBlockShape,
+                v -> XenoServerConfig.hakaiBlockShape = XenoServerConfig.normaliseHakaiBlockShape(v),
+                "hakaishape");
+        integer("hakaiRazeHeight", "Blocks above and below the look point the raze shape reaches (1-256)",
+                () -> XenoServerConfig.hakaiRazeHeight,
+                v -> XenoServerConfig.hakaiRazeHeight = Math.max(1, Math.min(256, v)),
+                "hakairazeheight");
+        bool("formPassives", "God-form passives at all (Ultra Ego, Hakaishin, Ultra Instinct)",
+                () -> XenoServerConfig.formPassives,
+                v -> XenoServerConfig.formPassives = v,
+                "godpassives");
+        bool("ueImmunity", "Ultra Ego: weaker attackers deal no damage",
+                () -> XenoServerConfig.ueImmunity,
+                v -> XenoServerConfig.ueImmunity = v,
+                "ueimmune");
+        bool("uePenetration", "Ultra Ego: bonus defense penetration on ki and melee",
+                () -> XenoServerConfig.uePenetration,
+                v -> XenoServerConfig.uePenetration = v,
+                "uepen");
+        bool("ueProjectileAura", "Ultra Ego: the aura deletes weaker projectiles and ki",
+                () -> XenoServerConfig.ueProjectileAura,
+                v -> XenoServerConfig.ueProjectileAura = v,
+                "ueaura");
+        bool("uePunchBreak", "Ultra Ego: punching a weaker ki blast destroys it",
+                () -> XenoServerConfig.uePunchBreak,
+                v -> XenoServerConfig.uePunchBreak = v,
+                "uepunch");
+        bool("hakaiMantle", "Hakaishin: every incoming attack and ki blast is erased",
+                () -> XenoServerConfig.hakaiMantle,
+                v -> XenoServerConfig.hakaiMantle = v,
+                "mantle");
+        bool("hakaiMantleNoKnockback", "Hakaishin: punches and kicks cannot knock the wearer back",
+                () -> XenoServerConfig.hakaiMantleNoKnockback,
+                v -> XenoServerConfig.hakaiMantleNoKnockback = v,
+                "mantleknockback");
+        bool("uiDodge", "Ultra Instinct: auto-dodge by mastery (none against another UI)",
+                () -> XenoServerConfig.uiDodge,
+                v -> XenoServerConfig.uiDodge = v,
+                "uidodge");
+        flt("uiDodgeScale", "Multiplies every Ultra Instinct dodge chance (0-2)",
+                () -> XenoServerConfig.uiDodgeScale,
+                v -> XenoServerConfig.uiDodgeScale = Math.max(0.0f, Math.min(2.0f, v)),
+                "uidodgescale");
+        bool("hakaishinNeedsHakai", "Hakaishin also needs Hakai unlocked (off: /dmzform alone grants it)",
+                () -> XenoServerConfig.hakaishinNeedsHakai,
+                v -> XenoServerConfig.hakaishinNeedsHakai = v,
+                "hakaishinhakai");
+        text("hakaiSparedDimensions", "Dimensions where Hakai never erases blocks (comma list of ids)",
+                () -> XenoServerConfig.hakaiSparedDimensions,
+                v -> XenoServerConfig.hakaiSparedDimensions = v == null ? "" : v.trim(),
+                "hakaisafedims");
+        text("hakaiSparedBlocks", "Blocks Hakai never erases anywhere (comma list of block ids)",
+                () -> XenoServerConfig.hakaiSparedBlocks,
+                v -> XenoServerConfig.hakaiSparedBlocks = v == null ? "" : v.trim(),
+                "hakaisafeblocks");
         bool("hakaiFadeEnabled", "Fade the Hakai victim's body as the channel charges",
                 () -> XenoServerConfig.hakaiFadeEnabled,
                 v -> XenoServerConfig.hakaiFadeEnabled = v,
@@ -128,6 +229,89 @@ public final class XenoServerConfigKeys {
                 () -> XenoServerConfig.hakaiFxRimColor,
                 v -> XenoServerConfig.hakaiFxRimColor = v & 0xFFFFFF,
                 "hakairim");
+        bool("effekseerEnabled", "Effekseer effects (AAA Particles); off = vanilla particles",
+                () -> XenoServerConfig.effekseerEnabled,
+                v -> XenoServerConfig.effekseerEnabled = v,
+                "effekseer", "effects");
+        bool("effekseerPunches", "Effekseer punch / guard hit effects",
+                () -> XenoServerConfig.effekseerPunches,
+                v -> XenoServerConfig.effekseerPunches = v,
+                "punchfx");
+        bool("effekseerHakai", "Effekseer Hakai channel and erase effects",
+                () -> XenoServerConfig.effekseerHakai,
+                v -> XenoServerConfig.effekseerHakai = v,
+                "hakaieffek");
+        bool("effekseerMissiles", "Effekseer missile thruster and explosion effects",
+                () -> XenoServerConfig.effekseerMissiles,
+                v -> XenoServerConfig.effekseerMissiles = v,
+                "missilefx");
+        flt("effekseerPunchScale", "Punch effect size (0.05-3, heavy hits are 1.6x)",
+                () -> XenoServerConfig.effekseerPunchScale,
+                v -> XenoServerConfig.effekseerPunchScale = Math.max(0.05f, Math.min(3.0f, v)),
+                "punchsize", "punchscale");
+        flt("effekseerHakaiScale", "Hakai effect size (0.05-5)",
+                () -> XenoServerConfig.effekseerHakaiScale,
+                v -> XenoServerConfig.effekseerHakaiScale = XenoServerConfig.effectScale(v),
+                "hakaisize", "hakaiscale");
+        flt("effekseerMissileScale", "Missile thruster / explosion effect size (0.05-5)",
+                () -> XenoServerConfig.effekseerMissileScale,
+                v -> XenoServerConfig.effekseerMissileScale = XenoServerConfig.effectScale(v),
+                "missilesize", "missilescale");
+        bool("effekseerSparking", "Effekseer Sparking aura and start burst (off: vanilla dust aura)",
+                () -> XenoServerConfig.effekseerSparking,
+                v -> XenoServerConfig.effekseerSparking = v,
+                "sparkingfx");
+        bool("effekseerShipThrusters", "Effekseer ship thruster plumes (off: vanilla flames)",
+                () -> XenoServerConfig.effekseerShipThrusters,
+                v -> XenoServerConfig.effekseerShipThrusters = v,
+                "thrusterfx");
+        flt("effekseerSparkingScale", "Sparking effect size (0.05-5)",
+                () -> XenoServerConfig.effekseerSparkingScale,
+                v -> XenoServerConfig.effekseerSparkingScale = XenoServerConfig.effectScale(v),
+                "sparkingsize", "sparkingscale");
+        flt("effekseerThrusterScale", "Ship thruster plume size (0.05-5)",
+                () -> XenoServerConfig.effekseerThrusterScale,
+                v -> XenoServerConfig.effekseerThrusterScale = XenoServerConfig.effectScale(v),
+                "thrustersize", "thrusterscale");
+        // One size per effect, named after it: /xenoset missile_explosion 2 (or fxscale_missile_explosion).
+        for (net.bullettrain.xenopixelsmod.fx.effek.EffectSlot slot
+                : net.bullettrain.xenopixelsmod.fx.effek.EffectSlot.values()) {
+            String name = slot.name().toLowerCase(Locale.ROOT);
+            flt("fxscale_" + name, "Size of the " + name + " effect, on top of its category (0.05-50)"
+                            + (slot == net.bullettrain.xenopixelsmod.fx.effek.EffectSlot.MISSILE_THRUSTER
+                            ? "; above 1 the flame also starts further behind the tail" : ""),
+                    () -> XenoServerConfig.slotScale(slot),
+                    v -> XenoServerConfig.setSlotScale(slot, v),
+                    name);
+        }
+        bool("effekseerKiImpacts", "Ki attack explosions play the punch impact (off: DMZ's explosion)",
+                () -> XenoServerConfig.effekseerKiImpacts,
+                v -> XenoServerConfig.effekseerKiImpacts = v,
+                "kiimpact", "kifx");
+        flt("effekseerKiImpactScale", "Ki explosion impact size (0.05-5)",
+                () -> XenoServerConfig.effekseerKiImpactScale,
+                v -> XenoServerConfig.effekseerKiImpactScale = XenoServerConfig.effectScale(v),
+                "kiimpactsize");
+        bool("effekseerSparkingSmooth", "Sparking aura: steadier constant-brightness version (default: classic look)",
+                () -> XenoServerConfig.effekseerSparkingSmooth,
+                v -> XenoServerConfig.effekseerSparkingSmooth = v,
+                "sparkingsmooth");
+        flt("effekseerExplosionScale", "Missile explosion size (0.05-50)",
+                () -> XenoServerConfig.effekseerExplosionScale,
+                v -> XenoServerConfig.effekseerExplosionScale = Math.max(0.05f, Math.min(50.0f, v)),
+                "explosionsize", "explosionscale");
+        integer("effekseerRange", "Blocks: punch and Hakai effects reach (8-512)",
+                () -> XenoServerConfig.effekseerRange,
+                v -> XenoServerConfig.effekseerRange = Math.max(8, Math.min(512, v)),
+                "effectrange");
+        integer("effekseerMissileRange", "Blocks: missile effects reach (8-2048)",
+                () -> XenoServerConfig.effekseerMissileRange,
+                v -> XenoServerConfig.effekseerMissileRange = Math.max(8, Math.min(2048, v)),
+                "missilefxrange");
+        integer("effekseerPunchesPerTick", "Server cap on punch effects per tick (1-512)",
+                () -> XenoServerConfig.effekseerPunchesPerTick,
+                v -> XenoServerConfig.effekseerPunchesPerTick = Math.max(1, Math.min(512, v)),
+                "punchcap");
         bool("hakaiFxEnabled", "Hakai dust and silhouette particles",
                 () -> XenoServerConfig.hakaiFxEnabled,
                 v -> XenoServerConfig.hakaiFxEnabled = v,
@@ -208,6 +392,22 @@ public final class XenoServerConfigKeys {
                 () -> (float) XenoServerConfig.vanishSide,
                 v -> XenoServerConfig.vanishSide = Math.max(0.0, Math.min(8.0, v)),
                 "vanishside");
+        flt("chargePunchKnockback", "Charged punch knockback distance (1 = original, 0-10)",
+                () -> XenoServerConfig.chargePunchKnockback,
+                v -> XenoServerConfig.chargePunchKnockback = Math.max(0f, Math.min(10f, v)),
+                "punchkb", "punchknockback");
+        bool("chargePunchParabolic", "Charged punch throws the target in an arc (parabola)",
+                () -> XenoServerConfig.chargePunchParabolic,
+                v -> XenoServerConfig.chargePunchParabolic = v,
+                "puncharc", "punchparabola");
+        flt("chargePunchArcHeight", "Charged punch arc: upward launch at full charge (0-5)",
+                () -> XenoServerConfig.chargePunchArcHeight,
+                v -> XenoServerConfig.chargePunchArcHeight = Math.max(0f, Math.min(5f, v)),
+                "puncharcheight");
+        flt("kickTapCharge", "Strength of one click of the charged-kick key (0.25-1; hold to charge more)",
+                () -> XenoServerConfig.kickTapCharge,
+                v -> XenoServerConfig.kickTapCharge = Math.max(0.25f, Math.min(1f, v)),
+                "kicktap");
         flt("kickKnockbackScale", "Kick knockback distance scale",
                 () -> XenoServerConfig.kickKnockbackScale,
                 v -> XenoServerConfig.kickKnockbackScale = Math.max(0.1f, Math.min(8f, v)),
@@ -257,6 +457,18 @@ public final class XenoServerConfigKeys {
                 () -> XenoServerConfig.bt3SuperCounterEnabled,
                 v -> XenoServerConfig.bt3SuperCounterEnabled = v,
                 "counter", "supercounter");
+        integer("superCounterWindowTicks", "Super-counter parry window",
+                () -> XenoServerConfig.superCounterWindowTicks,
+                v -> XenoServerConfig.superCounterWindowTicks = Math.max(4, Math.min(40, v)),
+                "counterwindow");
+        flt("superCounterKiCost", "Super-counter ki cost",
+                () -> XenoServerConfig.superCounterKiCost,
+                v -> XenoServerConfig.superCounterKiCost = Math.max(0f, v),
+                "counterkicost");
+        flt("superCounterDamageScale", "Super-counter damage scale",
+                () -> XenoServerConfig.superCounterDamageScale,
+                v -> XenoServerConfig.superCounterDamageScale = v > 0f ? v : 1.35f,
+                "counterscale");
         bool("bt3KiBlastCancelEnabled", "Ki blast cancel",
                 () -> XenoServerConfig.bt3KiBlastCancelEnabled,
                 v -> XenoServerConfig.bt3KiBlastCancelEnabled = v,
@@ -292,6 +504,18 @@ public final class XenoServerConfigKeys {
                 () -> XenoServerConfig.npcDmzStatsAuthoritative,
                 v -> XenoServerConfig.npcDmzStatsAuthoritative = v,
                 "npcauthority");
+        text("npcDamageMode", "Profiled NPC damage mode (dmz, mynpc, or numeric)",
+                XenoServerConfig::normalizedNpcDamageMode,
+                v -> XenoServerConfig.npcDamageMode = XenoServerConfig.normalizeNpcDamageMode(v, "dmz"),
+                "npcdamage", "damagemode");
+        flt("npcNumericDamage", "Damage for profiled NPC numeric mode",
+                () -> XenoServerConfig.npcNumericDamage,
+                v -> XenoServerConfig.npcNumericDamage = XenoServerConfig.clampNpcNumericDamage(v),
+                "numericdamage", "npcdamagevalue");
+        bool("xenoNpcSizeScalesHitbox", "Native XenoNPC hitbox follows Display Size",
+                () -> XenoServerConfig.xenoNpcSizeScalesHitbox,
+                v -> XenoServerConfig.xenoNpcSizeScalesHitbox = v,
+                "npcsizehitbox", "sizehitbox");
         integer("npcScriptTickInterval", "Ticks between CustomNPCs/MyNPCs scripted tick events",
                 () -> XenoServerConfig.npcScriptTickInterval,
                 v -> XenoServerConfig.npcScriptTickInterval = Math.max(1, Math.min(20, v)),
@@ -312,6 +536,106 @@ public final class XenoServerConfigKeys {
                 () -> XenoServerConfig.rushCooldownTicks,
                 v -> XenoServerConfig.rushCooldownTicks = Math.max(1, v),
                 "rushcooldown", "rushcd");
+        bool("comboRoutesEnabled", "Grant-gated BT3 combo-route strikes",
+                () -> XenoServerConfig.comboRoutesEnabled,
+                v -> XenoServerConfig.comboRoutesEnabled = v,
+                "comboroutes", "rushcomboenabled");
+        integer("comboRouteHitCount", "Hits per combo-route string (3 or 4)",
+                () -> XenoServerConfig.comboRouteHitCount,
+                v -> XenoServerConfig.comboRouteHitCount = v < 4 ? 3 : 4,
+                "comboroutehits");
+        bool("comboRouteAutoReapproach", "Auto rush back after combo knockback",
+                () -> XenoServerConfig.comboRouteAutoReapproach,
+                v -> XenoServerConfig.comboRouteAutoReapproach = v,
+                "comboroutererush");
+        integer("comboRouteMaxReapproach", "Auto re-rush cap (0 or 1)",
+                () -> XenoServerConfig.comboRouteMaxReapproach,
+                v -> XenoServerConfig.comboRouteMaxReapproach = Math.max(0, Math.min(1, v)));
+        flt("comboRouteRange", "Rush-combo start range. 0 = unlimited, no max",
+                () -> (float) XenoServerConfig.comboRouteRange,
+                v -> XenoServerConfig.comboRouteRange = v,
+                "rushcomborange", "comborange");
+        flt("comboRouteHitRange", "Rush-combo hit/close range. 0 = unlimited, no max",
+                () -> (float) XenoServerConfig.comboRouteHitRange,
+                v -> XenoServerConfig.comboRouteHitRange = v,
+                "rushcombohitrange");
+        integer("comboRouteApproachTimeoutTicks", "Ticks allowed to close on the target",
+                () -> XenoServerConfig.comboRouteApproachTimeoutTicks,
+                v -> XenoServerConfig.comboRouteApproachTimeoutTicks = Math.max(10, v));
+        integer("comboRouteHitTicks", "Ticks between combo-route hits",
+                () -> XenoServerConfig.comboRouteHitTicks,
+                v -> XenoServerConfig.comboRouteHitTicks = Math.max(2, v));
+        flt("comboRouteKiCost", "KI spent to start a combo route",
+                () -> (float) XenoServerConfig.comboRouteKiCost,
+                v -> XenoServerConfig.comboRouteKiCost = Math.max(0.0, v));
+        integer("comboRouteCooldownTicks", "Cooldown after a combo-route cast",
+                () -> XenoServerConfig.comboRouteCooldownTicks,
+                v -> XenoServerConfig.comboRouteCooldownTicks = Math.max(1, v));
+        bool("comboRoutePvpEnabled", "Combo routes against players",
+                () -> XenoServerConfig.comboRoutePvpEnabled,
+                v -> XenoServerConfig.comboRoutePvpEnabled = v);
+        bool("comboRoutePveEnabled", "Combo routes against non-players",
+                () -> XenoServerConfig.comboRoutePveEnabled,
+                v -> XenoServerConfig.comboRoutePveEnabled = v);
+        bool("rushcomboEnabled", "Enable the rush-combo route",
+                () -> XenoServerConfig.rushcomboEnabled,
+                v -> XenoServerConfig.rushcomboEnabled = v);
+        bool("liftcomboEnabled", "Enable the lift-combo route",
+                () -> XenoServerConfig.liftcomboEnabled,
+                v -> XenoServerConfig.liftcomboEnabled = v);
+        flt("rushKnockbackLeftRight", "Xeno rush left/right knockback distance",
+                () -> (float) XenoServerConfig.rushKnockbackLeftRight,
+                v -> XenoServerConfig.rushKnockbackLeftRight = Math.max(0.0, v));
+        flt("rushKnockbackLeftRightUp", "Xeno rush left/right upward knockback",
+                () -> (float) XenoServerConfig.rushKnockbackLeftRightUp,
+                v -> XenoServerConfig.rushKnockbackLeftRightUp = Math.max(0.0, v));
+        flt("rushKnockbackBreaker", "Xeno rush breaker knockback distance",
+                () -> (float) XenoServerConfig.rushKnockbackBreaker,
+                v -> XenoServerConfig.rushKnockbackBreaker = Math.max(0.0, v));
+        flt("rushKnockbackBreakerUp", "Xeno rush breaker upward knockback",
+                () -> (float) XenoServerConfig.rushKnockbackBreakerUp,
+                v -> XenoServerConfig.rushKnockbackBreakerUp = Math.max(0.0, v));
+        flt("rushKnockbackFinisher", "Xeno rush finisher knockback distance",
+                () -> (float) XenoServerConfig.rushKnockbackFinisher,
+                v -> XenoServerConfig.rushKnockbackFinisher = Math.max(0.0, v));
+        flt("rushKnockbackFinisherUp", "Xeno rush finisher upward knockback",
+                () -> (float) XenoServerConfig.rushKnockbackFinisherUp,
+                v -> XenoServerConfig.rushKnockbackFinisherUp = Math.max(0.0, v));
+        flt("rushKnockbackDown", "Xeno rush downward knockback when looking down",
+                () -> (float) XenoServerConfig.rushKnockbackDown,
+                v -> XenoServerConfig.rushKnockbackDown = Math.max(0.0, v));
+        flt("rushKnockbackVerticalPitch", "Look pitch that uses a vertical knockback line",
+                () -> (float) XenoServerConfig.rushKnockbackVerticalPitch,
+                v -> XenoServerConfig.rushKnockbackVerticalPitch = Math.max(1.0, Math.min(89.0, v)));
+        flt("rushComboKnockTravel", "Rush-combo knock travel (how far the opponent is sent)",
+                () -> (float) XenoServerConfig.rushComboKnockTravel,
+                v -> XenoServerConfig.setRushComboKnockTravel(v),
+                "rushcomboknock");
+        flt("rushComboKnockUp", "Rush-combo upward knock travel",
+                () -> (float) XenoServerConfig.rushComboKnockUp,
+                v -> XenoServerConfig.setRushComboKnockUp(v));
+        flt("rushComboKnockDown", "Rush-combo downward knock travel",
+                () -> (float) XenoServerConfig.rushComboKnockDown,
+                v -> XenoServerConfig.setRushComboKnockDown(v));
+        flt("comboRouteKnockbackDistance", "Rush-combo knock travel (legacy id)",
+                () -> (float) XenoServerConfig.comboRouteKnockbackDistance,
+                v -> XenoServerConfig.setRushComboKnockTravel(v));
+        flt("comboRouteKnockbackUp", "Rush-combo upward knock travel (legacy id)",
+                () -> (float) XenoServerConfig.comboRouteKnockbackUp,
+                v -> XenoServerConfig.setRushComboKnockUp(v));
+        flt("comboRouteKnockbackDown", "Rush-combo downward knock travel (legacy id)",
+                () -> (float) XenoServerConfig.comboRouteKnockbackDown,
+                v -> XenoServerConfig.setRushComboKnockDown(v));
+        flt("liftComboKnockTravel", "Lift-combo knock travel (how far the opponent is sent)",
+                () -> (float) XenoServerConfig.liftComboKnockTravel,
+                v -> XenoServerConfig.setLiftComboKnockTravel(v),
+                "liftcomboknock");
+        flt("liftComboKnockUp", "Lift-combo upward knock travel",
+                () -> (float) XenoServerConfig.liftComboKnockUp,
+                v -> XenoServerConfig.setLiftComboKnockUp(v));
+        flt("liftComboKnockDown", "Lift-combo downward knock travel",
+                () -> (float) XenoServerConfig.liftComboKnockDown,
+                v -> XenoServerConfig.setLiftComboKnockDown(v));
         bool("zanzokenEnabled", "Zanzoken afterimage dodge",
                 () -> XenoServerConfig.zanzokenEnabled,
                 v -> XenoServerConfig.zanzokenEnabled = v,
@@ -361,6 +685,23 @@ public final class XenoServerConfigKeys {
                 () -> XenoServerConfig.zanzokenRingTicks,
                 v -> XenoServerConfig.zanzokenRingTicks = Math.max(20, Math.min(1200, v)),
                 "zanzokenringticks");
+        bool("zanzokenRingHitable", "Players can destroy standing Zanzoken ring copies",
+                () -> XenoServerConfig.zanzokenRingHitable,
+                v -> XenoServerConfig.zanzokenRingHitable = v,
+                "zanzokenhitable");
+        bool("zanzokenRingDisperseAll", "A player hit on one Zanzoken copy takes the whole ring",
+                () -> XenoServerConfig.zanzokenRingDisperseAll,
+                v -> XenoServerConfig.zanzokenRingDisperseAll = v,
+                "zanzokendisperseall");
+        bool("zanzokenRingPopOne", "A player hit pops only that Zanzoken copy (inverse of disperse-all)",
+                () -> !XenoServerConfig.zanzokenRingDisperseAll,
+                v -> XenoServerConfig.zanzokenRingDisperseAll = !v,
+                "zanzokenpopone");
+        flt("zanzokenDetectRange", "How far Zanzoken fools nearby AI onto afterimages",
+                () -> (float) XenoServerConfig.clampedZanzokenDetectRange(),
+                v -> XenoServerConfig.zanzokenDetectRange =
+                        net.bullettrain.xenopixelsmod.combat.clone.CloneDetectRange.clamp(v),
+                "zanzokendetect", "zandetect");
         bool("multiFormEnabled", "Shi Shin No Ken multi-form",
                 () -> XenoServerConfig.multiFormEnabled,
                 v -> XenoServerConfig.multiFormEnabled = v,
@@ -373,6 +714,55 @@ public final class XenoServerConfigKeys {
                 () -> XenoServerConfig.multiFormKiCost,
                 v -> XenoServerConfig.multiFormKiCost = Math.max(0f, v),
                 "multiformcost");
+        flt("multiFormRadius", "Distance multi-form copies stand from the fighter",
+                () -> XenoServerConfig.clampedMultiFormRadius(),
+                v -> XenoServerConfig.multiFormRadius = XenoServerConfig.clampMultiFormRadius(v),
+                "multiformradius", "multiformdistance");
+        text("multiFormAi", "Multi-form copy AI: clone, brain or multiform",
+                () -> XenoServerConfig.normalizeMultiFormAi(XenoServerConfig.multiFormAi),
+                v -> XenoServerConfig.multiFormAi = XenoServerConfig.normalizeMultiFormAi(v),
+                "multiformai", "cloneai");
+        bool("multiFormRetaliate", "Copies fight whoever just hit the split fighter",
+                () -> XenoServerConfig.multiFormRetaliate,
+                v -> XenoServerConfig.multiFormRetaliate = v,
+                "multiformretaliate");
+        bool("multiFormHostile", "Copies pick a nearby hostile without lock-on",
+                () -> XenoServerConfig.multiFormHostile,
+                v -> XenoServerConfig.multiFormHostile = v,
+                "multiformhostile");
+        bool("multiFormLook", "Copies fight what the split fighter is looking at",
+                () -> XenoServerConfig.multiFormLook,
+                v -> XenoServerConfig.multiFormLook = v,
+                "multiformlook");
+        bool("multiFormVanish", "Copies may vanish while fighting",
+                () -> XenoServerConfig.multiFormVanish,
+                v -> XenoServerConfig.multiFormVanish = v,
+                "multiformvanish");
+        flt("multiFormDetectRange", "How far multi-form copies notice and fight a target",
+                () -> (float) XenoServerConfig.clampedMultiFormDetectRange(),
+                v -> XenoServerConfig.multiFormDetectRange =
+                        net.bullettrain.xenopixelsmod.combat.clone.CloneDetectRange.clamp(v),
+                "multiformdetect", "multiformleash");
+        flt("brainDeflectMinDistance", "No NPC ki-deflect closer than this many blocks (0 = any range)",
+                () -> (float) XenoServerConfig.clampedBrainDeflectMinDistance(),
+                v -> XenoServerConfig.brainDeflectMinDistance =
+                        XenoServerConfig.clampBrainDeflectMinDistance(v),
+                "npckideflectmin", "deflectmindistance");
+        flt("npcAttackStartRadius", "Blocks an NPC must close to before melee attacks start "
+                        + "(per-NPC Melee Range still wins; 4.5 = old DMZ band)",
+                () -> (float) XenoServerConfig.clampedNpcAttackStartRadius(),
+                v -> XenoServerConfig.npcAttackStartRadius =
+                        XenoServerConfig.clampNpcAttackStartRadius(v),
+                "npcattackradius", "attackradius", "attackstartradius");
+        bool("npcMeleeHeightRule", "NPC melee reaches targets a block or two up/down "
+                        + "(off: old straight-line distance)",
+                () -> XenoServerConfig.npcMeleeHeightRule,
+                v -> XenoServerConfig.npcMeleeHeightRule = v,
+                "npcheightreach", "meleeheightrule");
+        flt("npcMeleeHeightReach", "Blocks of air allowed between NPC and target hitboxes for melee (0-8)",
+                () -> (float) XenoServerConfig.clampNpcMeleeHeightReach(XenoServerConfig.npcMeleeHeightReach),
+                v -> XenoServerConfig.npcMeleeHeightReach = XenoServerConfig.clampNpcMeleeHeightReach(v),
+                "meleeheight", "npcmeleeheight");
         bool("bt3SonicSwayEnabled", "Sonic sway",
                 () -> XenoServerConfig.bt3SonicSwayEnabled,
                 v -> XenoServerConfig.bt3SonicSwayEnabled = v,
@@ -462,6 +852,10 @@ public final class XenoServerConfigKeys {
                 () -> XenoServerConfig.trainingDummyEnabled,
                 v -> XenoServerConfig.trainingDummyEnabled = v,
                 "dummy", "trainingdummy");
+        bool("trainingDummySkillPoints", "Training dummies pay a skill point at 25, 100 and 250 hits",
+                () -> XenoServerConfig.trainingDummySkillPoints,
+                v -> XenoServerConfig.trainingDummySkillPoints = v,
+                "dummypoints");
         bool("parallelQuestEnabled", "Parallel quests",
                 () -> XenoServerConfig.parallelQuestEnabled,
                 v -> XenoServerConfig.parallelQuestEnabled = v,
@@ -479,6 +873,12 @@ public final class XenoServerConfigKeys {
                 () -> XenoServerConfig.npcCommandsIgnoreCommandBlockSetting,
                 v -> XenoServerConfig.npcCommandsIgnoreCommandBlockSetting = v,
                 "npccommands", "npccommandblock");
+        text("combatControllerMode",
+                "Combat controller: legacy (default, pre-manual Xeno) or bt3_manual. "
+                        + "Prefer /xenocombat mode so live combat state is swept on switch",
+                XenoServerConfig::normalizedCombatControllerMode,
+                v -> XenoServerConfig.combatControllerMode = XenoServerConfig.normalizeCombatControllerMode(v),
+                "combatmode", "controllermode", "combatcontroller", "bt3mode");
         integer("dmzStructureY", "Absolute Y for /xenostructure place (0 = terrain)",
                 () -> XenoServerConfig.dmzStructureY,
                 v -> XenoServerConfig.dmzStructureY = v,
@@ -544,6 +944,10 @@ public final class XenoServerConfigKeys {
                 () -> XenoServerConfig.kiDestructionMaxRadius,
                 v -> XenoServerConfig.kiDestructionMaxRadius = v > 0f && Float.isFinite(v) ? v : 32f,
                 "destruction");
+        flt("kiExplosionMaxRadius", "Ki-explosion entity radius cap (0 = uncapped)",
+                () -> XenoServerConfig.kiExplosionMaxRadius,
+                v -> XenoServerConfig.kiExplosionMaxRadius = Float.isFinite(v) && v >= 0f ? v : 64f,
+                "explosion", "maxexplosion");
         integer("kiDestructionBlocksPerTick", "Synchronous cube-check budget",
                 () -> XenoServerConfig.kiDestructionBlocksPerTick,
                 v -> XenoServerConfig.kiDestructionBlocksPerTick = Math.max(64, v));
@@ -707,6 +1111,7 @@ public final class XenoServerConfigKeys {
                     }
                     key.applyRaw.accept(Float.toString(parsed));
                 }
+                case TEXT -> key.applyRaw.accept(value);
             }
         } catch (NumberFormatException e) {
             return Result.fail("Bad " + key.kind.name().toLowerCase(Locale.ROOT)
@@ -818,6 +1223,12 @@ public final class XenoServerConfigKeys {
         Key key = new Key(id, Kind.FLOAT, help,
                 () -> formatFloat(get.get()),
                 raw -> set.accept(Float.parseFloat(raw)));
+        register(key, aliases);
+    }
+
+    private static void text(String id, String help, Supplier<String> get, Consumer<String> set,
+                             String... aliases) {
+        Key key = new Key(id, Kind.TEXT, help, get, set::accept);
         register(key, aliases);
     }
 

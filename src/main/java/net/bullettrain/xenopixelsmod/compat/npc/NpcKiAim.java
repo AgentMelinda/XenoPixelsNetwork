@@ -3,6 +3,7 @@ package net.bullettrain.xenopixelsmod.compat.npc;
 import com.dragonminez.common.compat.CameraAimHelper;
 import net.bullettrain.xenopixelsmod.XenoPixelsMod;
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.util.Mth;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
@@ -45,7 +46,7 @@ public final class NpcKiAim {
      * native AI cooperates rather than fighting the lock.
      */
     public static void hardLock(LivingEntity npc, LivingEntity target) {
-        if (npc == null || target == null || npc == target) {
+        if (npc == null || !NpcTargetKeeper.isCombatTarget(target) || npc == target) {
             return;
         }
         HARD_LOCKS.put(npc.getUUID(), target.getUUID());
@@ -71,6 +72,10 @@ public final class NpcKiAim {
             return null;
         }
         LivingEntity target = NpcEntityLookup.findAlive(server, targetId);
+        if (!NpcTargetKeeper.isCombatTarget(target)) {
+            if (target != null) HARD_LOCKS.remove(npc.getUUID(), targetId);
+            return null;
+        }
         return target == npc ? null : target;
     }
 
@@ -110,6 +115,23 @@ public final class NpcKiAim {
         return dir;
     }
 
+    /** Yaw toward the target's XZ at the caster's eye height — never 90° up. */
+    public static Vec3 applyHorizontalPose(LivingEntity caster, LivingEntity target) {
+        if (caster == null || target == null || !target.isAlive()) {
+            return caster != null ? caster.getLookAngle() : Vec3.ZERO;
+        }
+        Vec3 from = caster.getEyePosition();
+        Vec3 to = new Vec3(target.getX(), from.y, target.getZ());
+        Vec3 dir = to.subtract(from);
+        if (dir.lengthSqr() < 1.0E-8) {
+            return caster.getLookAngle();
+        }
+        dir = dir.normalize();
+        applyLook(caster, CameraAimHelper.yaw(dir), 0.0f);
+        CameraAimHelper.store(caster, dir);
+        return dir;
+    }
+
     public static void applyLook(LivingEntity caster, float yaw, float pitch) {
         if (caster == null) {
             return;
@@ -122,6 +144,38 @@ public final class NpcKiAim {
         caster.xRotO = pitch;
         caster.yHeadRotO = yaw;
         caster.yBodyRotO = yaw;
+    }
+
+    /** DMZ Z-lock style tracking for the server NPC. The body stays upright while the
+     * head/camera pitch follows the target midpoint; projectile aim is computed separately. */
+    public static void trackKiSenseTarget(LivingEntity caster, LivingEntity target) {
+        if (caster == null || target == null || !target.isAlive()) return;
+        Vec3 from = caster.getEyePosition();
+        Vec3 to = target.position().add(0.0, target.getBbHeight() * 0.5, 0.0);
+        Vec3 delta = to.subtract(from);
+        if (delta.lengthSqr() < 1.0e-8) return;
+        float yaw = NpcBrainKiRotation.targetYaw(delta.x, delta.z, caster.getYRot());
+        float pitch = (float) -Math.toDegrees(Math.atan2(delta.y, Math.hypot(delta.x, delta.z)));
+        if (caster.isNoGravity() && !caster.onGround()) {
+            // In flight the brain's chase velocity already points at this target. A 15% ease
+            // left the body several degrees behind a circling target every tick, so it flew one
+            // way while facing another. Track with a fixed turn rate instead, and keep the body
+            // level: pitch belongs to the head and the shot, not the flying pose.
+            float body = NpcBrainKiRotation.slew(caster.getYRot(), yaw, FLIGHT_TURN_PER_TICK);
+            applyLook(caster, body, 0.0f);
+            caster.setXRot(smoothAngle(caster.getXRot(), pitch));
+            caster.xRotO = caster.getXRot();
+            return;
+        }
+        applyLook(caster, smoothAngle(caster.getYRot(), yaw),
+                smoothAngle(caster.getXRot(), pitch));
+    }
+
+    /** Degrees per tick a Ki Sense lock may turn a flying NPC's body. */
+    static final float FLIGHT_TURN_PER_TICK = 30.0f;
+
+    static float smoothAngle(float current, float desired) {
+        return current + Mth.wrapDegrees(desired - current) * 0.15f;
     }
 
     public static void hold(LivingEntity caster, LivingEntity target, int ticks) {
@@ -151,7 +205,8 @@ public final class NpcKiAim {
         }
         if (caster.level() instanceof ServerLevel server) {
             Entity entity = server.getEntity(hold.targetId());
-            if (entity instanceof LivingEntity living && living.isAlive() && living != caster) {
+            if (entity instanceof LivingEntity living
+                    && NpcTargetKeeper.isCombatTarget(living) && living != caster) {
                 return living;
             }
         }
@@ -203,11 +258,8 @@ public final class NpcKiAim {
         if (caster == null) {
             return;
         }
-        caster.swing(InteractionHand.MAIN_HAND, true);
-        // Gecko custom-model entities do not render the vanilla swing event.
-        // Trigger the attack clip configured in Model Editor when available,
-        // while retaining AIM for classic CustomNPC models.
-        NpcGeckoAnim.playAttack(caster);
+        // This is ranged aiming. A vanilla swing makes the Full DMZ proxy play a
+        // melee punch on every ki cast, even when the target is across the arena.
         applyCnpcAimPose(caster);
     }
 

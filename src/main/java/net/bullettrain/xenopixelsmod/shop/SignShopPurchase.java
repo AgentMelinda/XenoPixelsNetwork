@@ -67,7 +67,7 @@ public final class SignShopPurchase {
             return Result.NO_SHOP;
         }
         if (entry == null) {
-            manager.put(dimension, pos, null, data);
+            return Result.NO_SHOP;
         }
         if (!XenoPermissions.hasPermission(buyer, XenoPermissions.SHOP_USE)) {
             return Result.NO_PERMISSION;
@@ -80,6 +80,9 @@ public final class SignShopPurchase {
             return Result.NO_TARGET;
         }
         long price = MmoEconBridge.toUnits(data.price());
+        if (price < 0L) {
+            return Result.NO_ECONOMY;
+        }
         if (!MmoEconBridge.hasFunds(buyer.getUUID(), price)) {
             return Result.INSUFFICIENT_FUNDS;
         }

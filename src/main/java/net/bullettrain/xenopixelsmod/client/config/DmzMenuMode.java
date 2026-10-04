@@ -44,7 +44,12 @@ public enum DmzMenuMode {
      * a page has no neon sheet for a particular slot the {@link #THEME} sheet is used, and where
      * neither exists DragonMineZ's own art is left alone -- {@link #themed()} is true here too.
      */
-    NEON("neon");
+    NEON("neon"),
+    /**
+     * Authored {@code dmz_menu} documents from UI Studio replace assigned V-pages.
+     * Unassigned pages keep DragonMineZ's own screens.
+     */
+    STUDIO("studio");
 
     /**
      * What the mod ships with, and what a config written before the setting existed is moved to.

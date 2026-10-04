@@ -216,6 +216,18 @@ public class XenoTechniqueHotbarOverlay {
         boolean altDown = KeyBinds.isBarModifierActive(modAlt);
         boolean ctrlDown = KeyBinds.isBarModifierActive(modCtrl);
 
+        // A held gamepad trigger raises the same bar. It has to be ORed in here rather than left
+        // to the keyboard check, because isBarModifierActive resolves to Screen.hasAltDown() and
+        // reads the physical keyboard - a pad cannot make that true however it emulates keys.
+        int padBar = net.bullettrain.xenopixelsmod.client.pad.XenoPadInput.kiBarOffset();
+        if (padBar == 0) {
+            altDown = true;
+            ctrlDown = false;
+        } else if (padBar > 0) {
+            ctrlDown = true;
+            altDown = false;
+        }
+
         int offset;
         if (editing) {
             // Editor screens don't reliably see held modifier keys — always show the ALT bar

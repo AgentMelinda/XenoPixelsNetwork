@@ -45,7 +45,14 @@ public final class XenoClipLibraryClient {
             return;
         }
         XenoStudioClipCache.reload();
+        for (String name : clips.keySet()) {
+            String playable = XenoAnimClip.animationNameForFile(name);
+            if (playable != null) {
+                Bt3AnimationBinding.registerAnimationName(playable);
+            }
+        }
         Bt3AnimationBinding.registerStudioNames();
+        net.bullettrain.xenopixelsmod.client.compat.npc.NpcAnimationClient.retryActiveHolds();
         XenoPixelsMod.LOGGER.info("Received {} animation clip(s) from the server", clips.size());
     }
 

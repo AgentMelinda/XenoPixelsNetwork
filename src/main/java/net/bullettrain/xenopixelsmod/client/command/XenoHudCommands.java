@@ -31,6 +31,11 @@ import net.neoforged.fml.common.Mod;
 
 @EventBusSubscriber(modid = XenoPixelsMod.MOD_ID, value = Dist.CLIENT)
 public final class XenoHudCommands {
+    private static final String[] AURA_KEYS = {
+            "enabled", "pivot", "gain", "max", "chargeheight", "chargewidth",
+            "kiheight", "kiwidth", "ramp"
+    };
+
     private XenoHudCommands() {}
 
     @SubscribeEvent
@@ -75,6 +80,98 @@ public final class XenoHudCommands {
                         DoubleArgumentType.doubleArg(min, max))
                 .executes(ctx -> setAura(ctx, name,
                         DoubleArgumentType.getDouble(ctx, "value"), apply)));
+    }
+
+    private static int getAuraVisual(CommandSourceStack source, String key) {
+        String normalized = key == null ? "" : key.trim().toLowerCase(java.util.Locale.ROOT);
+        if (normalized.isEmpty()) {
+            source.sendSuccess(() -> Component.literal(auraVisualStatus()), false);
+            return 1;
+        }
+        String value = auraVisualValue(normalized);
+        if (value == null) {
+            source.sendFailure(Component.literal("Unknown aura key '" + key + "'. Try: "
+                    + String.join(" ", AURA_KEYS)));
+            return 0;
+        }
+        source.sendSuccess(() -> Component.literal("Aura " + normalized + " = " + value), false);
+        return 1;
+    }
+
+    private static int setAuraVisual(CommandSourceStack source, String key, String raw) {
+        String normalized = key == null ? "" : key.trim().toLowerCase(java.util.Locale.ROOT);
+        String value = raw == null ? "" : raw.trim();
+        try {
+            if (normalized.equals("enabled")) {
+                Boolean enabled = parseAuraBoolean(value);
+                if (enabled == null) throw new IllegalArgumentException("expected on/off or true/false");
+                XenoAuraConfig.enabled = enabled;
+            } else {
+                double number = Double.parseDouble(value);
+                if (!Double.isFinite(number)) throw new IllegalArgumentException("value must be finite");
+                switch (normalized) {
+                    case "pivot" -> XenoAuraConfig.powerPivot = bounded(number, 1.0, XenoAuraConfig.MAX_PIVOT);
+                    case "gain" -> XenoAuraConfig.powerGain = bounded(number, 0.0, XenoAuraConfig.MAX_GAIN);
+                    case "max" -> XenoAuraConfig.powerMax = bounded(number, 1.0, XenoAuraConfig.MAX_POWER);
+                    case "chargeheight" -> XenoAuraConfig.chargeHeight = bounded(number, 0.0, XenoAuraConfig.MAX_CHARGE_HEIGHT);
+                    case "chargewidth" -> XenoAuraConfig.chargeWidth = bounded(number, 0.0, XenoAuraConfig.MAX_CHARGE_WIDTH);
+                    case "kiheight" -> XenoAuraConfig.kiChargeHeight = bounded(number, 0.0, XenoAuraConfig.MAX_CHARGE_HEIGHT);
+                    case "kiwidth" -> XenoAuraConfig.kiChargeWidth = bounded(number, 0.0, XenoAuraConfig.MAX_CHARGE_WIDTH);
+                    case "ramp" -> XenoAuraConfig.rampTicks = bounded(number, 1.0, XenoAuraConfig.MAX_RAMP);
+                    default -> {
+                        source.sendFailure(Component.literal("Unknown aura key '" + key + "'. Try: "
+                                + String.join(" ", AURA_KEYS)));
+                        return 0;
+                    }
+                }
+            }
+        } catch (NumberFormatException e) {
+            source.sendFailure(Component.literal("Aura " + normalized + " expects a number, got '" + raw + "'"));
+            return 0;
+        } catch (IllegalArgumentException e) {
+            source.sendFailure(Component.literal("Invalid aura " + normalized + ": " + e.getMessage()));
+            return 0;
+        }
+        XenoAuraConfig.save();
+        return getAuraVisual(source, normalized);
+    }
+
+    private static double bounded(double value, double min, double max) {
+        if (value < min || value > max) {
+            throw new IllegalArgumentException("expected " + min + ".." + max + ", got " + value);
+        }
+        return value;
+    }
+
+    private static Boolean parseAuraBoolean(String value) {
+        return switch (value.toLowerCase(java.util.Locale.ROOT)) {
+            case "true", "on", "yes", "1" -> Boolean.TRUE;
+            case "false", "off", "no", "0" -> Boolean.FALSE;
+            default -> null;
+        };
+    }
+
+    private static String auraVisualValue(String key) {
+        return switch (key) {
+            case "enabled" -> Boolean.toString(XenoAuraConfig.enabled);
+            case "pivot" -> Double.toString(XenoAuraConfig.powerPivot);
+            case "gain" -> Double.toString(XenoAuraConfig.powerGain);
+            case "max" -> Double.toString(XenoAuraConfig.powerMax);
+            case "chargeheight" -> Double.toString(XenoAuraConfig.chargeHeight);
+            case "chargewidth" -> Double.toString(XenoAuraConfig.chargeWidth);
+            case "kiheight" -> Double.toString(XenoAuraConfig.kiChargeHeight);
+            case "kiwidth" -> Double.toString(XenoAuraConfig.kiChargeWidth);
+            case "ramp" -> Double.toString(XenoAuraConfig.rampTicks);
+            default -> null;
+        };
+    }
+
+    private static String auraVisualStatus() {
+        StringBuilder status = new StringBuilder("Aura visual settings:");
+        for (String key : AURA_KEYS) {
+            status.append(' ').append(key).append('=').append(auraVisualValue(key));
+        }
+        return status.toString();
     }
 
     private static int openPartsEditor(CommandSourceStack source) {
@@ -184,10 +281,12 @@ public final class XenoHudCommands {
                             return 1;
                         }))
                         .then(auraKnob("pivot", 1.0, 1.0e12, v -> XenoAuraConfig.powerPivot = v))
-                        .then(auraKnob("gain", 0.0, 4.0, v -> XenoAuraConfig.powerGain = v))
-                        .then(auraKnob("max", 1.0, 12.0, v -> XenoAuraConfig.powerMax = v))
-                        .then(auraKnob("chargeheight", 0.0, 12.0, v -> XenoAuraConfig.chargeHeight = v))
-                        .then(auraKnob("chargewidth", 0.0, 4.0, v -> XenoAuraConfig.chargeWidth = v))
+                        .then(auraKnob("gain", 0.0, XenoAuraConfig.MAX_GAIN, v -> XenoAuraConfig.powerGain = v))
+                        .then(auraKnob("max", 1.0, XenoAuraConfig.MAX_POWER, v -> XenoAuraConfig.powerMax = v))
+                        .then(auraKnob("chargeheight", 0.0, XenoAuraConfig.MAX_CHARGE_HEIGHT, v -> XenoAuraConfig.chargeHeight = v))
+                        .then(auraKnob("chargewidth", 0.0, XenoAuraConfig.MAX_CHARGE_WIDTH, v -> XenoAuraConfig.chargeWidth = v))
+                        .then(auraKnob("kiheight", 0.0, XenoAuraConfig.MAX_CHARGE_HEIGHT, v -> XenoAuraConfig.kiChargeHeight = v))
+                        .then(auraKnob("kiwidth", 0.0, XenoAuraConfig.MAX_CHARGE_WIDTH, v -> XenoAuraConfig.kiChargeWidth = v))
                         .then(auraKnob("ramp", 1.0, 200.0, v -> XenoAuraConfig.rampTicks = v))
                         .executes(ctx -> {
                             ctx.getSource().sendSuccess(() -> Component.literal(
@@ -197,6 +296,8 @@ public final class XenoHudCommands {
                                             + ", max " + XenoAuraConfig.powerMax
                                             + ", chargeheight " + XenoAuraConfig.chargeHeight
                                             + ", chargewidth " + XenoAuraConfig.chargeWidth
+                                            + ", kiheight " + XenoAuraConfig.kiChargeHeight
+                                            + ", kiwidth " + XenoAuraConfig.kiChargeWidth
                                             + ", ramp " + XenoAuraConfig.rampTicks + ")"), false);
                             return 1;
                         }))
@@ -214,6 +315,9 @@ public final class XenoHudCommands {
                         .then(Commands.literal("neon")
                                 .executes(ctx -> setMenuMode(ctx, DmzMenuMode.NEON,
                                         "neon (the newer our-style stats page; the rest themed)")))
+                        .then(Commands.literal("studio")
+                                .executes(ctx -> setMenuMode(ctx, DmzMenuMode.STUDIO,
+                                        "studio (authored dmz_menu documents replace assigned V-pages)")))
                         .then(Commands.literal("v3")
                                 .executes(ctx -> setMenuMode(ctx, DmzMenuMode.SCREEN,
                                         "screen (XenoHUD V3; alias 'v3')")))
@@ -701,6 +805,27 @@ public final class XenoHudCommands {
                         }))
                 .executes(ctx -> openPartsEditor(ctx.getSource())));
 
+        dispatcher.register(Commands.literal("xenoaura")
+                .then(Commands.literal("get")
+                        .requires(XenoPermissions.require(XenoPermissions.XENOHUD_RENDERER))
+                        .executes(ctx -> getAuraVisual(ctx.getSource(), ""))
+                        .then(Commands.argument("key", StringArgumentType.word())
+                                .suggests((ctx, builder) ->
+                                        net.minecraft.commands.SharedSuggestionProvider.suggest(
+                                                AURA_KEYS, builder))
+                                .executes(ctx -> getAuraVisual(ctx.getSource(),
+                                        StringArgumentType.getString(ctx, "key")))))
+                .then(Commands.literal("set")
+                        .requires(XenoPermissions.require(XenoPermissions.XENOHUD_RENDERER))
+                        .then(Commands.argument("key", StringArgumentType.word())
+                                .suggests((ctx, builder) ->
+                                        net.minecraft.commands.SharedSuggestionProvider.suggest(
+                                                AURA_KEYS, builder))
+                                .then(Commands.argument("value", StringArgumentType.greedyString())
+                                        .executes(ctx -> setAuraVisual(ctx.getSource(),
+                                                StringArgumentType.getString(ctx, "key"),
+                                                StringArgumentType.getString(ctx, "value")))))));
+
         dispatcher.register(Commands.literal("xenoclient")
                 .then(Commands.literal("reload")
                         .requires(XenoPermissions.require(XenoPermissions.XENOCLIENT_RELOAD))
@@ -745,8 +870,11 @@ public final class XenoHudCommands {
                                             + " surgeDebug=" + XenoClientConfig.beamSurgeDebug
                                             + " barNumbers=" + XenoClientConfig.hudBarNumbers
                                             + " compactNumbers=" + XenoClientConfig.hudCompactNumbers
+                                            + " reducedMotion=" + XenoClientConfig.hudReducedMotion
                                             + " sableCull=" + XenoClientConfig.sableContraptionCullClient
-                                            + " lockThrough=" + XenoClientConfig.lockOnThroughBlocks), false);
+                                            + " lockThrough=" + XenoClientConfig.lockOnThroughBlocks
+                                            + " supercounter=" + XenoClientConfig.bt3SuperCounterClient
+                                            + " guard=" + XenoClientConfig.bt3GuardClient), false);
                             return 1;
                         }))
                 .then(Commands.literal("set")
@@ -760,7 +888,7 @@ public final class XenoHudCommands {
                 .executes(ctx -> {
                     ctx.getSource().sendSuccess(() -> Component.literal(
                             "Usage: /xenoclient <reload|status|set <key> <value>>\n"
-                                    + "bools: hud techbar cooldownhud party surge shake dmzshake sablecull lockthrough\n"
+                                    + "bools: hud techbar cooldownhud party surge shake dmzshake sablecull lockthrough supercounter guard\n"
                                     + "nums: deleteconfirm <ms>  shakestrength <n>"),
                             false);
                     return 1;
@@ -853,6 +981,8 @@ public final class XenoHudCommands {
             case "surgedebug", "beamsurgedebug" -> XenoClientConfig.beamSurgeDebug = value;
             case "barnumbers", "hudbarnumbers", "numbers" -> XenoClientConfig.hudBarNumbers = value;
             case "compactnumbers", "hudcompactnumbers" -> XenoClientConfig.hudCompactNumbers = value;
+            case "reducedmotion", "hudreducedmotion", "motion" ->
+                    XenoClientConfig.hudReducedMotion = value;
             case "shake", "screenshake" -> XenoClientConfig.bt3ScreenShake = value;
             case "dmzshake", "dmzshakethird", "dmzshakefly", "dmz3pshake", "thirdpersonshake",
                     "dmzflyshake", "flightshake" ->
@@ -861,10 +991,12 @@ public final class XenoHudCommands {
                     XenoClientConfig.sableContraptionCullClient = value;
             case "lockthrough", "lockonthrough", "lockthroughblocks" ->
                     XenoClientConfig.lockOnThroughBlocks = value;
+            case "supercounter", "counter" -> XenoClientConfig.bt3SuperCounterClient = value;
+            case "guard", "block" -> XenoClientConfig.bt3GuardClient = value;
             case "hitboxes", "combatboxes" -> XenoClientConfig.bt3CombatHitboxes = value;
             default -> {
                 source.sendFailure(Component.literal(
-                        "Unknown key. Try: hud techbar combat vanish chase backstep charge dragon glow sfx anims chain particles afterimage cooldownhud party techchathide surge surgedebug barnumbers compactnumbers shake dmzshake lockthrough"));
+                        "Unknown key. Try: hud techbar combat vanish chase backstep charge dragon glow sfx anims chain particles afterimage cooldownhud party techchathide surge surgedebug barnumbers compactnumbers reducedmotion shake dmzshake lockthrough supercounter guard"));
                 return 0;
             }
         }

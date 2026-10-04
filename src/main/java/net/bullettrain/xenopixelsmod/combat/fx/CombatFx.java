@@ -81,15 +81,52 @@ public final class CombatFx {
      *               back to a horizontal disc rather than producing a degenerate basis.
      */
     public static void impact(ServerLevel level, Vec3 pos, Vec3 normal, Weight weight) {
+        impact(level, pos, normal, weight, -1);
+    }
+
+    /**
+     * The Effekseer punch effect when it plays (docs/effekseer-fx.md); the vanilla shockwave ring
+     * and sparks only when it is unavailable (config off, cap reached, library failure) - not when
+     * the target already has an effect this tick. The broadcast cue (sound, shake) always goes out.
+     */
+    private static void impact(ServerLevel level, Vec3 pos, Vec3 normal, Weight weight, int targetId) {
         Vec3 dir = safeNormal(normal);
-        shockwave(level, pos, dir, weight.radius, weight.ringPoints, weight.ring);
-        sparks(level, pos, dir, weight);
+        var outcome = net.bullettrain.xenopixelsmod.fx.effek.XenoEffects.attempt(level,
+                net.bullettrain.xenopixelsmod.fx.effek.PunchEffectRules.slotFor(weight), pos, dir,
+                net.bullettrain.xenopixelsmod.fx.effek.PunchEffectRules.scaleFor(weight), targetId);
+        if (outcome == net.bullettrain.xenopixelsmod.fx.effek.XenoEffects.Outcome.UNAVAILABLE) {
+            shockwave(level, pos, dir, weight.radius, weight.ringPoints, weight.ring);
+            sparks(level, pos, dir, weight);
+        }
         broadcast(level, pos, dir, weight.kind, weight.intensity);
+    }
+
+    /**
+     * Impact at the height the attacker's crosshair meets the target (2026-09-29 owner: punch
+     * effects at crosshair level), centred on the target's body. Null attacker: mid-height.
+     */
+    public static void impact(ServerLevel level, net.minecraft.world.entity.LivingEntity attacker, Entity target,
+                              Vec3 normal, Weight weight) {
+        if (attacker == null) {
+            impact(level, target, normal, weight);
+            return;
+        }
+        impact(level, crosshairPoint(attacker, target), normal, weight, target.getId());
+    }
+
+    /** The target's centre, raised or lowered to where the attacker's crosshair meets it. */
+    public static Vec3 crosshairPoint(net.minecraft.world.entity.LivingEntity attacker, Entity target) {
+        var box = target.getBoundingBox();
+        Vec3 center = box.getCenter();
+        double y = net.bullettrain.xenopixelsmod.fx.effek.PunchEffectRules.crosshairY(
+                attacker.getEyePosition(), attacker.getLookAngle(), center, box.minY, box.maxY);
+        return new Vec3(center.x, y, center.z);
     }
 
     /** Impact centred on an entity's mid-height, which is where a blow reads as landing. */
     public static void impact(ServerLevel level, Entity target, Vec3 normal, Weight weight) {
-        impact(level, target.position().add(0.0, target.getBbHeight() * 0.55, 0.0), normal, weight);
+        impact(level, target.position().add(0.0, target.getBbHeight() * 0.55, 0.0), normal, weight,
+                target.getId());
     }
 
     /**

@@ -27,6 +27,15 @@ channel tick while `HakaiChannelSystem` channels (dust / silhouette particles st
 second tick). The number is charge-proportional on the server; the defect was that it never
 reached the caster's client (next section).
 
+## Packet interpolation smoothing (2026-09-14)
+
+`HakaiFadePacket` still carries the authoritative 0..255 progress every server tick, but the
+client no longer snaps its render state directly to each new integer. `HakaiFade` starts every
+update from the value that was actually rendered and applies a two-tick smoothstep toward the new
+target. Amplifier `0` follows the same path back to solid and removes its cached state only after
+the interpolation completes. This changes presentation only; Hakai channel length, cost, damage,
+completion and interruption remain server-owned and unchanged.
+
 ## Root cause — the effect was the wrong client signal (2026-09-12)
 
 The dissolve amplifier is now sent as `HakaiFadePacket` via
@@ -290,3 +299,47 @@ untouched, multiplier clamped, alpha 1 identity).
   is an inference from shared code, not an observation.
 - **Vertex-format gate.** Resolved — see "Verified — body-layer vertex formats" above. No
   DMZ/GeckoLib body layer uses a non-`NEW_ENTITY` format, so the remap gate does not drop any.
+
+## Area Hakai (2026-09-29)
+
+`/xenoset hakaiMode area` makes J (and `/xenohakai use`, and a DMZ technique-slot cast) erase a
+sphere where the crosshair hits, with no lock-on. `single`, the default, is the original
+one-target Hakai (`HakaiChannelSystem`), unchanged.
+
+- **Living things.** The channel (`HakaiAreaSystem`) catches everything alive in the sphere,
+  nearest first, up to `hakaiAreaMaxTargets` (16), and rescans every 10 ticks for newcomers. It
+  keeps the single channel's rules: ki per tick, poise budget, hold still, release J to cancel.
+  One target dying or leaving only drops that one. DMZ masters are never caught. Each one is
+  erased by the same `HakaiErase` code the single channel uses.
+- **Blocks** (`hakaiBlocks`, on by default). After the erase, `HakaiBlockErasure` removes the
+  sphere's blocks from the roof down. `hakaiBlocksPerTick` (48) start fading each tick. Each one
+  runs the vanilla crack overlay through its ten stages over `hakaiBlockFadeTicks` (20) with a
+  violet puff, then goes, with no drops. The cap is `hakaiBlockLimit` (4096) per cast. Air and
+  unbreakable blocks (bedrock, barriers) are skipped.
+- **Protections.** Every block is offered to NeoForge's `BlockEvent.BreakEvent` with the caster as
+  breaker, so plots, YAWP and claim mods refuse it as they refuse a pickaxe. If the caster logs
+  out mid-job, the rest of it stops.
+- **Sable ships** (`hakaiShips`, on by default). `SableHakaiBlocks` takes the sphere into each
+  touching ship's plot space and erases only the ship blocks inside it, block by block. The rest
+  of the ship is Sable's: it may fall or split.
+- **Which blocks.** Everything but air and bedrock, including barriers and command blocks
+  (`hakaiBlocksUnbreakable`; `false` spares every unbreakable block). The rules that apply:
+  - the `mobGriefing` game rule, as for missiles;
+  - the caster's own break rules (adventure/spectator mode, spawn protection);
+  - plots, claims and YAWP, through the break event;
+  - DragonMineZ worldgen structures (`dragonminez:*`), found with vanilla's
+    `StructureManager.getStructureWithPieceAt`, are spared (`hakaiSpareDmzStructures`).
+- **Raze** (`hakaiBlockShape raze`). The building down to its floor, not a sphere. Every column
+  within `hakaiAreaRadius` across the ground, from `hakaiRazeHeight` above the look point down,
+  loses its blocks until the first natural ground block, which stays. Ground means dirt/grass,
+  the base stones, sand, terracotta, nylium, gravel, bedrock and liquids. A house of plain stone
+  reads as ground: that is the limit of telling a building from land by its blocks.
+- **Report.** Chat says how many blocks are being erased, how many DMZ-structure blocks were
+  spared, and at the end how many were refused.
+- **Effect size.** The channel veil and the erase burst are sized to the sphere's diameter
+  (`hakaiAreaFxScale`, 1.0).
+- **Keys.** `hakaiAreaRadius` (5, 1-32) and the keys above.
+
+**Not verified in game:** Sable's reaction to many removals mid-flight, the ship pose scale
+(assumed 1), whether crack overlays render on ship blocks, and how many overlays the client
+draws at once (up to about `hakaiBlocksPerTick x hakaiBlockFadeTicks`).

@@ -12,6 +12,7 @@ import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.blaze3d.vertex.VertexBuffer;
 import com.mojang.math.Axis;
 import net.bullettrain.xenopixelsmod.XenoPixelsMod;
+import net.bullettrain.xenopixelsmod.compat.npc.NpcAuraAnim;
 import net.bullettrain.xenopixelsmod.compat.npc.NpcCombatProfile;
 import net.bullettrain.xenopixelsmod.compat.npc.NpcDisplayApply;
 import net.bullettrain.xenopixelsmod.compat.npc.NpcAuraResolver;
@@ -24,6 +25,7 @@ import net.minecraft.resources.ResourceLocation;
 import net.minecraft.util.Mth;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.bus.api.SubscribeEvent;
@@ -152,8 +154,11 @@ public final class NpcAuraClient {
             ACTIVE.put(entityUuid, new AuraState(on, rgb & 0xFFFFFF,
                     NpcCombatProfile.clampAuraScale(scale), lightnings, lightningRgb & 0xFFFFFF,
                     sparking, groundRing, layers == null ? List.of() : List.copyOf(layers)));
+            // Keep pulse phase across re-apply. Only a real off clears it.
         } else {
             AuraState previous = ACTIVE.remove(entityUuid);
+            PULSE_PROGRESS.remove(entityUuid);
+            PULSE_LAST_RENDER.remove(entityUuid);
             // Hand the last-known look to the ghost pass so it fades out over ~1 second
             // instead of disappearing between two frames.
             if (previous != null && FADE_PROGRESS.getOrDefault(entityUuid, 0.0f) > 0.0f) {
@@ -163,6 +168,35 @@ public final class NpcAuraClient {
                 LAST_RENDER.remove(entityUuid);
             }
         }
+    }
+
+    /**
+     * Whether DragonMineZ's own renderer draws this NPC, and with it the aura. Full appearance
+     * alone is not enough: a Xeno NPC on a GeckoLib or mimic model keeps that model whatever its
+     * appearance mode, so skipping the fallback for it left the NPC with no aura at all
+     * (2026-10-02 owner: "aura on gekolib models not showing").
+     */
+    private static boolean drawnByDmz(LivingEntity entity) {
+        if (!NpcFullDmzRenderer.isFull(entity)) {
+            return false;
+        }
+        if (entity instanceof net.bullettrain.xenopixelsmod.npc.XenoNpcEntity) {
+            String kind = NpcCombatProfile.normalizeModelKind(
+                    NpcAppearanceClient.renderProfile(entity).modelKind);
+            return !NpcCombatProfile.MODEL_GECKOLIB.equals(kind)
+                    && !NpcCombatProfile.MODEL_ENTITY.equals(kind);
+        }
+        return true;
+    }
+
+    /** The aura layers of an NPC whose aura is on, for the HD aura; null when it is off. */
+    public static List<NpcAuraResolver.Layer> hdLayers(UUID entityUuid) {
+        AuraState state = entityUuid == null ? null : ACTIVE.get(entityUuid);
+        if (state == null || !state.on()) {
+            return null;
+        }
+        return state.layers().isEmpty()
+                ? List.of(new NpcAuraResolver.Layer("kakarot", 0, state.rgb())) : state.layers();
     }
 
     public static boolean isActive(UUID entityUuid) {
@@ -191,7 +225,12 @@ public final class NpcAuraClient {
         lastAdvancedFrame = Long.MIN_VALUE;
     }
 
-    @SubscribeEvent
+    /**
+     * HIGH, so the aura is drawn before the speech and dialogue bubbles of the same stage: they
+     * draw on top of everything, and an aura drawn after them showed through the answer
+     * bubbles (2026-10-02 owner).
+     */
+    @SubscribeEvent(priority = net.neoforged.bus.api.EventPriority.HIGH)
     public static void onRenderLevel(RenderLevelStageEvent event) {
         if (event.getStage() != RenderLevelStageEvent.Stage.AFTER_LEVEL) {
             return;
@@ -201,6 +240,11 @@ public final class NpcAuraClient {
         }
         Minecraft mc = Minecraft.getInstance();
         if (mc.level == null || mc.player == null) {
+            return;
+        }
+        // The quest journal is an opaque screen overlay. Suppress this shader-backed world pass
+        // while it is open so active NPC auras cannot wash over the journal text.
+        if (net.bullettrain.xenopixelsmod.client.npc.quest.XenoInventoryTabs.questLogOpen()) {
             return;
         }
         ShaderInstance shader = shader();
@@ -215,14 +259,15 @@ public final class NpcAuraClient {
         // DMZ's pitch blend from camera-facing billboard to a flat ground cross. NPCs are
         // never the local player's first-person view, so DMZ's isFirstPerson guard on this
         // branch is always false here.
-        float absPitch = Math.abs(camera.getXRot());
+        // Keep one upright column. Pitch-morphing into a ground cross read as the
+        // aura dying and a different one starting when the camera looked down.
         float crossFactor = 0.0f;
         float pitchSquash = 1.0f;
-        if (absPitch > 45.0f) {
-            crossFactor = (float) Math.pow((absPitch - 45.0f) / 45.0f, 2.0);
-            pitchSquash = 1.0f - crossFactor * 0.5f;
-        }
         Set<UUID> renderedThisFrame = new HashSet<>();
+        Set<Integer> inView = new HashSet<>();
+        for (Entity visible : mc.level.entitiesForRendering()) {
+            inView.add(visible.getId());
+        }
         boolean stencilReady = false;
         // Only the first stage dispatch of a given frame may step the animations forward.
         boolean advance = frameId != lastAdvancedFrame && !mc.isPaused();
@@ -234,7 +279,13 @@ public final class NpcAuraClient {
         // leave a different target bound and the column never reaches the screen.
         mc.getMainRenderTarget().bindWrite(false);
 
-        for (Entity raw : mc.level.entitiesForRendering()) {
+        Set<UUID> drawIds = new HashSet<>(ACTIVE.keySet());
+        drawIds.addAll(GHOSTS.keySet());
+        AABB scan = new AABB(cam.x - 128.0, cam.y - 128.0, cam.z - 128.0,
+                cam.x + 128.0, cam.y + 128.0, cam.z + 128.0);
+        for (Entity raw : mc.level.getEntities((Entity) null, scan,
+                candidate -> candidate instanceof LivingEntity
+                        && drawIds.contains(candidate.getUUID()))) {
             if (!(raw instanceof LivingEntity entity) || !entity.isAlive()) {
                 continue;
             }
@@ -248,10 +299,9 @@ public final class NpcAuraClient {
                 }
                 ghost = true;
             }
-            // FULL appearance is a synthetic DMZ player and therefore uses DMZ's native
-            // deferred AuraRenderer. Drawing this fallback column as well caused the
-            // duplicate aura and did not follow DMZ's race/form model scaling.
-            if (NpcFullDmzRenderer.isFull(entity)) {
+            // FULL appearance uses DMZ's native AuraRenderer while the body is in view.
+            // When the camera culls it, draw this fallback so the column does not blank.
+            if (drawnByDmz(entity) && inView.contains(entity.getId())) {
                 continue;
             }
             Vec3 feet = visualFeet(mc, entity, partial);
@@ -268,7 +318,10 @@ public final class NpcAuraClient {
             // The threshold follows the aura's own width rather than a flat half block, so a large
             // NPC's wider column drops out at the distance it actually starts engulfing the camera.
             double dist = cam.distanceTo(mid);
-            boolean insideColumn = dist < Math.max(0.5, width * 0.5);
+            double insideLimit = Math.max(0.5, width * 0.5);
+            float insideFade = dist >= insideLimit
+                    ? 1.0f
+                    : (float) Mth.clamp(dist / insideLimit, 0.2, 1.0);
             // Lazy once-per-frame stencil clear, only before the first entity that actually
             // draws: the aura render types test NOTEQUAL against stencil ref 1, and without
             // a deterministic clear that test (and the water seen through the aura) depends
@@ -320,16 +373,13 @@ public final class NpcAuraClient {
                 drawGroundPulse(pose, projection, shader, camera, entity, state, scale, partial,
                         fade, advance);
             }
-            if (state.on() && crossFactor > 0.0f) {
-                drawGroundCross(pose, projection, shader, camera, entity, state, scale, partial,
-                        crossFactor * fade);
-            }
             Vec3 toCamera = cam.subtract(mid);
             float lookYaw = CameraAimHelper.yaw(entity, toCamera);
             pose.mulPose(Axis.YP.rotationDegrees(180.0f - lookYaw));
-            if (state.on() && !insideColumn) {
+            // /xenoaura hd: the HD aura replaces this column on NPCs as it does on players.
+            if (state.on() && !net.bullettrain.xenopixelsmod.client.aura.HdAuraClient.replacesDmzAura()) {
                 drawColumn(pose, projection, shader, entity, state, scale, partial,
-                        crossFactor, pitchSquash, fade);
+                        crossFactor, pitchSquash, fade * insideFade);
             }
             if (state.lightnings()) {
                 drawLightnings(pose, projection, entity, state, partial, sizeMul);
@@ -430,20 +480,10 @@ public final class NpcAuraClient {
         }
         UUID id = entity.getUUID();
         long gameTime = entity.level().getGameTime();
-        Long lastRender = PULSE_LAST_RENDER.get(id);
-        // DMZ resets the animation when an entity was not rendered for over 2 game ticks.
-        if (lastRender == null || gameTime - lastRender > 2) {
-            PULSE_PROGRESS.put(id, 0.0f);
-        }
         PULSE_LAST_RENDER.put(id, gameTime);
-        float progress = PULSE_PROGRESS.getOrDefault(id, 0.0f);
-        if (advance) {
-            progress += 0.01f;
-            if (progress >= 1.0f) {
-                progress -= 1.0f;
-            }
-            PULSE_PROGRESS.put(id, progress);
-        }
+        // Phase follows game time, not a last-render gap. Camera pan / frustum miss
+        // used to snap this to 0 after 2 ticks and restart the rings.
+        float progress = NpcAuraAnim.pulsePhase(entity.tickCount, partial);
 
         // Top layer's type/color, same source the column uses.
         List<NpcAuraResolver.Layer> layers = state.layers();
@@ -539,12 +579,7 @@ public final class NpcAuraClient {
     private static void drawColumn(PoseStack pose, Matrix4f projection, ShaderInstance shader,
                                    LivingEntity entity, AuraState state, float scale,
                                    float partial, float crossFactor, float pitchSquash, float fade) {
-        if (crossFactor >= 1.0f) {
-            // Fully blended into the ground cross; drawing the billboard here would just
-            // add a face-on-invisible quad.
-            return;
-        }
-        float billboardAlpha = (1.0f - crossFactor) * fade;
+        float billboardAlpha = fade;
         float anim = (entity.tickCount + partial) * 0.5f;
         List<NpcAuraResolver.Layer> activeLayers = state.layers().isEmpty()
                 ? List.of(new NpcAuraResolver.Layer("kakarot", 0, state.rgb())) : state.layers();

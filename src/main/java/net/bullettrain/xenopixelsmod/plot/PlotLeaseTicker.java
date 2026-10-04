@@ -29,6 +29,9 @@ public final class PlotLeaseTicker {
         if (server.getTickCount() % CHECK_INTERVAL != 0) {
             return;
         }
-        PlotLease.settleDue(server, server.getTickCount());
+        // The overworld's game time, not getTickCount(): the tick counter is a plain field that
+        // restarts at 0 every launch and is never saved, so after a restart every stored deadline
+        // sat in the future and no lease was ever charged again. Game time is in level.dat.
+        PlotLease.settleDue(server, server.overworld().getGameTime());
     }
 }

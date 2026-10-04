@@ -35,9 +35,10 @@ import dev.ryanhcode.sable.sublevel.ServerSubLevel;
 
 /**
  * Opens the XYZ target GUI on the client only. Also doubles as the seat/panel/thruster linker:
- * right-click a wing panel or thruster to link it to the nearest chair (or a chair you
- * previously selected). Sitting is not required. Clicking a thruster toggles its link;
- * shift does not change the tool's behavior.
+ * right-click a wing panel or thruster to link it to the nearest chair or guidance computer
+ * (or one you previously selected). Sitting is not required. Clicking a thruster toggles its
+ * link; Shift-right-click in the air cycles apply modes (linker, role, facing, lit, …).
+ * Shift-right-click on a chair still forgets it while the tool is in Linker mode.
  *
  * <p><b>Shift, not Ctrl.</b> Vanilla Minecraft syncs sneaking ({@link Player#isShiftKeyDown()})
  * to the server for exactly this kind of modifier-click, because it is continuous player state
@@ -54,8 +55,6 @@ public class TargetToolItem extends Item {
     private static final String TAG_TARGET = "Target";
     private static final String TAG_TARGET_SHIP = "TargetShipId";
     private static final String TAG_LINKED_CHAIR = "LinkedChair";
-    /** How far from a panel/thruster the tool searches to find which chair it is linked to, for unlinking. */
-    private static final int UNLINK_SEARCH_RADIUS = 48;
 
     public TargetToolItem(Properties properties) {
         super(properties);
@@ -64,6 +63,12 @@ public class TargetToolItem extends Item {
     @Override
     public InteractionResultHolder<ItemStack> use(Level level, Player player, InteractionHand hand) {
         ItemStack stack = player.getItemInHand(hand);
+        if (player.isShiftKeyDown()) {
+            if (!level.isClientSide) {
+                ShipToolModes.announce(player, ShipToolModes.cycle(stack, ShipToolMode.LINKER));
+            }
+            return InteractionResultHolder.sidedSuccess(stack, level.isClientSide());
+        }
         if (level.isClientSide) {
             ClientScreens.openTargetTool.run();
         }
@@ -72,6 +77,18 @@ public class TargetToolItem extends Item {
 
     @Override
     public InteractionResult useOn(UseOnContext context) {
+        ShipToolMode mode = ShipToolModes.get(context.getItemInHand(), ShipToolMode.LINKER);
+        if (mode != ShipToolMode.LINKER) {
+            InteractionResult applied = ShipToolActions.apply(context, mode);
+            if (applied != InteractionResult.PASS) {
+                return applied;
+            }
+        }
+        return applyLinker(context);
+    }
+
+    /** Chair / panel / thruster linking and guidance-target apply. */
+    public static InteractionResult applyLinker(UseOnContext context) {
         Level level = context.getLevel();
         Player player = context.getPlayer();
         BlockPos clickedPos = context.getClickedPos();
@@ -88,7 +105,7 @@ public class TargetToolItem extends Item {
                 return InteractionResult.CONSUME;
             }
             setStoredChair(context.getItemInHand(), clickedPos);
-            AeroControlHost host = resolveHostForChair(level, clickedPos);
+            AeroControlHost host = resolveHostForAnchor(level, clickedPos);
             if (player != null) player.displayClientMessage(Component.literal(
                     "§bChair selected " + linkSummary(host)
                             + " §7— right-click a wing panel or thruster to link it"
@@ -118,10 +135,12 @@ public class TargetToolItem extends Item {
         }
         if (level.isClientSide) return InteractionResult.SUCCESS;
 
+        setStoredChair(context.getItemInHand(), clickedPos);
         BlockPos target = getStoredTarget(context.getItemInHand());
         if (target == null) {
-            if (player != null) player.displayClientMessage(Component.translatable(
-                    "chat.xenopixelsmod.target_tool_empty"), true);
+            if (player != null) player.displayClientMessage(Component.literal(
+                    "§bComputer selected " + linkSummary(guidance)
+                            + " §7— right-click a wing panel or thruster to link it"), true);
             return InteractionResult.CONSUME;
         }
 
@@ -138,7 +157,8 @@ public class TargetToolItem extends Item {
                 player.displayClientMessage(Component.translatable(
                         "chat.xenopixelsmod.target_applied", target.getX(), target.getY(), target.getZ())
                         .append(fleetSynced > 0 ? Component.literal(" §7| fleet synced §f" + fleetSynced)
-                                : Component.empty()), true);
+                                : Component.empty())
+                        .append(Component.literal(" §7| computer selected for linking")), true);
             }
         }
         return InteractionResult.CONSUME;
@@ -146,7 +166,7 @@ public class TargetToolItem extends Item {
 
     // --- Chair / panel / thruster linker ---
 
-    private InteractionResult handlePanelLink(UseOnContext context, Level level, @Nullable Player player,
+    private static InteractionResult handlePanelLink(UseOnContext context, Level level, @Nullable Player player,
                                               BlockPos panelPos) {
         if (level.isClientSide) return InteractionResult.SUCCESS;
         if (player != null && player.isShiftKeyDown()) {
@@ -166,7 +186,7 @@ public class TargetToolItem extends Item {
         return InteractionResult.CONSUME;
     }
 
-    private InteractionResult handleThrusterLink(UseOnContext context, Level level, @Nullable Player player,
+    private static InteractionResult handleThrusterLink(UseOnContext context, Level level, @Nullable Player player,
                                                  BlockPos thrusterPos, ShipThrusterBlockEntity thruster) {
         if (level.isClientSide) return InteractionResult.SUCCESS;
         BlockPos owner = thruster.getPairedGuidance();
@@ -206,36 +226,40 @@ public class TargetToolItem extends Item {
     }
 
     /**
-     * Host to link against: stored chair if the tool was armed, otherwise the nearest
-     * seated-control chair / flight controller. Standing is enough — sitting is not required.
+     * Host to link against: stored chair or computer if the tool was armed, otherwise the
+     * nearest seated-control chair / flight controller. A computer-only hull is enough —
+     * sitting and a chair are not required.
      */
     private static @Nullable AeroControlHost resolveLinkHost(ItemStack stack, Level level,
                                                              BlockPos near, @Nullable Player player) {
-        BlockPos chairPos = getStoredChair(stack);
-        AeroControlHost host = chairPos == null ? null : resolveHostForChair(level, chairPos);
+        BlockPos anchor = getStoredChair(stack);
+        AeroControlHost host = anchor == null ? null : resolveHostForAnchor(level, anchor);
         if (host == null) {
-            chairPos = findNearestChair(level, near);
-            host = chairPos == null ? null : resolveHostForChair(level, chairPos);
-            if (host != null) setStoredChair(stack, chairPos);
+            anchor = findNearestLinkAnchor(level, near);
+            host = anchor == null ? null : resolveHostForAnchor(level, anchor);
+            if (host != null) setStoredChair(stack, anchor);
         }
         if (host == null) {
             if (player != null) player.displayClientMessage(Component.literal(
-                    "§cNo control chair nearby — place one on the hull, then click the panel again"), true);
+                    "§cNo guidance computer or control chair within "
+                            + net.bullettrain.xenopixelsmod.aero.AeroConfig.linkSearchRadius
+                            + " blocks — click the chair or computer first, then the flap or thruster"
+                            + " (range: /xenoaerotune linkradius)"), true);
             return null;
         }
         return host;
     }
 
-    private static final int CHAIR_SEARCH_RADIUS = 32;
-
-    private static @Nullable BlockPos findNearestChair(Level level, BlockPos origin) {
+    private static @Nullable BlockPos findNearestLinkAnchor(Level level, BlockPos origin) {
         BlockPos[] best = new BlockPos[1];
         double[] bestDist = {Double.MAX_VALUE};
-        // Every pilot seat has a block entity, so the chunk block-entity walk finds them all
-        // without touching the 274,625 positions a radius-32 cube sweep would have visited.
-        AeroLinkManager.forEachNearbyBlockEntity(level, origin, CHAIR_SEARCH_RADIUS,
+        AeroLinkManager.forEachNearbyBlockEntity(level, origin,
+                net.bullettrain.xenopixelsmod.aero.AeroConfig.linkSearchRadius,
                 (pos, blockEntity) -> {
-                    if (!(blockEntity instanceof PilotSeatBlockEntity)) return;
+                    if (!(blockEntity instanceof PilotSeatBlockEntity)
+                            && !(blockEntity instanceof ShipVlsGuidanceBlockEntity)) {
+                        return;
+                    }
                     double d = pos.distSqr(origin);
                     if (d < bestDist[0]) {
                         bestDist[0] = d;
@@ -246,18 +270,20 @@ public class TargetToolItem extends Item {
     }
 
     /**
-     * The control host a stored chair position actually represents — the nearby flight
-     * controller if the seat is bound to one (matching {@link XenoPilotSeatEntity}'s own
-     * bound/standalone rule exactly, so the tool never links a panel to a host the seat itself
-     * would not be flying), otherwise the seat block's own standalone host.
+     * The control host a stored anchor actually represents. A guidance computer is used
+     * directly. A chair still prefers the nearby flight controller (matching
+     * {@link XenoPilotSeatEntity}'s bound/standalone rule) and falls back to the seat itself.
      */
-    private static @Nullable AeroControlHost resolveHostForChair(Level level, BlockPos chairPos) {
-        BlockPos controllerPos = XenoPilotSeatEntity.findController(level, chairPos);
+    private static @Nullable AeroControlHost resolveHostForAnchor(Level level, BlockPos anchorPos) {
+        if (level.getBlockEntity(anchorPos) instanceof ShipVlsGuidanceBlockEntity guidance) {
+            return guidance;
+        }
+        BlockPos controllerPos = XenoPilotSeatEntity.findController(level, anchorPos);
         if (controllerPos != null
                 && level.getBlockEntity(controllerPos) instanceof ShipVlsGuidanceBlockEntity guidance) {
             return guidance;
         }
-        return level.getBlockEntity(chairPos) instanceof PilotSeatBlockEntity seat ? seat : null;
+        return level.getBlockEntity(anchorPos) instanceof PilotSeatBlockEntity seat ? seat : null;
     }
 
     /**
@@ -268,7 +294,8 @@ public class TargetToolItem extends Item {
      */
     private static @Nullable AeroControlHost findHostWithLinkedPanel(Level level, BlockPos panelPos) {
         AeroControlHost[] found = new AeroControlHost[1];
-        AeroLinkManager.forEachNearbyBlockEntity(level, panelPos, UNLINK_SEARCH_RADIUS,
+        AeroLinkManager.forEachNearbyBlockEntity(level, panelPos,
+                net.bullettrain.xenopixelsmod.aero.AeroConfig.unlinkSearchRadius,
                 (pos, blockEntity) -> {
                     if (found[0] != null) return;
                     if (!(blockEntity instanceof AeroControlHost host)) return;
@@ -335,6 +362,12 @@ public class TargetToolItem extends Item {
             tooltip.add(Component.translatable("tooltip.xenopixelsmod.target_tool_apply")
                     .withStyle(ChatFormatting.DARK_GRAY));
         }
+        ShipToolMode mode = ShipToolModes.get(stack, ShipToolMode.LINKER);
+        tooltip.add(Component.literal("Mode: " + mode.title())
+                .withStyle(ChatFormatting.YELLOW));
+        tooltip.add(Component.literal("Shift-right-click air to change mode")
+                .withStyle(ChatFormatting.DARK_GRAY));
+        tooltip.add(Component.literal(mode.hint()).withStyle(ChatFormatting.GRAY));
         super.appendHoverText(stack, context, tooltip, flag);
     }
 }

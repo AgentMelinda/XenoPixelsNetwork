@@ -19,6 +19,16 @@ public final class FistInputPolicy {
     }
 
     /**
+     * Legacy mash/charge may own empty-hand left click. {@code bt3_manual} does not: the mash
+     * string is off and the manual controller is not the native/DMZ punch path, so stealing the
+     * click would leave the player unable to punch.
+     */
+    public static boolean ownsLegacyFists(boolean manualController, boolean combo, boolean charge) {
+        if (manualController) return false;
+        return combo || charge;
+    }
+
+    /**
      * Whether Xeno owns the native attack <em>exclusively</em>, so the vanilla and DragonMineZ
      * attack paths must be suppressed. A block under the crosshair is never suppressed: the native
      * path only starts and continues a dig there, which damages nothing, so mining and the punch

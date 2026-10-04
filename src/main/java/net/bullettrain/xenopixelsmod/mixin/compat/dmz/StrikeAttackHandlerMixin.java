@@ -3,9 +3,11 @@ package net.bullettrain.xenopixelsmod.mixin.compat.dmz;
 import com.dragonminez.common.stats.StatsCapability;
 import com.dragonminez.common.stats.StatsData;
 import com.dragonminez.common.stats.StatsProvider;
-import com.dragonminez.common.stats.techniques.Techniques;
+import com.dragonminez.common.stats.techniques.StrikeAttackData;
 import net.bullettrain.xenopixelsmod.api.event.StrikeInterceptEvent;
+import net.bullettrain.xenopixelsmod.combat.technique.XenoComboStrikes;
 import net.bullettrain.xenopixelsmod.combat.technique.XenoSlotTechniques;
+import net.minecraft.world.entity.LivingEntity;
 import net.neoforged.neoforge.common.NeoForge;
 import net.minecraft.server.level.ServerPlayer;
 import org.spongepowered.asm.mixin.Mixin;
@@ -42,18 +44,27 @@ public abstract class StrikeAttackHandlerMixin {
         if (data == null || data.getTechniques() == null) return;
 
         String[] slots = data.getTechniques().getEquippedSlots();
-        if (slots == null || slotIndex < 0 || slotIndex >= slots.length) return;
+        if (slots != null && slotIndex >= 0 && slotIndex < slots.length) {
+            String id = slots[slotIndex];
+            if (XenoSlotTechniques.isSlotTechniqueId(id)) {
+                StrikeInterceptEvent intercept = new StrikeInterceptEvent(player, slotIndex, id);
+                if (NeoForge.EVENT_BUS.post(intercept).isCanceled()) return;
+                if (XenoSlotTechniques.cast(player, id)) {
+                    ci.cancel();
+                    return;
+                }
+            }
+        }
 
-        String id = slots[slotIndex];
-        if (!XenoSlotTechniques.isSlotTechniqueId(id)) return;
-
-        // Returning without cancelling hands the slot back to DragonMineZ, which is precisely what
-        // a cancelled interception should mean.
-        StrikeInterceptEvent intercept = new StrikeInterceptEvent(player, slotIndex, id);
-        if (NeoForge.EVENT_BUS.post(intercept).isCanceled()) return;
-
-        if (XenoSlotTechniques.cast(player, id)) {
-            ci.cancel();
+        if (data.getTechniques().getSelectedTechnique() instanceof StrikeAttackData strike
+                && XenoComboStrikes.isComboId(strike.getId())) {
+            String comboId = strike.getId();
+            StrikeInterceptEvent comboIntercept = new StrikeInterceptEvent(player, slotIndex, comboId);
+            if (NeoForge.EVENT_BUS.post(comboIntercept).isCanceled()) return;
+            LivingEntity target = XenoComboStrikes.resolvePreferred(player, slotIndex);
+            if (XenoComboStrikes.cast(player, comboId, target)) {
+                ci.cancel();
+            }
         }
     }
 }

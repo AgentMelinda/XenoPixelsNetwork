@@ -1,0 +1,10 @@
+{
+  "variants": {
+    "facing=down":  { "model": "xenopixelsmod:block/missile_chunk_loader_fork", "x": 90 },
+    "facing=up":    { "model": "xenopixelsmod:block/missile_chunk_loader_fork", "x": 270 },
+    "facing=north": { "model": "xenopixelsmod:block/missile_chunk_loader_fork" },
+    "facing=south": { "model": "xenopixelsmod:block/missile_chunk_loader_fork", "y": 180 },
+    "facing=west":  { "model": "xenopixelsmod:block/missile_chunk_loader_fork", "y": 270 },
+    "facing=east":  { "model": "xenopixelsmod:block/missile_chunk_loader_fork", "y": 90 }
+  }
+}

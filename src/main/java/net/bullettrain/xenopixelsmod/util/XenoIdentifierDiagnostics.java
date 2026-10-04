@@ -13,6 +13,10 @@ public final class XenoIdentifierDiagnostics {
     private XenoIdentifierDiagnostics() {
     }
 
+    public static boolean isBlankPath(ResourceLocation location) {
+        return location != null && location.getPath().isBlank();
+    }
+
     public static void reportIfMalformed(String raw, String context) {
         String value = raw == null ? "<null>" : raw;
         if (raw != null && !raw.isBlank() && !raw.endsWith(":") && ResourceLocation.tryParse(raw) != null) {
@@ -22,7 +26,7 @@ public final class XenoIdentifierDiagnostics {
     }
 
     public static void reportEmpty(ResourceLocation location, String context) {
-        if (location != null && location.getPath().isBlank()) {
+        if (isBlankPath(location)) {
             report(location.toString(), context);
         }
     }
@@ -34,7 +38,6 @@ public final class XenoIdentifierDiagnostics {
         }
         XenoPixelsMod.LOGGER.warn(
                 "Malformed identifier '{}' detected in {} on thread '{}'; value was not rewritten.",
-                value, context, Thread.currentThread().getName(),
-                new IllegalStateException("XenoPixels identifier diagnostic"));
+                value, context, Thread.currentThread().getName());
     }
 }

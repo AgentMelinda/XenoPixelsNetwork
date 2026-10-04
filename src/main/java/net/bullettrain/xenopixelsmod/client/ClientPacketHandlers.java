@@ -36,7 +36,55 @@ public final class ClientPacketHandlers {
      * Sink for {@code NpcProfileSaveResultPacket}. A rejected wand save is otherwise invisible:
      * the editor closes on Apply regardless, so the only signal the player gets is this notice.
      */
+    /**
+     * Shows a speech bubble over an NPC.
+     *
+     * <p>Driven by {@code XenoNpcSpeechPacket} rather than local interaction, so every player
+     * tracking the entity sees the same line - a client-only bubble would be invisible to everyone
+     * but the person who clicked.
+     */
+    /**
+     * Opens a conversation from the dialogue the server sent.
+     *
+     * <p>This used to look the id up in {@code XenoDialogues}, on the assumption that the client
+     * had the same datapack. It does not: datapacks are server data, so on a dedicated server that
+     * map is empty and every conversation resolved to null. The server now sends the tree, and a
+     * null one here means it had nothing to send - nothing opens, rather than an empty screen that
+     * reads as the NPC having nothing to say.
+     */
+    public static void openNpcDialogue(int entityId,
+                                       net.bullettrain.xenopixelsmod.npc.dialog.XenoDialogue dialogue,
+                                       String npcName) {
+        if (dialogue == null) {
+            return;
+        }
+        if (net.bullettrain.xenopixelsmod.client.config.XenoClientConfig.dialogueBubbles) {
+            net.bullettrain.xenopixelsmod.client.npc.dialog.DialogueBubbleScreen.open(
+                    entityId, dialogue, npcName);
+            return;
+        }
+        net.bullettrain.xenopixelsmod.client.npc.XenoNpcDialogueScreen.open(
+                entityId, dialogue, npcName);
+    }
+
+    public static void handleNpcSpeech(int entityId, String text, int durationTicks,
+                                       String palette, int shape) {
+        net.minecraft.client.Minecraft mc = net.minecraft.client.Minecraft.getInstance();
+        if (mc.level == null) {
+            return;
+        }
+        net.bullettrain.xenopixelsmod.client.npc.speech.SpeechBubbleQueue.show(
+                entityId, text, mc.level.getGameTime(), durationTicks, palette,
+                net.bullettrain.xenopixelsmod.npc.lines.BubbleShape.byOrdinal(shape));
+    }
+
     public static void handleNpcProfileSaveResult(boolean saved, String reason) {
+        net.minecraft.client.Minecraft current = net.minecraft.client.Minecraft.getInstance();
+        if (current != null && current.screen instanceof
+                net.bullettrain.xenopixelsmod.client.npc.XenoNpcEditorScreen editor
+                && editor.receiveStoreWriteResult(saved, reason)) {
+            return;
+        }
         NpcProfileSaveClientState.accept(saved, reason);
         if (saved || !NpcProfileSaveClientState.consumeNotice()) {
             return;
@@ -46,6 +94,26 @@ public final class ClientPacketHandlers {
             String text = reason == null || reason.isEmpty() ? "NPC save rejected" : reason;
             minecraft.gui.getChat().addMessage(net.minecraft.network.chat.Component.literal(text));
         }
+    }
+
+    public static void handleXenoNpcEditorSaveResult(int entityId, int expectedRevision, int newRevision,
+                                                      boolean saved, String reason) {
+        net.minecraft.client.Minecraft minecraft = net.minecraft.client.Minecraft.getInstance();
+        if (minecraft.screen instanceof net.bullettrain.xenopixelsmod.client.npc.XenoNpcEditorScreen editor
+                && editor.receiveNpcSaveResult(entityId, expectedRevision, newRevision, saved, reason)) {
+            return;
+        }
+        if (!saved && minecraft.gui != null) {
+            minecraft.gui.getChat().addMessage(net.minecraft.network.chat.Component.literal(
+                    reason == null || reason.isBlank() ? "NPC save rejected" : reason));
+        }
+    }
+
+    public static void handleQuestCompletionPopup(String title, String description, String reward,
+                                                  String palette, String frame) {
+        net.minecraft.client.Minecraft.getInstance().setScreen(
+                new net.bullettrain.xenopixelsmod.client.npc.quest.QuestCompletionScreen(
+                        title, description, reward, palette, frame));
     }
 
     public static void openDmzTrainer(int entityId, String name,

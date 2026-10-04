@@ -156,6 +156,39 @@ public final class AeroConfig {
     /** Auto-flap: at or above this airspeed (blocks/s) flaps are fully retracted. */
     public static double autoFlapRetractSpeed = 20.0;
 
+    // ---- How far the chair, the flaps and the engines look for each other ----
+    // Fixed at these defaults until 2026-10-02; a big ship's flaps sit further from its chair
+    // than 32 blocks (owner: "xeno flap detection from the chair configurable for big big
+    // ships"). /xenoaerotune linkradius | unlinkradius | controllerradius | engineradius.
+
+    /**
+     * Blocks the ship tool searches from a clicked flap or thruster for the nearest chair or
+     * flight computer, when no chair has been selected on the tool. Clicking the chair first
+     * has no range at all.
+     */
+    public static int linkSearchRadius = 32;
+    /** Blocks searched from a flap for whichever chair or computer has it linked, to unlink it. */
+    public static int unlinkSearchRadius = 48;
+    /**
+     * Blocks a chair looks for a flight computer to bind to. Asked while a pilot is seated, so it
+     * is kept smaller than the others.
+     */
+    public static int seatControllerRadius = 8;
+    /**
+     * Blocks a chair sweeps for engines when asked to pair the nearby ones. This one visits every
+     * block in the area rather than only block entities, so its ceiling is lower.
+     */
+    public static int seatEngineRadius = 12;
+
+    public static final int MAX_LINK_RADIUS = 512;
+    public static final int MAX_CONTROLLER_RADIUS = 64;
+    public static final int MAX_ENGINE_RADIUS = 96;
+
+    /** A stored radius held between {@code min} and {@code max}; 0 (an older file) is the default. */
+    static int radius(int value, int fallback, int min, int max) {
+        return value <= 0 ? fallback : Math.max(min, Math.min(max, value));
+    }
+
     /**
      * Per-subsystem draw overrides, keyed by {@link AeroSubsystem#name()}.
      *
@@ -221,6 +254,10 @@ public final class AeroConfig {
             autoFlapExtendSpeed = Math.max(0.0, data.autoFlapExtendSpeed);
             // Retract must sit above extend or the interpolation between them inverts.
             autoFlapRetractSpeed = Math.max(autoFlapExtendSpeed + 0.5, data.autoFlapRetractSpeed);
+            linkSearchRadius = radius(data.linkSearchRadius, 32, 4, MAX_LINK_RADIUS);
+            unlinkSearchRadius = radius(data.unlinkSearchRadius, 48, 4, MAX_LINK_RADIUS);
+            seatControllerRadius = radius(data.seatControllerRadius, 8, 1, MAX_CONTROLLER_RADIUS);
+            seatEngineRadius = radius(data.seatEngineRadius, 12, 12, MAX_ENGINE_RADIUS);
             if (data.subsystemDraw != null && !data.subsystemDraw.isEmpty()) {
                 subsystemDraw = new LinkedHashMap<>(data.subsystemDraw);
             }
@@ -270,6 +307,10 @@ public final class AeroConfig {
                 data.aeroModelBaseLiftWithWings = aeroModelBaseLiftWithWings;
                 data.autoFlapExtendSpeed = autoFlapExtendSpeed;
                 data.autoFlapRetractSpeed = autoFlapRetractSpeed;
+                data.linkSearchRadius = linkSearchRadius;
+                data.unlinkSearchRadius = unlinkSearchRadius;
+                data.seatControllerRadius = seatControllerRadius;
+                data.seatEngineRadius = seatEngineRadius;
                 data.subsystemDraw = new LinkedHashMap<>(subsystemDraw);
                 GSON.toJson(data, writer);
             }
@@ -309,6 +350,11 @@ public final class AeroConfig {
         public boolean aeroModelBaseLiftWithWings = false;
         public double autoFlapExtendSpeed = 8.0;
         public double autoFlapRetractSpeed = 20.0;
+        /** 0 in a file written before these existed, which reads as the default. */
+        public int linkSearchRadius;
+        public int unlinkSearchRadius;
+        public int seatControllerRadius;
+        public int seatEngineRadius;
         public Map<String, Integer> subsystemDraw;
     }
 }

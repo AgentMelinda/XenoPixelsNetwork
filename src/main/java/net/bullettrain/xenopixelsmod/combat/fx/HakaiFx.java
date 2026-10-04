@@ -2,6 +2,8 @@ package net.bullettrain.xenopixelsmod.combat.fx;
 
 import net.bullettrain.xenopixelsmod.client.combat.HakaiFade;
 import net.bullettrain.xenopixelsmod.config.XenoServerConfig;
+import net.bullettrain.xenopixelsmod.fx.effek.EffectSlot;
+import net.bullettrain.xenopixelsmod.fx.effek.XenoEffects;
 import net.minecraft.core.particles.DustParticleOptions;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.LivingEntity;
@@ -21,6 +23,34 @@ public final class HakaiFx {
         if (level == null || target == null) return;
         float clamped = Math.max(0.0f, Math.min(1.0f, progress));
         target.setInvisible(false);
+        // Dragon Ball Super's Hakai: a purple veil clings to the victim (re-placed at the feet
+        // every pulse, positional so effekseerRange applies), the body vanishes from the head
+        // down (the client wipe) and violet flakes break off at that line. The vanilla dust,
+        // particle silhouette and caster aura are only the fallback when effects do not play.
+        boolean effek = false;
+        long now = level.getGameTime();
+        float height = Math.max(0.5f, target.getBbHeight());
+        if (PULSES.due(target.getId(), now)) {
+            effek = XenoEffects.play(level, EffectSlot.HAKAI_CHANNEL, target.position(), UP,
+                    HakaiEffectRules.bodyScale(height), -1);
+            if (effek) PULSES.showUntil(target.getId(), now + 12);
+            if (effek && caster != null) {
+                XenoEffects.play(level, EffectSlot.HAKAI_PALM,
+                        HakaiEffectRules.palm(caster.position(), caster.getBbHeight(), caster.getLookAngle()),
+                        UP, HakaiEffectRules.bodyScale(caster.getBbHeight()), -1);
+            }
+        }
+        boolean effekShowing = effek || PULSES.showing(target.getId(), now);
+        float speed = XenoServerConfig.hakaiFadeSpeed;
+        float curve = XenoServerConfig.hakaiFadeCurve;
+        if (effekShowing && HakaiEffectRules.crumbling(clamped, speed, curve)
+                && CRUMBLES.due(target.getId(), now)) {
+            double lineY = target.getY() + height * HakaiEffectRules.crumbleLine(clamped, speed, curve);
+            XenoEffects.play(level, EffectSlot.HAKAI_CRUMBLE,
+                    new Vec3(target.getX(), lineY, target.getZ()), UP,
+                    HakaiEffectRules.widthScale(target.getBbWidth()), -1);
+        }
+        if (effekShowing) return;
         if (dustEnabled()) splat(level, target, clamped);
         if (silhouetteEnabled()) dissolve(level, target, clamped);
         if (dustEnabled() && caster != null) {
@@ -28,8 +58,57 @@ public final class HakaiFx {
         }
     }
 
+    private static final Vec3 UP = new Vec3(0, 1, 0);
+    /** Crumble bursts at the dissolve line, more often than the veil. */
+    private static final PulseClock CRUMBLES = new PulseClock(HakaiEffectRules.CRUMBLE_INTERVAL);
+
+    /** Per-target swirl timing (server thread only). */
+    private static final PulseClock PULSES = new PulseClock();
+
+    /**
+     * When the channel swirl is (re)sent: on a target's first channel tick, then every 10 ticks,
+     * whatever the parity of the calls (tick() runs every 2nd channel tick). The old
+     * (gameTime + id) % 10 rule never matched for half the casts, so the swirl never showed.
+     */
+    public static final class PulseClock {
+        static final int INTERVAL = 10;
+        private final int interval;
+        private final it.unimi.dsi.fastutil.ints.Int2LongOpenHashMap last = new it.unimi.dsi.fastutil.ints.Int2LongOpenHashMap();
+        private final it.unimi.dsi.fastutil.ints.Int2LongOpenHashMap until = new it.unimi.dsi.fastutil.ints.Int2LongOpenHashMap();
+
+        public PulseClock() {
+            this(INTERVAL);
+        }
+
+        public PulseClock(int interval) {
+            this.interval = Math.max(1, interval);
+        }
+
+        public boolean due(int targetId, long now) {
+            if (last.containsKey(targetId) && now - last.get(targetId) < interval) return false;
+            last.put(targetId, now);
+            return true;
+        }
+
+        public void showUntil(int targetId, long tick) {
+            until.put(targetId, tick);
+        }
+
+        public boolean showing(int targetId, long now) {
+            return until.containsKey(targetId) && now < until.get(targetId);
+        }
+
+        /** A finished or cancelled channel: the next one on this target starts its swirl at once. */
+        public void forget(int targetId) {
+            last.remove(targetId);
+            until.remove(targetId);
+        }
+    }
+
     public static void restore(ServerLevel level, LivingEntity target, float keepBelow) {
         if (level == null || target == null) return;
+        PULSES.forget(target.getId());
+        CRUMBLES.forget(target.getId());
         target.setInvisible(false);
         if (silhouetteEnabled()) {
             dissolve(level, target, 1.0f - Math.max(0.0f, Math.min(1.0f, keepBelow)));
@@ -42,8 +121,27 @@ public final class HakaiFx {
     }
 
     public static void burst(ServerLevel level, LivingEntity target, boolean erase) {
-        if (level == null || target == null || !dustEnabled()) return;
+        if (level == null || target == null) return;
+        PULSES.forget(target.getId());
+        CRUMBLES.forget(target.getId());
+        Vec3 centre = target.position().add(0.0, target.getBbHeight() * 0.55, 0.0);
+        float size = HakaiEffectRules.bodyScale(target.getBbHeight()) * (erase ? 1.0f : 0.7f);
+        if (XenoEffects.play(level, EffectSlot.HAKAI_ERASE, centre, UP, size, target.getId())) {
+            return;
+        }
+        if (!dustEnabled()) return;
         splat(level, target, erase ? 1.0f : 0.55f);
+    }
+
+    /**
+     * A block erased by area Hakai: a small violet puff where it was. {@code fading} is the
+     * crack-stage puff while it fades; false is the last one as it vanishes.
+     */
+    public static void blockPuff(ServerLevel level, Vec3 centre, boolean fading) {
+        if (level == null || centre == null || !dustEnabled()) return;
+        DustParticleOptions dust = new DustParticleOptions(fading ? rimColor() : bodyColor(),
+                fading ? 0.9f : 1.35f);
+        level.sendParticles(dust, centre.x, centre.y, centre.z, fading ? 1 : 4, 0.3, 0.3, 0.3, 0.02);
     }
 
     static boolean dustEnabled() {

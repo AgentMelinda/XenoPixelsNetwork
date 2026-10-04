@@ -127,6 +127,28 @@ public final class HakaiCommands {
             source.sendFailure(Component.literal("Players only"));
             return 0;
         }
+        if (net.bullettrain.xenopixelsmod.combat.HakaiAreaRules.parseMode(XenoServerConfig.hakaiMode)
+                == net.bullettrain.xenopixelsmod.combat.HakaiAreaRules.Mode.AREA) {
+            if (!XenoServerConfig.hakaiEnabled) {
+                source.sendFailure(Component.literal("Hakai is disabled"));
+                return 0;
+            }
+            if (!force && !XenoPermissions.hasPermission(source, XenoPermissions.HAKAI_USE)) {
+                source.sendFailure(Component.literal("No hakai.use permission"));
+                return 0;
+            }
+            if (!force && !CombatSkills.hakaiUnlocked(player)) {
+                source.sendFailure(Component.literal("Not unlocked — /xenoskill unlock hakai"));
+                return 0;
+            }
+            net.minecraft.world.phys.Vec3 centre = net.bullettrain.xenopixelsmod.combat.HakaiAreaSystem
+                    .lookCentre(player, XenoServerConfig.hakaiMaxRange);
+            net.bullettrain.xenopixelsmod.combat.HakaiAreaSystem.start(player, centre, true);
+            source.sendSuccess(() -> Component.literal(String.format(
+                    "§dArea Hakai at %.1f %.1f %.1f, radius %.0f (blocks %s)", centre.x, centre.y, centre.z,
+                    XenoServerConfig.hakaiAreaRadius, XenoServerConfig.hakaiBlocks ? "on" : "off")), true);
+            return 1;
+        }
         LivingEntity target = HakaiChannelSystem.findLookTarget(player, XenoServerConfig.hakaiMaxRange);
         StringBuilder report = new StringBuilder();
         line(report, "target", target != null

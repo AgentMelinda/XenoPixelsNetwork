@@ -61,5 +61,13 @@ class DmzMenuModeTest {
         assertTrue(DmzMenuMode.SCREEN.themed());
         // Pages the neon rebuild has not replaced still fall through to the themed DMZ screen.
         assertTrue(DmzMenuMode.NEON.themed());
+        assertTrue(DmzMenuMode.STUDIO.themed());
+    }
+
+    @Test
+    void studioModeParses() {
+        assertEquals(DmzMenuMode.STUDIO, DmzMenuMode.parse("studio", DmzMenuMode.STOCK));
+        assertEquals(DmzMenuMode.STUDIO, DmzMenuMode.parse(" STUDIO ", DmzMenuMode.STOCK));
+        assertTrue(DmzMenuMode.usage().contains("studio"));
     }
 }

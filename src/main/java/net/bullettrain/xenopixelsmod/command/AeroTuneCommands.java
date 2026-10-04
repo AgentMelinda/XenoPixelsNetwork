@@ -49,6 +49,10 @@ public final class AeroTuneCommands {
         root.then(field("authspeed", "speed where control authority stops scaling"));
         root.then(field("deadzone", "keyboard stick deadzone (0..0.5)"));
         root.then(field("expo", "keyboard stick expo (0 linear .. 1 cubic)"));
+        root.then(field("linkradius", "blocks a flap/thruster click searches for a chair (4-512)"));
+        root.then(field("unlinkradius", "blocks searched for a flap's chair when unlinking (4-512)"));
+        root.then(field("controllerradius", "blocks a chair looks for a flight computer (1-64)"));
+        root.then(field("engineradius", "blocks a chair sweeps when pairing nearby engines (12-96)"));
         root.then(field("maxangular", "hard angular-velocity wall, rad/s (server config)"));
         root.then(field("maxspeed", "hard flight speed wall, blocks/s (server config)"));
         return root;
@@ -70,6 +74,14 @@ public final class AeroTuneCommands {
             case "authspeed" -> applied = AeroConfig.controlAuthoritySpeed = Math.max(1.0, raw);
             case "deadzone" -> applied = AeroConfig.stickDeadzone = Math.max(0.0, Math.min(0.5, raw));
             case "expo" -> applied = AeroConfig.stickExpo = Math.max(0.0, Math.min(1.0, raw));
+            case "linkradius" -> applied = AeroConfig.linkSearchRadius =
+                    clampRadius(raw, 4, AeroConfig.MAX_LINK_RADIUS);
+            case "unlinkradius" -> applied = AeroConfig.unlinkSearchRadius =
+                    clampRadius(raw, 4, AeroConfig.MAX_LINK_RADIUS);
+            case "controllerradius" -> applied = AeroConfig.seatControllerRadius =
+                    clampRadius(raw, 1, AeroConfig.MAX_CONTROLLER_RADIUS);
+            case "engineradius" -> applied = AeroConfig.seatEngineRadius =
+                    clampRadius(raw, 12, AeroConfig.MAX_ENGINE_RADIUS);
             case "maxangular" -> {
                 applied = XenoServerConfig.maxFlightAngularVelocity = Math.max(0.1, raw);
                 XenoServerConfig.save();
@@ -109,9 +121,18 @@ public final class AeroTuneCommands {
         line(source, "authspeed", AeroConfig.controlAuthoritySpeed);
         line(source, "deadzone", AeroConfig.stickDeadzone);
         line(source, "expo", AeroConfig.stickExpo);
+        line(source, "linkradius", AeroConfig.linkSearchRadius);
+        line(source, "unlinkradius", AeroConfig.unlinkSearchRadius);
+        line(source, "controllerradius", AeroConfig.seatControllerRadius);
+        line(source, "engineradius", AeroConfig.seatEngineRadius);
         line(source, "maxangular", XenoServerConfig.maxFlightAngularVelocity);
         line(source, "maxspeed", XenoServerConfig.maxFlightSpeed);
         return 1;
+    }
+
+    private static int clampRadius(double raw, int min, int max) {
+        if (!Double.isFinite(raw)) return min;
+        return (int) Math.max(min, Math.min(max, Math.round(raw)));
     }
 
     private static void line(CommandSourceStack source, String name, double value) {

@@ -29,13 +29,20 @@ public final class NpcPartyQuestObjectives implements PartyObjectiveProvider {
             }
         }
         if (data == null) return PartyObjectiveSnapshot.EMPTY;
+        // The first active quest, which is the one this snapshot has always described - the party
+        // surface carries a single objective. Every active quest is shared in the sense that any of
+        // them can be the one shown; picking a different one out of several would need a rule the
+        // player cannot see or control.
+        var actives = data.quests().actives();
+        if (actives.isEmpty()) return PartyObjectiveSnapshot.EMPTY;
+        var quest = actives.get(0);
         return new PartyObjectiveSnapshot(
                 "npc",
-                data.getQuestId(),
-                data.getQuestId(),
-                data.getQuestProgress(),
-                data.getQuestTarget(),
-                "active",
+                quest.id(),
+                quest.id(),
+                quest.progress(),
+                quest.target(),
+                quest.ready() ? "ready" : "active",
                 false);
     }
 
@@ -47,6 +54,6 @@ public final class NpcPartyQuestObjectives implements PartyObjectiveProvider {
     private static XenoPlayerData activeQuest(ServerPlayer player) {
         if (player == null) return null;
         XenoPlayerData data = XenoCapabilities.get(player).orElse(null);
-        return data != null && data.hasActiveQuest() ? data : null;
+        return data != null && !data.quests().actives().isEmpty() ? data : null;
     }
 }

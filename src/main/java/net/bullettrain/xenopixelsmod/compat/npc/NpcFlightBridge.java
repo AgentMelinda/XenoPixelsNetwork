@@ -2,6 +2,7 @@ package net.bullettrain.xenopixelsmod.compat.npc;
 
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.world.entity.Mob;
 
 import java.util.Map;
 import java.util.UUID;
@@ -42,7 +43,85 @@ public final class NpcFlightBridge {
         if (entity == null || profile == null || entity.level().isClientSide()) {
             return false;
         }
-        return set(entity, profile.flySkillOn);
+        if (NpcCombatBrain.directsFlight(entity.getUUID())
+                || net.bullettrain.xenopixelsmod.compat.npc.brain.v2.NpcSagaCombatBrain
+                .directsFlight(entity.getUUID())) {
+            return true;
+        }
+        // Combat owns the navigator while the NPC is engaged. Without this, every apply()
+        // re-pushed flySkillOn=true right after a brain landed the NPC on a grounded target,
+        // and the NPC bobbed between NAV_FLYING/NAV_GROUND (navigator rebuilds, updateAI
+        // thrash) instead of staying down. This is the "player pressed F" emulation: while
+        // the retaliation target walks on the ground, the NPC walks on the ground too.
+        LivingEntity engagedWith = entity instanceof Mob mob ? mob.getTarget() : null;
+        boolean want = wantsFlightFor(profile, engagedWith);
+        return set(entity, settled(entity.getUUID(), want));
+    }
+
+    /**
+     * Calls in a row a changed decision must survive before it is pushed. apply() runs every
+     * four ticks, so this is roughly 12 ticks: a target that hops lands for a tick or two, and
+     * without this each hop swapped the navigator and rebuilt CustomNPCs' AI.
+     */
+    static final int SETTLE_CALLS = 3;
+    private static final Map<UUID, int[]> PENDING = new ConcurrentHashMap<>();
+
+    private static boolean settled(UUID id, boolean want) {
+        Boolean last = APPLIED.get(id);
+        int[] pending = PENDING.computeIfAbsent(id, ignored -> new int[] {want ? 1 : 0, 0});
+        boolean result = debounce(last, want, pending, SETTLE_CALLS);
+        return result;
+    }
+
+    /**
+     * Pure hysteresis step. {@code pending[0]} is the candidate (1 = fly), {@code pending[1]} how
+     * many consecutive calls have asked for it. The first decision ever made applies at once.
+     */
+    static boolean debounce(Boolean last, boolean want, int[] pending, int need) {
+        if (last == null || last == want) {
+            pending[0] = want ? 1 : 0;
+            pending[1] = 0;
+            return want;
+        }
+        int candidate = want ? 1 : 0;
+        if (pending[0] != candidate) {
+            pending[0] = candidate;
+            pending[1] = 1;
+        } else {
+            pending[1]++;
+        }
+        return pending[1] >= need ? want : last;
+    }
+
+    /**
+     * Whether the periodic sync may push the flying navigator for this profile and target.
+     *
+     * <p>Pure so the rule is testable without a CNPC entity: the skill permits flight, and the
+     * flying navigator is taken only while engaged with a live target that is off the ground.
+     * Idle, or against a grounded target, the NPC keeps the ground navigator.
+     */
+    static boolean wantsFlightFor(NpcCombatProfile profile, LivingEntity engagedWith) {
+        boolean engaged = engagedWith != null && engagedWith.isAlive();
+        // "Can Use Flight" off means the NPC never takes the flying navigator, idle or engaged;
+        // the combat brain already honoured it (NpcFlightPolicy.canCombatFly), this path did not.
+        return wantsFlight(profile.flySkillOn && profile.canUseFlight, engaged,
+                engaged && NpcFlightPolicy.targetGrounded(engagedWith));
+    }
+
+    /** Pure decision table behind {@link #wantsFlightFor}, so the rule is unit-testable. */
+    static boolean wantsFlight(boolean flySkillOn, boolean engaged, boolean targetGrounded) {
+        // The Fly skill is permission, not a mode. Like a player pressing F, the NPC takes off
+        // only while it is engaged with a target that is itself in the air, and walks otherwise;
+        // an idle NPC with Fly enabled used to hover forever in the flying pose.
+        return flySkillOn && engaged && !targetGrounded;
+    }
+
+    /** Pushes a navigator type without changing {@code flySkillOn}. Used by the combat brain. */
+    public static boolean setFlying(Entity entity, boolean flying) {
+        if (entity == null || entity.level().isClientSide()) {
+            return false;
+        }
+        return set(entity, flying);
     }
 
     /** Same, ignoring the cached last-applied value; used after a respawn rebuilds the AI. */
@@ -57,6 +136,7 @@ public final class NpcFlightBridge {
     public static void forget(UUID id) {
         if (id != null) {
             APPLIED.remove(id);
+            PENDING.remove(id);
         }
     }
 

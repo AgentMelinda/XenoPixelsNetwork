@@ -47,12 +47,45 @@ public final class DmzAnimHelper {
         DRAGON
     }
 
-    public static void broadcastChargeStart(ServerPlayer player, ChargeStyle style) {
-        String anim = switch (style) {
-            case FIST_LIGHT -> CHARGE_LIGHT;
-            case FIST_HEAVY, KICK -> CHARGE_HEAVY;
-            case DRAGON -> KI_CHARGE;
+    public static String chargeHoldAnim(ServerPlayer player, ChargeStyle style) {
+        return switch (style) {
+            case FIST_LIGHT -> net.bullettrain.xenopixelsmod.anim.CombatStateAnim
+                    .resolve(player, TechniqueAnimSlot.CHARGE_PUNCH);
+            case FIST_HEAVY -> net.bullettrain.xenopixelsmod.anim.CombatStateAnim
+                    .hasCustom(player, TechniqueAnimSlot.CHARGE_PUNCH)
+                    ? net.bullettrain.xenopixelsmod.anim.CombatStateAnim
+                    .resolve(player, TechniqueAnimSlot.CHARGE_PUNCH)
+                    : CHARGE_HEAVY;
+            case KICK -> net.bullettrain.xenopixelsmod.anim.CombatStateAnim
+                    .resolve(player, TechniqueAnimSlot.CHARGE_KICK);
+            case DRAGON -> net.bullettrain.xenopixelsmod.anim.CombatStateAnim
+                    .resolve(player, TechniqueAnimSlot.CHARGE_KI);
         };
+    }
+
+    public static String chargeFireAnim(ServerPlayer player, ChargeStyle style, boolean fullyCharged) {
+        if (style == ChargeStyle.KICK) {
+            String custom = net.bullettrain.xenopixelsmod.anim.CombatStateAnim
+                    .resolve(player, TechniqueAnimSlot.CHARGE_KICK_FIRE);
+            if (net.bullettrain.xenopixelsmod.anim.CombatStateAnim.hasCustom(
+                    player, TechniqueAnimSlot.CHARGE_KICK_FIRE)) {
+                return custom;
+            }
+            return fullyCharged ? KICK_GUT_R : KICK_GUT_L;
+        }
+        if (style == ChargeStyle.DRAGON) {
+            return CHARGE_HEAVY_FIRE;
+        }
+        if (net.bullettrain.xenopixelsmod.anim.CombatStateAnim.hasCustom(
+                player, TechniqueAnimSlot.CHARGE_PUNCH_FIRE)) {
+            return net.bullettrain.xenopixelsmod.anim.CombatStateAnim
+                    .resolve(player, TechniqueAnimSlot.CHARGE_PUNCH_FIRE);
+        }
+        return fullyCharged ? CHARGE_HEAVY_FIRE : CHARGE_LIGHT_FIRE;
+    }
+
+    public static void broadcastChargeStart(ServerPlayer player, ChargeStyle style) {
+        String anim = chargeHoldAnim(player, style);
         try {
             TriggerAnimationS2C pkt = new TriggerAnimationS2C(
                     player.getUUID(),
@@ -226,11 +259,14 @@ public final class DmzAnimHelper {
         float speed = fullyCharged ? 1.2f : 1.05f;
 
         if (style == ChargeStyle.KICK) {
-            // Primary gut kick (sexy mid hit)
-            String primary = fullyCharged ? KICK_GUT_R : KICK_GUT_L;
-            if (verticalBias < 0) primary = KICK_LOW_R;
+            String primary = chargeFireAnim(player, style, fullyCharged);
+            if (verticalBias < 0 && !net.bullettrain.xenopixelsmod.anim.CombatStateAnim
+                    .hasCustom(player, TechniqueAnimSlot.CHARGE_KICK_FIRE)) {
+                primary = KICK_LOW_R;
+            }
             broadcastMelee(player, primary, false, speed);
-            if (chainAnims) {
+            if (chainAnims && !net.bullettrain.xenopixelsmod.anim.CombatStateAnim
+                    .hasCustom(player, TechniqueAnimSlot.CHARGE_KICK_FIRE)) {
                 // Delayed follow-up: low kick or opposite side gut for a 2-hit chain
                 String follow = verticalBias > 0 ? KICK_GUT_R : (verticalBias < 0 ? KICK_LOW_L : KICK_LOW_R);
                 scheduleMelee(player, follow, false, speed * 1.05f, 4);
@@ -251,9 +287,10 @@ public final class DmzAnimHelper {
         }
 
         // Fist punch
-        String fire = fullyCharged ? CHARGE_HEAVY_FIRE : CHARGE_LIGHT_FIRE;
+        String fire = chargeFireAnim(player, style, fullyCharged);
         broadcastMelee(player, fire, false, speed);
-        if (chainAnims) {
+        if (chainAnims && !net.bullettrain.xenopixelsmod.anim.CombatStateAnim
+                .hasCustom(player, TechniqueAnimSlot.CHARGE_PUNCH_FIRE)) {
             // Second punch hand for a snappy combo finish
             scheduleMelee(player, fullyCharged ? PUNCH_LEFT : ATTACK2, false, speed * 1.1f, 3);
             if (fullyCharged) {

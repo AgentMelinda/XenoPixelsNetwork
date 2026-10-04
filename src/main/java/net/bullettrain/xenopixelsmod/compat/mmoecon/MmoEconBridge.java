@@ -5,6 +5,8 @@ import net.neoforged.fml.ModList;
 
 import javax.annotation.Nullable;
 import java.lang.reflect.Method;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.UUID;
 
 /**
@@ -27,9 +29,15 @@ public final class MmoEconBridge {
     private MmoEconBridge() {
     }
 
-    /** True when MMO Econ is on the server and its balance manager resolves. */
+    private static final Map<Class<?>, Class<?>> PRIMITIVE_WRAPPERS = primitiveWrappers();
+
+    /** True when MMO Econ is on the server and both required classes resolve. */
     public static boolean available() {
-        return ModList.get().isLoaded("mmoecon") && balanceManager() != null;
+        return ModList.get().isLoaded("mmoecon") && requiredClassesAvailable(balanceManager(), money());
+    }
+
+    static boolean requiredClassesAvailable(@Nullable Class<?> manager, @Nullable Class<?> moneyType) {
+        return manager != null && moneyType != null;
     }
 
     /** Current balance in MMO Econ's smallest unit, or {@code 0} when the integration is absent. */
@@ -60,10 +68,15 @@ public final class MmoEconBridge {
      * call's can. {@link #invokeStaticVoid} therefore reports whether the call completed instead.</p>
      */
     public static boolean withdraw(UUID playerId, long amount) {
-        if (amount < 0L || !hasFunds(playerId, amount)) {
+        if (amount < 0L || playerId == null) {
             return false;
         }
-        return invokeStaticVoid(balanceManager(), "subtractBalance", playerId, amount);
+        long before = getBalance(playerId);
+        if (before < amount || !invokeStaticVoid(balanceManager(), "subtractBalance", playerId, amount)) {
+            return false;
+        }
+        long after = getBalance(playerId);
+        return amount == 0L ? after == before : after <= before - amount;
     }
 
     /**
@@ -80,19 +93,42 @@ public final class MmoEconBridge {
         return value instanceof Boolean moved && moved;
     }
 
+    /**
+     * Credits {@code amount}. Returns false when the integration is absent.
+     *
+     * <p>{@code addBalance} is the mirror of {@code subtractBalance} and is likewise declared
+     * {@code void}, so success is "the invoke completed" rather than a returned value - see
+     * {@link #invokeStaticVoid}. Signature read from MMO Econ 1.1.0 with {@code javap} and
+     * recorded in {@code docs/shops-and-plots.md} alongside the rest of the balance API.
+     *
+     * <p>The only caller is the NPC bank paying a withdrawal out. Everything else in the mod moves
+     * money between two accounts with {@link #transfer}; a bare credit exists because a bank vault
+     * is not an account MMO Econ knows about.
+     */
+    public static boolean deposit(UUID playerId, long amount) {
+        if (playerId == null || amount < 0L) {
+            return false;
+        }
+        if (amount == 0L) {
+            return true;
+        }
+        return invokeStaticVoid(balanceManager(), "addBalance", playerId, amount);
+    }
+
     /** Convenience for the price-on-a-sign form: converts then transfers. */
     public static boolean transferPrice(UUID from, UUID to, double price) {
-        return transfer(from, to, toUnits(price));
+        long units = toUnits(price);
+        return units >= 0L && transfer(from, to, units);
     }
 
     /** Converts a sign's decimal price to MMO Econ's smallest unit. */
     public static long toUnits(double price) {
         Class<?> money = money();
         if (money == null) {
-            return Math.round(price);
+            return -1L;
         }
         Object value = invokeStatic(money, "fromDouble", price);
-        return value instanceof Number number ? number.longValue() : Math.round(price);
+        return value instanceof Number number ? number.longValue() : -1L;
     }
 
     /** Renders {@code amount} with MMO Econ's own formatting, or a plain fallback when absent. */
@@ -132,7 +168,7 @@ public final class MmoEconBridge {
         if (type == null) {
             return null;
         }
-        Method method = findMethod(type, name, args.length);
+        Method method = findMethod(type, name, args);
         if (method == null) {
             return null;
         }
@@ -154,8 +190,8 @@ public final class MmoEconBridge {
         if (type == null) {
             return false;
         }
-        Method method = findMethod(type, name, args.length);
-        if (method == null) {
+        Method method = findMethod(type, name, args);
+        if (method == null || method.getReturnType() != Void.TYPE) {
             return false;
         }
         try {
@@ -168,12 +204,40 @@ public final class MmoEconBridge {
     }
 
     @Nullable
-    private static Method findMethod(Class<?> type, String name, int parameterCount) {
+    private static Method findMethod(Class<?> type, String name, Object[] args) {
         for (Method method : type.getMethods()) {
-            if (method.getName().equals(name) && method.getParameterCount() == parameterCount) {
-                return method;
+            if (!method.getName().equals(name) || method.getParameterCount() != args.length) {
+                continue;
             }
+            Class<?>[] parameters = method.getParameterTypes();
+            boolean compatible = true;
+            for (int index = 0; index < parameters.length; index++) {
+                if (!accepts(parameters[index], args[index])) {
+                    compatible = false;
+                    break;
+                }
+            }
+            if (compatible) return method;
         }
         return null;
+    }
+
+    private static boolean accepts(Class<?> parameter, @Nullable Object argument) {
+        if (argument == null) return !parameter.isPrimitive();
+        Class<?> expected = parameter.isPrimitive() ? PRIMITIVE_WRAPPERS.get(parameter) : parameter;
+        return expected != null && expected.isInstance(argument);
+    }
+
+    private static Map<Class<?>, Class<?>> primitiveWrappers() {
+        Map<Class<?>, Class<?>> wrappers = new HashMap<>();
+        wrappers.put(boolean.class, Boolean.class);
+        wrappers.put(byte.class, Byte.class);
+        wrappers.put(short.class, Short.class);
+        wrappers.put(int.class, Integer.class);
+        wrappers.put(long.class, Long.class);
+        wrappers.put(float.class, Float.class);
+        wrappers.put(double.class, Double.class);
+        wrappers.put(char.class, Character.class);
+        return Map.copyOf(wrappers);
     }
 }

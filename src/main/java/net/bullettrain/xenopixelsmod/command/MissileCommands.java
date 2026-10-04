@@ -4,6 +4,7 @@ import com.mojang.brigadier.CommandDispatcher;
 import com.mojang.brigadier.arguments.IntegerArgumentType;
 import com.mojang.brigadier.builder.LiteralArgumentBuilder;
 import net.bullettrain.xenopixelsmod.XenoPixelsMod;
+import net.bullettrain.xenopixelsmod.block.entity.MissileTubeBlockEntity;
 import net.bullettrain.xenopixelsmod.missile.BallisticMissileEntity;
 import net.bullettrain.xenopixelsmod.missile.ModEntities;
 import net.bullettrain.xenopixelsmod.vs.ShipBallisticController;
@@ -55,6 +56,62 @@ public final class MissileCommands {
     public static void onRegister(RegisterCommandsEvent event) {
         CommandDispatcher<CommandSourceStack> dispatcher = event.getDispatcher();
         dispatcher.register(command("xenomissile"));
+        dispatcher.register(tubeCommand());
+    }
+
+    private static LiteralArgumentBuilder<CommandSourceStack> tubeCommand() {
+        return Commands.literal("xenotube")
+                .executes(ctx -> tubeStatus(ctx.getSource()))
+                .then(Commands.literal("speed")
+                        .then(Commands.argument("level", IntegerArgumentType.integer(0, 20))
+                                .executes(ctx -> tubeSet(ctx.getSource(), "speed",
+                                        IntegerArgumentType.getInteger(ctx, "level")))))
+                .then(Commands.literal("clearance")
+                        .then(Commands.argument("blocks", IntegerArgumentType.integer(1, 128))
+                                .executes(ctx -> tubeSet(ctx.getSource(), "clearance",
+                                        IntegerArgumentType.getInteger(ctx, "blocks")))))
+                .then(Commands.literal("height")
+                        .then(Commands.argument("y", IntegerArgumentType.integer(0, 16000))
+                                .executes(ctx -> tubeSet(ctx.getSource(), "height",
+                                        IntegerArgumentType.getInteger(ctx, "y")))));
+    }
+
+    private static int tubeStatus(CommandSourceStack source) {
+        MissileTubeBlockEntity tube = lookedAtTube(source);
+        if (tube == null) {
+            source.sendFailure(Component.literal("Look at a missile tube."));
+            return 0;
+        }
+        source.sendSuccess(() -> tube.statusLine(tube.getBlockState()
+                .getValue(net.bullettrain.xenopixelsmod.block.custom.MissileTubeBlock.FACING)), false);
+        return 1;
+    }
+
+    private static int tubeSet(CommandSourceStack source, String key, int value) {
+        MissileTubeBlockEntity tube = lookedAtTube(source);
+        if (tube == null) {
+            source.sendFailure(Component.literal("Look at a missile tube."));
+            return 0;
+        }
+        switch (key) {
+            case "speed" -> tube.setSpeedLevel(value);
+            case "clearance" -> tube.setSiloClearance(value);
+            case "height" -> tube.setLaunchWorldY(value);
+            default -> {
+                return 0;
+            }
+        }
+        source.sendSuccess(() -> tube.statusLine(tube.getBlockState()
+                .getValue(net.bullettrain.xenopixelsmod.block.custom.MissileTubeBlock.FACING)), true);
+        return 1;
+    }
+
+    private static MissileTubeBlockEntity lookedAtTube(CommandSourceStack source) {
+        if (!(source.getEntity() instanceof net.minecraft.world.entity.player.Player player)) return null;
+        var hit = player.pick(8.0, 0.0f, false);
+        if (!(hit instanceof net.minecraft.world.phys.BlockHitResult blockHit)) return null;
+        var be = source.getLevel().getBlockEntity(blockHit.getBlockPos());
+        return be instanceof MissileTubeBlockEntity tube ? tube : null;
     }
 
     private static LiteralArgumentBuilder<CommandSourceStack> command(String name) {

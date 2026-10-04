@@ -11,6 +11,7 @@ import net.bullettrain.xenopixelsmod.client.compat.npc.NpcGeckoHaloLayer;
 import net.minecraft.client.renderer.MultiBufferSource;
 import net.minecraft.client.renderer.RenderType;
 import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.world.phys.Vec3;
 import net.minecraft.client.renderer.entity.EntityRendererProvider;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
@@ -38,6 +39,18 @@ public abstract class RenderCustomModelHairMixin {
                                           float partialTick, int packedLight, CallbackInfo ci) {
         LivingEntity owner = surrogate instanceof NpcGeckoOwner linked
                 ? linked.xenopixels$getNpcOwner() : null;
+        if (owner != null && NpcFullDmzRenderer.isFull(owner)) {
+            Vec3 from = surrogate.getPosition(partialTick);
+            Vec3 to = owner.getPosition(partialTick);
+            pose.pushPose();
+            pose.translate(to.x - from.x, to.y - from.y, to.z - from.z);
+            boolean drew = NpcFullDmzRenderer.render(owner, renderYaw, partialTick, pose, buffers, packedLight);
+            pose.popPose();
+            if (drew) {
+                ci.cancel();
+            }
+            return;
+        }
         if (owner != null && NpcFullDmzRenderer.render(owner, renderYaw, partialTick, pose, buffers, packedLight)) {
             ci.cancel();
         }

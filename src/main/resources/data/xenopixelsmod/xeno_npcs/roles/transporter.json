@@ -1,0 +1,14 @@
+{
+  "schema": 1,
+  "role": "transporter",
+  "brain": "v5",
+  "body_family": "humanoid",
+  "decision_ticks": {
+    "combat": 20,
+    "active": 40,
+    "idle": 80
+  },
+  "refs": {
+    "lines": "xenopixelsmod:npcs/lines/default"
+  }
+}

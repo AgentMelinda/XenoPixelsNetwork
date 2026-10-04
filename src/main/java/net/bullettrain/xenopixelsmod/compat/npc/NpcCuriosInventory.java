@@ -7,11 +7,11 @@ import net.minecraft.world.inventory.Slot;
 import net.minecraft.world.item.ItemStack;
 import net.neoforged.fml.ModList;
 import net.neoforged.neoforge.items.IItemHandler;
+import net.neoforged.neoforge.items.IItemHandlerModifiable;
 import net.neoforged.neoforge.items.SlotItemHandler;
 import top.theillusivec4.curios.api.CuriosApi;
 import top.theillusivec4.curios.api.type.capability.ICuriosItemHandler;
 import top.theillusivec4.curios.api.type.inventory.ICurioStacksHandler;
-import top.theillusivec4.curios.api.type.inventory.IDynamicStackHandler;
 
 /**
  * Adds player-like Curios (equip + cosmetic) slots to an NPC inventory menu.
@@ -37,7 +37,33 @@ public final class NpcCuriosInventory {
     public static final int SLOT_SIZE = 18;
     public static final int COL_GAP = 2;
 
-    private static final IItemHandler EMPTY = new EmptyHandler();
+    private static final IItemHandlerModifiable EMPTY = new EmptyHandler();
+
+    /**
+     * Whether the Curios slots are currently shown.
+     *
+     * <p>Off by default, and that is the fix for them covering the editor. The block sits at
+     * x 108-186, y 8-98, which is exactly where My NPCs draws its Min Exp and Max Exp fields
+     * (108,29 and 108,63, both 60x20) and its Normal/Auto button (88,88, 80x20). The panel has no
+     * free region that size, so the slots cannot simply be moved somewhere else -- they have to be
+     * out of the way until asked for.
+     *
+     * <p>Visibility, deliberately, and not slot count: the count is fixed so the server and client
+     * always agree on menu indices even when the Curios capability is missing on one side. Adding or
+     * removing slots to hide them would desync the menu. {@link Slot#isActive()} changes neither the
+     * count nor the sync, only whether a slot is drawn and can be hovered or clicked.
+     */
+    private static volatile boolean slotsVisible;
+
+    /** Whether the Curios block is showing. */
+    public static boolean slotsVisible() {
+        return slotsVisible;
+    }
+
+    /** Show or hide the Curios block; the editor's toggle calls this. */
+    public static void setSlotsVisible(boolean visible) {
+        slotsVisible = visible;
+    }
 
     private NpcCuriosInventory() {
     }
@@ -70,8 +96,8 @@ public final class NpcCuriosInventory {
             IItemHandler cosmetic = stacks != null && stacks.hasCosmetic()
                     ? stacks.getCosmeticStacks() : EMPTY;
             int base = i * 2;
-            sink.accept(new SlotItemHandler(equip, 0, slotX(base), slotY(base)));
-            sink.accept(new SlotItemHandler(cosmetic, 0, slotX(base + 1), slotY(base + 1)));
+            sink.accept(new CuriosSlot(equip, slotX(base), slotY(base)));
+            sink.accept(new CuriosSlot(cosmetic, slotX(base + 1), slotY(base + 1)));
         }
     }
 
@@ -81,8 +107,30 @@ public final class NpcCuriosInventory {
         return opt == null ? null : opt.orElse(null);
     }
 
-    /** One locked slot so a missing capability still occupies a menu index. */
-    private static final class EmptyHandler implements IItemHandler {
+    /**
+     * One locked slot so a missing capability still occupies a menu index.
+     * Must be {@link IItemHandlerModifiable}: {@code SlotItemHandler.set} casts to that
+     * during {@code ClientboundContainerSetContentPacket} sync.
+     */
+    /**
+     * A Curios slot that disappears with the block rather than being removed from the menu.
+     *
+     * <p>{@code isActive} is what the screen checks before drawing a slot and before treating the
+     * mouse as being over one, so an inactive slot is neither visible nor clickable while still
+     * holding its index in the menu.
+     */
+    private static final class CuriosSlot extends SlotItemHandler {
+        private CuriosSlot(IItemHandler handler, int x, int y) {
+            super(handler, 0, x, y);
+        }
+
+        @Override
+        public boolean isActive() {
+            return slotsVisible;
+        }
+    }
+
+    private static final class EmptyHandler implements IItemHandlerModifiable {
         @Override
         public int getSlots() {
             return 1;
@@ -91,6 +139,10 @@ public final class NpcCuriosInventory {
         @Override
         public ItemStack getStackInSlot(int slot) {
             return ItemStack.EMPTY;
+        }
+
+        @Override
+        public void setStackInSlot(int slot, ItemStack stack) {
         }
 
         @Override

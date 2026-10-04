@@ -2,6 +2,7 @@ package net.bullettrain.xenopixelsmod.network;
 
 import net.bullettrain.xenopixelsmod.XenoPixelsMod;
 import net.bullettrain.xenopixelsmod.network.packet.GuidanceControlPacket;
+import net.bullettrain.xenopixelsmod.network.packet.SyncFactionsPacket;
 import net.bullettrain.xenopixelsmod.network.packet.TeleportShipPacket;
 import net.bullettrain.xenopixelsmod.network.packet.SetTargetToolPacket;
 import net.bullettrain.xenopixelsmod.network.packet.UnbindTechniqueSlotPacket;
@@ -130,8 +131,44 @@ public class ModNetwork {
      * {@code hakaiSilhouetteEnabled}, {@code hakaiSilhouetteColor}, and {@code hakaiGlowColor}.
      * <p>68: {@code NpcAnimationPacket} appended a flags byte (KI play-and-hold and a real
      * controller stop) so a scripted studio clip can run for a duration and then idle.
+     * <p>77: appended {@code XenoNpcEditorLockPacket}. Lock changes have their own operation so an
+     * unlock cannot carry unrelated profile or identity edits through the locked save guard.
+     * <p>76: appended {@code OpenXenoNpcDialoguePacket} (S2C) and {@code XenoNpcDialoguePacket}
+     * (C2S). The open packet carries the server-resolved dialogue tree because datapacks load on
+     * the server; the choice packet carries an option index, and the server re-reads its dialogue
+     * rather than trusting what the option claims to do.
+     * <p>75: appended {@code XenoNpcSpeechPacket} (S2C NPC speech bubble). The bubble renderer is
+     * client-side, so without a packet only the player who clicked would see an NPC's line; the
+     * server picks the line and broadcasts to the entity's trackers.
+     * <p>74: appended {@code XenoNpcDeletePacket}. {@code /kill} is refused on Xeno NPCs, and was
+     * never a real delete anyway because {@code die()} schedules a respawn, so removing one is now
+     * an explicit action that cancels the respawn before discarding the entity.
+     * <p>73: appended {@code XenoNpcActionPacket} (C2S NPC editor DMZ tab). Transform, descend and
+     * stack are server-side entity state, so the editor cannot apply them the way it edits a
+     * profile field. It reuses {@code NpcProfileSaveResultPacket} for its answer rather than adding
+     * a second result type.
+     * <p>70: {@code SyncServerConfigPacket} appended {@code combatControllerMode} (16-char UTF,
+     * {@code legacy} or {@code bt3_manual}) so the client input layer can follow the server's
+     * controller choice instead of guessing from the legacy feature flags.
+     * <p>71: {@code Bt3CombatPacket.Action} appended {@code RUSH_COMBO} and {@code LIFT_COMBO}.
      */
-    private static final String PROTOCOL = "68";
+    /**
+     * 100 (2026-09-29): SyncServerConfigPacket appends effekseerEnabled and effekseerShipThrusters,
+     * so the client knows whether the ship thruster plume is the server's Effekseer effect or its
+     * own vanilla flames.
+     * 99 (2026-09-28): appended NpcProfileRequestPacket (C2S) and NpcProfileRefreshPacket (S2C) -
+     * DMZ screens now receive the NPC's full server profile - and NpcProfileSavePacket appends an
+     * optional baseline so only changed keys are applied (stale client copies no longer revert
+     * script edits). The Nearby NPCs wand screen packets follow in this same protocol.
+     * 101: appended {@code SecondAuraStatePacket}, a player's own second-aura switch as seen by
+     * everyone tracking them.
+     * 97: XenoNpcSpeechPacket appends a per-line palette and bubble shape; Open/BindXenoNpcScript
+     * carry the NPC's script container (tabs, loaded scripts, language, enabled, console) instead
+     * of one script id. No packet was added or reordered.
+     * 96: scripting tool open/bind packets. 95: NPC script editor packets. 94: natural spawn sync
+     * appended. 93: Xeno NPC bank packet supports physical Zeni cash actions. 92: editor save result.
+     */
+    private static final String PROTOCOL = "101";
 
     public static final SimpleChannel CHANNEL = NetworkRegistry.ChannelBuilder
             .named(ResourceLocation.fromNamespaceAndPath(XenoPixelsMod.MOD_ID, "main"))
@@ -422,6 +459,270 @@ public class ModNetwork {
                 .decoder(net.bullettrain.xenopixelsmod.network.packet.HakaiFadePacket::new)
                 .encoder(net.bullettrain.xenopixelsmod.network.packet.HakaiFadePacket::encode)
                 .consumerMainThread(net.bullettrain.xenopixelsmod.network.packet.HakaiFadePacket::handle)
+                .add();
+
+        CHANNEL.messageBuilder(net.bullettrain.xenopixelsmod.network.packet.OpenXenoNpcEditorPacket.class, id++,
+                        NetworkDirection.PLAY_TO_CLIENT)
+                .decoder(net.bullettrain.xenopixelsmod.network.packet.OpenXenoNpcEditorPacket::new)
+                .encoder(net.bullettrain.xenopixelsmod.network.packet.OpenXenoNpcEditorPacket::encode)
+                .consumerMainThread(net.bullettrain.xenopixelsmod.network.packet.OpenXenoNpcEditorPacket::handle)
+                .add();
+
+        CHANNEL.messageBuilder(net.bullettrain.xenopixelsmod.network.packet.XenoNpcSavePacket.class, id++,
+                        NetworkDirection.PLAY_TO_SERVER)
+                .decoder(net.bullettrain.xenopixelsmod.network.packet.XenoNpcSavePacket::new)
+                .encoder(net.bullettrain.xenopixelsmod.network.packet.XenoNpcSavePacket::encode)
+                .consumerMainThread(net.bullettrain.xenopixelsmod.network.packet.XenoNpcSavePacket::handle)
+                .add();
+
+        CHANNEL.messageBuilder(net.bullettrain.xenopixelsmod.network.packet.RequestXenoNpcEditorPacket.class, id++,
+                        NetworkDirection.PLAY_TO_SERVER)
+                .decoder(net.bullettrain.xenopixelsmod.network.packet.RequestXenoNpcEditorPacket::new)
+                .encoder(net.bullettrain.xenopixelsmod.network.packet.RequestXenoNpcEditorPacket::encode)
+                .consumerMainThread(net.bullettrain.xenopixelsmod.network.packet.RequestXenoNpcEditorPacket::handle)
+                .add();
+
+        CHANNEL.messageBuilder(net.bullettrain.xenopixelsmod.network.packet.XenoNpcActionPacket.class, id++,
+                        NetworkDirection.PLAY_TO_SERVER)
+                .decoder(net.bullettrain.xenopixelsmod.network.packet.XenoNpcActionPacket::new)
+                .encoder(net.bullettrain.xenopixelsmod.network.packet.XenoNpcActionPacket::encode)
+                .consumerMainThread(net.bullettrain.xenopixelsmod.network.packet.XenoNpcActionPacket::handle)
+                .add();
+
+        CHANNEL.messageBuilder(net.bullettrain.xenopixelsmod.network.packet.XenoNpcDeletePacket.class, id++,
+                        NetworkDirection.PLAY_TO_SERVER)
+                .decoder(net.bullettrain.xenopixelsmod.network.packet.XenoNpcDeletePacket::new)
+                .encoder(net.bullettrain.xenopixelsmod.network.packet.XenoNpcDeletePacket::encode)
+                .consumerMainThread(net.bullettrain.xenopixelsmod.network.packet.XenoNpcDeletePacket::handle)
+                .add();
+
+        CHANNEL.messageBuilder(net.bullettrain.xenopixelsmod.network.packet.XenoNpcSpeechPacket.class, id++,
+                        NetworkDirection.PLAY_TO_CLIENT)
+                .decoder(net.bullettrain.xenopixelsmod.network.packet.XenoNpcSpeechPacket::new)
+                .encoder(net.bullettrain.xenopixelsmod.network.packet.XenoNpcSpeechPacket::encode)
+                .consumerMainThread(net.bullettrain.xenopixelsmod.network.packet.XenoNpcSpeechPacket::handle)
+                .add();
+
+        CHANNEL.messageBuilder(net.bullettrain.xenopixelsmod.network.packet.OpenXenoNpcDialoguePacket.class, id++,
+                        NetworkDirection.PLAY_TO_CLIENT)
+                .decoder(net.bullettrain.xenopixelsmod.network.packet.OpenXenoNpcDialoguePacket::new)
+                .encoder(net.bullettrain.xenopixelsmod.network.packet.OpenXenoNpcDialoguePacket::encode)
+                .consumerMainThread(net.bullettrain.xenopixelsmod.network.packet.OpenXenoNpcDialoguePacket::handle)
+                .add();
+
+        CHANNEL.messageBuilder(net.bullettrain.xenopixelsmod.network.packet.XenoNpcDialoguePacket.class, id++,
+                        NetworkDirection.PLAY_TO_SERVER)
+                .decoder(net.bullettrain.xenopixelsmod.network.packet.XenoNpcDialoguePacket::new)
+                .encoder(net.bullettrain.xenopixelsmod.network.packet.XenoNpcDialoguePacket::encode)
+                .consumerMainThread(net.bullettrain.xenopixelsmod.network.packet.XenoNpcDialoguePacket::handle)
+                .add();
+
+        CHANNEL.messageBuilder(net.bullettrain.xenopixelsmod.network.packet.XenoNpcEditorLockPacket.class, id++,
+                        NetworkDirection.PLAY_TO_SERVER)
+                .decoder(net.bullettrain.xenopixelsmod.network.packet.XenoNpcEditorLockPacket::new)
+                .encoder(net.bullettrain.xenopixelsmod.network.packet.XenoNpcEditorLockPacket::encode)
+                .consumerMainThread(net.bullettrain.xenopixelsmod.network.packet.XenoNpcEditorLockPacket::handle)
+                .add();
+
+        // Appended, as this list always is - ids are positional and reordering would make an old
+        // client read the wrong packet.
+        CHANNEL.messageBuilder(SyncFactionsPacket.class, id++, NetworkDirection.PLAY_TO_CLIENT)
+                .decoder(SyncFactionsPacket::new)
+                .encoder(SyncFactionsPacket::encode)
+                .consumerMainThread(SyncFactionsPacket::handle)
+                .add();
+
+        // Appended, as this list always is - ids are positional.
+        CHANNEL.messageBuilder(
+                        net.bullettrain.xenopixelsmod.network.packet.XenoNpcStoreWritePacket.class,
+                        id++, NetworkDirection.PLAY_TO_SERVER)
+                .decoder(net.bullettrain.xenopixelsmod.network.packet.XenoNpcStoreWritePacket::new)
+                .encoder(net.bullettrain.xenopixelsmod.network.packet.XenoNpcStoreWritePacket::encode)
+                .consumerMainThread(net.bullettrain.xenopixelsmod.network.packet.XenoNpcStoreWritePacket::handle)
+                .add();
+
+        CHANNEL.messageBuilder(
+                        net.bullettrain.xenopixelsmod.network.packet.SyncNpcStoreIndexPacket.class,
+                        id++, NetworkDirection.PLAY_TO_CLIENT)
+                .decoder(net.bullettrain.xenopixelsmod.network.packet.SyncNpcStoreIndexPacket::new)
+                .encoder(net.bullettrain.xenopixelsmod.network.packet.SyncNpcStoreIndexPacket::encode)
+                .consumerMainThread(net.bullettrain.xenopixelsmod.network.packet.SyncNpcStoreIndexPacket::handle)
+                .add();
+
+        // Appended, as this list always is - ids are positional and reordering would make an old
+        // client read the wrong packet.
+        CHANNEL.messageBuilder(
+                        net.bullettrain.xenopixelsmod.network.packet.SyncQuestsPacket.class,
+                        id++, NetworkDirection.PLAY_TO_CLIENT)
+                .decoder(net.bullettrain.xenopixelsmod.network.packet.SyncQuestsPacket::new)
+                .encoder(net.bullettrain.xenopixelsmod.network.packet.SyncQuestsPacket::encode)
+                .consumerMainThread(net.bullettrain.xenopixelsmod.network.packet.SyncQuestsPacket::handle)
+                .add();
+
+        // Appended, as this list always is - ids are positional.
+        CHANNEL.messageBuilder(
+                        net.bullettrain.xenopixelsmod.network.packet.SyncStandingsPacket.class,
+                        id++, NetworkDirection.PLAY_TO_CLIENT)
+                .decoder(net.bullettrain.xenopixelsmod.network.packet.SyncStandingsPacket::new)
+                .encoder(net.bullettrain.xenopixelsmod.network.packet.SyncStandingsPacket::encode)
+                .consumerMainThread(net.bullettrain.xenopixelsmod.network.packet.SyncStandingsPacket::handle)
+                .add();
+
+        // Appended, as this list always is - ids are positional.
+        CHANNEL.messageBuilder(
+                        net.bullettrain.xenopixelsmod.network.packet.XenoNpcTravelPacket.class,
+                        id++, NetworkDirection.PLAY_TO_SERVER)
+                .decoder(net.bullettrain.xenopixelsmod.network.packet.XenoNpcTravelPacket::new)
+                .encoder(net.bullettrain.xenopixelsmod.network.packet.XenoNpcTravelPacket::encode)
+                .consumerMainThread(net.bullettrain.xenopixelsmod.network.packet.XenoNpcTravelPacket::handle)
+                .add();
+
+        CHANNEL.messageBuilder(
+                        net.bullettrain.xenopixelsmod.network.packet.XenoNpcBankPacket.class,
+                        id++, NetworkDirection.PLAY_TO_SERVER)
+                .decoder(net.bullettrain.xenopixelsmod.network.packet.XenoNpcBankPacket::new)
+                .encoder(net.bullettrain.xenopixelsmod.network.packet.XenoNpcBankPacket::encode)
+                .consumerMainThread(net.bullettrain.xenopixelsmod.network.packet.XenoNpcBankPacket::handle)
+                .add();
+
+        CHANNEL.messageBuilder(
+                        net.bullettrain.xenopixelsmod.network.packet.SyncBanksPacket.class,
+                        id++, NetworkDirection.PLAY_TO_CLIENT)
+                .decoder(net.bullettrain.xenopixelsmod.network.packet.SyncBanksPacket::new)
+                .encoder(net.bullettrain.xenopixelsmod.network.packet.SyncBanksPacket::encode)
+                .consumerMainThread(net.bullettrain.xenopixelsmod.network.packet.SyncBanksPacket::handle)
+                .add();
+
+        CHANNEL.messageBuilder(net.bullettrain.xenopixelsmod.network.packet.RequestNpcStoreDialoguePacket.class,
+                        id++, NetworkDirection.PLAY_TO_SERVER)
+                .decoder(net.bullettrain.xenopixelsmod.network.packet.RequestNpcStoreDialoguePacket::new)
+                .encoder(net.bullettrain.xenopixelsmod.network.packet.RequestNpcStoreDialoguePacket::encode)
+                .consumerMainThread(net.bullettrain.xenopixelsmod.network.packet.RequestNpcStoreDialoguePacket::handle)
+                .add();
+        CHANNEL.messageBuilder(net.bullettrain.xenopixelsmod.network.packet.NpcStoreDialoguePacket.class,
+                        id++, NetworkDirection.PLAY_TO_CLIENT)
+                .decoder(net.bullettrain.xenopixelsmod.network.packet.NpcStoreDialoguePacket::new)
+                .encoder(net.bullettrain.xenopixelsmod.network.packet.NpcStoreDialoguePacket::encode)
+                .consumerMainThread(net.bullettrain.xenopixelsmod.network.packet.NpcStoreDialoguePacket::handle)
+                .add();
+
+        // Appended at the end, never inserted: ids are handed out sequentially by id++, so slotting
+        // one into the middle silently repoints every packet after it.
+        CHANNEL.messageBuilder(
+                        net.bullettrain.xenopixelsmod.network.packet
+                                .XenoNpcInventoryOpenPacket.class,
+                        id++, NetworkDirection.PLAY_TO_SERVER)
+                .decoder(net.bullettrain.xenopixelsmod.network.packet
+                        .XenoNpcInventoryOpenPacket::new)
+                .encoder(net.bullettrain.xenopixelsmod.network.packet
+                        .XenoNpcInventoryOpenPacket::encode)
+                .consumerMainThread(net.bullettrain.xenopixelsmod.network.packet
+                        .XenoNpcInventoryOpenPacket::handle)
+                .add();
+
+        CHANNEL.messageBuilder(net.bullettrain.xenopixelsmod.network.packet.QuestCompletionPopupPacket.class,
+                        id++, NetworkDirection.PLAY_TO_CLIENT)
+                .decoder(net.bullettrain.xenopixelsmod.network.packet.QuestCompletionPopupPacket::new)
+                .encoder(net.bullettrain.xenopixelsmod.network.packet.QuestCompletionPopupPacket::encode)
+                .consumerMainThread(net.bullettrain.xenopixelsmod.network.packet.QuestCompletionPopupPacket::handle)
+                .add();
+
+        CHANNEL.messageBuilder(
+                        net.bullettrain.xenopixelsmod.network.packet.RequestNpcStoreQuestPacket.class,
+                        id++, NetworkDirection.PLAY_TO_SERVER)
+                .decoder(net.bullettrain.xenopixelsmod.network.packet.RequestNpcStoreQuestPacket::new)
+                .encoder(net.bullettrain.xenopixelsmod.network.packet.RequestNpcStoreQuestPacket::encode)
+                .consumerMainThread(net.bullettrain.xenopixelsmod.network.packet.RequestNpcStoreQuestPacket::handle)
+                .add();
+        CHANNEL.messageBuilder(
+                        net.bullettrain.xenopixelsmod.network.packet.NpcStoreQuestPacket.class,
+                        id++, NetworkDirection.PLAY_TO_CLIENT)
+                .decoder(net.bullettrain.xenopixelsmod.network.packet.NpcStoreQuestPacket::new)
+                .encoder(net.bullettrain.xenopixelsmod.network.packet.NpcStoreQuestPacket::encode)
+                .consumerMainThread(net.bullettrain.xenopixelsmod.network.packet.NpcStoreQuestPacket::handle)
+                .add();
+
+        CHANNEL.messageBuilder(
+                        net.bullettrain.xenopixelsmod.network.packet.XenoNpcEditorSaveResultPacket.class,
+                        id++, NetworkDirection.PLAY_TO_CLIENT)
+                .decoder(net.bullettrain.xenopixelsmod.network.packet.XenoNpcEditorSaveResultPacket::new)
+                .encoder(net.bullettrain.xenopixelsmod.network.packet.XenoNpcEditorSaveResultPacket::encode)
+                .consumerMainThread(net.bullettrain.xenopixelsmod.network.packet.XenoNpcEditorSaveResultPacket::handle)
+                .add();
+
+        // Appended, as this list always is - ids are positional and reordering would make an old
+        // client read the wrong packet.
+        CHANNEL.messageBuilder(
+                        net.bullettrain.xenopixelsmod.network.packet.SyncNaturalSpawnsPacket.class,
+                        id++, NetworkDirection.PLAY_TO_CLIENT)
+                .decoder(net.bullettrain.xenopixelsmod.network.packet.SyncNaturalSpawnsPacket::new)
+                .encoder(net.bullettrain.xenopixelsmod.network.packet.SyncNaturalSpawnsPacket::encode)
+                .consumerMainThread(net.bullettrain.xenopixelsmod.network.packet.SyncNaturalSpawnsPacket::handle)
+                .add();
+
+        // Appended, as this list always is - ids are positional and reordering would make an old
+        // client read the wrong packet.
+        CHANNEL.messageBuilder(
+                        net.bullettrain.xenopixelsmod.network.packet.NpcScriptPacket.class,
+                        id++, NetworkDirection.PLAY_TO_SERVER)
+                .decoder(net.bullettrain.xenopixelsmod.network.packet.NpcScriptPacket::new)
+                .encoder(net.bullettrain.xenopixelsmod.network.packet.NpcScriptPacket::encode)
+                .consumerMainThread(net.bullettrain.xenopixelsmod.network.packet.NpcScriptPacket::handle)
+                .add();
+        CHANNEL.messageBuilder(
+                        net.bullettrain.xenopixelsmod.network.packet.NpcScriptResultPacket.class,
+                        id++, NetworkDirection.PLAY_TO_CLIENT)
+                .decoder(net.bullettrain.xenopixelsmod.network.packet.NpcScriptResultPacket::new)
+                .encoder(net.bullettrain.xenopixelsmod.network.packet.NpcScriptResultPacket::encode)
+                .consumerMainThread(net.bullettrain.xenopixelsmod.network.packet.NpcScriptResultPacket::handle)
+                .add();
+        CHANNEL.messageBuilder(
+                        net.bullettrain.xenopixelsmod.network.packet.OpenXenoNpcScriptPacket.class,
+                        id++, NetworkDirection.PLAY_TO_CLIENT)
+                .decoder(net.bullettrain.xenopixelsmod.network.packet.OpenXenoNpcScriptPacket::new)
+                .encoder(net.bullettrain.xenopixelsmod.network.packet.OpenXenoNpcScriptPacket::encode)
+                .consumerMainThread(net.bullettrain.xenopixelsmod.network.packet.OpenXenoNpcScriptPacket::handle)
+                .add();
+        CHANNEL.messageBuilder(
+                        net.bullettrain.xenopixelsmod.network.packet.BindXenoNpcScriptPacket.class,
+                        id++, NetworkDirection.PLAY_TO_SERVER)
+                .decoder(net.bullettrain.xenopixelsmod.network.packet.BindXenoNpcScriptPacket::new)
+                .encoder(net.bullettrain.xenopixelsmod.network.packet.BindXenoNpcScriptPacket::encode)
+                .consumerMainThread(net.bullettrain.xenopixelsmod.network.packet.BindXenoNpcScriptPacket::handle)
+                .add();
+
+        CHANNEL.messageBuilder(net.bullettrain.xenopixelsmod.network.packet.NpcProfileRequestPacket.class,
+                        id++, NetworkDirection.PLAY_TO_SERVER)
+                .decoder(net.bullettrain.xenopixelsmod.network.packet.NpcProfileRequestPacket::new)
+                .encoder(net.bullettrain.xenopixelsmod.network.packet.NpcProfileRequestPacket::encode)
+                .consumerMainThread(net.bullettrain.xenopixelsmod.network.packet.NpcProfileRequestPacket::handle)
+                .add();
+        CHANNEL.messageBuilder(net.bullettrain.xenopixelsmod.network.packet.NpcProfileRefreshPacket.class,
+                        id++, NetworkDirection.PLAY_TO_CLIENT)
+                .decoder(net.bullettrain.xenopixelsmod.network.packet.NpcProfileRefreshPacket::new)
+                .encoder(net.bullettrain.xenopixelsmod.network.packet.NpcProfileRefreshPacket::encode)
+                .consumerMainThread(net.bullettrain.xenopixelsmod.network.packet.NpcProfileRefreshPacket::handle)
+                .add();
+        // Nearby NPCs wand screen (same protocol 99).
+        CHANNEL.messageBuilder(net.bullettrain.xenopixelsmod.network.packet.XenoNpcNearbyPackets.Request.class, id++, NetworkDirection.PLAY_TO_SERVER)
+                .decoder(net.bullettrain.xenopixelsmod.network.packet.XenoNpcNearbyPackets.Request::new)
+                .encoder(net.bullettrain.xenopixelsmod.network.packet.XenoNpcNearbyPackets.Request::encode)
+                .consumerMainThread(net.bullettrain.xenopixelsmod.network.packet.XenoNpcNearbyPackets.Request::handle)
+                .add();
+        CHANNEL.messageBuilder(net.bullettrain.xenopixelsmod.network.packet.XenoNpcNearbyPackets.List_.class, id++, NetworkDirection.PLAY_TO_CLIENT)
+                .decoder(net.bullettrain.xenopixelsmod.network.packet.XenoNpcNearbyPackets.List_::new)
+                .encoder(net.bullettrain.xenopixelsmod.network.packet.XenoNpcNearbyPackets.List_::encode)
+                .consumerMainThread(net.bullettrain.xenopixelsmod.network.packet.XenoNpcNearbyPackets.List_::handle)
+                .add();
+        CHANNEL.messageBuilder(net.bullettrain.xenopixelsmod.network.packet.XenoNpcNearbyPackets.Action.class, id++, NetworkDirection.PLAY_TO_SERVER)
+                .decoder(net.bullettrain.xenopixelsmod.network.packet.XenoNpcNearbyPackets.Action::new)
+                .encoder(net.bullettrain.xenopixelsmod.network.packet.XenoNpcNearbyPackets.Action::encode)
+                .consumerMainThread(net.bullettrain.xenopixelsmod.network.packet.XenoNpcNearbyPackets.Action::handle)
+                .add();
+        CHANNEL.messageBuilder(net.bullettrain.xenopixelsmod.network.packet.SecondAuraStatePacket.class, id++, NetworkDirection.PLAY_TO_CLIENT)
+                .decoder(net.bullettrain.xenopixelsmod.network.packet.SecondAuraStatePacket::new)
+                .encoder(net.bullettrain.xenopixelsmod.network.packet.SecondAuraStatePacket::encode)
+                .consumerMainThread(net.bullettrain.xenopixelsmod.network.packet.SecondAuraStatePacket::handle)
                 .add();
 
         XenoPixelsMod.LOGGER.info("ModNetwork: registered {} packet types (protocol {})", id, PROTOCOL);

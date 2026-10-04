@@ -2,6 +2,7 @@ package net.bullettrain.xenopixelsmod.client.combat;
 
 import net.bullettrain.xenopixelsmod.XenoPixelsMod;
 import net.bullettrain.xenopixelsmod.client.compat.npc.NpcFullDmzRenderer;
+import net.bullettrain.xenopixelsmod.client.compat.npc.NpcGeckoOwner;
 import net.bullettrain.xenopixelsmod.combat.clone.XenoCloneEntity;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.bus.api.SubscribeEvent;
@@ -26,6 +27,12 @@ public final class XenoCloneProxyCleanup {
     public static void onLeaveLevel(EntityLeaveLevelEvent event) {
         if (event.getEntity() instanceof XenoCloneEntity clone) {
             NpcFullDmzRenderer.forgetCopy(clone.getUUID());
+        }
+        if (event.getEntity() instanceof net.minecraft.world.entity.LivingEntity living) {
+            NpcFullDmzRenderer.forgetWorld(living.getUUID());
+        }
+        if (event.getEntity() instanceof NpcGeckoOwner linked) {
+            linked.xenopixels$setNpcOwner(null);
         }
     }
 }

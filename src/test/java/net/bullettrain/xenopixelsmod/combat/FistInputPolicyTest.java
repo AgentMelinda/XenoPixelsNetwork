@@ -30,4 +30,14 @@ class FistInputPolicyTest {
         assertFalse(FistInputPolicy.fistsActive(true, true, false, false, true));
         assertFalse(FistInputPolicy.fistsActive(true, true, true, true, false));
     }
+
+    @Test void manualModeDoesNotStealNativeOrDmzPunches() {
+        assertFalse(FistInputPolicy.ownsLegacyFists(true, true, true));
+        assertFalse(FistInputPolicy.ownsLegacyFists(true, false, true));
+        assertTrue(FistInputPolicy.ownsLegacyFists(false, true, false));
+        assertTrue(FistInputPolicy.ownsLegacyFists(false, false, true));
+        assertFalse(FistInputPolicy.ownsLegacyFists(false, false, false));
+        assertFalse(FistInputPolicy.fistsActive(true, true,
+                FistInputPolicy.ownsLegacyFists(true, true, true), false, true));
+    }
 }

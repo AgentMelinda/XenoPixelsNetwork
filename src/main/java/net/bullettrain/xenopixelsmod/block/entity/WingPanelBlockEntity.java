@@ -62,6 +62,9 @@ public class WingPanelBlockEntity extends BlockEntity implements CopycatMaterial
     /** Last angle actually pushed to clients, so the sync threshold measures real drift. */
     private transient double lastSyncedDeflectDeg;
 
+    /** Fork-only: 0/90/180/270 spin of the small stub in the wing plane. */
+    private int hingeRotation;
+
     /** Client-only animation state; never touched on the server. */
     private transient double clientDeflectDeg;
     private transient double clientPrevDeflectDeg;
@@ -78,6 +81,26 @@ public class WingPanelBlockEntity extends BlockEntity implements CopycatMaterial
 
     public double getTargetDeflectDeg() {
         return targetDeflectDeg;
+    }
+
+    public int getHingeRotation() {
+        return hingeRotation;
+    }
+
+    public static int normalizeHinge(int deg) {
+        return Math.floorMod(deg / 90, 4) * 90;
+    }
+
+    public void setHingeRotation(int deg) {
+        int next = normalizeHinge(deg);
+        if (next == hingeRotation) {
+            return;
+        }
+        hingeRotation = next;
+        setChanged();
+        if (level != null && !level.isClientSide) {
+            level.sendBlockUpdated(worldPosition, getBlockState(), getBlockState(), 3);
+        }
     }
 
     // ---- Copycat material (used only by the copycat wing variants) ----
@@ -199,6 +222,9 @@ public class WingPanelBlockEntity extends BlockEntity implements CopycatMaterial
     protected void saveAdditional(CompoundTag tag, HolderLookup.Provider registries) {
         super.saveAdditional(tag, registries);
         tag.putDouble("Deflect", targetDeflectDeg);
+        if (hingeRotation != 0) {
+            tag.putInt("HingeRot", hingeRotation);
+        }
         if (hasCustomMaterial()) tag.put(MATERIAL_TAG, NbtUtils.writeBlockState(material));
     }
 
@@ -210,6 +236,7 @@ public class WingPanelBlockEntity extends BlockEntity implements CopycatMaterial
         // very first load. Resetting the animation state on every sync would snap on every
         // update instead of chasing smoothly — exactly the bug this whole class exists to fix.
         targetDeflectDeg = tag.contains("Deflect") ? tag.getDouble("Deflect") : 0.0;
+        hingeRotation = tag.contains("HingeRot") ? normalizeHinge(tag.getInt("HingeRot")) : 0;
         BlockState previousMaterial = material;
         material = tag.contains(MATERIAL_TAG, CompoundTag.TAG_COMPOUND)
                 ? NbtUtils.readBlockState(registries.lookupOrThrow(Registries.BLOCK), tag.getCompound(MATERIAL_TAG))

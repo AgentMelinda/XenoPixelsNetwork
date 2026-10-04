@@ -1,0 +1,15 @@
+{
+  "schema": 1,
+  "role": "guard",
+  "brain": "v5",
+  "body_family": "humanoid",
+  "decision_ticks": {
+    "combat": 8,
+    "active": 16,
+    "idle": 40
+  },
+  "refs": {
+    "job": "xenopixelsmod:npcs/jobs/guard",
+    "lines": "xenopixelsmod:npcs/lines/default"
+  }
+}

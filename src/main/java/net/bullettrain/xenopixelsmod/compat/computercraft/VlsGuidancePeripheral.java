@@ -32,6 +32,9 @@ import java.util.ArrayList;
  * peripheral.setYield(power)
  * peripheral.setShipMissile(true)  -- whole hull is the warhead (default true)
  * peripheral.setAlsoTubes(false)   -- also fire entity tubes
+ * peripheral.setTubeSpeed(n)       -- 0 inherit / 1-20 override nearby tubes
+ * peripheral.setTubeSiloClearance(blocks)
+ * peripheral.setTubeLaunchHeight(y)
  * peripheral.getSolution()         -- {pitchDeg, etaTicks}
  * peripheral.getStatus()           -- flight phase string
  * peripheral.setFleet(channel, intervalTicks) -- 0 disables; interval 1-200
@@ -168,6 +171,24 @@ public final class VlsGuidancePeripheral implements GenericPeripheral {
     @LuaFunction(mainThread = true)
     public final void setAlsoTubes(ShipVlsGuidanceBlockEntity be, boolean enabled) {
         be.setAlsoFireTubes(enabled);
+    }
+
+    /** 0 = inherit this computer's speed. 1–20 overrides nearby tubes. */
+    @LuaFunction(mainThread = true)
+    public final int setTubeSpeed(ShipVlsGuidanceBlockEntity be, int level) {
+        return be.applyNearbyTubeSettings(level, null, null);
+    }
+
+    /** Blocks along the tube face to clear before pitch-over. */
+    @LuaFunction(mainThread = true)
+    public final int setTubeSiloClearance(ShipVlsGuidanceBlockEntity be, int blocks) {
+        return be.applyNearbyTubeSettings(null, blocks, null);
+    }
+
+    /** Absolute world Y to climb to before pitch-over; 0 disables. */
+    @LuaFunction(mainThread = true)
+    public final int setTubeLaunchHeight(ShipVlsGuidanceBlockEntity be, int y) {
+        return be.applyNearbyTubeSettings(null, null, y);
     }
 
     /**

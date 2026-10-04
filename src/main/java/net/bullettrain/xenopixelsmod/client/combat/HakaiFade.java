@@ -22,26 +22,34 @@ import java.util.concurrent.ConcurrentHashMap;
 public final class HakaiFade {
     private static final ConcurrentHashMap<Integer, Integer> AMPLIFIERS = new ConcurrentHashMap<>();
     private static final ConcurrentHashMap<Integer, Lerp> LERPS = new ConcurrentHashMap<>();
+    private static final ConcurrentHashMap<Integer, RenderSample> LAST_RENDERED = new ConcurrentHashMap<>();
+    private static final float INTERPOLATION_TICKS = 2.0f;
 
-    private record Lerp(int from, int to, long tick) {}
+    private record Lerp(float from, int to, long tick) {}
+    private record RenderSample(float value, double time) {}
 
     private HakaiFade() {}
 
-    /** Server → client: amplifier {@code 0} clears the fade. */
+    /** Server → client: amplifier {@code 0} eases back to solid, then clears the fade. */
     public static void set(int entityId, int amplifier) {
         set(entityId, amplifier, nowTick());
     }
 
     /** Test hook with an explicit game-time so lerp can be checked without a client. */
     static void set(int entityId, int amplifier, long gameTime) {
-        if (amplifier <= 0) {
-            AMPLIFIERS.remove(entityId);
-            LERPS.remove(entityId);
+        int clamped = Math.max(0, Math.min(255, amplifier));
+        Lerp previous = LERPS.get(entityId);
+        Integer currentTarget = AMPLIFIERS.get(entityId);
+        if (clamped == 0 && previous == null && currentTarget == null) {
+            LAST_RENDERED.remove(entityId);
             return;
         }
-        int clamped = Math.max(1, Math.min(255, amplifier));
-        Lerp previous = LERPS.get(entityId);
-        int from = previous == null ? clamped : previous.to;
+        float from = previous != null ? interpolated(previous, 0.0f, gameTime)
+                : currentTarget == null ? 0.0f : currentTarget.floatValue();
+        RenderSample rendered = LAST_RENDERED.get(entityId);
+        if (rendered != null && rendered.time >= gameTime) {
+            from = rendered.value;
+        }
         LERPS.put(entityId, new Lerp(from, clamped, gameTime));
         AMPLIFIERS.put(entityId, clamped);
     }
@@ -50,6 +58,7 @@ public final class HakaiFade {
     public static void clear() {
         AMPLIFIERS.clear();
         LERPS.clear();
+        LAST_RENDERED.clear();
     }
 
     /** Test / debug: packet amplifier for this id, or {@code null} when none. */
@@ -84,7 +93,7 @@ public final class HakaiFade {
     private static Float progressOf(LivingEntity living, float partialTick) {
         Lerp lerp = LERPS.get(living.getId());
         if (lerp != null) {
-            return lerpedAmplifier(lerp, partialTick, nowTick()) / 255.0f;
+            return lerpedAmplifier(living.getId(), partialTick, nowTick()) / 255.0f;
         }
         Integer packet = AMPLIFIERS.get(living.getId());
         if (packet != null) return packet / 255.0f;
@@ -99,13 +108,35 @@ public final class HakaiFade {
             Integer packet = AMPLIFIERS.get(entityId);
             return packet == null ? 0.0f : packet;
         }
-        return lerpedAmplifier(lerp, partialTick, gameTime);
+        float value = interpolated(lerp, partialTick, gameTime);
+        double sampleTime = gameTime + Math.max(0.0f, Math.min(1.0f, partialTick));
+        LAST_RENDERED.put(entityId, new RenderSample(value, sampleTime));
+        if (interpolationComplete(lerp, partialTick, gameTime)) {
+            LERPS.remove(entityId, lerp);
+            if (lerp.to <= 0) {
+                AMPLIFIERS.remove(entityId, 0);
+                LAST_RENDERED.remove(entityId);
+            } else {
+                LAST_RENDERED.put(entityId, new RenderSample(lerp.to, sampleTime));
+            }
+        }
+        return value;
     }
 
-    private static float lerpedAmplifier(Lerp lerp, float partialTick, long gameTime) {
-        float t = (gameTime - lerp.tick) + Math.max(0.0f, Math.min(1.0f, partialTick));
-        t = Math.max(0.0f, Math.min(1.0f, t));
-        return lerp.from + (lerp.to - lerp.from) * t;
+    private static float interpolated(Lerp lerp, float partialTick, long gameTime) {
+        float t = interpolationProgress(lerp, partialTick, gameTime);
+        float eased = t * t * (3.0f - 2.0f * t);
+        return lerp.from + (lerp.to - lerp.from) * eased;
+    }
+
+    private static boolean interpolationComplete(Lerp lerp, float partialTick, long gameTime) {
+        return interpolationProgress(lerp, partialTick, gameTime) >= 1.0f;
+    }
+
+    private static float interpolationProgress(Lerp lerp, float partialTick, long gameTime) {
+        float elapsed = (gameTime - lerp.tick)
+                + Math.max(0.0f, Math.min(1.0f, partialTick));
+        return Math.max(0.0f, Math.min(1.0f, elapsed / INTERPOLATION_TICKS));
     }
 
     private static long nowTick() {

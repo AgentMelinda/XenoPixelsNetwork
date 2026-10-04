@@ -44,6 +44,23 @@ public final class SableContraptionCull {
     private SableContraptionCull() {
     }
 
+    /**
+     * Boxes that would overflow {@code EntitySectionStorage}'s packed section longs.
+     * Passing them to {@code getEntities*} throws
+     * {@code Start element is larger than end element} and kills the server tick.
+     */
+    public static boolean isUnqueryable(AABB box) {
+        if (box == null) return true;
+        if (!Double.isFinite(box.minX) || !Double.isFinite(box.minY) || !Double.isFinite(box.minZ)
+                || !Double.isFinite(box.maxX) || !Double.isFinite(box.maxY) || !Double.isFinite(box.maxZ)) {
+            return true;
+        }
+        if (box.minX > box.maxX || box.minY > box.maxY || box.minZ > box.maxZ) {
+            return true;
+        }
+        return querySide(box) > 1_000_000.0;
+    }
+
     public static boolean shouldSkipSableFanOut(Level level, AABB box) {
         if (box == null || !cullEnabled(level)) return false;
         boolean skip = querySide(box) > queryCap();
@@ -137,8 +154,8 @@ public final class SableContraptionCull {
 
     /**
      * Client FPS is this scan on the render/tick thread. {@code /xenoperf set sablecull}
-     * only writes the logical server, so leaving that off must not reopen the exploded
-     * query on the client. Opt out locally with {@code /xenoclient set sablecull false}.
+     * only writes the logical server. Both sides default off; opt in with
+     * {@code /sablecull on} (client) or {@code /xenoperf sablecull on} (server).
      */
     private static boolean cullEnabled(Entity contraption) {
         return cullEnabled(contraption == null ? null : contraption.level());

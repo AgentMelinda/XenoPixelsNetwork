@@ -34,7 +34,7 @@ import java.util.List;
  * /xenoki charge &lt;true|false&gt;
  * /xenoki cap &lt;percent&gt;
  * /xenoki grief &lt;true|false&gt;
- * /xenoki maxsize|maxspeed|destruction &lt;n&gt;
+ * /xenoki maxsize|maxspeed|destruction|explosion &lt;n&gt;
  * /xenoki clear all | /xenoki clear radius &lt;blocks&gt;
  * </pre>
  */
@@ -108,12 +108,17 @@ public final class KiDurationCommands {
                         .then(Commands.argument("radius", FloatArgumentType.floatArg(0.5f))
                                 .executes(ctx -> setKey(ctx.getSource(), "kiDestructionMaxRadius",
                                         Float.toString(FloatArgumentType.getFloat(ctx, "radius"))))))
+                .then(Commands.literal("explosion")
+                        .requires(XenoPermissions.require(XenoPermissions.XENOSERVER_SET))
+                        .then(Commands.argument("radius", FloatArgumentType.floatArg(0.0f))
+                                .executes(ctx -> setKey(ctx.getSource(), "kiExplosionMaxRadius",
+                                        Float.toString(FloatArgumentType.getFloat(ctx, "radius"))))))
                 .executes(ctx -> {
                     ctx.getSource().sendSuccess(() -> Component.literal(
                             "Usage: /xenoki duration <ticks> | /xenoki duration <type> <ticks>\n"
                                     + "       /xenoki charge|grief <true|false>\n"
                                     + "       /xenoki clear all | clear radius <blocks>\n"
-                                    + "       /xenoki cap <201-2000> | maxsize|maxspeed|destruction <n>\n"
+                                    + "       /xenoki cap <201-2000> | maxsize|maxspeed|destruction|explosion <n>\n"
                                     + "types: " + String.join(" ", KiDuration.TYPE_KEYS) + "\n"
                                     + "0 duration = stock DMZ (base × charge). 20 ticks = 1 second.\n"
                                     + currentLine()), false);
@@ -255,6 +260,7 @@ public final class KiDurationCommands {
         sb.append(" maxSize=").append(XenoServerConfig.kiProjectileMaxSize);
         sb.append(" maxSpeed=").append(XenoServerConfig.kiProjectileMaxSpeed);
         sb.append(" destruction=").append(XenoServerConfig.kiDestructionMaxRadius);
+        sb.append(" explosion=").append(XenoServerConfig.kiExplosionMaxRadius);
         sb.append(" guideRange=").append(XenoServerConfig.guidanceControlRange <= 0
                 ? "default" : XenoServerConfig.guidanceControlRange + " blocks");
         return sb.toString();

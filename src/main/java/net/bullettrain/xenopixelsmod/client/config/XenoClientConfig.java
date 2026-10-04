@@ -25,7 +25,7 @@ public final class XenoClientConfig {
     private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
     private static final Path PATH = FMLPaths.CONFIGDIR.get().resolve("xenopixelsmod-client.json");
     /** Version 3 restores Guard while its dedicated key keeps right-click placement vanilla. */
-    private static final int CURRENT_CONFIG_VERSION = 5;
+    private static final int CURRENT_CONFIG_VERSION = 6;
 
     // --- UI ---
     public static boolean xenoHudEnabled = true;
@@ -35,8 +35,35 @@ public final class XenoClientConfig {
     public static boolean pauseScreenButton = true;
     public static boolean xenoMenuEnabled = true;
     public static boolean contentScreensEnabled = true;
+
+    /**
+     * Draw NPC dialogue as bubbles above the NPC rather than as a full-screen menu.
+     *
+     * <p>Both are kept: the screen is the proven one and stays reachable by turning this off, so
+     * the two can be compared in play rather than one being deleted on the strength of a preview.
+     */
+    public static boolean dialogueBubbles = true;
+
+    /**
+     * Answer dialogue bubbles at the crosshair instead of through an invisible cursor screen.
+     *
+     * <p>The screen version took the mouse: the player could not look around while an NPC was
+     * talking, which is the opposite of what moving dialogue out of a menu was for. With this on
+     * there is no screen, the crosshair aims, and either mouse button picks.
+     *
+     * <p>The screen is still there and still works - turn this off to get it back, and the two can
+     * be compared in play rather than one being deleted on the strength of a preview.
+     */
+    public static boolean dialogueCrosshair = true;
     public static boolean joinServerButton = true;
     public static boolean hudEditEnabled = true;
+    /**
+     * Which chrome /xenoui studio opens: false is the original DragonMineZ-widget screen,
+     * true is the atlas rebuild. Defaults to the DMZ screen because that one is proven in
+     * game and keeps the real ColorSlider HSV controls; the atlas variant is opt-in until it
+     * has been confirmed the same way.
+     */
+    public static boolean dmzStudioChromeAtlas = false;
     public static boolean senzuCooldownMessages = true;
     /** XV2-style party/team HP+KI mini bars for nearby scoreboard-team allies. */
     public static boolean partyHudEnabled = true;
@@ -109,6 +136,76 @@ public final class XenoClientConfig {
     public static boolean bt3DirectSonicSwayLeft = true; // Sonic Sway Left - also stepping left while guarding
     public static boolean bt3DirectSonicSwayRight = true; // Sonic Sway Right - also stepping right while guarding
     public static boolean bt3DirectSparking = true; // Sparking - also entered by charging ki to full
+    public static boolean bt3DirectRushcombo = true; // Rush Combo strike
+    public static boolean bt3DirectLiftcombo = true; // Lift Combo strike
+    /** Punch string + W launches the target (off at the owner's request, 2026-09-29). */
+    public static boolean bt3DirectMashLauncher = false;
+    /** Which aura draws: dmz (DragonMineZ's), hd (generated) or both (default). /xenoaura. */
+    public static String auraStyle = "both";
+    /** HD aura size on top of body size (/xenoaura size). */
+    public static float auraSize = 1.0f;
+    /**
+     * HD aura: every DMZ layer (stack form, the form being transformed into) is its own aura.
+     * Off is the first behaviour, one aura from the two lowest layers. /xenoaura layers.
+     */
+    public static boolean auraLayers = true;
+    /**
+     * HD aura on a player whose second aura is switched off: true plays it whenever DragonMineZ's
+     * aura shows (the behaviour before the switch existed), false never. /xenoaura follow.
+     *
+     * <p>On by default. It was off for a few hours on 2026-10-02 and the HD aura then never showed
+     * until /secondaura was run, which read as the aura being broken; the stored key was renamed
+     * (auraWithDmzAura) so configs saved in that window come back to on.
+     */
+    public static boolean auraFollowDmz = true;
+    /** HD aura brightness, 0.5-1.3 (baked levels, the nearest is used). /xenoaura brightness. */
+    public static float auraBrightness = 1.0f;
+    /**
+     * The inner HD aura (the shell and glow on the body) relative to the outer one, 0.4-1: it picks
+     * a dimmer baked level, which is also more see-through. /xenoaura inner. 1 is the first look.
+     */
+    public static float auraInnerBrightness = 0.7f;
+    /**
+     * Which HD aura plays: v1 (the column of fire puffs), v2 (the spiked flame silhouette after
+     * DragonMineZ's own aura, 2026-10-02), or v3 (full v1 plus silhouette, punch-colour edges and
+     * form-coloured sparking). /xenoaura v1|v2|v3, or Ki Actions in DMZ's X menu.
+     */
+    public static String auraVariant = "v1";
+    /** HD aura resized every frame with the ki aura (true) or fixed when sent. /xenoaura live. */
+    public static boolean auraLiveScale = true;
+    /** Your own v2 aura in third person is drawn over particles (true). /xenoaura overlay. */
+    public static boolean auraOverParticles = true;
+    /**
+     * Keep your HD aura sighting in first person so it does not reset on returning to third
+     * person. The world-space flame is hidden either way (it filled the camera when placed
+     * ahead). /xenoaura firstperson.
+     */
+    public static boolean auraFirstPerson = true;
+    /** The tallest the HD aura is stretched by the ki aura curve, 1-10. /xenoaura maxheight. */
+    public static float auraMaxHeight = 10.0f;
+
+    /**
+     * Use the rewritten Controlify integration in {@code client.pad2} instead of {@code client.pad}.
+     *
+     * <p><b>Read once, during Controlify's pre-init, and a restart is required to change which
+     * package is live.</b> Controlify loads its saved bind configuration immediately after pre-init,
+     * so a binding declared any later has nothing to restore from - the same reason
+     * {@code XenoControlifyEntrypoint} declares everything there.
+     *
+     * <p>On by default. The old package is kept intact and reachable by turning this off, because
+     * a controller-only regression can only be found with a controller in hand.
+     */
+    public static boolean padRewrite = true;
+
+    /**
+     * Extra radial entries, beyond the eight Controlify itself holds.
+     *
+     * <p>Binding ids in the order they should appear after Controlify's own. Empty means "use
+     * {@code PadRadialSlots.DEFAULT_EXTRAS}", which is not the same as a player having deliberately
+     * cleared the list - an explicitly emptied list is stored as a single blank entry so the two
+     * can be told apart.
+     */
+    public static java.util.List<String> padRadialExtras = java.util.List.of();
 
     /** Controller gameplay layer; BT3 is the first-install default and the last choice is saved. */
     public static PadMode padMode = PadMode.BT3;
@@ -171,6 +268,14 @@ public final class XenoClientConfig {
     public static boolean hudCompactNumbers = false;
     /** Draw current/max values inside the HP, KI and stamina lanes on the modern panel. */
     public static boolean hudBarNumbers = true;
+    /**
+     * Drop the HUD's sweeps, flashes and trails in favour of short direct fades.
+     *
+     * <p>Motion on a HUD is there to make a change noticeable, and for some players it does the
+     * opposite. Every value stays on screen and stays accurate with this on; only the way the HUD
+     * travels between two values changes.
+     */
+    public static boolean hudReducedMotion = false;
     /** Report the held fire key so a beam can be sustained. Off opts out entirely. */
     public static boolean beamSurgeClient = true;
     /** Actionbar readout of the surge input chain: key held, wave owned, packets sent. */
@@ -187,11 +292,11 @@ public final class XenoClientConfig {
     /** Hide Alt/Ctrl technique hotbar while chat/command screen is open. */
     public static boolean techniqueHotbarHideInChat = true;
     /**
-     * Clamp Create entity scans on Sable ships on this client. Independent of
-     * {@code /xenoperf set sablecull} (server MSPT). Off restores the pose-exploded
-     * query and will tank FPS.
+     * Clamp Create entity scans and plot-section draw on Sable ships on this client.
+     * Independent of {@code /xenoperf set sablecull} (server MSPT). Default off;
+     * opt in with {@code /sablecull on}.
      */
-    public static boolean sableContraptionCullClient = true;
+    public static boolean sableContraptionCullClient = false;
 
     // --- Seated flight (pilot seat) ---
     /** Flight HUD while seated in a pilot seat: throttle, flaps, speed, stall. */
@@ -307,6 +412,9 @@ public final class XenoClientConfig {
             // build has the off values written into their config, where a changed default cannot
             // reach them, so switch them back on once here.
             boolean migrateDirectBinds = data.configVersion < 5;
+            // Version 5 saved Sable cull on. That hid plot meshes at deep Y and
+            // looked like a black world; force it off once so the new default sticks.
+            boolean migrateSableCullOff = data.configVersion < 6;
             apply(data);
             if (migrateDirectBinds) {
                 bt3DirectHakai = true;
@@ -321,6 +429,9 @@ public final class XenoClientConfig {
             if (migrateGuardDefault) {
                 // Guard is active again; its B binding no longer intercepts vanilla Use/place.
                 bt3GuardClient = true;
+            }
+            if (migrateSableCullOff) {
+                sableContraptionCullClient = false;
             }
             if (migrateConfig) save();
         } catch (IOException e) {
@@ -350,6 +461,9 @@ public final class XenoClientConfig {
         d.contentScreensEnabled = contentScreensEnabled;
         d.joinServerButton = joinServerButton;
         d.hudEditEnabled = hudEditEnabled;
+        d.dialogueBubbles = dialogueBubbles;
+        d.dialogueCrosshair = dialogueCrosshair;
+        d.dmzStudioChromeAtlas = dmzStudioChromeAtlas;
         d.senzuCooldownMessages = senzuCooldownMessages;
         d.partyHudEnabled = partyHudEnabled;
         d.cooldownHudEnabled = cooldownHudEnabled;
@@ -371,6 +485,22 @@ public final class XenoClientConfig {
         d.bt3DirectSonicSwayLeft = bt3DirectSonicSwayLeft;
         d.bt3DirectSonicSwayRight = bt3DirectSonicSwayRight;
         d.bt3DirectSparking = bt3DirectSparking;
+        d.bt3DirectRushcombo = bt3DirectRushcombo;
+        d.bt3DirectLiftcombo = bt3DirectLiftcombo;
+        d.bt3DirectMashLauncher = bt3DirectMashLauncher;
+        d.auraStyle = auraStyle;
+        d.auraSizeDmz = auraSize;
+        d.auraLayers = auraLayers;
+        d.auraWithDmzAura = auraFollowDmz;
+        d.auraBrightness = auraBrightness;
+        d.auraInnerBrightness = auraInnerBrightness;
+        d.auraVariant = auraVariant;
+        d.auraLiveScale = auraLiveScale;
+        d.auraOverParticles = auraOverParticles;
+        d.auraFirstPerson = auraFirstPerson;
+        d.auraMaxHeight = auraMaxHeight;
+        d.padRewrite = padRewrite;
+        d.padRadialExtras = padRadialExtras.isEmpty() ? null : java.util.List.copyOf(padRadialExtras);
         d.padMode = padMode.name();
         d.bt3BackstepClient = bt3BackstepClient;
         d.bt3ChargeAttackClient = bt3ChargeAttackClient;
@@ -396,6 +526,7 @@ public final class XenoClientConfig {
         d.bt3GuardHoldTicks = bt3GuardHoldTicks;
         d.hudCompactNumbers = hudCompactNumbers;
         d.hudBarNumbers = hudBarNumbers;
+        d.hudReducedMotion = hudReducedMotion;
         d.beamSurgeClient = beamSurgeClient;
         d.beamSurgeDebug = beamSurgeDebug;
         d.speedLinesEnabled = speedLinesEnabled;
@@ -450,6 +581,9 @@ public final class XenoClientConfig {
         contentScreensEnabled = d.contentScreensEnabled;
         joinServerButton = d.joinServerButton;
         hudEditEnabled = d.hudEditEnabled;
+        dialogueBubbles = d.dialogueBubbles;
+        dialogueCrosshair = d.dialogueCrosshair;
+        dmzStudioChromeAtlas = d.dmzStudioChromeAtlas;
         senzuCooldownMessages = d.senzuCooldownMessages;
         partyHudEnabled = d.partyHudEnabled;
         cooldownHudEnabled = d.cooldownHudEnabled;
@@ -471,6 +605,35 @@ public final class XenoClientConfig {
         bt3DirectSonicSwayLeft = d.bt3DirectSonicSwayLeft == null || d.bt3DirectSonicSwayLeft;
         bt3DirectSonicSwayRight = d.bt3DirectSonicSwayRight == null || d.bt3DirectSonicSwayRight;
         bt3DirectSparking = d.bt3DirectSparking == null || d.bt3DirectSparking;
+        bt3DirectRushcombo = d.bt3DirectRushcombo == null || d.bt3DirectRushcombo;
+        bt3DirectLiftcombo = d.bt3DirectLiftcombo == null || d.bt3DirectLiftcombo;
+        bt3DirectMashLauncher = d.bt3DirectMashLauncher != null && d.bt3DirectMashLauncher;
+        auraStyle = net.bullettrain.xenopixelsmod.fx.aura.AuraStyle.parse(d.auraStyle).id();
+        auraLayers = d.auraLayers == null || d.auraLayers;
+        auraVariant = net.bullettrain.xenopixelsmod.fx.aura.HdAuraPlan.parseVariant(d.auraVariant);
+        auraLiveScale = d.auraLiveScale == null || d.auraLiveScale;
+        auraOverParticles = d.auraOverParticles == null || d.auraOverParticles;
+        auraFirstPerson = d.auraFirstPerson == null || d.auraFirstPerson;
+        auraMaxHeight = d.auraMaxHeight == null || !Float.isFinite(d.auraMaxHeight) ? 10.0f
+                : Math.max(1.0f, Math.min(10.0f, d.auraMaxHeight));
+        auraInnerBrightness = d.auraInnerBrightness == null || !Float.isFinite(d.auraInnerBrightness) ? 0.7f
+                : Math.max(0.4f, Math.min(1.0f, d.auraInnerBrightness));
+        auraFollowDmz = d.auraWithDmzAura == null || d.auraWithDmzAura;
+        auraBrightness = d.auraBrightness == null || !Float.isFinite(d.auraBrightness) ? 1.0f
+                : Math.max(0.0f, Math.min(1.3f, d.auraBrightness));
+        // Stored as auraSizeDmz since 2026-10-02: 1 now means DragonMineZ's own aura size, and a
+        // size saved under either earlier key (auraSize, auraScale) was set against a wrong scale.
+        auraSize = d.auraSizeDmz == null || !Float.isFinite(d.auraSizeDmz) ? 1.0f
+                : Math.max(0.2f, Math.min(5f, d.auraSizeDmz));
+        padRewrite = d.padRewrite == null || d.padRewrite;
+        // Absent means never configured, which takes the defaults. Bounded on read as well as on
+        // write: this is a hand-editable JSON file, and a list of a thousand ids would otherwise
+        // become a thousand radial slots nobody asked for.
+        padRadialExtras = d.padRadialExtras == null ? java.util.List.of()
+                : java.util.List.copyOf(d.padRadialExtras.stream()
+                        .filter(java.util.Objects::nonNull)
+                        .limit(net.bullettrain.xenopixelsmod.client.pad2.PadRadialSlots.MAX_SLOTS)
+                        .toList());
         padMode = PadMode.parse(d.padMode);
         bt3BackstepClient = d.bt3BackstepClient;
         bt3ChargeAttackClient = d.bt3ChargeAttackClient;
@@ -496,13 +659,14 @@ public final class XenoClientConfig {
         bt3GuardHoldTicks = Math.max(0, d.bt3GuardHoldTicks);
         hudCompactNumbers = d.hudCompactNumbers;
         hudBarNumbers = d.hudBarNumbers;
+        hudReducedMotion = d.hudReducedMotion;
         beamSurgeClient = d.beamSurgeClient;
         beamSurgeDebug = d.beamSurgeDebug;
         speedLinesEnabled = d.speedLinesEnabled;
         sparkingEnabled = d.sparkingEnabled == null || d.sparkingEnabled;
         sparkingTintEnabled = d.sparkingTintEnabled;
         techniqueHotbarHideInChat = d.techniqueHotbarHideInChat;
-        sableContraptionCullClient = d.sableContraptionCullClient == null || d.sableContraptionCullClient;
+        sableContraptionCullClient = d.sableContraptionCullClient != null && d.sableContraptionCullClient;
         flightHudEnabled = d.flightHudEnabled == null || d.flightHudEnabled;
         flightMouseAim = d.flightMouseAim != null && d.flightMouseAim;
         flightInvertPitch = d.flightInvertPitch != null && d.flightInvertPitch;
@@ -566,6 +730,9 @@ public final class XenoClientConfig {
         public boolean contentScreensEnabled = true;
         public boolean joinServerButton = true;
         public boolean hudEditEnabled = true;
+        public boolean dialogueBubbles = true;
+        public boolean dialogueCrosshair = true;
+        public boolean dmzStudioChromeAtlas = false;
         public boolean senzuCooldownMessages = true;
         public boolean partyHudEnabled = true;
         public boolean cooldownHudEnabled = true;
@@ -587,6 +754,22 @@ public final class XenoClientConfig {
         public Boolean bt3DirectSonicSwayLeft;
         public Boolean bt3DirectSonicSwayRight;
         public Boolean bt3DirectSparking;
+        public Boolean bt3DirectRushcombo;
+        public Boolean bt3DirectLiftcombo;
+        public Boolean bt3DirectMashLauncher;
+        public String auraStyle;
+        public Float auraSizeDmz;
+        public Boolean auraLayers;
+        public Boolean auraWithDmzAura;
+        public Float auraBrightness;
+        public Float auraInnerBrightness;
+        public String auraVariant;
+        public Boolean auraLiveScale;
+        public Boolean auraOverParticles;
+        public Boolean auraFirstPerson;
+        public Float auraMaxHeight;
+        public Boolean padRewrite;
+        public java.util.List<String> padRadialExtras;
         public String padMode;
         public boolean bt3BackstepClient = true;
         public boolean bt3ChargeAttackClient = true;
@@ -612,6 +795,7 @@ public final class XenoClientConfig {
         public int bt3GuardHoldTicks = 5;
         public boolean hudCompactNumbers = false;
         public boolean hudBarNumbers = true;
+        public boolean hudReducedMotion = false;
         public boolean beamSurgeClient = true;
         public boolean beamSurgeDebug = false;
         public boolean speedLinesEnabled = true;

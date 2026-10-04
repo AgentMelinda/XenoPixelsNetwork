@@ -84,6 +84,16 @@ public final class ShipBallisticController {
     // --- flight program (game write / phys read) ---
     private volatile boolean flying;
     private volatile MissilePhase phase = MissilePhase.DEAD;
+    /**
+     * Guidance V3 for this flight, or null for V1. Taken from {@code /xenoguidance system} at
+     * launch, so switching the version never changes a missile already in the air.
+     */
+    private volatile ShipV3Driver v3;
+    /** Launch inputs kept so the planner's mode and arc can re-plan V3 right after launch. */
+    private Vec3 v3Launch;
+    private Vec3 v3RailAxis;
+    private double v3UserApexY;
+    private double v3UserCruiseY;
     private volatile double targetX, targetY, targetZ;
     private volatile double launchX, launchY, launchZ;
     private volatile double loftX = 0, loftY = 1, loftZ = 0;
@@ -382,7 +392,7 @@ public final class ShipBallisticController {
         bodyNoseX = nx; bodyNoseY = ny; bodyNoseZ = nz;
 
         // Choose a deterministic model-space roll-up axis perpendicular to the nose.
-        double ux = Math.abs(ny) < 0.9 ? 0.0 : 0.0;
+        double ux = 0.0;
         double uy = Math.abs(ny) < 0.9 ? 1.0 : 0.0;
         double uz = Math.abs(ny) < 0.9 ? 0.0 : 1.0;
         double projection = ux * nx + uy * ny + uz * nz;
@@ -558,6 +568,15 @@ public final class ShipBallisticController {
         ACTIVE_FLIGHTS.add(shipId);
         this.activeShipId = shipId;
 
+        this.v3Launch = launch;
+        this.v3RailAxis = ejectDir;
+        this.v3UserApexY = userLoftY ? apexY : 0.0;
+        this.v3UserCruiseY = userCruiseY ? cruiseY : 0.0;
+        this.v3 = net.bullettrain.xenopixelsmod.aero.GuidanceVersion.active().usesV3Missiles()
+                ? planV3(net.bullettrain.xenopixelsmod.missile.v3.GuidanceV3.Arc.AUTO) : null;
+        if (v3 != null) {
+            status = "V3 RAIL" + (v3.params().reachable() ? "" : " (engine weaker than gravity)");
+        }
         XenoPixelsMod.LOGGER.info(
                 "Ship {} ballistic → tgt=({},{},{}) loftY={} cruiseY={} apexXZ=({},{}) range={}",
                 shipId, (int) targetX, (int) targetY, (int) targetZ,
@@ -566,10 +585,39 @@ public final class ShipBallisticController {
         return true;
     }
 
+    /** V3 plan for this launch; the loft/cruise the operator typed and the ceiling still apply. */
+    private ShipV3Driver planV3(net.bullettrain.xenopixelsmod.missile.v3.GuidanceV3.Arc arc) {
+        net.bullettrain.xenopixelsmod.missile.v3.GuidanceV3.Mode mode = advancedMode == BallisticFlightPlan.FlightMode.PURE_BALLISTIC
+                ? net.bullettrain.xenopixelsmod.missile.v3.GuidanceV3.Mode.BALLISTIC : net.bullettrain.xenopixelsmod.missile.v3.GuidanceV3.Mode.GUIDED;
+        Vec3 target = new Vec3(targetX, targetY, targetZ);
+        ShipV3Driver driver = ShipV3Driver.plan(v3Launch, target, boostAccel, thrusterBonus, boostTicksLeft,
+                gravitySi, dragCoefficient, mode, arc, v3UserApexY, v3UserCruiseY, terminalEnabled, v3RailAxis);
+        double ceiling = XenoServerConfig.missileMaxApexY;
+        if (ceiling > 0.0 && driver.params().apexY() > ceiling) {
+            // Same altitude ceiling as V1 (Northstar moves hulls above it into space).
+            driver = ShipV3Driver.plan(v3Launch, target, boostAccel, thrusterBonus, boostTicksLeft, gravitySi,
+                    dragCoefficient, mode, arc, ceiling, Math.min(v3UserCruiseY, ceiling), terminalEnabled,
+                    v3RailAxis);
+        }
+        return driver;
+    }
+
+    /** Re-plans V3 with the planner's mode and arc; only while still on the rail. */
+    private void replanV3(BallisticFlightPlan.ArcPreference arc) {
+        if (v3 == null || v3Launch == null || phase != MissilePhase.EJECT) return;
+        net.bullettrain.xenopixelsmod.missile.v3.GuidanceV3.Arc v3Arc = switch (arc == null ? BallisticFlightPlan.ArcPreference.AUTO : arc) {
+            case HIGH -> net.bullettrain.xenopixelsmod.missile.v3.GuidanceV3.Arc.HIGH;
+            case LOW -> net.bullettrain.xenopixelsmod.missile.v3.GuidanceV3.Arc.LOW;
+            case AUTO -> net.bullettrain.xenopixelsmod.missile.v3.GuidanceV3.Arc.AUTO;
+        };
+        v3 = planV3(v3Arc);
+    }
+
     public void setAdvancedPlan(BallisticFlightPlan.FlightMode mode,
                                 List<Vec3> waypoints, boolean autoEnabled) {
         this.advancedMode = mode == null
                 ? BallisticFlightPlan.FlightMode.GUIDED_BOOST_GLIDE : mode;
+        replanV3(BallisticFlightPlan.ArcPreference.AUTO);
         this.routeWaypoints = waypoints == null ? List.of() : List.copyOf(waypoints);
         this.routeWaypointIndex = 0;
         this.advancedAuto = autoEnabled;
@@ -579,6 +627,7 @@ public final class ShipBallisticController {
     public void setAdvancedPlan(BallisticFlightPlan.Result plan) {
         if (plan == null) return;
         setAdvancedPlan(plan.settings().mode(), plan.controllerWaypoints(), plan.settings().autoEnabled());
+        replanV3(plan.settings().arc());
         if (!userLoftY) {
             apexY = Math.max(launchY + 16.0, plan.apexY());
         }
@@ -663,10 +712,12 @@ public final class ShipBallisticController {
                         hullArrivalRadius = Math.max(HIT_RANGE,
                                 Math.min(96.0, Math.sqrt(3.0 * maxMoment / shipMass) + 2.0));
                     }
-                } catch (Throwable ignored) {
+                } catch (RuntimeException exception) {
+                    XenoPixelsMod.LOGGER.debug("Could not inspect Sable inertia tensor", exception);
                 }
             }
-        } catch (Throwable ignored) {
+        } catch (RuntimeException exception) {
+            XenoPixelsMod.LOGGER.debug("Could not refresh Sable ship mass properties", exception);
         }
     }
 
@@ -737,6 +788,10 @@ public final class ShipBallisticController {
         }
         previousX = pos.x(); previousY = pos.y(); previousZ = pos.z();
         hasPreviousPosition = true;
+        if (v3 != null) {
+            v3Tick(ship, pos, vel);
+            return;
+        }
         double groundFrac = groundTrackFraction(pos.x(), pos.z());
         double horizErr = horizontalError(pos.x(), pos.z());
         double apexHoriz = Math.sqrt(
@@ -1040,6 +1095,32 @@ public final class ShipBallisticController {
         solvedLoftX = loftX;
         solvedLoftY = loftY;
         solvedLoftZ = loftZ;
+    }
+
+    /** Guidance V3: one command per game tick from {@link ShipV3Driver}; V1's phase logic is skipped. */
+    private void v3Tick(ServerSubLevel ship, Vector3dc pos, Vector3dc vel) {
+        boolean onGround = false;
+        try {
+            double probe = Math.max(1.0, hullArrivalRadius * 0.5);
+            var state = ship.getLevel().getBlockState(BlockPos.containing(pos.x(), pos.y() - probe, pos.z()));
+            onGround = !state.isAir() && state.blocksMotion();
+        } catch (Throwable ignored) {
+        }
+        ShipV3Driver.Output out = v3.tick(new Vec3(pos.x(), pos.y(), pos.z()),
+                vel == null ? Vec3.ZERO : new Vec3(vel.x(), vel.y(), vel.z()),
+                new Vec3(targetX, targetY, targetZ), Vec3.ZERO, onGround);
+        status = out.status();
+        if (out.impact()) {
+            impactRequested = true;
+            return;
+        }
+        if (out.phase() != phase) {
+            phase = out.phase();
+            phaseAge = 0;
+        }
+        Vec3 a = out.accelSi();
+        publishThrust(a.x, a.y, a.z, a.length());
+        setAttitude(out.nose().x, out.nose().y, out.nose().z);
     }
 
     private void publishThrust(double x, double y, double z, double accelSi) {
@@ -1437,7 +1518,8 @@ public final class ShipBallisticController {
         }
 
         long heartbeatAge = physicsNow - lastGuidanceNanos;
-        if (heartbeatAge > GUIDANCE_STALE_NANOS) {
+        ShipV3Driver v3Flight = v3;
+        if (heartbeatAge > GUIDANCE_STALE_NANOS && !(v3Flight != null && v3Flight.holdThroughStall())) {
             status = "guidance hold (server lag)";
             applyLagBrake(handle, subLevel, mass, vel, false);
             return;
@@ -1467,8 +1549,11 @@ public final class ShipBallisticController {
         // so the selected calculator gravity is also the live flight gravity.
         scratchForce.y += mass * (VS_WORLD_GRAVITY_SI - gravitySi);
 
-        // Phase-light altitude / gravity assist (no Vec3, no aim recompute)
-        if (phase == MissilePhase.EJECT || phase == MissilePhase.BOOST) {
+        // Phase-light altitude / gravity assist (no Vec3, no aim recompute). V1 only: V3 commands
+        // exactly the acceleration it wants, so extra pushes would put it off its solution.
+        if (v3Flight != null) {
+            // V3: nothing added.
+        } else if (phase == MissilePhase.EJECT || phase == MissilePhase.BOOST) {
             // Full counter-G + climb assist so heavy ships still go UP, not crawl sideways
             scratchForce.y += mass * gravitySi * (phase == MissilePhase.EJECT ? 0.15 : 0.05);
             if (yErr > 2.0) {

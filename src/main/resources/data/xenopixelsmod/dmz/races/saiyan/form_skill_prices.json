@@ -20,13 +20,21 @@
       240000,
       260000,
       320000,
-      300000
+      300000,
+      340000,
+      340000
     ]
   },
   "xenopixels_saga_forms": {
     "buyFromMaster": true,
     "prices": [
       95000
+    ]
+  },
+  "xenopixels_destroyer": {
+    "buyFromMaster": false,
+    "prices": [
+      500000
     ]
   }
 }

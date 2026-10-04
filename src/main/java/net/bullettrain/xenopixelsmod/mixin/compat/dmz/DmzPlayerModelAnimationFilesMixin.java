@@ -9,18 +9,18 @@ import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
+import software.bernie.geckolib.cache.GeckoLibCache;
 
 import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
- * Adds this mod's animation file to the set GeckoLib searches for a DragonMineZ player animation.
+ * Adds this mod's animation file to the set GeckoLib searches for a DragonMineZ player animation,
+ * but only when GeckoLib has already baked that file.
  *
- * <p>GeckoLib 4.9.2 {@code GeoModel.getAnimation} calls
- * {@code getAnimationResourceFallbacks(GeoAnimatable)} — that is the synthetic bridge on
- * {@code DMZPlayerModel}. An earlier inject targeted only the {@code AbstractClientPlayer}
- * erasure; if that inject did not apply, every {@code combat.xeno_*} name resolved in
- * {@code CombatAnimationResolver} but GeckoLib never searched our file, so the attack controller
- * replayed the last successful punch. Both descriptors are hooked so either call path appends.
+ * <p>GeckoLib 4.9.2 {@code GeoModel.getAnimation} throws if the last fallback is missing from
+ * {@code GeckoLibCache}. {@code combat.xeno_*} clips are resolved at HEAD in
+ * {@link DmzGeoModelBt3AnimationMixin} instead, so an unbaked {@code bt3_combat.animation.json}
+ * must never be advertised here. Both descriptors are hooked so either call path stays in sync.
  */
 @Mixin(value = DMZPlayerModel.class, remap = false)
 public abstract class DmzPlayerModelAnimationFilesMixin {
@@ -36,11 +36,30 @@ public abstract class DmzPlayerModelAnimationFilesMixin {
             at = @At("RETURN"),
             cancellable = true)
     private void xeno$appendBt3AnimationFile(CallbackInfoReturnable<ResourceLocation[]> cir) {
-        ResourceLocation[] extended = Bt3AnimationBinding.withAnimationFile(cir.getReturnValue());
-        cir.setReturnValue(extended);
+        boolean baked = xeno$bt3FileBaked();
+        ResourceLocation[] current = cir.getReturnValue();
+        ResourceLocation[] extended = Bt3AnimationBinding.withAnimationFileIfBaked(current, baked);
+        if (extended != current) {
+            cir.setReturnValue(extended);
+        }
         if (xeno$logged.compareAndSet(false, true)) {
-            XenoPixelsMod.LOGGER.info("DMZ player model will also search {} ({} fallback files)",
-                    Bt3AnimationBinding.DMZ_ANIMATION_FILE, extended.length);
+            if (baked) {
+                XenoPixelsMod.LOGGER.info("DMZ player model will also search {} ({} fallback files)",
+                        Bt3AnimationBinding.DMZ_ANIMATION_FILE, extended.length);
+            } else {
+                XenoPixelsMod.LOGGER.info(
+                        "Skipping unbaked {} as a GeckoLib fallback; combat.xeno_* uses GeoModel HEAD lookup",
+                        Bt3AnimationBinding.DMZ_ANIMATION_FILE);
+            }
+        }
+    }
+
+    @Unique
+    private static boolean xeno$bt3FileBaked() {
+        try {
+            return GeckoLibCache.getBakedAnimations().get(Bt3AnimationBinding.DMZ_ANIMATION_FILE) != null;
+        } catch (Throwable ignored) {
+            return false;
         }
     }
 }

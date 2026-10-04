@@ -1,0 +1,9 @@
+{
+  "parent": "minecraft:block/orientable",
+  "textures": {
+    "particle": "xenopixelsmod:block/missile_chunk_loader_side_fork",
+    "top": "xenopixelsmod:block/missile_chunk_loader_top_fork",
+    "front": "xenopixelsmod:block/missile_chunk_loader_front_fork",
+    "side": "xenopixelsmod:block/missile_chunk_loader_side_fork"
+  }
+}

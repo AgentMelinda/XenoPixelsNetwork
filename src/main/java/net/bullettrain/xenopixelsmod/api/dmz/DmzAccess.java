@@ -1,5 +1,7 @@
 package net.bullettrain.xenopixelsmod.api.dmz;
 
+import com.dragonminez.common.init.entities.IBattlePower;
+import com.dragonminez.common.init.entities.MobBattlePowerHelper;
 import com.dragonminez.common.stats.StatsCapability;
 import com.dragonminez.common.stats.StatsData;
 import com.dragonminez.common.stats.StatsProvider;
@@ -80,6 +82,53 @@ public final class DmzAccess {
 	/** The player's battle power, or {@code 0} when unavailable. */
 	public static float battlePower(Entity entity) {
 		return stats(entity).map(StatsData::getBattlePower).orElse(0f);
+	}
+
+	/** One place a power level can come from; may throw when that source is not ready. */
+	@FunctionalInterface
+	public interface PowerSource {
+		double get() throws Exception;
+	}
+
+	/**
+	 * The DragonMineZ power level ki sense and the scouter show, for any entity - player, NPC or
+	 * mob (2026-09-29). {@link #battlePower} reads only a player's stats and is 0 for everything
+	 * else; this is the one to compare fighters by.
+	 *
+	 * <p>DMZ's {@code LivingEntityMixin} makes every {@code LivingEntity} an {@link IBattlePower};
+	 * that cached figure is what ki sense displays, and a Xeno NPC overrides it with its real one.
+	 */
+	public static double powerLevel(Entity entity) {
+		if (!(entity instanceof net.minecraft.world.entity.LivingEntity living)) return 0.0;
+		return pick(living instanceof net.minecraft.world.entity.player.Player,
+				() -> battlePower(living),
+				() -> ((IBattlePower) (Object) living).getBattlePower(),
+				() -> {
+					StatsData npc = net.bullettrain.xenopixelsmod.compat.npc.NpcDmzStats.stats(living);
+					return npc == null ? 0.0 : npc.getBattlePower();
+				},
+				() -> MobBattlePowerHelper.calculate(living));
+	}
+
+	/**
+	 * The first power level above zero: a player's own stats, then the value DMZ caches on every
+	 * living entity (what ki sense shows), then an NPC's Xeno DMZ stats, then DMZ's own mob
+	 * formula. A source that throws is skipped. Non-players never read the player capability.
+	 */
+	static double pick(boolean player, PowerSource playerStats, PowerSource cached,
+					   PowerSource npcStats, PowerSource mobFormula) {
+		PowerSource[] order = player
+				? new PowerSource[]{playerStats, cached}
+				: new PowerSource[]{cached, npcStats, mobFormula};
+		for (PowerSource source : order) {
+			try {
+				double v = source.get();
+				if (Double.isFinite(v) && v > 0.0) return v;
+			} catch (Throwable ignored) {
+				// Not ready or not present: the next source answers.
+			}
+		}
+		return 0.0;
 	}
 
 	/** Whether a DragonMineZ skill is currently switched on, for example {@code fly}. */

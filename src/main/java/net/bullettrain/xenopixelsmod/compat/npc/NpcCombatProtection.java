@@ -36,12 +36,20 @@ public final class NpcCombatProtection {
 
     @SubscribeEvent(priority = EventPriority.HIGHEST)
     public static void onKnockback(LivingKnockBackEvent event) {
-        if (!isKnockable(event.getEntity())) event.setCanceled(true);
+        if (!isKnockable(event.getEntity())) {
+            event.setCanceled(true);
+            return;
+        }
+        NpcCombatProfile profile = profile(event.getEntity());
+        if (profile != null && profile.npcKnockbackResistance > 0) {
+            event.setStrength(event.getStrength()
+                    * (1.0f - NpcCombatProfile.clampNpcResistance(
+                    profile.npcKnockbackResistance) / 100.0f));
+        }
     }
 
     private static NpcCombatProfile profile(Entity entity) {
-        if (!(entity instanceof LivingEntity) || !NpcTypes.isNpc(entity)
-                || !NpcCombatProfile.hasProfile(entity)) return null;
+        if (!(entity instanceof LivingEntity) || !NpcCombatProfile.hasProfile(entity)) return null;
         return NpcCombatProfile.readCached(entity);
     }
 }

@@ -6,6 +6,7 @@ import net.bullettrain.xenopixelsmod.missile.ModEntities;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.InteractionResult;
+import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.BaseEntityBlock;
@@ -96,7 +97,7 @@ public class PilotSeatBlock extends BaseEntityBlock {
 
         XenoPilotSeatEntity seat = seatAt(level, pos);
         if (seat == null) {
-            seat = ModEntities.PILOT_SEAT.get().create(level);
+            seat = seatType().create(level);
             if (seat == null) return InteractionResult.FAIL;
             seat.setPos(pos.getX() + 0.5, pos.getY() + 0.35, pos.getZ() + 0.5);
             seat.setYRot(state.getValue(FACING).toYRot());
@@ -112,6 +113,10 @@ public class PilotSeatBlock extends BaseEntityBlock {
 
         if (!player.startRiding(seat)) return InteractionResult.FAIL;
         return InteractionResult.CONSUME;
+    }
+
+    protected EntityType<XenoPilotSeatEntity> seatType() {
+        return ModEntities.PILOT_SEAT.get();
     }
 
     /** The seat entity already serving this block, if one is still alive. */

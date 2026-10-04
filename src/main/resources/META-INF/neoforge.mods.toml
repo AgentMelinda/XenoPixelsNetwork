@@ -54,6 +54,14 @@ versionRange="[2.1.3,)"
 ordering="NONE"
 side="BOTH"
 
+# Effekseer effects (Hakai, missiles, DMZ punches) - docs/effekseer-fx.md
+[[dependencies.${mod_id}]]
+modId="aaa_particles"
+type="required"
+versionRange="[2.3.1,)"
+ordering="NONE"
+side="BOTH"
+
 [[dependencies.${mod_id}]]
 modId="sable"
 type="required"
@@ -68,6 +76,13 @@ versionRange="[1.6.0,)"
 ordering="AFTER"
 side="BOTH"
 
+# Create — the elevator ComputerCraft methods (see compat/create/elevator). Create is compiled
+# against but never required: with it absent the peripheral is simply not registered, and the
+# Create wrench support elsewhere works off registry names and needs no dependency at all.
+#
+# Same wide-range rule as YAWP below: an installed "optional" must still satisfy the range, so
+# "[6.0,)" covers the whole Create 6 line rather than turning a version bump into a boot
+# failure. The elevator API this uses has been stable across 6.0.x on both 1.20.1 and 1.21.1.
 [[dependencies.${mod_id}]]
 modId="create"
 type="optional"
@@ -81,6 +96,14 @@ type="optional"
 versionRange="[1.120,)"
 ordering="AFTER"
 side="BOTH"
+
+# MMO Econ is optional, but shop signs and plot settlement use it when present.
+[[dependencies.${mod_id}]]
+modId="mmoecon"
+type="optional"
+versionRange="[1.1.0,)"
+ordering="NONE"
+side="SERVER"
 
 [[dependencies.${mod_id}]]
 modId="xaeroworldmap"
@@ -142,20 +165,6 @@ side="BOTH"
 modId="yawp"
 type="optional"
 versionRange="[0.6,)"
-ordering="AFTER"
-side="BOTH"
-
-# Create — the elevator ComputerCraft methods (see compat/create/elevator). Create is compiled
-# against but never required: with it absent the peripheral is simply not registered, and the
-# Create wrench support elsewhere works off registry names and needs no dependency at all.
-#
-# Same wide-range rule as YAWP above: an installed "optional" must still satisfy the range, so
-# "[6.0,)" covers the whole Create 6 line rather than turning a version bump into a boot
-# failure. The elevator API this uses has been stable across 6.0.x on both 1.20.1 and 1.21.1.
-[[dependencies.${mod_id}]]
-modId="create"
-type="optional"
-versionRange="[6.0,)"
 ordering="AFTER"
 side="BOTH"
 

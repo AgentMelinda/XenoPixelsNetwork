@@ -1,6 +1,7 @@
 {
   "replace": false,
   "values": [
-    "xenopixelsmod:pilot_seat"
+    "xenopixelsmod:pilot_seat",
+    "xenopixelsmod:pilot_seat_fork"
   ]
 }

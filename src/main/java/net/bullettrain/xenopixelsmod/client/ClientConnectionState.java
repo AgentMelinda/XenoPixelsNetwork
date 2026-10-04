@@ -62,5 +62,16 @@ public final class ClientConnectionState {
         NpcHairVis.clearCache();
         DmzLockOnClient.clear();
         DmzClientStats.clear();
+        // Server-owned content the client only mirrors. Both were being carried from one world
+        // into the next: quitting to the menu and opening a different save left the previous
+        // world's factions and store entries listed in the editor, which is worse than an empty
+        // screen because they look real until something is opened.
+        net.bullettrain.xenopixelsmod.client.npc.faction.ClientFactions.accept(java.util.List.of());
+        net.bullettrain.xenopixelsmod.client.npc.store.ClientNpcStoreIndex.clear();
+        // Same mirror, same leak, added with the spawn rules' own cache: banks was never cleared
+        // here, so one world's bank list survived into the next editor session.
+        net.bullettrain.xenopixelsmod.client.npc.bank.ClientBanks.accept(java.util.List.of());
+        net.bullettrain.xenopixelsmod.client.npc.spawn.ClientNaturalSpawns.clear();
+        net.bullettrain.xenopixelsmod.features.tournament.TournamentNetwork.clearClientSnapshot();
     }
 }

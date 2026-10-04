@@ -136,6 +136,7 @@ public final class Bt3CombatEvents {
     public static void clearAfterimages(UUID ownerId) {
         if (ownerId == null) return;
         ZANZOKEN_IMAGES_UNTIL.remove(ownerId);
+        ZanzokenConfusion.clearFooledBy(ownerId);
     }
 
     /** Whether this player currently has afterimages standing in for them. */
@@ -177,6 +178,21 @@ public final class Bt3CombatEvents {
         ZANZOKEN_READY_TICK.clear();
         ZANZOKEN_IMAGES_UNTIL.clear();
         FALL_GRACE_UNTIL.clear();
+    }
+
+    /**
+     * Ends every live window for one player (guard hold, counter read, guard stun, Zanzoken read
+     * and afterimages). The Zanzoken cooldown is deliberately kept: a controller switch is not a
+     * way to refresh it.
+     */
+    public static void clearLiveState(ServerPlayer player) {
+        if (player == null) return;
+        UUID id = player.getUUID();
+        GUARDING.remove(id);
+        COUNTER_UNTIL_TICK.remove(id);
+        GUARD_STUN_UNTIL.remove(id);
+        ZANZOKEN_UNTIL_TICK.remove(id);
+        clearAfterimages(id);
     }
 
     /** A rejoin inside one server's life starts clean too. */
@@ -290,7 +306,7 @@ public final class Bt3CombatEvents {
         // defender never sees, which is why blocking read as doing nothing.
         if (defender.level() instanceof net.minecraft.server.level.ServerLevel sl
                 && event.getSource().getEntity() instanceof LivingEntity attacker) {
-            net.bullettrain.xenopixelsmod.combat.fx.CombatFx.impact(sl, defender,
+            net.bullettrain.xenopixelsmod.combat.fx.CombatFx.impact(sl, attacker, defender,
                     defender.position().subtract(attacker.position()),
                     net.bullettrain.xenopixelsmod.combat.fx.CombatFx.Weight.GUARD);
         }

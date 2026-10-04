@@ -60,6 +60,8 @@ class Bt3DirectBindTest {
 
     @Test
     void byIdIgnoresCaseAndRejectsJunk() {
+        assertSame(Bt3DirectBind.RUSHCOMBO, Bt3DirectBind.byId("rushcombo"));
+        assertSame(Bt3DirectBind.LIFTCOMBO, Bt3DirectBind.byId("liftcombo"));
         assertSame(Bt3DirectBind.HAKAI, Bt3DirectBind.byId("HAKAI"));
         assertSame(Bt3DirectBind.HAKAI, Bt3DirectBind.byId("Hakai"));
         assertNull(Bt3DirectBind.byId("not_a_route"));

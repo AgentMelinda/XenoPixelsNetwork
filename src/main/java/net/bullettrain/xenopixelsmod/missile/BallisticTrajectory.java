@@ -449,7 +449,7 @@ public final class BallisticTrajectory {
                 (int) Math.ceil(time), reachedApex, miss < 64.0, miss);
     }
 
-    private static double groundFrac(double lx, double lz, double tx, double tz, double x, double z) {
+    static double groundFrac(double lx, double lz, double tx, double tz, double x, double z) {
         double dx = tx - lx;
         double dz = tz - lz;
         double r2 = dx * dx + dz * dz;

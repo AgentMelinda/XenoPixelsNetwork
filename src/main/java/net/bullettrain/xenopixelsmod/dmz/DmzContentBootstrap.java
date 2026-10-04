@@ -77,8 +77,13 @@ public final class DmzContentBootstrap {
             "xenopixels_fan_ss",
             "xenopixels_divinity",
             "xenopixels_saga_forms",
-            "xenopixels_dark_frieza"
+            "xenopixels_dark_frieza",
+            // Hakaishin, every race (2026-09-29). "destroyer", not "god": see above.
+            "xenopixels_destroyer"
     };
+
+    /** Stack skills this mod adds; taught by the same two masters as the form skills. */
+    private static final String[] XENO_STACK_SKILLS = {"xenopixels_ikari"};
 
     /** Broken / obsolete formType skill ids from earlier patches (never remove vanilla formTypes). */
     private static final String[] LEGACY_FORM_SKILLS = {
@@ -96,8 +101,43 @@ public final class DmzContentBootstrap {
             "races/saiyan/forms/xenopixels_fan_ss.json",
             "races/saiyan/forms/xenopixels_gods_forms.json",
             "races/saiyan/forms/xenopixels_saga_forms.json",
-            "races/frostdemon/forms/xenopixels_dark_frieza.json"
+            // The Ikari stack (2026-10-02): a stack group lives beside kaioken.json, not under a race.
+            "forms/xenopixels_ikari.json",
+            "races/frostdemon/forms/xenopixels_dark_frieza.json",
+            "races/saiyan/forms/xenopixels_hakaishin.json",
+            "races/human/forms/xenopixels_hakaishin.json",
+            "races/namekian/forms/xenopixels_hakaishin.json",
+            "races/frostdemon/forms/xenopixels_hakaishin.json",
+            "races/majin/forms/xenopixels_hakaishin.json",
+            "races/bioandroid/forms/xenopixels_hakaishin.json"
     };
+
+    /** Races whose character.json gets the Xeno form skill prices (Hakaishin is sold to all). */
+    private static final String[] PRICED_RACES = {
+            "saiyan", "human", "namekian", "frostdemon", "majin", "bioandroid"
+    };
+
+    /**
+     * Xeno form skills no master teaches (2026-09-29: Hakaishin is given only with /dmzform). The
+     * "never leave buyFromMaster false" repair below skips these.
+     */
+    private static final String[] NOT_FOR_SALE = {"xenopixels_destroyer"};
+
+    static java.util.List<String> notForSale() {
+        return java.util.List.of(NOT_FOR_SALE);
+    }
+
+    static java.util.List<String> bundledForms() {
+        return java.util.List.of(BUNDLED_FORMS);
+    }
+
+    static java.util.List<String> pricedRaces() {
+        return java.util.List.of(PRICED_RACES);
+    }
+
+    static java.util.List<String> xenoFormSkills() {
+        return java.util.List.of(XENO_FORM_SKILLS);
+    }
 
     /** Old form JSON filenames to delete from config so DMZ does not keep loading them. */
     private static final String[] OBSOLETE_FORM_FILES = {
@@ -144,10 +184,10 @@ public final class DmzContentBootstrap {
                 XenoPixelsMod.LOGGER.warn("Could not remove obsolete form file {}", obsolete, e);
             }
         }
-        patchRaceFormPrices(root.resolve("races/saiyan/character.json"),
-                "/data/xenopixelsmod/dmz/races/saiyan/form_skill_prices.json");
-        patchRaceFormPrices(root.resolve("races/frostdemon/character.json"),
-                "/data/xenopixelsmod/dmz/races/frostdemon/form_skill_prices.json");
+        for (String race : PRICED_RACES) {
+            patchRaceFormPrices(root.resolve("races/" + race + "/character.json"),
+                    "/data/xenopixelsmod/dmz/races/" + race + "/form_skill_prices.json");
+        }
         patchSkillsConfig(root.resolve("skills.json"));
 
         if (reloadDmz) {
@@ -214,6 +254,8 @@ public final class DmzContentBootstrap {
     private static void reloadDmzConfigs() {
         try {
             ConfigManager.reload();
+            net.bullettrain.xenopixelsmod.combat.technique.XenoRushTechniques.register();
+            net.bullettrain.xenopixelsmod.combat.technique.XenoComboStrikes.register();
             XenoPixelsMod.LOGGER.info(
                     "Reloaded DMZ configs after XenoPixels form install (fan skill={}, others use vanilla formTypes)",
                     String.join(", ", XENO_FORM_SKILLS));
@@ -273,7 +315,8 @@ public final class DmzContentBootstrap {
             // Never leave buyFromMaster false for our skills
             for (String skill : XENO_FORM_SKILLS) {
                 if (costs.has(skill) && costs.get(skill).isJsonObject()) {
-                    costs.getAsJsonObject(skill).addProperty("buyFromMaster", true);
+                    costs.getAsJsonObject(skill).addProperty("buyFromMaster",
+                            !java.util.List.of(NOT_FOR_SALE).contains(skill));
                 }
             }
             character.add("formSkillsCosts", costs);
@@ -334,6 +377,27 @@ public final class DmzContentBootstrap {
                 }
             }
             skills.add("formSkills", formSkills);
+
+            // Stack skills (the Ikari stack): listed like kaioken and ultimate, never as a form skill.
+            JsonArray stackSkills = skills.has("stackSkills") && skills.get("stackSkills").isJsonArray()
+                    ? skills.getAsJsonArray("stackSkills")
+                    : new JsonArray();
+            for (String id : XENO_STACK_SKILLS) {
+                if (!jsonArrayContains(stackSkills, id)) {
+                    stackSkills.add(id);
+                }
+            }
+            skills.add("stackSkills", stackSkills);
+
+            JsonArray strikeSkills = skills.has("strikeSkills") && skills.get("strikeSkills").isJsonArray()
+                    ? skills.getAsJsonArray("strikeSkills")
+                    : new JsonArray();
+            for (String id : net.bullettrain.xenopixelsmod.combat.technique.XenoStrikeSkills.ids()) {
+                if (!jsonArrayContains(strikeSkills, id)) {
+                    strikeSkills.add(id);
+                }
+            }
+            skills.add("strikeSkills", strikeSkills);
 
             // DMZ Skills.calculateMaxLevel() reads skills.json → skills.<id>.costs.size().
             // Without this, /dmzform set clamps level to maxLevel=0 and forms never unlock.
@@ -460,13 +524,24 @@ public final class DmzContentBootstrap {
                 }
             }
 
+            // The stack skills go to the same two masters, so there is somewhere to learn them.
+            for (String master : XENO_FORM_MASTERS) {
+                JsonArray existing = offerings.has(master) && offerings.get(master).isJsonArray()
+                        ? offerings.getAsJsonArray(master)
+                        : new JsonArray();
+                for (String id : XENO_STACK_SKILLS) {
+                    if (!jsonArrayContains(existing, id)) existing.add(id);
+                }
+                offerings.add(master, existing);
+            }
+
             skills.add("skillOfferings", offerings);
 
             try (Writer writer = Files.newBufferedWriter(skillsJson, StandardCharsets.UTF_8)) {
                 GSON.toJson(skills, writer);
             }
             XenoPixelsMod.LOGGER.info(
-                    "Patched DMZ skills.json: formSkills={} learnable only from {}",
+                    "Patched DMZ skills.json: formSkills={} strikeSkills+=lift/rush combo learnable only from {}",
                     java.util.Arrays.toString(XENO_FORM_SKILLS),
                     java.util.Arrays.toString(XENO_FORM_MASTERS));
         } catch (Exception e) {
@@ -562,7 +637,7 @@ public final class DmzContentBootstrap {
         }
 
         // Fallback lengths if patch section missing
-        ensureSkillCostsLength(skillsMap, "xenopixels_divinity", 8);
+        ensureSkillCostsLength(skillsMap, "xenopixels_divinity", 10);
         ensureSkillCostsLength(skillsMap, "xenopixels_fan_ss", 6);
         ensureSkillCostsLength(skillsMap, "xenopixels_saga_forms", 1);
         ensureSkillCostsLength(skillsMap, "xenopixels_dark_frieza", 1);

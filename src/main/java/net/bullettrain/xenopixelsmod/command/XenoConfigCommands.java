@@ -72,7 +72,7 @@ public final class XenoConfigCommands {
                     ctx.getSource().sendSuccess(() -> Component.literal(
                             "Usage: /xenoconfig list [prefix] | get <key> | set <key> <value> "
                                     + "| reload [combat|party|lockon|perf|all]\n"
-                                    + "Alias: /xenoset <key> <value>"), false);
+                                    + "Aliases: /xenoget <key>, /xenoset <key> <value>"), false);
                     return 1;
                 }));
         d.register(Commands.literal("xenoset")
@@ -86,6 +86,17 @@ public final class XenoConfigCommands {
                 .executes(ctx -> {
                     ctx.getSource().sendSuccess(() -> Component.literal(
                             "Usage: /xenoset <key> <value>  (same as /xenoconfig set)"), false);
+                    return 1;
+                }));
+        d.register(Commands.literal("xenoget")
+                .requires(XenoPermissions.require(XenoPermissions.XENOSERVER_STATUS))
+                .then(Commands.argument("key", StringArgumentType.word())
+                        .suggests(KEY_SUGGEST)
+                        .executes(ctx -> get(ctx.getSource(),
+                                StringArgumentType.getString(ctx, "key"))))
+                .executes(ctx -> {
+                    ctx.getSource().sendSuccess(() -> Component.literal(
+                            "Usage: /xenoget <key>  (same as /xenoconfig get)"), false);
                     return 1;
                 }));
     }

@@ -20,9 +20,10 @@ import java.util.Locale;
  * <p><b>Server side.</b> These are server-authoritative calls: the server names the clip and tells
  * every client in range to draw it. Calling from a client does nothing useful.
  *
- * <p><b>Who can be animated.</b> Full DragonMineZ NPCs (and clones) plus live players. That is the
- * GeckoLib rig these clips can pose. {@link #canPlay} says so in advance, and {@link #playClip}
- * returns false rather than pretending.
+ * <p><b>Who can be animated.</b> Full DragonMineZ NPCs, native Xeno NPCs using a GeckoLib
+ * model, clones, and live players. GeckoLib models must use bone names compatible with the
+ * requested clip; the shipped DragonMineZ Master Gohan geometry has the combat limb bones.
+ * {@link #canPlay} checks the renderer path, while {@link #playClip} rejects unknown clips.
  *
  * <pre>{@code
  * if (XenoAnimApi.isClipAvailable("my_jab")) {
@@ -76,9 +77,12 @@ public final class XenoAnimApi {
      * Plays {@code clip} on {@code target}.
      *
      * <p>{@code hold} keeps the last authored pose until {@link #stopClip} or another play.
-     * Otherwise the clip stops after {@code durationTicks}, or after the authored length when
-     * duration is {@code 0} and that length is known. Speed is a playback multiplier (0.15-4.0).
-     * Mid-clip freeze is not something DragonMineZ exposes; hold is the last frame.
+     * NPC scripts should call {@code XenoPixels.playClipHold(npc, name)} instead of this
+     * 5-arg overload. A zero duration lets the one-shot attack controller finish the
+     * authored clip naturally. A positive {@code durationTicks} schedules an explicit stop.
+     * Speed is a
+     * playback multiplier (0.15-4.0). Mid-clip freeze is not something DragonMineZ
+     * exposes; hold is the last frame.
      */
     public static boolean playClip(LivingEntity target, String clip, float speed,
                                    int durationTicks, boolean hold) {
@@ -87,17 +91,19 @@ public final class XenoAnimApi {
             return false;
         }
         float clamped = clampSpeed(speed);
-        if (!XenoAnimPlayback.playHold(target, animation, clamped)) {
+        // One-shots use the melee packet. FLAG_HOLD is a KI play-and-hold; on Full NPC
+        // proxies that pose often never starts, so a pushed studio clip looked like a no-op.
+        boolean started = hold
+                ? XenoAnimPlayback.playHold(target, animation, clamped)
+                : XenoAnimPlayback.playOnce(target, animation, clamped);
+        if (!started) {
             return false;
         }
         if (hold) {
             return true;
         }
-        int authored = authoredDurationTicks(animation);
-        int duration = durationTicks > 0 ? clampDuration(durationTicks)
-                : authored;
-        if (duration > 0) {
-            int scaled = Math.max(1, Math.round(duration / clamped));
+        if (durationTicks > 0) {
+            int scaled = Math.max(1, Math.round(clampDuration(durationTicks) / clamped));
             XenoAnimPlayback.scheduleStop(target, scaled);
         }
         return true;
@@ -147,13 +153,54 @@ public final class XenoAnimApi {
         return resolve(clip) != null;
     }
 
+    /** Transform, punch, charged punch/kick, Hakai, and ki-charge slots. */
+    public static String[] listStateSlots() {
+        return net.bullettrain.xenopixelsmod.anim.CombatStateAnim.slotNames();
+    }
+
+    /**
+     * Binds {@code clip} to a combat/transform state on {@code target}.
+     *
+     * <p>NPCs store it on their combat profile. Players keep it for the session. Empty clip
+     * clears the override so the server-wide bind or the shipped default is used again.
+     */
+    public static boolean setStateClip(LivingEntity target, String slot, String clip) {
+        return net.bullettrain.xenopixelsmod.anim.CombatStateAnim.set(target, slot, clip);
+    }
+
+    public static String getStateClip(LivingEntity target, String slot) {
+        return net.bullettrain.xenopixelsmod.anim.CombatStateAnim.get(target, slot);
+    }
+
+    public static boolean clearStateClip(LivingEntity target, String slot) {
+        return net.bullettrain.xenopixelsmod.anim.CombatStateAnim.clear(target, slot);
+    }
+
+    /** Plays whatever clip is currently bound to {@code slot} on {@code target}. */
+    public static boolean playState(LivingEntity target, String slot) {
+        return net.bullettrain.xenopixelsmod.anim.CombatStateAnim.play(target, slot);
+    }
+
+    /**
+     * Server-wide bind for every player and NPC that has no per-entity override.
+     * Empty {@code clip} restores the shipped default.
+     */
+    public static boolean bindStateSlot(String slot, String clip) {
+        return net.bullettrain.xenopixelsmod.anim.CombatStateAnim.bindGlobal(slot, clip);
+    }
+
     /** Bare name or full animation name to the full name, or null when nothing knows it. */
     public static String resolve(String clip) {
         if (clip == null || clip.isBlank()) return null;
         String trimmed = clip.trim();
         if (Bt3AnimationCatalog.isPlayable(trimmed)) return trimmed;
         String prefixed = PREFIX + trimmed.toLowerCase(Locale.ROOT).replaceAll("[^a-z0-9_]", "_");
-        return Bt3AnimationCatalog.isPlayable(prefixed) ? prefixed : null;
+        if (Bt3AnimationCatalog.isPlayable(prefixed)) {
+            return prefixed;
+        }
+        String bare = XenoClipLibrary.sanitize(
+                trimmed.startsWith(PREFIX) ? trimmed.substring(PREFIX.length()) : trimmed);
+        return !bare.isEmpty() && XenoClipLibrary.names().contains(bare) ? PREFIX + bare : null;
     }
 
     static int authoredDurationTicks(String animation) {

@@ -327,6 +327,26 @@ public final class XenoAnimClip {
         return ANIMATION_PREFIX + name;
     }
 
+    /**
+     * {@code combat.xeno_<bare>} for a studio or library file label
+     * ({@code my_jab.animation.json} or {@code server/my_jab}).
+     */
+    public static String animationNameForFile(String label) {
+        if (label == null || label.isBlank()) {
+            return null;
+        }
+        String base = label.replace('\\', '/');
+        int slash = base.lastIndexOf('/');
+        if (slash >= 0) {
+            base = base.substring(slash + 1);
+        }
+        if (base.endsWith(".animation.json")) {
+            base = base.substring(0, base.length() - ".animation.json".length());
+        }
+        base = sanitize(base);
+        return base.isEmpty() ? null : ANIMATION_PREFIX + base;
+    }
+
     // ---------------------------------------------------------------- export
 
     public String toGeckoJson() {

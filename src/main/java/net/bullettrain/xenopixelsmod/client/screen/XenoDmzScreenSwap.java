@@ -4,6 +4,10 @@ import net.bullettrain.xenopixelsmod.XenoPixelsMod;
 import net.bullettrain.xenopixelsmod.client.config.DmzMenuMode;
 import net.bullettrain.xenopixelsmod.client.config.XenoHudConfig;
 import net.bullettrain.xenopixelsmod.client.screen.neon.XenoNeonStatsScreen;
+import net.bullettrain.xenopixelsmod.client.ui.runtime.UiDocumentScreen;
+import net.bullettrain.xenopixelsmod.client.ui.runtime.UiRuntime;
+import net.bullettrain.xenopixelsmod.ui.DmzMenuPage;
+import net.bullettrain.xenopixelsmod.ui.UiDocument;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
@@ -31,14 +35,23 @@ public final class XenoDmzScreenSwap {
     @SubscribeEvent
     public static void onScreenOpening(ScreenEvent.Opening event) {
         DmzMenuMode mode = XenoHudConfig.dmzMenuMode;
-        if (mode != DmzMenuMode.SCREEN && mode != DmzMenuMode.NEON) return;
         var opening = event.getNewScreen();
-        // Ours is already the replacement; swapping it again would recurse.
         if (opening == null
                 || opening instanceof XenoDmzStatsScreen
-                || opening instanceof XenoNeonStatsScreen) {
+                || opening instanceof XenoNeonStatsScreen
+                || opening instanceof UiDocumentScreen) {
             return;
         }
+        if (mode == DmzMenuMode.STUDIO) {
+            DmzMenuPage page = DmzMenuPage.fromDmzScreenClass(opening.getClass().getName());
+            String documentId = page == null ? null : UiRuntime.assignments().documentId(page);
+            UiDocument document = documentId == null ? null : UiRuntime.document(documentId);
+            if (document != null) {
+                event.setNewScreen(new UiDocumentScreen(document));
+            }
+            return;
+        }
+        if (mode != DmzMenuMode.SCREEN && mode != DmzMenuMode.NEON) return;
         // Compared by name, not with instanceof: that would class-load a DragonMineZ type, and this
         // handler is registered whether or not DragonMineZ is installed.
         if (!DMZ_STATS_SCREEN.equals(opening.getClass().getName())) return;

@@ -34,10 +34,18 @@ public final class NpcAppearancePacket {
     private final String skinPlayer;
     private final String skinUrl;
     private final String skinUuid;
+    /**
+     * Whether the NPC's aura is switched on.
+     *
+     * <p>Added last, and read and written last, so every field before it keeps its position on
+     * the wire. This packet is decoded positionally: a field inserted in the middle would be
+     * read as the one that used to follow it and quietly corrupt everything after.
+     */
+    private final boolean auraOn;
 
     public NpcAppearancePacket(UUID entityUuid, String race, String formGroup, String form) {
         this(entityUuid, race, formGroup, form, false, "", "", 0, 0, 0, 0, 0, 0, true,
-                0, 1.0f, new CompoundTag(), new CompoundTag(), "", "", "");
+                0, 1.0f, new CompoundTag(), new CompoundTag(), "", "", "", false);
     }
 
     public NpcAppearancePacket(UUID entityUuid, String race, String formGroup, String form,
@@ -48,7 +56,7 @@ public final class NpcAppearancePacket {
                                CompoundTag visualOptions) {
         this(entityUuid, race, formGroup, form, hairEnabled, hairCode, hairColor,
                 strength, strikePower, resistance, vitality, kiPower, energy, authoritative,
-                auraColor, auraScale, dmzAppearance, visualOptions, "", "", "");
+                auraColor, auraScale, dmzAppearance, visualOptions, "", "", "", false);
     }
 
     public NpcAppearancePacket(UUID entityUuid, String race, String formGroup, String form,
@@ -57,7 +65,8 @@ public final class NpcAppearancePacket {
                                int vitality, int kiPower, int energy, boolean authoritative,
                                int auraColor, float auraScale, CompoundTag dmzAppearance,
                                CompoundTag visualOptions,
-                               String skinPlayer, String skinUrl, String skinUuid) {
+                               String skinPlayer, String skinUrl, String skinUuid,
+                               boolean auraOn) {
         this.entityUuid = entityUuid;
         this.race = safe(race);
         this.formGroup = safe(formGroup);
@@ -79,6 +88,7 @@ public final class NpcAppearancePacket {
         this.skinPlayer = safe(skinPlayer);
         this.skinUrl = safe(skinUrl);
         this.skinUuid = safe(skinUuid);
+        this.auraOn = auraOn;
     }
 
     public NpcAppearancePacket(FriendlyByteBuf buf) {
@@ -105,6 +115,72 @@ public final class NpcAppearancePacket {
         skinPlayer = buf.readUtf();
         skinUrl = buf.readUtf();
         skinUuid = buf.readUtf();
+        auraOn = buf.readBoolean();
+    }
+
+    // Read-only views. handle() reads the fields directly because it is in this class; these exist
+    // so a decoded packet can be inspected -- the codec is positional, and the only way to be sure a
+    // new field did not shift the others is to encode a packet and read every field back.
+
+    public String race() {
+        return race;
+    }
+
+    public String formGroup() {
+        return formGroup;
+    }
+
+    public String form() {
+        return form;
+    }
+
+    public boolean hairEnabled() {
+        return hairEnabled;
+    }
+
+    public String hairCode() {
+        return hairCode;
+    }
+
+    public int strength() {
+        return strength;
+    }
+
+    public int strikePower() {
+        return strikePower;
+    }
+
+    public int resistance() {
+        return resistance;
+    }
+
+    public int vitality() {
+        return vitality;
+    }
+
+    public int kiPower() {
+        return kiPower;
+    }
+
+    public int energy() {
+        return energy;
+    }
+
+    public boolean authoritative() {
+        return authoritative;
+    }
+
+    public int auraColor() {
+        return auraColor;
+    }
+
+    public String skinPlayer() {
+        return skinPlayer;
+    }
+
+    /** Whether the NPC's aura is switched on; the editor's checkbox reads this. */
+    public boolean auraOn() {
+        return auraOn;
     }
 
     public void encode(FriendlyByteBuf buf) {
@@ -129,6 +205,7 @@ public final class NpcAppearancePacket {
         buf.writeUtf(skinPlayer);
         buf.writeUtf(skinUrl);
         buf.writeUtf(skinUuid);
+        buf.writeBoolean(auraOn);
     }
 
     public static void handle(NpcAppearancePacket msg, Supplier<NetworkEvent.Context> ctx) {
@@ -139,7 +216,7 @@ public final class NpcAppearancePacket {
                         msg.strength, msg.strikePower, msg.resistance,
                         msg.vitality, msg.kiPower, msg.energy, msg.authoritative,
                         msg.auraColor, msg.auraScale, msg.dmzAppearance, msg.visualOptions,
-                        msg.skinPlayer, msg.skinUrl, msg.skinUuid));
+                        msg.skinPlayer, msg.skinUrl, msg.skinUuid, msg.auraOn));
         ctx.get().setPacketHandled(true);
     }
 

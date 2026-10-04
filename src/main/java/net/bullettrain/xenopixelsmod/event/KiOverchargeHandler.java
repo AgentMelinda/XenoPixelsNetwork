@@ -59,8 +59,8 @@ public final class KiOverchargeHandler {
             if (motion.lengthSqr() > 1.0E-8D) ki.setDeltaMovement(motion.normalize().scale(speed));
 
             if (ki instanceof KiExplosionEntity explosion) {
-                float radius = explosion.getMaxRadius() * boomScale;
-                // Also grow visual size for explosions
+                float radius = XenoServerConfig.clampKiExplosionRadius(
+                        explosion.getMaxRadius() * boomScale);
                 explosion.setMaxRadius(radius);
                 explosion.setSize(Math.max(explosion.getSize(), size));
             }

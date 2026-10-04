@@ -40,6 +40,19 @@ CNPC-Gecko. שינוי דרך Model Editor או דרך `setHairCode`, `setHairCo
 נשאר לאחר שמירה, טעינת צ'אנק ו־respawn.
 
 הקבצים המלאים נמצאים ב־`examples/customnpcs/` (`xenopixels_full_saiyan.js` is the complete fighter).
+מדריך באנגלית ל־co-owners: [CustomNPCs-XenoPixels-Scripting-CoOwner](CustomNPCs-XenoPixels-Scripting-CoOwner).
+`XenoPixels.getVersion()` צריך להיות `"23"` ל־charged punch/kick ול־`broadcast`.
+
+Charged melee (NPC Scripts tab, needs `setProfile`):
+
+- `xenopixels_charge_melee.js` — right-click punch charge
+- `xenopixels_charge_kick.js` — right-click kick; cycles up / down bias
+- `xenopixels_charge_counter.js` — charge when the NPC is hit
+- `xenopixels_charge_brain.js` — Combat Brain starts charges in melee (v1). Stats/Brain tab `v1`/`v2` or `/xenobrain v2` selects the saga stack.
+- `xenopixels_combo_rush.js` — authored rush (brain off; real `meleeHit` beats; no charged punch/kick)
+
+Player Scripts (dedicated: `/xenopixels playerscripts`): `xenopixels_player_say.js`,
+`xenopixels_player_chat.js` (`#` rewrite, `!announce` → `XenoPixels.broadcast`).
 
 ## Aura, halo, tails and stack forms (API v4)
 

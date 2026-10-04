@@ -17,6 +17,20 @@ java {
     withSourcesJar()
 }
 
+// Reuse a stable set of pre-extracted LWJGL natives (lwjgl.dll, glfw.dll, lwjgl_opengl/stb,
+// OpenAL, jemalloc) instead of letting LWJGL re-extract into %TEMP% and fail to load them in
+// this worktree (the matching lwjgl-*-natives-windows-x64 jars are absent from the Gradle
+// cache here). run/lwjgl-natives holds the 3.3.3+5 build that matches the pinned classpath.
+// NOTE: C:\JavaUWP\staging\cache\natives-1.21 is a DIFFERENT LWJGL build (its jemalloc lacks
+// je_free_sized) and is rejected by LWJGL's version check against the 3.3.3+5 jars, so it is
+// not used. Override with -Plwjgl_library_path=<dir>; when the dir or lwjgl.dll is absent
+// (other machines, CI) the property is left unset and LWJGL uses its normal bootstrap.
+ext.lwjglLibraryPath = {
+    def configured = project.findProperty('lwjgl_library_path') ?: file('run/lwjgl-natives').absolutePath
+    def dir = file(configured)
+    dir.isDirectory() && new File(dir, 'lwjgl.dll').isFile() ? dir.absolutePath : null
+}()
+
 neoForge {
     version = neo_version
 
@@ -30,12 +44,14 @@ neoForge {
             client()
             gameDirectory = file('run')
             systemProperty 'neoforge.enabledGameTestNamespaces', mod_id
+            if (lwjglLibraryPath) systemProperty 'org.lwjgl.librarypath', lwjglLibraryPath
         }
         apiTestClient {
             client()
             gameDirectory = file('run')
             programArguments.addAll '--quickPlaySingleplayer', 'New World (7)'
             systemProperty 'neoforge.enabledGameTestNamespaces', mod_id
+            if (lwjglLibraryPath) systemProperty 'org.lwjgl.librarypath', lwjglLibraryPath
         }
         server {
             server()
@@ -72,6 +88,8 @@ neoForge {
 }
 
 configurations {
+    // Nashorn classes repackaged into the server/slim jar (ModernUI stays client-only).
+    serverJarJar
     // Dev-only mod jars that have to be installed into run/mods rather than put on a run's
     // classpath. See the Iris comment in dependencies {} for why that distinction exists.
     devShaderMods
@@ -110,6 +128,17 @@ repositories {
             // would get no LWJGL natives from it.
             filter { includeModule 'net.neoforged', 'minecraft-dependencies' }
         }
+    }
+    exclusiveContent {
+        forRepository {
+            flatDir {
+                // Gives jars in libs/ a module coordinate so jarJar can embed them (AAA Particles).
+                // flatDir ignores the group and matches <name>-<version>.jar.
+                name = 'Local libs'
+                dirs layout.projectDirectory.dir('libs')
+            }
+        }
+        filter { includeGroup 'local.libs' }
     }
     exclusiveContent {
         forRepository {
@@ -246,6 +275,25 @@ def dragonMineZJar = {
 dependencies {
     // The special DMZ 1.21.1 build produced by the parent repository.
     implementation files(dragonMineZJar)
+    // AAA Particles (Effekseer loader, MIT, required): local jar like DragonMineZ so offline builds work.
+    // Same file as curse.maven:aaa-particles-979809:8995061 per tools/new_particles notes (id not verified).
+    implementation files('libs/aaa_particles-neoforge-1.21.1-2.3.1.jar')
+    // Jar-in-Jar: the client jar carries AAA Particles (and, nested inside it, the Architectury
+    // 13.0.8 AAA itself bundles), so players install one file. The server/slim jar nests the same
+    // file through serverJarJarMetadata further down; it is the only nested jar that jar carries.
+    //
+    // Embedded by module coordinate, not jarJar files(...): ModDevGradle refuses a local-file embed
+    // whose jar has no Automatic-Module-Name, and AAA's manifest carries none. The 'Local libs'
+    // flatDir repository above resolves this coordinate to the very same file in libs/.
+    jarJar('local.libs:aaa_particles-neoforge-1.21.1:2.3.1') {
+        version {
+            strictly '2.3.1'
+            prefer '2.3.1'
+        }
+    }
+    // Architectury 13.0.8 (AAA's network layer): compile only, the game already loads it for AAA.
+    // Bound effects are sent with its NetworkManager exactly as AAA sends them (AaaEffekSender).
+    compileOnly files('libs/architectury-13.0.8-neoforge.jar')
 
     implementation "software.bernie.geckolib:geckolib-neoforge-1.21.1:${geckolib_version}"
     implementation "com.github.glitchfiend:TerraBlender-neoforge:${terrablender_version}"
@@ -358,11 +406,25 @@ dependencies {
     // Run classpath without unpacking the outer jar (dev runs).
     additionalRuntimeClasspath "maven.modrinth:modern-ui:${modernui_version}"
 
+    // ---- Nashorn (standalone ECMAScript engine for native NPC scripts) ----
+    // The JDK dropped Nashorn in 15. NeoForge 21.1.x installs org.openjdk.nashorn:nashorn-core:15.4
+    // itself (a library of its coremods; listed in the 21.1.230-21.1.250 installer version json),
+    // so neither distribution bundles a copy: a second org.openjdk.nashorn module made launches
+    // fail with "Module kaleido.config... reads more than one module named org.openjdk.nashorn"
+    // (2026-09-28). Compile against it; dev runs keep it on their classpath.
+    implementation "org.openjdk.nashorn:nashorn-core:${nashorn_version}"
+    additionalRuntimeClasspath "org.openjdk.nashorn:nashorn-core:${nashorn_version}"
+
     testImplementation 'org.junit.jupiter:junit-jupiter:5.11.4'
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
 }
 
 sourceSets.main.resources.srcDir 'src/generated/resources'
+// XenoAPI (xenoapi.npcs.api) compiles as part of this mod rather than as a separate jar. Its
+// signatures name Minecraft types, so in dev runs and unit tests it must load in the same game
+// layer as Minecraft; a classpath jar would load in the app loader and fail to link. Its classes
+// therefore ship inside both distribution jars and its sources inside the sources jar.
+sourceSets.main.java.srcDir 'XenoNPCsAPI/src/main/java'
 
 tasks.withType(JavaCompile).configureEach {
     options.encoding = 'UTF-8'
@@ -372,6 +434,7 @@ tasks.withType(JavaCompile).configureEach {
 
 tasks.withType(Test).configureEach {
     useJUnitPlatform()
+    systemProperty 'xenopixels.projectDir', projectDir.absolutePath
 }
 
 def replaceProperties = [
@@ -420,11 +483,40 @@ tasks.named('jar', Jar).configure {
 // Server/slim distribution: no ModernUI — use for dedicated servers and CI that
 // must not pull client UI deps. Filename matches:
 //   xenopixelsmod-Server-<mod_version>.jar
+//
+// AAA Particles is required on both sides, so the server jar nests it too (owner decision,
+// 2026-10-02) and nothing else. The jarJar task's output cannot be reused here because it also
+// stages ModernUI, so the one-entry metadata.json is written by hand in the layout that task emits.
+def serverNestedAaaJar = file('libs/aaa_particles-neoforge-1.21.1-2.3.1.jar')
+def serverJarJarMetadata = tasks.register('serverJarJarMetadata') {
+    description = 'Writes META-INF/jarjar/metadata.json for the server jar (AAA Particles only).'
+    def nestedName = serverNestedAaaJar.name
+    def outDir = layout.buildDirectory.dir('generated/serverNestedAaaMetadata')
+    inputs.property 'nestedName', nestedName
+    outputs.dir outDir
+    doLast {
+        def target = new File(outDir.get().asFile, 'META-INF/jarjar/metadata.json')
+        target.parentFile.mkdirs()
+        target.setText(groovy.json.JsonOutput.prettyPrint(groovy.json.JsonOutput.toJson([jars: [[
+                identifier  : [group: 'local.libs', artifact: 'aaa_particles-neoforge-1.21.1'],
+                version     : [range: '[2.3.1,)', artifactVersion: '2.3.1'],
+                path        : "META-INF/jarjar/${nestedName}".toString(),
+                isObfuscated: false
+        ]]])), 'UTF-8')
+    }
+}
+
 tasks.register('serverJar', Jar) {
     group = 'build'
-    description = 'Server/slim jar without embedded Modern UI (no META-INF/jarjar).'
+    description = 'Server/slim jar: no Modern UI; AAA Particles nested; Nashorn comes from NeoForge.'
     dependsOn tasks.named('classes'), tasks.named('processResources')
     from sourceSets.main.output
+    from serverJarJarMetadata
+    from(serverNestedAaaJar) { into 'META-INF/jarjar' }
+    from({ configurations.serverJarJar.collect { zipTree(it) } }) {
+        exclude 'META-INF/MANIFEST.MF', 'META-INF/*.SF', 'META-INF/*.DSA', 'META-INF/*.RSA', 'module-info.class'
+    }
+    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
     // Force exact name: xenopixelsmod-Server-<version>.jar
     archiveFileName = "${mod_id}-Server-${project.version}.jar"
     manifest {

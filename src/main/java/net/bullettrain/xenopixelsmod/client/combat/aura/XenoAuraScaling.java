@@ -12,9 +12,9 @@ import java.util.UUID;
  * Resizes DragonMineZ's aura from the player's stats and from whether they are powering up.
  *
  * <p>Everything needed is already on the {@link StatsData} DragonMineZ hands to its own sizing
- * method: {@code getBattlePower()} for the resting size and {@code getStatus().isActionCharging()}
- * for the power-up. So this needs no new state on the wire and works for every player whose aura is
- * drawn, not only the one holding the keyboard.
+ * method: {@code getBattlePower()} for the resting size, {@code isActionCharging()} for a
+ * transformation, and {@code isChargingKi()} for ordinary ki charging. So this needs no new state
+ * on the wire and works for every player whose aura is drawn, not only the one holding the keyboard.
  *
  * <p>The power-up ramp needs somewhere to live between frames, keyed to whoever it belongs to. That
  * key comes from {@code StatsData.getPlayer()} — the very object DragonMineZ hands this method — and
@@ -25,8 +25,9 @@ import java.util.UUID;
  */
 public final class XenoAuraScaling {
 
-    /** Ramp state per player, keyed by the owner of the stats we are handed. */
-    private static final RampTable<UUID> RAMPS = new RampTable<>();
+    /** Transformation and ki charge ease independently, then take the larger visible shape. */
+    private static final RampTable<UUID> TRANSFORM_RAMPS = new RampTable<>();
+    private static final RampTable<UUID> KI_RAMPS = new RampTable<>();
 
     private XenoAuraScaling() {
     }
@@ -43,9 +44,13 @@ public final class XenoAuraScaling {
 
         float power = AuraScaleCurve.fromBattlePower(stats.getBattlePower(),
                 XenoAuraConfig.powerPivot, XenoAuraConfig.powerGain, XenoAuraConfig.powerMax);
-        float ramp = ramp(stats);
-        float height = AuraScaleCurve.chargeHeight(ramp, XenoAuraConfig.chargeHeight);
-        float width = AuraScaleCurve.chargeWidth(ramp, XenoAuraConfig.chargeWidth);
+        ChargeRamps ramps = ramps(stats);
+        float height = Math.max(
+                AuraScaleCurve.chargeHeight(ramps.transform, XenoAuraConfig.chargeHeight),
+                AuraScaleCurve.chargeHeight(ramps.ki, XenoAuraConfig.kiChargeHeight));
+        float width = Math.max(
+                AuraScaleCurve.chargeWidth(ramps.transform, XenoAuraConfig.chargeWidth),
+                AuraScaleCurve.chargeWidth(ramps.ki, XenoAuraConfig.kiChargeWidth));
 
         float[] out = base.clone();
         out[0] = base[0] * power * width;
@@ -54,26 +59,37 @@ public final class XenoAuraScaling {
         return out;
     }
 
-    private static float ramp(StatsData stats) {
-        boolean charging;
+    private static ChargeRamps ramps(StatsData stats) {
+        boolean transforming;
+        boolean chargingKi;
         Player owner;
         try {
-            charging = stats.getStatus() != null && stats.getStatus().isActionCharging();
+            transforming = stats.getStatus() != null && stats.getStatus().isActionCharging();
+            chargingKi = stats.getStatus() != null && stats.getStatus().isChargingKi();
             owner = stats.getPlayer();
         } catch (Throwable ignored) {
-            return 0.0f;
+            return ChargeRamps.IDLE;
         }
         if (owner == null) {
             // Stats with no player behind them: the resting size is the right answer, and there is
             // nothing to key a ramp to.
-            return 0.0f;
+            return ChargeRamps.IDLE;
         }
-        return RAMPS.advance(owner.getUUID(), charging, System.nanoTime(),
-                (float) XenoAuraConfig.rampTicks);
+        UUID id = owner.getUUID();
+        long now = System.nanoTime();
+        float rampTicks = (float) XenoAuraConfig.rampTicks;
+        return new ChargeRamps(
+                TRANSFORM_RAMPS.advance(id, transforming, now, rampTicks),
+                KI_RAMPS.advance(id, chargingKi, now, rampTicks));
+    }
+
+    private record ChargeRamps(float transform, float ki) {
+        private static final ChargeRamps IDLE = new ChargeRamps(0.0f, 0.0f);
     }
 
     /** Forgets every ramp, so leaving a world does not carry one player's state into the next. */
     public static void clear() {
-        RAMPS.clear();
+        TRANSFORM_RAMPS.clear();
+        KI_RAMPS.clear();
     }
 }

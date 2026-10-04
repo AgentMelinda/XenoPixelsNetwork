@@ -56,15 +56,40 @@ public class XenoCloneEntity extends LivingEntity {
     /** Fighting shadow: player look + ki/melee at the trainer. */
     public static final int SLOT_SHADOW_FIGHT = -4;
 
-    /** How far a Multi-Form copy stands from its fighter. */
+    /** How far a Multi-Form copy stands from its fighter when config is at default. */
     public static final double FORMATION_RADIUS = 2.2;
+
+    /** Live spacing; copies re-read this every formation tick. */
+    public static double formationRadius() {
+        return net.bullettrain.xenopixelsmod.config.XenoServerConfig.clampedMultiFormRadius();
+    }
+
     /** Ticks a body spends travelling out of the fighter before it settles into formation. */
     public static final int TRAVEL_TICKS = 6;
 
     private final CloneCombatBridge combat = new CloneCombatBridge();
+    /**
+     * The copies' own brain, used by {@code /xenomultiform ai multiform}.
+     *
+     * <p>An instance per copy rather than static state keyed by UUID, so it is collected with the
+     * copy instead of leaking a little on every split.
+     */
+    private final MultiFormCombatBrain multiFormBrain = new MultiFormCombatBrain();
 
     public net.bullettrain.xenopixelsmod.compat.npc.NpcCombatProfile combatProfile() {
         return combat.profile(this);
+    }
+
+    /**
+     * A hit from this copy actually landed.
+     *
+     * <p>Told to both brains rather than to whichever is active: this arrives from a damage event
+     * that does not know the AI mode, and a stale whiff streak left on the inactive one would make
+     * it abandon early the moment a player switched modes mid-fight.
+     */
+    public void noteCombatHit() {
+        combat.noteHit();
+        multiFormBrain.noteHit();
     }
 
     private int lifetime = 20;
@@ -191,6 +216,22 @@ public class XenoCloneEntity extends LivingEntity {
     public void tick() {
         if (!level().isClientSide()) setDeltaMovement(Vec3.ZERO);
         super.tick();
+        // Decay the swing. Nothing else does it for this entity, and without it a copy punches the
+        // air forever after its first swing.
+        //
+        // LivingEntity declares updateSwingTime but never calls it; only Player, Monster and
+        // RemotePlayer do, and a copy is none of those. So swing() latches swinging=true and
+        // swingTime=-1 permanently -- on the client too, because handleAnimate calls swing on any
+        // LivingEntity. NpcFullDmzRenderer copies those fields onto the DragonMineZ render proxy
+        // every frame, DMZ's attack controller reads them as "still attacking", and once the server
+        // stops sending explicit clips it falls back to base.mining1, which is authored to loop and
+        // re-arms every eight ticks. That is the whole bug: it is not the combat AI, which is why
+        // no amount of target, whiff or cooldown work made any difference to it, and it cannot be
+        // stopped by an animation packet either -- NpcDmzAnim.stop only reaches DMZ's ki
+        // controller, never its attack controller.
+        //
+        // Runs on both sides, before the server-only work below, because both sides latch it.
+        updateSwingTime();
         if (this.level().isClientSide()) {
             return;
         }
@@ -233,7 +274,7 @@ public class XenoCloneEntity extends LivingEntity {
         // Copies look at whoever the fighter has locked on, not merely where the fighter happens
         // to be facing. Turning with the fighter's head made them stare at nothing whenever he
         // glanced away mid-fight.
-        LivingEntity focus = XenoCloneSystem.lockedTarget(owner);
+        LivingEntity focus = XenoCloneSystem.fightTarget(owner);
         float aimYaw;
         float aimPitch;
         if (focus != null) {
@@ -287,13 +328,47 @@ public class XenoCloneEntity extends LivingEntity {
         // The owner already occupies the back slot. Subtract that offset to recover the common
         // formation center; interpolate from the actual split origin, not the displaced owner.
         double[] off = CloneFormation.offsetFromOwner(owner.getYRot(), slot,
-                formationBodies, FORMATION_RADIUS);
+                formationBodies, formationRadius());
         Vec3 target = owner.position().add(off[0], 0.0, off[1]);
         if (travelProgress() >= 1f && owner instanceof net.minecraft.server.level.ServerPlayer serverOwner) {
-            if (!combat.tick(this, serverOwner, focus)) CloneCombatBridge.move(this, target, 0.4);
+            tickFightOrFormation(serverOwner, focus, target);
         } else {
             Vec3 want = travelOrigin.lerp(target, CloneFormation.travelEase(travelProgress()));
             this.setPos(want.x, want.y, want.z);
+        }
+    }
+
+    private void tickFightOrFormation(net.minecraft.server.level.ServerPlayer owner,
+                                      LivingEntity focus, Vec3 slotTarget) {
+        if (net.bullettrain.xenopixelsmod.config.XenoServerConfig.multiFormUsesMultiFormBrain()) {
+            if (!multiFormBrain.tick(this, owner, focus, combat)) {
+                CloneCombatBridge.move(this, slotTarget, 0.4);
+            }
+            return;
+        }
+        if (net.bullettrain.xenopixelsmod.config.XenoServerConfig.multiFormUsesBrain()) {
+            var profile = combat.profile(this);
+            boolean living = CloneCombatBridge.validTarget(owner, focus);
+            boolean leashed = CloneDetectRange.within(distanceTo(owner),
+                    net.bullettrain.xenopixelsmod.config.XenoServerConfig.multiFormDetectRange);
+            if (!living || !leashed) {
+                combat.cancel(this);
+                CloneCombatBridge.move(this, slotTarget, 0.4);
+                return;
+            }
+            net.minecraft.server.MinecraftServer server = getServer();
+            if (server == null) {
+                combat.cancel(this);
+                CloneCombatBridge.move(this, slotTarget, 0.4);
+                return;
+            }
+            net.bullettrain.xenopixelsmod.compat.npc.NpcCombatBrain.steer(this, profile, focus);
+            net.bullettrain.xenopixelsmod.compat.npc.NpcCombatBrain.tick(
+                    server, this, profile, focus, server.getTickCount());
+            return;
+        }
+        if (!combat.tick(this, owner, focus)) {
+            CloneCombatBridge.move(this, slotTarget, 0.4);
         }
     }
 
@@ -308,6 +383,15 @@ public class XenoCloneEntity extends LivingEntity {
     }
 
     private void mimicOwner(Player owner) {
+        boolean grounded = owner.onGround() && !owner.getAbilities().flying && !owner.isFallFlying();
+        if (grounded) {
+            setNoGravity(false);
+            noPhysics = false;
+            setDeltaMovement(Vec3.ZERO);
+        } else {
+            setNoGravity(true);
+            noPhysics = true;
+        }
         setPose(owner.getPose());
         setShiftKeyDown(owner.isShiftKeyDown());
         setSprinting(owner.isSprinting());
@@ -344,6 +428,8 @@ public class XenoCloneEntity extends LivingEntity {
     @Override
     public void remove(RemovalReason reason) {
         combat.cancel(this);
+        multiFormBrain.forget();
+        net.bullettrain.xenopixelsmod.compat.npc.NpcCombatBrain.forget(getUUID());
         net.bullettrain.xenopixelsmod.compat.npc.NpcKiCooldowns.clear(getUUID());
         XenoCloneSystem.onClonePopped(this);
         super.remove(reason);

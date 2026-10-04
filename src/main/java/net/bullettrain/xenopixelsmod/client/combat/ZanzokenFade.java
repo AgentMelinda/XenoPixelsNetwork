@@ -9,6 +9,7 @@ import net.minecraft.world.entity.Entity;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
+import net.neoforged.neoforge.client.event.ClientTickEvent;
 import net.neoforged.neoforge.event.entity.EntityJoinLevelEvent;
 import net.neoforged.neoforge.event.entity.EntityLeaveLevelEvent;
 
@@ -30,6 +31,10 @@ import java.util.concurrent.ConcurrentHashMap;
  * <p>No packet and no new state: the ring images are entities the client already has, and they
  * carry their owner's entity id and their own lifetime. Tracking them as they arrive and leave is
  * enough to know, per frame, whether a given player's ring is standing and how far through it is.
+ *
+ * <p>A client clone is not removed until the despawn packet arrives, so lifetime expiry — not
+ * {@code isRemoved()} — is what ends the fade. Restore then ticks once per client tick, not once
+ * per {@code alpha()} call.
  */
 @EventBusSubscriber(modid = XenoPixelsMod.MOD_ID, value = Dist.CLIENT)
 public final class ZanzokenFade {
@@ -43,7 +48,7 @@ public final class ZanzokenFade {
     private static final Map<Integer, XenoCloneEntity> RINGS = new ConcurrentHashMap<>();
     private static final Map<Integer, Float> LAST_ALPHA = new ConcurrentHashMap<>();
     private static final Map<Integer, Restore> RESTORE = new ConcurrentHashMap<>();
-    private static final int RESTORE_TICKS = 10;
+    static final int RESTORE_TICKS = 10;
 
     private static final class Restore {
         final float from;
@@ -84,6 +89,15 @@ public final class ZanzokenFade {
         RESTORE.clear();
     }
 
+    @SubscribeEvent
+    public static void onClientTick(ClientTickEvent.Post event) {
+        RESTORE.entrySet().removeIf(entry -> {
+            Restore restore = entry.getValue();
+            restore.remaining--;
+            return restore.remaining <= 0;
+        });
+    }
+
     /**
      * The alpha this player's body should render at, or 1 when no ring of theirs is standing.
      *
@@ -110,11 +124,7 @@ public final class ZanzokenFade {
         }
         Restore restore = RESTORE.get(id);
         if (restore != null) {
-            restore.remaining--;
-            float t = 1.0f - restore.remaining / (float) RESTORE_TICKS;
-            float alpha = restore.from + (1.0f - restore.from) * Math.max(0.0f, Math.min(1.0f, t));
-            if (restore.remaining <= 0) RESTORE.remove(id);
-            return alpha;
+            return restoreAlpha(restore.from, restore.remaining);
         }
         return 1.0f;
     }
@@ -147,8 +157,23 @@ public final class ZanzokenFade {
     }
 
     private static boolean isStanding(XenoCloneEntity clone, int ownerId) {
-        return clone != null && clone.isAlive() && !clone.isRemoved()
+        return clone != null
+                && imageStillStanding(clone.tickCount, clone.lifetimeTicks(),
+                        clone.isAlive(), clone.isRemoved())
                 && clone.slot() == XenoCloneEntity.SLOT_STATIONARY
                 && clone.ownerId() == ownerId;
+    }
+
+    /**
+     * A copy still disguises its owner. Lifetime expiry ends the fade even when the client
+     * entity has not been removed yet.
+     */
+    static boolean imageStillStanding(int age, int lifetime, boolean alive, boolean removed) {
+        return alive && !removed && age < Math.max(1, lifetime);
+    }
+
+    static float restoreAlpha(float from, int remaining) {
+        float t = 1.0f - remaining / (float) RESTORE_TICKS;
+        return from + (1.0f - from) * Math.max(0.0f, Math.min(1.0f, t));
     }
 }

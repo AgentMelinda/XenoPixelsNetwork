@@ -1,6 +1,8 @@
 package net.bullettrain.xenopixelsmod.mixin.common;
 
 import com.dragonminez.common.init.entities.ki.AbstractKiProjectile;
+import net.bullettrain.xenopixelsmod.combat.clone.CloneCombatBridge;
+import net.bullettrain.xenopixelsmod.combat.clone.XenoCloneEntity;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.player.Player;
@@ -24,9 +26,22 @@ public abstract class KiGriefSourceMixin {
     @Inject(method = "getKiGriefingSource", at = @At("RETURN"), cancellable = true)
     private void xenopixels$cachedOwner(CallbackInfoReturnable<Entity> cir) {
         if (cir.getReturnValue() instanceof Player) return;
+        AbstractKiProjectile self = (AbstractKiProjectile) (Object) this;
+        Entity directOwner = self.getOwner();
+        XenoCloneEntity clone = directOwner instanceof XenoCloneEntity
+                ? (XenoCloneEntity) directOwner
+                : null;
+        if (clone != null) {
+            Player player = CloneCombatBridge.owner(clone);
+            if (player != null) cir.setReturnValue(player);
+            else {
+                // A player-owned clone must never fall through to the mob gamerule when its owner is offline.
+                cir.setReturnValue(null);
+            }
+            return;
+        }
         UUID id = ((KiProjectileGriefAccess) this).xenopixels$cachedOwnerUUID();
         if (id == null) return;
-        AbstractKiProjectile self = (AbstractKiProjectile) (Object) this;
         if (!(self.level() instanceof ServerLevel level) || level.getServer() == null) return;
         Player player = level.getServer().getPlayerList().getPlayer(id);
         if (player != null) cir.setReturnValue(player);

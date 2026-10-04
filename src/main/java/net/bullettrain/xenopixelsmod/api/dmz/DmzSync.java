@@ -46,10 +46,9 @@ public final class DmzSync {
 	 *
 	 * <p>The cheapest of the three, so it suits anything that changes every tick.
 	 *
-	 * <p><b>Only for a client that already has the player's full data.</b> DragonMineZ's loader
-	 * throws if quest data is missing, so this cannot be the first packet a client receives for a
-	 * player. Right after a join or a dimension change, send {@link #syncStats(ServerPlayer)}
-	 * first.
+	 * <p>XenoPixels merges this packet on the client without running {@code StatsData.load},
+	 * because DragonMineZ 2.1.3 throws when {@code PlayerQuestData} is absent. It still cannot
+	 * populate a client that has never received {@link #syncStats(ServerPlayer)}.
 	 */
 	public static void syncResources(ServerPlayer player) {
 		if (player == null) return;

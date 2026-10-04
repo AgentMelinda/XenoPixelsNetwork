@@ -7,7 +7,9 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
 import net.bullettrain.xenopixelsmod.api.event.CloneEvent;
 import net.neoforged.neoforge.common.NeoForge;
@@ -44,6 +46,9 @@ public final class XenoCloneSystem {
     /** Server-side lock-on target tracker; receives client sync via CloneTargetPacket. */
     public static final CloneTargetTracker<net.minecraft.world.entity.LivingEntity> TARGET_TRACKER =
             new CloneTargetTracker<>();
+    private static final Map<UUID, UUID> RETALIATE = new HashMap<>();
+    private static final Map<UUID, Long> RETALIATE_AT = new HashMap<>();
+    private static final int RETALIATE_TICKS = 200;
 
     private XenoCloneSystem() {
     }
@@ -140,7 +145,7 @@ public final class XenoCloneSystem {
         // The fighter takes the back slot. An opponent in front meets the copies first and cannot
         // tell from position which body is the one that can actually be hurt.
         double[] back = CloneFormation.slotOffset(player.getYRot(),
-                CloneFormation.backSlot(bodies), bodies, XenoCloneEntity.FORMATION_RADIUS);
+                CloneFormation.backSlot(bodies), bodies, XenoCloneEntity.formationRadius());
         player.teleportTo(origin.x + back[0], origin.y, origin.z + back[1]);
 
         int mastery = mastery(player);
@@ -165,7 +170,7 @@ public final class XenoCloneSystem {
         long now = level.getGameTime();
         net.minecraft.world.entity.LivingEntity target = TARGET_TRACKER.target(player.getUUID(), now,
                 living -> living.isAlive() && !living.isRemoved() && living.level() == level);
-        if (target != null) return target;
+        if (target != null && target.isAlive() && !target.isRemoved()) return target;
         // Fallback: DMZ homing target for cases where the client sync hasn't arrived yet.
         try {
             com.dragonminez.common.stats.StatsData data = com.dragonminez.common.stats.StatsProvider
@@ -174,10 +179,106 @@ public final class XenoCloneSystem {
             int id = data.getTechniques().getHomingTargetId();
             if (id < 0) return null;
             return level.getEntity(id) instanceof net.minecraft.world.entity.LivingEntity living
-                    && living.isAlive() ? living : null;
+                    && living.isAlive() && !living.isRemoved() ? living : null;
         } catch (Throwable t) {
             return null;
         }
+    }
+
+    /**
+     * Who copies should fight: living lock-on, then a retaliate attacker, then a nearby hostile.
+     */
+    public static LivingEntity fightTarget(Player owner) {
+        if (!(owner instanceof ServerPlayer player)) {
+            return null;
+        }
+        LivingEntity look = XenoServerConfig.multiFormLook ? lookTarget(player) : null;
+        boolean lookOk = look != null;
+        LivingEntity lock = lockedTarget(player);
+        boolean lockOk = lock != null && CloneCombatBridge.validTarget(player, lock)
+                && inDetectRange(player, lock);
+        LivingEntity retaliate = retaliateTarget(player);
+        boolean retaliateOk = retaliate != null && CloneCombatBridge.validTarget(player, retaliate)
+                && inDetectRange(player, retaliate);
+        LivingEntity hostile = XenoServerConfig.multiFormHostile ? nearestHostile(player) : null;
+        boolean hostileOk = hostile != null;
+        return switch (CloneFightPolicy.pick(XenoServerConfig.multiFormLook, lookOk, lockOk,
+                XenoServerConfig.multiFormRetaliate, retaliateOk,
+                XenoServerConfig.multiFormHostile, hostileOk)) {
+            case LOOK -> look;
+            case LOCK -> lock;
+            case RETALIATE -> retaliate;
+            case HOSTILE -> hostile;
+            case NONE -> null;
+        };
+    }
+
+    /**
+     * The body the split fighter is pointing at, if the copies are allowed to fight it.
+     *
+     * <p>Reuses the server look-target the Hakai channel already uses, with its nearest-living stage
+     * switched off: that stage ignores the crosshair entirely, and copies falling back to "whatever
+     * is closest" is exactly the behaviour the {@code hostile} flag exists to opt into.
+     *
+     * <p>Resolved inside the detect range rather than at some larger reach, so a copy is never sent
+     * after something it is not allowed to follow, and filtered through the same permission check
+     * every other slot uses — {@code findLookTarget} only skips DragonMineZ masters, so it would
+     * otherwise happily return a party member or the fighter's own tamed wolf.
+     */
+    private static LivingEntity lookTarget(ServerPlayer owner) {
+        double range = XenoServerConfig.clampedMultiFormDetectRange();
+        LivingEntity looked = net.bullettrain.xenopixelsmod.combat.HakaiChannelSystem
+                .findLookTarget(owner, range, false);
+        if (looked == null || !CloneCombatBridge.validTarget(owner, looked)
+                || !inDetectRange(owner, looked)) {
+            return null;
+        }
+        return looked;
+    }
+
+    public static void noteRetaliate(ServerPlayer owner, LivingEntity attacker) {
+        if (owner == null || attacker == null || !XenoServerConfig.multiFormRetaliate) return;
+        if (!CloneCombatBridge.permittedTarget(owner, attacker)) return;
+        RETALIATE.put(owner.getUUID(), attacker.getUUID());
+        RETALIATE_AT.put(owner.getUUID(), owner.level().getGameTime());
+    }
+
+    private static LivingEntity retaliateTarget(ServerPlayer owner) {
+        UUID id = RETALIATE.get(owner.getUUID());
+        Long at = RETALIATE_AT.get(owner.getUUID());
+        if (id == null || at == null) return null;
+        long now = owner.level().getGameTime();
+        if (now < at || now - at > RETALIATE_TICKS) {
+            RETALIATE.remove(owner.getUUID());
+            RETALIATE_AT.remove(owner.getUUID());
+            return null;
+        }
+        return net.bullettrain.xenopixelsmod.compat.npc.NpcEntityLookup
+                .findAlive(owner.getServer(), id);
+    }
+
+    static boolean inDetectRange(Player owner, LivingEntity target) {
+        if (owner == null || target == null) {
+            return false;
+        }
+        return CloneDetectRange.withinSqr(owner.distanceToSqr(target),
+                XenoServerConfig.multiFormDetectRange);
+    }
+
+    private static LivingEntity nearestHostile(ServerPlayer owner) {
+        double leash = XenoServerConfig.clampedMultiFormDetectRange();
+        AABB box = owner.getBoundingBox().inflate(leash);
+        LivingEntity best = null;
+        double bestD = leash * leash;
+        for (LivingEntity living : owner.level().getEntitiesOfClass(LivingEntity.class, box,
+                candidate -> CloneCombatBridge.permittedTarget(owner, candidate))) {
+            double d = owner.distanceToSqr(living);
+            if (d < bestD) {
+                bestD = d;
+                best = living;
+            }
+        }
+        return best;
     }
 
     /** Fires clone-owned waves on the same server return as a successful owner wave release. */
@@ -186,15 +287,19 @@ public final class XenoCloneSystem {
                                     float chargeMultiplier) {
         if (owner == null || attack == null || attack.getKiType()
                 != com.dragonminez.common.stats.techniques.KiAttackData.KiType.WAVE) return;
-        net.minecraft.world.entity.LivingEntity target = lockedTarget(owner);
+        net.minecraft.world.entity.LivingEntity target = fightTarget(owner);
+        Vec3 look = com.dragonminez.common.compat.CameraAimHelper.resolve(owner);
+        if (look == null || look.lengthSqr() < 1.0E-8) {
+            look = owner.getLookAngle();
+        }
         for (XenoCloneEntity clone : List.copyOf(clonesOf(owner))) {
             if (!CloneCombatBridge.active(clone)) continue;
             if (target != null && (!CloneCombatBridge.validTarget(owner, target)
-                    || owner.distanceToSqr(target) > CloneCombatPolicy.LEASH * CloneCombatPolicy.LEASH)) {
+                    || !inDetectRange(owner, target))) {
                 target = null;
             }
             net.bullettrain.xenopixelsmod.compat.npc.NpcKiAttackDispatcher.fireMirroredWave(
-                    clone, clone.combatProfile(), attack, chargeMultiplier, target);
+                    clone, clone.combatProfile(), attack, chargeMultiplier, target, look);
         }
     }
 
@@ -342,7 +447,8 @@ public final class XenoCloneSystem {
 
         boolean byPlayer = event.getSource().getEntity() instanceof Player
                 || event.getSource().getDirectEntity() instanceof Player;
-        if (!net.bullettrain.xenopixelsmod.combat.ZanzokenRing.canDestroyImage(byPlayer)) {
+        if (!net.bullettrain.xenopixelsmod.combat.ZanzokenRing.canDestroyImage(byPlayer,
+                net.bullettrain.xenopixelsmod.config.XenoServerConfig.zanzokenRingHitable)) {
             // The swing still happened and the attacker is still committed to this body; it simply
             // does not remove it. Nothing about the attacker's state is touched.
             event.setCanceled(true);
@@ -361,7 +467,8 @@ public final class XenoCloneSystem {
             // One image lost is not the trick resolved. The ring ends when a player has picked a
             // body -- they have committed and guessed -- or when nothing is left standing.
             if (net.bullettrain.xenopixelsmod.combat.ZanzokenRing.disperseWholeRing(
-                    clone.revealedByPlayer(), ring.size())) {
+                    clone.revealedByPlayer(), ring.size(),
+                    net.bullettrain.xenopixelsmod.config.XenoServerConfig.zanzokenRingDisperseAll)) {
                 disperseRing(clone.ownerUuid());
             } else {
                 // Whoever was drawn onto this body is moved to another one rather than being handed
@@ -403,14 +510,28 @@ public final class XenoCloneSystem {
                 : source.getEntity() instanceof ServerPlayer player ? player : null;
     }
 
+    @SubscribeEvent
+    public static void onSplitFighterHurt(net.neoforged.neoforge.event.entity.living.LivingIncomingDamageEvent event) {
+        LivingEntity victim = event.getEntity();
+        Entity src = event.getSource().getEntity();
+        if (!(src instanceof LivingEntity attacker) || attacker == victim) return;
+        ServerPlayer owner = null;
+        if (victim instanceof ServerPlayer player && isSplit(player)) {
+            owner = player;
+        } else if (victim instanceof XenoCloneEntity clone && CloneCombatBridge.active(clone)) {
+            owner = CloneCombatBridge.owner(clone);
+        }
+        if (owner != null) noteRetaliate(owner, attacker);
+    }
+
     @SubscribeEvent(priority = net.neoforged.bus.api.EventPriority.HIGHEST)
     public static void protectCloneTargets(net.neoforged.neoforge.event.entity.living.LivingIncomingDamageEvent event) {
         XenoCloneEntity clone = damageClone(event.getSource());
         if (clone == null) return;
         ServerPlayer owner = CloneCombatBridge.owner(clone);
         if (!CloneCombatBridge.active(clone) || !CloneCombatBridge.validTarget(owner, event.getEntity())
-                || lockedTarget(owner) != event.getEntity()
-                || owner.distanceToSqr(event.getEntity()) > CloneCombatPolicy.LEASH * CloneCombatPolicy.LEASH) {
+                || fightTarget(owner) != event.getEntity()
+                || !inDetectRange(owner, event.getEntity())) {
             event.setCanceled(true);
         }
     }
@@ -424,6 +545,8 @@ public final class XenoCloneSystem {
 
     @SubscribeEvent
     public static void onSuccessfulSplitDamage(LivingDamageEvent.Post event) {
+        XenoCloneEntity clone = damageClone(event.getSource());
+        if (clone != null) clone.noteCombatHit();
         ServerPlayer owner = damageOwner(event.getSource());
         if (owner == null || !isSplit(owner) || !CloneCombatBridge.permittedTarget(owner, event.getEntity())) return;
         long now = owner.level().getGameTime();

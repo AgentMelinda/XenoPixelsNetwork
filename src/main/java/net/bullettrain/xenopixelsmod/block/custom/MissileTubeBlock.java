@@ -2,6 +2,8 @@ package net.bullettrain.xenopixelsmod.block.custom;
 
 import com.mojang.serialization.MapCodec;
 import net.bullettrain.xenopixelsmod.block.entity.MissileTubeBlockEntity;
+import net.bullettrain.xenopixelsmod.item.custom.MissileItem;
+import net.bullettrain.xenopixelsmod.missile.MissileWarhead;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.network.chat.Component;
@@ -9,7 +11,9 @@ import net.minecraft.server.level.ServerLevel;
 import net.minecraft.util.RandomSource;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
+import net.minecraft.world.ItemInteractionResult;
 import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.context.BlockPlaceContext;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.BaseEntityBlock;
@@ -58,7 +62,6 @@ public class MissileTubeBlock extends BaseEntityBlock {
     @Override
     public <T extends BlockEntity> BlockEntityTicker<T> getTicker(Level level, BlockState state,
                                                                   BlockEntityType<T> type) {
-        // Idle tubes: no ticker. Cooldown uses scheduleTick → tick() below.
         return null;
     }
 
@@ -72,11 +75,9 @@ public class MissileTubeBlock extends BaseEntityBlock {
     @Nullable
     @Override
     public BlockState getStateForPlacement(BlockPlaceContext ctx) {
-        // Prefer looking direction; shift-place uses clicked face
         Direction d = ctx.getPlayer() != null && ctx.getPlayer().isShiftKeyDown()
                 ? ctx.getClickedFace()
                 : ctx.getNearestLookingDirection().getOpposite();
-        // Default vertical silo
         if (ctx.getPlayer() != null && !ctx.getPlayer().isShiftKeyDown()) {
             d = Direction.UP;
         }
@@ -84,22 +85,53 @@ public class MissileTubeBlock extends BaseEntityBlock {
     }
 
     @Override
+    protected ItemInteractionResult useItemOn(ItemStack stack, BlockState state, Level level, BlockPos pos,
+                                              Player player, InteractionHand hand, BlockHitResult hit) {
+        if (stack.isEmpty()) {
+            return ItemInteractionResult.PASS_TO_DEFAULT_BLOCK_INTERACTION;
+        }
+        if (!(level.getBlockEntity(pos) instanceof MissileTubeBlockEntity tube)) {
+            return ItemInteractionResult.PASS_TO_DEFAULT_BLOCK_INTERACTION;
+        }
+        if (!MissileItem.isBody(stack) && !MissileWarhead.isWarhead(stack)) {
+            return ItemInteractionResult.PASS_TO_DEFAULT_BLOCK_INTERACTION;
+        }
+        if (!level.isClientSide) {
+            if (tube.tryInsert(player, stack)) {
+                player.displayClientMessage(tube.statusLine(state.getValue(FACING)), true);
+            } else {
+                player.displayClientMessage(Component.literal("§cTube slot already filled."), true);
+            }
+        }
+        return ItemInteractionResult.sidedSuccess(level.isClientSide);
+    }
+
+    @Override
     protected InteractionResult useWithoutItem(BlockState state, Level level, BlockPos pos, Player player,
                                                BlockHitResult hit) {
         if (!level.isClientSide && level.getBlockEntity(pos) instanceof MissileTubeBlockEntity be) {
             if (player.isShiftKeyDown()) {
-                be.toggleArmed();
-                player.displayClientMessage(Component.literal(
-                        "§6Missile tube: " + (be.isArmed() ? "§aARMED" : "§cSAFE")
-                                + (be.getCooldown() > 0 ? " §7(reload " + (be.getCooldown() / 20) + "s)" : "")), true);
+                if (be.tryExtract(player)) {
+                    player.displayClientMessage(be.statusLine(state.getValue(FACING)), true);
+                } else {
+                    be.toggleArmed();
+                    player.displayClientMessage(Component.literal(
+                            "§6Missile tube: " + (be.isArmed() ? "§aARMED" : "§cSAFE")
+                                    + (be.getCooldown() > 0 ? " §7(reload " + (be.getCooldown() / 20) + "s)" : "")), true);
+                }
             } else {
-                player.displayClientMessage(Component.literal(
-                        "§6Missile tube §7facing " + state.getValue(FACING).getName()
-                                + " · " + (be.isArmed() ? "§aARMED" : "§cSAFE")
-                                + " §8(pair with Ballistic Guidance + redstone)"), true);
+                player.displayClientMessage(be.statusLine(state.getValue(FACING)), true);
             }
         }
         return InteractionResult.sidedSuccess(level.isClientSide);
+    }
+
+    @Override
+    protected void onRemove(BlockState state, Level level, BlockPos pos, BlockState newState, boolean movedByPiston) {
+        if (!state.is(newState.getBlock()) && level.getBlockEntity(pos) instanceof MissileTubeBlockEntity tube) {
+            tube.dropContents();
+        }
+        super.onRemove(state, level, pos, newState, movedByPiston);
     }
 
     @Override

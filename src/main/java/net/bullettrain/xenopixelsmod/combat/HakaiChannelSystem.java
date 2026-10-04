@@ -142,6 +142,8 @@ public final class HakaiChannelSystem {
     }
 
     public static void cancel(ServerPlayer caster, String message) {
+        // One cancel for both Hakai: the J release, combat resets and logout all call this one.
+        HakaiAreaSystem.cancel(caster, message);
         Channel removed = ACTIVE.remove(caster.getUUID());
         if (removed != null) {
             clearGlow(caster, removed);
@@ -286,28 +288,8 @@ public final class HakaiChannelSystem {
 
     private static void finish(ServerLevel level, ServerPlayer caster, LivingEntity target,
                                boolean forceErase) {
-        Vec3 pos = target.position().add(0.0, target.getBbHeight() * 0.5, 0.0);
         DmzAnimHelper.broadcastHakaiFire(caster);
-        CombatFx.cue(level, pos, CombatFxKind.HAKAI_ERASE, 1.0f);
-
-        HakaiFx.burst(level, target, true);
-        HakaiFx.reveal(target);
-        net.bullettrain.xenopixelsmod.compat.npc.NpcDissolve.clear(target);
-        if (target instanceof Player
-                || net.bullettrain.xenopixelsmod.compat.npc.NpcCounterpartSync.isCustomNpc(target)) {
-            eraseLivingTarget(target);
-        } else {
-            target.discard();
-        }
-    }
-
-    private static void eraseLivingTarget(LivingEntity target) {
-        var source = target.level().damageSources().genericKill();
-        target.hurt(source, Float.MAX_VALUE);
-        if (target.isAlive()) {
-            target.setHealth(0.0f);
-            target.die(source);
-        }
+        HakaiErase.eraseTarget(level, target);
     }
 
     private static boolean resistsErase(ServerPlayer caster, LivingEntity target) {
@@ -415,6 +397,22 @@ public final class HakaiChannelSystem {
      * Ray, then cone, then nearest living in range. Masters are skipped.
      */
     public static LivingEntity findLookTarget(ServerPlayer player, double range) {
+        return findLookTarget(player, range, true);
+    }
+
+    /**
+     * The same search, with the nearest-living stage optional.
+     *
+     * <p>That last stage ignores where the player is looking entirely — it returns the closest
+     * living thing in range. For Hakai that is a forgiving "you clearly meant something" fallback and
+     * it stays on. For anything that must obey the crosshair, it is wrong: multi-form copies using it
+     * would attack whatever happened to be nearby rather than what their owner aimed at, which is
+     * indistinguishable from the copies picking fights on their own.
+     *
+     * @param allowNearestFallback false to stop after the ray and the cone
+     */
+    public static LivingEntity findLookTarget(ServerPlayer player, double range,
+                                              boolean allowNearestFallback) {
         if (player == null || range <= 0) return null;
         Vec3 eye = player.getEyePosition();
         Vec3 look = player.getLookAngle();
@@ -442,7 +440,7 @@ public final class HakaiChannelSystem {
                 best = living;
             }
         }
-        if (best != null) return best;
+        if (best != null || !allowNearestFallback) return best;
         double nearest = range * range;
         for (LivingEntity living : player.level().getEntitiesOfClass(LivingEntity.class,
                 player.getBoundingBox().inflate(range),

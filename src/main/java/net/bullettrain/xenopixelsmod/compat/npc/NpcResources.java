@@ -64,6 +64,35 @@ public final class NpcResources {
         return true;
     }
 
+    /**
+     * Spend what the pool can cover, and report the share that was paid.
+     *
+     * <p>The all-or-nothing {@link #spendStamina} is still right for a discrete action — a technique
+     * either fires or it does not. A punch is different: refusing it entirely is what turned a
+     * high-strength NPC's every hit into the flat fallback damage, so here the swing is funded as far
+     * as the pool goes and the caller scales the hit by what came back.
+     *
+     * @return 0..1 from {@link NpcStatMath#affordableFraction}
+     */
+    public static double spendStaminaPartial(LivingEntity npc, NpcCombatProfile profile,
+                                             double amount) {
+        double cost = Math.max(0.0, amount);
+        if (cost <= 0.0) return 1.0;
+        if (spendStamina(npc, profile, cost)) return 1.0;
+        Snapshot now = get(npc, profile);
+        double paid = Math.max(0.0, Math.min(now.stamina(), cost));
+        double fraction = NpcStatMath.affordableFraction(now.stamina(), cost);
+        if (paid > 0.0 && !(npc instanceof net.bullettrain.xenopixelsmod.combat.clone.XenoCloneEntity)) {
+            save(npc, new Snapshot(now.energy(), now.maxEnergy(),
+                    now.stamina() - paid, now.maxStamina()));
+        } else if (paid > 0.0) {
+            // Copies draw on their owner's pool; the bridge owns that arithmetic.
+            net.bullettrain.xenopixelsmod.combat.clone.CloneCombatBridge.spend(
+                    (net.bullettrain.xenopixelsmod.combat.clone.XenoCloneEntity) npc, 0, paid);
+        }
+        return fraction;
+    }
+
     public static boolean spend(LivingEntity npc, NpcCombatProfile profile,
                                 double energyAmount, double staminaAmount) {
         if (npc instanceof net.bullettrain.xenopixelsmod.combat.clone.XenoCloneEntity clone)

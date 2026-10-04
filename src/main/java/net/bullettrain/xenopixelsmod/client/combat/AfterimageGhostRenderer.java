@@ -132,9 +132,10 @@ public final class AfterimageGhostRenderer {
                 } finally {
                     pose.popPose();
                 }
-            } catch (Throwable t) {
+            } catch (RuntimeException exception) {
                 // A renderer that refuses to draw an entity out of place must not take the frame
                 // down with it. The dodge itself is server-side and already happened.
+                XenoPixelsMod.LOGGER.debug("Afterimage render skipped for entity {}", living.getId(), exception);
             } finally {
                 living.setPos(keepX, keepY, keepZ);
                 living.setYRot(keepYaw);

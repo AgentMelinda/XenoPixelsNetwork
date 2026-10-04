@@ -22,14 +22,18 @@ function init(event) {
         return;
     }
     XenoPixels.setProfile(n, "saiyan", 40, 40, 30, 40, 50, 40);
+    if (typeof XenoPixels.setPowerRelease === "function") XenoPixels.setPowerRelease(n, 100);
+    if (typeof XenoPixels.setAuthoritative === "function") XenoPixels.setAuthoritative(n, true);
+    if (typeof XenoPixels.setCombatBrain === "function") XenoPixels.setCombatBrain(n, false);
+    XenoPixels.setAppearanceMode(n, "FULL");
+    if (typeof XenoPixels.setPlayerModel === "function") XenoPixels.setPlayerModel(n, true);
     XenoPixels.setHairEnabled(n, true);
     XenoPixels.setHairColor(n, "black");
-    XenoPixels.setAuraColor(n, "FFAA00");
+    XenoPixels.setAuraColor(n, "#FFAA00");
     XenoPixels.setAura(n, true);
     XenoPixels.setMastery(n, GROUP, SSJ1, 100);
     XenoPixels.setMastery(n, GROUP, SSJ2, 100);
     XenoPixels.setMastery(n, GROUP, SSJ3, 100);
-    n.executeCommand("xenopixels npcprofile ai enable");
     n.getStoreddata().put("xeno_show", 0);
 }
 
@@ -57,10 +61,18 @@ function timer(event) {
         XenoPixels.ascend(n, GROUP, SSJ1, HOLD);
         n.getTimers().forceStart(T_SSJ2, HOLD + 30, false);
     } else if (event.id == T_SSJ2) {
+        if (XenoPixels.isTransforming(n)) {
+            n.getTimers().forceStart(T_SSJ2, 8, false);
+            return;
+        }
         n.say("Still not enough... Super Saiyan 2!");
         XenoPixels.ascend(n, GROUP, SSJ2, HOLD);
         n.getTimers().forceStart(T_SSJ3, HOLD + 30, false);
     } else if (event.id == T_SSJ3) {
+        if (XenoPixels.isTransforming(n)) {
+            n.getTimers().forceStart(T_SSJ3, 8, false);
+            return;
+        }
         n.say("This is it... Super Saiyan 3!!");
         XenoPixels.ascend(n, GROUP, SSJ3, HOLD);
         n.getTimers().forceStart(T_BLAST, HOLD + 25, false);

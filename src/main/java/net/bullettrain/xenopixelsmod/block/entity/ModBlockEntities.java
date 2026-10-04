@@ -15,7 +15,8 @@ public final class ModBlockEntities {
     public static final DeferredHolder<BlockEntityType<?>, BlockEntityType<MissileChunkLoaderBlockEntity>> MISSILE_CHUNK_LOADER =
             BLOCK_ENTITIES.register("missile_chunk_loader", () ->
                     BlockEntityType.Builder.of(MissileChunkLoaderBlockEntity::new,
-                            ModBlocks.MISSILE_CHUNK_LOADER.get()).build(null));
+                            ModBlocks.MISSILE_CHUNK_LOADER.get(),
+                            ModBlocks.MISSILE_CHUNK_LOADER_FORK.get()).build(null));
 
     public static final DeferredHolder<BlockEntityType<?>, BlockEntityType<CopycatGlowstoneBlockEntity>> COPYCAT_GLOWSTONE =
             BLOCK_ENTITIES.register("copycat_glowstone", () ->
@@ -25,22 +26,26 @@ public final class ModBlockEntities {
     public static final DeferredHolder<BlockEntityType<?>, BlockEntityType<ShipVlsGuidanceBlockEntity>> SHIP_VLS_GUIDANCE =
             BLOCK_ENTITIES.register("ship_vls_guidance", () ->
                     BlockEntityType.Builder.of(ShipVlsGuidanceBlockEntity::new,
-                            ModBlocks.SHIP_VLS_GUIDANCE.get()).build(null));
+                            ModBlocks.SHIP_VLS_GUIDANCE.get(),
+                            ModBlocks.SHIP_VLS_GUIDANCE_FORK.get()).build(null));
 
     public static final DeferredHolder<BlockEntityType<?>, BlockEntityType<ShipThrusterBlockEntity>> SHIP_THRUSTER =
             BLOCK_ENTITIES.register("ship_thruster", () ->
                     BlockEntityType.Builder.of(ShipThrusterBlockEntity::new,
-                            ModBlocks.SHIP_THRUSTER.get()).build(null));
+                            ModBlocks.SHIP_THRUSTER.get(),
+                            ModBlocks.SHIP_THRUSTER_FORK.get()).build(null));
 
     public static final DeferredHolder<BlockEntityType<?>, BlockEntityType<MissileTubeBlockEntity>> MISSILE_TUBE =
             BLOCK_ENTITIES.register("missile_tube", () ->
                     BlockEntityType.Builder.of(MissileTubeBlockEntity::new,
-                            ModBlocks.MISSILE_TUBE.get()).build(null));
+                            ModBlocks.MISSILE_TUBE.get(),
+                            ModBlocks.MISSILE_TUBE_FORK.get()).build(null));
 
     public static final DeferredHolder<BlockEntityType<?>, BlockEntityType<PilotSeatBlockEntity>> PILOT_SEAT =
             BLOCK_ENTITIES.register("pilot_seat", () ->
                     BlockEntityType.Builder.of(PilotSeatBlockEntity::new,
-                            ModBlocks.PILOT_SEAT.get()).build(null));
+                            ModBlocks.PILOT_SEAT.get(),
+                            ModBlocks.PILOT_SEAT_FORK.get()).build(null));
 
     /** Shared by {@code WING_PANEL} and its two fixed-orientation subclasses
      * ({@code WingFlapHorizontalBlock}/{@code WingFlapVerticalBlock}) — same block entity, same
@@ -57,7 +62,16 @@ public final class ModBlockEntities {
                             ModBlocks.COPYCAT_WING_FLAP_HORIZONTAL.get(),
                             ModBlocks.COPYCAT_WING_FLAP_HORIZONTAL_LIT.get(),
                             ModBlocks.COPYCAT_WING_FLAP_VERTICAL.get(),
-                            ModBlocks.COPYCAT_WING_FLAP_VERTICAL_LIT.get()).build(null));
+                            ModBlocks.COPYCAT_WING_FLAP_VERTICAL_LIT.get(),
+                            ModBlocks.WING_PANEL_FORK.get(),
+                            ModBlocks.WING_FLAP_HORIZONTAL_FORK.get(),
+                            ModBlocks.WING_FLAP_VERTICAL_FORK.get(),
+                            ModBlocks.COPYCAT_WING_PANEL_FORK.get(),
+                            ModBlocks.COPYCAT_WING_PANEL_LIT_FORK.get(),
+                            ModBlocks.COPYCAT_WING_FLAP_HORIZONTAL_FORK.get(),
+                            ModBlocks.COPYCAT_WING_FLAP_HORIZONTAL_LIT_FORK.get(),
+                            ModBlocks.COPYCAT_WING_FLAP_VERTICAL_FORK.get(),
+                            ModBlocks.COPYCAT_WING_FLAP_VERTICAL_LIT_FORK.get()).build(null));
 
     private ModBlockEntities() {}
 

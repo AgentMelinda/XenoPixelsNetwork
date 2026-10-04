@@ -1,9 +1,9 @@
 /**
  * XenoPixels — Global Player Scripts (My NPCs / CustomNPCs).
  *
- * Paste this into Global → Player Scripts, set Enabled to Yes, then close the GUI
- * so it saves. A clip that only exists in one player's studio folder will not play
- * for anyone else: publish it first with `/xenoanim global push`.
+ * Optional My NPCs script. XenoPixels also handles !clip / !cliplist / !clipstop
+ * / !cliphelp in Java on ServerChatEvent, so runClient chat works without this tab.
+ * Paste only if you want the same commands from a script. Enabled = Yes. ESC to save.
  *
  * Chat (the command is swallowed, it does not appear in public chat):
  *   !clip my_jab
@@ -108,14 +108,37 @@ function hideChat(event) {
 function listClips(player) {
     var library = XenoPixels.listLibraryClips();
     if (library && library.length) {
-        tell(player, "§7Library: §f" + library.join("§7, §f"));
+        tellChunks(player, "Library: ", library);
         return;
     }
-    tell(player, "§7No published library clips. Shipped combat.xeno_* names still work; push studio files with /xenoanim global push");
+    var all = typeof XenoPixels.listClips === "function" ? XenoPixels.listClips() : [];
+    if (all && all.length) {
+        tellChunks(player, "Clips: ", all);
+        return;
+    }
+    tell(player, "No clips. Publish studio files with /xenoanim global push");
 }
 
+function tellChunks(player, prefix, names) {
+    var line = prefix;
+    for (var i = 0; i < names.length; i++) {
+        var piece = (line === prefix ? "" : ", ") + names[i];
+        if (line.length + piece.length > 240) {
+            tell(player, line);
+            line = names[i];
+        } else {
+            line += piece;
+        }
+    }
+    if (line) {
+        tell(player, line);
+    }
+}
+
+// Never use player.message: My NPCs treats the text as a translation key and 1.21.1 shows nothing.
 function tell(player, message) {
-    if (player && typeof player.message === "function") {
-        player.message(message);
+    if (player == null) return;
+    if (typeof XenoPixels !== "undefined" && typeof XenoPixels.say === "function") {
+        XenoPixels.say(player, message);
     }
 }

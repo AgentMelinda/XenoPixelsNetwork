@@ -1,0 +1,64 @@
+{
+  "format_version": "1.8.0",
+  "animations": {
+    "combat.xeno_nod": {
+      "loop": false,
+      "animation_length": 1.2,
+      "bones": {
+        "head": {
+          "rotation": {
+            "0.000": {
+              "vector": [
+                0,
+                0,
+                0
+              ]
+            },
+            "0.250": {
+              "vector": [
+                14,
+                0,
+                4
+              ],
+              "easing": "easeinoutsine"
+            },
+            "0.500": {
+              "vector": [
+                -4,
+                0,
+                4
+              ],
+              "easing": "easeinoutsine"
+            },
+            "0.750": {
+              "vector": [
+                12,
+                0,
+                4
+              ],
+              "easing": "easeinoutsine"
+            },
+            "1.200": {
+              "vector": [
+                0,
+                0,
+                0
+              ],
+              "easing": "easeinoutsine"
+            }
+          }
+        }
+      },
+      "particle_effects": {
+        "0.200": {
+          "effect": "minecraft:happy_villager",
+          "locator": "head"
+        },
+        "0.650": {
+          "effect": "minecraft:happy_villager",
+          "locator": "head"
+        }
+      }
+    }
+  }
+}

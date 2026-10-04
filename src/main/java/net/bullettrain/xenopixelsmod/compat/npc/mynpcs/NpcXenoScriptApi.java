@@ -7,6 +7,8 @@ import net.bullettrain.xenopixelsmod.compat.npc.NpcAppearanceFx;
 import net.bullettrain.xenopixelsmod.compat.npc.NpcAuraFx;
 import net.bullettrain.xenopixelsmod.compat.npc.NpcAuraResolver;
 import net.bullettrain.xenopixelsmod.compat.npc.NpcAuraStyle;
+import net.bullettrain.xenopixelsmod.compat.npc.NpcChargeMoves;
+import net.bullettrain.xenopixelsmod.compat.npc.NpcCombatBrainVersion;
 import net.bullettrain.xenopixelsmod.compat.npc.NpcCombatMoves;
 import net.bullettrain.xenopixelsmod.compat.npc.NpcCombatProfile;
 import net.bullettrain.xenopixelsmod.compat.npc.NpcCounterpartSync;
@@ -16,12 +18,15 @@ import net.bullettrain.xenopixelsmod.compat.npc.NpcDmzAnim;
 import net.bullettrain.xenopixelsmod.compat.npc.NpcEntityLookup;
 import net.bullettrain.xenopixelsmod.compat.npc.NpcFlightBridge;
 import net.bullettrain.xenopixelsmod.compat.npc.NpcFormLookup;
+import net.bullettrain.xenopixelsmod.compat.npc.NpcHakai;
 import net.bullettrain.xenopixelsmod.compat.npc.NpcHairBridge;
 import net.bullettrain.xenopixelsmod.compat.npc.NpcKiAim;
 import net.bullettrain.xenopixelsmod.compat.npc.NpcKiAttackDispatcher;
 import net.bullettrain.xenopixelsmod.compat.npc.NpcKiCooldowns;
 import net.bullettrain.xenopixelsmod.compat.npc.NpcMeleeDamage;
 import net.bullettrain.xenopixelsmod.compat.npc.NpcResources;
+import net.bullettrain.xenopixelsmod.compat.npc.NpcScriptLists;
+import net.bullettrain.xenopixelsmod.compat.npc.NpcScriptSay;
 import net.bullettrain.xenopixelsmod.compat.npc.NpcScriptSound;
 import net.bullettrain.xenopixelsmod.compat.npc.NpcSkillSet;
 import net.bullettrain.xenopixelsmod.compat.npc.NpcTransformSystem;
@@ -46,7 +51,7 @@ import java.util.Map;
 /** Explicit, server-side XenoPixels bridge exposed to CustomNPCs scripts as {@code XenoPixels}. */
 public final class NpcXenoScriptApi {
     public static final NpcXenoScriptApi INSTANCE = new NpcXenoScriptApi();
-    private static final String VERSION = "20";
+    private static final String VERSION = "28";
     private static final EquipmentSlot[] ARMOR_SLOTS = {
             EquipmentSlot.HEAD, EquipmentSlot.CHEST, EquipmentSlot.LEGS, EquipmentSlot.FEET };
 
@@ -60,10 +65,15 @@ public final class NpcXenoScriptApi {
 
     /** Returns the current mutable message while a My NPCs {@code chat(event)} script is running. */
     public String getChatMessage(PlayerEvent.ChatEvent event) {
-        return event == null || event.message == null ? "" : event.message;
+        return NpcScriptSay.resolveChatMessage(event == null ? null : event.message);
     }
 
-    /** Replaces the message that My NPCs writes back to NeoForge after {@code chat(event)}. */
+    /**
+     * Replaces {@code ChatEvent.message} so {@code chat(event)} write-back can see the
+     * new line. The signed {@code ServerChatEvent} is cancelled by
+     * {@code PlayerChatEventMixin} or the LOWEST empty-key listener, which then
+     * broadcasts {@code chat.type.text}. This method only assigns the field.
+     */
     public boolean setChatMessage(PlayerEvent.ChatEvent event, String message) {
         if (event == null || message == null || message.length() > ChatEventPolicy.MAX_MESSAGE_LENGTH) {
             return false;
@@ -76,11 +86,92 @@ public final class NpcXenoScriptApi {
     public boolean cancelChat(PlayerEvent.ChatEvent event) {
         if (event == null) return false;
         event.setCanceled(true);
+        NpcScriptSay.markChatCancelled();
         return true;
     }
 
     public boolean isChatCancelled(PlayerEvent.ChatEvent event) {
         return event != null && event.isCanceled();
+    }
+
+    /**
+     * Private literal system line to this player. Not public chat and not {@code IPlayer.message}
+     * (that path treats the text as a translation key and shows nothing).
+     *
+     * @return false when the player is missing or the text is empty / longer than 256
+     */
+    public boolean say(IPlayer<?> player, String message) {
+        if (player == null) return false;
+        return NpcScriptSay.tell(player.getMCEntity(), message);
+    }
+
+    /**
+     * A XenoPixels speech bubble over any entity - a player too - that everyone nearby sees.
+     * {@code say(player, text)} stays the private chat line. Palette: blue, gold, green, red;
+     * shape: rounded, thought, shout, banner. Honors {@code /xenopixels npcsay}.
+     */
+    public boolean bubble(IEntity<?> entity, String message) {
+        return bubble(entity, message, "", "");
+    }
+
+    public boolean bubble(IEntity<?> entity, String message, String palette) {
+        return bubble(entity, message, palette, "");
+    }
+
+    public boolean bubble(IEntity<?> entity, String message, String palette, String shape) {
+        String text = NpcScriptSay.sanitize(message);
+        if (text == null || entity == null) return false;
+        if (!net.bullettrain.xenopixelsmod.config.XenoServerConfig.npcSayEnabled) return false;
+        if (!(entity.getMCEntity() instanceof net.minecraft.world.entity.LivingEntity living)) return false;
+        return net.bullettrain.xenopixelsmod.npc.lines.XenoNpcSpeech.say(living, text, null,
+                palette == null ? "" : palette,
+                net.bullettrain.xenopixelsmod.npc.lines.BubbleShape.byName(shape,
+                        net.bullettrain.xenopixelsmod.npc.lines.BubbleShape.INHERIT));
+    }
+
+    /**
+     * Public {@code <name> text} line to every player. Use this instead of
+     * {@code IPlayer.message} or a native broadcast — those hide on 1.21.1 signed chat.
+     */
+    public boolean broadcast(IPlayer<?> player, String message) {
+        if (player == null) return false;
+        return NpcScriptSay.broadcastLater(player.getMCEntity(), message);
+    }
+
+    /**
+     * NPC chat bubble via {@code ICustomNpc.say}. Honors {@code /xenopixels npcsay}.
+     *
+     * @return false when muted, the NPC is missing, or the text is empty / longer than 256
+     */
+    public boolean say(ICustomNpc npc, String message) {
+        String text = NpcScriptSay.sanitize(message);
+        if (text == null || npc == null) return false;
+        if (!net.bullettrain.xenopixelsmod.config.XenoServerConfig.npcSayEnabled) return false;
+        npc.say(text);
+        return true;
+    }
+
+    /**
+     * A XenoPixels speech bubble over this NPC in {@code palette} (blue, gold, green, red) - the
+     * same bubble native Xeno NPCs use, rather than the NPC mod's own chat bubble.
+     */
+    public boolean say(ICustomNpc npc, String message, String palette) {
+        return say(npc, message, palette, "");
+    }
+
+    /**
+     * As above in {@code shape}: rounded, thought, shout or banner. Blank palette or shape keeps
+     * the NPC's default. Honors {@code /xenopixels npcsay}.
+     */
+    public boolean say(ICustomNpc npc, String message, String palette, String shape) {
+        String text = NpcScriptSay.sanitize(message);
+        if (text == null || npc == null) return false;
+        if (!net.bullettrain.xenopixelsmod.config.XenoServerConfig.npcSayEnabled) return false;
+        if (!(npc.getMCEntity() instanceof net.minecraft.world.entity.LivingEntity living)) return false;
+        return net.bullettrain.xenopixelsmod.npc.lines.XenoNpcSpeech.say(living, text, null,
+                palette == null ? "" : palette,
+                net.bullettrain.xenopixelsmod.npc.lines.BubbleShape.byName(shape,
+                        net.bullettrain.xenopixelsmod.npc.lines.BubbleShape.INHERIT));
     }
 
     /** Adds real DragonMineZ training points and immediately synchronizes the player's HUD. */
@@ -152,6 +243,8 @@ public final class NpcXenoScriptApi {
         out.put("flySkill", p.flySkillOn); out.put("flySkillLevel", p.flySkillLevel);
         out.put("aggroMultiplier", p.aggroMultiplier); out.put("aimAccuracy", p.aimAccuracy);
         out.put("combatBrain", p.combatBrain);
+        out.put("brainVersion", p.brainVersion.label());
+        out.put("brain", p.brainFlagMap());
         Map<String, Object> skillMap = new LinkedHashMap<>();
         for (Map.Entry<String, NpcSkillSet.Entry> entry : p.skills.entries().entrySet()) {
             Map<String, Object> value = new LinkedHashMap<>();
@@ -182,8 +275,14 @@ public final class NpcXenoScriptApi {
     }
 
     public boolean setKiCharge(ICustomNpc npc, int percent) { return mutate(npc, p -> p.kiChargePercent = Math.max(1, Math.min(1000, percent))); }
-    /** DMZ's real "power release" stance stat has no NPC equivalent; 100 = full power. */
-    public boolean setPowerRelease(ICustomNpc npc, int percent) { return mutate(npc, p -> p.powerReleasePercent = Math.max(1, Math.min(100, percent))); }
+    /**
+     * Stance multiplier. 100 = a player at full release. Caps at the server
+     * {@code sparkingReleaseLimit} (default 225), not a live Sparking meter.
+     */
+    public boolean setPowerRelease(ICustomNpc npc, int percent) {
+        int cap = Math.max(100, net.bullettrain.xenopixelsmod.config.XenoServerConfig.sparkingReleaseLimit);
+        return mutate(npc, p -> p.powerReleasePercent = Math.max(1, Math.min(cap, percent)));
+    }
     public boolean setAura(ICustomNpc npc, boolean on) { return mutateAura(npc, p -> p.auraOn = on); }
     public boolean setAuraColor(ICustomNpc npc, String hex) { return color(npc, hex, true); }
     /**
@@ -327,7 +426,10 @@ public final class NpcXenoScriptApi {
         return true;
     }
 
-    /** 0 fires at where the target is now; 1 solves the intercept exactly. */
+    /**
+     * Stores AimAccuracy. Nothing reads it yet: ki-blast lead blends by
+     * {@code npcRangedAccuracy}. Kept so existing scripts do not break.
+     */
     public boolean setAimAccuracy(ICustomNpc npc, float accuracy) {
         return mutate(npc, p -> p.aimAccuracy = NpcCombatProfile.clampAimAccuracy(accuracy));
     }
@@ -335,6 +437,49 @@ public final class NpcXenoScriptApi {
     /** Autonomous combat. Off by default so a scripted NPC keeps doing exactly what its script says. */
     public boolean setCombatBrain(ICustomNpc npc, boolean on) {
         return mutate(npc, p -> p.combatBrain = on);
+    }
+
+    public boolean setBrainVersion(ICustomNpc npc, String version) {
+        return mutate(npc, p -> p.setBrainVersion(NpcCombatBrainVersion.byLegacyName(version)));
+    }
+
+    public String getBrainVersion(ICustomNpc npc) {
+        return NpcCombatProfile.read(require(npc)).brainVersion.label();
+    }
+
+    /**
+     * Brain flag names: {@code strike}, {@code charge}, {@code flyingFist}, {@code heavyHit},
+     * {@code boneCrusher}, {@code kiai}, {@code randomKi}, {@code kiBlast}, {@code kiWave},
+     * {@code kiDisk}, {@code kiNamed}, {@code fly}, {@code land}, {@code ascend},
+     * {@code disengage}, {@code vanish}, {@code zanzoken}, {@code chase}, {@code deflectBlast},
+     * {@code deflectWave}.
+     */
+    public boolean setBrainFlag(ICustomNpc npc, String flag, boolean on) {
+        return mutate(npc, p -> p.setBrainFlag(flag, on));
+    }
+
+    public boolean getBrainFlag(ICustomNpc npc, String flag) {
+        return NpcCombatProfile.read(require(npc)).brainFlag(flag);
+    }
+
+    public boolean setBrainChance(ICustomNpc npc, String flag, int chance) {
+        return mutate(npc, p -> p.setBrainChance(flag, chance));
+    }
+
+    public int getBrainChance(ICustomNpc npc, String flag) {
+        return NpcCombatProfile.read(require(npc)).brainChance(flag);
+    }
+
+    public boolean setBrainModifier(ICustomNpc npc, String flag, double modifier) {
+        return mutate(npc, p -> p.setBrainModifier(flag, (float) modifier));
+    }
+
+    public double getBrainModifier(ICustomNpc npc, String flag) {
+        return NpcCombatProfile.read(require(npc)).brainModifier(flag);
+    }
+
+    public boolean setBrainSpecialCooldown(ICustomNpc npc, int ticks) {
+        return mutate(npc, p -> p.brainSpecialCooldown = NpcCombatProfile.clampSpecialCooldown(ticks));
     }
 
     /**
@@ -454,6 +599,26 @@ public final class NpcXenoScriptApi {
                 require(npc), clip, speed, durationTicks, hold);
     }
 
+    /**
+     * Nashorn-safe one-shot. JS {@code Number} is {@code Double}, so
+     * {@code playClip(npc, name, 1.0, ticks, false)} often fails to bind and the
+     * interact/timer script dies before a clip starts.
+     */
+    public boolean playClipOnce(ICustomNpc npc, String clip) {
+        return net.bullettrain.xenopixelsmod.api.anim.XenoAnimApi.playClip(
+                require(npc), clip, 1.0f, 0, false);
+    }
+
+    /**
+     * Nashorn-safe hold. Plays {@code clip} and freezes the last authored frame
+     * until {@link #stopClip} or another play. Do not use the 5-arg
+     * {@code playClip(..., true)} from Nashorn — JS {@code Boolean} often fails to bind.
+     */
+    public boolean playClipHold(ICustomNpc npc, String clip) {
+        return net.bullettrain.xenopixelsmod.api.anim.XenoAnimApi.playClip(
+                require(npc), clip, 1.0f, 0, true);
+    }
+
     public boolean playClip(IPlayer<?> player, String clip) {
         return playClipOn(living(player), clip, 1.0f, 0, false);
     }
@@ -524,6 +689,26 @@ public final class NpcXenoScriptApi {
     }
 
     /**
+     * One profile-scaled melee hit. {@code scale} 1 is a normal punch; 1.6 is a heavy finish.
+     * This is not a charged punch or kick.
+     */
+    public boolean meleeHit(ICustomNpc npc, IEntity target) {
+        return meleeHit(npc, target, 1.0);
+    }
+
+    public boolean meleeHit(ICustomNpc npc, IEntity target, double scale) {
+        LivingEntity victim = living(target);
+        if (victim == null) {
+            return false;
+        }
+        float s = (float) scale;
+        if (!(s > 0.0f) || Float.isNaN(s) || Float.isInfinite(s)) {
+            s = 1.0f;
+        }
+        return NpcMeleeDamage.hit(require(npc), victim, s);
+    }
+
+    /**
      * Selects the animation that will play when CustomNPCs' next real melee attack lands.
      *
      * <p>Full DragonMineZ NPCs require a name from {@link #listAnimations()}. Gecko custom-model
@@ -537,6 +722,112 @@ public final class NpcXenoScriptApi {
 
     public boolean clearMeleeAnimation(ICustomNpc npc) {
         return NpcMeleeDamage.persist(require(npc), "");
+    }
+
+    /**
+     * Binds a published studio clip to a combat/transform state on this NPC.
+     *
+     * <p>Slots: {@code TRANSFORM}, {@code PUNCH}, {@code CHARGE_PUNCH},
+     * {@code CHARGE_PUNCH_FIRE}, {@code CHARGE_KICK}, {@code CHARGE_KICK_FIRE},
+     * {@code CHARGE_KI}, {@code HAKAI_HOLD}, {@code HAKAI_FIRE}. Punch is the same
+     * store as {@link #setMeleeAnimation}. Empty clip clears the override.
+     */
+    public boolean setStateClip(ICustomNpc npc, String slot, String clip) {
+        return net.bullettrain.xenopixelsmod.api.anim.XenoAnimApi.setStateClip(require(npc), slot, clip);
+    }
+
+    public boolean setStateClip(IPlayer<?> player, String slot, String clip) {
+        return net.bullettrain.xenopixelsmod.api.anim.XenoAnimApi.setStateClip(living(player), slot, clip);
+    }
+
+    public String getStateClip(ICustomNpc npc, String slot) {
+        return net.bullettrain.xenopixelsmod.api.anim.XenoAnimApi.getStateClip(require(npc), slot);
+    }
+
+    public String getStateClip(IPlayer<?> player, String slot) {
+        LivingEntity target = living(player);
+        return target == null ? ""
+                : net.bullettrain.xenopixelsmod.api.anim.XenoAnimApi.getStateClip(target, slot);
+    }
+
+    public boolean clearStateClip(ICustomNpc npc, String slot) {
+        return net.bullettrain.xenopixelsmod.api.anim.XenoAnimApi.clearStateClip(require(npc), slot);
+    }
+
+    public boolean clearStateClip(IPlayer<?> player, String slot) {
+        return net.bullettrain.xenopixelsmod.api.anim.XenoAnimApi.clearStateClip(living(player), slot);
+    }
+
+    /** Plays the clip currently bound to {@code slot}. */
+    public boolean playState(ICustomNpc npc, String slot) {
+        return net.bullettrain.xenopixelsmod.api.anim.XenoAnimApi.playState(require(npc), slot);
+    }
+
+    public boolean playState(IPlayer<?> player, String slot) {
+        return net.bullettrain.xenopixelsmod.api.anim.XenoAnimApi.playState(living(player), slot);
+    }
+
+    public String[] listStateSlots() {
+        return net.bullettrain.xenopixelsmod.api.anim.XenoAnimApi.listStateSlots();
+    }
+
+    /**
+     * Nashorn does not give Java arrays a JS {@code join}. Use this for
+     * {@link #listStateSlots()}, {@link #listLibraryClips()}, and other lists.
+     */
+    public String joinNames(Object names) {
+        return NpcScriptLists.joinNames(names);
+    }
+
+    public String joinNames(Object names, String separator) {
+        return NpcScriptLists.joinNames(names, separator);
+    }
+
+    /**
+     * Server-wide bind for every player and NPC without a per-entity override.
+     * Same map as {@code /xenoanim bind}. Empty clip restores the shipped default.
+     */
+    public boolean bindStateSlot(String slot, String clip) {
+        return net.bullettrain.xenopixelsmod.api.anim.XenoAnimApi.bindStateSlot(slot, clip);
+    }
+
+    /**
+     * Starts a charged punch. {@code durationTicks <= 0} holds until
+     * {@link #releaseCharge} or the configured max. Auto-releases at duration.
+     */
+    public boolean startChargePunch(ICustomNpc npc, int durationTicks) {
+        return NpcChargeMoves.startPunch(require(npc), durationTicks);
+    }
+
+    /**
+     * Starts a charged kick. {@code verticalBias} is -1 down, 0 neutral, +1 up.
+     */
+    public boolean startChargeKick(ICustomNpc npc, int durationTicks, int verticalBias) {
+        return NpcChargeMoves.startKick(require(npc), durationTicks, verticalBias);
+    }
+
+    public boolean startChargeKick(ICustomNpc npc, int durationTicks) {
+        return startChargeKick(npc, durationTicks, 0);
+    }
+
+    public boolean releaseCharge(ICustomNpc npc) {
+        return NpcChargeMoves.release(require(npc));
+    }
+
+    public boolean cancelCharge(ICustomNpc npc) {
+        return NpcChargeMoves.cancel(require(npc));
+    }
+
+    public boolean isCharging(ICustomNpc npc) {
+        return NpcChargeMoves.isCharging(require(npc));
+    }
+
+    public int getChargePercent(ICustomNpc npc) {
+        return NpcChargeMoves.getPercent(require(npc));
+    }
+
+    public String getChargeStyle(ICustomNpc npc) {
+        return NpcChargeMoves.getStyle(require(npc));
     }
 
     /**
@@ -794,6 +1085,23 @@ public final class NpcXenoScriptApi {
         out.put("lightningColor", NpcCombatProfile.formatHex(resolved.lightningRgb()));
         out.put("rocks", resolved.rocks()); out.put("sparking", resolved.sparking());
         return out;
+    }
+
+    /**
+     * Starts the NPC Hakai channel on {@code target}. Last-frame hold until erase,
+     * cancel, or the target leaves range. Not a ki blast — {@code fireTechnique}
+     * has no Hakai id.
+     */
+    public boolean startHakai(ICustomNpc npc, IEntity target) {
+        return NpcHakai.start(require(npc), living(target));
+    }
+
+    public boolean cancelHakai(ICustomNpc npc) {
+        return NpcHakai.cancel(require(npc));
+    }
+
+    public boolean isHakai(ICustomNpc npc) {
+        return NpcHakai.isChanneling(require(npc));
     }
 
     public boolean fireTechnique(ICustomNpc npc, String id, IEntity target, int durationTicks) {

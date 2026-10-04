@@ -11,6 +11,13 @@ import net.bullettrain.xenopixelsmod.block.custom.WingFlapVerticalBlock;
 import net.bullettrain.xenopixelsmod.block.custom.CopycatWingPanelBlock;
 import net.bullettrain.xenopixelsmod.block.custom.CopycatWingFlapHorizontalBlock;
 import net.bullettrain.xenopixelsmod.block.custom.CopycatWingFlapVerticalBlock;
+import net.bullettrain.xenopixelsmod.block.custom.CopycatWingPanelForkBlock;
+import net.bullettrain.xenopixelsmod.block.custom.CopycatWingFlapHorizontalForkBlock;
+import net.bullettrain.xenopixelsmod.block.custom.CopycatWingFlapVerticalForkBlock;
+import net.bullettrain.xenopixelsmod.block.custom.PilotSeatForkBlock;
+import net.bullettrain.xenopixelsmod.block.custom.WingPanelForkBlock;
+import net.bullettrain.xenopixelsmod.block.custom.WingFlapHorizontalForkBlock;
+import net.bullettrain.xenopixelsmod.block.custom.WingFlapVerticalForkBlock;
 import net.bullettrain.xenopixelsmod.block.custom.ShipThrusterBlock;
 import net.bullettrain.xenopixelsmod.block.custom.ShipVlsGuidanceBlock;
 import net.bullettrain.xenopixelsmod.block.custom.SoundBlock;
@@ -178,6 +185,84 @@ public class ModBlocks {
             registerBlock("copycat_wing_flap_vertical", () -> new CopycatWingFlapVerticalBlock(copycatWingProps(false)));
     public static final DeferredHolder<Block, CopycatWingFlapVerticalBlock> COPYCAT_WING_FLAP_VERTICAL_LIT =
             registerBlock("copycat_wing_flap_vertical_lit", () -> new CopycatWingFlapVerticalBlock(copycatWingProps(true)));
+
+    public static final DeferredHolder<Block, Block> SHIP_VLS_GUIDANCE_FORK = registerBlock("ship_vls_guidance_fork",
+            () -> new ShipVlsGuidanceBlock(BlockBehaviour.Properties.of()
+                    .mapColor(MapColor.COLOR_CYAN)
+                    .strength(3.5f, 8f)
+                    .requiresCorrectToolForDrops()
+                    .sound(SoundType.METAL)
+                    .noOcclusion()));
+
+    public static final DeferredHolder<Block, Block> MISSILE_TUBE_FORK = registerBlock("missile_tube_fork",
+            () -> new MissileTubeBlock(BlockBehaviour.Properties.of()
+                    .mapColor(MapColor.COLOR_GRAY)
+                    .strength(4.0f, 10f)
+                    .requiresCorrectToolForDrops()
+                    .sound(SoundType.METAL)
+                    .noOcclusion()));
+
+    public static final DeferredHolder<Block, Block> MISSILE_CHUNK_LOADER_FORK = registerBlock("missile_chunk_loader_fork",
+            () -> new MissileChunkLoaderBlock(BlockBehaviour.Properties.of()
+                    .mapColor(MapColor.METAL)
+                    .strength(3.5f, 8f)
+                    .requiresCorrectToolForDrops()
+                    .sound(SoundType.METAL)
+                    .noOcclusion()));
+
+    public static final DeferredHolder<Block, Block> SHIP_THRUSTER_FORK = registerBlock("ship_thruster_fork",
+            () -> new ShipThrusterBlock(BlockBehaviour.Properties.of()
+                    .mapColor(MapColor.COLOR_ORANGE)
+                    .strength(3.5f, 8f)
+                    .requiresCorrectToolForDrops()
+                    .sound(SoundType.METAL)
+                    .noOcclusion()
+                    .lightLevel(s -> s.getValue(ShipThrusterBlock.POWERED) ? 10 : 0)));
+
+    public static final DeferredHolder<Block, PilotSeatForkBlock> PILOT_SEAT_FORK = registerBlock("pilot_seat_fork",
+            () -> new PilotSeatForkBlock(BlockBehaviour.Properties.of()
+                    .mapColor(MapColor.COLOR_CYAN)
+                    .strength(2.5f, 6f)
+                    .sound(SoundType.METAL)
+                    .noOcclusion()));
+
+    public static final DeferredHolder<Block, WingPanelForkBlock> WING_PANEL_FORK = registerBlock("wing_panel_fork",
+            () -> new WingPanelForkBlock(BlockBehaviour.Properties.of()
+                    .mapColor(MapColor.METAL)
+                    .strength(2.0f, 4f)
+                    .sound(SoundType.METAL)
+                    .noOcclusion()));
+
+    public static final DeferredHolder<Block, WingFlapHorizontalForkBlock> WING_FLAP_HORIZONTAL_FORK =
+            registerBlock("wing_flap_horizontal_fork", () -> new WingFlapHorizontalForkBlock(BlockBehaviour.Properties.of()
+                    .mapColor(MapColor.METAL)
+                    .strength(2.0f, 4f)
+                    .sound(SoundType.METAL)
+                    .noOcclusion()));
+
+    public static final DeferredHolder<Block, WingFlapVerticalForkBlock> WING_FLAP_VERTICAL_FORK =
+            registerBlock("wing_flap_vertical_fork", () -> new WingFlapVerticalForkBlock(BlockBehaviour.Properties.of()
+                    .mapColor(MapColor.METAL)
+                    .strength(2.0f, 4f)
+                    .sound(SoundType.METAL)
+                    .noOcclusion()));
+
+    public static final DeferredHolder<Block, CopycatWingPanelForkBlock> COPYCAT_WING_PANEL_FORK =
+            registerBlock("copycat_wing_panel_fork", () -> new CopycatWingPanelForkBlock(copycatWingProps(false)));
+    public static final DeferredHolder<Block, CopycatWingPanelForkBlock> COPYCAT_WING_PANEL_LIT_FORK =
+            registerBlock("copycat_wing_panel_lit_fork", () -> new CopycatWingPanelForkBlock(copycatWingProps(true)));
+    public static final DeferredHolder<Block, CopycatWingFlapHorizontalForkBlock> COPYCAT_WING_FLAP_HORIZONTAL_FORK =
+            registerBlock("copycat_wing_flap_horizontal_fork",
+                    () -> new CopycatWingFlapHorizontalForkBlock(copycatWingProps(false)));
+    public static final DeferredHolder<Block, CopycatWingFlapHorizontalForkBlock> COPYCAT_WING_FLAP_HORIZONTAL_LIT_FORK =
+            registerBlock("copycat_wing_flap_horizontal_lit_fork",
+                    () -> new CopycatWingFlapHorizontalForkBlock(copycatWingProps(true)));
+    public static final DeferredHolder<Block, CopycatWingFlapVerticalForkBlock> COPYCAT_WING_FLAP_VERTICAL_FORK =
+            registerBlock("copycat_wing_flap_vertical_fork",
+                    () -> new CopycatWingFlapVerticalForkBlock(copycatWingProps(false)));
+    public static final DeferredHolder<Block, CopycatWingFlapVerticalForkBlock> COPYCAT_WING_FLAP_VERTICAL_LIT_FORK =
+            registerBlock("copycat_wing_flap_vertical_lit_fork",
+                    () -> new CopycatWingFlapVerticalForkBlock(copycatWingProps(true)));
 
     private static <T extends Block> DeferredHolder<Block, T> registerBlock(String name, Supplier<T> block) {
         DeferredHolder<Block, T> toReturn = BLOCKS.register(name, block);

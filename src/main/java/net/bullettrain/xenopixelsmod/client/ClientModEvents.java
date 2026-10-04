@@ -23,20 +23,47 @@ import net.neoforged.fml.common.Mod;
 public final class ClientModEvents {
     private ClientModEvents() {}
 
+    /**
+     * Binds the bank menu to its screen.
+     *
+     * <p>The mod's only container menu, and the one registration a container needs that nothing
+     * else in the tree already does. Without it, opening a bank shows an empty screen with no
+     * error anywhere - which is why it sits next to the renderers rather than somewhere clever.
+     */
+    @SubscribeEvent
+    public static void registerMenuScreens(
+            net.neoforged.neoforge.client.event.RegisterMenuScreensEvent event) {
+        event.register(net.bullettrain.xenopixelsmod.npc.bank.ModMenus.NPC_BANK.get(),
+                net.bullettrain.xenopixelsmod.client.npc.bank.XenoNpcBankScreen::new);
+        event.register(net.bullettrain.xenopixelsmod.npc.bank.ModMenus.NPC_INVENTORY.get(),
+                net.bullettrain.xenopixelsmod.client.npc.inventory.XenoNpcInventoryScreen::new);
+    }
+
     @SubscribeEvent
     public static void registerRenderers(EntityRenderersEvent.RegisterRenderers event) {
         event.registerEntityRenderer(ModEntities.BALLISTIC_MISSILE.get(), BallisticMissileRenderer::new);
         // The pilot seat is deliberately invisible — the seat block is what you see — but every
         // registered entity type still needs a renderer or the client fails on first spawn.
         event.registerEntityRenderer(ModEntities.PILOT_SEAT.get(), PilotSeatRenderer::new);
+        event.registerEntityRenderer(ModEntities.PILOT_SEAT_FORK.get(), PilotSeatRenderer::new);
         // Copies draw as their owner, so this renderer carries no model of its own.
         event.registerEntityRenderer(ModEntities.CLONE.get(),
                 net.bullettrain.xenopixelsmod.client.combat.XenoCloneRenderer::new);
+        event.registerEntityRenderer(ModEntities.XENO_NPC_HUMANOID.get(), net.bullettrain.xenopixelsmod.client.npc.XenoNpcRenderer::new);
+        event.registerEntityRenderer(ModEntities.XENO_NPC_CREATURE.get(), net.bullettrain.xenopixelsmod.client.npc.XenoNpcRenderer::new);
+        event.registerEntityRenderer(ModEntities.XENO_NPC_TRADER.get(), net.bullettrain.xenopixelsmod.client.npc.XenoNpcRenderer::new);
+        event.registerEntityRenderer(ModEntities.XENO_NPC_GUARD.get(), net.bullettrain.xenopixelsmod.client.npc.XenoNpcRenderer::new);
+        event.registerEntityRenderer(ModEntities.XENO_NPC_COMPANION.get(), net.bullettrain.xenopixelsmod.client.npc.XenoNpcRenderer::new);
+        event.registerEntityRenderer(ModEntities.XENO_NPC_QUEST.get(), net.bullettrain.xenopixelsmod.client.npc.XenoNpcRenderer::new);
+        event.registerEntityRenderer(ModEntities.XENO_NPC_TRANSPORTER.get(), net.bullettrain.xenopixelsmod.client.npc.XenoNpcRenderer::new);
+        event.registerEntityRenderer(ModEntities.XENO_NPC_BANK.get(), net.bullettrain.xenopixelsmod.client.npc.XenoNpcRenderer::new);
         // Only role-assigned wing panels are ENTITYBLOCK_ANIMATED and reach this renderer;
         // structural panels stay baked in the chunk mesh. Without this registration the
         // renderer existed but was never resolved, so control surfaces could not animate at all.
         event.registerBlockEntityRenderer(ModBlockEntities.WING_PANEL.get(),
                 net.bullettrain.xenopixelsmod.client.render.WingPanelBlockEntityRenderer::new);
+        event.registerBlockEntityRenderer(ModBlockEntities.MISSILE_TUBE.get(),
+                net.bullettrain.xenopixelsmod.client.render.MissileTubeBlockEntityRenderer::new);
         // GeckoLib rig for the flight controller. The vanilla block model still provides the
         // item form and the collision shape; this only replaces the in-world render.
         event.registerBlockEntityRenderer(
@@ -64,6 +91,12 @@ public final class ClientModEvents {
         event.register(net.minecraft.client.resources.model.ModelResourceLocation.standalone(
                 net.minecraft.resources.ResourceLocation.fromNamespaceAndPath(
                         XenoPixelsMod.MOD_ID, "block/wing_panel_flap")));
+        event.register(net.minecraft.client.resources.model.ModelResourceLocation.standalone(
+                net.minecraft.resources.ResourceLocation.fromNamespaceAndPath(
+                        XenoPixelsMod.MOD_ID, "block/wing_panel_base_fork")));
+        event.register(net.minecraft.client.resources.model.ModelResourceLocation.standalone(
+                net.minecraft.resources.ResourceLocation.fromNamespaceAndPath(
+                        XenoPixelsMod.MOD_ID, "block/wing_panel_flap_fork")));
     }
 
     /**
@@ -86,7 +119,9 @@ public final class ClientModEvents {
         // wing_panel_flap). Wrapping them lets the BER hand a copied material through ModelData and
         // get the wing quads re-textured onto that block's sprite; a plain wing passes no material
         // and the wrapper is a pass-through.
-        for (String path : new String[] {"block/wing_panel_base", "block/wing_panel_flap"}) {
+        for (String path : new String[] {
+                "block/wing_panel_base", "block/wing_panel_flap",
+                "block/wing_panel_base_fork", "block/wing_panel_flap_fork"}) {
             models.computeIfPresent(
                     ModelResourceLocation.standalone(ResourceLocation.fromNamespaceAndPath(XenoPixelsMod.MOD_ID, path)),
                     (ignored, bakedModel) -> bakedModel instanceof CopycatWingModel

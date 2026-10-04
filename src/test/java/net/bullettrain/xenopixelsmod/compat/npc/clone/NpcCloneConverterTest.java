@@ -104,10 +104,34 @@ class NpcCloneConverterTest {
     @Test
     void keysMyNpcsCannotReadAreDropped() {
         CompoundTag converted = NpcCloneConverter.convert(goku());
-        for (String key : List.of("CompanionOwnerName", "CompanionStage", "CompanionInventory",
-                "foodLevel", "foodTickTimer", "neoforge:attachments")) {
+        for (String key : List.of("foodLevel", "foodTickTimer", "foodExhaustionLevel",
+                "foodSaturationLevel", "neoforge:attachments")) {
             assertFalse(converted.contains(key), "should have been dropped: " + key);
         }
+    }
+
+    @Test
+    void companionDataIsKeptBecauseMyNpcsDoesReadIt() {
+        // This list used to be dropped, on the premise that the fork had removed the companion
+        // system. It has not: espi.mynpcs.roles.RoleCompanion reads every one of these keys.
+        //
+        // The fixture is the failure case in the flesh. Goku carries Role: 6 - RoleType.COMPANION -
+        // so My NPCs builds a RoleCompanion for him on load. Dropping the twelve while keeping
+        // Role: 6 handed it a companion whose stage, talents, experience, inventory, age and owner
+        // had all silently reset to nothing. Nobody would see an error; they would see a companion
+        // that had forgotten them.
+        CompoundTag source = goku();
+        assertEquals(6, source.getInt("Role"), "the fixture should be a companion-role NPC");
+
+        CompoundTag converted = NpcCloneConverter.convert(source);
+        for (String key : List.of("CompanionAge", "CompanionCanAge", "CompanionDefendOwner",
+                "CompanionExp", "CompanionHasInv", "CompanionID", "CompanionInventory",
+                "CompanionJob", "CompanionOwner", "CompanionOwnerName", "CompanionStage",
+                "CompanionTalents")) {
+            assertTrue(converted.contains(key), "should have been kept: " + key);
+        }
+        assertEquals(source.getInt("CompanionStage"), converted.getInt("CompanionStage"),
+                "and kept its value, not just its key");
     }
 
     @Test
@@ -173,8 +197,9 @@ class NpcCloneConverterTest {
     @Test
     void droppedKeysAreReportable() {
         List<String> dropped = NpcCloneConverter.droppedKeys(goku());
-        assertTrue(dropped.contains("CompanionOwnerName"));
         assertTrue(dropped.contains("foodLevel"));
+        assertFalse(dropped.contains("CompanionOwnerName"),
+                "companion data is no longer dropped, so it should not be reported as dropped");
         assertTrue(NpcCloneConverter.droppedKeys(mable()).isEmpty(),
                 "a native clone has nothing to drop");
     }

@@ -67,7 +67,6 @@ public class XenoPilotSeatEntity extends Entity {
     /** Ticks with no rider before the seat cleans itself up. */
     private static final int EMPTY_GRACE_TICKS = 20;
     /** How far from the seat block a flight controller may be and still be flyable from it. */
-    private static final int CONTROLLER_SEARCH_RADIUS = 8;
 
     private @Nullable BlockPos seatBlock;
     private @Nullable BlockPos controllerPos;
@@ -137,7 +136,8 @@ public class XenoPilotSeatEntity extends Entity {
     public static @Nullable BlockPos findController(Level level, BlockPos seatBlock) {
         BlockPos[] best = new BlockPos[1];
         double[] bestDistance = {Double.MAX_VALUE};
-        AeroLinkManager.forEachNearbyBlockEntity(level, seatBlock, CONTROLLER_SEARCH_RADIUS,
+        AeroLinkManager.forEachNearbyBlockEntity(level, seatBlock,
+                net.bullettrain.xenopixelsmod.aero.AeroConfig.seatControllerRadius,
                 (pos, blockEntity) -> {
                     if (!(blockEntity instanceof ShipVlsGuidanceBlockEntity)) return;
                     double distance = pos.distSqr(seatBlock);
@@ -187,6 +187,10 @@ public class XenoPilotSeatEntity extends Entity {
             // controller position to name, and the HUD only needs to know whose state this is.
             ModNetwork.sendToPlayer(serverPilot,
                     new AeroStatePacket(AeroStateSnapshot.of(host.hostPos(), host.aeroBus())));
+            if (net.bullettrain.xenopixelsmod.aero.GuidanceVersion.active().isV2()) {
+                net.bullettrain.xenopixelsmod.network.GuidanceV2Network.sendSnapshotTo(
+                        serverPilot, net.bullettrain.xenopixelsmod.aero.v2.GuidanceV2Bus.of(host));
+            }
         }
     }
 

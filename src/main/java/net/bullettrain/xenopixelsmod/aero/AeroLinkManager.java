@@ -1,5 +1,6 @@
 package net.bullettrain.xenopixelsmod.aero;
 
+import net.bullettrain.xenopixelsmod.XenoPixelsMod;
 import net.bullettrain.xenopixelsmod.block.custom.ShipThrusterBlock;
 import net.bullettrain.xenopixelsmod.block.entity.ShipThrusterBlockEntity;
 import net.bullettrain.xenopixelsmod.compat.thruster.ExternalThrusterCompat;
@@ -236,7 +237,8 @@ public final class AeroLinkManager {
                 } else {
                     ExternalThrusterCompat.setThrottle(level, target, 0.0);
                 }
-            } catch (Throwable ignored) {
+            } catch (RuntimeException exception) {
+                XenoPixelsMod.LOGGER.debug("Failed to release linked thruster at {}", target, exception);
                 // The pairing is already dropped above; a bad neighbor must not undo that.
             }
         }
@@ -266,7 +268,8 @@ public final class AeroLinkManager {
                     } else {
                         ExternalThrusterCompat.setThrottle(level, pos, 0.0);
                     }
-                } catch (Throwable ignored) {
+                } catch (RuntimeException exception) {
+                    XenoPixelsMod.LOGGER.debug("Failed to release nearby thruster at {}", pos, exception);
                     // One bad neighbor must not abort the sweep.
                 }
             }
@@ -284,7 +287,8 @@ public final class AeroLinkManager {
             }
             SubLevelAccess any = VsShipHelper.getShipAt(level, pos);
             return any == null ? -1L : VsShipHelper.getShipId(any);
-        } catch (Throwable ignored) {
+        } catch (RuntimeException exception) {
+            XenoPixelsMod.LOGGER.debug("Could not resolve Sable ship at {}", pos, exception);
             return -1L;
         }
     }
@@ -304,7 +308,8 @@ public final class AeroLinkManager {
                 } else {
                     ExternalThrusterCompat.setThrottle(level, pos, 0.0);
                 }
-            } catch (Throwable ignored) {
+            } catch (RuntimeException exception) {
+                XenoPixelsMod.LOGGER.debug("Failed to clear linked thruster at {}", pos, exception);
                 // A single bad neighbor must not abort the release sweep.
             }
         }

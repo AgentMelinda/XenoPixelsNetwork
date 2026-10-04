@@ -56,7 +56,7 @@ public final class NpcAuraFx {
         if (!(living.level() instanceof ServerLevel level)) {
             return;
         }
-        NpcCombatProfile profile = NpcCombatProfile.read(living);
+        NpcCombatProfile profile = NpcCombatProfile.readCached(living);
         boolean effective = effectiveOn(living, profile);
         if (effective && living.isAlive()) {
             ACTIVE.put(living.getUUID(), Boolean.TRUE);
@@ -72,7 +72,7 @@ public final class NpcAuraFx {
             return;
         }
         ACTIVE.remove(living.getUUID());
-        syncState(living, false, NpcCombatProfile.read(living));
+        syncState(living, false, NpcCombatProfile.readCached(living));
     }
 
     /** Forces the next {@link #sync} for this NPC to send even if nothing changed. */
@@ -122,7 +122,7 @@ public final class NpcAuraFx {
         if (!(entity instanceof LivingEntity living) || !living.isAlive()) {
             return;
         }
-        NpcCombatProfile profile = NpcCombatProfile.read(living);
+        NpcCombatProfile profile = NpcCombatProfile.readCached(living);
         if (effectiveOn(living, profile)) {
             ACTIVE.put(living.getUUID(), Boolean.TRUE);
             sync(living);
@@ -139,7 +139,7 @@ public final class NpcAuraFx {
         if (!(event.getTarget() instanceof LivingEntity living)) {
             return;
         }
-        NpcCombatProfile profile = NpcCombatProfile.read(living);
+        NpcCombatProfile profile = NpcCombatProfile.readCached(living);
         NpcAuraResolver.Resolved resolved = NpcAuraResolver.resolve(profile);
         boolean on = effectiveOn(living, profile) && living.isAlive();
         if (!on && !resolved.lightning()) {

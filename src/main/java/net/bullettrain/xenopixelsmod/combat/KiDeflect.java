@@ -11,6 +11,7 @@ import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.sounds.SoundEvents;
 import net.minecraft.sounds.SoundSource;
 import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
 
@@ -112,7 +113,19 @@ public final class KiDeflect {
         if (!spendStamina(res)) return false;
 
         markCooldown(player, level);
-        deflect(player, level, best);
+        // Ultra Ego (2026-09-29): a weaker blast is not returned but punched out of existence.
+        if (net.bullettrain.xenopixelsmod.features.transformation.passive.FormPassiveRules.enabled(
+                net.bullettrain.xenopixelsmod.features.transformation.passive.FormPassiveRules.Kind.PUNCH_BREAK)) {
+            var passive = net.bullettrain.xenopixelsmod.features.transformation.passive.FormPassives.of(player);
+            if (passive.punchBreaksWeakKi() && best.getOwner() instanceof LivingEntity caster
+                    && net.bullettrain.xenopixelsmod.features.transformation.passive.FormPassives
+                    .attackerWeaker(caster, player, passive.weakerRatio())) {
+                net.bullettrain.xenopixelsmod.combat.fx.HakaiFx.blockPuff(level, best.position(), false);
+                best.discard();
+                return true;
+            }
+        }
+        deflect(player, level, best, 1.0f);
         return true;
     }
 
@@ -123,18 +136,6 @@ public final class KiDeflect {
      * blast in reach on consecutive ticks; the stamina cost is what actually prices the mechanic.
      */
     private static final Map<UUID, Integer> NEXT_ALLOWED_TICK = new HashMap<>();
-
-    private static boolean onCooldown(ServerPlayer player, ServerLevel level) {
-        if (XenoServerConfig.kiDeflectCooldownTicks <= 0) return false;
-        Integer next = NEXT_ALLOWED_TICK.get(player.getUUID());
-        return next != null && level.getServer().getTickCount() < next;
-    }
-
-    private static void markCooldown(ServerPlayer player, ServerLevel level) {
-        if (XenoServerConfig.kiDeflectCooldownTicks <= 0) return;
-        NEXT_ALLOWED_TICK.put(player.getUUID(),
-                level.getServer().getTickCount() + XenoServerConfig.kiDeflectCooldownTicks);
-    }
 
     /** Drop a player's gate on logout so the map cannot grow across a server's uptime. */
     public static void forget(UUID playerId) {
@@ -152,60 +153,153 @@ public final class KiDeflect {
 
     /** Skip anything already gone, and anything mid-clash — that is a different mechanic. */
     private static boolean deflectable(AbstractKiProjectile blast) {
-        if (blast == null || !blast.isAlive() || blast.isClashLocked()) {
+        return npcEligibleKind(blast, true, false);
+    }
+
+    /**
+     * Whether an NPC brain may bat this shot. Clash-locked beams are never stolen.
+     * Clashable waves need {@code allowWave}; everything else needs {@code allowBlast}.
+     */
+    public static boolean npcEligibleKind(boolean clashLocked, boolean clashableBeam,
+                                          boolean allowBlast, boolean allowWave) {
+        if (clashLocked) {
             return false;
         }
+        return clashableBeam ? allowWave : allowBlast;
+    }
+
+    static boolean npcEligibleKind(AbstractKiProjectile blast, boolean allowBlast, boolean allowWave) {
+        if (blast == null || !blast.isAlive()) {
+            return false;
+        }
+        boolean clashable = false;
         try {
-            if (blast.isClashableBeam()) {
-                return false;
-            }
+            clashable = blast.isClashableBeam();
         } catch (Throwable ignored) {
             return false;
         }
+        return npcEligibleKind(blast.isClashLocked(), clashable, allowBlast, allowWave);
+    }
+
+    /**
+     * NPC ping-pong. No stamina bill. Short cooldown so a volley is a rally, not a vacuum.
+     */
+    public static boolean tryNpcDeflect(LivingEntity npc, float returnDamageScale,
+                                        boolean allowBlast, boolean allowWave) {
+        if (!XenoServerConfig.kiDeflectEnabled || npc == null) {
+            return false;
+        }
+        if (!(npc.level() instanceof ServerLevel level)) {
+            return false;
+        }
+        if (!allowBlast && !allowWave) {
+            return false;
+        }
+        if (onCooldown(npc.getUUID(), level)) {
+            return false;
+        }
+
+        double reach = Math.max(0.5, XenoServerConfig.kiDeflectReach);
+        Vec3 eye = npc.getEyePosition();
+        Vec3 look = npc.getLookAngle();
+        AABB punchBox = npc.getBoundingBox().inflate(reach);
+
+        AbstractKiProjectile best = null;
+        double bestScore = -1.0;
+        for (AbstractKiProjectile blast : level.getEntitiesOfClass(AbstractKiProjectile.class,
+                punchBox.inflate(1.0), b -> npcEligibleKind(b, allowBlast, allowWave))) {
+            if (blast.isOwner(npc)) {
+                continue;
+            }
+            AABB hit = blast.getBoundingBox().inflate(1.0);
+            boolean overlapping = punchBox.intersects(hit);
+            Vec3 toBlast = blast.position().add(0.0, blast.getBbHeight() * 0.5, 0.0).subtract(eye);
+            double distance = toBlast.length();
+            if (!overlapping && (distance > reach || distance < 1.0e-3)) {
+                continue;
+            }
+            if (distance < 1.0e-3) {
+                distance = 1.0e-3;
+            }
+            Vec3 toBlastDir = toBlast.scale(1.0 / distance);
+            double facing = look.dot(toBlastDir);
+            if (facing < XenoServerConfig.kiDeflectAimDot) {
+                continue;
+            }
+            if (distance > 3.0) {
+                Vec3 motion = blast.getDeltaMovement();
+                if (motion.lengthSqr() > 1.0e-6 && motion.normalize().dot(toBlastDir) > -0.1) {
+                    continue;
+                }
+            }
+            double score = facing - distance * 0.05;
+            if (score > bestScore) {
+                bestScore = score;
+                best = blast;
+            }
+        }
+        if (best == null) {
+            return false;
+        }
+        markCooldown(npc.getUUID(), level);
+        deflect(npc, level, best, returnDamageScale);
         return true;
     }
 
-    private static void deflect(ServerPlayer player, ServerLevel level, AbstractKiProjectile blast) {
+    private static boolean onCooldown(UUID id, ServerLevel level) {
+        if (XenoServerConfig.kiDeflectCooldownTicks <= 0) {
+            return false;
+        }
+        Integer next = NEXT_ALLOWED_TICK.get(id);
+        return next != null && level.getServer().getTickCount() < next;
+    }
+
+    private static void markCooldown(UUID id, ServerLevel level) {
+        if (XenoServerConfig.kiDeflectCooldownTicks <= 0) {
+            return;
+        }
+        NEXT_ALLOWED_TICK.put(id, level.getServer().getTickCount() + XenoServerConfig.kiDeflectCooldownTicks);
+    }
+
+    private static boolean onCooldown(ServerPlayer player, ServerLevel level) {
+        return onCooldown(player.getUUID(), level);
+    }
+
+    private static void markCooldown(ServerPlayer player, ServerLevel level) {
+        markCooldown(player.getUUID(), level);
+    }
+
+    private static void deflect(LivingEntity deflector, ServerLevel level, AbstractKiProjectile blast,
+                                float extraDamageScale) {
         Entity caster = blast.getOwner();
         Vec3 blastCentre = blast.position().add(0.0, blast.getBbHeight() * 0.5, 0.0);
 
-        // Aim where the deflector is looking, not simply back the way it came. Returning it at
-        // the caster is the common case and happens naturally, but a player who leads their
-        // punch can redirect the shot somewhere else, which is more interesting than a mirror.
-        Vec3 aim = player.getLookAngle().normalize();
+        Vec3 aim = deflector.getLookAngle().normalize();
         double speed = Math.max(XenoServerConfig.kiDeflectMinSpeed,
                 blast.getDeltaMovement().length() * XenoServerConfig.kiDeflectSpeedScale);
         blast.setDeltaMovement(aim.scale(speed));
         blast.hasImpulse = true;
-        // DMZ's clash geometry (BeamClashManager/ClashParticipant) is derived from the
-        // projectile's yaw/pitch, not its velocity. Without this, a deflected beam keeps
-        // reporting its pre-deflection facing and can be mis-tested against other beams.
-        blast.setYRot(CameraAimHelper.yaw(player, aim));
+        blast.setYRot(CameraAimHelper.yaw(deflector, aim));
         blast.setXRot(CameraAimHelper.pitch(aim));
 
-        // Turning a shot around is worth more than surviving it, and it cost stamina to do.
-        blast.setKiDamage(blast.getKiDamage() * XenoServerConfig.kiDeflectDamageScale);
+        float scale = XenoServerConfig.kiDeflectDamageScale * Math.max(0.05f, extraDamageScale);
+        blast.setKiDamage(blast.getKiDamage() * scale);
 
-        // Reassign ownership, or DMZ's shouldDamage will refuse it against the original caster.
-        blast.setOwner(player);
-        // Re-home onto the caster, or clear homing outright when there is no caster left to chase.
-        // Leaving the old target in place would keep a homing shot locked on whoever it was
-        // already tracking — which, for a blast thrown at the deflector, is the deflector.
+        blast.setOwner(deflector);
         blast.setHomingTarget(caster != null ? caster.getId() : -1);
 
         level.playSound(null, blastCentre.x, blastCentre.y, blastCentre.z,
                 SoundEvents.PLAYER_ATTACK_CRIT, SoundSource.PLAYERS, 1.0f, 1.35f);
         level.playSound(null, blastCentre.x, blastCentre.y, blastCentre.z,
                 SoundEvents.FIRECHARGE_USE, SoundSource.PLAYERS, 0.7f, 1.5f);
-        // Cyan ring facing the way it is being sent, matching guard's "absorbed" colour family.
         CombatFx.impact(level, blastCentre, aim, CombatFx.Weight.GUARD);
 
-        // Both sides need to read what just happened. Without a cue on the caster's end a returned
-        // blast looks like their own shot inexplicably killing them.
-        player.displayClientMessage(Component.literal("§bDeflected!"), true);
-        if (caster instanceof ServerPlayer casterPlayer) {
-            casterPlayer.displayClientMessage(Component.literal(
-                    "§c" + player.getName().getString() + " deflected your ki blast"), true);
+        if (deflector instanceof ServerPlayer player) {
+            player.displayClientMessage(Component.literal("§bDeflected!"), true);
+            if (caster instanceof ServerPlayer casterPlayer) {
+                casterPlayer.displayClientMessage(Component.literal(
+                        "§c" + player.getName().getString() + " deflected your ki blast"), true);
+            }
         }
     }
 }

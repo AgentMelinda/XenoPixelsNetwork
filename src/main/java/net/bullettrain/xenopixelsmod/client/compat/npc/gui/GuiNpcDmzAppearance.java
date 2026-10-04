@@ -340,17 +340,25 @@ public final class GuiNpcDmzAppearance extends GuiNPCInterface2 implements IText
         }
         else if (button.id == ID_APPLY) {
             preview(draft);
-            ModNetwork.sendToServer(new NpcProfileSavePacket(((Entity) npc).getId(), draft.toTag(),
-                    NpcProfileSavePacket.Action.SAVE, draft.formGroup, draft.formId));
+            net.bullettrain.xenopixelsmod.client.npc.ClientNpcProfiles.save(((Entity) npc).getId(), draft.toTag(),
+                    NpcProfileSavePacket.Action.SAVE, draft.formGroup, draft.formId);
             Minecraft.getInstance().setScreen(new GuiNpcDmz(npc));
             return;
         } else if (button.id == ID_CANCEL) {
             preview(original);
+            persist(original);   // changes were autosaved; Cancel restores the server copy too
             Minecraft.getInstance().setScreen(new GuiNpcDmz(npc));
             return;
         }
         preview(draft);
+        persist(draft);
         init();
+    }
+
+    /** Autosave: the draft reaches the server after every change (only changed keys apply). */
+    private void persist(NpcCombatProfile profile) {
+        net.bullettrain.xenopixelsmod.client.npc.ClientNpcProfiles.save(((Entity) npc).getId(), profile.toTag(),
+                NpcProfileSavePacket.Action.SAVE, profile.formGroup, profile.formId);
     }
 
     @Override
@@ -376,6 +384,7 @@ public final class GuiNpcDmzAppearance extends GuiNPCInterface2 implements IText
     public void unFocused(GuiTextFieldNop field) {
         pull();
         preview(draft);
+        persist(draft);
     }
 
     private void pull() {
@@ -610,6 +619,7 @@ public final class GuiNpcDmzAppearance extends GuiNPCInterface2 implements IText
 
     @Override
     public void save() {
-        // Apply/Cancel own the transaction; changing tabs must not write to the server.
+        // Autosave: closing or switching tabs keeps the draft (MyNPCs behaviour).
+        persist(draft);
     }
 }

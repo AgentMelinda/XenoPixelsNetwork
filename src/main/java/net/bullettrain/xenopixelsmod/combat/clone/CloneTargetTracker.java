@@ -20,15 +20,26 @@ public final class CloneTargetTracker<T> {
 
     public void accept(UUID owner, int targetId, long now, IntFunction<T> resolve, Predicate<T> valid) {
         Entry<T> entry = entries.computeIfAbsent(owner, ignored -> new Entry<>());
+        if (entry.target != null && !valid.test(entry.target)) {
+            entry.target = null;
+        }
         // Clear always wins, including when a client releases in the same tick it acquired.
         if (targetId < 0) {
             entry.target = null;
             return;
         }
+        // A valid lock this tick stands. A corpse already dropped above so a stale heartbeat
+        // with that dead id cannot revive it via the same-tick early return.
+        if (entry.checkedAt == now && entry.target != null) return;
+        T target = resolve.apply(targetId);
+        if (target == null || !valid.test(target)) {
+            entry.target = null;
+            entry.checkedAt = now;
+            return;
+        }
         if (entry.checkedAt == now) return;
         entry.checkedAt = now;
-        T target = resolve.apply(targetId);
-        entry.target = target != null && valid.test(target) ? target : null;
+        entry.target = target;
         entry.receivedAt = now;
     }
 

@@ -30,6 +30,23 @@ public final class NpcCounterpartSync {
      */
     private static volatile Class<?>[] npcClasses;
 
+    /**
+     * Any NPC this sync owns: a CustomNPCs/MyNPCs one, or one of our own.
+     *
+     * <p>{@link #apply} used to test {@link #isCustomNpc} directly, so for a <em>native</em> Xeno
+     * NPC the whole method returned on its first line - no DragonMineZ stats blob, no flight, no
+     * aggro range. The editor's strength and ki power went into our own NBT and stopped there,
+     * which is why an NPC's battle power never moved when its stats changed.
+     *
+     * <p>The CustomNPCs-specific work further down is already guarded on its own reflection
+     * returning null, so a native NPC passes straight through it rather than needing a second
+     * branch.
+     */
+    public static boolean isManagedNpc(Entity entity) {
+        return isCustomNpc(entity)
+                || entity instanceof net.bullettrain.xenopixelsmod.npc.XenoNpcEntity;
+    }
+
     public static boolean isCustomNpc(Entity entity) {
         if (entity == null) return false;
         for (Class<?> type : resolveNpcClasses()) {
@@ -56,10 +73,19 @@ public final class NpcCounterpartSync {
     /**
      * Reapplies only when the authoritative snapshot changed, unless a lifecycle refresh requests
      * {@code force}. Health retains its own baseline/last-applied reconciliation.
+     *
+     * <p>Native melee/resistance rewrite is separate: a profile {@link #force write} may pin
+     * them, but a join/chunk-load/death {@link #forceLifecycle reload} must not, or MyNPCs'
+     * own cloned stats snap back to 1 damage / 1.0 resistance every time something else
+     * reloads the entity.
      */
     public static void apply(Entity entity, NpcCombatProfile profile, boolean force) {
+        apply(entity, profile, force, true);
+    }
+
+    static void apply(Entity entity, NpcCombatProfile profile, boolean force, boolean rewriteNative) {
         if (entity == null || entity.level().isClientSide() || profile == null
-                || !NpcCombatProfile.hasProfile(entity) || !isCustomNpc(entity)) {
+                || !NpcCombatProfile.hasProfile(entity) || !isManagedNpc(entity)) {
             return;
         }
         if (!profile.authoritative) {
@@ -84,33 +110,40 @@ public final class NpcCounterpartSync {
             return;
         }
 
+        // The editor's numbers become a real DragonMineZ StatsData here, behind the same
+        // authoritative gate and the same fingerprint as everything else this method pushes. DMZ's
+        // own formulas can then answer for this NPC -- see NpcDmzStats for what an NPC blob can and
+        // cannot be asked, given it has no player behind it.
+        if (entity instanceof net.minecraft.world.entity.LivingEntity living) {
+            NpcDmzStats.syncFromProfile(living, profile);
+        }
+        // Health reads StatsData.getHealthBonus(), so the profile-derived DMZ blob and its
+        // character/form state must be applied first.
         NpcVitalitySync.apply(entity, profile);
         try {
             Object stats = stats(entity);
-            if (stats != null) {
+            if (stats != null && shouldRewriteNative(rewriteNative)) {
                 Object melee = stats.getClass().getMethod("getMelee").invoke(stats);
-                if (XenoServerConfig.npcDmzStatsAuthoritative) {
+                // profile.pinNativeCombat is the per-NPC escape from the overwrite below. Without
+                // it there was no way to keep a hand-set damage or resistance: this runs again on
+                // every profile save (write -> force skips the fingerprint gate entirely) and on any
+                // DragonMineZ stat edit, since authorityFingerprint hashes all of them. An admin set
+                // a value, touched a stat, and watched it revert with nothing to say why.
+                //
+                // Turning it off takes the restore path, which puts the backed-up natives back and
+                // drops the backup -- so switching it on again captures what the admin has set now,
+                // rather than what the NPC looked like the first time authority ever applied.
+                boolean wroteNative;
+                if (shouldPinNative(XenoServerConfig.npcDmzStatsAuthoritative, profile.pinNativeCombat)) {
                     backupNative(persistent, stats, melee);
-                    if (melee != null) {
-                        melee.getClass().getMethod("setStrength", int.class).invoke(melee, 1);
-                        melee.getClass().getMethod("setKnockback", int.class).invoke(melee, 0);
-                    }
-                    stats.getClass().getMethod("setHealthRegen", int.class).invoke(stats, 0);
-                    stats.getClass().getMethod("setCombatRegen", int.class).invoke(stats, 0);
-                    Method setResistance = stats.getClass().getMethod("setResistance", int.class, float.class);
-                    for (int type = 0; type < 4; type++) {
-                        setResistance.invoke(stats, type, 1.0f);
-                    }
-                    Object ranged = stats.getClass().getMethod("getRanged").invoke(stats);
-                    if (ranged != null) {
-                        ranged.getClass().getMethod("setStrength", int.class).invoke(ranged, 0);
-                        ranged.getClass().getMethod("setKnockback", int.class).invoke(ranged, 0);
-                        ranged.getClass().getMethod("setExplodeSize", int.class).invoke(ranged, 0);
-                    }
+                    pinNativeCombat(stats, melee);
+                    wroteNative = true;
                 } else {
-                    restoreNative(persistent, stats, melee);
+                    wroteNative = restoreNative(persistent, stats, melee);
                 }
-                markClientUpdate(entity);
+                if (shouldMarkClientForNative(wroteNative)) {
+                    markClientUpdate(entity);
+                }
             }
             persistent.putInt(TAG_LAST_FINGERPRINT, fingerprint);
         } catch (ReflectiveOperationException | ClassCastException failure) {
@@ -118,12 +151,49 @@ public final class NpcCounterpartSync {
         }
     }
 
+    /**
+     * Native melee/ranged/resistance overwrite. Independent of flight, aggro, vitality and the
+     * DMZ blob, which still apply on a lifecycle reload even when this is false.
+     */
+    static boolean shouldPinNative(boolean dmzAuthoritative, boolean pinNativeCombat) {
+        return dmzAuthoritative && pinNativeCombat;
+    }
+
+    /**
+     * Join, chunk load, clone paste and death reset are reloads. They must not write MyNPCs
+     * melee/resistance; only an explicit profile write (editor, command, script) may.
+     */
+    static boolean shouldRewriteNative(boolean profileWrite) {
+        return profileWrite;
+    }
+
+    /**
+     * Death/join used to set {@code updateClient} even when pin was off and restore had nothing
+     * to write, which is the Stats GUI flash after respawn with native fields left alone.
+     */
+    static boolean shouldMarkClientForNative(boolean wroteNativeFields) {
+        return wroteNativeFields;
+    }
+
     public static void force(Entity entity, NpcCombatProfile profile) {
+        force(entity, profile, true);
+    }
+
+    /**
+     * Entity join, chunk load, wand/clone reload and death reset. Flight/aggro caches are stale
+     * after MyNPCs rebuilds AI, and vitality/DMZ still need a refresh — native damage and
+     * resistances stay whatever MyNPCs just loaded.
+     */
+    public static void forceLifecycle(Entity entity, NpcCombatProfile profile) {
+        force(entity, profile, false);
+    }
+
+    private static void force(Entity entity, NpcCombatProfile profile, boolean rewriteNative) {
         // A respawn rebuilds CustomNPCs' AI from its own saved data, so the cached
         // last-applied navigator value is stale by definition on this path.
         NpcFlightBridge.force(entity, profile);
         NpcAggroBridge.forget(entity.getUUID());
-        apply(entity, profile, true);
+        apply(entity, profile, true, rewriteNative);
     }
 
     private static void restoreAfterAuthority(Entity entity) {
@@ -131,10 +201,17 @@ public final class NpcCounterpartSync {
         try {
             Object stats = stats(entity);
             if (stats != null) {
-                restoreNative(persistent, stats, stats.getClass().getMethod("getMelee").invoke(stats));
-                markClientUpdate(entity);
+                boolean restored = restoreNative(persistent, stats,
+                        stats.getClass().getMethod("getMelee").invoke(stats));
+                if (shouldMarkClientForNative(restored)) {
+                    markClientUpdate(entity);
+                }
             }
             NpcVitalitySync.restoreNative(entity);
+            // Giving authority back to CustomNPCs means giving up the DMZ blob too: leaving it
+            // attached would keep StatsProvider.get resolving stats for an NPC that is no longer
+            // supposed to have any, and ki damage would still read them.
+            NpcDmzStats.clear(entity);
             persistent.remove(TAG_LAST_FINGERPRINT);
         } catch (ReflectiveOperationException | ClassCastException failure) {
             warnOnce(failure);
@@ -174,10 +251,6 @@ public final class NpcCounterpartSync {
         CompoundTag backup = new CompoundTag();
         backup.putInt("HealthRegen", (Integer) stats.getClass().getMethod("getHealthRegen").invoke(stats));
         backup.putInt("CombatRegen", (Integer) stats.getClass().getMethod("getCombatRegen").invoke(stats));
-        Method getResistance = stats.getClass().getMethod("getResistance", int.class);
-        for (int type = 0; type < 4; type++) {
-            backup.putFloat("Resistance" + type, (Float) getResistance.invoke(stats, type));
-        }
         if (melee != null) {
             backup.putInt("MeleeStrength", (Integer) melee.getClass().getMethod("getStrength").invoke(melee));
             backup.putInt("MeleeKnockback", (Integer) melee.getClass().getMethod("getKnockback").invoke(melee));
@@ -191,16 +264,29 @@ public final class NpcCounterpartSync {
         persistent.put(TAG_NATIVE_BACKUP, backup);
     }
 
-    private static void restoreNative(CompoundTag persistent, Object stats, Object melee)
+    private static void pinNativeCombat(Object stats, Object melee) throws ReflectiveOperationException {
+        if (melee != null) {
+            melee.getClass().getMethod("setStrength", int.class).invoke(melee, 1);
+            melee.getClass().getMethod("setKnockback", int.class).invoke(melee, 0);
+        }
+        stats.getClass().getMethod("setHealthRegen", int.class).invoke(stats, 0);
+        stats.getClass().getMethod("setCombatRegen", int.class).invoke(stats, 0);
+        // Resistance-tab values remain native MyNPC state. Pinning DMZ combat must not rewrite
+        // them when an unrelated DMZ profile field is saved.
+        Object ranged = stats.getClass().getMethod("getRanged").invoke(stats);
+        if (ranged != null) {
+            ranged.getClass().getMethod("setStrength", int.class).invoke(ranged, 0);
+            ranged.getClass().getMethod("setKnockback", int.class).invoke(ranged, 0);
+            ranged.getClass().getMethod("setExplodeSize", int.class).invoke(ranged, 0);
+        }
+    }
+
+    private static boolean restoreNative(CompoundTag persistent, Object stats, Object melee)
             throws ReflectiveOperationException {
-        if (!persistent.contains(TAG_NATIVE_BACKUP, Tag.TAG_COMPOUND)) return;
+        if (!persistent.contains(TAG_NATIVE_BACKUP, Tag.TAG_COMPOUND)) return false;
         CompoundTag backup = persistent.getCompound(TAG_NATIVE_BACKUP);
         stats.getClass().getMethod("setHealthRegen", int.class).invoke(stats, backup.getInt("HealthRegen"));
         stats.getClass().getMethod("setCombatRegen", int.class).invoke(stats, backup.getInt("CombatRegen"));
-        Method setResistance = stats.getClass().getMethod("setResistance", int.class, float.class);
-        for (int type = 0; type < 4; type++) {
-            setResistance.invoke(stats, type, backup.getFloat("Resistance" + type));
-        }
         if (melee != null) {
             melee.getClass().getMethod("setStrength", int.class).invoke(melee, backup.getInt("MeleeStrength"));
             melee.getClass().getMethod("setKnockback", int.class).invoke(melee, backup.getInt("MeleeKnockback"));
@@ -212,6 +298,7 @@ public final class NpcCounterpartSync {
             ranged.getClass().getMethod("setExplodeSize", int.class).invoke(ranged, backup.getInt("RangedExplosion"));
         }
         persistent.remove(TAG_NATIVE_BACKUP);
+        return true;
     }
 
     private static void warnOnce(Exception failure) {

@@ -1,0 +1,8 @@
+{
+  "variants": {
+    "facing=north": { "model": "xenopixelsmod:block/pilot_seat_fork" },
+    "facing=south": { "model": "xenopixelsmod:block/pilot_seat_fork", "y": 180 },
+    "facing=west":  { "model": "xenopixelsmod:block/pilot_seat_fork", "y": 270 },
+    "facing=east":  { "model": "xenopixelsmod:block/pilot_seat_fork", "y": 90 }
+  }
+}

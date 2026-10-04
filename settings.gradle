@@ -12,3 +12,8 @@ plugins {
 }
 
 rootProject.name = 'xenopixelsmod'
+
+// XenoAPI source is compiled into the mod from this separate checkout (see build.gradle).
+if (!file('XenoNPCsAPI/src/main/java/xenoapi/npcs/api/NpcAPI.java').isFile()) {
+    throw new GradleException('Missing XenoNPCsAPI source checkout. Follow docs/native-xenoapi-adapters.md#clean-checkout-setup, then rerun Gradle.')
+}

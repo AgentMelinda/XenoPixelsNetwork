@@ -11,8 +11,16 @@ import org.spongepowered.asm.mixin.injection.Redirect;
 @Mixin(targets = "dev.isxander.controlify.ingame.InGameInputHandler", remap = false)
 public abstract class ControlifyBt3ModeMixin {
     private static boolean xenopixels$allow(InputBinding binding) {
-        return !XenoPadInput.bt3ModeActive()
-                || !net.bullettrain.xenopixelsmod.client.pad.XenoPadBinds.conflicts(binding);
+        if (!XenoPadInput.bt3ModeActive()) {
+            return true;
+        }
+        // Routed to whichever package actually registered the bindings. Asking the other one would
+        // check a conflict table that was never filled in, so every Controlify default would keep
+        // firing underneath the BT3 layout - two actions per button press.
+        boolean conflicts = XenoPadInput.usingRewrite()
+                ? net.bullettrain.xenopixelsmod.client.pad2.PadBinds.conflicts(binding)
+                : net.bullettrain.xenopixelsmod.client.pad.XenoPadBinds.conflicts(binding);
+        return !conflicts;
     }
     @Redirect(
             method = "handleKeybinds",

@@ -130,14 +130,21 @@ public final class NpcHairBridge {
         if (data == null || profile == null) {
             return;
         }
-        data.xenopixels$setDmzHairEnabled(profile.hairEnabled);
         String code = profile.hairCode == null ? "" : profile.hairCode;
-        // CNPC display packets choke on full-set codes; appearance packet is the renderer source.
-        data.xenopixels$setDmzHairCode(code.length() <= 8000 ? code : "");
-        data.xenopixels$setDmzHairColor(NpcCombatProfile.canonicalizeHairColor(profile.hairColor));
-        // Keeps CustomNPCs' own display data agreeing with the appearance packet.
+        if (code.length() > 8000) {
+            code = "";
+        }
+        String color = NpcCombatProfile.canonicalizeHairColor(profile.hairColor);
+        boolean same = data.xenopixels$isDmzHairEnabled() == profile.hairEnabled
+                && code.equals(data.xenopixels$getDmzHairCode() == null ? "" : data.xenopixels$getDmzHairCode())
+                && color.equals(data.xenopixels$getDmzHairColor() == null ? "" : data.xenopixels$getDmzHairColor());
+        data.xenopixels$setDmzHairEnabled(profile.hairEnabled);
+        data.xenopixels$setDmzHairCode(code);
+        data.xenopixels$setDmzHairColor(color);
         applyStyle(data, profile.hairStyleId);
-        updateClient(npc);
+        if (!same) {
+            updateClient(npc);
+        }
     }
 
     /** Prefer live gecko hair when the profile copy is empty or truncated. */

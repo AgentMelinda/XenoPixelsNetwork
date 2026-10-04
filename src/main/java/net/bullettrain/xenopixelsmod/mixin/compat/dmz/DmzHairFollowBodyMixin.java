@@ -3,6 +3,7 @@ package net.bullettrain.xenopixelsmod.mixin.compat.dmz;
 import com.dragonminez.client.render.hair.HairRenderer;
 import com.mojang.blaze3d.vertex.PoseStack;
 import net.bullettrain.xenopixelsmod.client.combat.DmzMeleeHeadGate;
+import net.bullettrain.xenopixelsmod.client.compat.npc.NpcFullDmzRenderer;
 import net.minecraft.client.player.AbstractClientPlayer;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Unique;
@@ -52,7 +53,8 @@ public abstract class DmzHairFollowBodyMixin {
             float f2, float f3, float f4,
             CallbackInfo ci) {
         xenopixels$swapped = null;
-        if (player == null || !DmzMeleeHeadGate.active(player)) return;
+        if (player == null || NpcFullDmzRenderer.isNpcProxy(player)
+                || !DmzMeleeHeadGate.active(player)) return;
         xenopixels$savedHeadYaw = player.yHeadRot;
         xenopixels$savedHeadYawO = player.yHeadRotO;
         player.yHeadRot = player.yBodyRot;

@@ -1,5 +1,6 @@
 package net.bullettrain.xenopixelsmod.mixin.compat.mynpcs;
 
+import net.bullettrain.xenopixelsmod.client.compat.npc.mynpcs.gui.GuiNpcDmzBrainMenuButton;
 import net.bullettrain.xenopixelsmod.client.compat.npc.mynpcs.gui.GuiNpcDmzMenuButton;
 import espi.mynpcs.client.gui.util.GuiNpcMenu;
 import espi.mynpcs.entity.EntityNPCInterface;
@@ -13,7 +14,7 @@ import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 /**
- * Inserts a top-level DMZ tab on the wand editor (after Global, before Close).
+ * Inserts top-level DMZ and Brain tabs on the wand editor (after Global, before Close).
  *
  * <p>The My NPCs twin of the CustomNPCs mixin of the same name. My NPCs is CustomNPCs with
  * its root package renamed, so the two are identical but for the types they name; this one
@@ -38,30 +39,50 @@ public abstract class GuiNpcMenuDmzTabMixin {
             return;
         }
         GuiMenuTopButton global = null;
-        int insertAt = -1;
+        GuiMenuTopButton dmzButton = null;
+        boolean hasBrain = false;
+        int insertAfterGlobal = -1;
+        int insertAfterDmz = -1;
         for (int i = 0; i < topButtons.length; i++) {
             GuiMenuTopButton button = topButtons[i];
             if (button == null) {
                 continue;
             }
             if (button.id == GuiNpcDmzMenuButton.MENU_ID) {
+                dmzButton = button;
+                insertAfterDmz = i + 1;
+            } else if (button.id == GuiNpcDmzBrainMenuButton.MENU_ID) {
+                hasBrain = true;
+            } else if (button.id == 6) {
+                global = button;
+                insertAfterGlobal = i + 1;
+            }
+        }
+        if (dmzButton == null) {
+            if (global == null || insertAfterGlobal < 0) {
                 return;
             }
-            if (button.id == 6) {
-                global = button;
-                insertAt = i + 1;
-            }
+            GuiNpcDmzMenuButton dmz = new GuiNpcDmzMenuButton(parent, global, npc);
+            dmz.active = activeMenu == GuiNpcDmzMenuButton.MENU_ID;
+            GuiMenuTopButton[] withDmz = new GuiMenuTopButton[topButtons.length + 1];
+            System.arraycopy(topButtons, 0, withDmz, 0, insertAfterGlobal);
+            withDmz[insertAfterGlobal] = dmz;
+            System.arraycopy(topButtons, insertAfterGlobal, withDmz, insertAfterGlobal + 1,
+                    topButtons.length - insertAfterGlobal);
+            topButtons = withDmz;
+            dmzButton = dmz;
+            insertAfterDmz = insertAfterGlobal + 1;
         }
-        if (global == null || insertAt < 0) {
+        if (hasBrain || dmzButton == null || insertAfterDmz < 0) {
             return;
         }
-        GuiNpcDmzMenuButton dmz = new GuiNpcDmzMenuButton(parent, global, npc);
-        dmz.active = activeMenu == GuiNpcDmzMenuButton.MENU_ID;
-
-        GuiMenuTopButton[] next = new GuiMenuTopButton[topButtons.length + 1];
-        System.arraycopy(topButtons, 0, next, 0, insertAt);
-        next[insertAt] = dmz;
-        System.arraycopy(topButtons, insertAt, next, insertAt + 1, topButtons.length - insertAt);
-        topButtons = next;
+        GuiNpcDmzBrainMenuButton brain = new GuiNpcDmzBrainMenuButton(parent, dmzButton, npc);
+        brain.active = activeMenu == GuiNpcDmzBrainMenuButton.MENU_ID;
+        GuiMenuTopButton[] withBrain = new GuiMenuTopButton[topButtons.length + 1];
+        System.arraycopy(topButtons, 0, withBrain, 0, insertAfterDmz);
+        withBrain[insertAfterDmz] = brain;
+        System.arraycopy(topButtons, insertAfterDmz, withBrain, insertAfterDmz + 1,
+                topButtons.length - insertAfterDmz);
+        topButtons = withBrain;
     }
 }

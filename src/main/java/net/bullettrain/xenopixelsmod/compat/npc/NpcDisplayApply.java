@@ -83,6 +83,41 @@ public final class NpcDisplayApply {
         }
     }
 
+    /**
+     * DragonMineZ's default display size. Size 5 is 1.0x, which is why every scale here divides by
+     * it.
+     */
+    public static final float DEFAULT_SIZE = 5.0f;
+
+    /**
+     * Render scale for an NPC, from its CustomNPCs display size or, failing that, its own profile.
+     *
+     * <p>{@link #getSize} reads a CustomNPCs Display object by reflection, so a <em>native</em> Xeno
+     * NPC - which has no such object - answers 0. Treating that 0 as a real size produced
+     * {@code max(0.05, 0/5)}, a twentieth of normal: the model, its aura and its transform particles
+     * all rendered tiny. Size 0 means "unset", not "minuscule".
+     *
+     * <p>{@code NpcAuraClient.cnpcSizeMul} already got this right; this is that rule shared so the
+     * remaining call sites cannot each get it wrong separately.
+     *
+     * @param profile may be null, in which case only the display size is consulted
+     */
+    public static float sizeScale(LivingEntity npc, NpcCombatProfile profile) {
+        int size = getSize(npc);
+        if (size <= 0 && profile != null) {
+            size = profile.baseSize;
+        }
+        if (size <= 0) {
+            return 1.0f;
+        }
+        return Math.max(0.05f, size / DEFAULT_SIZE);
+    }
+
+    /** As {@link #sizeScale(LivingEntity, NpcCombatProfile)}, reading the profile off the entity. */
+    public static float sizeScale(LivingEntity npc) {
+        return sizeScale(npc, npc == null ? null : NpcCombatProfile.readCached(npc));
+    }
+
     public static int getSize(LivingEntity npc) {
         Object display = displayOf(npc);
         if (display == null) {

@@ -54,9 +54,13 @@ public final class DmzAnimHelperClient {
     public static void playLocalChargeStart(Player player, ChargeStyle style) {
         if (!XenoClientConfig.bt3CombatAnims) return;
         String anim = switch (style) {
-            case FIST_LIGHT -> DmzAnimHelper.CHARGE_LIGHT;
-            case FIST_HEAVY, KICK -> DmzAnimHelper.CHARGE_HEAVY;
-            case DRAGON -> DmzAnimHelper.KI_CHARGE;
+            case FIST_LIGHT -> XenoTechniqueAnimBindingsClient.resolve(TechniqueAnimSlot.CHARGE_PUNCH);
+            case FIST_HEAVY -> XenoTechniqueAnimBindingsClient.clipFor(TechniqueAnimSlot.CHARGE_PUNCH)
+                    != null
+                    ? XenoTechniqueAnimBindingsClient.resolve(TechniqueAnimSlot.CHARGE_PUNCH)
+                    : DmzAnimHelper.CHARGE_HEAVY;
+            case KICK -> XenoTechniqueAnimBindingsClient.resolve(TechniqueAnimSlot.CHARGE_KICK);
+            case DRAGON -> XenoTechniqueAnimBindingsClient.resolve(TechniqueAnimSlot.CHARGE_KI);
         };
         tryPlayKi(player, anim, true);
     }
@@ -143,10 +147,14 @@ public final class DmzAnimHelperClient {
         ClientStrikeChain.clear();
 
         if (style == ChargeStyle.KICK) {
-            String primary = fullyCharged ? DmzAnimHelper.KICK_GUT_R : DmzAnimHelper.KICK_GUT_L;
-            if (verticalBias < 0) primary = DmzAnimHelper.KICK_LOW_R;
+            boolean custom = XenoTechniqueAnimBindingsClient.clipFor(TechniqueAnimSlot.CHARGE_KICK_FIRE)
+                    != null;
+            String primary = custom
+                    ? XenoTechniqueAnimBindingsClient.resolve(TechniqueAnimSlot.CHARGE_KICK_FIRE)
+                    : (fullyCharged ? DmzAnimHelper.KICK_GUT_R : DmzAnimHelper.KICK_GUT_L);
+            if (verticalBias < 0 && !custom) primary = DmzAnimHelper.KICK_LOW_R;
             playLocalMelee(player, primary, false, speed);
-            if (XenoClientConfig.bt3KickChainAnims) {
+            if (XenoClientConfig.bt3KickChainAnims && !custom) {
                 String follow = verticalBias > 0 ? DmzAnimHelper.KICK_GUT_R
                         : (verticalBias < 0 ? DmzAnimHelper.KICK_LOW_L : DmzAnimHelper.KICK_LOW_R);
                 ClientStrikeChain.arm(follow, speed * 1.05f, 4);
@@ -173,9 +181,13 @@ public final class DmzAnimHelperClient {
         }
 
         // Fist
-        String fire = fullyCharged ? DmzAnimHelper.CHARGE_HEAVY_FIRE : DmzAnimHelper.CHARGE_LIGHT_FIRE;
+        boolean customFire = XenoTechniqueAnimBindingsClient.clipFor(TechniqueAnimSlot.CHARGE_PUNCH_FIRE)
+                != null;
+        String fire = customFire
+                ? XenoTechniqueAnimBindingsClient.resolve(TechniqueAnimSlot.CHARGE_PUNCH_FIRE)
+                : (fullyCharged ? DmzAnimHelper.CHARGE_HEAVY_FIRE : DmzAnimHelper.CHARGE_LIGHT_FIRE);
         playLocalMelee(player, fire, false, speed);
-        if (XenoClientConfig.bt3KickChainAnims) {
+        if (XenoClientConfig.bt3KickChainAnims && !customFire) {
             ClientStrikeChain.arm(fullyCharged ? DmzAnimHelper.PUNCH_LEFT : DmzAnimHelper.ATTACK2, speed * 1.1f, 3);
         }
     }

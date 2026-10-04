@@ -86,4 +86,10 @@ class XenoAnimApiTest {
         assertTrue(XenoAnimApi.isClipAvailable("scripted_later"));
         assertEquals(-1, XenoAnimApi.clipDuration("scripted_later"));
     }
+
+    @Test
+    void customAnimationNamesIncludesRuntimeLibraryClips() {
+        Bt3AnimationCatalog.registerDynamicAnimation("combat.xeno_published_later");
+        assertTrue(Bt3AnimationCatalog.customAnimationNames().contains("combat.xeno_published_later"));
+    }
 }

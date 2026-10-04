@@ -18,6 +18,11 @@ public final class XenoBt3HudAtlas {
             ResourceLocation.fromNamespaceAndPath(
                     "xenopixelsmod", "textures/gui/xeno_bt3_hud_atlas.png");
 
+    /** Greyscale copy with the same layout, for tinting fills any colour ({@code gen_hud_neutral_atlas.py}). */
+    public static final ResourceLocation NEUTRAL_TEXTURE =
+            ResourceLocation.fromNamespaceAndPath(
+                    "xenopixelsmod", "textures/gui/xeno_bt3_hud_atlas_neutral.png");
+
     public static final int ATLAS_WIDTH = 256;
     public static final int ATLAS_HEIGHT = 256;
 
@@ -36,6 +41,62 @@ public final class XenoBt3HudAtlas {
     public static final Sprite TECHNIQUE_GREEN = new Sprite(171, 0, 35, 36);
     public static final Sprite TECHNIQUE_ORANGE = new Sprite(98, 0, 36, 38);
     public static final Sprite TECHNIQUE_PURPLE = new Sprite(63, 0, 34, 39);
+
+    /** A rectangle inside one sprite, in that sprite's own pixels. */
+    public record Well(int x, int y, int width, int height) {}
+
+    /**
+     * The square of {@link #PORTRAIT_RING} that the ring covers completely.
+     *
+     * <p>Measured rather than chosen: a portrait drawn here and then overdrawn with the
+     * ring cannot show a corner outside it. The bundle ships no mask for this ring, so
+     * anything larger would need one.
+     */
+    public static final Well PORTRAIT_WELL = new Well(15, 14, 32, 32);
+
+    /** The dark interior of {@link #NAMEPLATE}, where the player name belongs. */
+    public static final Well NAMEPLATE_WELL = new Well(25, 12, 108, 13);
+
+    /** Left edge of the lit fill inside {@link #HP_BAR}. */
+    public static final int HP_TRACK_X = 6;
+    /** Width of that fill at full health, so a fraction can be clipped out of it. */
+    public static final int HP_TRACK_WIDTH = 111;
+
+    /**
+     * Left edge of every lit segment in {@link #KI_BAR}.
+     *
+     * <p>Read off the art rather than divided out of the bar's width. The segments are
+     * slanted parallelograms with uneven end caps, so an even division puts a boundary a
+     * pixel or two inside the wrong segment and the error grows along the bar.
+     */
+    private static final int[] KI_SEGMENT_STARTS = {6, 20, 33, 47, 61, 74, 88, 102};
+    /** Width of one lit ki segment. */
+    public static final int KI_SEGMENT_WIDTH = 10;
+
+    /** Left edge of every lit segment in {@link #STAMINA_BAR}. */
+    private static final int[] STAMINA_SEGMENT_STARTS = {5, 17, 28, 40, 51, 63, 74, 86, 97};
+    /** Width of one lit stamina segment. */
+    public static final int STAMINA_SEGMENT_WIDTH = 10;
+
+    /** How many segments the ki art is drawn with. */
+    public static int kiSegmentCount() {
+        return KI_SEGMENT_STARTS.length;
+    }
+
+    /** Left edge of ki segment {@code index}, within {@link #KI_BAR}. */
+    public static int kiSegmentStart(int index) {
+        return KI_SEGMENT_STARTS[index];
+    }
+
+    /** How many segments the stamina art is drawn with. */
+    public static int staminaSegmentCount() {
+        return STAMINA_SEGMENT_STARTS.length;
+    }
+
+    /** Left edge of stamina segment {@code index}, within {@link #STAMINA_BAR}. */
+    public static int staminaSegmentStart(int index) {
+        return STAMINA_SEGMENT_STARTS[index];
+    }
 
     private XenoBt3HudAtlas() {
     }

@@ -24,6 +24,12 @@ import net.neoforged.neoforge.common.NeoForge;
 import net.neoforged.neoforge.event.RegisterCommandsEvent;
 import net.neoforged.fml.common.Mod;
 import org.slf4j.Logger;
+import xenoapi.npcs.api.IWorld;
+import xenoapi.npcs.api.NpcAPI;
+import xenoapi.npcs.api.constants.EntitiesType;
+import xenoapi.npcs.api.entity.ICustomNpc;
+import xenoapi.npcs.api.entity.IEntity;
+import xenoapi.npcs.api.entity.IPlayer;
 
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -35,7 +41,10 @@ public final class ApiExampleAddon {
     private static final Logger LOGGER = LogUtils.getLogger();
     private static final Map<String, AtomicInteger> COUNTS = new ConcurrentHashMap<>();
 
-    public ApiExampleAddon() {
+    public ApiExampleAddon(net.neoforged.bus.api.IEventBus modEventBus) {
+        // Common setup runs after every mod constructed, so XenoAPI is registered by then.
+        modEventBus.addListener(net.neoforged.fml.event.lifecycle.FMLCommonSetupEvent.class,
+                event -> registerXenoApiListener());
         AddonNetwork.register(
                 ResourceLocation.fromNamespaceAndPath(MOD_ID, "ping"),
                 ExamplePingPacket.class,
@@ -69,7 +78,8 @@ public final class ApiExampleAddon {
         NeoForge.EVENT_BUS.addListener(ApiExampleAddon::onFormChange);
         NeoForge.EVENT_BUS.addListener(ApiExampleAddon::onRegisterCommands);
 
-        LOGGER.info("XenoPixels API example loaded against API version {}", XenoPixelsApi.API_VERSION);
+        LOGGER.info("XenoPixels API example loaded against API version {}; XenoAPI available={}",
+                XenoPixelsApi.API_VERSION, NpcAPI.IsAvailable());
     }
 
     private static void onSparkingActivate(SparkingEvent.Activate event) {
@@ -126,7 +136,60 @@ public final class ApiExampleAddon {
                 .then(Commands.literal("sync_progression")
                         .executes(context -> sync(context.getSource().getPlayerOrException(), "progression")))
                 .then(Commands.literal("sync_resources")
-                        .executes(context -> sync(context.getSource().getPlayerOrException(), "resources"))));
+                        .executes(context -> sync(context.getSource().getPlayerOrException(), "resources")))
+                .then(Commands.literal("events")
+                        .executes(context -> events(context.getSource().getPlayerOrException())))
+                .then(Commands.literal("xenoapi")
+                        .executes(context -> xenoApi(context.getSource().getPlayerOrException()))));
+    }
+
+    /**
+     * Exercises XenoAPI (xenoapi.npcs.api) through its public contracts only: availability, typed
+     * player conversion, and the closest native NPC within 16 blocks, which is asked to speak and
+     * given a one-shot timer through the same state its own scripts use.
+     */
+    private static int xenoApi(ServerPlayer player) {
+        if (!NpcAPI.IsAvailable()) {
+            player.sendSystemMessage(Component.literal("XenoAPI: not available"));
+            observed("xenoapi.unavailable", player.getScoreboardName());
+            return 0;
+        }
+        NpcAPI api = NpcAPI.Instance();
+        IEntity<?> typed = api.getIEntity(player);
+        IWorld world = typed.getWorld();
+        IEntity<?> nearest = world.getClosestEntity(typed.getPos(), 16, EntitiesType.NPC);
+        String npcReport = "none within 16 blocks";
+        if (nearest instanceof ICustomNpc<?> npc) {
+            npc.say("XenoAPI probe from " + player.getScoreboardName());
+            npc.getTimers().forceStart(9501, 20, false);
+            npc.getTempdata().put("xenoapi_probe", player.getScoreboardName());
+            npcReport = npc.getName() + " said hello, timer 9501 started, temp=" + npc.getTempdata().get("xenoapi_probe");
+        }
+        String message = "XenoAPI: impl=" + api.getClass().getSimpleName()
+                + ", player=" + (typed instanceof IPlayer<?>) + " type=" + typed.getType()
+                + ", world=" + world.getName() + ", npc=" + npcReport;
+        player.sendSystemMessage(Component.literal(message));
+        observed("xenoapi.probe", message);
+        return 1;
+    }
+
+    /** Counts every typed XenoAPI event by class, so /xenoapitest events shows what fired. */
+    private static void registerXenoApiListener() {
+        if (!NpcAPI.IsAvailable()) {
+            LOGGER.warn("[xeno-api-example] XenoAPI not available at common setup; typed events not counted");
+            return;
+        }
+        NpcAPI.Instance().events().addListener(xenoapi.npcs.api.event.CustomNPCsEvent.class,
+                event -> observed("xenoapi." + event.getClass().getSimpleName(), ""));
+        LOGGER.info("[xeno-api-example] XenoAPI event listener registered");
+    }
+
+    private static int events(ServerPlayer player) {
+        var lines = COUNTS.entrySet().stream().filter(e -> e.getKey().startsWith("xenoapi."))
+                .sorted(Map.Entry.comparingByKey()).toList();
+        if (lines.isEmpty()) player.sendSystemMessage(Component.literal("No XenoAPI events observed yet"));
+        lines.forEach(e -> player.sendSystemMessage(Component.literal(e.getKey() + "=" + e.getValue().get())));
+        return lines.size();
     }
 
     private static int report(ServerPlayer player) {

@@ -2,6 +2,7 @@ package net.bullettrain.xenopixelsmod.combat;
 
 import net.bullettrain.xenopixelsmod.config.XenoServerConfig;
 import net.bullettrain.xenopixelsmod.compat.npc.NpcCombatProtection;
+import net.bullettrain.xenopixelsmod.compat.npc.NpcKnockbackGrace;
 import net.bullettrain.xenopixelsmod.event.DmzMasterProtection;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.phys.Vec3;
@@ -37,6 +38,9 @@ public final class CombatKnockback {
      */
     public static boolean canKnockBack(Entity victim) {
         if (victim == null) return false;
+        // The Hakaishin mantle erases the hit; without this the launch arc still went through,
+        // because these moves set the velocity directly instead of dealing knockback.
+        if (net.bullettrain.xenopixelsmod.combat.passive.FormPassiveEvents.mantleHoldsGround(victim)) return false;
         if (!NpcCombatProtection.isKnockable(victim)) return false;
         if (!XenoServerConfig.protectMastersFromCombatKnockback) return true;
         return !DmzMasterProtection.isDmzMaster(victim);
@@ -65,5 +69,7 @@ public final class CombatKnockback {
     private static void mark(Entity victim) {
         victim.hurtMarked = true;
         victim.hasImpulse = true;
+        // An NPC under the combat brain would have this velocity overwritten next tick.
+        NpcKnockbackGrace.mark(victim);
     }
 }

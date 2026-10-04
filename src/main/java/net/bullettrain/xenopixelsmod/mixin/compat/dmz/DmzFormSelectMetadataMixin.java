@@ -43,6 +43,10 @@ public abstract class DmzFormSelectMetadataMixin {
     private void xenopixels$perFormIcon(StatsData stats, CallbackInfoReturnable<ResourceLocation> cir) {
         ResourceLocation icon = DmzFormMetadataRegistry.formIcon(
                 stack ? DmzFormKind.STACK : DmzFormKind.NORMAL, race, group, form);
+        // Then the icons shipped with the mod for single forms (Super Saiyan Blue 3, Rose 3).
+        if (icon == null) {
+            icon = net.bullettrain.xenopixelsmod.client.dmz.BundledFormIcons.radial(group, form);
+        }
         if (icon != null) cir.setReturnValue(icon);
     }
 }

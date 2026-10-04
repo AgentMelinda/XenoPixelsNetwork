@@ -77,6 +77,10 @@ public class XenoHudOverlay {
     private static final net.bullettrain.xenopixelsmod.client.hud.XenoUnifiedHudView UNIFIED_VIEW =
             new net.bullettrain.xenopixelsmod.client.hud.XenoUnifiedHudView();
 
+    /** Budokai Tenkaichi renderer, drawn from the clean UI bundle's own art. */
+    private static final net.bullettrain.xenopixelsmod.client.hud.XenoBt3HudView BT3_VIEW =
+            new net.bullettrain.xenopixelsmod.client.hud.XenoBt3HudView();
+
     public void render(GuiGraphics graphics, DeltaTracker deltaTracker) {
         Minecraft mc = Minecraft.getInstance();
         if (mc.player == null || mc.options.hideGui || !XenoClientConfig.xenoHudEnabled || !XenoHudConfig.visible) return;
@@ -89,6 +93,14 @@ public class XenoHudOverlay {
 
         XenoHudSnapshot snap = XenoHudSnapshotFactory.capture(mc);
 
+        if (XenoHudConfig.renderer == net.bullettrain.xenopixelsmod.client.config.XenoHudRenderer.BT3) {
+            // The clean UI bundle's own art with live data in it (/xenohud renderer bt3).
+            BT3_VIEW.setSnapshot(snap);
+            BT3_VIEW.setBounds(XenoHudConfig.x, XenoHudConfig.y, XenoHudConfig.scale);
+            BT3_VIEW.setEditorMode(editing);
+            BT3_VIEW.render(graphics);
+            return;
+        }
         if (XenoHudConfig.unifiedActive()) {
             // One panel for the stat cluster and the combat strip
             // (/xenohud renderer modernunified).

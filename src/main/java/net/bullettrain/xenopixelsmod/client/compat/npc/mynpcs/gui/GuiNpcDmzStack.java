@@ -194,8 +194,8 @@ public final class GuiNpcDmzStack extends GuiNPCInterface2 implements ITextfield
 
     private void save(NpcProfileSavePacket.Action action) {
         draft.write(npc);
-        ModNetwork.sendToServer(new NpcProfileSavePacket(((Entity) npc).getId(), draft.toTag(), action,
-                draft.selectedStackGroup, draft.selectedStackId));
+        net.bullettrain.xenopixelsmod.client.npc.ClientNpcProfiles.save(((Entity) npc).getId(), draft.toTag(), action,
+                draft.selectedStackGroup, draft.selectedStackId);
     }
 
     private static String clip(String value, int max) {

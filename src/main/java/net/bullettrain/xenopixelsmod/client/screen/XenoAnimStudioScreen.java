@@ -109,7 +109,8 @@ public final class XenoAnimStudioScreen extends UnblurredScreen {
         "  PV POSE/BAKED   scrub the studio pose, or play the real baked clip as a move does",
         "  LOOP            wrap at the end, and export loop: true",
         "  SAVE            write config/xenopixelsmod-anims/<name>.animation.json",
-        "  LOAD            reopen a saved clip for editing",
+        "  LOAD            open a saved, shipped, DMZ, or server clip for editing",
+        "  PUSH            save and publish this clip to all players (operator)",
         "",
         "KEYING",
         "  KEY   (K)       key every posed bone at the playhead; UPD when one is already there",
@@ -145,7 +146,7 @@ public final class XenoAnimStudioScreen extends UnblurredScreen {
         "  MOTION          continuous waves on a bone; bake them to make them portable",
         "",
         "SOURCES",
-        "  SRC             where LOAD reads from: saved, shipped BT3, or DragonMineZ",
+        "  SRC             where LOAD reads from: saved, shipped BT3, DMZ, or server",
         "  EXPORT          dev runs only: merge this clip into the shipped animation file",
         "",
         "COMBAT",
@@ -224,6 +225,8 @@ public final class XenoAnimStudioScreen extends UnblurredScreen {
         addRenderableWidget(button("SAVE", 36, x, 6, b -> saveClip()));
         x += 38;
         addRenderableWidget(button("LOAD", 36, x, 6, b -> openOverlay(Overlay.LOAD)));
+        x += 38;
+        addRenderableWidget(button("PUSH", 38, x, 6, b -> publishClip()));
         addRenderableWidget(button("HELP", 36, width - 78, 6, b -> openOverlay(Overlay.HELP)));
         addRenderableWidget(button("X", 18, width - 24, 6, b -> onClose()));
 
@@ -803,7 +806,7 @@ public final class XenoAnimStudioScreen extends UnblurredScreen {
         status = mirrored ? "Pose pasted mirrored" : "Pose pasted";
     }
 
-    private void saveClip() {
+    private boolean saveClip() {
         XenoAnimClip clip = ensureClip();
         String wanted = XenoAnimClip.sanitize(nameBox.getValue());
         if (!wanted.equals(clip.name)) {
@@ -815,8 +818,24 @@ public final class XenoAnimStudioScreen extends UnblurredScreen {
             XenoStudioClipCache.refresh(clip.name);
             Bt3AnimationBinding.registerStudioNames();
             status = "Exported " + clip.name + ".animation.json";
+            return true;
         } catch (Exception e) {
             status = "Save failed: " + e.getMessage();
+            return false;
+        }
+    }
+
+    /** Social clips use their name directly; they do not need a combat slot binding. */
+    private void publishClip() {
+        if (!saveClip()) return;
+        XenoAnimClip clip = timeline.clip();
+        if (clip == null) return;
+        try {
+            Path file = XenoAnimClip.dir().resolve(clip.name + ".animation.json");
+            AnimClipsNetwork.pushFromClient(clip.name, Files.readString(file));
+            status = "Publishing " + clip.name + " to the server - watch chat for the result";
+        } catch (IOException e) {
+            status = "Publish failed: " + e.getMessage();
         }
     }
 

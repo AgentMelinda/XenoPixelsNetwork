@@ -58,7 +58,10 @@ public final class NpcAppearanceFx {
                 profile.auraColor, NpcFormDisplayTuning.effectiveAuraScale(profile),
                 (profile.appearance == null ? new NpcDmzAppearance() : profile.appearance).toTag(),
                 profile.visualOptionsTag(),
-                profile.skinPlayer, profile.skinUrl, resolveSkinUuid(living, profile.skinPlayer));
+                profile.skinPlayer, profile.skinUrl, resolveSkinUuid(living, profile.skinPlayer),
+                // The raw toggle, not effectiveOn: this is what the editor's aura checkbox shows, and
+                // it has to read back what the admin set rather than "a form happens to be active".
+                profile.auraOn);
     }
 
     /**

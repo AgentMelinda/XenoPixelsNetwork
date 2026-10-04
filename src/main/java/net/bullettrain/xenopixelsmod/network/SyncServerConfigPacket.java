@@ -218,6 +218,31 @@ public class SyncServerConfigPacket {
         buf.writeBoolean(d.hakaiSilhouetteEnabled == null || d.hakaiSilhouetteEnabled);
         buf.writeInt(d.hakaiSilhouetteColor);
         buf.writeInt(d.hakaiGlowColor);
+        buf.writeFloat(d.kiExplosionMaxRadius);
+        buf.writeFloat(d.multiFormRadius);
+        buf.writeUtf(XenoServerConfig.normalizeMultiFormAi(d.multiFormAi), 16);
+        buf.writeDouble(d.brainDeflectMinDistance);
+        buf.writeBoolean(d.multiFormRetaliate == null || d.multiFormRetaliate);
+        buf.writeBoolean(d.multiFormHostile != null && d.multiFormHostile);
+        buf.writeBoolean(d.multiFormVanish == null || d.multiFormVanish);
+        buf.writeBoolean(d.zanzokenRingHitable);
+        buf.writeBoolean(d.zanzokenRingDisperseAll == null || d.zanzokenRingDisperseAll);
+        buf.writeDouble(d.multiFormDetectRange);
+        buf.writeDouble(d.zanzokenDetectRange);
+        buf.writeUtf(d.npcDamageMode == null ? "dmz" : d.npcDamageMode, 16);
+        buf.writeFloat(d.npcNumericDamage == null ? 10.0f : d.npcNumericDamage);
+        // Protocol 70: the combat controller mode, normalized so a client never sees a raw
+        // config typo and has to decide what it means.
+        buf.writeUtf(XenoServerConfig.normalizeCombatControllerMode(d.combatControllerMode), 16);
+        // Protocol 100: whether the ship thruster plume is an Effekseer effect (sent by the
+        // server) or the client's vanilla flames.
+        buf.writeBoolean(d.effekseerEnabled);
+        buf.writeBoolean(d.effekseerShipThrusters);
+    }
+
+    /** The synced snapshot (server: what will be sent; client: what was received). */
+    public XenoServerConfig.Data data() {
+        return data;
     }
 
     public static SyncServerConfigPacket decode(FriendlyByteBuf buf) {
@@ -413,6 +438,22 @@ public class SyncServerConfigPacket {
         d.hakaiSilhouetteEnabled = buf.readBoolean();
         d.hakaiSilhouetteColor = buf.readInt();
         d.hakaiGlowColor = buf.readInt();
+        d.kiExplosionMaxRadius = buf.readFloat();
+        d.multiFormRadius = buf.readFloat();
+        d.multiFormAi = buf.readUtf(16);
+        d.brainDeflectMinDistance = buf.readDouble();
+        d.multiFormRetaliate = buf.readBoolean();
+        d.multiFormHostile = buf.readBoolean();
+        d.multiFormVanish = buf.readBoolean();
+        d.zanzokenRingHitable = buf.readBoolean();
+        d.zanzokenRingDisperseAll = buf.readBoolean();
+        d.multiFormDetectRange = buf.readDouble();
+        d.zanzokenDetectRange = buf.readDouble();
+        d.npcDamageMode = buf.readUtf(16);
+        d.npcNumericDamage = buf.readFloat();
+        d.combatControllerMode = XenoServerConfig.normalizeCombatControllerMode(buf.readUtf(16));
+        d.effekseerEnabled = buf.readBoolean();
+        d.effekseerShipThrusters = buf.readBoolean();
         return new SyncServerConfigPacket(d);
     }
 

@@ -7,22 +7,33 @@ import net.minecraft.nbt.Tag;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.ai.attributes.AttributeInstance;
+import net.minecraft.world.entity.ai.attributes.AttributeModifier;
 import net.minecraft.world.entity.ai.attributes.Attributes;
+import net.minecraft.world.entity.ai.attributes.AttributeModifier.Operation;
+import com.dragonminez.common.util.AttributeMods;
+import com.dragonminez.server.events.players.StatsEvents;
+import net.minecraft.resources.ResourceLocation;
 
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 
-/** Applies XenoPixels VIT to CustomNPCs' real max-health setting. */
+/** Applies DMZ's player health baseline and VIT bonus to NPC max health. */
 public final class NpcVitalitySync {
     private static final String TAG_BASE_MAX_HEALTH = "xenopixels:npc_base_max_health";
+    private static final String TAG_BASE_MAX_HEALTH_D = "xenopixels:npc_base_max_health_d";
     private static final String TAG_LAST_MAX_HEALTH = "xenopixels:npc_last_applied_max_health";
+    private static final String TAG_LAST_MAX_HEALTH_D = "xenopixels:npc_last_applied_max_health_d";
+    private static final double PLAYER_BASE_HEALTH = 20.0;
+    private static final ResourceLocation DMZ_HEALTH_MODIFIER =
+            AttributeMods.id(StatsEvents.DMZ_HEALTH_MODIFIER_UUID);
     private static boolean warnedReflectionFailure;
 
     private NpcVitalitySync() {}
 
     /**
-     * Uses only profile VIT while DMZ stats are authoritative. Hybrid mode retains CustomNPCs'
-     * configured health as a baseline. The metadata lives outside the replaceable profile tag.
+     * Applies the same 20-base plus {@code StatsData.getHealthBonus()} modifier used for players.
+     * Hybrid mode keeps the counterpart's configured base health. The metadata lives outside the
+     * replaceable profile tag, so its original health can be restored when DMZ authority is removed.
      */
     public static void apply(Entity entity, NpcCombatProfile profile) {
         if (!(entity instanceof LivingEntity living)
@@ -34,39 +45,48 @@ public final class NpcVitalitySync {
 
         try {
             Object stats = customNpcStats(entity);
-            if (stats == null) {
-                return;
-            }
-            Method getMaxHealth = stats.getClass().getMethod("getMaxHealth");
-            Method setMaxHealth = stats.getClass().getMethod("setMaxHealth", int.class);
-            int configuredMax = Math.max(1, (Integer) getMaxHealth.invoke(stats));
-
+            Method getMaxHealth = stats == null ? null : stats.getClass().getMethod("getMaxHealth");
+            Method setMaxHealth = stats == null ? null : stats.getClass().getMethod("setMaxHealth", int.class);
+            AttributeInstance maxHealth = living.getAttribute(Attributes.MAX_HEALTH);
             CompoundTag persistent = entity.getPersistentData();
-            boolean hasBase = persistent.contains(TAG_BASE_MAX_HEALTH, Tag.TAG_INT);
-            boolean hasLast = persistent.contains(TAG_LAST_MAX_HEALTH, Tag.TAG_INT);
-            int baseMax = hasBase
-                    ? Math.max(1, persistent.getInt(TAG_BASE_MAX_HEALTH))
-                    : configuredMax;
+            boolean hasBase = persistent.contains(TAG_BASE_MAX_HEALTH_D, Tag.TAG_DOUBLE)
+                    || persistent.contains(TAG_BASE_MAX_HEALTH, Tag.TAG_INT);
+            double configuredBase = getMaxHealth != null ? (Integer) getMaxHealth.invoke(stats)
+                    : maxHealth != null ? maxHealth.getBaseValue() : PLAYER_BASE_HEALTH;
+            double baseMax = hasBase
+                    ? persistent.contains(TAG_BASE_MAX_HEALTH_D, Tag.TAG_DOUBLE)
+                            ? persistent.getDouble(TAG_BASE_MAX_HEALTH_D)
+                            : persistent.getInt(TAG_BASE_MAX_HEALTH)
+                    : Math.max(1.0, configuredBase);
 
-            // A native CustomNPC stats edit changes its configured max away from our last value.
-            // Treat that new value as the requested baseline instead of overwriting the edit.
-            if (!XenoServerConfig.npcDmzStatsAuthoritative
-                    && hasLast && configuredMax != persistent.getInt(TAG_LAST_MAX_HEALTH)) {
-                baseMax = configuredMax;
+            int lastNpc = lastNpcStatsMax(persistent);
+            if (!XenoServerConfig.npcDmzStatsAuthoritative && getMaxHealth != null
+                    && lastNpc > 0 && (Integer) getMaxHealth.invoke(stats) != lastNpc) {
+                // A native CustomNPC health edit changes its requested hybrid baseline.
+                baseMax = Math.max(1, (Integer) getMaxHealth.invoke(stats));
             }
 
-            double multiplier = vitalityMultiplier(profile);
-            double vitScaling = vitalityScaling(profile);
-            int targetMax = XenoServerConfig.npcDmzStatsAuthoritative
-                    ? NpcVitalityMath.authoritativeMaxHealth(profile.vitality, multiplier, vitScaling)
-                    : NpcVitalityMath.hybridMaxHealth(baseMax, profile.vitality, multiplier, vitScaling);
+            float healthBonus = NpcDmzStats.healthBonus(living, profile);
+            double attributeBase = profile.maxHealthOverride > 0
+                    ? profile.maxHealthOverride
+                    : XenoServerConfig.npcDmzStatsAuthoritative ? PLAYER_BASE_HEALTH : baseMax;
+            float modifierAmount = profile.maxHealthOverride > 0 ? 0.0f : healthBonus;
             float oldHealth = living.getHealth();
             float oldMax = living.getMaxHealth();
 
-            setMaxHealth.invoke(stats, targetMax);
-            pushLivingMaxHealth(living, targetMax);
-            persistent.putInt(TAG_BASE_MAX_HEALTH, baseMax);
-            persistent.putInt(TAG_LAST_MAX_HEALTH, targetMax);
+            if (maxHealth != null) {
+                setBaseHealth(maxHealth, attributeBase);
+                setDmzHealthBonus(maxHealth, modifierAmount);
+            }
+            double targetMax = maxHealth == null ? attributeBase + modifierAmount : maxHealth.getValue();
+            if (setMaxHealth != null) {
+                setMaxHealth.invoke(stats, NpcVitalityMath.npcStatsMaxHealth(targetMax));
+            }
+
+            persistent.putDouble(TAG_BASE_MAX_HEALTH_D, baseMax);
+            persistent.putInt(TAG_LAST_MAX_HEALTH,
+                    NpcVitalityMath.npcStatsMaxHealth(targetMax));
+            persistent.putDouble(TAG_LAST_MAX_HEALTH_D, targetMax);
 
             float appliedMax = living.getMaxHealth();
             living.setHealth(NpcVitalityMath.preserveHealthPercent(oldHealth, oldMax, appliedMax));
@@ -96,17 +116,28 @@ public final class NpcVitalitySync {
     static void restoreNative(Entity entity) {
         if (!(entity instanceof LivingEntity living) || entity.level().isClientSide()) return;
         CompoundTag persistent = entity.getPersistentData();
-        if (!persistent.contains(TAG_BASE_MAX_HEALTH, Tag.TAG_INT)) return;
+        if (!persistent.contains(TAG_BASE_MAX_HEALTH_D, Tag.TAG_DOUBLE)
+                && !persistent.contains(TAG_BASE_MAX_HEALTH, Tag.TAG_INT)) return;
         try {
             Object stats = customNpcStats(entity);
-            if (stats == null) return;
-            int baseMax = Math.max(1, persistent.getInt(TAG_BASE_MAX_HEALTH));
+            double baseMax = persistent.contains(TAG_BASE_MAX_HEALTH_D, Tag.TAG_DOUBLE)
+                    ? Math.max(1.0, persistent.getDouble(TAG_BASE_MAX_HEALTH_D))
+                    : Math.max(1, persistent.getInt(TAG_BASE_MAX_HEALTH));
             float oldHealth = living.getHealth();
             float oldMax = living.getMaxHealth();
-            stats.getClass().getMethod("setMaxHealth", int.class).invoke(stats, baseMax);
-            pushLivingMaxHealth(living, baseMax);
+            if (stats != null) {
+                stats.getClass().getMethod("setMaxHealth", int.class).invoke(stats,
+                        NpcVitalityMath.npcStatsMaxHealth(baseMax));
+            }
+            AttributeInstance maxHealth = living.getAttribute(Attributes.MAX_HEALTH);
+            if (maxHealth != null) {
+                setDmzHealthBonus(maxHealth, 0.0f);
+                setBaseHealth(maxHealth, baseMax);
+            }
             persistent.remove(TAG_BASE_MAX_HEALTH);
+            persistent.remove(TAG_BASE_MAX_HEALTH_D);
             persistent.remove(TAG_LAST_MAX_HEALTH);
+            persistent.remove(TAG_LAST_MAX_HEALTH_D);
             living.setHealth(NpcVitalityMath.preserveHealthPercent(
                     oldHealth, oldMax, living.getMaxHealth()));
         } catch (ReflectiveOperationException | ClassCastException e) {
@@ -115,23 +146,56 @@ public final class NpcVitalitySync {
     }
 
     /**
-     * The HP a wand / Stats tab should display for this profile: vanilla 20 + VIT ×
-     * form VIT × race {@code VIT_scaling}, matching {@code StatsData.getHealthBonus}.
+     * Whole-HP label for the wand / Stats tab: vanilla 20 + VIT × form VIT × race
+     * {@code VIT_scaling}, matching {@code StatsData.getHealthBonus()} float rounding.
      */
-    public static int displayedMaxHealth(NpcCombatProfile profile) {
+    public static String displayedMaxHealthText(NpcCombatProfile profile) {
+        return NpcVitalityMath.displayedMaxHealth(livingMaxHealth(profile));
+    }
+
+    /**
+     * Saturated CustomNPC int for native {@code setMaxHealth}. Combat HP uses
+     * {@link #livingMaxHealth(NpcCombatProfile)}.
+     */
+    public static int npcStatsMaxHealth(NpcCombatProfile profile) {
+        return NpcVitalityMath.npcStatsMaxHealth(livingMaxHealth(profile));
+    }
+
+    public static double livingMaxHealth(NpcCombatProfile profile) {
         if (profile == null) return NpcVitalityMath.VANILLA_BASE;
         return NpcVitalityMath.authoritativeMaxHealth(
                 profile.vitality, vitalityMultiplier(profile), vitalityScaling(profile));
     }
 
-    private static void pushLivingMaxHealth(LivingEntity living, int targetMax) {
-        AttributeInstance attribute = living.getAttribute(Attributes.MAX_HEALTH);
-        if (attribute != null && Math.abs(attribute.getBaseValue() - targetMax) > 0.01) {
-            attribute.setBaseValue(targetMax);
+    private static int lastNpcStatsMax(CompoundTag persistent) {
+        if (persistent.contains(TAG_LAST_MAX_HEALTH_D, Tag.TAG_DOUBLE)) {
+            return NpcVitalityMath.npcStatsMaxHealth(persistent.getDouble(TAG_LAST_MAX_HEALTH_D));
+        }
+        if (persistent.contains(TAG_LAST_MAX_HEALTH, Tag.TAG_INT)) {
+            return persistent.getInt(TAG_LAST_MAX_HEALTH);
+        }
+        return 0;
+    }
+
+    private static void setBaseHealth(AttributeInstance attribute, double value) {
+        if (Math.abs(attribute.getBaseValue() - value) > 0.01) {
+            attribute.setBaseValue(value);
         }
     }
 
-    private static double vitalityMultiplier(NpcCombatProfile profile) {
+    private static void setDmzHealthBonus(AttributeInstance attribute, float amount) {
+        AttributeModifier existing = attribute.getModifier(DMZ_HEALTH_MODIFIER);
+        boolean matches = existing != null && Math.abs(existing.amount() - amount)
+                <= Math.max(1.0, Math.abs(amount) * 1.0e-5);
+        if (matches) return;
+        attribute.removeModifier(DMZ_HEALTH_MODIFIER);
+        if (Float.isFinite(amount) && amount > 0.0f) {
+            attribute.addPermanentModifier(new AttributeModifier(DMZ_HEALTH_MODIFIER, amount,
+                    Operation.ADD_VALUE));
+        }
+    }
+
+    static double vitalityMultiplier(NpcCombatProfile profile) {
         try {
             return NpcFormLookup.multiplier(profile, "VIT");
         } catch (Throwable ignored) {
@@ -144,23 +208,7 @@ public final class NpcVitalitySync {
      * Warrior is 1.2 in the 2.1.3 race stats files; the Java default is 1.0 if the config is absent.
      */
     static double vitalityScaling(NpcCombatProfile profile) {
-        if (profile == null) return 1.0;
-        try {
-            String race = profile.raceId == null || profile.raceId.isBlank() ? "human" : profile.raceId;
-            String characterClass = "warrior";
-            if (profile.appearance != null && profile.appearance.characterClass != null
-                    && !profile.appearance.characterClass.isBlank()) {
-                characterClass = profile.appearance.characterClass;
-            }
-            var raceConfig = com.dragonminez.common.config.ConfigManager.getRaceStats(race);
-            if (raceConfig == null) return 1.0;
-            var scaling = raceConfig.getClassStats(characterClass).getStatScaling();
-            if (scaling == null || scaling.getVitalityScaling() == null) return 1.0;
-            double value = scaling.getVitalityScaling();
-            return Double.isFinite(value) && value > 0.0 ? value : 1.0;
-        } catch (Throwable ignored) {
-            return 1.0;
-        }
+        return NpcStatScaling.of(profile, "VIT");
     }
 
     private static void warnOnce(Exception failure) {

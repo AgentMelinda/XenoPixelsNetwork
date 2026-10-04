@@ -70,9 +70,21 @@ public final class GuiNpcDmz extends GuiNPCInterface2 implements ITextfieldListe
     private static final int ID_MELEE_ANIM = 38;
     private static final int ID_MELEE_PREV = 39;
     private static final int ID_MELEE_NEXT = 40;
+    private static final int ID_BRAIN = 41;
+    private static final int ID_PAGE_PREV = 42;
+    private static final int ID_PAGE_NEXT = 43;
+    private static final int ID_ATK_PAGE = 44;
+    private static final int ID_PIN_NATIVE = 45;
+    private static final int PAGE_COUNT = 5;
+    private static final int SLOTS_PER_PAGE = 5;
+    private static final int ID_SLOT_TEXT = 600;
+    private static final int ID_SLOT_PREV = 620;
+    private static final int ID_SLOT_NEXT = 640;
+    private static final int ID_SLOT_ON = 660;
     private static final int PICKER_OFFSET = 500;
 
     private int colorTarget = -1;
+    private int page;
     private final NpcPreviewPanel previewPanel = new NpcPreviewPanel(npc, this::openPreviewAuraColor);
 
     public GuiNpcDmz(EntityNPCInterface npc) {
@@ -81,9 +93,21 @@ public final class GuiNpcDmz extends GuiNPCInterface2 implements ITextfieldListe
 
     @Override
     public void init() {
+        // Load the server's real profile; the client copy is otherwise never synced.
+        net.bullettrain.xenopixelsmod.client.npc.ClientNpcProfiles.ensure((net.minecraft.world.entity.Entity) npc);
         super.init();
         NpcCombatProfile p = editorProfile();
         ensureStackSelection(p);
+        page = Math.max(0, Math.min(PAGE_COUNT - 1, page));
+        if (page == 0) {
+            initStats(p);
+        } else {
+            initAttacks(p);
+        }
+        previewPanel.profile(p);
+    }
+
+    private void initStats(NpcCombatProfile p) {
         // GuiNPCInterface2 shell is 420x200. The right column carries thirteen rows now that
         // stack group/form sit under Group/Form, so the pitch is 16 rather than 18 and the boxes
         // are 14 tall; at the old pitch the last two rows fell off the panel entirely.
@@ -134,19 +158,22 @@ public final class GuiNpcDmz extends GuiNPCInterface2 implements ITextfieldListe
 
         addButton(new GuiButtonNop(this, ID_CUSTOMIZE, left, y + 24, 118, 18, "Appearance"));
         addButton(new GuiButtonNop(this, ID_FORMS, left + 122, y + 24, 58, 18, "Forms"));
-        addButton(new GuiButtonNop(this, ID_STACKS, left, y + 46, 180, 18, "DMZ Stack Forms"));
+        addButton(new GuiButtonNop(this, ID_BRAIN, left, y + 46, 44, 18, "Brain"));
+        addButton(new GuiButtonNop(this, ID_ATK_PAGE, left + 46, y + 46, 28, 18, "Atk"));
+        addButton(new GuiButtonNop(this, ID_STACKS, left + 76, y + 46, 54, 18, "Stacks"));
 
         int combatY = y + 68;
         addLabel(new GuiLabel(122, "Knock", left, combatY + 3, 0xFFFFFF));
         addButton(new GuiButtonYesNo(this, ID_KNOCKABLE, left + 42, combatY, 44, boxH, p.knockable));
         addLabel(new GuiLabel(123, "Damage", left + 94, combatY + 3, 0xFFFFFF));
         addButton(new GuiButtonYesNo(this, ID_PUNCHABLE, left + 140, combatY, 44, boxH, p.punchable));
-        addLabel(new GuiLabel(124, "HP " + net.bullettrain.xenopixelsmod.compat.npc.NpcVitalitySync.displayedMaxHealth(p),
-                left, combatY + 16, 0xFFAAAAAA));
-        addLabel(new GuiLabel(ID_MELEE_ANIM + 200, "Atk", left, combatY + 30, 0xFFFFFF));
-        textBox(ID_MELEE_ANIM, left + 28, combatY + 27, 118, boxH, displayMelee(p.meleeAnimation), 64);
-        addButton(new GuiButtonNop(this, ID_MELEE_PREV, left + 148, combatY + 27, 14, boxH, "<"));
-        addButton(new GuiButtonNop(this, ID_MELEE_NEXT, left + 164, combatY + 27, 14, boxH, ">"));
+        addLabel(new GuiLabel(125, "Pin native", left, combatY + 19, 0xFFFFFF));
+        addButton(new GuiButtonYesNo(this, ID_PIN_NATIVE, left + 70, combatY + 16, 44, boxH, p.pinNativeCombat));
+        addLabel(new GuiLabel(124, "HP " + net.bullettrain.xenopixelsmod.compat.npc.NpcVitalitySync.displayedMaxHealthText(p),
+                left, combatY + 32, 0xFFAAAAAA));
+        addLabel(new GuiLabel(90, "Page " + (page + 1) + " / " + PAGE_COUNT, left + 80, combatY + 32, 0xFFFFFF));
+        addButton(new GuiButtonNop(this, ID_PAGE_PREV, left + 148, combatY + 30, 16, 14, "<"));
+        addButton(new GuiButtonNop(this, ID_PAGE_NEXT, left + 166, combatY + 30, 16, 14, ">"));
 
         addLabel(new GuiLabel(ID_HAIR_COLOR + 200, "Color", right, y2 + 3, 0xFFFFFF));
         textBox(ID_HAIR_COLOR, right + 40, y2, 70, boxH, p.hairColor, 32);
@@ -157,7 +184,39 @@ public final class GuiNpcDmz extends GuiNPCInterface2 implements ITextfieldListe
         addLabel(new GuiLabel(ID_HAIR_CODE + 200, "Code", right, y2 + 3, 0xFFFFFF));
         // CNPC GuiTextFieldNop caps at 500 in its constructor — setMaxLength BEFORE setValue.
         textBox(ID_HAIR_CODE, right + 32, y2, 166, boxH, p.hairCode, 262144);
-        previewPanel.profile(p);
+    }
+
+    private void initAttacks(NpcCombatProfile p) {
+        int boxH = 14;
+        int x = guiLeft + 8;
+        int y = guiTop + 4;
+        addPager(x, y);
+        y += 18;
+        addLabel(new GuiLabel(ID_MELEE_ANIM + 200, "Atk", x, y + 3, 0xFFFFFF));
+        addButton(new GuiButtonNop(this, ID_MELEE_PREV, x + 72, y, 16, boxH, "<"));
+        textBox(ID_MELEE_ANIM, x + 90, y, 94, boxH, displayMelee(p.meleeAnimation), 64);
+        addButton(new GuiButtonNop(this, ID_MELEE_NEXT, x + 186, y, 16, boxH, ">"));
+        y += 18;
+        int start = attackSlotStart();
+        for (int row = 0; row < SLOTS_PER_PAGE; row++) {
+            int slot = start + row;
+            addLabel(new GuiLabel(ID_SLOT_TEXT + row + 200, Integer.toString(slot + 1), x, y + 3, 0xFFFFFF));
+            textBox(ID_SLOT_TEXT + row, x + 20, y, 148, boxH, displayMelee(p.meleeSlotClip(slot)), 64);
+            addButton(new GuiButtonNop(this, ID_SLOT_PREV + row, x + 172, y, 16, boxH, "<"));
+            addButton(new GuiButtonNop(this, ID_SLOT_NEXT + row, x + 190, y, 16, boxH, ">"));
+            addButton(new GuiButtonYesNo(this, ID_SLOT_ON + row, x + 210, y, 48, boxH, p.meleeSlotOn(slot)));
+            y += 16;
+        }
+    }
+
+    private void addPager(int x, int y) {
+        addLabel(new GuiLabel(90, "Page " + (page + 1) + " / " + PAGE_COUNT, x, y + 3, 0xFFFFFF));
+        addButton(new GuiButtonNop(this, ID_PAGE_PREV, x + 86, y, 16, 14, "<"));
+        addButton(new GuiButtonNop(this, ID_PAGE_NEXT, x + 104, y, 16, 14, ">"));
+    }
+
+    private int attackSlotStart() {
+        return Math.max(0, page - 1) * SLOTS_PER_PAGE;
     }
 
 
@@ -181,6 +240,14 @@ public final class GuiNpcDmz extends GuiNPCInterface2 implements ITextfieldListe
             p.energy = appearance.energy();
             p.auraColor = appearance.auraColor();
             p.auraScale = appearance.auraScale();
+            // Aura and hair come from the packet for the same reason the stats above do: the client
+            // entity's persistent data is never server-synced, so after a world reload reading it
+            // gave defaults and the toggles showed off while the NPC still plainly had its aura and
+            // hair. The server-side values are the only real ones.
+            p.auraOn = appearance.auraOn();
+            p.hairEnabled = appearance.hairEnabled();
+            p.hairCode = appearance.hairCode();
+            p.hairColor = appearance.hairColor();
             NpcDmzAppearance.Mode localMode = p.appearance == null
                     ? NpcDmzAppearance.Mode.OFF : p.appearance.mode;
             p.appearance = appearance.appearance().copy();
@@ -361,6 +428,8 @@ public final class GuiNpcDmz extends GuiNPCInterface2 implements ITextfieldListe
             p.knockable = yes.getBoolean();
         } else if (button.id == ID_PUNCHABLE && button instanceof GuiButtonYesNo yes) {
             p.punchable = yes.getBoolean();
+        } else if (button.id == ID_PIN_NATIVE && button instanceof GuiButtonYesNo yes) {
+            p.pinNativeCombat = yes.getBoolean();
         } else if (button.id == ID_FORMS) {
             p.write(npc);
             send(NpcProfileSavePacket.Action.SAVE);
@@ -374,9 +443,21 @@ public final class GuiNpcDmz extends GuiNPCInterface2 implements ITextfieldListe
             cycleStackGroup(p, button.id == ID_STACK_GROUP_NEXT ? 1 : -1);
         } else if (button.id == ID_STACK_PREV || button.id == ID_STACK_NEXT) {
             cycleStackForm(p, button.id == ID_STACK_NEXT ? 1 : -1);
+        } else if (button.id == ID_ATK_PAGE) {
+            page = 1;
+        } else if (button.id == ID_PAGE_PREV || button.id == ID_PAGE_NEXT) {
+            page = Math.floorMod(page + (button.id == ID_PAGE_NEXT ? 1 : -1), PAGE_COUNT);
         } else if (button.id == ID_MELEE_PREV || button.id == ID_MELEE_NEXT) {
             p.meleeAnimation = NpcCombatProfile.stepMeleeAnimation(
                     p.meleeAnimation, button.id == ID_MELEE_NEXT ? 1 : -1);
+        } else if (slotCycleRow(button.id) >= 0) {
+            int row = slotCycleRow(button.id);
+            int slot = attackSlotStart() + row;
+            int dir = button.id >= ID_SLOT_NEXT ? 1 : -1;
+            p.setMeleeSlotClip(slot, NpcCombatProfile.stepMeleeAnimation(p.meleeSlotClip(slot), dir));
+        } else if (button.id >= ID_SLOT_ON && button.id < ID_SLOT_ON + SLOTS_PER_PAGE
+                && button instanceof GuiButtonYesNo yes) {
+            p.setMeleeSlotOn(attackSlotStart() + (button.id - ID_SLOT_ON), yes.getBoolean());
         }
         if (button.id == ID_TRANSFORM) {
             NpcFormLookup.grantMastery(p, p.selectedFormGroup, p.selectedFormId);
@@ -388,7 +469,11 @@ public final class GuiNpcDmz extends GuiNPCInterface2 implements ITextfieldListe
                 || button.id == ID_FORM_PREV || button.id == ID_FORM_NEXT
                 || button.id == ID_STACK_GROUP_PREV || button.id == ID_STACK_GROUP_NEXT
                 || button.id == ID_STACK_PREV || button.id == ID_STACK_NEXT
-                || button.id == ID_MELEE_PREV || button.id == ID_MELEE_NEXT) {
+                || button.id == ID_MELEE_PREV || button.id == ID_MELEE_NEXT
+                || button.id == ID_PAGE_PREV || button.id == ID_PAGE_NEXT
+                || button.id == ID_ATK_PAGE
+                || slotCycleRow(button.id) >= 0
+                || (button.id >= ID_SLOT_ON && button.id < ID_SLOT_ON + SLOTS_PER_PAGE)) {
             send(NpcProfileSavePacket.Action.SAVE);
             init();
             return;
@@ -401,6 +486,9 @@ public final class GuiNpcDmz extends GuiNPCInterface2 implements ITextfieldListe
             send(NpcProfileSavePacket.Action.DESCEND);
         } else if (button.id == ID_CUSTOMIZE) {
             net.minecraft.client.Minecraft.getInstance().setScreen(new GuiNpcDmzAppearance(npc, p));
+        } else if (button.id == ID_BRAIN) {
+            net.minecraft.client.Minecraft.getInstance().setScreen(
+                    new GuiNpcDmzBrain(npc, p, GuiNpcDmzBrain.Origin.HUB));
         } else if (button.id == ID_STACKS) {
             net.minecraft.client.Minecraft.getInstance().setScreen(new GuiNpcDmzStack(npc, p));
         } else {
@@ -492,6 +580,13 @@ public final class GuiNpcDmz extends GuiNPCInterface2 implements ITextfieldListe
     }
 
     private NpcCombatProfile pullFromFields(NpcCombatProfile p) {
+        if (page != 0) {
+            if (getTextField(ID_MELEE_ANIM) != null) {
+                p.meleeAnimation = text(ID_MELEE_ANIM, p.meleeAnimation == null ? "" : p.meleeAnimation).trim();
+            }
+            pullMeleeSlots(p);
+            return p;
+        }
         p.raceId = text(ID_RACE, p.raceId);
         p.strength = integer(ID_STR, p.strength);
         p.strikePower = integer(ID_SKP, p.strikePower);
@@ -520,10 +615,11 @@ public final class GuiNpcDmz extends GuiNPCInterface2 implements ITextfieldListe
         if (knockableBtn instanceof GuiButtonYesNo yes) p.knockable = yes.getBoolean();
         GuiButtonNop punchableBtn = getButton(ID_PUNCHABLE);
         if (punchableBtn instanceof GuiButtonYesNo yes) p.punchable = yes.getBoolean();
+        GuiButtonNop pinNativeBtn = getButton(ID_PIN_NATIVE);
+        if (pinNativeBtn instanceof GuiButtonYesNo yes) p.pinNativeCombat = yes.getBoolean();
         if (p.hairCode != null && !p.hairCode.isBlank()) {
             p.hairEnabled = true;
         }
-        p.meleeAnimation = text(ID_MELEE_ANIM, p.meleeAnimation == null ? "" : p.meleeAnimation).trim();
         String techs = text(ID_TECH, "");
         p.techniques.clear();
         if (!techs.isBlank()) {
@@ -541,15 +637,39 @@ public final class GuiNpcDmz extends GuiNPCInterface2 implements ITextfieldListe
         return p;
     }
 
+    private void pullMeleeSlots(NpcCombatProfile p) {
+        if (getTextField(ID_SLOT_TEXT) == null) {
+            return;
+        }
+        int start = attackSlotStart();
+        for (int row = 0; row < SLOTS_PER_PAGE; row++) {
+            int slot = start + row;
+            String clip = text(ID_SLOT_TEXT + row, p.meleeSlotClip(slot));
+            boolean on = getButton(ID_SLOT_ON + row) instanceof GuiButtonYesNo yes
+                    ? yes.getBoolean() : p.meleeSlotOn(slot);
+            p.setMeleeSlot(slot, clip, on);
+        }
+    }
+
+    private static int slotCycleRow(int id) {
+        if (id >= ID_SLOT_PREV && id < ID_SLOT_PREV + SLOTS_PER_PAGE) {
+            return id - ID_SLOT_PREV;
+        }
+        if (id >= ID_SLOT_NEXT && id < ID_SLOT_NEXT + SLOTS_PER_PAGE) {
+            return id - ID_SLOT_NEXT;
+        }
+        return -1;
+    }
+
     private void send(NpcProfileSavePacket.Action action) {
         NpcCombatProfile p = NpcCombatProfile.read(npc);
         Entity entity = npc;
-        ModNetwork.sendToServer(new NpcProfileSavePacket(
+        net.bullettrain.xenopixelsmod.client.npc.ClientNpcProfiles.save(
                 entity.getId(), p.toTag(), action,
                 action == NpcProfileSavePacket.Action.STACK || action == NpcProfileSavePacket.Action.UNSTACK
                         ? p.selectedStackGroup : p.selectedFormGroup,
                 action == NpcProfileSavePacket.Action.STACK || action == NpcProfileSavePacket.Action.UNSTACK
-                        ? p.selectedStackId : p.selectedFormId));
+                        ? p.selectedStackId : p.selectedFormId);
     }
 
     private String hairCodeFromField(String stored) {

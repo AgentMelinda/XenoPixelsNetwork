@@ -1,0 +1,71 @@
+{
+  "version": 1,
+  "id": "dmz_menu_blank",
+  "kind": "dmz_menu",
+  "style": "bulma",
+  "tabs": ["overview", "saga", "quests", "interact"],
+  "fallback": "overview",
+  "page": "custom",
+  "canvasW": 365,
+  "canvasH": 293,
+  "root": {
+    "id": "root",
+    "type": "ROOT",
+    "x": 0,
+    "y": 0,
+    "w": 365,
+    "h": 293,
+    "anchor": "TOP_LEFT",
+    "visible": true,
+    "color": "#00000000",
+    "children": [
+      {
+        "id": "plate",
+        "type": "IMAGE",
+        "x": 10,
+        "y": 10,
+        "w": 345,
+        "h": 273,
+        "anchor": "TOP_LEFT",
+        "visible": true,
+        "texture": "dragonminez:textures/gui/menu/menunpc.png"
+      },
+      {
+        "id": "title",
+        "type": "TEXT",
+        "x": 24,
+        "y": 22,
+        "w": 160,
+        "h": 12,
+        "anchor": "TOP_LEFT",
+        "visible": true,
+        "text": "NEW MENU",
+        "color": "#FFD54A"
+      },
+      {
+        "id": "tab_stats",
+        "type": "NAV_TAB",
+        "x": 24,
+        "y": 40,
+        "w": 48,
+        "h": 14,
+        "anchor": "TOP_LEFT",
+        "visible": true,
+        "text": "Stats",
+        "action": "dmz_page:stats"
+      },
+      {
+        "id": "row",
+        "type": "STAT_ROW",
+        "x": 24,
+        "y": 62,
+        "w": 200,
+        "h": 14,
+        "anchor": "TOP_LEFT",
+        "visible": true,
+        "text": "Name",
+        "bind": "player.name"
+      }
+    ]
+  }
+}

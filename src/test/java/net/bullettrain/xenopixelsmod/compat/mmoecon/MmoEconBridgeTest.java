@@ -43,6 +43,10 @@ class MmoEconBridgeTest {
             calls++;
         }
 
+        public static void subtractBalance(UUID player, double amount) {
+            throw new AssertionError("wrong overload selected: " + amount);
+        }
+
         public static boolean hasFunds(UUID player, long amount) {
             return false;
         }
@@ -59,10 +63,16 @@ class MmoEconBridgeTest {
     }
 
     @Test
-    void falseReturningMethodStillCountsAsSuccess() {
-        // invokeStaticVoid reports "the call completed", not "the result was truthy" — so a method
-        // whose result is false is still a completed call, which is what the void case needs.
-        assertTrue(MmoEconBridge.invokeStaticVoid(Fixture.class, "hasFunds", PLAYER, 1L));
+    void nonVoidMethodIsRejectedByVoidInvoker() {
+        assertFalse(MmoEconBridge.invokeStaticVoid(Fixture.class, "hasFunds", PLAYER, 1L));
+    }
+
+    @Test
+    void overloadResolutionUsesArgumentTypes() {
+        Fixture.calls = 0;
+        assertTrue(MmoEconBridge.invokeStaticVoid(Fixture.class, "subtractBalance", PLAYER, 250L));
+        assertEquals(1, Fixture.calls);
+        assertEquals(250L, Fixture.lastAmount);
     }
 
     @Test

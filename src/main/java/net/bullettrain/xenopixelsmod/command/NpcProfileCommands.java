@@ -12,6 +12,7 @@ import net.bullettrain.xenopixelsmod.XenoPixelsMod;
 import net.bullettrain.xenopixelsmod.compat.npc.NpcAppearanceFx;
 import net.bullettrain.xenopixelsmod.compat.npc.NpcAuraFx;
 import net.bullettrain.xenopixelsmod.compat.npc.NpcCombatProfile;
+import net.bullettrain.xenopixelsmod.compat.npc.NpcDamageReport;
 import net.bullettrain.xenopixelsmod.compat.npc.NpcDisplayApply;
 import net.bullettrain.xenopixelsmod.compat.npc.NpcFormLookup;
 import net.bullettrain.xenopixelsmod.compat.npc.NpcHairBridge;
@@ -135,6 +136,10 @@ public final class NpcProfileCommands {
                                         .then(Commands.argument("kiPower", IntegerArgumentType.integer(0))
                                         .then(Commands.argument("energy", IntegerArgumentType.integer(0))
                                                 .executes(NpcProfileCommands::setProfile)))))))))
+                        // Read-only, and gated on the same permission as the rest of the tree.
+                        .then(Commands.literal("damage")
+                                .requires(XenoPermissions.require(XenoPermissions.NPCPROFILE_SET))
+                                .executes(NpcProfileCommands::reportDamage))
                         .then(Commands.literal("combat")
                                 .requires(XenoPermissions.require(XenoPermissions.NPCPROFILE_SET))
                                 .then(Commands.literal("punchable")
@@ -144,6 +149,10 @@ public final class NpcProfileCommands {
                                 .then(Commands.literal("knockable")
                                         .then(Commands.argument("value", BoolArgumentType.bool())
                                                 .executes(ctx -> setCombatFlag(ctx, false,
+                                                        BoolArgumentType.getBool(ctx, "value")))))
+                                .then(Commands.literal("pinnative")
+                                        .then(Commands.argument("value", BoolArgumentType.bool())
+                                                .executes(ctx -> setPinNative(ctx,
                                                         BoolArgumentType.getBool(ctx, "value")))))
                                 .executes(NpcProfileCommands::dumpCombat))
                         .then(Commands.literal("kiattack")
@@ -260,7 +269,19 @@ public final class NpcProfileCommands {
                                                         StringArgumentType.getString(ctx, "hairHex"))))))
                         .then(Commands.literal("ai")
                                 .requires(XenoPermissions.require(XenoPermissions.NPCPROFILE_SET))
-                                .then(Commands.literal("enable").executes(NpcProfileCommands::enableAi))))
+                                .then(Commands.literal("enable").executes(NpcProfileCommands::enableAi)))
+                        .then(Commands.literal("brain")
+                                .requires(XenoPermissions.require(XenoPermissions.NPCPROFILE_SET))
+                                .executes(NpcProfileCommands::brainStatus)
+                                .then(Commands.literal("status").executes(NpcProfileCommands::brainStatus))
+                                .then(Commands.literal("on").executes(ctx -> setBrainOn(ctx, true)))
+                                .then(Commands.literal("off").executes(ctx -> setBrainOn(ctx, false)))
+                                .then(Commands.literal("v1").executes(ctx -> setBrainVersion(ctx,
+                                        net.bullettrain.xenopixelsmod.compat.npc.NpcCombatBrainVersion.V1)))
+                                .then(Commands.literal("v2").executes(ctx -> setBrainVersion(ctx,
+                                        net.bullettrain.xenopixelsmod.compat.npc.NpcCombatBrainVersion.V2)))
+                                .then(Commands.literal("v9").executes(ctx -> setBrainVersion(ctx,
+                                        net.bullettrain.xenopixelsmod.compat.npc.NpcCombatBrainVersion.V9)))))
                 .then(Commands.literal("npcsay")
                         .requires(XenoPermissions.require(XenoPermissions.NPCSAY_TOGGLE))
                         .executes(ctx -> npcsayStatus(ctx.getSource()))
@@ -352,6 +373,31 @@ public final class NpcProfileCommands {
      * This one writes the server's copy directly, which is the copy that gets saved, so it settles
      * whether the problem is the editor path or the storage underneath it.
      */
+    /**
+     * Whether XenoPixels overwrites this NPC's native CustomNPCs combat fields.
+     *
+     * <p>Off is the escape hatch for an admin who wants to own the native damage, knockback or
+     * resistances. With it on -- the default, and what has always happened -- those fields are
+     * forced every time the profile is saved and every time a DragonMineZ stat changes, so a
+     * hand-set value silently reverted and there was no way to keep it.
+     */
+    private static int setPinNative(CommandContext<CommandSourceStack> ctx, boolean value) {
+        Entity entity = profileEntity(ctx, "npcprofile combat pinnative");
+        if (entity == null) {
+            return 0;
+        }
+        NpcCombatProfile profile = NpcCombatProfile.read(entity);
+        profile.pinNativeCombat = value;
+        // write() forces a counterpart sync, so the change takes effect on this call rather than
+        // waiting for something else to move the authority fingerprint.
+        profile.write(entity);
+        npcCommandReply(ctx.getSource(), value
+                ? "NPC native combat pinned by XenoPixels (damage, knockback, resistances forced)"
+                : "NPC native combat left to CustomNPCs; its own damage and resistances will stay",
+                true);
+        return 1;
+    }
+
     private static int setCombatFlag(CommandContext<CommandSourceStack> ctx, boolean punchable,
                                      boolean value) {
         Entity entity = profileEntity(ctx, "npcprofile combat");
@@ -390,6 +436,48 @@ public final class NpcProfileCommands {
                 "NPC combat — profile stored on the server entity: " + stored
                         + ", punchable " + profile.punchable
                         + ", knockable " + profile.knockable, false);
+        return 1;
+    }
+
+    /**
+     * What this NPC's stats actually produce in a fight.
+     *
+     * <p>The editor has no figure for outgoing damage — its "Damage" label sits next to the
+     * <em>punchable</em> toggle, which is about taking hits, not landing them — so there was no way
+     * to tell a mis-set stat from a broken formula. Every number here comes from the same helpers
+     * the combat path uses, so if this disagrees with what a player takes, that is a real bug.
+     */
+    private static int reportDamage(CommandContext<CommandSourceStack> ctx) {
+        Entity entity = profileEntity(ctx, "npcprofile damage");
+        if (entity == null) {
+            return 0;
+        }
+        NpcCombatProfile profile = NpcCombatProfile.read(entity);
+          NpcDamageReport.Report report = NpcDamageReport.of(entity, profile);
+        npcCommandReply(ctx.getSource(),
+                "melee " + NpcDamageReport.format(report.melee())
+                        + "  strike " + NpcDamageReport.format(report.strike())
+                        + "  ki " + NpcDamageReport.format(report.ki()), true);
+        npcCommandReply(ctx.getSource(),
+                "stamina " + NpcDamageReport.format(report.maxStamina())
+                        + ", " + NpcDamageReport.format(report.staminaCost())
+                        + " per punch (" + report.punchesFromFull() + " from full)", false);
+        npcCommandReply(ctx.getSource(), report.sustainable()
+                ? "sustainable: regen covers every punch at full strength"
+                : "NOT sustainable: once drained, punches land "
+                        + NpcDamageReport.format(report.tiredMelee())
+                        + " until stamina recovers -- raise VIT or lower STR", false);
+        npcCommandReply(ctx.getSource(),
+                "race/class " + profile.raceId + "/" + profile.characterClass()
+                        + ", STR scaling x" + report.strScaling(), false);
+        // Say so plainly. An admin setting the native damage or resistance on a pinned NPC will
+        // watch it revert on the next profile save or stat edit, and nothing used to explain why.
+        npcCommandReply(ctx.getSource(), profile.pinNativeCombat
+                ? "native combat is PINNED: CustomNPCs damage, knockback and resistances are "
+                        + "overwritten on every save and stat edit "
+                        + "(/xenopixels npcprofile combat pinnative false to keep your own)"
+                : "native combat is NOT pinned: this NPC's own CustomNPCs fields are left alone",
+                false);
         return 1;
     }
 
@@ -770,6 +858,44 @@ public final class NpcProfileCommands {
         }
         net.bullettrain.xenopixelsmod.compat.npc.NpcProfileLifecycle.repairAi(entity);
         npcCommandReply(ctx.getSource(), "Profile NPC AI enabled", true);
+        return 1;
+    }
+
+    private static int brainStatus(CommandContext<CommandSourceStack> ctx) {
+        Entity entity = profileEntity(ctx, "npcprofile brain");
+        if (entity == null) {
+            return 0;
+        }
+        NpcCombatProfile profile = NpcCombatProfile.read(entity);
+        npcCommandReply(ctx.getSource(), "Combat Brain "
+                + (profile.combatBrain ? "ON" : "OFF") + " " + profile.brainVersion.label(), true);
+        return 1;
+    }
+
+    private static int setBrainOn(CommandContext<CommandSourceStack> ctx, boolean on) {
+        Entity entity = profileEntity(ctx, "npcprofile brain");
+        if (entity == null) {
+            return 0;
+        }
+        NpcCombatProfile profile = NpcCombatProfile.read(entity);
+        profile.combatBrain = on;
+        profile.write(entity);
+        npcCommandReply(ctx.getSource(), "Combat Brain " + (on ? "ON" : "OFF")
+                + " " + profile.brainVersion.label(), true);
+        return 1;
+    }
+
+    private static int setBrainVersion(CommandContext<CommandSourceStack> ctx,
+                                       net.bullettrain.xenopixelsmod.compat.npc.NpcCombatBrainVersion version) {
+        Entity entity = profileEntity(ctx, "npcprofile brain");
+        if (entity == null) {
+            return 0;
+        }
+        NpcCombatProfile profile = NpcCombatProfile.read(entity);
+        profile.setBrainVersion(version);
+        profile.write(entity);
+        npcCommandReply(ctx.getSource(), "Combat Brain "
+                + (profile.combatBrain ? "ON" : "OFF") + " " + profile.brainVersion.label(), true);
         return 1;
     }
 

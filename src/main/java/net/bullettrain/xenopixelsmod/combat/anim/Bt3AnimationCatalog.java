@@ -193,7 +193,12 @@ public final class Bt3AnimationCatalog {
      * be told about or it resolves them to nothing.
      */
     public static Set<String> customAnimationNames() {
-        return Collections.unmodifiableSet(CUSTOM_NAMES);
+        if (DYNAMIC_NAMES.isEmpty()) {
+            return Collections.unmodifiableSet(CUSTOM_NAMES);
+        }
+        Set<String> all = new LinkedHashSet<>(CUSTOM_NAMES);
+        all.addAll(DYNAMIC_NAMES);
+        return Collections.unmodifiableSet(all);
     }
 
     /**

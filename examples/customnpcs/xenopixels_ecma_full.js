@@ -127,7 +127,8 @@ function meleeAttack(event) {
 }
 
 function rangedLaunched(event) {
-    strike(event.npc, event.target);
+    // A launch already happened. Do not answer it with another ki attack here: that command's
+    // attack fires rangedLaunched again (a loop). Follow-ups come from the T_COMBAT timer.
 }
 
 function strike(npc, target) {

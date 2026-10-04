@@ -24,6 +24,8 @@ public final class CloneCombatBridge {
     private int whiffStreak;
     /** Server tick this clone stops refusing the target it gave up on, or Long.MIN_VALUE. */
     private long abandonedUntil = Long.MIN_VALUE;
+    /** Whether {@link #cancel} has already run since combat last owned this clone. */
+    private boolean cancelled = true;
 
     public static ServerPlayer owner(XenoCloneEntity clone) {
         Entity raw = clone.level().getEntity(clone.ownerId());
@@ -81,6 +83,18 @@ public final class CloneCombatBridge {
         return data == null ? Double.POSITIVE_INFINITY : strike.getCalculatedCost(data);
     }
 
+    /**
+     * Stamina one melee swing costs the owner, never less than 1.
+     *
+     * <p>Exposed so the multi-form brain charges a punch exactly what the legacy clone AI charges
+     * one. The pools are the owner's, so the two AI modes drawing from them at different rates would
+     * make the choice of mode a balance decision rather than a behaviour one.
+     */
+    public static double meleeStaminaCost(XenoCloneEntity clone) {
+        StatsData data = stats(owner(clone));
+        return data == null ? 1.0 : Math.max(1.0, data.getStaminaPerHit());
+    }
+
     public static NpcResources.Snapshot resources(XenoCloneEntity clone) {
         StatsData data = stats(owner(clone));
         return data == null ? new NpcResources.Snapshot(0, 0, 0, 0)
@@ -113,6 +127,10 @@ public final class CloneCombatBridge {
             }
             refreshAt = clone.tickCount + 10;
         }
+        // Re-read each call so /xenomultiform ai takes effect without waiting for a refresh.
+        profile.combatBrain = net.bullettrain.xenopixelsmod.config.XenoServerConfig.multiFormUsesBrain();
+        profile.brainVanish = net.bullettrain.xenopixelsmod.config.XenoServerConfig.multiFormVanish;
+        profile.brainChase = false;
         return profile;
     }
 
@@ -129,22 +147,46 @@ public final class CloneCombatBridge {
         return target != null && target.getUUID().equals(attackTarget);
     }
 
+    /**
+     * Stand this clone's combat down.
+     *
+     * <p>Idempotent. Every idle tick used to re-broadcast {@code NpcDmzAnim.stop} and
+     * {@code XenoAnimApi.stopClip} to every client tracking the clone, which is a packet per clone
+     * per tick for a formation that is simply standing still, and it interleaved a stop with the
+     * punch clip starting on the next tick. The movement zero still runs unconditionally: that is
+     * local state, it is free, and the formation code relies on it.
+     */
     public void cancel(XenoCloneEntity clone) {
+        clone.setDeltaMovement(Vec3.ZERO);
+        if (cancelled) {
+            return;
+        }
+        cancelled = true;
         NpcStrikeDispatcher.cancel(clone.getUUID());
         NpcKiAim.cancel(clone);
         NpcMeleeDamage.clearAnimation(clone.getUUID());
-        clone.setDeltaMovement(Vec3.ZERO);
+        NpcDmzAnim.stop(clone);
+        net.bullettrain.xenopixelsmod.api.anim.XenoAnimApi.stopClip(clone);
+    }
+
+    public void noteHit() {
+        whiffStreak = 0;
     }
 
     /** Returns true when combat owns movement this tick. */
     public boolean tick(XenoCloneEntity clone, ServerPlayer owner, LivingEntity target) {
         if (cooldown > 0) cooldown--;
+        if (!CloneCombatPolicy.hasLivingLock(target != null, target != null && target.isAlive())) {
+            cancel(clone);
+            return false;
+        }
         boolean valid = validTarget(owner, target)
-                && owner.distanceToSqr(target) <= CloneCombatPolicy.LEASH * CloneCombatPolicy.LEASH
+                && XenoCloneSystem.inDetectRange(owner, target)
                 && !abandoned(clone, target);
         var action = CloneCombatPolicy.decide(active(clone), valid, clone.distanceTo(owner),
                 valid ? clone.distanceTo(target) : Double.POSITIVE_INFINITY,
-                valid && clone.hasLineOfSight(target), cooldown);
+                valid && clone.hasLineOfSight(target), cooldown,
+                net.bullettrain.xenopixelsmod.config.XenoServerConfig.clampedMultiFormDetectRange());
         if (action == CloneCombatPolicy.Action.FORMATION) {
             cancel(clone);
             return false;
@@ -156,6 +198,12 @@ public final class CloneCombatBridge {
             abandonedUntil = Long.MIN_VALUE;
         }
         NpcCombatProfile current = profile(clone);
+        // Past every stand-down path, so the next cancel is a real transition rather than a repeat.
+        cancelled = false;
+        if (net.bullettrain.xenopixelsmod.config.XenoServerConfig.multiFormVanish
+                && clone.distanceTo(target) > CloneCombatPolicy.MELEE_RANGE) {
+            NpcCombatMoves.vanish(clone, target, 0);
+        }
         if (action == CloneCombatPolicy.Action.MELEE) {
             // The dispatcher owns spending and delayed impact; never pre-charge its action.
             boolean strike = false;
@@ -165,6 +213,9 @@ public final class CloneCombatBridge {
                     strike = true;
                     cooldown = Math.max(20, ownedStrike.getActualCastTime() + 20);
                     NpcDmzAnim.play(clone, net.bullettrain.xenopixelsmod.combat.anim.Bt3AnimationIntent.BODY_PUNCH_RIGHT);
+                    // fire() only queued the swing. Until damage lands this is a miss, so a clone
+                    // that cannot actually hurt the lock-on (dead, protected, cancelled) gives up.
+                    whiffStreak = CloneCombatPolicy.noteSwing(whiffStreak, false);
                     break;
                 }
             }
@@ -173,21 +224,18 @@ public final class CloneCombatBridge {
                 if (data != null && spend(clone, 0, Math.max(1, data.getStaminaPerHit()))) {
                     clone.swing(InteractionHand.MAIN_HAND, true);
                     NpcDmzAnim.play(clone, net.bullettrain.xenopixelsmod.combat.anim.Bt3AnimationIntent.BODY_PUNCH_RIGHT);
-                    // The return value is the only honest signal that the swing did something. It
-                    // was previously discarded, so a clone swinging at something it can never hurt
-                    // -- invulnerable, already dying, damage cancelled elsewhere -- kept choosing
-                    // MELEE forever and stood there punching air.
-                    if (target.hurt(clone.damageSources().mobAttack(clone), current.meleeDamage())) {
-                        whiffStreak = 0;
-                    } else {
-                        whiffStreak++;
-                    }
+                    whiffStreak = CloneCombatPolicy.noteSwing(whiffStreak,
+                            target.hurt(clone.damageSources().mobAttack(clone), current.meleeDamage()));
+                } else {
+                    // A swing the owner could not pay for still counts against the abandon budget.
+                    // Skipping it left the only stop condition unreachable: with the owner out of
+                    // stamina the clone connected with nothing, recorded nothing, and re-chose MELEE
+                    // every cooldown forever, because shouldAbandon is driven purely by this streak.
+                    whiffStreak = CloneCombatPolicy.noteSwing(whiffStreak, false);
                 }
             }
             if (!strike) cooldown = 20;
             if (CloneCombatPolicy.shouldAbandon(whiffStreak)) {
-                // Back to formation, and stay off this target long enough not to re-engage on the
-                // very next tick. A new target clears both counters above.
                 abandonedUntil = clone.level().getGameTime() + ABANDON_TICKS;
                 whiffStreak = 0;
                 cancel(clone);

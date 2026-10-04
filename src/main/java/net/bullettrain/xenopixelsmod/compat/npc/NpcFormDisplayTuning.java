@@ -57,7 +57,50 @@ public final class NpcFormDisplayTuning {
         }
     }
 
+    private static final java.util.Map<String, Cached> CACHE =
+            new java.util.concurrent.ConcurrentHashMap<>();
+
+    private record Cached(long mtime, long size, Tuning tuning, long checkedAtMs) {}
+
+    /** Re-stat a memoised JSON at most once per second; display tuning tolerates that lag. */
+    private static final long STAT_INTERVAL_MS = 1000L;
+
     private static Tuning read(Path path, String formId) {
+        // This ran on NPC sync paths, so a per-tick caller would re-stat and re-parse the same
+        // form JSON every few ticks. Memoise on (mtime,size); an edited file changes one of them
+        // and is reparsed on the next lookup.
+        String key = path + "\u0000" + formId;
+        Cached cached = CACHE.get(key);
+        long now = System.currentTimeMillis();
+        if (cached != null && now - cached.checkedAtMs < STAT_INTERVAL_MS) {
+            return cached.tuning;
+        }
+        long mtime = -1L;
+        long size = -1L;
+        try {
+            var attrs = Files.readAttributes(path, java.nio.file.attribute.BasicFileAttributes.class);
+            if (!attrs.isRegularFile()) {
+                CACHE.put(key, new Cached(-1L, -1L, NONE, now));
+                return NONE;
+            }
+            mtime = attrs.lastModifiedTime().toMillis();
+            size = attrs.size();
+        } catch (Exception ignored) {
+            // A missing file is the common case for the second config tree. Remember the miss
+            // under the same throttle, or every call pays a failed stat and a thrown exception.
+            CACHE.put(key, new Cached(-1L, -1L, NONE, now));
+            return NONE;
+        }
+        if (cached != null && cached.mtime == mtime && cached.size == size) {
+            CACHE.put(key, new Cached(mtime, size, cached.tuning, now));
+            return cached.tuning;
+        }
+        Tuning tuning = parse(path, formId);
+        CACHE.put(key, new Cached(mtime, size, tuning, now));
+        return tuning;
+    }
+
+    private static Tuning parse(Path path, String formId) {
         if (!Files.isRegularFile(path)) {
             return NONE;
         }

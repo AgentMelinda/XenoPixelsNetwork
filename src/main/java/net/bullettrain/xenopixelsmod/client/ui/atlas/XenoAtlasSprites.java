@@ -1,0 +1,353 @@
+package net.bullettrain.xenopixelsmod.client.ui.atlas;
+
+import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.resources.ResourceLocation;
+
+import java.util.LinkedHashMap;
+import java.util.Map;
+import java.util.Set;
+
+/** Registry of extracted atlas sprites with verified native dimensions. */
+public final class XenoAtlasSprites {
+    public enum Theme { BLUE, GOLD, GREEN, RED }
+
+    public record Sprite(ResourceLocation rl, int width, int height) {}
+
+    private static final String NAMESPACE = "xenopixelsmod";
+    private static final String BASE_PATH = "textures/gui/atlas/";
+
+    private static final Map<String, int[]> DIMENSIONS = new LinkedHashMap<>();
+    private static Theme theme = Theme.BLUE;
+
+    static {
+        register("banner_top", 150, 60);
+        register("header_strip", 180, 22);
+        register("hex_badge", 40, 40);
+        register("hex_badge_lg", 64, 64);
+        register("icon_slot_lg", 32, 32);
+        register("icon_slot_sm", 20, 20);
+        register("mynpcs_button_arrow", 22, 20);
+        register("mynpcs_button_row", 64, 22);
+        register("mynpcs_button_row_w16", 16, 22);
+        register("mynpcs_button_row_w20", 20, 22);
+        register("mynpcs_button_row_w28", 28, 22);
+        register("mynpcs_button_row_w40", 40, 22);
+        register("mynpcs_button_row_w52", 52, 22);
+        register("mynpcs_button_row_w96", 96, 22);
+        register("mynpcs_button_row_w128", 128, 22);
+        register("mynpcs_button_row_w176", 176, 22);
+        register("mynpcs_button_row_w256", 256, 22);
+        register("mynpcs_button_row_w360", 360, 22);
+        register("mynpcs_button_square", 64, 64);
+        register("mynpcs_main_panel", 256, 195);
+        register("mynpcs_nearby_panel", 256, 216);
+        register("mynpcs_button_80x20", 80, 20);
+        register("mynpcs_button_100x20", 100, 20);
+        register("mynpcs_side_button", 197, 66);
+        register("mynpcs_small_panel", 176, 222);
+        register("mynpcs_tab", 28, 28);
+        register("mynpcs_toast", 160, 32);
+        register("mynpcs_top_button", 200, 61);
+        register("panel_editor", 842, 471);
+        register("panel_huge", 280, 360);
+        register("panel_small", 90, 70);
+        register("panel_square", 150, 150);
+        register("panel_tall", 141, 213);
+        register("panel_wide", 220, 90);
+        register("pill_button", 90, 24);
+        register("pill_button_lg", 150, 36);
+        register("tab_docked", 70, 26);
+        register("tab_docked_w20", 20, 26);
+        register("tab_docked_w28", 28, 26);
+        register("tab_docked_w36", 36, 26);
+        register("tab_docked_w44", 44, 26);
+        register("tab_docked_w52", 52, 26);
+        register("tab_docked_w60", 60, 26);
+        register("tab_docked_w68", 68, 26);
+        register("xeno_editor_panel", 600, 320);
+        register("xeno_editor_panel_w420", 420, 320);
+        register("xeno_editor_panel_w420_h200", 420, 200);
+        register("xeno_editor_panel_w420_h240", 420, 240);
+        register("xeno_editor_panel_w420_h280", 420, 280);
+        register("xeno_inventory_panel", 248, 166);
+        register("xeno_quest_journal_panel", 420, 320);
+        register("xeno_quest_complete_rounded", 360, 180);
+        register("xeno_quest_complete_banner", 360, 180);
+        register("xeno_quest_toast", 220, 56);
+        register("xeno_npc_gear_panel", 176, 222);
+        register("xeno_npc_curios_panel", 141, 213);
+        register("speech_bubble", 120, 56);
+        register("ui_chip_w20", 20, 18);
+        register("ui_chip_w32", 32, 18);
+        register("ui_chip_w40", 40, 18);
+        register("ui_chip_w48", 48, 18);
+        register("ui_chip_w56", 56, 18);
+        register("ui_chip_w64", 64, 18);
+        register("ui_chip_w112", 112, 18);
+        register("speech_bubble_w120_h42", 120, 42);
+        register("speech_bubble_w120_h54", 120, 54);
+        register("speech_bubble_w120_h68", 120, 68);
+        register("speech_bubble_w120_h80", 120, 80);
+        register("speech_bubble_w120_h94", 120, 94);
+        register("speech_bubble_w180_h42", 180, 42);
+        register("speech_bubble_w180_h54", 180, 54);
+        register("speech_bubble_w180_h68", 180, 68);
+        register("speech_bubble_w180_h80", 180, 80);
+        register("speech_bubble_w180_h94", 180, 94);
+        register("speech_bubble_w256_h42", 256, 42);
+        register("speech_bubble_w256_h54", 256, 54);
+        register("speech_bubble_w256_h68", 256, 68);
+        register("speech_bubble_w256_h80", 256, 80);
+        register("speech_bubble_w256_h94", 256, 94);
+        register("mark_cross", 32, 32);
+        register("mark_exclamation", 32, 32);
+        register("mark_pointer", 32, 32);
+        register("mark_question", 32, 32);
+        register("mark_skull", 32, 32);
+        register("mark_star", 32, 32);
+        // Script/NPC bubble shapes beside the rounded one, same size ladder so every shape fits
+        // the same text. Generated by xeno_extra_specs.py (render_*_bubble).
+        // Script screen (1:1 GuiScriptInterface): frame ladder, derived inner panels, the Load
+        // Scripts sub-panel, and buttons at the reference's sizes. XenoScriptLayout names them.
+        for (int w : net.bullettrain.xenopixelsmod.client.npc.script.XenoScriptLayout.FRAME_WIDTHS) {
+            var l = net.bullettrain.xenopixelsmod.client.npc.script.XenoScriptLayout.of(w);
+            register(l.frame(), l.w, l.h);
+            register(l.code(), l.codeW, l.codeH);
+            register(l.console(), l.consoleW, l.consoleH);
+            register(l.files(), l.sideW, l.filesH);
+            register(l.hooks(), l.sideW, l.hooksH);
+            register(l.consts(), l.sideW, l.constsH);
+        }
+        register("xeno_script_load_panel", 346, 216);
+        register("xeno_script_list_w140_h180", 140, 180);
+        for (int w : net.bullettrain.xenopixelsmod.client.npc.script.XenoScriptLayout.BUTTON_WIDTHS) {
+            register(net.bullettrain.xenopixelsmod.client.npc.script.XenoScriptLayout.button(w), w, 20);
+        }
+        // Inline colour picker.
+        register("xeno_color_picker_panel", 210, 150);
+        register("xeno_swatch_frame", 16, 18);
+        register("xeno_hsv_frame", 108, 108);
+        register("xeno_value_frame", 18, 108);
+        register("xeno_hsv_square", 96, 96);
+        for (String shape : new String[] {"thought", "shout", "banner"}) {
+            for (int w : new int[] {120, 180, 256}) {
+                for (int h : new int[] {42, 54, 68, 80, 94}) {
+                    register("speech_bubble_" + shape + "_w" + w + "_h" + h, w, h);
+                }
+            }
+        }
+        // Unified Maker Studio (PR-D6c): exact Race / Form / Hair region sizes.
+        register("xeno_maker_race_card", 72, 56);
+        register("xeno_maker_category_col", 96, 240);
+        register("xeno_maker_part_grid", 240, 220);
+        register("xeno_maker_form_list", 140, 280);
+        register("xeno_maker_form_settings", 220, 240);
+        register("xeno_maker_preview_sm", 150, 112);
+        register("xeno_maker_hair_preview", 280, 240);
+    }
+
+    /** Generated bubble outlines beside the rounded original. */
+    public static final String[] BUBBLE_SHAPES = {"thought", "shout", "banner"};
+
+    private XenoAtlasSprites() {}
+
+    private static void register(String shape, int w, int h) {
+        DIMENSIONS.put(shape, new int[]{w, h});
+    }
+
+    public static Theme theme() { return theme; }
+    public static void setTheme(Theme t) { theme = t; }
+
+    /** Resolve an NPC or dialogue palette to the matching generated atlas theme. */
+    public static Theme themeForPalette(String palette) {
+        return Theme.valueOf(net.bullettrain.xenopixelsmod.compat.npc.NpcCombatProfile
+                .canonicalPalette(palette));
+    }
+
+    public static Set<String> shapes() { return DIMENSIONS.keySet(); }
+
+    /** Generated widths of the dense toolbar chip, ascending. */
+    private static final int[] CHIP_WIDTHS = {20, 32, 40, 48, 56, 64, 112};
+    /**
+     * Generated row widths, ascending. The narrow end exists because a row is not always a full
+     * control: a slot row's clear button is a sixth of the pick button beside it, and with 64 as
+     * the floor {@link #rowWithin} had to answer 64 for an eighteen-pixel request -- a button
+     * sized three and a half times its slot, drawn straight over its neighbour.
+     */
+    private static final int[] ROW_WIDTHS =
+            {16, 20, 28, 40, 52, 64, 96, 128, 176, 256, 360};
+
+    /** Widest generated MyNPCs row button that does not exceed {@code maxWidth}. */
+    public static String rowWithin(int maxWidth) {
+        int selected = ROW_WIDTHS[0];
+        for (int width : ROW_WIDTHS) {
+            if (width > maxWidth) {
+                break;
+            }
+            selected = width;
+        }
+        return selected == 64 ? "mynpcs_button_row" : "mynpcs_button_row_w" + selected;
+    }
+
+    /**
+     * Name of the narrowest generated chip that is at least {@code minWidth} wide.
+     *
+     * <p>Dense toolbars cannot use the 64x22 button cell without either overflowing or scaling it,
+     * so the chip shape was generated at a spread of widths and callers pick the one that fits.
+     */
+    public static String chip(int minWidth) {
+        for (int w : CHIP_WIDTHS) {
+            if (w >= minWidth) {
+                return "ui_chip_w" + w;
+            }
+        }
+        return "ui_chip_w" + CHIP_WIDTHS[CHIP_WIDTHS.length - 1];
+    }
+
+    /** Generated editor-frame heights, ascending. The 320 one is the full frame. */
+    private static final int[] EDITOR_FRAME_HEIGHTS = {200, 240, 280, 320};
+
+    /**
+     * Name of the shortest generated editor frame at least {@code minHeight} tall.
+     *
+     * <p>Same reasoning as {@link #chip(int)} and {@link #bubble(int, int)}: the art is blitted 1:1
+     * with its border baked in, so a page with few rows gets a shorter frame rather than the full
+     * one with an empty band above the footer. Falls back to the tallest.
+     */
+    public static String editorFrame(int minHeight) {
+        for (int h : EDITOR_FRAME_HEIGHTS) {
+            if (h >= minHeight) {
+                return h == 320 ? "xeno_editor_panel_w420" : "xeno_editor_panel_w420_h" + h;
+            }
+        }
+        return "xeno_editor_panel_w420";
+    }
+
+    /** The tallest generated editor frame, in GUI pixels. */
+    public static int maxEditorFrameHeight() {
+        return EDITOR_FRAME_HEIGHTS[EDITOR_FRAME_HEIGHTS.length - 1];
+    }
+
+    /** Generated speech-bubble widths, ascending. */
+    private static final int[] BUBBLE_WIDTHS = {120, 180, 256};
+    /** Generated speech-bubble heights, ascending. */
+    private static final int[] BUBBLE_HEIGHTS = {42, 54, 68, 80, 94};
+
+    /** The widest speech bubble that exists, in GUI pixels. */
+    public static int maxBubbleWidth() {
+        return BUBBLE_WIDTHS[BUBBLE_WIDTHS.length - 1];
+    }
+
+    /** The tallest speech bubble that exists, in GUI pixels. */
+    public static int maxBubbleHeight() {
+        return BUBBLE_HEIGHTS[BUBBLE_HEIGHTS.length - 1];
+    }
+
+    /**
+     * Name of the smallest generated speech bubble that holds {@code minWidth} x {@code minHeight}.
+     *
+     * <p>Exactly the reasoning behind {@link #chip(int)}: the atlas is blitted 1:1 and each border
+     * is baked in at generation, so a long line of dialogue is answered with a bigger cell rather
+     * than by stretching the one 120x56 original - which is what left text running out past the
+     * edges of the bubble. Falls back to the largest cell, so an unusually long line is clamped
+     * rather than dropped.
+     */
+    public static String bubble(int minWidth, int minHeight) {
+        return "speech_bubble_w" + fit(BUBBLE_WIDTHS, minWidth)
+                + "_h" + fit(BUBBLE_HEIGHTS, minHeight);
+    }
+
+    /** As {@link #bubble(int, int)} in a given outline; rounded and inherit use the original. */
+    public static String bubble(net.bullettrain.xenopixelsmod.npc.lines.BubbleShape shape, int minWidth, int minHeight) {
+        if (shape == null || shape == net.bullettrain.xenopixelsmod.npc.lines.BubbleShape.INHERIT || shape == net.bullettrain.xenopixelsmod.npc.lines.BubbleShape.ROUNDED) {
+            return bubble(minWidth, minHeight);
+        }
+        return "speech_bubble_" + shape.id() + "_w" + fit(BUBBLE_WIDTHS, minWidth)
+                + "_h" + fit(BUBBLE_HEIGHTS, minHeight);
+    }
+
+    /** The smallest value in {@code options} that is at least {@code needed}, else the largest. */
+    private static int fit(int[] options, int needed) {
+        for (int option : options) {
+            if (option >= needed) {
+                return option;
+            }
+        }
+        return options[options.length - 1];
+    }
+
+
+    public static Sprite get(String shape, Theme t) {
+        int[] d = DIMENSIONS.get(shape);
+        if (d == null) throw new IllegalArgumentException("Unknown atlas shape: " + shape);
+        ResourceLocation rl = ResourceLocation.fromNamespaceAndPath(NAMESPACE,
+                BASE_PATH + shape + "_" + t.name().toLowerCase() + ".png");
+        return new Sprite(rl, d[0], d[1]);
+    }
+
+    public static Sprite get(String shape) { return get(shape, theme); }
+
+    public static void blit(GuiGraphics g, String shape, int x, int y) {
+        Sprite s = get(shape);
+        g.blit(s.rl(), x, y, 0f, 0f, s.width(), s.height(), s.width(), s.height());
+    }
+
+    /** As {@link #blit(GuiGraphics, String, int, int)} but in an explicit palette. */
+    public static void blit(GuiGraphics g, String shape, Theme t, int x, int y) {
+        Sprite s = get(shape, t);
+        g.blit(s.rl(), x, y, 0f, 0f, s.width(), s.height(), s.width(), s.height());
+    }
+
+    /**
+     * As {@link #blitSized} but in an explicit palette.
+     *
+     * <p>This is how state colour is expressed: the ultimate atlas ships blue, gold, green and red
+     * cuts of every shape, so an ON/OFF badge switches palette on the same sprite instead of
+     * swapping to a differently sized sprite or multiplying in a tint the art never had.
+     */
+    public static void blitSized(GuiGraphics g, String shape, Theme t, int x, int y, int tw, int th) {
+        Sprite s = get(shape, t);
+        g.blit(s.rl(), x, y, tw, th, 0f, 0f, s.width(), s.height(), s.width(), s.height());
+    }
+
+    /**
+     * Draws {@code shape} scaled to fill a {@code tw x th} box.
+     *
+     * <p>This has to use the eleven-argument {@code GuiGraphics.blit}, the only overload that takes
+     * the destination size and the sampled region as separate parameters. The nine-argument form
+     * used to be called here and is wrong for scaling: it forwards with {@code uWidth = destW} and
+     * {@code vHeight = destH} (GuiGraphics.java:540 in 1.21.1), so it samples a {@code tw x th}
+     * rectangle out of the sprite rather than scaling the whole sprite. Anything drawn smaller than
+     * native was cropped, and anything drawn larger read past the edge of the texture - which is
+     * what put a seam across the NPC editor panel and doubled the tab borders.
+     */
+    public static void blitSized(GuiGraphics g, String shape, int x, int y, int tw, int th) {
+        Sprite s = get(shape);
+        g.blit(s.rl(), x, y, tw, th, 0f, 0f, s.width(), s.height(), s.width(), s.height());
+    }
+
+    /**
+     * Draws {@code shape} at its native size when it fits in {@code maxW x maxH}, and otherwise
+     * scaled down to fit while keeping its aspect ratio. Layouts are built around native sprite
+     * dimensions, so this is the guard for small GUI-scaled viewports rather than a general resize.
+     */
+    public static void blitFitted(GuiGraphics g, String shape, int x, int y, int maxW, int maxH) {
+        Sprite s = get(shape);
+        float scale = Math.min(1f, Math.min(maxW / (float) s.width(), maxH / (float) s.height()));
+        if (scale >= 1f) {
+            blit(g, shape, x, y);
+            return;
+        }
+        blitSized(g, shape, x, y, Math.max(1, (int) (s.width() * scale)),
+                Math.max(1, (int) (s.height() * scale)));
+    }
+
+    /** The on-screen size {@link #blitFitted} would use, so callers can lay out against it. */
+    public static int[] fittedSize(String shape, int maxW, int maxH) {
+        Sprite s = get(shape);
+        float scale = Math.min(1f, Math.min(maxW / (float) s.width(), maxH / (float) s.height()));
+        if (scale >= 1f) return new int[]{s.width(), s.height()};
+        return new int[]{Math.max(1, (int) (s.width() * scale)),
+                Math.max(1, (int) (s.height() * scale))};
+    }
+}

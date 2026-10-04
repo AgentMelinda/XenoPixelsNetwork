@@ -62,7 +62,14 @@ public final class PlotClientSelection {
         if (player == null || level == null || !WorldEditBridge.available()) {
             return null;
         }
-        Object region = WorldEditBridge.getSelection(player, level);
+        // A WorldEdit selection lives on the server. In single player that server is in this
+        // process, so read it there; on a remote server the client has nothing to read.
+        var server = net.minecraft.client.Minecraft.getInstance().getSingleplayerServer();
+        var serverPlayer = server == null ? null : server.getPlayerList().getPlayer(player.getUUID());
+        if (serverPlayer == null) {
+            return null;
+        }
+        Object region = WorldEditBridge.getSelection(serverPlayer, serverPlayer.serverLevel());
         if (region == null) {
             return null;
         }

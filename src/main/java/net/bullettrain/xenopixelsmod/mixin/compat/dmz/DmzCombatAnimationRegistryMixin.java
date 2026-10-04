@@ -48,5 +48,6 @@ public abstract class DmzCombatAnimationRegistryMixin {
             XenoPixelsMod.LOGGER.info("Registered {} BT3 animations with DragonMineZ: {}",
                     names.size(), String.join(", ", names));
         }
+        Bt3AnimationBinding.registerStudioNames();
     }
 }

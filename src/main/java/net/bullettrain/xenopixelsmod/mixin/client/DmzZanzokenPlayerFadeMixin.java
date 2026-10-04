@@ -38,7 +38,7 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
  * NeoForge's {@code RenderPlayerEvent} — which vanilla's {@code PlayerRenderer} fires — is not on
  * this path, and no event exposes the buffer source for replacement in any case.
  *
- * <p><b>What it must not fade.</b> Two other things reach this same renderer:
+ * <p><b>What it must not fade.</b> Three other things reach this same renderer:
  * <ul>
  *   <li>the copies themselves, which {@code NpcFullDmzRenderer#renderPlayerCopy} draws by calling
  *       this renderer with a <i>proxy</i> player and a buffer source that is already faded. Fading
@@ -47,6 +47,8 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
  *       the proxy class.
  *   <li>the HUD portrait, which is the fighter's own face in the corner and has no business
  *       dimming because their body in the world is.
+ *   <li>any {@code EntityPreviewRenderContext} draw (form preview, inventory doll). Those use a
+ *       one-shot GUI buffer; wrapping it threw {@code Not building!} in the 2026-09-13 crash.
  * </ul>
  *
  * <p><b>Guideline notes</b> (§18): {@code @WrapMethod} because the whole call needs one substituted
@@ -98,6 +100,9 @@ public abstract class DmzZanzokenPlayerFadeMixin {
                                             MultiBufferSource bufferSource, float partialTick,
                                             CallbackInfoReturnable<RenderType> cir) {
         if (texture == null || CombatBodyFade.outlinePass(bufferSource)) return;
+        if (EntityPreviewRenderContext.isRendering() || EntityPreviewRenderContext.isHudPortrait()) {
+            return;
+        }
         if (CombatBodyFade.isWrapped(bufferSource) || CombatBodyFade.fading(animatable)) {
             cir.setReturnValue(RenderType.entityTranslucent(texture, true));
         }
@@ -105,7 +110,8 @@ public abstract class DmzZanzokenPlayerFadeMixin {
 
     private static MultiBufferSource xeno$faded(AbstractClientPlayer player, float partialTick,
                                                 MultiBufferSource buffers) {
-        if (player == null || EntityPreviewRenderContext.isHudPortrait()) {
+        if (player == null || EntityPreviewRenderContext.isRendering()
+                || EntityPreviewRenderContext.isHudPortrait()) {
             return buffers;
         }
         Minecraft mc = Minecraft.getInstance();

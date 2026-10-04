@@ -18,7 +18,8 @@ import net.neoforged.bus.api.SubscribeEvent;
 import org.joml.Matrix4f;
 
 /**
- * Ground circle the local player stands in while charging a fist or kick.
+ * Ground circle a charging fighter stands in: the local player, and any NPC
+ * whose server charge clock is live.
  *
  * <p>The old indicator was a chest-height ring plus a vertical disc. From above the disc
  * collapsed to a line. This is one horizontal annulus on the floor, center at the feet.
@@ -36,49 +37,70 @@ public final class ChargeAttackGlowRenderer {
     public static void onRenderLevel(RenderLevelStageEvent event) {
         if (event.getStage() != RenderLevelStageEvent.Stage.AFTER_PARTICLES) return;
         if (!XenoClientConfig.bt3ChargeGlow) return;
-        if (!Bt3CombatClient.isCharging()) return;
-
         Minecraft mc = Minecraft.getInstance();
-        LocalPlayer player = mc.player;
-        if (player == null) return;
-
-        float progress = Bt3CombatClient.getChargeProgress();
-        boolean full = Bt3CombatClient.isFullyCharged();
+        if (mc.level == null) return;
         float partial = event.getPartialTick().getGameTimeDeltaPartialTick(false);
-
         Vec3 cam = event.getCamera().getPosition();
-        double x = Mth.lerp(partial, player.xo, player.getX()) - cam.x;
-        double y = Mth.lerp(partial, player.yo, player.getY()) - cam.y + FEET_Y;
-        double z = Mth.lerp(partial, player.zo, player.getZ()) - cam.z;
-
         PoseStack pose = event.getPoseStack();
-        pose.pushPose();
-        pose.translate(x, y, z);
-
         MultiBufferSource.BufferSource buffers = mc.renderBuffers().bufferSource();
-        VertexConsumer vc = buffers.getBuffer(RenderType.lightning());
 
-        float r, g, b;
-        if (Bt3CombatClient.isDragonCharge()) {
-            r = 1.0f; g = 0.75f; b = 0.15f;
-        } else if (Bt3CombatClient.isKickCharge()) {
-            r = 0.95f; g = 0.25f; b = 0.85f;
-        } else {
-            r = 1.0f; g = 0.35f; b = 0.1f;
+        if (Bt3CombatClient.isCharging()) {
+            LocalPlayer player = mc.player;
+            if (player != null) {
+                float progress = Bt3CombatClient.getChargeProgress();
+                boolean full = Bt3CombatClient.isFullyCharged();
+                float r, g, b;
+                if (Bt3CombatClient.isDragonCharge()) {
+                    r = 1.0f; g = 0.75f; b = 0.15f;
+                } else if (Bt3CombatClient.isKickCharge()) {
+                    r = 0.95f; g = 0.25f; b = 0.85f;
+                } else {
+                    r = 1.0f; g = 0.35f; b = 0.1f;
+                }
+                drawFeetRing(pose, buffers, cam, player, partial, progress, full, r, g, b);
+            }
         }
 
+        for (var entry : NpcChargeGlowClient.entries()) {
+            var glow = entry.getValue();
+            if (glow == null) continue;
+            net.minecraft.world.entity.Entity entity = null;
+            for (net.minecraft.world.entity.Entity candidate : mc.level.entitiesForRendering()) {
+                if (entry.getKey().equals(candidate.getUUID())) {
+                    entity = candidate;
+                    break;
+                }
+            }
+            if (entity == null) continue;
+            float progress = NpcChargeGlowClient.progress(glow);
+            boolean full = progress >= 0.95f;
+            float r = glow.kick() ? 0.95f : 1.0f;
+            float g = glow.kick() ? 0.25f : 0.35f;
+            float b = glow.kick() ? 0.85f : 0.1f;
+            drawFeetRing(pose, buffers, cam, entity, partial, progress, full, r, g, b);
+        }
+    }
+
+    private static void drawFeetRing(PoseStack pose, MultiBufferSource.BufferSource buffers,
+                                     Vec3 cam, net.minecraft.world.entity.Entity entity,
+                                     float partial, float progress, boolean full,
+                                     float r, float g, float b) {
+        double x = Mth.lerp(partial, entity.xo, entity.getX()) - cam.x;
+        double y = Mth.lerp(partial, entity.yo, entity.getY()) - cam.y + FEET_Y;
+        double z = Mth.lerp(partial, entity.zo, entity.getZ()) - cam.z;
+
+        pose.pushPose();
+        pose.translate(x, y, z);
+        VertexConsumer vc = buffers.getBuffer(RenderType.lightning());
         float pulse = full
-                ? (0.80f + 0.20f * Mth.sin((player.tickCount + partial) * 0.8f))
+                ? (0.80f + 0.20f * Mth.sin((entity.tickCount + partial) * 0.8f))
                 : (0.35f + 0.50f * progress);
         float outer = 0.85f + progress * 0.55f + (full ? 0.20f : 0f);
         float inner = Math.min(INNER, outer * 0.62f);
         float alpha = pulse * (full ? 0.90f : 0.50f);
         Matrix4f mat = pose.last().pose();
-
         ring(vc, mat, inner, outer, r, g, b, alpha);
-        // Opposite winding so the disc reads from above and below.
         ring(vc, mat, outer, inner, r, g, b, alpha * 0.85f);
-
         buffers.endBatch(RenderType.lightning());
         pose.popPose();
     }

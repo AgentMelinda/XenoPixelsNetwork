@@ -21,10 +21,10 @@ import java.util.UUID;
 /**
  * Listings for plots put up for sale, and settlement of those sales.
  *
- * <p><b>Money first, then ownership.</b> A purchase calls
+ * <p><b>Money first, then ownership, with compensation.</b> A purchase calls
  * {@link MmoEconBridge#transfer(UUID, UUID, long)} and only reassigns the plot — in
  * {@link PlotManager} and in YAWP via {@link PlotYaWP#reassign} — when the transfer reports
- * success. A plot is therefore never handed over without the money having moved.</p>
+ * success. If ownership cannot move after payment, the transfer is reversed immediately.</p>
  *
  * <p>Fails closed. With MMO Econ absent a sale cannot settle and reports
  * {@link Result#NO_ECONOMY}, exactly as a sign shop does. The listing stays in place so it can be
@@ -58,6 +58,8 @@ public final class PlotSale extends SavedData {
         INSUFFICIENT_FUNDS,
         /** The transfer itself failed after funds were confirmed. */
         TRANSFER_FAILED,
+        /** Ownership failed after payment and the compensating refund also failed. */
+        ROLLBACK_FAILED,
         /** No listing exists for that plot. */
         NOT_FOR_SALE,
         /** The plot is not claimed, or the buyer was not on a server level. */
@@ -180,6 +182,13 @@ public final class PlotSale extends SavedData {
             return Result.NO_ECONOMY;
         }
         long units = MmoEconBridge.toUnits(listing.price());
+        if (units < 0L) {
+            return Result.NO_ECONOMY;
+        }
+        PlotArea current = manager.at(plot.dimension(), plot.minX(), plot.minZ());
+        if (current == null || !current.equals(claimed) || !listing.seller().equals(current.owner())) {
+            return Result.NO_PLOT;
+        }
         if (!MmoEconBridge.hasFunds(buyer.getUUID(), units)) {
             return Result.INSUFFICIENT_FUNDS;
         }
@@ -189,7 +198,8 @@ public final class PlotSale extends SavedData {
         // Paid. Ownership moves now; a failure past this point leaves the money moved, so the
         // reassign is the one step that must not be skipped.
         if (!manager.setOwner(claimed, buyer.getUUID())) {
-            return Result.NO_PLOT;
+            return MmoEconBridge.transfer(listing.seller(), buyer.getUUID(), units)
+                    ? Result.NO_PLOT : Result.ROLLBACK_FAILED;
         }
         PlotArea updated = new PlotArea(claimed.dimension(), claimed.minX(), claimed.minZ(),
                 claimed.maxX(), claimed.maxZ(), buyer.getUUID(), claimed.flags());

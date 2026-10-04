@@ -161,6 +161,14 @@ public final class Bt3CombatClient {
             "key.xenopixelsmod.bt3_zanzoken", KeyConflictContext.IN_GAME,
             InputConstants.Type.KEYSYM, InputConstants.UNKNOWN.getValue(),
             "key.categories.xenopixelsmod");
+    public static final KeyMapping RUSHCOMBO = new KeyMapping(
+            "key.xenopixelsmod.bt3_rushcombo", KeyConflictContext.IN_GAME,
+            InputConstants.Type.KEYSYM, InputConstants.UNKNOWN.getValue(),
+            "key.categories.xenopixelsmod");
+    public static final KeyMapping LIFTCOMBO = new KeyMapping(
+            "key.xenopixelsmod.bt3_liftcombo", KeyConflictContext.IN_GAME,
+            InputConstants.Type.KEYSYM, InputConstants.UNKNOWN.getValue(),
+            "key.categories.xenopixelsmod");
     /** Hold to home ki on lock-on (Ki Guidance skill). */
     public static final KeyMapping KI_GUIDANCE = new KeyMapping(
             "key.xenopixelsmod.ki_guidance", KeyConflictContext.IN_GAME,
@@ -394,6 +402,37 @@ public final class Bt3CombatClient {
         return Math.min(1f, comboTicksLeft / (float) COMBO_WINDOW_TICKS);
     }
 
+    /** Ticks left on the cinematic X-X-X follow-up window; zero when it is not open. */
+    public static int getCinematicFollowupTicks() {
+        return Math.max(0, cinematicFollowupTicks);
+    }
+
+    /** The window's full length, so a HUD can draw how much of it is left. */
+    public static int getCinematicFollowupMaxTicks() {
+        return net.bullettrain.xenopixelsmod.combat.Bt3RushFollowup.WINDOW_TICKS;
+    }
+
+    /**
+     * Whether pressing the dragon-dash key right now would actually start the cinematic rush.
+     *
+     * <p>Deliberately the same three conditions {@code tickChargeKeys} checks before it sends
+     * {@code CINEMATIC_RUSH}: the window is open, the target it was armed against still resolves to
+     * a living entity, and the server has cinematic rush enabled. A prompt drawn from anything
+     * weaker would keep offering the follow-up after the target died or after the server turned the
+     * feature off, and the press would do nothing.
+     *
+     * <p>The window itself is cleared by the tick loop on timeout, by the next combo beat, by the
+     * rush actually starting and by a connection reset, so nothing here has to time it separately.
+     */
+    public static boolean cinematicFollowupLive() {
+        if (cinematicFollowupTicks <= 0 || cinematicFollowupTargetId <= 0) return false;
+        if (!XenoServerClientState.cinematicRush()) return false;
+        Minecraft mc = Minecraft.getInstance();
+        if (mc.level == null) return false;
+        Entity candidate = mc.level.getEntity(cinematicFollowupTargetId);
+        return candidate instanceof LivingEntity living && living.isAlive();
+    }
+
     private static void startMoveCooldown(Bt3CombatPacket.Action action) {
         lastMoveAction = action;
         moveCooldownMax = MOVE_COOLDOWN_TICKS;
@@ -434,6 +473,8 @@ public final class Bt3CombatClient {
             event.register(SPARKING);
             event.register(HAKAI);
             event.register(ZANZOKEN);
+            event.register(RUSHCOMBO);
+            event.register(LIFTCOMBO);
             event.register(MULTIFORM);
             event.register(KI_GUIDANCE);
             event.register(KI_GUIDANCE_MOUSE);
@@ -462,6 +503,8 @@ public final class Bt3CombatClient {
             while (SPARKING.consumeClick()) { }
             while (HAKAI.consumeClick()) { }
             while (ZANZOKEN.consumeClick()) { }
+            while (RUSHCOMBO.consumeClick()) { }
+            while (LIFTCOMBO.consumeClick()) { }
             while (MULTIFORM.consumeClick()) { }
             while (KI_GUIDANCE.consumeClick()) { }
             while (KI_GUIDANCE_MOUSE.consumeClick()) { }
@@ -993,18 +1036,13 @@ public final class Bt3CombatClient {
             if (range <= 0) range = 15.0;
             target = findLookTarget(Minecraft.getInstance(), Math.max(6.0, range));
         }
-        if (target == null) {
-            if (player.tickCount % 40 == 0) {
-                player.displayClientMessage(Component.literal(
-                        "§cHakai: look at a living entity (or lock on)"), true);
-            }
-            return;
-        }
+        // No target is no longer a refusal here: with /xenoset hakaiMode area the server erases a
+        // sphere where the player looks, and in single mode it searches again and says why not.
         hakaiSentThisHold = true;
         player.displayClientMessage(Component.literal("§dHakai"), true);
         DmzAnimHelperClient.playLocalHakaiHold(player);
         send(new Bt3CombatPacket(
-                Bt3CombatPacket.Action.HAKAI_START, target.getId(), 0));
+                Bt3CombatPacket.Action.HAKAI_START, target != null ? target.getId() : -1, 0));
     }
 
     /**
@@ -1220,6 +1258,23 @@ public final class Bt3CombatClient {
             clientSparkingMeter = Math.min(100f, clientSparkingMeter + 12f);
         }
 
+        while (Bt3DirectBind.RUSHCOMBO.consume(RUSHCOMBO)) {
+            int tid = locked != null ? locked.getId() : -1;
+            if (tid < 0) {
+                LivingEntity look = findLookTarget(mc, 16.0);
+                tid = look != null ? look.getId() : -1;
+            }
+            send(new Bt3CombatPacket(Bt3CombatPacket.Action.RUSH_COMBO, tid, 0));
+        }
+        while (Bt3DirectBind.LIFTCOMBO.consume(LIFTCOMBO)) {
+            int tid = locked != null ? locked.getId() : -1;
+            if (tid < 0) {
+                LivingEntity look = findLookTarget(mc, 16.0);
+                tid = look != null ? look.getId() : -1;
+            }
+            send(new Bt3CombatPacket(Bt3CombatPacket.Action.LIFT_COMBO, tid, 0));
+        }
+
         // Sparking activate
         while (Bt3DirectBind.SPARKING.consume(SPARKING)) {
             if (!XenoServerClientState.get().bt3SparkingEnabled
@@ -1393,7 +1448,12 @@ public final class Bt3CombatClient {
         // — this one is only read while a string is live, so walking never triggers it.
         boolean pursue = XenoClientConfig.bt3ChaseDashClient && XenoServerClientState.chase()
                 && Minecraft.getInstance().options.keyUp.isDown();
-        int verticalBias = (comboLauncherArmed || pursue) ? 1 : 0;
+        // Punch + W no longer launches unless /xenobind mashlauncher is on; W + the charged kick
+        // is the launcher now (owner, 2026-09-29).
+        boolean mashRoute = Bt3DirectBind.MASH_LAUNCHER.enabled();
+        int verticalBias = net.bullettrain.xenopixelsmod.combat.Bt3KickAndPunchRules.mashLaunches(
+                comboLauncherArmed, pursue, mashRoute) ? 1 : 0;
+        pursue = pursue && mashRoute;
         comboLauncherArmed = false;
         int mashStyle = verticalBias > 0 ? net.bullettrain.xenopixelsmod.combat.Bt3ComboChoreography.MASH_STYLE_ROUTE
                 : heldMashStyle(Minecraft.getInstance());
@@ -1650,11 +1710,15 @@ public final class Bt3CombatClient {
     public static boolean fistsActive(Minecraft mc) {
         LocalPlayer player = mc == null ? null : mc.player;
         if (player == null) return false;
+        boolean combo = XenoClientConfig.bt3ComboClient && XenoServerClientState.combo();
+        boolean charge = XenoClientConfig.bt3ChargeAttackClient && XenoServerClientState.chargeAttack();
+        boolean claim = net.bullettrain.xenopixelsmod.combat.FistInputPolicy.ownsLegacyFists(
+                XenoServerClientState.manualController(), combo, charge);
         return net.bullettrain.xenopixelsmod.combat.FistInputPolicy.fistsActive(
                 handsFreeForFists(mc),
                 XenoClientConfig.bt3CombatClient && XenoServerClientState.combat(),
-                XenoClientConfig.bt3ComboClient && XenoServerClientState.combo(),
-                XenoClientConfig.bt3ChargeAttackClient && XenoServerClientState.chargeAttack(),
+                claim,
+                false,
                 mc.screen == null && player.isAlive() && !player.isSpectator()
                         && !(player.getVehicle() instanceof net.bullettrain.xenopixelsmod.aero.seat.XenoPilotSeatEntity)
                         && !TechniqueSlotAssist.isTechniqueBarModifierHeld()
@@ -1793,6 +1857,10 @@ public final class Bt3CombatClient {
         }
         boolean fistDown = leftMouseDown(mc) && fistsActive(mc) && !clientGuarding;
         boolean kickDown = heldNow(CHARGE_KICK);
+        // A click that went down and up between two ticks never shows as held: take it from the
+        // key's click queue, so a single click of the kick key always kicks.
+        boolean kickClicked = false;
+        while (CHARGE_KICK.consumeClick()) kickClicked = true;
         boolean dragonDown = heldNow(DRAGON_DASH);
 
         boolean canCharge = XenoClientConfig.bt3ChargeAttackClient && XenoServerClientState.chargeAttack();
@@ -1837,7 +1905,8 @@ public final class Bt3CombatClient {
                 } else if (mc.player != null) {
                     mc.player.displayClientMessage(Component.literal("§7Dragon dash: lock on first"), true);
                 }
-            } else if (canCharge && kickDown && !kickWasDown) {
+            } else if (canCharge && ((kickDown && !kickWasDown) || kickClicked)) {
+                // Released already (a quick click): the release below fires it this same tick.
                 beginCharge(ChargeMode.KICK);
             }
         }

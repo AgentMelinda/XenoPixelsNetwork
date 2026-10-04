@@ -5,6 +5,7 @@ import net.bullettrain.xenopixelsmod.compat.npc.NpcDmzAppearance;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class NpcFullDmzRendererTest {
@@ -43,7 +44,7 @@ class NpcFullDmzRendererTest {
                 "saiyan", "supersaiyan", "supersaiyan2",
                 true, "", "#112233", 1, 2, 3, 4, 5, 6, true,
                 0x445566, 1.25f, new NpcDmzAppearance(), options.visualOptionsTag(),
-                "", "", "");
+                "", "", "", false);
 
         NpcCombatProfile result = NpcFullDmzRenderer.visualProfile(state);
 
@@ -56,5 +57,36 @@ class NpcFullDmzRendererTest {
         assertEquals("scythe", result.kiWeaponType);
         assertEquals("#445566", result.auraColorHex);
         assertEquals(1.25f, result.auraScale);
+    }
+
+    @Test
+    void flyPoseLocksBodyYawToTravelNotLook() {
+        float lookYaw = 90.0f;
+        NpcFlyPose.Snapshot moving = NpcFlyPose.forProxy(true, 0.4, 0.0, 0.0, lookYaw, -80.0f, lookYaw);
+        assertTrue(moving.travelLocked());
+        assertEquals(NpcFlyPose.yaw(0.4, 0.0), moving.yBodyRot(), 0.01f);
+        assertEquals(moving.yBodyRot(), moving.yRot(), 0.01f);
+        assertTrue(Math.abs(moving.xRot()) < 20.0f);
+
+        NpcFlyPose.Snapshot hover = NpcFlyPose.forProxy(true, 0.0, 0.0, 0.0, lookYaw, -10.0f, lookYaw);
+        assertFalse(hover.travelLocked());
+        assertEquals(lookYaw, hover.yBodyRot(), 0.01f);
+
+        NpcFlyPose.Snapshot fromVel = NpcFlyPose.forProxy(true, 0.0, 0.0, 0.0,
+                0.4, 0.0, 0.0, lookYaw, -80.0f, lookYaw);
+        assertTrue(fromVel.travelLocked());
+        assertEquals(NpcFlyPose.yaw(0.4, 0.0), fromVel.yBodyRot(), 0.01f);
+    }
+
+    @Test
+    void flyClipReadsForwardMovementDuringSmoothedTurn() {
+        // Actual travel is east, but the rendered body is still turning through south. DMZ's
+        // remote-player predicate must see W/front rather than a sideways A/D clip.
+        double[] clipDelta = NpcFlyPose.frontClipDelta(0.0f, 0.4, 0.0, 0.0, 0.0);
+        assertEquals(0.0, clipDelta[0], 1.0e-6);
+        assertEquals(0.4, clipDelta[1], 1.0e-6);
+        double[] hover = NpcFlyPose.frontClipDelta(90.0f, 0.0, 0.0, 0.0, 0.0);
+        assertEquals(0.0, hover[0], 1.0e-6);
+        assertEquals(0.0, hover[1], 1.0e-6);
     }
 }

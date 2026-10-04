@@ -8,7 +8,10 @@ import net.bullettrain.xenopixelsmod.aero.AeroControlHost;
 import net.bullettrain.xenopixelsmod.aero.AeroLinkManager;
 import net.bullettrain.xenopixelsmod.aero.AeroPowerBudget;
 import net.bullettrain.xenopixelsmod.aero.ControllerMode;
+import net.bullettrain.xenopixelsmod.aero.GuidanceVersion;
 import net.bullettrain.xenopixelsmod.aero.control.AeroFlightCore;
+import net.bullettrain.xenopixelsmod.aero.v2.GuidanceV2Core;
+import net.bullettrain.xenopixelsmod.aero.v2.GuidanceV2State;
 import net.bullettrain.xenopixelsmod.aero.control.AeroFlightDirector;
 import net.bullettrain.xenopixelsmod.aero.control.SableAttitudeMath;
 import net.bullettrain.xenopixelsmod.aero.control.VectorMixer;
@@ -23,7 +26,9 @@ import net.bullettrain.xenopixelsmod.missile.BallisticTrajectory;
 import net.bullettrain.xenopixelsmod.missile.BallisticCalculator;
 import net.bullettrain.xenopixelsmod.missile.BallisticFlightPlan;
 import net.bullettrain.xenopixelsmod.missile.BallisticPlanOptimizer;
+import net.bullettrain.xenopixelsmod.missile.MissileLookTarget;
 import net.bullettrain.xenopixelsmod.missile.MissilePhase;
+import net.bullettrain.xenopixelsmod.missile.MissileSpeed;
 import net.bullettrain.xenopixelsmod.vs.ShipBallisticController;
 import net.bullettrain.xenopixelsmod.vs.ShipGravityControl;
 import net.bullettrain.xenopixelsmod.vs.VsShipHelper;
@@ -39,7 +44,6 @@ import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
-import net.minecraft.world.phys.HitResult;
 import net.minecraft.world.phys.Vec3;
 import net.minecraft.world.level.levelgen.Heightmap;
 import org.jetbrains.annotations.Nullable;
@@ -155,6 +159,8 @@ public class ShipVlsGuidanceBlockEntity extends BlockEntity implements GeoBlockE
     private transient double aeroAutoPitchDeg;
     /** Shared per-tick flight maths; owns its scratch vectors so the tick allocates nothing. */
     private final transient AeroFlightCore aeroCore = new AeroFlightCore();
+    private final transient GuidanceV2Core guidanceV2Core = new GuidanceV2Core();
+    private final GuidanceV2State guidanceV2 = new GuidanceV2State();
     private static final String MANUAL_STATUS = "manual flight";
     private static final String MANUAL_STALL_STATUS = "manual flight — STALL";
     /** Client-only mirrors of runtime bus state, used purely to pick an animation. */
@@ -194,6 +200,10 @@ public class ShipVlsGuidanceBlockEntity extends BlockEntity implements GeoBlockE
     /** Push controller state to tracking clients. Separate name so intent reads clearly. */
     public void syncAero() {
         sync();
+    }
+
+    public GuidanceV2State guidanceV2() {
+        return guidanceV2;
     }
 
     /** Re-survey paired devices and publish their health onto the bus. */
@@ -317,9 +327,16 @@ public class ShipVlsGuidanceBlockEntity extends BlockEntity implements GeoBlockE
                     / (AeroFlightDirector.MAX_ACCEL + Math.abs(gravity)));
         }
 
-        boolean stalled = aeroCore.tick(aeroBus, ship, level, aeroLinks,
-                bodyNose, bodyUp, bodyThrust, yaw, pitch, roll, throttle,
-                worldVelocity, observedTickSeconds, linkedPanels);
+        boolean stalled;
+        if (GuidanceVersion.active().isV2()) {
+            stalled = guidanceV2Core.tick(aeroBus, ship, level, aeroLinks,
+                    bodyNose, bodyUp, bodyThrust, yaw, pitch, roll, throttle,
+                    worldVelocity, observedTickSeconds, linkedPanels, guidanceV2.surfaceMode());
+        } else {
+            stalled = aeroCore.tick(aeroBus, ship, level, aeroLinks,
+                    bodyNose, bodyUp, bodyThrust, yaw, pitch, roll, throttle,
+                    worldVelocity, observedTickSeconds, linkedPanels);
+        }
 
         if (aeroBus.autopilotMode() == AeroAutopilotMode.MANUAL) {
             // Track the operator's setpoints while in manual so that engaging autopilot starts
@@ -798,11 +815,9 @@ public class ShipVlsGuidanceBlockEntity extends BlockEntity implements GeoBlockE
      * </ul>
      */
     public void setSpeedLevel(int level) {
-        this.speedLevel = Math.max(1, Math.min(20, level));
-        // Slightly super-linear accel at the top end so capital hulls can still loft
-        double t = this.speedLevel / 20.0;
-        this.boostAccel = Math.min(5.0, 0.12 + this.speedLevel * 0.10 + t * t * 0.80);
-        this.boostTicks = Math.min(300, 24 + this.speedLevel * 11);
+        this.speedLevel = MissileSpeed.clampLevel(level);
+        this.boostAccel = MissileSpeed.accelFor(this.speedLevel);
+        this.boostTicks = MissileSpeed.ticksFor(this.speedLevel);
         recomputeSolution();
         setChanged();
         sync();
@@ -945,33 +960,9 @@ public class ShipVlsGuidanceBlockEntity extends BlockEntity implements GeoBlockE
     }
 
     public void setTargetFromLook(Player player) {
-        if (player == null) return;
-        HitResult hit = player.pick(200.0, 0f, false);
-        if (hit.getType() == HitResult.Type.MISS) return;
-        Vec3 loc = hit.getLocation();
-        BlockPos raw = BlockPos.containing(loc);
-        if (level != null) {
-            try {
-                if (SableCompanion.INSTANCE.isInPlotGrid(level, raw)
-                        || SableCompanion.INSTANCE.getContaining(level, raw) != null) {
-                    var world = SableCompanion.INSTANCE.projectOutOfSubLevel(level, loc);
-                    if (world != null) {
-                        target = BlockPos.containing(world);
-                    } else {
-                        target = raw;
-                    }
-                } else {
-                    target = raw;
-                }
-            } catch (Throwable t) {
-                target = raw;
-            }
-        } else {
-            target = raw;
-        }
-        recomputeSolution();
-        setChanged();
-        sync();
+        BlockPos pos = MissileLookTarget.fromPlayer(player);
+        if (pos == null) return;
+        setTargetWorld(pos.getX(), pos.getY(), pos.getZ());
     }
 
     /** From block neighborChanged — preferred redstone path. */
@@ -1389,7 +1380,7 @@ public class ShipVlsGuidanceBlockEntity extends BlockEntity implements GeoBlockE
             BlockEntity be = level.getBlockEntity(p.immutable());
             if (be instanceof MissileTubeBlockEntity tube) {
                 if (tube.tryLaunch(target, boostAccel, boostTicks, terminalGuidance, warheadYield,
-                        gravitySi, dragCoefficient)) {
+                        gravitySi, dragCoefficient, desiredApexY, desiredCruiseY)) {
                     count++;
                 }
             }
@@ -1398,6 +1389,25 @@ public class ShipVlsGuidanceBlockEntity extends BlockEntity implements GeoBlockE
             lastStatus = "fired " + count + " tube missile(s)";
         } else if (!shipMissileMode) {
             lastStatus = "no ready tubes";
+        }
+        return count;
+    }
+
+    /** Writes speed / silo clearance / launch Y onto every tube in the search radius. */
+    public int applyNearbyTubeSettings(Integer speedLevel, Integer siloClearance, Integer launchWorldY) {
+        if (level == null) return 0;
+        int count = 0;
+        int r = searchRadius;
+        for (BlockPos p : BlockPos.betweenClosed(
+                worldPosition.offset(-r, -3, -r),
+                worldPosition.offset(r, 8, r))) {
+            BlockEntity be = level.getBlockEntity(p.immutable());
+            if (be instanceof MissileTubeBlockEntity tube) {
+                if (speedLevel != null) tube.setSpeedLevel(speedLevel);
+                if (siloClearance != null) tube.setSiloClearance(siloClearance);
+                if (launchWorldY != null) tube.setLaunchWorldY(launchWorldY);
+                count++;
+            }
         }
         return count;
     }
@@ -1499,6 +1509,7 @@ public class ShipVlsGuidanceBlockEntity extends BlockEntity implements GeoBlockE
             panelList.add(LongTag.valueOf(p.asLong()));
         }
         tag.put("LinkedPanels", panelList);
+        guidanceV2.save(tag);
     }
 
     @Override
@@ -1588,6 +1599,7 @@ public class ShipVlsGuidanceBlockEntity extends BlockEntity implements GeoBlockE
                 }
             }
         }
+        guidanceV2.load(tag);
     }
 
     @Override

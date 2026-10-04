@@ -153,18 +153,49 @@ class HdAuraPlanTest {
     }
 
     @Test
+    void entityRenderPosUsesXoNotStaleXOld() {
+        // After absMoveTo-style motion, xo == current while xOld can still be last tick's start.
+        // Lerping from xOld puts the aura behind the body when flying fast (2026-10-03).
+        float[] correct = HdAuraPlan.entityRenderPos(10.0, 64.0, 20.0, 10.0, 64.0, 20.0, 0.5f);
+        assertEquals(10.0f, correct[0], 1e-5f);
+        assertEquals(64.0f, correct[1], 1e-5f);
+        assertEquals(20.0f, correct[2], 1e-5f);
+        float[] mid = HdAuraPlan.entityRenderPos(0.0, 0.0, 0.0, 10.0, 0.0, 0.0, 0.5f);
+        assertEquals(5.0f, mid[0], 1e-5f);
+        // Stale xOld (0) vs refreshed xo (10) at the same getX (10): wrong lerp lags by 5 blocks.
+        float[] wrongIfXOld = HdAuraPlan.entityRenderPos(0.0, 0.0, 0.0, 10.0, 0.0, 0.0, 0.5f);
+        float[] rightIfXoEqualsX = HdAuraPlan.entityRenderPos(10.0, 0.0, 0.0, 10.0, 0.0, 0.0, 0.5f);
+        assertEquals(5.0f, wrongIfXOld[0], 1e-5f);
+        assertEquals(10.0f, rightIfXoEqualsX[0], 1e-5f);
+        assertTrue(rightIfXoEqualsX[0] - wrongIfXOld[0] > 1.0f);
+    }
+
+    @Test
     void firstPersonUsesTheDmzCameraOverlay() {
         // 2026-10-03 owner: render HD aura in first person like normal DMZ aura.
+        // AuraRenderer.executeAuraShaderDraw FP: identity; translate(0,-0.6,-0.7);
+        // scale(normalized*3); draw at alpha*0.45 — 0.45 is ALPHA, not scale.
         assertTrue(HdAuraPlan.cameraSpaceInFirstPerson());
         assertFalse(HdAuraPlan.hideWorldSpaceInFirstPerson());
         assertArrayEquals(new float[] {0.0f, -0.6f, -0.7f}, HdAuraPlan.firstPersonEyeOffset(), 1e-6f);
-        assertTrue(HdAuraPlan.firstPersonScaleFactor() > 0.0f);
-        assertTrue(HdAuraPlan.firstPersonScaleFactor() <= 1.0f);
-        // Looking straight +Z (yaw 0 in Minecraft is +Z): eye-space -Z is forward → +world Z.
+        assertEquals(3.0f, HdAuraPlan.firstPersonScaleFactor(), 1e-6f);
+        assertEquals(0.45f, HdAuraPlan.firstPersonAlphaFactor(), 1e-6f);
+        // AAA head-space: +Z is behind the eyes; DMZ -0.7 view-Z (in front) → local Z -0.7.
+        // Looking straight +Z (yaw 0): in-front offset lands at +world Z.
         float[] pos = HdAuraPlan.firstPersonWorldPos(10.0, 70.0, 20.0, 0.0f, 0.0f);
         assertEquals(10.0f, pos[0], 1e-4f);
         assertEquals(70.0f - 0.6f, pos[1], 1e-4f);
         assertEquals(20.0f + 0.7f, pos[2], 1e-4f);
+        // Camera-lock euler matches AAA head-space (radians): (-pitch, PI - yaw, 0).
+        float[] rot = HdAuraPlan.firstPersonRotationRadians(0.0f, 0.0f);
+        assertEquals(0.0f, rot[0], 1e-5f);
+        assertEquals((float) Math.PI, rot[1], 1e-5f);
+        assertEquals(0.0f, rot[2], 1e-5f);
+        // Silhouette authored CENTRE_Y=1.5: emitter nudges down so the sprite centre hits the
+        // DMZ billboard centre after FP scale (owner: FP start must match DMZ).
+        assertEquals(1.5f, HdAuraPlan.silhouetteCentreY(), 1e-6f);
+        assertEquals(1.5f * 3.0f, HdAuraPlan.firstPersonEmitterCentreNudge(true, 3.0f), 1e-4f);
+        assertEquals(0.0f, HdAuraPlan.firstPersonEmitterCentreNudge(false, 3.0f), 1e-6f);
     }
 
     @Test

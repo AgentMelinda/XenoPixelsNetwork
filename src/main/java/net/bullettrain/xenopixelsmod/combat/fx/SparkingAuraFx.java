@@ -9,6 +9,7 @@ import net.minecraft.core.particles.DustParticleOptions;
 import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.phys.Vec3;
 import net.minecraft.world.level.block.state.BlockState;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
@@ -54,15 +55,96 @@ public final class SparkingAuraFx {
     private SparkingAuraFx() {
     }
 
+    private static boolean playAura(ServerLevel level, ServerPlayer player, boolean flying) {
+        float size = HakaiEffectRules.bodyScale(player.getBbHeight());
+        if (flying) {
+            return net.bullettrain.xenopixelsmod.fx.effek.XenoEffects.playBoundLook(level,
+                    net.bullettrain.xenopixelsmod.fx.effek.EffectSlot.SPARKING_FLIGHT, player.position(),
+                    player.getId(), size);
+        }
+        return net.bullettrain.xenopixelsmod.fx.effek.XenoEffects.playBound(level,
+                groundAura(XenoServerConfig.effekseerSparkingSmooth), player.position(), player.getId(), size);
+    }
+
+    /** The classic aura unless the steadier one is switched on (/xenoset sparkingsmooth true). */
+    static net.bullettrain.xenopixelsmod.fx.effek.EffectSlot groundAura(boolean smooth) {
+        return smooth ? net.bullettrain.xenopixelsmod.fx.effek.EffectSlot.SPARKING_AURA_SMOOTH
+                : net.bullettrain.xenopixelsmod.fx.effek.EffectSlot.SPARKING_AURA;
+    }
+
+    /**
+     * DMZ's own test for the lying-flat flight pose (FlySkillEvent.isFlyingFast in DragonMineZ
+     * 2.1.3): the fly skill is on, flight mode is not 1, and the player moves faster than 0.55
+     * blocks a tick. Speed is measured here from the player's movement since the last tick,
+     * since a server player's delta movement is not their real speed.
+     */
+    static boolean flying(ServerPlayer player) {
+        Vec3 now = player.position();
+        Vec3 last = LAST_POS.put(player.getId(), now);
+        double speedSqr = last == null ? 0.0 : now.distanceToSqr(last);
+        int mode = net.bullettrain.xenopixelsmod.api.dmz.DmzAccess.stats(player)
+                .map(s -> s.getStatus() == null ? 0 : s.getStatus().getFlightMode()).orElse(0);
+        return flyingFast(net.bullettrain.xenopixelsmod.api.dmz.DmzAccess.isSkillActive(player, "fly"),
+                mode, speedSqr);
+    }
+
+    static boolean flyingFast(boolean flySkillActive, int flightMode, double speedSqrPerTick) {
+        return flySkillActive && flightMode != 1 && speedSqrPerTick > FAST_FLIGHT_SPEED_SQR;
+    }
+
+    /** DMZ's fast-flight threshold: 0.55 blocks a tick, squared. */
+    private static final double FAST_FLIGHT_SPEED_SQR = 0.3025;
+    private static final java.util.Map<Integer, Vec3> LAST_POS = new java.util.concurrent.ConcurrentHashMap<>();
+    private static final java.util.Map<Integer, Boolean> LAST_FLYING = new java.util.concurrent.ConcurrentHashMap<>();
+
+    /** Per-player aura pulse timing (server thread only). */
+    private static final HakaiFx.PulseClock AURA_PULSES = new HakaiFx.PulseClock();
+
+    /**
+     * The start burst: a gold flash, a ground shockwave, lightning and a rock spray. LOWEST
+     * priority and not on cancelled events, so it plays only when Sparking really starts.
+     */
+    @SubscribeEvent(priority = net.neoforged.bus.api.EventPriority.LOWEST)
+    public static void onActivate(net.bullettrain.xenopixelsmod.api.event.SparkingEvent.Activate event) {
+        if (event.isCanceled() || !XenoServerConfig.sparkingAuraEnabled) return;
+        ServerPlayer player = event.getPlayer();
+        if (player == null || !(player.level() instanceof ServerLevel level)) return;
+        AURA_PULSES.forget(player.getId());
+        // Bound too, so the burst goes with a player who moves off at once.
+        net.bullettrain.xenopixelsmod.fx.effek.XenoEffects.playBound(level,
+                net.bullettrain.xenopixelsmod.fx.effek.EffectSlot.SPARKING_BURST, player.position(),
+                player.getId(), HakaiEffectRules.bodyScale(player.getBbHeight()));
+    }
+
     @SubscribeEvent
     public static void onPlayerTick(PlayerTickEvent.Post event) {
         if (!XenoServerConfig.sparkingAuraEnabled) return;
         if (!(event.getEntity() instanceof ServerPlayer player)) return;
         if (!(player.level() instanceof ServerLevel level)) return;
-        if (!Bt3SparkingSystem.isSparking(player)) return;
+        if (!Bt3SparkingSystem.isSparking(player)) {
+            LAST_POS.remove(player.getId());
+            LAST_FLYING.remove(player.getId());
+            return;
+        }
 
         double density = Math.max(0.0, Math.min(3.0, XenoServerConfig.sparkingAuraDensity));
         if (density <= 0.0) return;
+
+        // The Effekseer aura (tools/effekseer/efkgen/effects/sparking.py) re-sent every 10 ticks
+        // at the feet; the vanilla shell, debris and arcs below are only the fallback when it does
+        // not play (effekseerSparking off, library failure).
+        long now = level.getGameTime();
+        // Bound to the player, so it moves with them every frame instead of being left behind.
+        // In DMZ flight the body lies along the look, so the aura is the flight version, bound
+        // to the eyes and turned with the look (DMZ's own fly skill id, verified in its jar).
+        // Measured every tick; a change of pose re-sends the aura at once instead of at the next pulse.
+        boolean fast = flying(player);
+        Boolean before = LAST_FLYING.put(player.getId(), fast);
+        if (before != null && before != fast) AURA_PULSES.forget(player.getId());
+        if (AURA_PULSES.due(player.getId(), now) && playAura(level, player, fast)) {
+            AURA_PULSES.showUntil(player.getId(), now + 12);
+        }
+        if (AURA_PULSES.showing(player.getId(), now)) return;
 
         shell(level, player, density);
         if (player.tickCount % DEBRIS_INTERVAL == 0) debris(level, player, density);

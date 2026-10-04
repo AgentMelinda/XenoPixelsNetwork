@@ -56,7 +56,8 @@ so it is visible at a glance that rotation and position are keyed independently.
 | PV POSE / BAKED | What PLAY does — see [Two previews](#two-previews). |
 | LOOP ON / OFF | Wrap at the end during playback, and write `loop: true` into the export. |
 | SAVE | Write the clip, then re-bake it so a bound combat move picks it up at once. |
-| LOAD | Open a clip — from saved clips, the shipped BT3 set, or DragonMineZ's own. |
+| LOAD | Open a clip — from saved clips, the shipped BT3 set, DragonMineZ, or the server library. |
+| PUSH | Save and publish the current clip to the server library (operator permission required). |
 | HELP | The same tables as this section, in game. |
 | X | Close. |
 
@@ -84,7 +85,7 @@ so it is visible at a glance that rotation and position are keyed independently.
 | BRIDGE | Turn the curve between the two keys around the playhead into real keys. |
 | THIN | Drop keys the neighbours already describe (Ramer–Douglas–Peucker), with a per-channel tolerance. |
 | MOTION | Continuous motion — see [Continuous motion](#continuous-motion). |
-| SRC | Where LOAD reads from: `Saved`, `Shipped BT3`, `DragonMineZ`. |
+| SRC | Where LOAD reads from: `Saved`, `Shipped BT3`, `DragonMineZ`, `Server`. |
 | EXPORT | Development runs only — see [Editing the shipped clips](#editing-the-shipped-clips). |
 
 ### Inspector (right dock)
@@ -253,6 +254,7 @@ swing progress — three values read straight off the entity.
 | `Saved` | `config/xenopixelsmod-anims/` — the studio's own output. |
 | `Shipped BT3` | All 106 `combat.xeno_*` clips this mod ships. |
 | `DragonMineZ` | DragonMineZ's own combat animations, for reference. |
+| `Server` | Clips received from the server library, including `wave` and `hi_wave`. |
 
 Both file sources are read through the resource manager, so a resource pack that overrides either
 file is what you open. (That is why there is no separate "baked" source: `GeckoLibCache` holds
@@ -260,6 +262,24 @@ compiled keyframes whose values may be molang expressions rather than editable c
 file gives the same override-aware content in the form it was authored in.)
 
 Loading from a file source gives you a normal draft. SAVE writes it to the config directory.
+
+### Editing an NPC wave in game
+
+1. Join the world, run `/xenoanim studio`, and cycle **SRC** to **Server**.
+2. Press **LOAD** and select `wave` or `hi_wave`. The timeline and bone inspector show its keys;
+   **PLAY** previews the edit on your player model.
+3. Edit the keys and press **PUSH**. Studio saves a local copy and asks the server to publish it.
+   The server's permission check and result appear in chat. Every connected client receives the
+   published clip, and later joiners receive it on login.
+
+NPC scripts or scenes asking for `wave` use the published `wave` clip. The automatic greeting uses
+`hi_wave`, so edit and publish `hi_wave` to change that greeting. A social clip is selected by its
+name; **BIND** is for combat and technique slots.
+
+The shipped `wave` already matches the edited run-client clip. The edited run-client `hi_wave`
+became the shipped default on 2026-09-27. An unedited copy of the previous `hi_wave` default is
+upgraded by exact file hash; an operator's edited copy is kept. This default applies when no
+server-published clip overrides that name.
 
 **You do not have to EXPORT back into** `bt3_combat.animation.json` **to play an edit on the
 server.** SAVE, then BIND (or `/xenoanim global push`). The studio/library cache wins over the

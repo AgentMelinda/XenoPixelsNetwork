@@ -27,6 +27,11 @@ public final class XenoRushTechniques {
     private XenoRushTechniques() {
     }
 
+    /** Login/data-load may unlock the four rush strikes only when auto-unlock is on or the rush skill is granted. */
+    public static boolean shouldUnlockRushKit(boolean autoUnlock, int rushSkillLevel) {
+        return autoUnlock || rushSkillLevel >= 1;
+    }
+
     public static void register() {
         register(RUSH_LEFT, "Xeno Rush Left", "combat.xeno_dmz_punch_left_v4", 1.0f, 8);
         register(RUSH_RIGHT, "Xeno Rush Right", "combat.xeno_dmz_punch_right_v4", 1.0f, 8);

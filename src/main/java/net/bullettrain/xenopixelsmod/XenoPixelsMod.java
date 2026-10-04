@@ -33,13 +33,20 @@ public class XenoPixelsMod {
         ModBlocks.register(modEventBus);
         net.bullettrain.xenopixelsmod.block.entity.ModBlockEntities.register(modEventBus);
         net.bullettrain.xenopixelsmod.missile.ModEntities.register(modEventBus);
+        net.bullettrain.xenopixelsmod.npc.bank.ModMenus.register(modEventBus);
         ModEffects.register(modEventBus);
         net.bullettrain.xenopixelsmod.sound.ModSounds.register(modEventBus);
         XenoCapabilities.register(modEventBus);
+        net.bullettrain.xenopixelsmod.compat.npc.NpcDmzStats.register(modEventBus);
         ModNetwork.register();
+        // XenoAPI (xenoapi.npcs.api) over native NPCs; holds no world, resolves the server per call.
+        net.bullettrain.xenopixelsmod.npc.script.api.xeno.NativeNpcApi.register();
         net.bullettrain.xenopixelsmod.network.form.FormEditorNetwork.register();
         net.bullettrain.xenopixelsmod.network.HudPartsNetwork.register();
         net.bullettrain.xenopixelsmod.network.AnimClipsNetwork.register();
+        net.bullettrain.xenopixelsmod.network.GuidanceV2Network.register();
+        net.bullettrain.xenopixelsmod.features.playerrole.PlayerRoleNetwork.register();
+        net.bullettrain.xenopixelsmod.features.tournament.TournamentNetwork.register();
 
         ModCreativeModTabs.register(modEventBus); // -- creative tab register
 
@@ -51,11 +58,16 @@ public class XenoPixelsMod {
 
     private void commonSetup(final FMLCommonSetupEvent event) {
         event.enqueueWork(() -> {
+            // Other mods' explosives as missile warheads (Ballistix, Big Cannons, sable_tournament).
+            net.bullettrain.xenopixelsmod.missile.MissileWarheadCompat.register();
             net.bullettrain.xenopixelsmod.config.XenoServerConfig.load();
+            net.bullettrain.xenopixelsmod.features.progression.MasterPrerequisites.load(
+                    net.neoforged.fml.loading.FMLPaths.CONFIGDIR.get());
             net.bullettrain.xenopixelsmod.config.XenoPerfConfig.load();
             net.bullettrain.xenopixelsmod.config.XenoPartyConfig.load();
             net.bullettrain.xenopixelsmod.aero.gravity.OrbitalGravityConfig.load();
             net.bullettrain.xenopixelsmod.aero.AeroConfig.load();
+            net.bullettrain.xenopixelsmod.aero.GuidanceConfig.load();
             net.bullettrain.xenopixelsmod.combat.targeting.LockOnConfig.load();
             net.bullettrain.xenopixelsmod.features.FeatureManager.bootstrap();
             // CustomNPCs copies ScriptContainer.Data into every new script executor.
@@ -67,6 +79,7 @@ public class XenoPixelsMod {
             installScriptApi("mynpcs", "compat.npc.mynpcs.NpcXenoScriptApi", "My NPCs");
             installScriptApi("customnpcs", "compat.npc.NpcXenoScriptApi", "CustomNPCs");
             net.bullettrain.xenopixelsmod.combat.technique.XenoRushTechniques.register();
+            net.bullettrain.xenopixelsmod.combat.technique.XenoComboStrikes.register();
             net.bullettrain.xenopixelsmod.combat.technique.XenoSlotTechniques.register();
             // Sable thruster + moving-sub-level ballistic controls
             try {
@@ -164,6 +177,9 @@ public class XenoPixelsMod {
                     if (screen instanceof net.bullettrain.xenopixelsmod.client.gui.FlightPlannerScreen planner) {
                         planner.acceptAeroState(state);
                     }
+                    if (screen instanceof net.bullettrain.xenopixelsmod.client.gui.FlightPlannerV2Screen plannerV2) {
+                        plannerV2.acceptAeroState(state);
+                    }
                 };
                 net.bullettrain.xenopixelsmod.client.ClientScreens.receiveCombatFx =
                         net.bullettrain.xenopixelsmod.client.combat.fx.CombatFxClient::accept;
@@ -175,6 +191,61 @@ public class XenoPixelsMod {
                         net.minecraft.client.Minecraft.getInstance().setScreen(
                                 new net.bullettrain.xenopixelsmod.client.screen.XenoPartyScreen(
                                         net.minecraft.client.Minecraft.getInstance().screen));
+                net.bullettrain.xenopixelsmod.client.ClientScreens.openTournamentQueue = () -> {
+                    var mc = net.minecraft.client.Minecraft.getInstance();
+                    mc.setScreen(new net.bullettrain.xenopixelsmod.client.tournament.TournamentQueueScreen(
+                            mc.screen));
+                };
+                net.bullettrain.xenopixelsmod.client.ClientScreens.openRaceFormGroupMaker = (race, group) -> {
+                    var mc = net.minecraft.client.Minecraft.getInstance();
+                    mc.setScreen(new net.bullettrain.xenopixelsmod.client.maker.RaceFormGroupMakerScreen(
+                            mc.screen, race, group == null ? "" : group));
+                };
+                net.bullettrain.xenopixelsmod.client.ClientScreens.openHairMaker = () -> {
+                    var mc = net.minecraft.client.Minecraft.getInstance();
+                    mc.setScreen(new net.bullettrain.xenopixelsmod.client.maker.HairMakerScreen(mc.screen));
+                };
+                net.bullettrain.xenopixelsmod.client.ClientScreens.openXenoMakerHub = () -> {
+                    var mc = net.minecraft.client.Minecraft.getInstance();
+                    mc.setScreen(new net.bullettrain.xenopixelsmod.client.maker.XenoMakerHubScreen(mc.screen));
+                };
+                net.bullettrain.xenopixelsmod.client.ClientScreens.openRaceCharacterMaker = () -> {
+                    var mc = net.minecraft.client.Minecraft.getInstance();
+                    mc.setScreen(new net.bullettrain.xenopixelsmod.client.maker.RaceCharacterMakerScreen(
+                            mc.screen));
+                };
+                net.bullettrain.xenopixelsmod.client.ClientScreens.openFormMaker = () -> {
+                    var mc = net.minecraft.client.Minecraft.getInstance();
+                    mc.setScreen(new net.bullettrain.xenopixelsmod.client.maker.FormMakerScreen(
+                            mc.screen));
+                };
+                net.bullettrain.xenopixelsmod.client.ClientScreens.openXenoMakerFormsStub =
+                        net.bullettrain.xenopixelsmod.client.ClientScreens.openFormMaker;
+                net.bullettrain.xenopixelsmod.client.ClientScreens.openXenoMakerHairStub =
+                        net.bullettrain.xenopixelsmod.client.ClientScreens.openHairMaker;
+                net.bullettrain.xenopixelsmod.client.ClientScreens.openXenoNpcEditor = data -> {
+                    // The editor payload carries the full server profile: it is the save baseline.
+                    net.bullettrain.xenopixelsmod.client.npc.ClientNpcProfiles.accept(
+                            data.entityId(), data.data().getCompound("Profile"));
+                    net.minecraft.client.Minecraft.getInstance().setScreen(
+                            new net.bullettrain.xenopixelsmod.client.npc.XenoNpcEditorScreen(
+                                    data.entityId(), data.data()));
+                };
+                net.bullettrain.xenopixelsmod.client.ClientScreens.receiveNpcProfile =
+                        net.bullettrain.xenopixelsmod.client.npc.ClientNpcProfiles::accept;
+                net.bullettrain.xenopixelsmod.client.ClientScreens.openNpcNearby = entries -> {
+                    var mc = net.minecraft.client.Minecraft.getInstance();
+                    if (mc.screen instanceof net.bullettrain.xenopixelsmod.client.npc.XenoNpcNearbyScreen open) open.update(entries);
+                    else mc.setScreen(new net.bullettrain.xenopixelsmod.client.npc.XenoNpcNearbyScreen(entries));
+                };
+                net.bullettrain.xenopixelsmod.client.ClientScreens.openScriptHub = () ->
+                        net.minecraft.client.Minecraft.getInstance().setScreen(
+                                new net.bullettrain.xenopixelsmod.client.npc.XenoScriptHubScreen());
+                net.bullettrain.xenopixelsmod.client.ClientScreens.openXenoNpcScript = data ->
+                        net.minecraft.client.Minecraft.getInstance().setScreen(
+                                net.bullettrain.xenopixelsmod.client.npc.XenoNpcScriptScreen.forTool(
+                                        net.minecraft.client.Minecraft.getInstance().screen,
+                                        data.entityId(), data.container()));
             });
         }
     }

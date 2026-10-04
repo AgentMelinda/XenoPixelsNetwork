@@ -71,6 +71,7 @@ public final class NpcTransformSystem {
         }
         if (HOLDS.remove(npc.getUUID()) != null) {
             unfreeze(npc);
+            net.bullettrain.xenopixelsmod.api.anim.XenoAnimApi.stopClip(npc);
         }
         syncHold(npc);
     }
@@ -153,7 +154,9 @@ public final class NpcTransformSystem {
         // Keep the currently committed form until the hold completes.  Writing
         // the target here changes Gecko/DMZ appearance immediately and made the
         // transformation animation appear to be skipped.
-        if (pending != null) {
+        if (!net.bullettrain.xenopixelsmod.anim.CombatStateAnim.play(npc,
+                net.bullettrain.xenopixelsmod.combat.anim.TechniqueAnimSlot.TRANSFORM)
+                && pending != null) {
             String anim = pending.getTransformationAnimation();
             if (anim != null && !anim.isBlank()) {
                 NpcGeckoAnim.play(npc, anim);
@@ -190,6 +193,7 @@ public final class NpcTransformSystem {
         }
         if (HOLDS.remove(npc.getUUID()) != null) {
             unfreeze(npc);
+            net.bullettrain.xenopixelsmod.api.anim.XenoAnimApi.stopClip(npc);
         }
         syncHold(npc);
         NpcCombatProfile profile = NpcCombatProfile.read(npc);
@@ -306,6 +310,7 @@ public final class NpcTransformSystem {
             if (level.getGameTime() >= hold.untilGameTime()) {
                 it.remove();
                 unfreeze(npc);
+                net.bullettrain.xenopixelsmod.api.anim.XenoAnimApi.stopClip(npc);
                 commit(npc, hold);
             }
         }
@@ -403,7 +408,7 @@ public final class NpcTransformSystem {
         float r = ((color >> 16) & 0xFF) / 255.0f;
         float g = ((color >> 8) & 0xFF) / 255.0f;
         float b = (color & 0xFF) / 255.0f;
-        double npcScale = Math.max(0.05, NpcDisplayApply.getSize(npc) / 5.0);
+        double npcScale = NpcDisplayApply.sizeScale(npc);
         for (int i = 0; i < count; i++) {
             double px = x + npc.getRandom().nextGaussian() * spreadX * npcScale;
             double py = y + npc.getRandom().nextGaussian() * spreadY * npcScale;
@@ -426,7 +431,7 @@ public final class NpcTransformSystem {
         // never grew with a scaled-up NPC and whatever tint it picked up in-context read as
         // black instead of white. DustParticleOptions carries an explicit color and size, so
         // this both forces white and scales with the NPC's own display size (5 = CNPC default).
-        float npcScale = (float) Math.max(0.05, NpcDisplayApply.getSize(npc) / 5.0);
+        float npcScale = NpcDisplayApply.sizeScale(npc);
         level.sendParticles(new DustParticleOptions(new Vector3f(1.0f, 1.0f, 1.0f), 3.0f * npcScale),
                 npc.getX(), npc.getY() + 1.0, npc.getZ(), 1, 0, 0, 0, 0);
         level.sendParticles(ParticleTypes.END_ROD,

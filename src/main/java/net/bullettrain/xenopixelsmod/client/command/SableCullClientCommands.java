@@ -13,7 +13,7 @@ import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.neoforge.client.event.RegisterClientCommandsEvent;
 
 /**
- * Local FPS clamp for Sable+Create entity scans.
+ * Local FPS clamp for Sable+Create entity scans. Default off.
  * <pre>
  * /sablecull          — toggle
  * /sablecull on|off

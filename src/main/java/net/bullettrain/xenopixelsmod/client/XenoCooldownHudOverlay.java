@@ -231,9 +231,9 @@ public class XenoCooldownHudOverlay {
     }
 
     public void render(GuiGraphics g, DeltaTracker deltaTracker) {
-        // The unified renderer draws this strip inside the main HUD's panel; drawing it here
-        // as well would put a second copy on screen at its own position.
-        if (XenoHudConfig.unifiedActive()) return;
+        // The unified and BT3 renderers draw this strip inside the main HUD's panel; drawing it
+        // here as well would put a second copy on screen at its own position.
+        if (XenoHudConfig.hudOwnsCooldownRail()) return;
         if (!enabledNow()) return;
         Minecraft mc = Minecraft.getInstance();
         if (mc.screen != null) return;
@@ -684,8 +684,8 @@ public class XenoCooldownHudOverlay {
      * only changes twenty times a second. Chips come from a pool and are mutated in place.
      *
      * <p>The returned list is shared and read-only to callers. That is safe because the standalone
-     * overlay stands down whenever {@code XenoHudConfig.unifiedActive()}, so only one consumer ever
-     * reads it in a given frame.
+     * overlay stands down whenever {@code XenoHudConfig.hudOwnsCooldownRail()}, so only one
+     * consumer ever reads it in a given frame.
      */
     public static List<Chip> buildChips(boolean editing) {
         Minecraft chipMc = Minecraft.getInstance();
@@ -903,5 +903,60 @@ public class XenoCooldownHudOverlay {
         MeterMode meterMode = MeterMode.COOLDOWN;
         int comboStep;
         boolean enabled = true;
+
+        // Read-only views of the fields above. The chips are pooled and mutated in place, so the
+        // renderers outside this package get accessors rather than the fields: a second renderer
+        // writing to a pooled chip would corrupt the strip for whoever drew it next.
+
+        public String name() {
+            return name;
+        }
+
+        public String shortName() {
+            return shortName;
+        }
+
+        public String key() {
+            return key;
+        }
+
+        public int accent() {
+            return accent;
+        }
+
+        public boolean busy() {
+            return busy;
+        }
+
+        public float fraction() {
+            return fraction;
+        }
+
+        public String timeText() {
+            return timeText;
+        }
+
+        public MeterMode meterMode() {
+            return meterMode;
+        }
+
+        public int comboStep() {
+            return comboStep;
+        }
+
+        public boolean enabled() {
+            return enabled;
+        }
+    }
+
+    /**
+     * The label this HUD shows for a key binding.
+     *
+     * <p>Public so a second renderer prints the same thing for the same binding. It is not simply
+     * {@code mapping.getTranslatedKeyMessage()}: mouse buttons come out as "LMB"/"RMB" and the
+     * charged fist reports left click even though vanilla Attack is deliberately unbound.
+     */
+    public static String keyLabel(net.minecraft.client.KeyMapping mapping) {
+        return keyName(mapping);
     }
 }

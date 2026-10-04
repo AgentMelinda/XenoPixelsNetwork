@@ -122,6 +122,8 @@ public final class PerfCommands {
                         XenoPerfConfig.sableContraptionCullEnabled = parseBool(raw);
                 case "sableextent", "cullextent", "sablequeryextent" ->
                         XenoPerfConfig.sableContraptionMaxQueryExtent = Double.parseDouble(raw.trim());
+                case "missiletickets", "missilechunks", "flighttickets" ->
+                        XenoPerfConfig.missileFlightTickets = parseBool(raw);
                 default -> {
                     src.sendFailure(Component.literal("Unknown key: " + key));
                     return 0;

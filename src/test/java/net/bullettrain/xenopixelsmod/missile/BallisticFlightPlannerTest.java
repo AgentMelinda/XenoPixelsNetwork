@@ -54,6 +54,15 @@ class BallisticFlightPlannerTest {
     }
 
     @Test
+    void launchDirectionPointsFromLaunchTowardTarget() {
+        Vec3 direction = BallisticTrajectory.launchDirection(
+                new Vec3(10, 80, 20), new Vec3(110, 120, 20), Math.toRadians(25));
+        assertTrue(direction.x > 0.0, "x direction must point toward the target");
+        assertTrue(direction.y > 0.0, "pitch must preserve an upward loft");
+        assertEquals(0.0, direction.z, 1.0e-9);
+    }
+
+    @Test
     void movingTargetGetsLedAndPacketsStayBounded() {
         BallisticFlightPlan.Result result = BallisticPlanOptimizer.optimize(2,
                 new Vec3(0, 100, 0), new Vec3(10_000, 100, 0), new Vec3(5, 0, 2), 42,

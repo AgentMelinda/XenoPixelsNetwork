@@ -12,7 +12,10 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.util.Collections;
+import java.util.HexFormat;
 import java.util.LinkedHashMap;
 import java.util.Locale;
 import java.util.Map;
@@ -53,9 +56,93 @@ public final class XenoClipLibrary {
         return FMLPaths.CONFIGDIR.get().resolve("xenopixelsmod-anim-library");
     }
 
+    /**
+     * The clips this mod ships, seeded into the library when they are not already there.
+     *
+     * <p>They are social gestures rather than combat moves - a wave, a greeting, a nod, a turn on
+     * the spot, and a small idle - and NPCs use them to read as alive. Shipped as resources rather
+     * than left for an operator to push, because a greeting nobody installed is a greeting that
+     * never happens.
+     */
+    private static final String[] BUILT_IN = {
+            "wave", "hi_wave", "nod", "spin", "idle_shift"
+    };
+
+    private static final String BUILT_IN_PATH = "/assets/xenopixelsmod/animations/social/";
+
+    /**
+     * Exact hashes of every earlier shipped wave file, so an install still holding one is upgraded
+     * to the current clip. User-edited clips never match these and are left alone.
+     *
+     * <p>The 2026-09-26 pair is the wave that keyed the whole arm as one stiff limb and swung it
+     * up-and-down twice; it is replaced by the forward-then-three-side-to-side wave, so installs
+     * seeded from that build have to be listed here too.
+     */
+    private static final Map<String, java.util.Set<String>> OLD_WAVE_HASHES = Map.of(
+            "wave", java.util.Set.of(
+                    "93966144c3aeac6e677cbcf56abca14b20b4c3763c121b30bc10f6e59a94615e",
+                    "58ec38c638d08b9fee7f77e8ff1518bfe2e4adee9affff4d504a5c7a3862823c",
+                    "ab23a030c6ec315f650502d443f53192cc31af574d12ba8ec5cbb3646699626f"),
+            "hi_wave", java.util.Set.of(
+                    "ef555823111d9678f55bd15e9a3711f169f1f063fdd9fdf79985c48f54569172",
+                    "2998b8aa24187160f25ab6c23b41224995e03295a2eb7da3f8fae0d498982f24",
+                    "58b60296dcf22c0ede829257fff8c0d1ae2a4b16539f1e6e9172ef5a0fc4764d",
+                    // The shipped 2026-09-26 greeting, before the run-client edit was promoted.
+                    "65279581e7769dc312a67bbdee17b6bb2bf0e787d99dbe6e94bd80758a14ded"));
+
+    /**
+     * Writes any missing built-in clip into the library directory.
+     *
+     * <p>Missing clips are seeded. The two earlier shipped waves are also upgraded by exact
+     * content hash; operator edits under the same names are preserved.
+     */
+    private static void seedBuiltIns() {
+        for (String name : BUILT_IN) {
+            Path file = dir().resolve(name + ".animation.json");
+            boolean upgrade;
+            try {
+                upgrade = Files.exists(file) && isOldWave(file, name);
+                if (Files.exists(file) && !upgrade) continue;
+            } catch (IOException e) {
+                XenoPixelsMod.LOGGER.warn("Could not inspect built-in clip {}: {}", name, e.toString());
+                continue;
+            }
+            try (var in = XenoClipLibrary.class.getResourceAsStream(
+                    BUILT_IN_PATH + name + ".animation.json")) {
+                if (in == null) {
+                    XenoPixelsMod.LOGGER.warn("Built-in clip {} is missing from the jar", name);
+                    continue;
+                }
+                String json = new String(in.readAllBytes(), StandardCharsets.UTF_8);
+                String problem = validate(name, json);
+                if (problem != null) {
+                    XenoPixelsMod.LOGGER.warn("Built-in clip {} is not usable: {}", name, problem);
+                    continue;
+                }
+                Files.createDirectories(dir());
+                Files.writeString(file, json, StandardCharsets.UTF_8);
+                if (upgrade) XenoPixelsMod.LOGGER.info("Upgraded shipped animation clip {}", name);
+            } catch (IOException e) {
+                XenoPixelsMod.LOGGER.warn("Could not seed built-in clip {}: {}", name, e.toString());
+            }
+        }
+    }
+
+    private static boolean isOldWave(Path file, String name) throws IOException {
+        java.util.Set<String> expected = OLD_WAVE_HASHES.get(name);
+        if (expected == null) return false;
+        try {
+            byte[] digest = MessageDigest.getInstance("SHA-256").digest(Files.readAllBytes(file));
+            return expected.contains(HexFormat.of().formatHex(digest));
+        } catch (NoSuchAlgorithmException missingSha256) {
+            return false;
+        }
+    }
+
     /** Re-reads the library from disk and tells the catalog which names are now playable. */
     public static synchronized void load() {
         CLIPS.clear();
+        seedBuiltIns();
         Path dir = dir();
         if (Files.isDirectory(dir)) {
             try (var stream = Files.list(dir)) {

@@ -123,10 +123,12 @@ public final class GuiNpcDmzAuraEditor extends GuiNPCInterface2 implements IText
             return;
         } else if (button.id == CANCEL) {
             NpcAppearanceClient.applyProfile(((Entity) npc).getUUID(), original);
+            persist(original);   // changes were autosaved; Cancel restores the server copy too
             goBack(original);
             return;
         }
         NpcAppearanceClient.applyProfile(((Entity) npc).getUUID(), draft);
+        persist(draft);
         init();
     }
 
@@ -134,6 +136,7 @@ public final class GuiNpcDmzAuraEditor extends GuiNPCInterface2 implements IText
     public void unFocused(GuiTextFieldNop field) {
         pull();
         NpcAppearanceClient.applyProfile(((Entity) npc).getUUID(), draft);
+        persist(draft);
     }
 
     private void pull() {
@@ -186,8 +189,8 @@ public final class GuiNpcDmzAuraEditor extends GuiNPCInterface2 implements IText
 
     private void persist(NpcCombatProfile profile) {
         profile.write(npc);
-        ModNetwork.sendToServer(new NpcProfileSavePacket(((Entity) npc).getId(), profile.toTag(),
-                NpcProfileSavePacket.Action.SAVE, profile.selectedFormGroup, profile.selectedFormId));
+        net.bullettrain.xenopixelsmod.client.npc.ClientNpcProfiles.save(((Entity) npc).getId(), profile.toTag(),
+                NpcProfileSavePacket.Action.SAVE, profile.selectedFormGroup, profile.selectedFormId);
     }
 
     private void goBack(NpcCombatProfile profile) {
@@ -226,6 +229,7 @@ public final class GuiNpcDmzAuraEditor extends GuiNPCInterface2 implements IText
 
     @Override
     public void save() {
-        // Apply/Cancel own this editor transaction.
+        // Autosave: closing or switching tabs keeps the draft (MyNPCs behaviour).
+        persist(draft);
     }
 }

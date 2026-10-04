@@ -2,13 +2,31 @@ package net.bullettrain.xenopixelsmod.client.screen;
 
 import net.bullettrain.xenopixelsmod.client.XenoPartyOverlay;
 import net.bullettrain.xenopixelsmod.client.config.XenoPartyHudConfig;
+import net.bullettrain.xenopixelsmod.client.ui.atlas.AtlasButton;
+import net.bullettrain.xenopixelsmod.client.ui.atlas.AtlasNotice;
+import net.bullettrain.xenopixelsmod.client.ui.atlas.XenoAtlasSprites;
 import net.minecraft.client.gui.GuiGraphics;
-import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.Component;
 
-/** Independent move/scale editor for the nearby-party card stack. */
+/**
+ * Independent move/scale editor for the nearby-party card stack.
+ *
+ * <h2>Why this one stays in real screen space</h2>
+ * Unlike the NPC editor and the party screen, this screen is deliberately <em>not</em> built on
+ * DragonMineZ's {@code ScaledScreen}. It edits {@link XenoPartyHudConfig#x} / {@code y} / {@code
+ * scale}, which are real HUD coordinates, and it previews them by calling the live
+ * {@link XenoPartyOverlay#renderCards} at those same coordinates. Introducing a virtual canvas here
+ * would put the preview, the drag maths and the saved values in three different coordinate spaces.
+ *
+ * <p>So only the chrome changed: the four vanilla buttons became atlas buttons and the resize
+ * corner got a real sprite. Drag, resize, wheel scaling and every
+ * {@link XenoPartyHudConfig#clampToScreen} call are byte-for-byte what they were.
+ */
 public final class XenoPartyHudEditScreen extends UnblurredScreen {
+    private static final String PRIMARY = "pill_button";
+    private static final String HANDLE = "icon_slot_sm";
+
     private enum DragTarget { NONE, CARDS, RESIZE }
 
     private final Screen parent;
@@ -27,37 +45,70 @@ public final class XenoPartyHudEditScreen extends UnblurredScreen {
     @Override
     protected void init() {
         XenoPartyHudConfig.clampToScreen(width, height, 1);
-        int cx = width / 2;
-        addRenderableWidget(Button.builder(Component.literal("Reset"), b -> {
+
+        int buttonW = AtlasButton.nativeWidth(PRIMARY);
+        int gap = 8;
+        int totalW = buttonW * 4 + gap * 3;
+        int x = (width - totalW) / 2;
+        int y = height - AtlasButton.nativeHeight(PRIMARY) - 10;
+
+        addRenderableWidget(new AtlasButton(x, y, Component.literal("Reset"), PRIMARY, b -> {
             XenoPartyHudConfig.reset();
             XenoPartyHudConfig.clampToScreen(width, height, 1);
-        }).bounds(cx - 155, height - 28, 70, 20).build());
-        addRenderableWidget(Button.builder(
-                Component.literal(XenoPartyHudConfig.visible ? "Hide" : "Show"), b -> {
-                    XenoPartyHudConfig.visible = !XenoPartyHudConfig.visible;
-                    b.setMessage(Component.literal(XenoPartyHudConfig.visible ? "Hide" : "Show"));
-                }).bounds(cx - 75, height - 28, 70, 20).build());
-        addRenderableWidget(Button.builder(Component.literal("Save"), b -> {
+        }));
+        x += buttonW + gap;
+
+        addRenderableWidget(new AtlasButton(x, y,
+                Component.literal(XenoPartyHudConfig.visible ? "Hide" : "Show"), PRIMARY, b -> {
+            XenoPartyHudConfig.visible = !XenoPartyHudConfig.visible;
+            b.setMessage(Component.literal(XenoPartyHudConfig.visible ? "Hide" : "Show"));
+        }));
+        x += buttonW + gap;
+
+        addRenderableWidget(new AtlasButton(x, y, Component.literal("Save"), PRIMARY, b -> {
             XenoPartyHudConfig.clampToScreen(width, height, 1);
             XenoPartyHudConfig.save();
             minecraft.setScreen(parent);
-        }).bounds(cx + 5, height - 28, 70, 20).build());
-        addRenderableWidget(Button.builder(Component.literal("Cancel"), b -> {
+        }));
+        x += buttonW + gap;
+
+        addRenderableWidget(new AtlasButton(x, y, Component.literal("Cancel"), PRIMARY, b -> {
             XenoPartyHudConfig.load();
             minecraft.setScreen(parent);
-        }).bounds(cx + 85, height - 28, 70, 20).build());
+        }));
     }
 
     @Override
     public void render(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
         graphics.fill(0, 0, width, height, 0xCC030712);
         XenoPartyOverlay.renderCards(graphics, true);
-        graphics.drawCenteredString(font, "Drag party card to move • blue corner or wheel resizes",
-                width / 2, 12, 0xFFB8D8EA);
-        graphics.drawCenteredString(font, String.format("Pos %d,%d  Scale %.2fx",
-                XenoPartyHudConfig.x, XenoPartyHudConfig.y, XenoPartyHudConfig.scale),
-                width / 2, 26, 0xFF42A5F5);
+
+        drawEditAffordances(graphics);
+
+        new AtlasNotice(String.format("Pos %d,%d  Scale %.2fx", XenoPartyHudConfig.x,
+                XenoPartyHudConfig.y, XenoPartyHudConfig.scale),
+                (width - AtlasNotice.width()) / 2, 8).render(graphics, font);
+        graphics.drawCenteredString(font, "Drag the card to move - blue corner or wheel resizes",
+                width / 2, 8 + AtlasNotice.height() + 4, 0xFFB8D8EA);
+
         super.render(graphics, mouseX, mouseY, partialTick);
+    }
+
+    /** Outlines the draggable card and draws the resize corner the hint line refers to. */
+    private void drawEditAffordances(GuiGraphics graphics) {
+        int left = XenoPartyHudConfig.x;
+        int top = XenoPartyHudConfig.y;
+        int w = XenoPartyHudConfig.scaledWidth();
+        int h = XenoPartyHudConfig.scaledCardHeight();
+        if (w <= 0 || h <= 0) {
+            return;
+        }
+        graphics.renderOutline(left, top, w, h, 0x8042A5F5);
+
+        // The handle sprite is drawn at its native size, anchored to the same corner hitResize uses.
+        int handleW = XenoAtlasSprites.get(HANDLE).width();
+        int handleH = XenoAtlasSprites.get(HANDLE).height();
+        XenoAtlasSprites.blit(graphics, HANDLE, left + w - handleW, top + h - handleH);
     }
 
     @Override
@@ -97,7 +148,9 @@ public final class XenoPartyHudEditScreen extends UnblurredScreen {
 
     @Override
     public boolean mouseReleased(double mouseX, double mouseY, int button) {
-        if (button == 0) dragTarget = DragTarget.NONE;
+        if (button == 0) {
+            dragTarget = DragTarget.NONE;
+        }
         return super.mouseReleased(mouseX, mouseY, button);
     }
 
@@ -115,11 +168,15 @@ public final class XenoPartyHudEditScreen extends UnblurredScreen {
     @Override
     public void onClose() {
         XenoPartyHudConfig.save();
-        if (minecraft != null) minecraft.setScreen(parent);
+        if (minecraft != null) {
+            minecraft.setScreen(parent);
+        }
     }
 
     @Override
-    public boolean isPauseScreen() { return false; }
+    public boolean isPauseScreen() {
+        return false;
+    }
 
     private boolean hit(int mx, int my) {
         return mx >= XenoPartyHudConfig.x && my >= XenoPartyHudConfig.y

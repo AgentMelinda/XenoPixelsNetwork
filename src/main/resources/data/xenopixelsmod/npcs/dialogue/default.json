@@ -1,0 +1,26 @@
+{
+  "start": "root",
+  "nodes": {
+    "root": {
+      "text": "&eHello, {player}.&r What brings you out here?",
+      "options": [
+        { "text": "Who are you?", "type": "text", "target": "about" },
+        { "text": "Any work going?", "type": "text", "target": "work" },
+        { "text": "Nothing. Goodbye.", "type": "quit" }
+      ]
+    },
+    "about": {
+      "text": "I am {npc}. I have stood here a while.",
+      "options": [
+        { "text": "Back", "type": "text", "target": "root" },
+        { "text": "I see.", "type": "quit" }
+      ]
+    },
+    "work": {
+      "text": "Not yet. Ask me again when there is a quest board.",
+      "options": [
+        { "text": "Back", "type": "text", "target": "root" }
+      ]
+    }
+  }
+}

@@ -56,6 +56,7 @@ public final class DmzFormTrainerScreen extends ScaledScreen {
     private final String title;
     private final String body;
     private final List<DmzTrainerMenu.Entry> entries;
+    private int selectedRow = -1;
 
     private int bodyX;
     private int formsX;
@@ -129,6 +130,24 @@ public final class DmzFormTrainerScreen extends ScaledScreen {
     }
 
     @Override
+    public boolean keyPressed(int keyCode, int scanCode, int modifiers) {
+        if (keyCode == 264 || keyCode == 265) {
+            int visible = Math.min(MAX_ROWS, entries.size());
+            if (visible > 0) {
+                selectedRow = keyCode == 264
+                        ? Math.min(visible - 1, selectedRow + 1)
+                        : Math.max(0, selectedRow < 0 ? visible - 1 : selectedRow - 1);
+                return true;
+            }
+        }
+        if (keyCode == 257 && selectedRow >= 0 && selectedRow < entries.size()) {
+            FormEditorNetwork.purchase(trainerEntityId, entries.get(selectedRow).formType());
+            return true;
+        }
+        return super.keyPressed(keyCode, scanCode, modifiers);
+    }
+
+    @Override
     public boolean mouseClicked(double mouseX, double mouseY, int button) {
         if (button == 0) {
             double uiMouseX = toUiX(mouseX);
@@ -144,6 +163,7 @@ public final class DmzFormTrainerScreen extends ScaledScreen {
                 if (!XenoMasterMenuConfig.hidden(Part.FORM_ROWS)
                         && uiMouseX >= rowX && uiMouseX < rowX + rowWidth
                         && uiMouseY >= rowY && uiMouseY < rowY + rowHeight) {
+                    selectedRow = i;
                     FormEditorNetwork.purchase(trainerEntityId, entry.formType());
                     return true;
                 }
@@ -221,6 +241,9 @@ public final class DmzFormTrainerScreen extends ScaledScreen {
             int rowHeight = Math.round(XenoDmzHdAtlas.STAT_ROW.height() * rowScale);
             for (int i = 0; i < visible; i++) {
                 DmzTrainerMenu.Entry entry = entries.get(i);
+                if (i == selectedRow) {
+                    graphics.fill(rowX - 2, rowY - 1, rowX + rowWidth + 2, rowY + rowHeight + 1, 0x5533AAFF);
+                }
                 boolean hovered = mouseX >= rowX && mouseX < rowX + rowWidth
                         && mouseY >= rowY && mouseY < rowY + rowHeight;
                 blitPart(graphics, XenoDmzHdAtlas.STAT_ROW, rowX, rowY, Part.FORM_ROWS);

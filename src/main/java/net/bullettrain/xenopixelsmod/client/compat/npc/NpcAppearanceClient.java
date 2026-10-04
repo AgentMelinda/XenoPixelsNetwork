@@ -4,6 +4,7 @@ import net.bullettrain.xenopixelsmod.XenoPixelsMod;
 import net.bullettrain.xenopixelsmod.compat.npc.NpcDmzAppearance;
 import net.bullettrain.xenopixelsmod.compat.npc.NpcCombatProfile;
 import net.minecraft.nbt.CompoundTag;
+import net.minecraft.world.entity.Entity;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
@@ -21,7 +22,8 @@ public final class NpcAppearanceClient {
                         int vitality, int kiPower, int energy, boolean authoritative,
                         int auraColor, float auraScale, NpcDmzAppearance appearance,
                         CompoundTag visualOptions,
-                        String skinPlayer, String skinUrl, String skinUuid) {
+                        String skinPlayer, String skinUrl, String skinUuid,
+                        boolean auraOn) {
 
         /**
          * Which DragonMineZ hair preset this NPC wears, or {@code 0} for its custom hair code.
@@ -52,7 +54,7 @@ public final class NpcAppearanceClient {
                              CompoundTag visualOptions) {
         apply(id, race, formGroup, form, hairEnabled, hairCode, hairColor,
                 strength, strikePower, resistance, vitality, kiPower, energy, authoritative,
-                auraColor, auraScale, dmzAppearance, visualOptions, "", "", "");
+                auraColor, auraScale, dmzAppearance, visualOptions, "", "", "", false);
     }
 
     public static void apply(UUID id, String race, String formGroup, String form,
@@ -61,7 +63,8 @@ public final class NpcAppearanceClient {
                              int vitality, int kiPower, int energy, boolean authoritative,
                              int auraColor, float auraScale, CompoundTag dmzAppearance,
                              CompoundTag visualOptions,
-                             String skinPlayer, String skinUrl, String skinUuid) {
+                             String skinPlayer, String skinUrl, String skinUuid,
+                             boolean auraOn) {
         if (id != null) {
             STATES.put(id, new State(safe(race), safe(formGroup), safe(form),
                     hairEnabled, safe(hairCode), safe(hairColor),
@@ -69,7 +72,7 @@ public final class NpcAppearanceClient {
                     auraColor & 0xFFFFFF, NpcCombatProfile.clampAuraScale(auraScale),
                     NpcDmzAppearance.fromTag(dmzAppearance),
                     visualOptions == null ? new CompoundTag() : visualOptions.copy(),
-                    safe(skinPlayer), safe(skinUrl), safe(skinUuid)));
+                    safe(skinPlayer), safe(skinUrl), safe(skinUuid), auraOn));
             NpcCombatProfile visual = new NpcCombatProfile();
             visual.applyVisualOptions(visualOptions);
             NpcTransformHairClient.onAppearance(id, formGroup, form,
@@ -81,6 +84,19 @@ public final class NpcAppearanceClient {
         return id == null ? null : STATES.get(id);
     }
 
+    /** Bubble settings are server owned and arrive in the appearance packet's visual options. */
+    public static NpcCombatProfile bubbleProfile(Entity entity) {
+        return renderProfile(entity);
+    }
+
+    /** Renderer view with the latest server-owned appearance fields applied. */
+    public static NpcCombatProfile renderProfile(Entity entity) {
+        NpcCombatProfile profile = NpcCombatProfile.read(entity);
+        State state = entity == null ? null : get(entity.getUUID());
+        if (state != null) profile.applyVisualOptions(state.visualOptions());
+        return profile;
+    }
+
     public static void applyProfile(UUID id, NpcCombatProfile profile) {
         if (id == null || profile == null) return;
         apply(id, profile.raceId, profile.formGroup, profile.formId,
@@ -90,7 +106,7 @@ public final class NpcAppearanceClient {
                 profile.auraColor, profile.auraScale,
                 (profile.appearance == null ? new NpcDmzAppearance() : profile.appearance).toTag(),
                 profile.visualOptionsTag(),
-                profile.skinPlayer, profile.skinUrl, "");
+                profile.skinPlayer, profile.skinUrl, "", profile.auraOn);
     }
 
     @SubscribeEvent

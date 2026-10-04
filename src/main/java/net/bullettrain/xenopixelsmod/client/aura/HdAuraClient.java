@@ -20,15 +20,18 @@ import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.client.player.AbstractClientPlayer;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.entity.Entity;
+import net.minecraft.client.Camera;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.neoforge.client.event.ClientTickEvent;
+import net.neoforged.neoforge.client.event.RenderLevelStageEvent;
 
 import java.lang.ref.WeakReference;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -133,7 +136,9 @@ public final class HdAuraClient {
                 SEEN.put(player.getId(), new Seen(new WeakReference<>(player), auraClock));
             }
         }
-        if (ownFirstPerson(mc)) {
+        // Local player with DMZ aura active — mark in FP and TP so HD-only never depends only
+        // on the queue mixin (created-world blank when second-aura was off).
+        if (mc.player != null) {
             StatsData own = DmzAccess.stats(mc.player).orElse(null);
             if (own != null && own.getStatus() != null
                     && (own.getStatus().isAuraActive() || own.getStatus().isPermanentAura())) {
@@ -348,12 +353,17 @@ public final class HdAuraClient {
      * Whether the HD aura plays on this entity. A player decides for themselves (their second aura
      * switch, {@code /secondaura}); with it off the aura plays only if this client asked for the
      * earlier behaviour ({@code /xenoaura follow on}). NPCs follow DragonMineZ's aura as before.
+     * HD-only also plays for anyone recently {@link #seen} so canceling the DMZ sheet cannot leave
+     * a blank body when second-aura is off.
      */
     public static boolean plays(ClientLevel level, int id) {
         if (level == null || !(level.getEntity(id) instanceof net.minecraft.world.entity.player.Player)) {
             return true;
         }
-        return SecondAuraClientState.on(id) || XenoClientConfig.auraFollowDmz;
+        if (SecondAuraClientState.on(id) || XenoClientConfig.auraFollowDmz) {
+            return true;
+        }
+        return !style().dmz() && SEEN.containsKey(id);
     }
 
     /**
@@ -452,6 +462,23 @@ public final class HdAuraClient {
     /** The ki aura stretch of each entity an aura is playing on, refreshed every tick. */
     private static final Map<Integer, float[]> LIVE_STRETCH = new ConcurrentHashMap<>();
     private static volatile boolean liveFailed;
+    /**
+     * Live HD emitters that must be repositioned every render frame. Updated on
+     * {@link RenderLevelStageEvent.Stage#AFTER_ENTITIES} (before AAA's end-of-level draw) and
+     * again in PreDraw so fast flight does not leave the column a frame behind.
+     */
+    private static final List<LiveAura> LIVE_AURAS = new ArrayList<>();
+
+    private record LiveAura(
+            WeakReference<Entity> entity,
+            mod.chloeprime.aaaparticles.api.client.effekseer.ParticleEmitter emitter,
+            float size,
+            float[] shape,
+            float drop,
+            boolean silhouette,
+            float[] initial,
+            boolean[] stopped) {
+    }
 
     /**
      * Plays one aura effect of base size {@code size}, stretched by {width, height}.
@@ -488,6 +515,23 @@ public final class HdAuraClient {
         AAALevel.addParticle(level, info);
     }
 
+    /**
+     * Reposition live HD auras before AAA's end-of-level update/draw so fast flight does not
+     * leave the column one frame behind the body (PreDraw alone runs after Effekseer update).
+     */
+    @SubscribeEvent
+    public static void onRenderFollow(RenderLevelStageEvent event) {
+        if (event.getStage() != RenderLevelStageEvent.Stage.AFTER_ENTITIES) return;
+        float partial = event.getPartialTick().getGameTimeDeltaPartialTick(false);
+        Camera cam = event.getCamera();
+        synchronized (LIVE_AURAS) {
+            for (Iterator<LiveAura> it = LIVE_AURAS.iterator(); it.hasNext(); ) {
+                LiveAura live = it.next();
+                if (!applyLiveFollow(live, partial, cam)) it.remove();
+            }
+        }
+    }
+
     private static void spawnLive(Entity entity, ResourceLocation effect, float size, float[] initial,
                                   float sink) {
         boolean silhouette = HdAuraPlan.silhouetteEffect(effect.getPath());
@@ -500,40 +544,25 @@ public final class HdAuraClient {
                         mod.chloeprime.aaaparticles.api.client.metadata.EffectRouting.QualityOptions.current())
                         .thenAccept(emitter -> {
                             boolean[] stopped = {false};
+                            LiveAura live = new LiveAura(bound, emitter, size, shape, drop, silhouette, initial,
+                                    stopped);
+                            synchronized (LIVE_AURAS) {
+                                LIVE_AURAS.add(live);
+                            }
                             mod.chloeprime.aaaparticles.api.client.effekseer.ParticleEmitter.PreDrawCallback follow =
-                                    (playing, partial) -> {
-                                        Entity target = bound.get();
-                                        if (target == null || target.isRemoved()) {
-                                            if (!stopped[0]) {
-                                                stopped[0] = true;
-                                                playing.stop();
-                                            }
-                                            return;
-                                        }
-                                        float[] live = LIVE_STRETCH.get(id);
-                                        float[] k = live == null ? initial
-                                                : new float[] {live[0] * shape[0], live[1] * shape[1]};
+                                    (playing, ignoredPartial) -> {
+                                        // Prefer the real render partial tick; AAA may pass frame-delta
+                                        // shaped values depending on draw path.
                                         Minecraft view = Minecraft.getInstance();
-                                        if (HdAuraPlan.cameraSpaceInFirstPerson()
-                                                && target == view.player
-                                                && view.options.getCameraType().isFirstPerson()) {
-                                            var cam = view.gameRenderer.getMainCamera();
-                                            float[] at = HdAuraPlan.firstPersonWorldPos(
-                                                    cam.getPosition().x, cam.getPosition().y, cam.getPosition().z,
-                                                    cam.getXRot(), cam.getYRot());
-                                            float fp = HdAuraPlan.firstPersonScaleFactor();
-                                            playing.setPosition(at[0], at[1], at[2]);
-                                            playing.setScale(size * k[0] * fp, size * k[1] * fp, size * k[0] * fp);
-                                            return;
+                                        float partial = renderPartialTick(view, ignoredPartial);
+                                        Camera cam = view.gameRenderer.getMainCamera();
+                                        if (!applyLiveFollow(live, partial, cam)) {
+                                            synchronized (LIVE_AURAS) {
+                                                LIVE_AURAS.remove(live);
+                                            }
                                         }
-                                        playing.setPosition(
-                                                (float) net.minecraft.util.Mth.lerp(partial, target.xOld, target.getX()),
-                                                (float) net.minecraft.util.Mth.lerp(partial, target.yOld, target.getY())
-                                                        - drop * size * (k[1] / shape[1]),
-                                                (float) net.minecraft.util.Mth.lerp(partial, target.zOld, target.getZ()));
-                                        playing.setScale(size * k[0], size * k[1], size * k[0]);
                                     };
-                            follow.accept(emitter, 1.0f);
+                            follow.accept(emitter, renderPartialTick(Minecraft.getInstance(), 1.0f));
                             emitter.addPreDrawCallback(follow);
                         })))
                 .exceptionally(error -> {
@@ -541,6 +570,64 @@ public final class HdAuraClient {
                     XenoPixelsMod.LOGGER.warn("HD aura live scaling off for this session ({})", String.valueOf(error));
                     return null;
                 });
+    }
+
+    /** @return false when the emitter should be dropped from {@link #LIVE_AURAS} */
+    private static boolean applyLiveFollow(LiveAura live, float partial, Camera cam) {
+        if (live.stopped[0]) return false;
+        Entity target = live.entity.get();
+        mod.chloeprime.aaaparticles.api.client.effekseer.ParticleEmitter playing = live.emitter;
+        if (target == null || target.isRemoved() || playing == null || !playing.exists()) {
+            if (!live.stopped[0]) {
+                live.stopped[0] = true;
+                if (playing != null) {
+                    try {
+                        playing.stop();
+                    } catch (RuntimeException ignored) {
+                        // Emitter may already be gone.
+                    }
+                }
+            }
+            return false;
+        }
+        float[] stretch = LIVE_STRETCH.get(target.getId());
+        float[] k = stretch == null ? live.initial
+                : new float[] {stretch[0] * live.shape[0], stretch[1] * live.shape[1]};
+        Minecraft view = Minecraft.getInstance();
+        if (HdAuraPlan.cameraSpaceInFirstPerson()
+                && target == view.player
+                && view.options.getCameraType().isFirstPerson()) {
+            float fp = HdAuraPlan.firstPersonScaleFactor();
+            float sy = live.size * k[1] * fp;
+            float[] eye = HdAuraPlan.firstPersonEyeOffset();
+            float nudge = HdAuraPlan.firstPersonEmitterCentreNudge(live.silhouette, sy);
+            float[] local = {eye[0], eye[1] - nudge, eye[2]};
+            float[] at = HdAuraPlan.firstPersonWorldPos(
+                    cam.getPosition().x, cam.getPosition().y, cam.getPosition().z,
+                    cam.getXRot(), cam.getYRot(), local);
+            float[] rot = HdAuraPlan.firstPersonRotationRadians(cam.getXRot(), cam.getYRot());
+            playing.setPosition(at[0], at[1], at[2]);
+            playing.setRotation(rot[0], rot[1], rot[2]);
+            playing.setScale(live.size * k[0] * fp, sy, live.size * k[0] * fp);
+            return true;
+        }
+        // xo/yo/zo — same as Entity.getPosition / Camera / DMZ. Never xOld (lags on absMoveTo).
+        float[] at = HdAuraPlan.entityRenderPos(
+                target.xo, target.yo, target.zo, target.getX(), target.getY(), target.getZ(), partial);
+        float dropY = live.drop * live.size * (k[1] / live.shape[1]);
+        playing.setPosition(at[0], at[1] - dropY, at[2]);
+        playing.setRotation(0.0f, 0.0f, 0.0f);
+        playing.setScale(live.size * k[0], live.size * k[1], live.size * k[0]);
+        return true;
+    }
+
+    private static float renderPartialTick(Minecraft mc, float fallback) {
+        if (mc == null || mc.getTimer() == null) return fallback;
+        try {
+            return mc.getTimer().getGameTimeDeltaPartialTick(false);
+        } catch (RuntimeException e) {
+            return fallback;
+        }
     }
 
     private static void spawn(ClientLevel level, Entity entity, String path, float size, float brightness) {

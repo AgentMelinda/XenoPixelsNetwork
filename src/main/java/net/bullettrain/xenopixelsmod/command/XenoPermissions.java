@@ -61,6 +61,10 @@ public final class XenoPermissions {
             op("xenoserver.status", "Use /xenoserver status");
     public static final PermissionNode<Boolean> XENOSERVER_SET =
             op("xenoserver.set", "Use /xenoserver set <key> <value>");
+    public static final PermissionNode<Boolean> XENOSAVE =
+            op("xenosave", "Use /xenosave — blocking world flush (Linear dirty regions)");
+    public static final PermissionNode<Boolean> XENORESTART =
+            op("xenorestart", "Use /xenorestart [seconds] — countdown, flush, then stop");
 
     // -------------------------------------------------------------------------
     // /xenostats  (server — OP default)
@@ -71,6 +75,37 @@ public final class XenoPermissions {
             op("xenostats.set", "Use /xenostats set — write a player's DragonMineZ stats");
     public static final PermissionNode<Boolean> XENOSTATS_LIMIT =
             op("xenostats.limit", "Use /xenostats limit — raise or lift the DragonMineZ stat cap");
+
+    // -------------------------------------------------------------------------
+    // /xenorole  (server — OP default)
+    // -------------------------------------------------------------------------
+    public static final PermissionNode<Boolean> ROLE_GET =
+            op("role.get", "Use /xenorole get — read a player's XenoPixels role");
+    public static final PermissionNode<Boolean> ROLE_SET =
+            op("role.set", "Use /xenorole set|clear — grant or clear a player's XenoPixels role");
+
+    // -------------------------------------------------------------------------
+    // /xenotourney  (join/leave/status/arenas everyone; result/start OP)
+    // -------------------------------------------------------------------------
+    public static final PermissionNode<Boolean> TOURNEY_JOIN =
+            everyone("tourney.join", "Use /xenotourney join — enter the tournament queue");
+    public static final PermissionNode<Boolean> TOURNEY_LEAVE =
+            everyone("tourney.leave", "Use /xenotourney leave — leave the tournament queue");
+    public static final PermissionNode<Boolean> TOURNEY_STATUS =
+            everyone("tourney.status", "Use /xenotourney status — view queue and active match");
+    public static final PermissionNode<Boolean> TOURNEY_ARENAS =
+            everyone("tourney.arenas", "Use /xenotourney arenas — list static arena positions");
+    public static final PermissionNode<Boolean> TOURNEY_RESULT =
+            op("tourney.result", "Use /xenotourney result|start — admin match results / start challenge");
+
+    // -------------------------------------------------------------------------
+    // /xenomaker  (Unified Maker Studio — open is client/everyone; create stays OP)
+    // -------------------------------------------------------------------------
+    /** Open hub/editors. Client-default allow so Brigadier does not hide /xenomaker. */
+    public static final PermissionNode<Boolean> MAKER_OPEN =
+            client("maker.open", "Open Unified Maker Studio (/xenomaker)");
+    public static final PermissionNode<Boolean> MAKER_RACE_CREATE =
+            op("maker.race.create", "Create a new race pack from Race Character Maker");
 
     // -------------------------------------------------------------------------
     // /xenoform  (server — OP default)
@@ -101,6 +136,22 @@ public final class XenoPermissions {
             op("xenochase.set", "Use /xenochase toggle|range <value>");
 
     // -------------------------------------------------------------------------
+    // /xenomultiform  (server — OP default)
+    // -------------------------------------------------------------------------
+    public static final PermissionNode<Boolean> XENOMULTIFORM_STATUS =
+            op("xenomultiform.status", "Use /xenomultiform status");
+    public static final PermissionNode<Boolean> XENOMULTIFORM_SET =
+            op("xenomultiform.set", "Use /xenomultiform ai|distance");
+
+    // -------------------------------------------------------------------------
+    // /xenosupercounter  (server — OP default)
+    // -------------------------------------------------------------------------
+    public static final PermissionNode<Boolean> XENOSUPERCOUNTER_STATUS =
+            op("xenosupercounter.status", "Use /xenosupercounter status");
+    public static final PermissionNode<Boolean> XENOSUPERCOUNTER_SET =
+            op("xenosupercounter.set", "Use /xenosupercounter on|off|toggle|window|kicost|scale");
+
+    // -------------------------------------------------------------------------
     // Hakai erasure technique (server — OP default)
     // -------------------------------------------------------------------------
     /** Gates actually using the Hakai ability itself, not just the admin command. */
@@ -109,8 +160,33 @@ public final class XenoPermissions {
     /** Allows Xeno rush techniques without changing DMZ's cost, cooldown, or target checks. */
     public static final PermissionNode<Boolean> BT3_RUSH_UNLOCK_BYPASS =
             op("bt3.rush.unlock_bypass", "Use Xeno rush techniques without DMZ unlock requirements");
+    /** Allows granting exclusive skills such as Hakai, Zanzoken, and Multi-Form. */
+    public static final PermissionNode<Boolean> SKILL_EXCLUSIVE_GRANT =
+            op("skill.exclusive.grant", "Grant or unlock exclusive Xeno skills");
+    /** Allows using the configured Xeno rush/strike chain. */
+    public static final PermissionNode<Boolean> SKILL_RUSH_USE =
+            everyone("skill.rush.use", "Use Xeno rush and strike combo skills");
+    /** Allows using a granted rush-combo strike. */
+    public static final PermissionNode<Boolean> SKILL_RUSHCOMBO_USE =
+            everyone("skill.rushcombo.use", "Use the granted Xeno rush-combo strike");
+    /** Allows using a granted lift-combo strike. */
+    public static final PermissionNode<Boolean> SKILL_LIFTCOMBO_USE =
+            everyone("skill.liftcombo.use", "Use the granted Xeno lift-combo strike");
     public static final PermissionNode<Boolean> HAKAI_SET =
             op("hakai.set", "Use /xenohakai toggle|kicost|range|cooldown <value>");
+
+    // -------------------------------------------------------------------------
+    // /xenocombat — combat controller mode (server — OP default)
+    // -------------------------------------------------------------------------
+    public static final PermissionNode<Boolean> XENOCOMBAT_STATUS =
+            op("xenocombat.status", "Use /xenocombat status");
+    public static final PermissionNode<Boolean> XENOCOMBAT_MODE =
+            op("xenocombat.mode", "Use /xenocombat mode legacy|bt3_manual");
+    public static final PermissionNode<Boolean> XENOCOMBAT_RELOAD =
+            op("xenocombat.reload", "Use /xenocombat reload");
+    /** Gates driving the manual BT3 controller once the server has it enabled. */
+    public static final PermissionNode<Boolean> COMBAT_BT3_MANUAL_USE =
+            everyone("combat.bt3manual.use", "Use the manual BT3 combat controller");
 
     // -------------------------------------------------------------------------
     // /xenolock  (server — OP default)
@@ -138,6 +214,8 @@ public final class XenoPermissions {
     // -------------------------------------------------------------------------
     public static final PermissionNode<Boolean> NPCPROFILE_SET =
             op("npcprofile.set", "Use /xenopixels npcprofile set|color|aura ...");
+    public static final PermissionNode<Boolean> XENOBRAIN_SET =
+            op("xenobrain.set", "Use /xenobrain v1|v2|on|off on a looked-at NPC");
     public static final PermissionNode<Boolean> NPCPROFILE_KIATTACK =
             op("npcprofile.kiattack", "Use /xenopixels npcprofile kiattack|charge|tech ...");
     public static final PermissionNode<Boolean> NPCSAY_TOGGLE =

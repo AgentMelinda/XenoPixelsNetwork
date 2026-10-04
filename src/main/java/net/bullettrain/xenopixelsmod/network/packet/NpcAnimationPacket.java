@@ -23,6 +23,7 @@ import java.util.function.Supplier;
  * can receive one before the entity has been spawned in.
  *
  * <p>{@code flags} is protocol 68: bit 0 is KI play-and-hold, bit 1 is a real controller stop.
+ * Bits 2 and 3 start the NPC punch / kick charge floor ring; older clients ignore them.
  */
 public final class NpcAnimationPacket {
 

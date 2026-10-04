@@ -21,7 +21,33 @@ public final class XenoPadInput {
 
     private static Boolean controlifyPresent;
 
+    /**
+     * Which integration actually registered, decided once in Controlify's pre-init.
+     *
+     * <p>Not {@code XenoClientConfig.padRewrite} read live: the two packages declare the same
+     * binding ids, so only one of them ever registers, and a player flipping the config mid-session
+     * would otherwise start asking a package that holds no bindings - which reads as the pad going
+     * dead rather than as a setting needing a restart.
+     */
+    private static boolean rewrite;
+
     private XenoPadInput() {
+    }
+
+    /** Called by {@link XenoControlifyEntrypoint} with the decision it just acted on. */
+    static void useRewrite(boolean value) {
+        rewrite = value;
+    }
+
+    /**
+     * Whether the rewritten integration is the one holding the bindings.
+     *
+     * <p>Public because the Controlify input mixin has to route its conflict check the same way,
+     * and it lives in another package. Controlify-free on purpose, so asking the question does not
+     * drag Controlify onto the stack.
+     */
+    public static boolean usingRewrite() {
+        return rewrite;
     }
 
     /**
@@ -53,63 +79,107 @@ public final class XenoPadInput {
      * player can keep a hand on each.
      */
     public static boolean held(KeyMapping mapping) {
-        return available() && XenoPadBinds.held(mapping);
+        return available() && (rewrite
+                ? net.bullettrain.xenopixelsmod.client.pad2.PadBinds.held(mapping)
+                : XenoPadBinds.held(mapping));
     }
 
     /** Advances mode/radial/gesture state once per client tick. */
     public static void tick() {
-        if (available()) XenoPadBinds.tick();
+        if (!available()) return;
+        if (rewrite) {
+            net.bullettrain.xenopixelsmod.client.pad2.PadBinds.tick();
+        } else {
+            XenoPadBinds.tick();
+        }
     }
 
     /** One-shot BT3 guard-stick vanish direction: -1 left, +1 right, 0 none. */
     public static int consumeVanishSide() {
-        return available() ? XenoPadBinds.consumeVanishSide() : 0;
+        if (!available()) return 0;
+        return rewrite
+                ? net.bullettrain.xenopixelsmod.client.pad2.PadBinds.consumeVanishSide()
+                : XenoPadBinds.consumeVanishSide();
     }
 
     /** Whether BT3's Y ki-blast chord must withhold vanilla item use/place. */
     public static boolean suppressesUseItem() {
-        return available() && XenoPadBinds.suppressesUseItem();
+        return available() && (rewrite
+                ? net.bullettrain.xenopixelsmod.client.pad2.PadBinds.suppressesUseItem()
+                : XenoPadBinds.suppressesUseItem());
     }
 
     /** Whether BT3's A dash must withhold Controlify's normal jump. */
     public static boolean suppressesJump() {
-        return available() && XenoPadBinds.suppressesJump();
+        return available() && (rewrite
+                ? net.bullettrain.xenopixelsmod.client.pad2.PadBinds.suppressesJump()
+                : XenoPadBinds.suppressesJump());
     }
 
     /** Whether BT3's B guard must withhold Controlify's normal sneak. */
     public static boolean suppressesSneak() {
-        return available() && XenoPadBinds.suppressesSneak();
+        return available() && (rewrite
+                ? net.bullettrain.xenopixelsmod.client.pad2.PadBinds.suppressesSneak()
+                : XenoPadBinds.suppressesSneak());
     }
 
     /** Whether BT3's RT descend must withhold Controlify's normal attack. */
     public static boolean suppressesAttack() {
-        return available() && XenoPadBinds.suppressesAttack();
+        return available() && (rewrite
+                ? net.bullettrain.xenopixelsmod.client.pad2.PadBinds.suppressesAttack()
+                : XenoPadBinds.suppressesAttack());
     }
 
     /** Whether BT3's L3 flight-mode toggle must withhold Controlify's normal sprint toggle. */
     public static boolean suppressesSprint() {
-        return available() && XenoPadBinds.suppressesSprint();
+        return available() && (rewrite
+                ? net.bullettrain.xenopixelsmod.client.pad2.PadBinds.suppressesSprint()
+                : XenoPadBinds.suppressesSprint());
     }
 
     /** True when a controller is the active input device, not merely connected. */
     public static boolean controllerActive() {
-        return available() && XenoPadBinds.controllerActive();
+        return available() && (rewrite
+                ? net.bullettrain.xenopixelsmod.client.pad2.PadBinds.controllerActive()
+                : XenoPadBinds.controllerActive());
     }
 
     /** True only while an active controller is using the persisted BT3 gameplay layer. */
     public static boolean bt3ModeActive() {
-        return available() && XenoClientConfig.padMode == PadMode.BT3
-                && XenoPadBinds.controllerActive();
+        return available() && XenoClientConfig.padMode == PadMode.BT3 && (rewrite
+                ? net.bullettrain.xenopixelsmod.client.pad2.PadBinds.controllerActive()
+                : XenoPadBinds.controllerActive());
+    }
+
+    /**
+     * Which ki technique bar a held trigger is raising: 0 for slots 1-4, 4 for 5-8, -1 for none.
+     *
+     * <p>The keyboard raises these by holding Alt or Ctrl, which a gamepad cannot reproduce -
+     * DragonMineZ reads that chord straight off GLFW. So the pad raises the bar itself, and the
+     * HUD asks here instead of only asking {@code KeyBinds.isBarModifierActive}.
+     *
+     * <p>Returns -1 whenever the rewrite is not the live integration, because the old package has
+     * no ki-bar concept and answering otherwise would show a bar nothing could drive.
+     */
+    public static int kiBarOffset() {
+        return available() && rewrite
+                ? net.bullettrain.xenopixelsmod.client.pad2.PadKiMenu.barOffset() : -1;
     }
 
     /** Left stick pitch for the pilot seat, {@code -1..1}, positive nose-up; 0 with no pad. */
     public static float flightPitch() {
-        return available() ? XenoPadBinds.flightPitch() : 0f;
+        if (!available()) return 0f;
+        return rewrite
+                ? net.bullettrain.xenopixelsmod.client.pad2.PadBinds.flightPitch()
+                : XenoPadBinds.flightPitch();
     }
 
     /** Left stick roll for the pilot seat, {@code -1..1}, positive to the right; 0 with no pad. */
     public static float flightRoll() {
-        return available() ? XenoPadBinds.flightRoll() : 0f;
+        if (!available()) return 0f;
+        return rewrite
+                ? net.bullettrain.xenopixelsmod.client.pad2.PadBinds.flightRoll()
+                : XenoPadBinds.flightRoll();
     }
 
     /**

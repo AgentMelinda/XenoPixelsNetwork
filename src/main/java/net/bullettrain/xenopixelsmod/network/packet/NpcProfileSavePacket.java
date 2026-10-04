@@ -32,13 +32,25 @@ public final class NpcProfileSavePacket {
     private final Action action;
     private final String group;
     private final String form;
+    /**
+     * The server profile the screen started from. When present only keys that differ between it
+     * and {@link #tag} are applied, over the current server profile; everything else (script and
+     * command edits, keys the client never knew) keeps its server value.
+     */
+    private final CompoundTag baseline;
 
     public NpcProfileSavePacket(int entityId, CompoundTag tag, Action action, String group, String form) {
+        this(entityId, tag, action, group, form, null);
+    }
+
+    public NpcProfileSavePacket(int entityId, CompoundTag tag, Action action, String group, String form,
+                                CompoundTag baseline) {
         this.entityId = entityId;
         this.tag = tag == null ? new CompoundTag() : tag;
         this.action = action == null ? Action.SAVE : action;
         this.group = group == null ? "" : group;
         this.form = form == null ? "" : form;
+        this.baseline = baseline;
     }
 
     public NpcProfileSavePacket(FriendlyByteBuf buf) {
@@ -47,6 +59,7 @@ public final class NpcProfileSavePacket {
         this.action = buf.readEnum(Action.class);
         this.group = buf.readUtf();
         this.form = buf.readUtf();
+        this.baseline = buf.readBoolean() ? buf.readNbt() : null;
     }
 
     public void encode(FriendlyByteBuf buf) {
@@ -55,6 +68,8 @@ public final class NpcProfileSavePacket {
         buf.writeEnum(action);
         buf.writeUtf(group);
         buf.writeUtf(form);
+        buf.writeBoolean(baseline != null);
+        if (baseline != null) buf.writeNbt(baseline);
     }
 
     public static void handle(NpcProfileSavePacket msg, Supplier<NetworkEvent.Context> ctx) {
@@ -81,8 +96,10 @@ public final class NpcProfileSavePacket {
                 return;
             }
             NpcCombatProfile authoritative = NpcCombatProfile.read(living);
-            NpcCombatProfile profile = NpcCombatProfile.fromTag(
-                    msg.tag == null ? new CompoundTag() : msg.tag);
+            CompoundTag edited = msg.tag == null ? new CompoundTag() : msg.tag;
+            NpcCombatProfile profile = NpcCombatProfile.fromTag(msg.baseline == null ? edited
+                    : net.bullettrain.xenopixelsmod.compat.npc.NpcProfileDiff.merge(
+                            authoritative.toTag(), msg.baseline, edited));
             preserveRuntimeState(authoritative, profile);
             profile.write(living);
             NpcAuraFx.setActive(living, profile.auraOn);

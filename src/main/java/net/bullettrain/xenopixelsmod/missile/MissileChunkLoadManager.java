@@ -26,6 +26,8 @@ public final class MissileChunkLoadManager {
     private record TicketKey(ResourceKey<Level> dimension, int chunkX, int chunkZ) {}
 
     private static final Map<TicketKey, Integer> ACTIVE = new HashMap<>();
+    /** Refreshing tickets every few ticks is enough; setChunkForced is a synchronous server operation. */
+    public static final int LIVE_TRACK_INTERVAL_TICKS = 5;
 
     private MissileChunkLoadManager() {}
 
@@ -47,9 +49,44 @@ public final class MissileChunkLoadManager {
         if (XenoPerfConfig.forceChunksPlayerRange > 0.0
                 && !playerNear(level, pos.getX() + 0.5, pos.getY() + 0.5, pos.getZ() + 0.5,
                 XenoPerfConfig.forceChunksPlayerRange)) return;
+        stampTickets(level, pos, radiusChunks, durationTicks);
+    }
 
-        int radius = Math.min(Math.max(0, radiusChunks), XenoPerfConfig.forceChunksRadius);
-        int duration = Math.max(40, Math.min(durationTicks, XenoPerfConfig.forceChunksDurationTicks));
+    /**
+     * Live entity-missile corridor. Independent of {@link XenoPerfConfig#forceChunksEnabled}
+     * so a round can keep ticking through previously unloaded terrain.
+     */
+    public static void trackLiveMissile(ServerLevel level, Vec3 position, BlockPos target) {
+        trackLiveMissile(level, position, Vec3.ZERO, target);
+    }
+
+    public static void trackLiveMissile(ServerLevel level, Vec3 position, Vec3 velocity, BlockPos target) {
+        if (level == null || position == null || !XenoPerfConfig.perfEnabled
+                || !XenoPerfConfig.missileFlightTickets) {
+            return;
+        }
+        // The current chunk and a short moving corridor are refreshed periodically by the
+        // entity, rather than forcing/recomputing the full corridor every tick.
+        stampTickets(level, BlockPos.containing(position), 0, 20 * 8);
+        Vec3 aim = target == null ? null : Vec3.atCenterOf(target);
+        MissileFlightCorridor.visitChunks(position, velocity == null ? Vec3.ZERO : velocity, aim,
+                (cx, cz) -> forceChunk(level, cx, cz, 20 * 8));
+        if (target != null) {
+            int radius = MissileFlightCorridor.targetIsNear(position, aim) ? 1 : 0;
+            stampTickets(level, target, radius, 20 * 8);
+        }
+    }
+
+    public static boolean isEntityChunkReady(Level level, Vec3 position) {
+        if (level == null || position == null) return false;
+        ChunkPos chunk = new ChunkPos(BlockPos.containing(position));
+        return level.hasChunk(chunk.x, chunk.z);
+    }
+
+    private static void stampTickets(ServerLevel level, BlockPos pos, int radiusChunks, int durationTicks) {
+        int radius = Math.min(Math.max(0, radiusChunks), Math.max(1, XenoPerfConfig.forceChunksRadius));
+        int duration = Math.max(40, Math.min(durationTicks,
+                Math.max(40, XenoPerfConfig.forceChunksDurationTicks)));
         ChunkPos center = new ChunkPos(pos);
         for (int dx = -radius; dx <= radius; dx++) {
             for (int dz = -radius; dz <= radius; dz++) {
@@ -82,12 +119,7 @@ public final class MissileChunkLoadManager {
 
     public static void trackMissile(ServerLevel level, Vec3 position, BlockPos target) {
         if (level == null || position == null || level.getServer().getTickCount() % 20 != 0) return;
-        if (target != null) {
-            forceNear(level, target, XenoPerfConfig.forceChunksRadius,
-                    XenoPerfConfig.forceChunksDurationTicks, Role.TARGET);
-        }
-        forceNear(level, position, XenoPerfConfig.forceChunksRadius,
-                XenoPerfConfig.forceChunksDurationTicks, Role.VEHICLE);
+        trackLiveMissile(level, position, target);
     }
 
     private static boolean playerNear(ServerLevel level, double x, double y, double z, double range) {

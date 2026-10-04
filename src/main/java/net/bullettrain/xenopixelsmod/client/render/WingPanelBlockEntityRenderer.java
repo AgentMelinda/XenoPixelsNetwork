@@ -3,6 +3,7 @@ package net.bullettrain.xenopixelsmod.client.render;
 import com.mojang.blaze3d.vertex.PoseStack;
 import net.bullettrain.xenopixelsmod.block.custom.WingPanelBlock;
 import net.bullettrain.xenopixelsmod.block.custom.WingPanelDebugRotation;
+import net.bullettrain.xenopixelsmod.block.custom.WingPanelForkBlock;
 import net.bullettrain.xenopixelsmod.block.custom.WingPanelPose;
 import net.bullettrain.xenopixelsmod.block.entity.WingPanelBlockEntity;
 import net.minecraft.client.Minecraft;
@@ -67,6 +68,10 @@ public class WingPanelBlockEntityRenderer implements BlockEntityRenderer<WingPan
             ResourceLocation.fromNamespaceAndPath(XenoPixelsMod.MOD_ID, "block/wing_panel_base"));
     private static final ModelResourceLocation FLAP_MODEL = ModelResourceLocation.standalone(
             ResourceLocation.fromNamespaceAndPath(XenoPixelsMod.MOD_ID, "block/wing_panel_flap"));
+    private static final ModelResourceLocation BASE_MODEL_FORK = ModelResourceLocation.standalone(
+            ResourceLocation.fromNamespaceAndPath(XenoPixelsMod.MOD_ID, "block/wing_panel_base_fork"));
+    private static final ModelResourceLocation FLAP_MODEL_FORK = ModelResourceLocation.standalone(
+            ResourceLocation.fromNamespaceAndPath(XenoPixelsMod.MOD_ID, "block/wing_panel_flap_fork"));
 
     private final RandomSource random = RandomSource.create();
 
@@ -87,8 +92,9 @@ public class WingPanelBlockEntityRenderer implements BlockEntityRenderer<WingPan
         var modelManager = Minecraft.getInstance().getModelManager();
         // Historical model-name accident: wing_panel_flap.json is the SMALL fixed stub,
         // wing_panel_base.json is the LARGE moving control surface.
-        BakedModel stubModel = modelManager.getModel(FLAP_MODEL);
-        BakedModel surfaceModel = modelManager.getModel(BASE_MODEL);
+        boolean fork = state.getBlock() instanceof WingPanelForkBlock;
+        BakedModel stubModel = modelManager.getModel(fork ? FLAP_MODEL_FORK : FLAP_MODEL);
+        BakedModel surfaceModel = modelManager.getModel(fork ? BASE_MODEL_FORK : BASE_MODEL);
 
         // Copycat wings carry a copied material; plain wings return ModelData.EMPTY (no-op).
         ModelData modelData = be.getModelData();
@@ -104,16 +110,18 @@ public class WingPanelBlockEntityRenderer implements BlockEntityRenderer<WingPan
         float g = (tint >> 8 & 0xFF) / 255.0f;
         float b = (tint & 0xFF) / 255.0f;
 
+        int hinge = fork ? be.getHingeRotation() : 0;
+
         // Fixed stub at the hinge line: mount orientation only, never deflects.
         poseStack.pushPose();
-        poseStack.mulPose(WingPanelPose.fixedMatrix(state));
+        poseStack.mulPose(WingPanelPose.fixedMatrix(state, hinge));
         drawModel(poseStack, state, stubModel, modelData, bufferSource, light, packedOverlay, r, g, b);
         poseStack.popPose();
 
         // Moving control surface: same orientation, plus the live deflection, pivoting on the
         // stub/surface seam so the hinge line itself stays put and only the big piece swings.
         poseStack.pushPose();
-        poseStack.mulPose(WingPanelPose.hingedMatrix(state, deg));
+        poseStack.mulPose(WingPanelPose.hingedMatrix(state, deg, hinge));
         drawModel(poseStack, state, surfaceModel, modelData, bufferSource, light, packedOverlay, r, g, b);
         poseStack.popPose();
     }
@@ -123,12 +131,22 @@ public class WingPanelBlockEntityRenderer implements BlockEntityRenderer<WingPan
                             float r, float g, float b) {
         BlockRenderDispatcher dispatcher = Minecraft.getInstance().getBlockRenderer();
         random.setSeed(MODEL_SEED);
+        boolean drew = false;
         for (RenderType chunkType : model.getRenderTypes(state, random, modelData)) {
+            drew = true;
             dispatcher.getModelRenderer().renderModel(
                     poseStack.last(),
                     bufferSource.getBuffer(RenderTypeHelper.getEntityRenderType(chunkType, false)),
                     state, model, r, g, b, packedLight, packedOverlay,
                     modelData, chunkType);
+        }
+        if (!drew) {
+            RenderType fallback = RenderType.solid();
+            dispatcher.getModelRenderer().renderModel(
+                    poseStack.last(),
+                    bufferSource.getBuffer(RenderTypeHelper.getEntityRenderType(fallback, false)),
+                    state, model, r, g, b, packedLight, packedOverlay,
+                    modelData, fallback);
         }
     }
 

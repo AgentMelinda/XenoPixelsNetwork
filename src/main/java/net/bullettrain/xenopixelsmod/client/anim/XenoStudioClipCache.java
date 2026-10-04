@@ -56,11 +56,12 @@ public final class XenoStudioClipCache {
         BAKED.clear();
         FAILURES.clear();
         loaded = true;
-        Path dir = XenoAnimClip.dir();
-        if (!Files.isDirectory(dir)) return;
         int files = 0;
-        for (String file : XenoAnimClip.listSaved()) {
-            if (bakeFile(dir.resolve(file), file)) files++;
+        Path dir = XenoAnimClip.dir();
+        if (Files.isDirectory(dir)) {
+            for (String file : XenoAnimClip.listSaved()) {
+                if (bakeFile(dir.resolve(file), file)) files++;
+            }
         }
         // Server clips are baked last so they win a name clash: on a server everybody has to be
         // watching the same animation, and the local copy is the one that is out of step.
@@ -86,6 +87,11 @@ public final class XenoStudioClipCache {
                 return false;
             }
             BAKED.putAll(baked.animations());
+            String canonical = XenoAnimClip.animationNameForFile(label);
+            if (canonical != null) {
+                Animation first = baked.animations().values().iterator().next();
+                BAKED.putIfAbsent(canonical, first);
+            }
             return true;
         } catch (IOException | RuntimeException e) {
             // One malformed clip must not take the rest of the cache - or a punch - down with it.

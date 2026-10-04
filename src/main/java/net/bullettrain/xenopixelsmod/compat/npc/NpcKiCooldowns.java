@@ -15,21 +15,38 @@ public final class NpcKiCooldowns {
     private NpcKiCooldowns() {}
 
     public static boolean ready(LivingEntity npc, String id) {
-        if (npc == null || id == null || id.isBlank()) return false;
-        return remaining(npc, id) <= 0;
+        return npc != null && ready(npc.getUUID(), id);
+    }
+
+    public static boolean ready(UUID npcId, String id) {
+        if (npcId == null || id == null || id.isBlank()) return false;
+        return remaining(npcId, id) <= 0;
     }
 
     public static int remaining(LivingEntity npc, String id) {
-        if (npc == null || id == null) return 0;
-        Map<String, Integer> map = ACTIVE.get(npc.getUUID());
+        return npc == null ? 0 : remaining(npc.getUUID(), id);
+    }
+
+    public static int remaining(UUID npcId, String id) {
+        if (npcId == null || id == null) return 0;
+        Map<String, Integer> map = ACTIVE.get(npcId);
         return map == null ? 0 : Math.max(0, map.getOrDefault(normalize(id), 0));
+    }
+
+    public static void consume(LivingEntity npc, String id, int ticks) {
+        if (npc != null) consume(npc.getUUID(), id, ticks);
+    }
+
+    public static void consume(UUID npcId, String id, int ticks) {
+        if (npcId == null || id == null || id.isBlank() || ticks <= 0) return;
+        ACTIVE.computeIfAbsent(npcId, ignored -> new ConcurrentHashMap<>())
+                .put(normalize(id), ticks);
     }
 
     public static void consume(LivingEntity npc, KiAttackData data, float chargeFactor) {
         if (npc == null || data == null) return;
         int ticks = Math.max(1, (int) Math.ceil(data.getActualCooldown() * chargeFactor));
-        ACTIVE.computeIfAbsent(npc.getUUID(), ignored -> new ConcurrentHashMap<>())
-                .put(normalize(data.getId()), ticks);
+        consume(npc.getUUID(), data.getId(), ticks);
     }
 
     public static void consume(LivingEntity npc, StrikeAttackData data) {

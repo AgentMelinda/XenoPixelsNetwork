@@ -1,0 +1,14 @@
+{
+  "schema": 1,
+  "role": "creature",
+  "brain": "v5",
+  "body_family": "creature",
+  "decision_ticks": {
+    "combat": 10,
+    "active": 20,
+    "idle": 40
+  },
+  "refs": {
+    "lines": "xenopixelsmod:npcs/lines/default"
+  }
+}

@@ -375,6 +375,18 @@ public final class XenoHudConfig {
     }
 
     /**
+     * True when the main HUD panel is drawing the combat cooldowns itself.
+     *
+     * <p>Both the unified renderer and the BT3 one lay the chips out inside their own panel, so the
+     * standalone strip has to stand down for either of them or a second copy appears at its own
+     * position. One question rather than two so a third such renderer cannot be added without
+     * answering it.
+     */
+    public static boolean hudOwnsCooldownRail() {
+        return renderer == XenoHudRenderer.MODERN_UNIFIED || renderer == XenoHudRenderer.BT3;
+    }
+
+    /**
      * What happens to the DragonMineZ menus behind V, and to the DMZ HUD textures that follow the
      * same setting -- lock-on, radar and the four scouters.
      *
@@ -571,12 +583,23 @@ public final class XenoHudConfig {
         unifiedHeight = Math.max(1, height);
     }
 
+    /**
+     * Renderers whose footprint is not a constant and so has to be reported each frame.
+     *
+     * <p>Both the unified renderer and the BT3 one grow downwards with the combat rail, and BT3
+     * grows again while the follow-up prompt is up. The two fixed-size renderers keep the shipped
+     * constants, which is why this is a question rather than one reported size for everybody.
+     */
+    private static boolean reportsOwnSize() {
+        return renderer == XenoHudRenderer.MODERN_UNIFIED || renderer == XenoHudRenderer.BT3;
+    }
+
     public static int baseWidth() {
-        return unifiedActive() ? unifiedWidth : BASE_WIDTH;
+        return reportsOwnSize() ? unifiedWidth : BASE_WIDTH;
     }
 
     public static int baseHeight() {
-        return unifiedActive() ? unifiedHeight : BASE_HEIGHT;
+        return reportsOwnSize() ? unifiedHeight : BASE_HEIGHT;
     }
 
     public static int scaledWidth() {

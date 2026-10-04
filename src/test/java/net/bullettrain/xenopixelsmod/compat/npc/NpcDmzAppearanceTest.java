@@ -160,8 +160,8 @@ class NpcDmzAppearanceTest {
         current.auraScale = 1.7f;
         CompoundTag encoded = current.toTag();
         // Tracks NpcCombatProfile.CURRENT_SCHEMA; bump both together when a persisted field is
-        // added. 12 added MeleeAnimation.
-        assertEquals(12, encoded.getInt("Schema"));
+        // added. 20 adds a one-time marker for native XenoNPC ordered-attack defaults.
+        assertEquals(20, encoded.getInt("Schema"));
         assertEquals(1.7f, NpcCombatProfile.fromTag(encoded).auraScale, 1.0e-6f);
     }
 

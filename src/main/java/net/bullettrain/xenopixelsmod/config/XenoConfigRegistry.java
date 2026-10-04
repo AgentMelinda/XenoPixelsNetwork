@@ -206,6 +206,10 @@ public final class XenoConfigRegistry {
                 () -> XenoPerfConfig.statsSyncOnlyWhenDirty,
                 v -> XenoPerfConfig.statsSyncOnlyWhenDirty = v,
                 "perf.statsdirty");
+        perfBool("perf.missileFlightTickets", "Force-load live missile corridor",
+                () -> XenoPerfConfig.missileFlightTickets,
+                v -> XenoPerfConfig.missileFlightTickets = v,
+                "perf.missiletickets");
         perfBool("perf.sableContraptionCullEnabled", "Clamp Sable+Create collideEntities queries",
                 () -> XenoPerfConfig.sableContraptionCullEnabled,
                 v -> XenoPerfConfig.sableContraptionCullEnabled = v,
