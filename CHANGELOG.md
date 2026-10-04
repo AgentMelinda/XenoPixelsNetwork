@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.5.6-1.21.1 — 2026-10-04
+
+- HD aura **v4**: live follow no longer treats `aura4` as a silhouette. The smoke wall and inner
+  shell sit on the v1 box (drop 0.44) like `aura_out_*` / `aura_in_*`. Spikes stay on aura3.
+
 ## 0.5.5-1.21.1 — 2026-10-04
 
 - HD aura **v4** plume: `aura4` plays OuterA + Edge smoke again (the v1 wall), with normal blend,

@@ -229,10 +229,10 @@ public final class HdAuraPlan {
         return "v2".equals(v) || "v3".equals(v) || "v4".equals(v);
     }
 
-    /** Live copies of aura2 / aura3 / aura4 sit on the silhouette box; aura_in / aura_out stay on v1. */
+    /** Live copies of aura2 / aura3 sit on the silhouette box; aura_in / aura_out / aura4 stay on v1. */
     public static boolean silhouetteEffect(String path) {
         if (path == null) return false;
-        return path.startsWith("aura2/") || path.startsWith("aura3/") || path.startsWith("aura4/");
+        return path.startsWith("aura2/") || path.startsWith("aura3/");
     }
 
     /** v1 and v3 play the dense outer billow column ({@code aura_out_*}). v4 uses the lean column. */

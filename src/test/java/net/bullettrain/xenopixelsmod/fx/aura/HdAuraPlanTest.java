@@ -142,8 +142,15 @@ class HdAuraPlanTest {
         assertTrue(HdAuraPlan.playsV1Inner("v4"));
         assertFalse(HdAuraPlan.playsV1Outer("v4"), "v4 must not spawn dense aura_out_*; it uses aura4 plume");
         assertTrue(HdAuraPlan.playsLeanOuter("v4"));
-        assertTrue(HdAuraPlan.silhouetteEffect("aura4/aura4_ffd700"));
-        assertTrue(HdAuraPlan.silhouetteEffect("aura4/aura4_ffd700_nz"));
+        // aura4 is a feet-up v1 column (smoke wall). Treating it as a silhouette
+        // (drop 0, full DMZ box, FP centre nudge) hides the wall inside the spikes.
+        assertFalse(HdAuraPlan.silhouetteEffect("aura4/aura4_ffd700"));
+        assertFalse(HdAuraPlan.silhouetteEffect("aura4/aura4_ffd700_nz"));
+        assertTrue(HdAuraPlan.silhouetteEffect("aura3/aura3_ffd700"));
+        assertFalse(HdAuraPlan.silhouetteEffect("aura/aura_in_ffd700"));
+        assertEquals(0.44f, HdAuraPlan.drop(HdAuraPlan.silhouetteEffect("aura4/aura4_ffd700")));
+        assertArrayEquals(HdAuraPlan.shape(false),
+                HdAuraPlan.shape(HdAuraPlan.silhouetteEffect("aura4/aura4_ffd700")));
         assertArrayEquals(HdAuraPlan.shape(true), HdAuraPlan.shape(HdAuraPlan.silhouetteBox("v4")));
     }
 
