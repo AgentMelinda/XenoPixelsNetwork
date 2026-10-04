@@ -142,6 +142,32 @@ class RacePackServiceTest {
     }
 
     @Test
+    void updateRacePackMergesColoursAndKeepsTail(@TempDir Path root) throws Exception {
+        Path dmz = root.resolve("dragonminez");
+        assertTrue(RacePackService.createRacePack(dmz, "xeno_merge", RacePackTemplate.defaults()).ok());
+        Path character = dmz.resolve("races").resolve("xeno_merge").resolve("character.json");
+        JsonObject existing = JsonParser.parseString(Files.readString(character, StandardCharsets.UTF_8))
+                .getAsJsonObject();
+        existing.addProperty("hasSaiyanTail", true);
+        existing.addProperty("customNote", "keep-me");
+        Files.writeString(character, existing.toString(), StandardCharsets.UTF_8);
+
+        RacePackTemplate next = new RacePackTemplate(
+                true, true, true, "human", "kakarot",
+                "#111111", "#222222", "#333333",
+                "#444444", "#555555", "#666666", "#7FFFFF");
+        assertTrue(RacePackService.updateRacePack(dmz, "xeno_merge", next,
+                RacePackService.RacePartDefaults.defaults()).ok());
+        JsonObject updated = JsonParser.parseString(Files.readString(character, StandardCharsets.UTF_8))
+                .getAsJsonObject();
+        assertTrue(updated.get("hasSaiyanTail").getAsBoolean());
+        assertEquals("keep-me", updated.get("customNote").getAsString());
+        assertEquals("#111111", updated.get("defaultBodyColor").getAsString());
+        assertEquals("#222222", updated.get("defaultBodyColor2").getAsString());
+        assertEquals("#666666", updated.get("defaultEye2Color").getAsString());
+    }
+
+    @Test
     void readPackSkipsDefaultRaces(@TempDir Path root) {
         Path dmz = root.resolve("dragonminez");
         assertTrue(RacePackService.readPack(dmz, "saiyan").isEmpty());

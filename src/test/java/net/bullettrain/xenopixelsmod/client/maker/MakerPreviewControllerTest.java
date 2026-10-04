@@ -86,4 +86,13 @@ class MakerPreviewControllerTest {
         preview.markDirty();
         assertTrue(preview.isDirty());
     }
+
+    @Test
+    void extraColourChannelsMarkAppearanceUsed() {
+        assertTrue(new MakerPreviewAppearance().isEmpty());
+        assertFalse(new MakerPreviewAppearance().bodyColor2("#111111").isEmpty());
+        assertFalse(new MakerPreviewAppearance().bodyColor3("#222222").isEmpty());
+        assertFalse(new MakerPreviewAppearance().eye2Color("#333333").isEmpty());
+        assertFalse(new MakerPreviewAppearance().auraColor("#7FFFFF").isEmpty());
+    }
 }

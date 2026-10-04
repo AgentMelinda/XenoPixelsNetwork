@@ -4,6 +4,7 @@ import net.neoforged.fml.common.EventBusSubscriber;
 
 import net.bullettrain.xenopixelsmod.XenoPixelsMod;
 import net.bullettrain.xenopixelsmod.client.config.XenoClientConfig;
+import net.bullettrain.xenopixelsmod.client.maker.MakerHudGate;
 import net.minecraft.resources.ResourceLocation;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.neoforge.client.event.RenderGuiLayerEvent;
@@ -43,6 +44,11 @@ public final class DmzHudOverlayBlocker {
     public static void onRenderOverlay(RenderGuiLayerEvent.Pre event) {
         ResourceLocation id = event.getName();
 
+        if (MakerHudGate.hideWorldHud() && isStudioBlockingLayer(id)) {
+            event.setCanceled(true);
+            return;
+        }
+
         // Always replace DMZ technique bars with ours when enabled
         if (XenoClientConfig.techniqueHotbarEnabled && DMZ_TECHNIQUE_UI.contains(id)) {
             event.setCanceled(true);
@@ -53,5 +59,17 @@ public final class DmzHudOverlayBlocker {
         if (DMZ_MAIN_HUD.contains(id)) {
             event.setCanceled(true);
         }
+    }
+
+    static boolean isStudioBlockingLayer(ResourceLocation id) {
+        if (id == null) {
+            return false;
+        }
+        if (DMZ_MAIN_HUD.contains(id) || DMZ_TECHNIQUE_UI.contains(id)) {
+            return true;
+        }
+        return "xenopixelsmod".equals(id.getNamespace())
+                && id.getPath().startsWith("xeno_")
+                && !"xeno_combat_flash".equals(id.getPath());
     }
 }

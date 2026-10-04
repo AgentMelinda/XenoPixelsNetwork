@@ -140,6 +140,52 @@ class RaceCharacterMakerAtlasTest {
     }
 
     @Test
+    void racePagerXsKeepsFourCardsOffArrows() {
+        int originX = 0;
+        int previewX = 352;
+        int arrowW = 22;
+        int gutter = 4;
+        int cardW = 72;
+        int[] pager = RaceCharacterMakerScreen.racePagerXs(originX, previewX, arrowW, gutter, cardW);
+        assertEquals(4, pager.length);
+        int leftX = pager[0];
+        int cardsX = pager[1];
+        int rightX = pager[2];
+        int maxVisible = pager[3];
+        assertEquals(0, leftX);
+        assertEquals(26, cardsX);
+        assertEquals(330, rightX);
+        assertEquals(4, maxVisible);
+        assertTrue(leftX + arrowW + gutter <= cardsX);
+        int lastCardRight = cardsX + (maxVisible - 1) * (cardW + gutter) + cardW;
+        assertTrue(lastCardRight <= rightX);
+        assertTrue(rightX + arrowW <= previewX);
+    }
+
+    @Test
+    void colorSlotLabelsAreCategoryScoped() {
+        assertEquals(List.of("Skin", "Skin 2", "Skin 3"),
+                RaceCharacterMakerScreen.colorSlotLabels(RaceMakerParts.Category.BODY));
+        assertEquals(List.of("Eye 1", "Eye 2"),
+                RaceCharacterMakerScreen.colorSlotLabels(RaceMakerParts.Category.EYES));
+        assertEquals(List.of("Hair"),
+                RaceCharacterMakerScreen.colorSlotLabels(RaceMakerParts.Category.HAIR));
+        assertEquals(List.of("Aura"),
+                RaceCharacterMakerScreen.colorSlotLabels(RaceMakerParts.Category.AURA));
+        assertTrue(RaceCharacterMakerScreen.colorSlotLabels(RaceMakerParts.Category.MOUTH).isEmpty());
+        assertTrue(RaceCharacterMakerScreen.colorSlotLabels(RaceMakerParts.Category.CLOTHES).isEmpty());
+        assertTrue(RaceCharacterMakerScreen.colorSlotLabels(RaceMakerParts.Category.EXTRA).isEmpty());
+    }
+
+    @Test
+    void makerHudGateRecognizesMakerScreens() {
+        assertTrue(MakerHudGate.isMakerScreenClass(RaceCharacterMakerScreen.class));
+        assertTrue(MakerHudGate.isMakerScreenClass(XenoMakerHubScreen.class));
+        assertTrue(MakerHudGate.isMakerScreenClass(HairMakerScreen.class));
+        assertFalse(MakerHudGate.isMakerScreenClass(String.class));
+    }
+
+    @Test
     void presetCatalogWiredForCyclerLabels() {
         List<String> cats = MakerPresetCatalog.categoryLabels();
         assertEquals(7, cats.size());

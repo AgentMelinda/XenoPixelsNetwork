@@ -10,6 +10,7 @@ import net.bullettrain.xenopixelsmod.client.ui.atlas.XenoAtlasSprites;
 import net.bullettrain.xenopixelsmod.command.XenoPermissions;
 import net.bullettrain.xenopixelsmod.dmz.race.RacePackService;
 import net.bullettrain.xenopixelsmod.dmz.race.RacePackTemplate;
+import net.bullettrain.xenopixelsmod.hair.HairMakerDocument;
 import net.bullettrain.xenopixelsmod.hair.HairPresetImport;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
@@ -30,9 +31,10 @@ import java.util.Locale;
  *
  * <p>Chrome: gold {@code banner_top} title strip; inner category / part grid / preview keep green
  * Task-9 sprites ({@code xeno_maker_*}). Controls: {@link AtlasCycle} for category + presets
- * ({@link MakerPresetCatalog}), gender Male/Female cycle, {@link ColorSwatch} +
- * {@link InlineColorPicker} for Skin / Eyes / Hair (preview-local only — no invented DMZ
- * colour write-back). Part grid remains clickable; cycle jumps the same selection.
+ * ({@link MakerPresetCatalog}), gender Male/Female cycle, category-scoped
+ * {@link ColorSwatch} + {@link InlineColorPicker} (Body Skin/Skin2/Skin3, Eyes Eye1/Eye2,
+ * Hair, Aura). Preview mutates Character for this frame only. Save merges verified
+ * colour keys into an existing custom pack.
  *
  * <p>Create Race enabled (Task 7 READY): {@link RacePackService#createRacePack} then
  * {@code ConfigManager.reload()}.
@@ -48,6 +50,7 @@ public final class RaceCharacterMakerScreen extends ScaledScreen {
     private static final String PREVIEW = "xeno_maker_hair_preview";
     private static final String TILE = "icon_slot_lg";
     private static final String TOOL = "mynpcs_button_row";
+    private static final String ARROW = "mynpcs_button_arrow";
 
     private static final XenoAtlasSprites.Theme CHROME = XenoAtlasSprites.Theme.GOLD;
     private static final XenoAtlasSprites.Theme INNER = XenoAtlasSprites.Theme.GREEN;
@@ -58,6 +61,10 @@ public final class RaceCharacterMakerScreen extends ScaledScreen {
     private static final int OK = 0xFF9AFFB0;
     private static final int WARN = 0xFFFF8A80;
     private static final int GLOW = 0x9900C853;
+    private static final int COLOR_SLOT_W = 92;
+    private static final int COLOR_BOX_W = 70;
+    private static final int COLOR_LABEL_H = 10;
+    private static final int COLOR_STRIP_H = 28;
 
     /** Task 7 evidence READY — Create Race is enabled. */
     public static final boolean CREATE_RACE_READY = true;
@@ -88,10 +95,13 @@ public final class RaceCharacterMakerScreen extends ScaledScreen {
     private String status = "Select race, category, and part. Preview = true local player.";
     private int statusColor = MUTED;
 
-    /** Preview-local colours only — no DMZ apply path yet. */
     private String skinColorHex = "#F4C7A1";
+    private String skin2Hex = "#F4C7A1";
+    private String skin3Hex = "#F4C7A1";
     private String eyeColorHex = "#000000";
+    private String eye2Hex = "#000000";
     private String hairColorHex = "#2B1B0E";
+    private String auraHex = "#7FFFFF";
     private String createIdText = "";
 
     private int originX;
@@ -120,12 +130,11 @@ public final class RaceCharacterMakerScreen extends ScaledScreen {
     private int previewY;
     private int previewW;
     private int previewH;
+    private int colorY;
+    private int footerY;
     private int tileW;
     private int tileH;
     private EditBox createIdBox;
-    private EditBox skinBox;
-    private EditBox eyeBox;
-    private EditBox hairBox;
 
     public RaceCharacterMakerScreen(Screen parent) {
         super(Component.literal("Race Character Maker"));
@@ -139,7 +148,7 @@ public final class RaceCharacterMakerScreen extends ScaledScreen {
 
     @Override
     protected int getMinGuiHeight() {
-        return 472;
+        return 500;
     }
 
     @Override
@@ -171,8 +180,10 @@ public final class RaceCharacterMakerScreen extends ScaledScreen {
 
         bannerX = originX + (contentW - bannerW) / 2;
         bannerY = originY;
-        raceRowX = originX + 24;
         raceRowY = bannerY + bannerH + 6;
+        int[] pager = racePagerXs(originX, originX + categoryW + 8 + gridW + 8,
+                AtlasButton.nativeWidth(ARROW), 4, raceCardW);
+        raceRowX = pager[1];
         // Gender / Category / Race sit on one packed row with labels above.
         // AtlasCycle is 108px; stacking two at the same x produced EyeEyes / MouMouth.
         cycleX = cycleRowXs(originX, AtlasCycle.nativeWidth(), 12);
@@ -191,12 +202,12 @@ public final class RaceCharacterMakerScreen extends ScaledScreen {
 
         clearWidgets();
 
-        // Race-card pager — only ~4 cards fit; custom races live past that.
-        addRenderableWidget(new AtlasButton(originX, raceRowY + (raceCardH - 22) / 2,
-                Component.literal("<"), TOOL, b -> scrollRaces(-1)));
-        addRenderableWidget(new AtlasButton(previewX - AtlasButton.nativeWidth(TOOL) - 4,
-                raceRowY + (raceCardH - 22) / 2,
-                Component.literal(">"), TOOL, b -> scrollRaces(1)));
+        int[] pagerBtns = racePagerXs(originX, previewX, AtlasButton.nativeWidth(ARROW), 4, raceCardW);
+        int arrowY = raceRowY + (raceCardH - AtlasButton.nativeHeight(ARROW)) / 2;
+        addRenderableWidget(new AtlasButton(pagerBtns[0], arrowY,
+                Component.literal("<"), ARROW, b -> scrollRaces(-1)));
+        addRenderableWidget(new AtlasButton(pagerBtns[2], arrowY,
+                Component.literal(">"), ARROW, b -> scrollRaces(1)));
 
         int genderIndex = "female".equalsIgnoreCase(gender) ? 1 : 0;
         addRenderableWidget(new AtlasCycle(cycleX[0], cycleY, Component.literal("Gender"),
@@ -219,47 +230,9 @@ public final class RaceCharacterMakerScreen extends ScaledScreen {
         addRenderableWidget(new AtlasCycle(cycleX[2], cycleY,
                 Component.literal("Race"), raceLabels, raceIndex, this::onRaceListCycle));
 
-        // Colours in one horizontal strip under the preview. Footer stays under the left columns.
-        int colorY = previewY + previewH + 8;
-        int boxW = 48;
-        int slotW = 92;
-        skinBox = colorField(previewX, colorY, boxW, skinColorHex, v -> {
-            skinColorHex = v;
-            markColourPreview("Skin");
-        });
-        addRenderableWidget(skinBox);
-        addRenderableWidget(new ColorSwatch(previewX + boxW + 2, colorY,
-                () -> skinColorHex, () -> openColorPicker(skinBox, h -> {
-                    skinColorHex = h;
-                    skinBox.setValue(h);
-                    markColourPreview("Skin");
-                }), () -> colorPicker.isOpenFor(skinBox)));
-
-        eyeBox = colorField(previewX + slotW, colorY, boxW, eyeColorHex, v -> {
-            eyeColorHex = v;
-            markColourPreview("Eyes");
-        });
-        addRenderableWidget(eyeBox);
-        addRenderableWidget(new ColorSwatch(previewX + slotW + boxW + 2, colorY,
-                () -> eyeColorHex, () -> openColorPicker(eyeBox, h -> {
-                    eyeColorHex = h;
-                    eyeBox.setValue(h);
-                    markColourPreview("Eyes");
-                }), () -> colorPicker.isOpenFor(eyeBox)));
-
-        hairBox = colorField(previewX + slotW * 2, colorY, boxW, hairColorHex, v -> {
-            hairColorHex = v;
-            markColourPreview("Hair");
-        });
-        addRenderableWidget(hairBox);
-        addRenderableWidget(new ColorSwatch(previewX + slotW * 2 + boxW + 2, colorY,
-                () -> hairColorHex, () -> openColorPicker(hairBox, h -> {
-                    hairColorHex = h;
-                    hairBox.setValue(h);
-                    markColourPreview("Hair");
-                }), () -> colorPicker.isOpenFor(hairBox)));
-
-        int footerY = Math.max(categoryY + categoryH, colorY) + 8;
+        colorY = previewY + previewH + 8;
+        addCategoryColorSlots(colorY);
+        footerY = Math.max(categoryY + categoryH, colorY + COLOR_STRIP_H) + 8;
         int compact = AtlasButton.nativeWidth(TOOL);
         int g = 4;
         createIdBox = new EditBox(font, originX, footerY, 88, 16,
@@ -290,19 +263,104 @@ public final class RaceCharacterMakerScreen extends ScaledScreen {
                 Component.literal("Save"), TOOL, b -> saveRace());
         save.active = CREATE_RACE_READY && mayCreateRace() && custom;
         save.setTooltip(Tooltip.create(Component.literal(custom
-                ? "Overwrite races/" + selectedRace + "/character.json with current colours."
+                ? "Merge colours and part indices into races/" + selectedRace + "/character.json."
                 : "Select a created (custom) race pack to edit and save.")));
         addRenderableWidget(save);
 
         addRenderableWidget(new AtlasButton(originX + 92 + (compact + g) * 2, footerY,
                 Component.literal("Close"), TOOL, b -> onClose()));
 
+        AtlasButton hairEditor = new AtlasButton(originX + 92 + (compact + g) * 3, footerY,
+                Component.literal("Hair Editor"), TOOL, b -> openHairEditor());
+        hairEditor.setTooltip(Tooltip.create(Component.literal(
+                "Opens Hair Studio on the live player mesh. Does not write this pack's character.json.")));
+        addRenderableWidget(hairEditor);
+
         schedulePreview();
     }
 
     private int raceCardMaxVisible() {
-        int rowW = Math.max(76, previewX - 8 - raceRowX);
-        return Math.max(1, rowW / (raceCardW + 4));
+        return racePagerXs(originX, previewX, AtlasButton.nativeWidth(ARROW), 4, raceCardW)[3];
+    }
+
+    /**
+     * {@code [leftArrowX, cardsX, rightArrowX, maxVisible]}. Four 72px cards fit between
+     * 22px gutters when {@code previewX = originX + 352}.
+     */
+    static int[] racePagerXs(int originX, int previewX, int arrowW, int gutter, int cardW) {
+        int leftX = originX;
+        int cardsX = originX + Math.max(1, arrowW) + Math.max(0, gutter);
+        int rightX = previewX - Math.max(1, arrowW);
+        int stride = Math.max(1, cardW) + Math.max(0, gutter);
+        int maxVisible = Math.max(1, (rightX - cardsX) / stride);
+        return new int[] {leftX, cardsX, rightX, maxVisible};
+    }
+
+    static List<String> colorSlotLabels(RaceMakerParts.Category cat) {
+        if (cat == null) {
+            return List.of();
+        }
+        return switch (cat) {
+            case BODY -> List.of("Skin", "Skin 2", "Skin 3");
+            case EYES -> List.of("Eye 1", "Eye 2");
+            case HAIR -> List.of("Hair");
+            case AURA -> List.of("Aura");
+            default -> List.of();
+        };
+    }
+
+    private void addCategoryColorSlots(int y) {
+        List<String> labels = colorSlotLabels(category);
+        int boxY = y + COLOR_LABEL_H;
+        for (int i = 0; i < labels.size(); i++) {
+            String label = labels.get(i);
+            int x = previewX + i * COLOR_SLOT_W;
+            EditBox box = colorField(x, boxY, COLOR_BOX_W, hexForSlot(label), text -> {
+                setHexForSlot(label, text);
+                markColourPreview(label);
+            });
+            addRenderableWidget(box);
+            addRenderableWidget(new ColorSwatch(x + COLOR_BOX_W + 2, boxY,
+                    box::getValue,
+                    () -> openColorPicker(box, h -> {
+                        box.setValue(h);
+                        setHexForSlot(label, h);
+                        markColourPreview(label);
+                    }),
+                    () -> colorPicker.isOpenFor(box)));
+        }
+    }
+
+    private String hexForSlot(String label) {
+        if (label == null) {
+            return skinColorHex;
+        }
+        return switch (label) {
+            case "Skin 2" -> skin2Hex;
+            case "Skin 3" -> skin3Hex;
+            case "Eye 1" -> eyeColorHex;
+            case "Eye 2" -> eye2Hex;
+            case "Hair" -> hairColorHex;
+            case "Aura" -> auraHex;
+            default -> skinColorHex;
+        };
+    }
+
+    private void setHexForSlot(String label, String hex) {
+        String value = hex == null ? "" : hex;
+        if (label == null) {
+            skinColorHex = value;
+            return;
+        }
+        switch (label) {
+            case "Skin 2" -> skin2Hex = value;
+            case "Skin 3" -> skin3Hex = value;
+            case "Eye 1" -> eyeColorHex = value;
+            case "Eye 2" -> eye2Hex = value;
+            case "Hair" -> hairColorHex = value;
+            case "Aura" -> auraHex = value;
+            default -> skinColorHex = value;
+        }
     }
 
     private void scrollRaces(int delta) {
@@ -350,8 +408,12 @@ public final class RaceCharacterMakerScreen extends ScaledScreen {
     private void schedulePreview() {
         MakerPreviewAppearance appearance = new MakerPreviewAppearance()
                 .bodyColor(skinColorHex)
+                .bodyColor2(skin2Hex)
+                .bodyColor3(skin3Hex)
                 .eye1Color(eyeColorHex)
+                .eye2Color(eye2Hex)
                 .hairColor(hairColorHex)
+                .auraColor(auraHex)
                 .gender(gender)
                 .bodyType(bodyType)
                 .eyesType(eyesType)
@@ -520,11 +582,23 @@ public final class RaceCharacterMakerScreen extends ScaledScreen {
             if (t.defaultBodyColor() != null && !t.defaultBodyColor().isBlank()) {
                 skinColorHex = t.defaultBodyColor();
             }
+            if (t.defaultBodyColor2() != null && !t.defaultBodyColor2().isBlank()) {
+                skin2Hex = t.defaultBodyColor2();
+            }
+            if (t.defaultBodyColor3() != null && !t.defaultBodyColor3().isBlank()) {
+                skin3Hex = t.defaultBodyColor3();
+            }
             if (t.defaultEye1Color() != null && !t.defaultEye1Color().isBlank()) {
                 eyeColorHex = t.defaultEye1Color();
             }
+            if (t.defaultEye2Color() != null && !t.defaultEye2Color().isBlank()) {
+                eye2Hex = t.defaultEye2Color();
+            }
             if (t.defaultHairColor() != null && !t.defaultHairColor().isBlank()) {
                 hairColorHex = t.defaultHairColor();
+            }
+            if (t.defaultAuraColor() != null && !t.defaultAuraColor().isBlank()) {
+                auraHex = t.defaultAuraColor();
             }
             RacePackService.RacePartDefaults parts = loaded.parts();
             bodyType = parts.bodyType();
@@ -656,8 +730,26 @@ public final class RaceCharacterMakerScreen extends ScaledScreen {
     private RacePackTemplate currentTemplate() {
         return new RacePackTemplate(
                 true, true, true, "human", "kakarot",
-                skinColorHex, skinColorHex, skinColorHex,
-                hairColorHex, eyeColorHex, eyeColorHex, "#7FFFFF");
+                skinColorHex, skin2Hex, skin3Hex,
+                hairColorHex, eyeColorHex, eye2Hex, auraHex);
+    }
+
+    private void openHairEditor() {
+        HairMakerDocument doc = HairMakerDocument.oneStrandDemo();
+        try {
+            HairMakerDocument seeded = new HairMakerDocument();
+            if (hairPreset > 0 && HairPresetImport.loadIntoDocument(seeded, hairPreset, "Base")) {
+                doc = seeded;
+            }
+        } catch (Throwable ignored) {
+            // HairManager is only live inside a DMZ client.
+        }
+        if (hairColorHex != null && !hairColorHex.isBlank()) {
+            doc.globalColor(hairColorHex);
+        }
+        if (minecraft != null) {
+            minecraft.setScreen(new HairMakerScreen(this, doc));
+        }
     }
 
     private RacePackService.RacePartDefaults currentParts() {
@@ -724,7 +816,7 @@ public final class RaceCharacterMakerScreen extends ScaledScreen {
                     bannerX + bannerW / 2, bannerY + bannerH / 2 - 4, GOLD);
 
             XenoAtlasSprites.setTheme(INNER);
-            int statusY = Math.max(categoryY + categoryH, previewY + previewH + 8) + 32;
+            int statusY = footerY + 22;
             graphics.drawString(font, clip(status, 96), originX, statusY, statusColor, false);
 
             graphics.drawString(font, "Gender", cycleX[0] + 4, cycleLabelY, MUTED, false);
@@ -738,21 +830,24 @@ public final class RaceCharacterMakerScreen extends ScaledScreen {
             renderPartTiles(graphics, uiMx, uiMy);
             XenoAtlasSprites.blit(graphics, PREVIEW, INNER, previewX, previewY);
             graphics.drawString(font, "Preview", previewX + 10, previewY + 8, GOLD, false);
-
-            int colorY = previewY + previewH + 8;
-            int slotW = 92;
-            graphics.drawString(font, "Skin", previewX + 68, colorY + 4, MUTED, false);
-            graphics.drawString(font, "Eyes", previewX + slotW + 68, colorY + 4, MUTED, false);
-            graphics.drawString(font, "Hair", previewX + slotW * 2 + 68, colorY + 4, MUTED, false);
+            renderColorSlotLabels(graphics);
 
             super.render(graphics, uiMx, uiMy, partialTick);
             // Player model last so atlas widgets never cover it.
-            preview.render(graphics, previewX + 8, previewY + 24, previewW - 16, previewH - 36,
+            preview.render(graphics, previewX + 8, previewY + 24, previewW - 16, previewH - 32,
                     partialTick);
             colorPicker.render(graphics, uiMx, uiMy, partialTick);
             endUiScale(graphics);
         } finally {
             XenoAtlasSprites.setTheme(previous);
+        }
+    }
+
+    private void renderColorSlotLabels(GuiGraphics graphics) {
+        List<String> labels = colorSlotLabels(category);
+        for (int i = 0; i < labels.size(); i++) {
+            graphics.drawString(font, labels.get(i),
+                    previewX + i * COLOR_SLOT_W, colorY, MUTED, false);
         }
     }
 

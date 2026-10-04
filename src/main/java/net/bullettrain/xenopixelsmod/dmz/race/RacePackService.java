@@ -199,12 +199,49 @@ public final class RacePackService {
         try {
             Path formsDir = raceDir.resolve("forms");
             Files.createDirectories(formsDir);
-            Files.writeString(character, GSON.toJson(skeletonCharacter(key, pack, appearance)),
-                    StandardCharsets.UTF_8);
+            JsonObject root = readJsonObject(character).orElseGet(() -> skeletonCharacter(key, pack, appearance));
+            mergeAppearance(root, key, pack, appearance);
+            Files.writeString(character, GSON.toJson(root), StandardCharsets.UTF_8);
             return CreateResult.ok(key, character, formsDir);
         } catch (IOException e) {
             return CreateResult.fail("Failed to update race pack: " + e.getMessage());
         }
+    }
+
+    static void mergeAppearance(JsonObject root, String raceId, RacePackTemplate template,
+                                RacePartDefaults parts) {
+        RacePackTemplate pack = template == null ? RacePackTemplate.defaults() : template;
+        RacePartDefaults appearance = parts == null ? RacePartDefaults.defaults() : parts;
+        root.addProperty("raceName", raceId);
+        root.addProperty("hasGender", pack.hasGender());
+        root.addProperty("useVanillaSkin", pack.useVanillaSkin());
+        root.addProperty("isLayered", pack.isLayered());
+        root.addProperty("racialSkill", nullTo(pack.racialSkill(), "human"));
+        root.addProperty("auraType", nullTo(pack.auraType(), "kakarot"));
+        root.addProperty("defaultBodyType", appearance.bodyType());
+        root.addProperty("defaultHairType", appearance.hairType());
+        root.addProperty("defaultEyesType", appearance.eyesType());
+        root.addProperty("defaultNoseType", appearance.noseType());
+        root.addProperty("defaultMouthType", appearance.mouthType());
+        root.addProperty("defaultTattooType", appearance.tattooType());
+        root.addProperty("defaultBodyColor", nullTo(pack.defaultBodyColor(), "#FFD3C9"));
+        root.addProperty("defaultBodyColor2", nullTo(pack.defaultBodyColor2(), "#FFD3C9"));
+        root.addProperty("defaultBodyColor3", nullTo(pack.defaultBodyColor3(), "#FFD3C9"));
+        root.addProperty("defaultHairColor", nullTo(pack.defaultHairColor(), "#222629"));
+        root.addProperty("defaultEye1Color", nullTo(pack.defaultEye1Color(), "#222629"));
+        root.addProperty("defaultEye2Color", nullTo(pack.defaultEye2Color(), "#222629"));
+        root.addProperty("defaultAuraColor", nullTo(pack.defaultAuraColor(), "#7FFFFF"));
+    }
+
+    static Optional<JsonObject> readJsonObject(Path character) {
+        try {
+            JsonElement parsed = JsonParser.parseString(Files.readString(character, StandardCharsets.UTF_8));
+            if (parsed != null && parsed.isJsonObject()) {
+                return Optional.of(parsed.getAsJsonObject());
+            }
+        } catch (Exception ignored) {
+        }
+        return Optional.empty();
     }
 
     /**

@@ -151,6 +151,7 @@ public class XenoTechniqueHotbarOverlay {
         if (!XenoClientConfig.techniqueHotbarEnabled) return;
         Minecraft mc = Minecraft.getInstance();
         if (mc.player == null || mc.options.hideGui || mc.getDebugOverlay().showDebugScreen()) return;
+        if (net.bullettrain.xenopixelsmod.client.maker.MakerHudGate.hideWorldHud()) return;
         // Chat / command prompt / any screen open: never show Alt/Ctrl tech bar
         if (XenoClientConfig.techniqueHotbarHideInChat && mc.screen != null) return;
         draw(g, g.guiWidth(), g.guiHeight(), false);

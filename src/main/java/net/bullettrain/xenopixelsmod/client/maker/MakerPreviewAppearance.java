@@ -22,7 +22,10 @@ public final class MakerPreviewAppearance {
     private CustomHair hair;
     private String hairColor;
     private String bodyColor;
+    private String bodyColor2;
+    private String bodyColor3;
     private String eye1Color;
+    private String eye2Color;
     private String auraColor;
     private Integer bodyType;
     private Integer eyesType;
@@ -86,8 +89,23 @@ public final class MakerPreviewAppearance {
         return this;
     }
 
+    public MakerPreviewAppearance bodyColor2(String hex) {
+        this.bodyColor2 = blankToNull(hex);
+        return this;
+    }
+
+    public MakerPreviewAppearance bodyColor3(String hex) {
+        this.bodyColor3 = blankToNull(hex);
+        return this;
+    }
+
     public MakerPreviewAppearance eye1Color(String hex) {
         this.eye1Color = blankToNull(hex);
+        return this;
+    }
+
+    public MakerPreviewAppearance eye2Color(String hex) {
+        this.eye2Color = blankToNull(hex);
         return this;
     }
 
@@ -143,7 +161,10 @@ public final class MakerPreviewAppearance {
         return hair == null
                 && hairColor == null
                 && bodyColor == null
+                && bodyColor2 == null
+                && bodyColor3 == null
                 && eye1Color == null
+                && eye2Color == null
                 && auraColor == null
                 && bodyType == null
                 && eyesType == null
@@ -169,7 +190,10 @@ public final class MakerPreviewAppearance {
                 copyHair(c.getHairSSJ3()),
                 c.getHairColor(),
                 c.getBodyColor(),
+                c.getBodyColor2(),
+                c.getBodyColor3(),
                 c.getEye1Color(),
+                c.getEye2Color(),
                 c.getAuraColor(),
                 c.getBodyType(),
                 c.getEyesType(),
@@ -201,8 +225,17 @@ public final class MakerPreviewAppearance {
         if (bodyColor != null) {
             c.setBodyColor(bodyColor);
         }
+        if (bodyColor2 != null) {
+            c.setBodyColor2(bodyColor2);
+        }
+        if (bodyColor3 != null) {
+            c.setBodyColor3(bodyColor3);
+        }
         if (eye1Color != null) {
             c.setEye1Color(eye1Color);
+        }
+        if (eye2Color != null) {
+            c.setEye2Color(eye2Color);
         }
         if (auraColor != null) {
             c.setAuraColor(auraColor);
@@ -256,8 +289,17 @@ public final class MakerPreviewAppearance {
         if (snapshot.bodyColor != null) {
             c.setBodyColor(snapshot.bodyColor);
         }
+        if (snapshot.bodyColor2 != null) {
+            c.setBodyColor2(snapshot.bodyColor2);
+        }
+        if (snapshot.bodyColor3 != null) {
+            c.setBodyColor3(snapshot.bodyColor3);
+        }
         if (snapshot.eye1Color != null) {
             c.setEye1Color(snapshot.eye1Color);
+        }
+        if (snapshot.eye2Color != null) {
+            c.setEye2Color(snapshot.eye2Color);
         }
         if (snapshot.auraColor != null) {
             c.setAuraColor(snapshot.auraColor);
@@ -302,7 +344,10 @@ public final class MakerPreviewAppearance {
             CustomHair hairSsj3,
             String hairColor,
             String bodyColor,
+            String bodyColor2,
+            String bodyColor3,
             String eye1Color,
+            String eye2Color,
             String auraColor,
             int bodyType,
             int eyesType,
@@ -314,7 +359,7 @@ public final class MakerPreviewAppearance {
             String formId) {
         public static final Snapshot EMPTY = new Snapshot(
                 0, null, null, null, null,
-                null, null, null, null,
+                null, null, null, null, null, null, null,
                 0, 0, 0, 0, 0,
                 null, null, null);
     }

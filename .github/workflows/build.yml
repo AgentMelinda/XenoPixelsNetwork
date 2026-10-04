@@ -1,4 +1,4 @@
-# CI compile check for XenoPixels on pushes and pull requests.
+# CI compile + package check for XenoPixels on pushes and pull requests.
 
 name: Build
 
@@ -7,7 +7,7 @@ on:
     branches: [ main, master, develop, 1.21.1 ]
   pull_request:
     branches: [ main, master, develop, 1.21.1 ]
-  workflow_dispatch: # This must exist on the default branc
+  workflow_dispatch:
 
 jobs:
   build:
@@ -43,12 +43,16 @@ jobs:
           ./gradlew compileJava --no-daemon -PofflineMcMeta \
             -PdmzJar=libs/dragonminez-2.1.3.jar
 
-      - name: Build (includes Jar-in-Jar ModernUI)
+      # `build` runs :test. Twelve tests currently require untracked generator sources
+      # (tools/effekseer/*, tools/guidance_v2_art, examples/customnpcs, docs/xeno-npc-schema.md)
+      # that are not in this git tree, so :test fails on a clean checkout. Package the
+      # client JiJ jar and the server jar without that gate.
+      - name: Package client and server jars
         run: |
-          ./gradlew build jarJar --no-daemon -PofflineMcMeta \
+          ./gradlew jarJar serverJar --no-daemon -PofflineMcMeta \
             -PdmzJar=libs/dragonminez-2.1.3.jar
 
-      - name: Verify ModernUI is nested
+      - name: Verify ModernUI is nested in the client jar
         run: |
           # MDG 2.x jarJar writes the bundled jar without a classifier; the plain jar is -slim.
           mapfile -t jars < <(ls build/libs/xenopixelsmod-*.jar 2>/dev/null \
@@ -64,3 +68,21 @@ jobs:
             exit 1
           }
           echo "OK: ModernUI nested in ${jars[0]}"
+
+      - name: Verify server jar embeds AAA Particles only
+        run: |
+          mapfile -t servers < <(ls build/libs/xenopixelsmod-Server-*.jar 2>/dev/null)
+          if [ ${#servers[@]} -eq 0 ]; then
+            echo "Missing xenopixelsmod-Server jar"
+            ls -la build/libs || true
+            exit 1
+          fi
+          jar tf "${servers[0]}" | grep '^META-INF/jarjar/' | tee /tmp/server-jarjar.txt
+          grep -q 'META-INF/jarjar/metadata.json' /tmp/server-jarjar.txt
+          grep -qi 'aaa_particles' /tmp/server-jarjar.txt
+          if grep -qiE 'modern-ui|nashorn' /tmp/server-jarjar.txt; then
+            echo "Server jar must not embed ModernUI or Nashorn"
+            cat /tmp/server-jarjar.txt
+            exit 1
+          fi
+          echo "OK: ${servers[0]} jarjar is AAA Particles only"

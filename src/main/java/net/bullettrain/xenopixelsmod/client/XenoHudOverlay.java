@@ -84,6 +84,7 @@ public class XenoHudOverlay {
     public void render(GuiGraphics graphics, DeltaTracker deltaTracker) {
         Minecraft mc = Minecraft.getInstance();
         if (mc.player == null || mc.options.hideGui || !XenoClientConfig.xenoHudEnabled || !XenoHudConfig.visible) return;
+        if (net.bullettrain.xenopixelsmod.client.maker.MakerHudGate.hideWorldHud()) return;
         renderHud(graphics, graphics.guiWidth(), graphics.guiHeight(), false);
     }
 
