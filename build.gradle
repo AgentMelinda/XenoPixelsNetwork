@@ -473,7 +473,7 @@ tasks.named('jar', Jar).configure {
                 'Implementation-Title'    : project.name,
                 'Implementation-Version'  : project.version,
                 'Implementation-Vendor'   : mod_authors,
-                'MixinConfigs'            : 'xenopixelsmod.mixins.json,xenopixelsmod.compat.mixins.json'
+                'MixinConfigs'            : 'xenopixelsmod.mixins.json,xenopixelsmod.compat.mixins.json,xenopixelsmod.linearreader.mixins.json'
         ])
     }
 }
@@ -527,7 +527,7 @@ tasks.register('serverJar', Jar) {
                 'Implementation-Title'    : "${project.name} (Server)",
                 'Implementation-Version'  : project.version,
                 'Implementation-Vendor'   : mod_authors,
-                'MixinConfigs'            : 'xenopixelsmod.mixins.json,xenopixelsmod.compat.mixins.json'
+                'MixinConfigs'            : 'xenopixelsmod.mixins.json,xenopixelsmod.compat.mixins.json,xenopixelsmod.linearreader.mixins.json'
         ])
     }
 }

@@ -28,6 +28,7 @@ public class XenoPixelsMod {
     public static final Logger LOGGER = LogUtils.getLogger();
 
     public XenoPixelsMod(IEventBus modEventBus) {
+        net.bullettrain.xenopixelsmod.command.XenoCommandArguments.register(modEventBus);
 
         ModsItems.register(modEventBus); // -- mods item register
         ModBlocks.register(modEventBus);

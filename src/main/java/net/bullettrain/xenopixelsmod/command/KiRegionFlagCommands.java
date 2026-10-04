@@ -2,17 +2,18 @@ package net.bullettrain.xenopixelsmod.command;
 
 import com.mojang.brigadier.CommandDispatcher;
 import com.mojang.brigadier.arguments.StringArgumentType;
+import com.mojang.brigadier.arguments.BoolArgumentType;
 import com.mojang.brigadier.builder.LiteralArgumentBuilder;
 import net.bullettrain.xenopixelsmod.XenoPixelsMod;
 import net.bullettrain.xenopixelsmod.compat.yawp.KiRegionFlags;
 import net.bullettrain.xenopixelsmod.compat.yawp.YawpRegionLookup;
+import net.bullettrain.xenopixelsmod.config.XenoServerConfig;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
 import net.minecraft.commands.SharedSuggestionProvider;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerLevel;
-import net.minecraft.server.level.ServerPlayer;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.neoforge.event.RegisterCommandsEvent;
@@ -55,8 +56,11 @@ public final class KiRegionFlagCommands {
                 .executes(ctx -> list(ctx.getSource()))
                 .then(Commands.literal("list").executes(ctx -> list(ctx.getSource())))
                 .then(Commands.literal("here").executes(ctx -> here(ctx.getSource())))
+                .then(Commands.literal("check").executes(ctx -> check(ctx.getSource())))
+                .then(Commands.literal("enabled").then(Commands.argument("enabled", BoolArgumentType.bool())
+                        .executes(ctx -> enabled(ctx.getSource(), BoolArgumentType.getBool(ctx, "enabled")))))
                 .then(Commands.literal("set")
-                        .then(Commands.argument("region", StringArgumentType.word())
+                        .then(Commands.argument("region", new RegionNameArgument())
                                 .then(Commands.argument("target", StringArgumentType.word())
                                         .suggests((ctx, builder) -> SharedSuggestionProvider.suggest(
                                                 Arrays.stream(KiRegionFlags.Target.values())
@@ -74,7 +78,7 @@ public final class KiRegionFlagCommands {
                 // "/wp … flag remove" cannot reach these flags at all (see the class javadoc),
                 // so this is the only way to do it.
                 .then(Commands.literal("remove")
-                        .then(Commands.argument("region", StringArgumentType.word())
+                        .then(Commands.argument("region", new RegionNameArgument())
                                 .executes(ctx -> remove(ctx.getSource(),
                                         StringArgumentType.getString(ctx, "region"), null))
                                 .then(Commands.argument("target", StringArgumentType.word())
@@ -132,19 +136,15 @@ public final class KiRegionFlagCommands {
         return 1;
     }
 
-    /** Report the region the operator is standing in and its current ki flags. */
+    /** Report protection at the command's dimension/position, including console /execute. */
     private static int here(CommandSourceStack source) {
-        ServerPlayer player = source.getPlayer();
-        if (player == null) {
-            source.sendFailure(Component.literal("Run this as a player, or use 'set <region> ...'"));
-            return 0;
-        }
-        ServerLevel level = player.serverLevel();
-        BlockPos pos = player.blockPosition();
+        ServerLevel level = source.getLevel();
+        BlockPos pos = BlockPos.containing(source.getPosition());
         String region = YawpRegionLookup.regionNameAt(level, pos).orElse(null);
         if (region == null) {
             source.sendSuccess(() -> Component.literal(
-                    "§7No active YAWP region here — ki griefing follows the configured flag mapping"),
+                    "§7No active YAWP region here in " + level.dimension().location()
+                            + " — ki griefing follows the configured flag mapping"),
                     false);
             return 0;
         }
@@ -153,6 +153,24 @@ public final class KiRegionFlagCommands {
         // readout, which is what happened to "masters" when it was added.
         source.sendSuccess(() -> Component.literal(
                 String.format("§bRegion §f%s §7(%s)", region, dim) + describe(dim, region)), false);
+        return 1;
+    }
+
+    /** Read-only evaluation of the exact DMZ gate used by ki block destruction. */
+    private static int check(CommandSourceStack source) {
+        boolean allowed = com.dragonminez.common.init.MainGameRules.canKiGrief(source.getLevel(),
+                BlockPos.containing(source.getPosition()), source.getEntity());
+        source.sendSuccess(() -> Component.literal("Ki block destruction at " + source.getLevel().dimension().location()
+                + " " + BlockPos.containing(source.getPosition()) + ": " + (allowed ? "allowed" : "denied")
+                + " (" + (source.getEntity() instanceof net.minecraft.world.entity.player.Player ? "players" : "mobs") + ")"), false);
+        return allowed ? 1 : 0;
+    }
+
+    private static int enabled(CommandSourceStack source, boolean enabled) {
+        XenoServerConfig.yawpKiGriefingEnabled = enabled;
+        XenoServerConfig.save();
+        source.sendSuccess(() -> Component.literal("YAWP ki protection enabled=" + enabled
+                + "; saved in xenopixelsmod-server.json"), true);
         return 1;
     }
 

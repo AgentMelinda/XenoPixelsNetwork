@@ -12,7 +12,7 @@ import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
- * Resolves which YAWP region governs a position, by reflection.
+ * Resolves the YAWP region responsible for a position, by reflection.
  *
  * <p><b>Why reflection.</b> YAWP's region API is not stable across the 0.6 line:
  * {@code RegionManager.getDimRegionApi} returns {@code Optional<IDimensionRegionApi>} on
@@ -20,24 +20,23 @@ import java.util.concurrent.ConcurrentHashMap;
  * renamed — and the save methods differ too. Linking against either signature would throw
  * {@link NoClassDefFoundError} on the other version at runtime.
  *
- * <p>That is precisely the failure mode that took this server down through AeroStar, which
- * pinned one Northstar version and died when a class moved. Reflection keeps this working on
- * any 0.6.x, at the cost of compile-time checking.
+ * <p>Use YAWP's own flag evaluator rather than its local-region-only spatial lookup.
+ * The evaluator includes dimensional/global fallbacks and untracked levels. Its descriptor
+ * was verified in the exact 1.21.1 0.6.2-beta1 and 0.6.3-beta3 jars.
  *
  * <p>Deliberately holds <b>no YAWP imports</b>, so it is safe to load even when YAWP is
  * absent — every lookup simply returns empty.
  */
 public final class YawpRegionLookup {
-    private static final String REGION_MANAGER = "de.z0rdak.yawp.api.core.RegionManager";
+    private static final String FLAG_EVALUATOR = "de.z0rdak.yawp.api.FlagEvaluator";
 
     private static boolean unavailableLogged;
     /** Cached reflective handles; resolved once on first successful use. */
-    private static Method getInstance;
-    private static Method getDimRegionApi;
+    private static Method findResponsibleRegion;
     private static boolean resolved;
 
     /**
-     * Per-class handle caches for the two methods reached off a concrete instance.
+     * Per-class handle cache for names reached off concrete region instances.
      *
      * <p>These used to be resolved on every call. {@code Class#getMethod} walks the full public
      * method table and copies the result array each time, and this runs once per block position — a
@@ -47,42 +46,23 @@ public final class YawpRegionLookup {
      * class is not guaranteed to be the same across dimensions or YAWP versions; a different class
      * re-resolves instead of silently invoking a handle that does not belong to it.
      */
-    private static final Map<Class<?>, Method> INVOLVED_REGION_FOR = new ConcurrentHashMap<>();
     private static final Map<Class<?>, Method> GET_NAME = new ConcurrentHashMap<>();
 
     private YawpRegionLookup() {
     }
 
     /**
-     * Highest-priority active region containing {@code pos}.
+     * Highest-priority active local region, otherwise YAWP's dimensional/global fallback.
      *
-     * @return the region's name, or empty when YAWP is absent, the dimension is untracked, or
-     *         no active region covers the position
+     * @return the responsible region's name, or empty when YAWP is absent or its resolver
+     *         finds no active region. Untracked dimensions may still have a global region.
      */
     public static Optional<String> regionNameAt(Level level, BlockPos pos) {
         if (!(level instanceof ServerLevel serverLevel) || pos == null) return Optional.empty();
         try {
             if (!resolve()) return Optional.empty();
 
-            Object manager = getInstance.invoke(null);
-            if (manager == null) return Optional.empty();
-
-            ResourceKey<Level> dim = serverLevel.dimension();
-            Object apiOptional = getDimRegionApi.invoke(manager, dim);
-            Object api = unwrap(apiOptional);
-            if (api == null) return Optional.empty();
-
-            // Declared on the dimension API interface under both names; resolved off the
-            // concrete class so the rename does not matter.
-            Method involved = handle(INVOLVED_REGION_FOR, api.getClass(),
-                    "getInvolvedRegionFor", BlockPos.class);
-            Object region = unwrap(involved.invoke(api, pos));
-            if (region == null) return Optional.empty();
-
-            Method getName = handle(GET_NAME, region.getClass(), "getName");
-            Object name = getName.invoke(region);
-            return name instanceof String text && !text.isBlank()
-                    ? Optional.of(text) : Optional.empty();
+            return regionNameAt(findResponsibleRegion, serverLevel.dimension(), pos);
         } catch (Throwable t) {
             logUnavailableOnce(t);
             return Optional.empty();
@@ -90,13 +70,21 @@ public final class YawpRegionLookup {
     }
 
     private static synchronized boolean resolve() throws ReflectiveOperationException {
-        if (resolved) return getInstance != null && getDimRegionApi != null;
+        if (resolved) return findResponsibleRegion != null;
         resolved = true;
-        Class<?> managerClass = Class.forName(REGION_MANAGER, false,
+        Class<?> evaluatorClass = Class.forName(FLAG_EVALUATOR, false,
                 YawpRegionLookup.class.getClassLoader());
-        getInstance = managerClass.getMethod("get");
-        getDimRegionApi = managerClass.getMethod("getDimRegionApi", ResourceKey.class);
+        findResponsibleRegion = evaluatorClass.getMethod("findResponsibleRegion", BlockPos.class, ResourceKey.class);
         return true;
+    }
+
+    /** Reflection boundary kept separate so the real dimension and fallback result can be tested. */
+    static Optional<String> regionNameAt(Method finder, ResourceKey<Level> dimension, BlockPos pos)
+            throws ReflectiveOperationException {
+        Object region = unwrap(finder.invoke(null, pos, dimension));
+        if (region == null) return Optional.empty();
+        Object name = handle(GET_NAME, region.getClass(), "getName").invoke(region);
+        return name instanceof String text && !text.isBlank() ? Optional.of(text) : Optional.empty();
     }
 
     /**

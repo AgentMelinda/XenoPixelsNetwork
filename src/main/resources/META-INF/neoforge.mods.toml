@@ -17,6 +17,9 @@ config="xenopixelsmod.mixins.json"
 [[mixins]]
 config="xenopixelsmod.compat.mixins.json"
 
+[[mixins]]
+config="xenopixelsmod.linearreader.mixins.json"
+
 [[dependencies.${mod_id}]]
 modId="neoforge"
 type="required"

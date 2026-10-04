@@ -1,0 +1,13 @@
+{
+  "required": true,
+  "package": "net.bullettrain.xenopixelsmod.mixin",
+  "plugin": "net.bullettrain.xenopixelsmod.mixin.ConditionalMixinPlugin",
+  "compatibilityLevel": "JAVA_21",
+  "mixins": [
+    "compat.linearreader.McaConversionPolicyMixin",
+    "compat.linearreader.BulkConversionPolicyMixin",
+    "compat.linearreader.AnvilDimensionStorageMixin"
+  ],
+  "injectors": { "defaultRequire": 1 },
+  "minVersion": "0.8"
+}

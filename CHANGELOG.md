@@ -2,6 +2,19 @@
 
 ## Unreleased
 
+## 0.5.9-1.21.1 — 2026-10-04
+
+- Resolve YAWP ki flags through its native responsible-region evaluator, including dimensional
+  and global fallbacks. `/kiflag here` respects `/execute in`; region arguments now accept
+  namespaced IDs. Add `/kiflag enabled <true|false>` and read-only `/kiflag check`.
+- Add persistent LinearReader 1.3.0 dimension conversion controls in
+  `config/xenopixelsmod-linearreader.json` and `/xenolinear`. Disabled dimensions retain
+  Anvil storage for new regions; existing linear data remains readable and writable.
+  Automatic/bulk conversion respects the same policy. Retained Anvil regions require a restart
+  before conversion can resume. No automatic export, deletion, or world migration is performed.
+- The affected live server's ordinary YAWP block-breaking/placing configuration and physical ki
+  attacks remain unverified; see `docs/dimension-protection.md` for setup and diagnostics.
+
 ## 0.5.8-1.21.1 — 2026-10-04
 
 - Fix Taotto dragging being pinned by transparent canvas margins. Placement bounds now
