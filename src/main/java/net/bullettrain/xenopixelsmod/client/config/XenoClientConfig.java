@@ -166,11 +166,11 @@ public final class XenoClientConfig {
      */
     public static float auraInnerBrightness = 0.7f;
     /**
-     * Which HD aura plays: v1 (the column of fire puffs), v2 (the spiked flame silhouette after
-     * DragonMineZ's own aura, 2026-10-02), or v3 (full v1 plus silhouette, punch-colour edges and
-     * form-coloured sparking). /xenoaura v1|v2|v3, or Ki Actions in DMZ's X menu.
+     * Which HD aura plays: v1 (dense fire-puff column), v2 (spiked silhouette), v3 (full v1 plus
+     * silhouette / punch edges / sparking), or v4 (v3 silhouette plus a lean column — default).
+     * /xenoaura v1|v2|v3|v4, or Ki Actions in DMZ's X menu.
      */
-    public static String auraVariant = "v1";
+    public static String auraVariant = "v4";
     /** HD aura resized every frame with the ki aura (true) or fixed when sent. /xenoaura live. */
     public static boolean auraLiveScale = true;
     /** Your own v2 aura in third person is drawn over particles (true). /xenoaura overlay. */

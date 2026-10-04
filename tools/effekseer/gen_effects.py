@@ -1,7 +1,7 @@
 """Generates the mod's Effekseer effects: textures, .efkproj projects and compiled .efkefc files.
 
 Usage:
-  python tools/effekseer/gen_effects.py [all|hakai|thruster|explosion|sparking|aura|aura2|aura3 ...] [--effekseer DIR] [--preview]
+  python tools/effekseer/gen_effects.py [all|hakai|thruster|explosion|sparking|aura|aura2|aura3|aura4 ...] [--effekseer DIR] [--preview]
 
   --effekseer  folder holding Tool/bin/Effekseer.exe (1.80.x). Defaults to EFFEKSEER_HOME, then
                tools/new_particles/Effekseer1.80.6Win.
@@ -19,10 +19,10 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from efkgen import build  # noqa: E402
-from efkgen.effects import aura, aura2, aura3, explosion, hakai, sparking, thruster  # noqa: E402
+from efkgen.effects import aura, aura2, aura3, aura4, explosion, hakai, sparking, thruster  # noqa: E402
 
 SETS = {'hakai': hakai, 'thruster': thruster, 'explosion': explosion, 'sparking': sparking, 'aura': aura,
-        'aura2': aura2, 'aura3': aura3}
+        'aura2': aura2, 'aura3': aura3, 'aura4': aura4}
 
 
 def main(argv=None):
@@ -31,7 +31,7 @@ def main(argv=None):
     ap.add_argument('--effekseer')
     ap.add_argument('--preview', action='store_true')
     ap.add_argument('--missing', action='store_true',
-                    help='shared sets (aura, aura2, aura3): build only the effects not there yet')
+                    help='shared sets (aura, aura2, aura3, aura4): build only the effects not there yet')
     args = ap.parse_args(argv)
     names = list(SETS) if 'all' in args.sets else args.sets
     unknown = [n for n in names if n not in SETS]

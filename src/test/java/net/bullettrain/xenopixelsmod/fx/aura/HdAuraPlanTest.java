@@ -128,6 +128,23 @@ class HdAuraPlanTest {
         assertFalse(HdAuraPlan.playsV1Outer("v2"));
         assertFalse(HdAuraPlan.playsV1Inner("v2"));
         assertTrue(HdAuraPlan.playsSilhouette("v2"));
+        assertFalse(HdAuraPlan.playsLeanOuter("v1"));
+        assertFalse(HdAuraPlan.playsLeanOuter("v2"));
+        assertFalse(HdAuraPlan.playsLeanOuter("v3"));
+    }
+
+    @Test
+    void v4IsTheLeanDefaultUnderTheSilhouette() {
+        assertEquals("v4", HdAuraPlan.parseVariant("v4"));
+        assertEquals("v4", HdAuraPlan.parseVariant("V4"));
+        assertTrue(HdAuraPlan.silhouetteBox("v4"));
+        assertTrue(HdAuraPlan.playsSilhouette("v4"));
+        assertTrue(HdAuraPlan.playsV1Inner("v4"));
+        assertFalse(HdAuraPlan.playsV1Outer("v4"), "v4 must not spawn the dense v1 smoke column");
+        assertTrue(HdAuraPlan.playsLeanOuter("v4"));
+        assertTrue(HdAuraPlan.silhouetteEffect("aura4/aura4_ffd700"));
+        assertTrue(HdAuraPlan.silhouetteEffect("aura4/aura4_ffd700_nz"));
+        assertArrayEquals(HdAuraPlan.shape(true), HdAuraPlan.shape(HdAuraPlan.silhouetteBox("v4")));
     }
 
     @Test

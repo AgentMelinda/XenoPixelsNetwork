@@ -38,10 +38,11 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
- * Plays the generated HD aura (effeks/aura/aura_in_* and aura_out_*) on whoever DragonMineZ is
- * showing an aura for, on this client only: no packets, every client decides for itself which
- * aura it draws (/xenoaura dmz|hd|both). Each effect is bound to the entity (it follows it every
- * frame, upright) and re-sent every 10 ticks, cross-fading like the Sparking aura.
+ * Plays the generated HD aura on whoever DragonMineZ is showing an aura for, on this client
+ * only: v1 {@code aura_in_}/{@code aura_out_}, v2 {@code aura2/}, v3 {@code aura3/} plus dense
+ * v1, v4 {@code aura3/} plus lean {@code aura4/}. No packets; every client decides for itself
+ * ({@code /xenoaura dmz|hd|both} and {@code v1|v2|v3|v4}). Each effect is bound to the entity
+ * (it follows it every frame, upright) and re-sent every 10 ticks, cross-fading like Sparking.
  */
 @EventBusSubscriber(modid = XenoPixelsMod.MOD_ID, value = Dist.CLIENT)
 public final class HdAuraClient {
@@ -253,6 +254,11 @@ public final class HdAuraClient {
         return "v3".equalsIgnoreCase(XenoClientConfig.auraVariant);
     }
 
+    /** Variant 4: v3 silhouette plus lean v1 column (no dense {@code aura_out_*} smoke). */
+    public static boolean variant4() {
+        return "v4".equalsIgnoreCase(XenoClientConfig.auraVariant);
+    }
+
     /**
      * How much taller and wider the ki aura stands than at rest: battle power, and the rise while
      * transforming or charging ki - the same curve DragonMineZ's own aura is stretched by
@@ -299,7 +305,7 @@ public final class HdAuraClient {
         // NPC.
         float size = XenoClientConfig.auraSize;
         float[] raw = stretch;
-        boolean silhouette = variant2() || variant3();
+        boolean silhouette = HdAuraPlan.playsSilhouette(XenoClientConfig.auraVariant);
         float[] shape = HdAuraPlan.shape(silhouette);
         stretch = new float[] {raw[0] * shape[0], raw[1] * shape[1]};
         // Phase 1 Motif: brightness only. NPCs / missing form → Motif(1,1).
@@ -309,8 +315,8 @@ public final class HdAuraClient {
             // One effect per aura, in its main colour, stretched with the ki aura.
             // No colour is folded into another here: DragonMineZ draws a form's extra aura and a
             // stack form as layers of their own, each a little larger, and so does this.
-            // v2/v3 silhouette: HdAuraPlan.plan(plan, Set.of(), true)
-            String folder = variant3() ? "aura3/aura3_" : "aura2/aura2_";
+            // v2/v3/v4 silhouette: HdAuraPlan.plan(plan, Set.of(), true)
+            String folder = (variant3() || variant4()) ? "aura3/aura3_" : "aura2/aura2_";
             for (HdAuraPlan.Aura aura : HdAuraPlan.plan(plan, Set.of(), true)) {
                 float s = size * aura.scale();
                 spawn(level, entity, folder + AuraPalette.hex(AuraPalette.nearest(aura.inner()))
@@ -318,20 +324,29 @@ public final class HdAuraClient {
                         s, stretch,
                         XenoClientConfig.auraBrightness * aura.alpha() * motif.outerBrightness(), 0.0f);
             }
-            if (variant3()) {
-                // Full v1 under the silhouette: outer billow + inner shell (2026-10-03 owner).
-                // v3 underlay only: HdAuraPlan.plan(plan, extras, XenoClientConfig.auraLayers)
+            if (HdAuraPlan.playsV1Outer(XenoClientConfig.auraVariant)
+                    || HdAuraPlan.playsLeanOuter(XenoClientConfig.auraVariant)
+                    || HdAuraPlan.playsV1Inner(XenoClientConfig.auraVariant)) {
+                // v3: dense v1 outer billow + inner. v4: lean outer + inner (no aura_out smoke).
                 float[] v1Shape = HdAuraPlan.shape(false);
                 float[] v1Stretch = new float[] {raw[0] * v1Shape[0], raw[1] * v1Shape[1]};
                 for (HdAuraPlan.Aura aura : HdAuraPlan.plan(plan, extras, XenoClientConfig.auraLayers)) {
                     float brightness = XenoClientConfig.auraBrightness * aura.alpha();
                     float s = size * aura.scale();
-                    spawn(level, entity, "aura/aura_out_" + AuraPalette.hex(AuraPalette.nearest(aura.outer())),
-                            s, v1Stretch, brightness * motif.outerBrightness(), 0.0f);
-                    spawn(level, entity, "aura/aura_in_" + AuraPalette.hex(AuraPalette.nearest(aura.inner())),
-                            s, v1Stretch,
-                            brightness * XenoClientConfig.auraInnerBrightness * motif.innerBrightness(),
-                            0.0f);
+                    if (HdAuraPlan.playsV1Outer(XenoClientConfig.auraVariant)) {
+                        spawn(level, entity, "aura/aura_out_" + AuraPalette.hex(AuraPalette.nearest(aura.outer())),
+                                s, v1Stretch, brightness * motif.outerBrightness(), 0.0f);
+                    } else if (HdAuraPlan.playsLeanOuter(XenoClientConfig.auraVariant)) {
+                        spawn(level, entity, "aura4/aura4_" + AuraPalette.hex(AuraPalette.nearest(aura.outer()))
+                                        + (overParticles(entity) ? "_nz" : ""),
+                                s, v1Stretch, brightness * motif.outerBrightness(), 0.0f);
+                    }
+                    if (HdAuraPlan.playsV1Inner(XenoClientConfig.auraVariant)) {
+                        spawn(level, entity, "aura/aura_in_" + AuraPalette.hex(AuraPalette.nearest(aura.inner())),
+                                s, v1Stretch,
+                                brightness * XenoClientConfig.auraInnerBrightness * motif.innerBrightness(),
+                                0.0f);
+                    }
                 }
             }
             return;

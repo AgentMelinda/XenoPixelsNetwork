@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.5.4-1.21.1 — 2026-10-04
+
+- HD aura **v4** (new client default): v3 spiked silhouette + punch edges + sparking, plus a
+  **lean** fire column instead of the dense v1 outer billow (`aura_out_*` OuterA/OuterB/Edge
+  smoke puffs). That billow was the FPS drop in built areas. `/xenoaura v1|v2|v3|v4`. v1–v3
+  keep their old look. No combat/entity hitbox changes. **FPS not verified in a running game.**
+
 ## 0.5.3-1.21.1 — 2026-10-04
 
 - Race Maker Display name and Description fields. Custom packs store those literals in

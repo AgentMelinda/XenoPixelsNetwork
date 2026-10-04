@@ -51,7 +51,8 @@ public final class XenoAuraCommands {
                                 com.mojang.brigadier.arguments.FloatArgumentType.getFloat(ctx, "level")))));
         root = root.then(Commands.literal("v1").executes(ctx -> variant(ctx.getSource(), "v1")))
                 .then(Commands.literal("v2").executes(ctx -> variant(ctx.getSource(), "v2")))
-                .then(Commands.literal("v3").executes(ctx -> variant(ctx.getSource(), "v3")));
+                .then(Commands.literal("v3").executes(ctx -> variant(ctx.getSource(), "v3")))
+                .then(Commands.literal("v4").executes(ctx -> variant(ctx.getSource(), "v4")));
         root = root.then(Commands.literal("live")
                 .then(Commands.literal("on").executes(ctx -> live(ctx.getSource(), true)))
                 .then(Commands.literal("off").executes(ctx -> live(ctx.getSource(), false))));
@@ -78,7 +79,7 @@ public final class XenoAuraCommands {
                 + ", layers " + (XenoClientConfig.auraLayers ? "on" : "off")
                 + ", follow " + (XenoClientConfig.auraFollowDmz ? "on" : "off")
                 + "  (/xenoaura dmz | hd | both | size <0.2-5> | brightness <0-130> | layers on|off"
-                + " | follow on|off | inner <0.4-1> | v1 | v2 | v3 | live on|off | maxheight <1-10> | box on|off | overlay on|off | firstperson on|off; your own second aura: /secondaura)"), false);
+                + " | follow on|off | inner <0.4-1> | v1 | v2 | v3 | v4 | live on|off | maxheight <1-10> | box on|off | overlay on|off | firstperson on|off; your own second aura: /secondaura)"), false);
         return 1;
     }
 
@@ -104,8 +105,8 @@ public final class XenoAuraCommands {
         XenoClientConfig.auraOverParticles = on;
         XenoClientConfig.save();
         source.sendSuccess(() -> Component.literal(on
-                ? "HD aura v2/v3: your own aura in third person draws over rocks, dust and particles"
-                : "HD aura v2/v3: your own aura is hidden by whatever is in front of it"), false);
+                ? "HD aura v2/v3/v4: your own aura in third person draws over rocks, dust and particles"
+                : "HD aura v2/v3/v4: your own aura is hidden by whatever is in front of it"), false);
         return 1;
     }
 
@@ -139,6 +140,7 @@ public final class XenoAuraCommands {
         XenoClientConfig.auraVariant = chosen;
         XenoClientConfig.save();
         source.sendSuccess(() -> Component.literal(switch (chosen) {
+            case "v4" -> "HD aura: v4, spiked flame + lean column (no dense smoke billow)";
             case "v3" -> "HD aura: v3, full v1 + spiked flame + punch edges + sparking";
             case "v2" -> "HD aura: v2, the spiked flame (works with dmz | hd | both)";
             default -> "HD aura: v1, the column of fire";

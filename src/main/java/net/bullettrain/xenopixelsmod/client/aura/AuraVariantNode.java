@@ -7,8 +7,8 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 
 /**
- * HD aura variant under Ki Actions in DragonMineZ's X menu: cycles v1 → v2 → v3 → v1, the same
- * as {@code /xenoaura v1|v2|v3}. Lit while v2 or v3 is chosen.
+ * HD aura variant under Ki Actions in DragonMineZ's X menu: cycles v1 → v2 → v3 → v4 → v1, the
+ * same as {@code /xenoaura v1|v2|v3|v4}. Lit while v2, v3 or v4 is chosen.
  */
 public final class AuraVariantNode extends AbstractRadialNode {
 
@@ -16,6 +16,7 @@ public final class AuraVariantNode extends AbstractRadialNode {
     public Component label(StatsData stats) {
         return switch (net.bullettrain.xenopixelsmod.fx.aura.HdAuraPlan.parseVariant(
                 XenoClientConfig.auraVariant)) {
+            case "v4" -> Component.translatable("gui.xenopixelsmod.radial.aura_v4");
             case "v3" -> Component.translatable("gui.xenopixelsmod.radial.aura_v3");
             case "v2" -> Component.translatable("gui.xenopixelsmod.radial.aura_v2");
             default -> Component.translatable("gui.xenopixelsmod.radial.aura_v1");
@@ -29,7 +30,7 @@ public final class AuraVariantNode extends AbstractRadialNode {
 
     @Override
     public boolean active(StatsData stats) {
-        return HdAuraClient.variant2() || HdAuraClient.variant3();
+        return HdAuraClient.variant2() || HdAuraClient.variant3() || HdAuraClient.variant4();
     }
 
     @Override
@@ -43,6 +44,7 @@ public final class AuraVariantNode extends AbstractRadialNode {
                 XenoClientConfig.auraVariant)) {
             case "v1" -> "v2";
             case "v2" -> "v3";
+            case "v3" -> "v4";
             default -> "v1";
         };
         XenoClientConfig.auraVariant = next;

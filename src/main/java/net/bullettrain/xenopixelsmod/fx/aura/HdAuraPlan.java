@@ -216,39 +216,45 @@ public final class HdAuraPlan {
         return variant2 ? new float[] {1.0f, 1.0f} : new float[] {0.72f, 0.92f};
     }
 
-    /** {@code v1}, {@code v2} or {@code v3}; anything else is v1. */
+    /** {@code v1}, {@code v2}, {@code v3} or {@code v4}; anything else is v1. */
     public static String parseVariant(String raw) {
         if (raw == null) return "v1";
         String v = raw.trim().toLowerCase();
-        return "v2".equals(v) || "v3".equals(v) ? v : "v1";
+        return "v2".equals(v) || "v3".equals(v) || "v4".equals(v) ? v : "v1";
     }
 
-    /** Variants 2 and 3 are authored to DragonMineZ's flame box. */
+    /** Variants 2, 3 and 4 are authored to DragonMineZ's flame box. */
     public static boolean silhouetteBox(String variant) {
-        return "v2".equalsIgnoreCase(variant) || "v3".equalsIgnoreCase(variant);
+        String v = parseVariant(variant);
+        return "v2".equals(v) || "v3".equals(v) || "v4".equals(v);
     }
 
-    /** Live copies of aura2 / aura3 sit on the silhouette box; aura_in / aura_out stay on v1. */
+    /** Live copies of aura2 / aura3 / aura4 sit on the silhouette box; aura_in / aura_out stay on v1. */
     public static boolean silhouetteEffect(String path) {
         if (path == null) return false;
-        return path.startsWith("aura2/") || path.startsWith("aura3/");
+        return path.startsWith("aura2/") || path.startsWith("aura3/") || path.startsWith("aura4/");
     }
 
-    /** v1 and v3 play the soft outer billow column ({@code aura_out_*}). */
+    /** v1 and v3 play the dense outer billow column ({@code aura_out_*}). v4 uses the lean column. */
     public static boolean playsV1Outer(String variant) {
         String v = parseVariant(variant);
         return "v1".equals(v) || "v3".equals(v);
     }
 
-    /** v1 and v3 play the body shell ({@code aura_in_*}). */
+    /** v1, v3 and v4 play the body shell ({@code aura_in_*}). */
     public static boolean playsV1Inner(String variant) {
         String v = parseVariant(variant);
-        return "v1".equals(v) || "v3".equals(v);
+        return "v1".equals(v) || "v3".equals(v) || "v4".equals(v);
     }
 
-    /** v2 and v3 play the spiked silhouette effect set. */
+    /** v2, v3 and v4 play the spiked silhouette effect set. */
     public static boolean playsSilhouette(String variant) {
         return silhouetteBox(variant);
+    }
+
+    /** v4 plays the lean outer column ({@code aura4/aura4_*}) instead of {@code aura_out_*}. */
+    public static boolean playsLeanOuter(String variant) {
+        return "v4".equals(parseVariant(variant));
     }
 
     /**
