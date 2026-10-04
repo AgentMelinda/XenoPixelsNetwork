@@ -3,9 +3,8 @@ package net.bullettrain.xenopixelsmod.mixin.compat.linearreader;
 import net.bullettrain.xenopixelsmod.compat.linearreader.LinearConversionPolicy;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Pseudo;
-import org.spongepowered.asm.mixin.injection.At;
-import org.spongepowered.asm.mixin.injection.Inject;
-import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
+import com.llamalad7.mixinextras.injector.wrapmethod.WrapMethod;
+import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
 
 import java.nio.file.Path;
 
@@ -13,13 +12,20 @@ import java.nio.file.Path;
 @Pseudo
 @Mixin(targets = "com.bugfunbug.linearreader.linear.MCAConverter", remap = false)
 public abstract class McaConversionPolicyMixin {
-    @Inject(method = "convertRegionIfNeeded(Ljava/nio/file/Path;II)V", at = @At("HEAD"), cancellable = true, require = 1)
-    private static void xeno$conversion(Path folder, int x, int z, CallbackInfo ci) {
-        if (!LinearConversionPolicy.allowsConversion(LinearConversionPolicy.regionPath(folder, x, z))) ci.cancel();
+    @WrapMethod(method = "convertRegionIfNeeded(Ljava/nio/file/Path;II)V", require = 1)
+    private static void xeno$conversion(Path folder, int x, int z, Operation<Void> original) {
+        Path region = LinearConversionPolicy.regionPath(folder, x, z);
+        var lock = LinearConversionPolicy.regionLock(region);
+        lock.lock();
+        try { if (LinearConversionPolicy.allowsConversion(region)) original.call(folder, x, z); }
+        finally { lock.unlock(); }
     }
 
-    @Inject(method = "convertOne(Ljava/nio/file/Path;)V", at = @At("HEAD"), cancellable = true, require = 1)
-    private static void xeno$singleConversion(Path region, CallbackInfo ci) {
-        if (!LinearConversionPolicy.allowsConversion(region)) ci.cancel();
+    @WrapMethod(method = "convertOne(Ljava/nio/file/Path;)V", require = 1)
+    private static void xeno$singleConversion(Path region, Operation<Void> original) {
+        var lock = LinearConversionPolicy.regionLock(region);
+        lock.lock();
+        try { if (LinearConversionPolicy.allowsConversion(region)) original.call(region); }
+        finally { lock.unlock(); }
     }
 }

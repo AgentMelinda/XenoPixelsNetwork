@@ -10,7 +10,7 @@ class MixinPolicyTest {
     private static final String SWING_SUPPRESS =
             "net.bullettrain.xenopixelsmod.mixin.compat.shared.NpcSwingSuppressMixin";
     private static final String OPTIONAL_SHARED =
-            "net.bullettrain.xenopixelsmod.mixin.compat.shared.DmzNpcAuraScaleMixin";
+            "net.bullettrain.xenopixelsmod.mixin.compat.shared.DmzNpcActiveFormMixin";
 
     @Test
     void nativeXenoNpcSwingSuppressionDoesNotRequireEitherLegacyNpcMod() {

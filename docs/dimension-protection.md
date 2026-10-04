@@ -1,8 +1,8 @@
 # Dimension protection and LinearReader conversion
 
-**Version:** XenoPixels 0.5.9-1.21.1
+**Version:** XenoPixels 0.5.10-1.21.1
 
-**Checked:** 2026-10-04
+**Checked:** 2026-10-05
 
 ## LinearReader conversion controls
 
@@ -38,11 +38,14 @@ uses the default. `enabled false` disables XenoPixels' conversion restrictions. 
   "defaultConversionAllowed": true,
   "dimensions": {
     "dragonminez:otherworld": false
-  }
+  },
+  "allowOutsideYawpClaims": false,
+  "outsideYawpClaimsDimensions": {}
 }
 ```
 
-Defaults preserve LinearReader's behavior until a restriction is configured. Configure this file
+Since 0.5.10, the safe default blocks conversion outside verified local YAWP claims. This also
+applies to older configs without `allowOutsideYawpClaims`. Configure this file
 before starting a new world if conversion must be blocked from its first open. The policy covers
 chunk (`region`), entity (`entities`), and POI (`poi`) storage, including vanilla dimensions and
 custom dimension paths. It gates lazy and bulk/startup MCA conversion.
@@ -59,6 +62,38 @@ Malformed config retains the old policy on reload; malformed startup config abor
 An installed unsupported LinearReader version cannot use dimension restrictions. Verified-version
 storage hooks are required: an injection mismatch aborts startup instead of silently ignoring the
 policy.
+
+### Outside local YAWP claims
+
+```mcfunction
+/xenolinear outside-claims false
+/xenolinear dimension dragonminez:otherworld outside-claims false
+/xenolinear dimension dragonminez:otherworld outside-claims reset
+```
+
+`false` keeps unclaimed region files MCA. `true` explicitly allows conversion outside claims;
+`enabled false` also disables this restriction. Dimension-wide `dimension false` still blocks
+conversion everywhere in that dimension, including inside claims.
+
+A storage region contains 32 × 32 chunks (512 × 512 blocks horizontally). Conversion is allowed
+only when **one active local cuboid contains the entire file footprint and full world build
+height**. Partial overlap, partial vertical coverage, unions of smaller claims and non-cuboid
+claims conservatively keep the whole file MCA. Dimensional/global YAWP regions do not count as
+local claims. Existing linear files remain readable and are never automatically exported to MCA
+or switched back and forth as claims change.
+
+Coverage is verified against **YAWP 0.6.3-beta3 NeoForge**. Missing/unsupported YAWP, unavailable
+dimension data and startup before claims are loaded keep restricted files MCA. Server-thread
+snapshots are immutable for IO workers. Native claim removal, area edits, activation changes,
+delete-all and dimension reset/untracking invalidate them before and after mutation. Ordinary
+refreshes run once per second; an invalidated snapshot refreshes on the next server tick.
+
+Startup bulk conversion may skip even claimed files until claims are ready. Lazy conversion of
+unopened files can then proceed inside fully covered claims. Native opens and conversions share
+a per-file lock, and files opened as MCA stay pinned for the session. A conversion already in
+progress when a claim or configuration changes is allowed to finish. This feature prevents new
+outside-claim conversion; it does not repair previously damaged data or guarantee unrelated IO
+operations. No production world was migrated for validation.
 
 ## YAWP and ki block destruction
 

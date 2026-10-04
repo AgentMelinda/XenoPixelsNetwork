@@ -450,7 +450,7 @@ public final class NpcFullDmzRenderer {
         // CustomNPC Display size and the explicit NPC aura-scale setting here.
         // Shared helper: a native Xeno NPC has no CustomNPCs display, so getSize answers 0 and
         // the old max(0.05, 0/5) shrank the aura to a twentieth of its size.
-        return NpcDisplayApply.sizeScale(owner) * state.auraScale();
+        return NpcDisplayApply.sizeScale(owner, NpcAppearanceClient.renderProfile(owner)) * state.auraScale();
     }
 
     private static TransformSnapshot syncTransformHold(StatsData stats, LivingEntity owner,

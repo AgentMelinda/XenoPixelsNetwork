@@ -32,6 +32,12 @@ public class ConditionalMixinPlugin implements IMixinConfigPlugin {
 
     @Override
     public boolean shouldApplyMixin(String targetClassName, String mixinClassName) {
+        if (mixinClassName.contains(".compat.yawpconversion.")) {
+            var mods = FMLLoader.getLoadingModList();
+            var file = mods == null ? null : mods.getModFileById("yawp");
+            return file != null && file.getMods().stream().anyMatch(mod ->
+                    mod.getModId().equals("yawp") && mod.getVersion().toString().equals("0.6.3-beta3"));
+        }
         if (mixinClassName.contains(".compat.linearreader.")) {
             var mods = FMLLoader.getLoadingModList();
             var file = mods == null ? null : mods.getModFileById("linearreader");

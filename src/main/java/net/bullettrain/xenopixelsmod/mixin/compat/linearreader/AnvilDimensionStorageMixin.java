@@ -39,10 +39,17 @@ public abstract class AnvilDimensionStorageMixin {
         long key = ChunkPos.asLong(pos.getRegionX(), pos.getRegionZ());
         if (LinearStorageState.isLinearOpen(this, key)) return false;
         Path path = LinearConversionPolicy.regionPath(folder, pos.getRegionX(), pos.getRegionZ());
-        if (LinearConversionPolicy.retainAnvil(path)) return true;
-        if (LinearConversionPolicy.allowsConversion(path)) return false;
-        // Existing linear data must retain the linear reader/writer even when conversion is off.
-        return !Files.exists(folder.resolve("r." + pos.getRegionX() + "." + pos.getRegionZ() + ".linear"));
+        var lock = LinearConversionPolicy.regionLock(path);
+        lock.lock();
+        try {
+            if (LinearConversionPolicy.retainAnvil(path)) return true;
+            if (LinearConversionPolicy.allowsConversion(path)) return false;
+            // Existing linear data must retain its reader/writer. Decide and pin atomically
+            // against conversion, so a bulk worker cannot move MCA under a live native handle.
+            if (Files.exists(folder.resolve("r." + pos.getRegionX() + "." + pos.getRegionZ() + ".linear"))) return false;
+            LinearConversionPolicy.openedAnvil(path);
+            return true;
+        } finally { lock.unlock(); }
     }
 
     @Unique

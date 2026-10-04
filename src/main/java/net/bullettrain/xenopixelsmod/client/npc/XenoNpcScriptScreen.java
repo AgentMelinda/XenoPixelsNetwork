@@ -71,7 +71,11 @@ public final class XenoNpcScriptScreen extends ScaledScreen {
     private static final List<String> LANGUAGES = List.of("ECMAScript");
 
     /** Calls a script can make, shown under the hooks when functions are visible. */
-    private static final List<String> API = List.of(
+    private static final List<String> API = apiCalls();
+
+    private static List<String> apiCalls() {
+        var calls = new java.util.TreeSet<>(net.bullettrain.xenopixelsmod.npc.script.ScriptFunctionCatalog.calls());
+        calls.addAll(List.of(
             "npc.say(text)", "npc.say(text, palette)", "npc.say(text, palette, shape)",
             "npc.sayTo(player, text)", "npc.getName()", "npc.getTarget()", "npc.setTarget(entity)",
             "npc.clearTarget()", "npc.getHealth()", "npc.setHealth(v)", "npc.setPosition(x, y, z)",
@@ -84,7 +88,9 @@ public final class XenoNpcScriptScreen extends ScaledScreen {
             "player.message(text)", "player.addXenoPoints(n)", "player.startQuest(id)",
             "event.npc", "event.player", "event.source", "event.entity", "event.target",
             "event.damage", "event.getOption()",
-            "event.setCanceled(true)", "log.line(text)");
+            "event.setCanceled(true)", "log.line(text)"));
+        return List.copyOf(calls);
+    }
 
     private enum Mode { EDITOR, TOOL, LIBRARY, PLAYER, FORGE }
 
@@ -263,13 +269,15 @@ public final class XenoNpcScriptScreen extends ScaledScreen {
     /** Reply to a fetch (tab text) from {@code NpcScriptResultPacket}. */
     public void receive(String id, String message, String transcript, @Nullable CompoundTag payload,
                         boolean ran, boolean ok) {
+        // Fetches are asynchronous: preserve any draft entered while the reply was in flight.
+        keepCodeText();
         if (message != null && message.startsWith("script engine:")) {
             engine = message.substring("script engine:".length()).trim();
         }
         for (TabState tab : tabs) {
             if (!wireId(tab.id).equals(id) || tab.fetched) continue;
             tab.fetched = true;
-            if (ok && payload != null) {
+            if (ok && payload != null && !tab.dirty) {
                 XenoNpcScripts.Script script = XenoNpcScripts.Script.of(id, payload);
                 tab.text = script.script();
                 tab.language = script.language();

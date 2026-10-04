@@ -58,7 +58,6 @@ import java.util.concurrent.ConcurrentHashMap;
 public final class NpcAuraClient {
     private static final ResourceLocation KAKAROT_AURA =
             ResourceLocation.fromNamespaceAndPath("dragonminez", "textures/entity/races/aura/kakarot_aura.png");
-    private static final float CNPC_DEFAULT_SIZE = 5.0f;
     /**
      * The 1.05 alone. DMZ's expanding floor rings are scaled from {@code data.auraScaleX}
      * directly (AuraRenderer :910), which is this base <i>without</i> the 2.2 draw multiplier
@@ -197,6 +196,12 @@ public final class NpcAuraClient {
         }
         return state.layers().isEmpty()
                 ? List.of(new NpcAuraResolver.Layer("kakarot", 0, state.rgb())) : state.layers();
+    }
+
+    /** Same display/profile sizing for the native shader and every HD aura layer. */
+    public static float auraRenderScale(LivingEntity entity) {
+        AuraState state = ACTIVE.get(entity.getUUID());
+        return (state == null ? 1.0f : state.scale()) * cnpcSizeMul(entity);
     }
 
     public static boolean isActive(UUID entityUuid) {
@@ -623,11 +628,7 @@ public final class NpcAuraClient {
     }
 
     private static float cnpcSizeMul(LivingEntity entity) {
-        int size = NpcDisplayApply.getSize(entity);
-        if (size <= 0) {
-            return 1.0f;
-        }
-        return size / CNPC_DEFAULT_SIZE;
+        return NpcDisplayApply.sizeScale(entity, NpcAppearanceClient.renderProfile(entity));
     }
 
     private static ShaderInstance shader() {

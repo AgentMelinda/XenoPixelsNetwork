@@ -281,22 +281,28 @@ public final class HdAuraClient {
      */
     private static float[] kiAuraStretch(StatsData stats) {
         float[] dims;
+        float npcFactor = net.bullettrain.xenopixelsmod.client.compat.npc.NpcFullDmzRenderer.auraFactor(stats);
+        if (!Float.isFinite(npcFactor) || npcFactor <= 0.0f) npcFactor = 1.0f;
         try {
             dims = HdAuraPlan.relativeToRest(DmzAuraLayersInvoker.xenopixels$auraScale(stats,
                     DmzAuraLayersInvoker.xenopixels$modelScale(stats)));
+            // getModelScale already includes the NPC factor. Cap power/charge growth first,
+            // then restore the owner's chosen size so the player cap cannot flatten large NPCs.
+            dims = new float[] {dims[0] / npcFactor, dims[1] / npcFactor};
         } catch (RuntimeException | LinkageError e) {
             // DragonMineZ's sizing could not be asked: the curve alone, without the model scale.
             float[] scaled = XenoAuraScaling.apply(new float[] {1.0f, 1.0f, 1.0f}, stats);
             dims = scaled == null || scaled.length < 2 ? new float[] {1.0f, 1.0f}
                     : new float[] {scaled[0], scaled[1]};
         }
-        return HdAuraPlan.capStretch(dims[0], dims[1], XenoClientConfig.auraMaxHeight);
+        return HdAuraPlan.capNpcStretch(dims[0], dims[1], XenoClientConfig.auraMaxHeight, npcFactor);
     }
 
-    /** An NPC: no DragonMineZ stats to size it from, so its body height stands in. */
+    /** An NPC: use its actual display/profile scale and explicit aura scale exactly once. */
     private static void emit(ClientLevel level, Entity entity, List<HdAuraPlan.Layer> plan, Set<Integer> extras) {
-        float body = HakaiEffectRules.bodyScale(entity.getBbHeight());
-        emit(level, entity, plan, extras, new float[] {body, body});
+        float scale = net.bullettrain.xenopixelsmod.client.compat.npc.NpcAuraClient.auraRenderScale(
+                (net.minecraft.world.entity.LivingEntity) entity);
+        emit(level, entity, plan, extras, new float[] {scale, scale});
     }
 
     private static void emit(ClientLevel level, Entity entity, List<HdAuraPlan.Layer> plan, Set<Integer> extras,
@@ -606,6 +612,11 @@ public final class HdAuraClient {
             return false;
         }
         float[] stretch = LIVE_STRETCH.get(target.getId());
+        if (stretch == null && target instanceof net.minecraft.world.entity.LivingEntity npc
+                && !(target instanceof net.minecraft.world.entity.player.Player)) {
+            float scale = net.bullettrain.xenopixelsmod.client.compat.npc.NpcAuraClient.auraRenderScale(npc);
+            stretch = new float[] {scale, scale};
+        }
         float[] k = stretch == null ? live.initial
                 : new float[] {stretch[0] * live.shape[0], stretch[1] * live.shape[1]};
         Minecraft view = Minecraft.getInstance();

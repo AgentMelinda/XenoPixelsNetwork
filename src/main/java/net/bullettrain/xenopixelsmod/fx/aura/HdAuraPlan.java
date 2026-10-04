@@ -272,6 +272,13 @@ public final class HdAuraPlan {
         return new float[] {auraScale[0] / DMZ_REST_SCALE, auraScale[1] / DMZ_REST_SCALE};
     }
 
+    /** Player power-growth limit, followed by explicit NPC display/aura scale exactly once. */
+    public static float[] capNpcStretch(float width, float height, float maxHeight, float npcFactor) {
+        float[] capped = capStretch(width, height, maxHeight);
+        float factor = Float.isFinite(npcFactor) && npcFactor > 0 ? npcFactor : 1.0f;
+        return new float[] {capped[0] * factor, capped[1] * factor};
+    }
+
     /**
      * The ki aura curve, held to what an effect made of sprites can take.
      *

@@ -6,7 +6,11 @@
   "mixins": [
     "compat.linearreader.McaConversionPolicyMixin",
     "compat.linearreader.BulkConversionPolicyMixin",
-    "compat.linearreader.AnvilDimensionStorageMixin"
+    "compat.linearreader.AnvilDimensionStorageMixin",
+    "compat.yawpconversion.ClaimActivationMixin",
+    "compat.yawpconversion.ClaimAreaMixin",
+    "compat.yawpconversion.ClaimRemovalMixin",
+    "compat.yawpconversion.ClaimDimensionMixin"
   ],
   "injectors": { "defaultRequire": 1 },
   "minVersion": "0.8"

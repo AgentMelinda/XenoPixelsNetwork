@@ -20,6 +20,7 @@ public final class LinearConversionPolicy {
     private static Path configFile;
     // Once opened as Anvil, do not convert a region underneath its live file handle.
     private static final java.util.Set<Path> ANVIL_REGIONS = ConcurrentHashMap.newKeySet();
+    private static final Map<Path, java.util.concurrent.locks.ReentrantLock> REGION_LOCKS = new ConcurrentHashMap<>();
 
     private LinearConversionPolicy() {}
 
@@ -27,17 +28,27 @@ public final class LinearConversionPolicy {
         public boolean enabled = true;
         public boolean defaultConversionAllowed = true;
         public Map<String, Boolean> dimensions = new TreeMap<>();
+        // Safe default, including older configs without this field: unclaimed files stay MCA.
+        public boolean allowOutsideYawpClaims = false;
+        public Map<String, Boolean> outsideYawpClaimsDimensions = new TreeMap<>();
 
         public Settings copy() {
             Settings copy = new Settings();
             copy.enabled = enabled;
             copy.defaultConversionAllowed = defaultConversionAllowed;
             copy.dimensions.putAll(dimensions);
+            copy.allowOutsideYawpClaims = allowOutsideYawpClaims;
+            copy.outsideYawpClaimsDimensions.putAll(outsideYawpClaimsDimensions);
             return copy;
         }
 
         public boolean allows(String dimension) {
             return !enabled || dimensions.getOrDefault(dimension, defaultConversionAllowed);
+        }
+
+        public boolean allowsOutsideClaims(String dimension) {
+            return !enabled || (dimension == null ? allowOutsideYawpClaims
+                    : outsideYawpClaimsDimensions.getOrDefault(dimension, allowOutsideYawpClaims));
         }
     }
 
@@ -45,12 +56,16 @@ public final class LinearConversionPolicy {
         configFile = config;
         worldRoot = root.toAbsolutePath().normalize();
         ANVIL_REGIONS.clear();
+        REGION_LOCKS.clear();
+        LinearClaimCoverage.invalidate();
         reload();
     }
 
     public static synchronized void stop() {
         worldRoot = null;
         ANVIL_REGIONS.clear();
+        REGION_LOCKS.clear();
+        LinearClaimCoverage.invalidate();
     }
 
     public static Settings settings() { return current.copy(); }
@@ -74,13 +89,10 @@ public final class LinearConversionPolicy {
     static Settings read(Path file) throws IOException {
         try {
             Settings settings = GSON.fromJson(Files.readString(file), Settings.class);
-            if (settings == null || settings.dimensions == null) {
+            if (settings == null || settings.dimensions == null || settings.outsideYawpClaimsDimensions == null) {
                 throw new IllegalArgumentException("Expected a settings object and dimensions map");
             }
-            for (var entry : settings.dimensions.entrySet()) {
-                validateDimension(entry.getKey());
-                if (entry.getValue() == null) throw new IllegalArgumentException("Null dimension toggle");
-            }
+            validateOverrides(settings);
             return settings;
         } catch (RuntimeException exception) {
             throw new IOException("Invalid LinearReader policy in " + file, exception);
@@ -98,10 +110,7 @@ public final class LinearConversionPolicy {
     }
 
     public static synchronized void save(Settings settings) throws IOException {
-        for (var entry : settings.dimensions.entrySet()) {
-            validateDimension(entry.getKey());
-            if (entry.getValue() == null) throw new IllegalArgumentException("Null dimension toggle");
-        }
+        validateOverrides(settings);
         Files.createDirectories(configFile.toAbsolutePath().getParent());
         Path temporary = Files.createTempFile(configFile.toAbsolutePath().getParent(), "xenolinear-", ".tmp");
         try {
@@ -117,6 +126,16 @@ public final class LinearConversionPolicy {
         }
     }
 
+    private static void validateOverrides(Settings settings) {
+        // Validate separately: an override in one map must not hide an invalid value in the other.
+        for (var overrides : java.util.List.of(settings.dimensions, settings.outsideYawpClaimsDimensions)) {
+            for (var entry : overrides.entrySet()) {
+                validateDimension(entry.getKey());
+                if (entry.getValue() == null) throw new IllegalArgumentException("Null dimension toggle");
+            }
+        }
+    }
+
     public static Path regionPath(Path folder, int regionX, int regionZ) {
         return folder.resolve("r." + regionX + "." + regionZ + ".mca").toAbsolutePath().normalize();
     }
@@ -126,13 +145,24 @@ public final class LinearConversionPolicy {
     }
 
     public static void openedAnvil(Path region) {
-        ANVIL_REGIONS.add(region.toAbsolutePath().normalize());
+        var lock = regionLock(region);
+        lock.lock();
+        try { ANVIL_REGIONS.add(region.toAbsolutePath().normalize()); }
+        finally { lock.unlock(); }
+    }
+
+    public static java.util.concurrent.locks.ReentrantLock regionLock(Path region) {
+        return REGION_LOCKS.computeIfAbsent(region.toAbsolutePath().normalize(), ignored ->
+                new java.util.concurrent.locks.ReentrantLock());
     }
 
     public static boolean allowsConversion(Path path) {
         if (retainAnvil(path)) return false;
         String dimension = dimensionAt(worldRoot, path);
-        return dimension == null || current.allows(dimension);
+        Settings policy = current;
+        if (!policy.enabled) return true;
+        if (dimension != null && !policy.allows(dimension)) return false;
+        return policy.allowsOutsideClaims(dimension) || LinearClaimCoverage.covers(dimension, path);
     }
 
     /** Handles vanilla storage layout, including dimension IDs with a slash in their path. */

@@ -92,6 +92,32 @@ public final class ScriptNpc extends ScriptEntity {
 
     // ---------------------------------------------------------------- identity / body
 
+    /** Native shortcuts for the appearance and effect controls shown in the Functions panel. */
+    public boolean setAuraScale(float scale) { return NativeXenoScriptApi.INSTANCE.setAuraScale(this, scale); }
+    public float getAuraScale() {
+        return net.bullettrain.xenopixelsmod.compat.npc.NpcCombatProfile.readCached(npc).auraScale;
+    }
+    public boolean setAura(boolean on) { return NativeXenoScriptApi.INSTANCE.setAura(this, on); }
+    private net.bullettrain.xenopixelsmod.npc.script.api.xeno.XenoNpcAdapter adapter() {
+        if (npc == null) throw new IllegalStateException("NPC appearance functions require a live NPC");
+        return new net.bullettrain.xenopixelsmod.npc.script.api.xeno.XenoNpcAdapter(npc);
+    }
+    public xenoapi.npcs.api.entity.data.INPCDisplay getDisplay() { return adapter().getDisplay(); }
+    public xenoapi.npcs.api.entity.data.INPCStats getStats() { return adapter().getStats(); }
+    public xenoapi.npcs.api.entity.data.INPCAi getAi() { return adapter().getAi(); }
+    public xenoapi.npcs.api.entity.data.INPCAdvanced getAdvanced() { return adapter().getAdvanced(); }
+    public xenoapi.npcs.api.entity.data.INPCInventory getInventory() { return adapter().getInventory(); }
+    public xenoapi.npcs.api.entity.data.INPCRole getRole() { return adapter().getRole(); }
+    public xenoapi.npcs.api.entity.data.INPCJob getJob() { return adapter().getJob(); }
+    public int getSize() { return getDisplay().getSize(); }
+    public void setSize(int size) { getDisplay().setSize(size); }
+    public boolean playSound(String sound, float volume, float pitch) {
+        return NativeXenoScriptApi.INSTANCE.playSound(this, sound, volume, pitch);
+    }
+    public boolean playAnimation(String animation) { return NativeXenoScriptApi.INSTANCE.playAnimation(this, animation); }
+    public boolean playAnimation(String animation, float speed) { return NativeXenoScriptApi.INSTANCE.playAnimation(this, animation, speed); }
+
+
     @Override
     public String getName() {
         return npc.npcData().displayName();

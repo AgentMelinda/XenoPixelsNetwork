@@ -3,6 +3,8 @@ package net.bullettrain.xenopixelsmod.command;
 import com.mojang.brigadier.arguments.BoolArgumentType;
 import net.bullettrain.xenopixelsmod.XenoPixelsMod;
 import net.bullettrain.xenopixelsmod.compat.linearreader.LinearConversionPolicy;
+import net.bullettrain.xenopixelsmod.compat.linearreader.LinearClaimCoverage;
+import net.bullettrain.xenopixelsmod.compat.linearreader.YawpConversionClaims;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
 import net.minecraft.commands.SharedSuggestionProvider;
@@ -16,6 +18,8 @@ import net.neoforged.fml.loading.FMLPaths;
 import net.neoforged.neoforge.event.RegisterCommandsEvent;
 import net.neoforged.neoforge.event.server.ServerAboutToStartEvent;
 import net.neoforged.neoforge.event.server.ServerStoppedEvent;
+import net.neoforged.neoforge.event.server.ServerStartedEvent;
+import net.neoforged.neoforge.event.tick.ServerTickEvent;
 
 import java.io.IOException;
 import java.util.function.Consumer;
@@ -23,9 +27,38 @@ import java.util.function.Consumer;
 @EventBusSubscriber(modid = XenoPixelsMod.MOD_ID)
 public final class LinearConversionCommands {
     private LinearConversionCommands() {}
+    private static boolean ready;
+    private static boolean claimAdapterFailed;
+    private static long lastClaimGeneration = Long.MIN_VALUE;
+    private static int snapshotTicks;
+
+    @SubscribeEvent
+    public static void started(ServerStartedEvent event) { ready = true; refreshClaims(event.getServer()); }
+
+    @SubscribeEvent
+    public static void tick(ServerTickEvent.Post event) {
+        if (ready) refreshClaims(event.getServer());
+    }
+
+    private static void refreshClaims(net.minecraft.server.MinecraftServer server) {
+        if (LinearClaimCoverage.generation() == lastClaimGeneration && ++snapshotTicks < 20) return;
+        snapshotTicks = 0;
+        if (claimAdapterFailed || !ModList.get().getModContainerById("yawp")
+                .map(mod -> mod.getModInfo().getVersion().toString().equals("0.6.3-beta3")).orElse(false)) return;
+        try { YawpConversionClaims.refresh(server); lastClaimGeneration = LinearClaimCoverage.generation(); }
+        catch (RuntimeException | LinkageError exception) {
+            LinearClaimCoverage.invalidate();
+            claimAdapterFailed = true;
+            XenoPixelsMod.LOGGER.error("YAWP claim coverage unavailable; restricted MCA files will not convert", exception);
+        }
+    }
 
     @SubscribeEvent
     public static void starting(ServerAboutToStartEvent event) {
+        ready = false;
+        claimAdapterFailed = false;
+        lastClaimGeneration = Long.MIN_VALUE;
+        snapshotTicks = 0;
         try {
             LinearConversionPolicy.start(FMLPaths.CONFIGDIR.get().resolve("xenopixelsmod-linearreader.json"),
                     event.getServer().getWorldPath(LevelResource.ROOT));
@@ -36,7 +69,7 @@ public final class LinearConversionCommands {
     }
 
     @SubscribeEvent
-    public static void stopped(ServerStoppedEvent event) { LinearConversionPolicy.stop(); }
+    public static void stopped(ServerStoppedEvent event) { ready = false; LinearConversionPolicy.stop(); }
 
     @SubscribeEvent
     public static void register(RegisterCommandsEvent event) {
@@ -48,10 +81,17 @@ public final class LinearConversionCommands {
                         .executes(ctx -> update(ctx.getSource(), settings -> settings.enabled = BoolArgumentType.getBool(ctx, "enabled")))))
                 .then(Commands.literal("default").then(Commands.argument("allowed", BoolArgumentType.bool())
                         .executes(ctx -> update(ctx.getSource(), settings -> settings.defaultConversionAllowed = BoolArgumentType.getBool(ctx, "allowed")))))
+                .then(Commands.literal("outside-claims").then(Commands.argument("allowed", BoolArgumentType.bool())
+                        .executes(ctx -> update(ctx.getSource(), settings -> settings.allowOutsideYawpClaims = BoolArgumentType.getBool(ctx, "allowed")))))
                 .then(Commands.literal("dimension").then(Commands.argument("dimension", ResourceLocationArgument.id())
                         .suggests((ctx, builder) -> SharedSuggestionProvider.suggest(
                                 ctx.getSource().getServer().levelKeys().stream().map(key -> key.location().toString()), builder))
                         .executes(ctx -> dimensionStatus(ctx.getSource(), ResourceLocationArgument.getId(ctx, "dimension").toString()))
+                        .then(Commands.literal("outside-claims")
+                                .then(Commands.argument("allowed", BoolArgumentType.bool()).executes(ctx -> update(ctx.getSource(), settings ->
+                                        settings.outsideYawpClaimsDimensions.put(ResourceLocationArgument.getId(ctx, "dimension").toString(), BoolArgumentType.getBool(ctx, "allowed")))))
+                                .then(Commands.literal("reset").executes(ctx -> update(ctx.getSource(), settings ->
+                                        settings.outsideYawpClaimsDimensions.remove(ResourceLocationArgument.getId(ctx, "dimension").toString())))))
                         .then(Commands.argument("allowed", BoolArgumentType.bool()).executes(ctx -> update(ctx.getSource(), settings -> {
                             String dimension = ResourceLocationArgument.getId(ctx, "dimension").toString();
                             LinearConversionPolicy.validateDimension(dimension);
@@ -73,6 +113,8 @@ public final class LinearConversionCommands {
                 .map(container -> container.getModInfo().getVersion().toString()).orElse("absent");
         source.sendSuccess(() -> Component.literal("LinearReader=" + version + "; policy enabled=" + settings.enabled
                 + "; default conversion=" + settings.defaultConversionAllowed + "; dimensions=" + settings.dimensions
+                + "; outside local claims=" + settings.allowOutsideYawpClaims + "; outside overrides=" + settings.outsideYawpClaimsDimensions
+                + ". Claim coverage requires YAWP 0.6.3-beta3 and one active cuboid covering the whole file and world height; unavailable coverage keeps MCA"
                 + ". Integration supports 1.3.0. Open regions retain their format until restart; existing linear files remain readable."), false);
         return 1;
     }
@@ -82,6 +124,8 @@ public final class LinearConversionCommands {
             LinearConversionPolicy.validateDimension(dimension);
             source.sendSuccess(() -> Component.literal(dimension + ": new linear conversion allowed="
                     + LinearConversionPolicy.settings().allows(dimension)), false);
+            source.sendSuccess(() -> Component.literal("Outside local claims allowed="
+                    + LinearConversionPolicy.settings().allowsOutsideClaims(dimension)), false);
             return 1;
         } catch (IllegalArgumentException exception) {
             source.sendFailure(Component.literal(exception.getMessage())); return 0;
@@ -107,7 +151,8 @@ public final class LinearConversionCommands {
     }
 
     private static void requireSupportedRestrictions(LinearConversionPolicy.Settings settings) {
-        boolean restricted = settings.enabled && (!settings.defaultConversionAllowed || settings.dimensions.containsValue(false));
+        boolean restricted = settings.enabled && (!settings.defaultConversionAllowed || settings.dimensions.containsValue(false)
+                || !settings.allowOutsideYawpClaims || settings.outsideYawpClaimsDimensions.containsValue(false));
         var installed = ModList.get().getModContainerById("linearreader");
         if (restricted && installed.isPresent() && !installed.get().getModInfo().getVersion().toString().equals("1.3.0")) {
             throw new IllegalArgumentException("Dimension conversion restrictions require LinearReader 1.3.0; installed "
