@@ -98,10 +98,30 @@
   build/claims-aura-release-audit.txt. No clean security-audit claim. New YAWP/LR targets verified
   against exact jars with javap and exercised in fresh processes; unrelated audit scope not repaired.
 
+## Published release
+
+- Annotated tag object: dc702d863ea4dad744022f1f46b6a32db8bb5384.
+  Tag target/handoff commit: 8ff19775dbb1233d9748d573589c48fa02536354.
+  Both branch and tag pushed to origin.
+- Build succeeded: https://github.com/AgentMelinda/XenoPixelsNetwork/actions/runs/37241481030.
+- Build And Release succeeded: https://github.com/AgentMelinda/XenoPixelsNetwork/actions/runs/37241482795.
+  Published at 2026-10-04T22:51:18Z (2026-10-05 01:51:18 Asia/Jerusalem):
+  https://github.com/AgentMelinda/XenoPixelsNetwork/releases/tag/v0.5.10-1.21.1.
+- Downloaded published client: 69,264,796 bytes,
+  SHA-256 62c4ecb0f7f1cfb67204db5f2ae389444271bfd85db4c95fd369175b1ad9448a.
+- Downloaded published server: 45,117,952 bytes,
+  SHA-256 ac3e65224812b96400cbd52aa2883c2023df3cb62e2b3867e47c0be5d2d9e951.
+  Download hashes match GitHub's reported asset digests. Rechecked client Modern UI and server
+  metadata/AAA-only jarjar contents. Downloads retained in build/release-verification-v0.5.10.
+- Published task-changed class files match local artifact bytes. Overall jars differ because text
+  line endings/empty directories and two unrelated class files differ. XenoNpcEntity$5 normalized
+  javap instructions match; published XenoNpcRenderer has additional synthetic generic bridge methods
+  for inherited MobRenderer methods. This is not a byte-identical artifact claim.
+
 ## Next steps
 
-- Push reviewed handoff and annotated v0.5.10-1.21.1 tag, observe Build/Build And Release workflows,
-  inspect downloaded release jars, then append workflow IDs and artifact hashes.
+- Release and downloaded packaging checks complete. A documentation-only follow-up records these
+  results without moving the immutable release tag. Preserve unrelated owner dirt.
 - Keep Gradle invocations sequential. Concurrent dev/build runs previously replaced launch files/classes
   under running fixtures; stable sequential reruns passed. Never use the failed runs as runtime proof.
 - Keep default outside-claims false. Use `/xenolinear dimension dragonminez:otherworld false` to
