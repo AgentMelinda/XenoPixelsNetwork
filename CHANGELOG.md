@@ -1,5 +1,22 @@
 # Changelog
 
+## Unreleased
+
+## 0.5.7-1.21.1 — 2026-10-04
+
+- Race Maker: per-race hair catalog and authored body types. Hair Editor **Save Pack** writes
+  CustomHair JSON under `config/dragonminez/races/<id>/catalog/`. **Add Body** writes a
+  64×64 layered PNG and copies it into a generated `dragonminez`-namespace resource pack
+  so `TextureCounter` can count it. Tattoo is its own category (DMZ presets + Taotto).
+- Taotto: per-pixel tattoo painter (`/xenomaker taotto`). Scale, body-part select, and drag
+  place an additive overlay. DMZ `tattooType` is unchanged. **Not verified in a running game.**
+- Live maker previews use the selected race and a temporary unsaved form definition; race,
+  hair, and transformation state are restored after drawing. Taotto drafts update before Apply.
+- DMZ character creation's Hair tab can cycle the race's authored hair catalog. Generated body
+  textures use the race's own namespace and reload resource packs after Add Body.
+- Form Maker: set each DragonMineZ form stat multiplier that exists on FormData (STR, SKP, STM,
+  DEF, VIT, PWR, ENE, SPD). HUD RES stays (DEF+STM)/2; no invented `resMultiplier`.
+
 ## 0.5.6-1.21.1 — 2026-10-04
 
 - HD aura **v4**: live follow no longer treats `aura4` as a silhouette. The smoke wall and inner

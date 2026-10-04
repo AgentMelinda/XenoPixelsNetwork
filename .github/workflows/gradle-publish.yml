@@ -48,22 +48,23 @@ jobs:
 
       - name: Verify release artifacts
         run: |
-          mapfile -t jars < <(ls build/libs/xenopixelsmod-*.jar 2>/dev/null \
-            | grep -v -e '-sources\.jar$' -e '-slim\.jar$')
-          if [ ${#jars[@]} -eq 0 ]; then
-            echo "No releasable xenopixelsmod jars found under build/libs"
-            ls -la build/libs || true
-            exit 1
+          set -euo pipefail
+          VERSION=$(sed -n 's/^mod_version=//p' gradle.properties | tr -d '\r')
+          if [[ "$GITHUB_REF" == refs/tags/* ]]; then
+            test "$GITHUB_REF_NAME" = "v${VERSION}"
           fi
-          echo "Verified: ${jars[*]}"
-          printf '%s\n' "${jars[@]}" | grep -q 'xenopixelsmod-Server-' || {
-            echo "Missing server jar"
-            exit 1
-          }
-          printf '%s\n' "${jars[@]}" | grep -v 'xenopixelsmod-Server-' | grep -q 'xenopixelsmod-' || {
-            echo "Missing client jar (jarJar stages nested libs; :jar writes the artifact)"
-            exit 1
-          }
+          client="build/libs/xenopixelsmod-${VERSION}.jar"
+          server="build/libs/xenopixelsmod-Server-${VERSION}.jar"
+          test -s "$client"
+          test -s "$server"
+          jar tf "$client" > /tmp/client-entries.txt
+          jar tf "$server" > /tmp/server-entries.txt
+          grep -iE '^META-INF/jarjar/modern-ui.*\.jar$' /tmp/client-entries.txt
+          grep '^META-INF/jarjar/' /tmp/server-entries.txt | grep -v '/$' > /tmp/server-nested.txt
+          test "$(wc -l < /tmp/server-nested.txt)" -eq 2
+          grep -Fx 'META-INF/jarjar/metadata.json' /tmp/server-nested.txt
+          grep -iE '^META-INF/jarjar/aaa_particles.*\.jar$' /tmp/server-nested.txt
+          sha256sum "$client" "$server"
 
       - name: Upload build artifacts
         uses: actions/upload-artifact@v7
@@ -80,15 +81,10 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GH_REPO: ${{ github.repository }}
         run: |
-          # Ship the JiJ-bundled client jar (ModernUI nested, no classifier under MDG 2.x)
-          # plus the Server variant. Sources and the -slim jar are not published.
-          mapfile -t jars < <(ls build/libs/xenopixelsmod-*.jar 2>/dev/null \
-            | grep -v -e '-sources\.jar$' -e '-slim\.jar$')
-          if [ ${#jars[@]} -eq 0 ]; then
-            echo "No xenopixelsmod jars found under build/libs"
-            ls -la build/libs || true
-            exit 1
-          fi
+          set -euo pipefail
+          VERSION=$(sed -n 's/^mod_version=//p' gradle.properties | tr -d '\r')
+          jars=("build/libs/xenopixelsmod-${VERSION}.jar" "build/libs/xenopixelsmod-Server-${VERSION}.jar")
+          for jar in "${jars[@]}"; do test -s "$jar"; done
           echo "Publishing: ${jars[*]}"
           # --repo is explicit so this keeps working if the step ever runs in a job that has
           # no checkout; gh otherwise infers the repo from the git remote and dies with
