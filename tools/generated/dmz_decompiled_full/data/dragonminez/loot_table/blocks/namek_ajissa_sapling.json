@@ -1,21 +1,3 @@
-{
-  "type": "minecraft:block",
-  "pools": [
-    {
-      "bonus_rolls": 0.0,
-      "conditions": [
-        {
-          "condition": "minecraft:survives_explosion"
-        }
-      ],
-      "entries": [
-        {
-          "type": "minecraft:item",
-          "name": "dragonminez:namek_ajissa_sapling"
-        }
-      ],
-      "rolls": 1.0
-    }
-  ],
-  "random_sequence": "dragonminez:blocks/namek_ajissa_sapling"
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:fd42593ade056c63452db388b860faa972e27c148dfa452504bbcb22e9ef0c87
+size 412

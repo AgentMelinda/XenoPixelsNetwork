@@ -1,6 +1,3 @@
-{
-  "parent": "minecraft:item/generated",
-  "textures": {
-    "layer0": "dragonminez:item/dino_tail_cooked"
-  }
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:7516c05e496c7a861d560798bacbdd1747f628fa76adf0c493a0559f56cba199
+size 113

@@ -1,32 +1,3 @@
-{
-  "parent": "minecraft:recipes/root",
-  "criteria": {
-    "has_namek_cobblestone": {
-      "conditions": {
-        "items": [
-          {
-            "items": "dragonminez:namek_cobblestone"
-          }
-        ]
-      },
-      "trigger": "minecraft:inventory_changed"
-    },
-    "has_the_recipe": {
-      "conditions": {
-        "recipe": "dragonminez:namek_cobblestone_wall"
-      },
-      "trigger": "minecraft:recipe_unlocked"
-    }
-  },
-  "requirements": [
-    [
-      "has_the_recipe",
-      "has_namek_cobblestone"
-    ]
-  ],
-  "rewards": {
-    "recipes": [
-      "dragonminez:namek_cobblestone_wall"
-    ]
-  }
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:ded516703e69271bd0f372571c656336fee566b66d3c3019ed70119b4a2389a6
+size 621

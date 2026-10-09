@@ -1,32 +1,3 @@
-{
-  "carvers": {},
-  "downfall": 0.0,
-  "effects": {
-    "fog_color": 14480127,
-    "foliage_color": 14480127,
-    "grass_color": 14480127,
-    "mood_sound": {
-      "block_search_extent": 8,
-      "offset": 2.0,
-      "sound": "minecraft:ambient.cave",
-      "tick_delay": 6000
-    },
-    "sky_color": 16252159,
-    "water_color": 14480127,
-    "water_fog_color": 14480127
-  },
-  "features": [],
-  "has_precipitation": false,
-  "spawn_costs": {},
-  "spawners": {
-    "ambient": [],
-    "axolotls": [],
-    "creature": [],
-    "misc": [],
-    "monster": [],
-    "underground_water_creature": [],
-    "water_ambient": [],
-    "water_creature": []
-  },
-  "temperature": 0.7
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:632ed19c8a8fff0d4684f48330fe2960689e34a79a3afcf490390cb4c98f78e7
+size 673

@@ -1,32 +1,3 @@
-{
-  "parent": "minecraft:recipes/root",
-  "criteria": {
-    "has_blank_pattern_super": {
-      "conditions": {
-        "items": [
-          {
-            "items": "dragonminez:blank_pattern_super"
-          }
-        ]
-      },
-      "trigger": "minecraft:inventory_changed"
-    },
-    "has_the_recipe": {
-      "conditions": {
-        "recipe": "dragonminez:pattern_bardock2"
-      },
-      "trigger": "minecraft:recipe_unlocked"
-    }
-  },
-  "requirements": [
-    [
-      "has_the_recipe",
-      "has_blank_pattern_super"
-    ]
-  ],
-  "rewards": {
-    "recipes": [
-      "dragonminez:pattern_bardock2"
-    ]
-  }
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:53103cd693b37f21c90663d7449f9a1ea214c50926af9ae1cc02a9072744911e
+size 615

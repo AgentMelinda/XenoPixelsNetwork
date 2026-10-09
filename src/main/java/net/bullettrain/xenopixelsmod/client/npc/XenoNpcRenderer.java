@@ -117,6 +117,8 @@ public final class XenoNpcRenderer extends MobRenderer<XenoNpcEntity,
     /** Name with the title under it, lifted clear of the head. */
     private void drawNameplate(XenoNpcEntity entity, PoseStack pose, MultiBufferSource buffers, int light,
                                float partialTick) {
+        NpcCombatProfile profile = net.bullettrain.xenopixelsmod.client.compat.npc.NpcAppearanceClient.renderProfile(entity);
+        if (profile.displayShowName == 1 || profile.displayShowName == 2 && !entity.isCustomNameVisible()) return;
         if (!shouldShowName(entity)) return;
         net.minecraft.network.chat.Component title = entity.nameplateTitle();
         pose.pushPose();
@@ -135,6 +137,8 @@ public final class XenoNpcRenderer extends MobRenderer<XenoNpcEntity,
     @Override
     public void render(XenoNpcEntity entity, float entityYaw, float partialTick, PoseStack pose,
                        MultiBufferSource buffers, int light) {
+        if (!entity.isAlive() && net.bullettrain.xenopixelsmod.client.compat.npc.NpcAppearanceClient
+                .renderProfile(entity).hideDeadBody) return;
         renderModel(entity, entityYaw, partialTick, pose, buffers, light);
         drawNameplate(entity, pose, buffers, light, partialTick);
         // Bubbles from the same pose as the nameplate, when XenoServerConfig.npcBubblesInEntityPass

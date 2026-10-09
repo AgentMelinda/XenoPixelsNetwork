@@ -1,32 +1,3 @@
-{
-  "parent": "minecraft:recipes/root",
-  "criteria": {
-    "has_kikono_shard": {
-      "conditions": {
-        "items": [
-          {
-            "items": "dragonminez:kikono_shard"
-          }
-        ]
-      },
-      "trigger": "minecraft:inventory_changed"
-    },
-    "has_the_recipe": {
-      "conditions": {
-        "recipe": "dragonminez:kikono_string"
-      },
-      "trigger": "minecraft:recipe_unlocked"
-    }
-  },
-  "requirements": [
-    [
-      "has_the_recipe",
-      "has_kikono_shard"
-    ]
-  ],
-  "rewards": {
-    "recipes": [
-      "dragonminez:kikono_string"
-    ]
-  }
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:cfa527fe55002ad69bd14fe3518ec84b4dfdcde8786624264568487221364bfe
+size 588

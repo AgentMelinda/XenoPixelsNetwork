@@ -1,6 +1,3 @@
-{
-  "parent": "minecraft:item/generated",
-  "textures": {
-    "layer0": "dragonminez:item/armors/a18_kame_armor_leggings"
-  }
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:f66863d1567460c37b928777df3d4bffafcffe28b6871b2e2b34ff08a19a13a6
+size 127

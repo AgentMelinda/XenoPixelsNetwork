@@ -1,6 +1,3 @@
-{
-  "parent": "minecraft:item/generated",
-  "textures": {
-    "layer0": "dragonminez:item/patterns/pattern_a18_kame"
-  }
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:40acfa0b5f19ff37ecc2df454a82821fab793bec0976eed03e478c1ec04d1deb
+size 122

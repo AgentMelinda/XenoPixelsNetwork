@@ -1,18 +1,3 @@
-{
-  "required": false,
-  "minVersion": "0.8",
-  "package": "com.dragonminez.mixin.sable",
-  "plugin": "com.dragonminez.mixin.sable.SableMixinPlugin",
-  "compatibilityLevel": "JAVA_21",
-  "refmap": "dragonminez.refmap.json",
-  "mixins": [
-    "SableUDPPacketDecoderMixin",
-    "SableUDPChannelHandlerServerMixin",
-    "SableUDPChannelHandlerClientMixin"
-  ],
-  "client": [],
-  "server": [],
-  "injectors": {
-    "defaultRequire": 1
-  }
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:f8a0aa47613f00ab21b35e387a54e3308bd07fd879ca46eba6d70a9866a4fee5
+size 455

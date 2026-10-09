@@ -1,6 +1,3 @@
-{
-  "parent": "minecraft:item/generated",
-  "textures": {
-    "layer0": "dragonminez:item/armors/orange_high_armor_leggings"
-  }
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:ed0842c074834e0ce8a413c9b8c47dd4cc6b36bd084d709bcb5abf0b72385a79
+size 130

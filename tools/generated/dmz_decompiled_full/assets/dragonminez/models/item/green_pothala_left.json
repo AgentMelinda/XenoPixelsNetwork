@@ -1,6 +1,3 @@
-{
-  "parent": "minecraft:item/generated",
-  "textures": {
-    "layer0": "dragonminez:item/green_pothala_left"
-  }
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:45f06ae4b084812d794d398986585e71ad0a53b307d3d1dccac3a465e0be813a
+size 115

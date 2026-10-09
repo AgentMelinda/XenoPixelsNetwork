@@ -1,6 +1,3 @@
-{
-  "parent": "minecraft:item/generated",
-  "textures": {
-    "layer0": "dragonminez:item/armors/piccolo_armor_helmet"
-  }
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:2a2d5ce3c000ad746345a9d3ce7c163fd37e1bf15075e0d61a0efa4830553045
+size 124

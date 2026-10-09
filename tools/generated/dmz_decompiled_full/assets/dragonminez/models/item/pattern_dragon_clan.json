@@ -1,6 +1,3 @@
-{
-  "parent": "minecraft:item/generated",
-  "textures": {
-    "layer0": "dragonminez:item/patterns/pattern_dragon_clan"
-  }
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:fc4792ec1fa601d0fd700de0b0091a6342b358b8a22c50960159e9c566fd94b4
+size 125

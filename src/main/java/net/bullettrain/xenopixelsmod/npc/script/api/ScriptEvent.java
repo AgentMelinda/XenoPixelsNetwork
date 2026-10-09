@@ -20,6 +20,12 @@ public final class ScriptEvent {
     public Object[] arguments;
     /** Native quest lookup counterpart. */
     public final ScriptApi API = new ScriptApi();
+    /** Typed root API; the legacy public API field keeps its existing quest-helper contract. */
+    public xenoapi.npcs.api.NpcAPI getAPI() {
+        var api = xenoapi.npcs.api.NpcAPI.Instance();
+        if (api == null) throw new IllegalStateException("The native NPC API is not registered");
+        return api;
+    }
     /** Mutable chat text on player chat hooks. */
     public String message;
     private boolean canceled;

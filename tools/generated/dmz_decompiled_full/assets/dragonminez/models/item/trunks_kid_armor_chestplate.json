@@ -1,6 +1,3 @@
-{
-  "parent": "minecraft:item/generated",
-  "textures": {
-    "layer0": "dragonminez:item/armors/trunks_kid_armor_chestplate"
-  }
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:3889ade8e3969f70f2c6bbfe8d340199bf566b5f46109a30a5c7874433c3d944
+size 131

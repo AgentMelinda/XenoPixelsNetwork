@@ -1,6 +1,3 @@
-{
-  "parent": "minecraft:item/generated",
-  "textures": {
-    "layer0": "dragonminez:item/armors/mighty_majin_armor_boots"
-  }
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:6d1600d542cebccc912d5160372c0e65a7ea3161de3094d88bb3a7123a974427
+size 128

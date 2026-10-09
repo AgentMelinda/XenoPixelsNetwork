@@ -1,0 +1,7 @@
+// Keep regression-test worlds, mods and logs separate from the running player's client.
+gradle.projectsEvaluated {
+    def validationProject = gradle.rootProject
+    validationProject.neoForge.runs.getByName('gameTestServer').gameDirectory = validationProject.file('build/ultimate-finisher-gametest-runtime')
+    validationProject.tasks.named('uninstallDevShaderMods') { enabled = false }
+    validationProject.tasks.named('uninstallDevPadMods') { enabled = false }
+}

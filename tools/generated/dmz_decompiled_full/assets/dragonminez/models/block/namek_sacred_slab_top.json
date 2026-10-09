@@ -1,8 +1,3 @@
-{
-  "parent": "minecraft:block/slab_top",
-  "textures": {
-    "bottom": "dragonminez:block/namek_sacred_planks",
-    "side": "dragonminez:block/namek_sacred_planks",
-    "top": "dragonminez:block/namek_sacred_planks"
-  }
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:94eda052f829e5bc77f0f901572b35bb4569ce4d24e0f1a9b4bc4a418ea471e6
+size 222

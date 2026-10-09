@@ -1,21 +1,3 @@
-{
-  "type": "minecraft:block",
-  "pools": [
-    {
-      "bonus_rolls": 0.0,
-      "conditions": [
-        {
-          "condition": "minecraft:survives_explosion"
-        }
-      ],
-      "entries": [
-        {
-          "type": "minecraft:item",
-          "name": "dragonminez:namek_sacred_planks"
-        }
-      ],
-      "rolls": 1.0
-    }
-  ],
-  "random_sequence": "dragonminez:blocks/namek_sacred_planks"
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:1e4c2fb4cd72d323e399b0e7e1631477a6694f4f806d4de679a5a8564f2723b5
+size 410

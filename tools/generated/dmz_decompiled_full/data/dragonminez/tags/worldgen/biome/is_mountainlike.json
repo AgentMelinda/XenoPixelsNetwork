@@ -1,6 +1,3 @@
-{
-  "values": [
-    "#minecraft:is_mountain",
-    "#c:is_mountain"
-  ]
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:ebc5636382ae0739492219e0706db08efd57fd26483abf273336f24ec8c9f750
+size 72

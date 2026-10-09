@@ -1,6 +1,3 @@
-{
-  "selector": "xenopixelsmod:copycat_wing_flap_horizontal",
-  "properties": {
-    "sable:mass": 0.6
-  }
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:35d312b4052a9992ac44b09d90feaa7f74da682162f9e1753ce16cc7bb1ad286
+size 108

@@ -1,25 +1,3 @@
-{
-  "type": "minecraft:crafting_shaped",
-  "category": "misc",
-  "group": "dragonminez",
-  "key": {
-    "#": {
-      "item": "dragonminez:blank_pattern_z"
-    },
-    "B": {
-      "item": "minecraft:blue_dye"
-    },
-    "C": {
-      "item": "minecraft:cyan_dye"
-    }
-  },
-  "pattern": [
-    "C#C",
-    "BCB",
-    "BBB"
-  ],
-  "result": {
-    "count": 1,
-    "id": "dragonminez:pattern_vegeta_buu"
-  }
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:82f700f6fcc4c5f684b123db0f0ad9dcc336da6c960bdcb3157c9b528bfa398b
+size 402

@@ -1,4 +1,3 @@
-{
-  "parent": "minecraft:item/generated",
-  "textures": { "layer0": "minecraft:item/experience_bottle" }
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:85ede1143de537d9a70e2e152115c7f173b23a43c6f8685c43ac5f9b076a2ce7
+size 107

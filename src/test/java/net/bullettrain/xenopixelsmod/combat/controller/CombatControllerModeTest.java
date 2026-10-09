@@ -16,6 +16,20 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 class CombatControllerModeTest {
 
     @Test
+    void v3IsExplicitAndEveryControllerTransitionRequiresCleanup() {
+        var v3 = CombatControllerMode.parseStrict(" V3 ");
+        assertTrue(v3 != null, "v3 must be an explicit selectable controller");
+        assertEquals("v3", v3.id());
+        var previous = v3;
+        for (String id : new String[]{"v2", "legacy", "bt3_manual", "v3"}) {
+            var next = CombatControllerMode.parseStrict(id);
+            assertTrue(CombatControllerMode.requiresCleanup(previous, next));
+            previous = next;
+        }
+        assertEquals(CombatControllerMode.LEGACY, CombatControllerMode.DEFAULT);
+    }
+
+    @Test
     void missingOrGarbageFallsBackToLegacy() {
         assertEquals(CombatControllerMode.LEGACY, CombatControllerMode.fromId(null));
         assertEquals(CombatControllerMode.LEGACY, CombatControllerMode.fromId(""));

@@ -52,10 +52,7 @@ public final class DmzAnimHelper {
             case FIST_LIGHT -> net.bullettrain.xenopixelsmod.anim.CombatStateAnim
                     .resolve(player, TechniqueAnimSlot.CHARGE_PUNCH);
             case FIST_HEAVY -> net.bullettrain.xenopixelsmod.anim.CombatStateAnim
-                    .hasCustom(player, TechniqueAnimSlot.CHARGE_PUNCH)
-                    ? net.bullettrain.xenopixelsmod.anim.CombatStateAnim
-                    .resolve(player, TechniqueAnimSlot.CHARGE_PUNCH)
-                    : CHARGE_HEAVY;
+                    .resolve(player, TechniqueAnimSlot.CHARGE_PUNCH);
             case KICK -> net.bullettrain.xenopixelsmod.anim.CombatStateAnim
                     .resolve(player, TechniqueAnimSlot.CHARGE_KICK);
             case DRAGON -> net.bullettrain.xenopixelsmod.anim.CombatStateAnim
@@ -71,7 +68,7 @@ public final class DmzAnimHelper {
                     player, TechniqueAnimSlot.CHARGE_KICK_FIRE)) {
                 return custom;
             }
-            return fullyCharged ? KICK_GUT_R : KICK_GUT_L;
+            return custom;
         }
         if (style == ChargeStyle.DRAGON) {
             return CHARGE_HEAVY_FIRE;
@@ -81,7 +78,7 @@ public final class DmzAnimHelper {
             return net.bullettrain.xenopixelsmod.anim.CombatStateAnim
                     .resolve(player, TechniqueAnimSlot.CHARGE_PUNCH_FIRE);
         }
-        return fullyCharged ? CHARGE_HEAVY_FIRE : CHARGE_LIGHT_FIRE;
+        return net.bullettrain.xenopixelsmod.anim.CombatStateAnim.resolve(player, TechniqueAnimSlot.CHARGE_PUNCH_FIRE);
     }
 
     public static void broadcastChargeStart(ServerPlayer player, ChargeStyle style) {
@@ -90,7 +87,7 @@ public final class DmzAnimHelper {
             TriggerAnimationS2C pkt = new TriggerAnimationS2C(
                     player.getUUID(),
                     TriggerAnimationS2C.AnimationType.KI_ANIMATION,
-                    0,
+                    1,
                     player.getId(),
                     anim);
             // Tracking only — local client already predicts (avoids double anim)
@@ -261,12 +258,12 @@ public final class DmzAnimHelper {
         if (style == ChargeStyle.KICK) {
             String primary = chargeFireAnim(player, style, fullyCharged);
             if (verticalBias < 0 && !net.bullettrain.xenopixelsmod.anim.CombatStateAnim
-                    .hasCustom(player, TechniqueAnimSlot.CHARGE_KICK_FIRE)) {
+                    .hasCustom(player, TechniqueAnimSlot.CHARGE_KICK_FIRE) && !weightedChargeRelease(primary)) {
                 primary = KICK_LOW_R;
             }
             broadcastMelee(player, primary, false, speed);
             if (chainAnims && !net.bullettrain.xenopixelsmod.anim.CombatStateAnim
-                    .hasCustom(player, TechniqueAnimSlot.CHARGE_KICK_FIRE)) {
+                    .hasCustom(player, TechniqueAnimSlot.CHARGE_KICK_FIRE) && !weightedChargeRelease(primary)) {
                 // Delayed follow-up: low kick or opposite side gut for a 2-hit chain
                 String follow = verticalBias > 0 ? KICK_GUT_R : (verticalBias < 0 ? KICK_LOW_L : KICK_LOW_R);
                 scheduleMelee(player, follow, false, speed * 1.05f, 4);
@@ -290,13 +287,18 @@ public final class DmzAnimHelper {
         String fire = chargeFireAnim(player, style, fullyCharged);
         broadcastMelee(player, fire, false, speed);
         if (chainAnims && !net.bullettrain.xenopixelsmod.anim.CombatStateAnim
-                .hasCustom(player, TechniqueAnimSlot.CHARGE_PUNCH_FIRE)) {
+                .hasCustom(player, TechniqueAnimSlot.CHARGE_PUNCH_FIRE) && !weightedChargeRelease(fire)) {
             // Second punch hand for a snappy combo finish
             scheduleMelee(player, fullyCharged ? PUNCH_LEFT : ATTACK2, false, speed * 1.1f, 3);
             if (fullyCharged) {
                 scheduleMelee(player, PUNCH_RIGHT, false, 1.2f, 7);
             }
         }
+    }
+
+    public static boolean weightedChargeRelease(String animation) {
+        return net.bullettrain.xenopixelsmod.combat.v2.V2ChargeRules.PUNCH_FIRE.equals(animation)
+                || net.bullettrain.xenopixelsmod.combat.v2.V2ChargeRules.KICK_FIRE.equals(animation);
     }
 
     private static void scheduleMelee(ServerPlayer player, String anim, boolean offhand, float speed, int delayTicks) {

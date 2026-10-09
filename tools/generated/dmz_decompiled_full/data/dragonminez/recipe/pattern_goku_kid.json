@@ -1,22 +1,3 @@
-{
-  "type": "minecraft:crafting_shaped",
-  "category": "misc",
-  "group": "dragonminez",
-  "key": {
-    "#": {
-      "item": "dragonminez:blank_pattern_z"
-    },
-    "R": {
-      "item": "minecraft:red_dye"
-    }
-  },
-  "pattern": [
-    "R#R",
-    "R R",
-    "RRR"
-  ],
-  "result": {
-    "count": 1,
-    "id": "dragonminez:pattern_goku_kid"
-  }
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:b4b68a0975c91b5aba4cc2d2ed5889b913ead6e397b614c962c660259119801c
+size 346

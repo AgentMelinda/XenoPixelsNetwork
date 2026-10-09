@@ -1,20 +1,3 @@
-{
-  "attributes": {
-    "attack_range": 2.75,
-    "pose": "pose_two_handed_heavy",
-    "two_handed": true,
-    "category": "hammer",
-    "attacks": [
-      {
-        "hitbox": "FORWARD_BOX",
-        "damage_multiplier": 1,
-        "angle": 0,
-        "upswing": 0.5,
-        "animation": "combat.two_handed_slam",
-        "swing_sound": {
-          "id": "dragonminez:hammer_slam"
-        }
-      }
-    ]
-  }
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:8471fec68a5f0a6c8384b1cfdd87bc72017f020532b4b0211c2aca1044ef4bb2
+size 429

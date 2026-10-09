@@ -1,0 +1,97 @@
+ m XenoPixelsNetwork_qwen
+ m c
+ M docs/native-xenoapi-adapters.md
+ M src/main/java/net/bullettrain/xenopixelsmod/client/ClientModEvents.java
+ M src/main/java/net/bullettrain/xenopixelsmod/client/command/XenoMusicCommands.java
+ M src/main/java/net/bullettrain/xenopixelsmod/client/music/XenoMusicPauseWidget.java
+ M src/main/java/net/bullettrain/xenopixelsmod/client/music/XenoMusicPlayer.java
+ M src/main/java/net/bullettrain/xenopixelsmod/client/music/XenoMusicTracks.java
+ M src/main/java/net/bullettrain/xenopixelsmod/client/npc/NpcTextureCatalog.java
+ M src/main/java/net/bullettrain/xenopixelsmod/client/npc/XenoNpcEditorScreen.java
+ M src/main/java/net/bullettrain/xenopixelsmod/client/npc/XenoNpcGeoModel.java
+ M src/main/java/net/bullettrain/xenopixelsmod/client/npc/XenoNpcRenderer.java
+ M src/main/java/net/bullettrain/xenopixelsmod/client/npc/XenoNpcTexturePickerScreen.java
+ M src/main/java/net/bullettrain/xenopixelsmod/combat/v3/V3AttackSounds.java
+ M src/main/java/net/bullettrain/xenopixelsmod/combat/v3/V3Charge.java
+ M src/main/java/net/bullettrain/xenopixelsmod/combat/v3/V3CombatServer.java
+ M src/main/java/net/bullettrain/xenopixelsmod/combat/v3/V3Config.java
+ M src/main/java/net/bullettrain/xenopixelsmod/combat/v3/V3Dash.java
+ M src/main/java/net/bullettrain/xenopixelsmod/combat/v3/V3Heavy.java
+ M src/main/java/net/bullettrain/xenopixelsmod/combat/v3/technique/V3TechniqueRuntime.java
+ M src/main/java/net/bullettrain/xenopixelsmod/compat/npc/NpcCombatBrain.java
+ M src/main/java/net/bullettrain/xenopixelsmod/compat/npc/NpcCombatProfile.java
+ M src/main/java/net/bullettrain/xenopixelsmod/compat/npc/NpcKnockbackGrace.java
+ M src/main/java/net/bullettrain/xenopixelsmod/compat/npc/NpcProfileLifecycle.java
+ M src/main/java/net/bullettrain/xenopixelsmod/config/XenoConfigRegistry.java
+ M src/main/java/net/bullettrain/xenopixelsmod/config/XenoServerConfig.java
+ M src/main/java/net/bullettrain/xenopixelsmod/config/XenoServerConfigKeys.java
+ M src/main/java/net/bullettrain/xenopixelsmod/missile/ModEntities.java
+ M src/main/java/net/bullettrain/xenopixelsmod/network/ModNetwork.java
+ M src/main/java/net/bullettrain/xenopixelsmod/network/packet/CombatV3ConfigPacket.java
+ M src/main/java/net/bullettrain/xenopixelsmod/network/packet/XenoNpcSavePolicy.java
+ M src/main/java/net/bullettrain/xenopixelsmod/npc/XenoNpcBehaviour.java
+ M src/main/java/net/bullettrain/xenopixelsmod/npc/XenoNpcEntity.java
+ M src/main/java/net/bullettrain/xenopixelsmod/npc/path/NpcPath.java
+ M src/main/java/net/bullettrain/xenopixelsmod/npc/path/NpcPathWalker.java
+ M src/main/java/net/bullettrain/xenopixelsmod/npc/script/NpcScriptHost.java
+ M src/main/java/net/bullettrain/xenopixelsmod/npc/script/ScriptFunctionCatalog.java
+ M src/main/java/net/bullettrain/xenopixelsmod/npc/script/api/ScriptEvent.java
+ M src/main/java/net/bullettrain/xenopixelsmod/npc/script/api/ScriptNpc.java
+ M src/main/java/net/bullettrain/xenopixelsmod/npc/script/api/ScriptPlayer.java
+ M src/main/java/net/bullettrain/xenopixelsmod/npc/script/api/ScriptWorld.java
+ M src/main/java/net/bullettrain/xenopixelsmod/npc/script/api/xeno/XenoApiAdapters.java
+ M src/main/java/net/bullettrain/xenopixelsmod/npc/script/api/xeno/XenoItemAdapter.java
+ M src/main/java/net/bullettrain/xenopixelsmod/npc/script/api/xeno/XenoNbtAdapter.java
+ M src/main/java/net/bullettrain/xenopixelsmod/npc/script/api/xeno/XenoNpcAdapter.java
+ M src/main/java/net/bullettrain/xenopixelsmod/npc/script/api/xeno/XenoNpcViews.java
+ M src/test/java/net/bullettrain/xenopixelsmod/client/music/XenoMusicTracksTest.java
+ M src/test/java/net/bullettrain/xenopixelsmod/client/npc/XenoNpcGeoModelTest.java
+ M src/test/java/net/bullettrain/xenopixelsmod/combat/v3/V3ChargeCadenceTest.java
+ M src/test/java/net/bullettrain/xenopixelsmod/combat/v3/V3ConfigTest.java
+ M src/test/java/net/bullettrain/xenopixelsmod/combat/v3/V3DashWindowTest.java
+ M src/test/java/net/bullettrain/xenopixelsmod/compat/npc/NpcKnockbackGraceTest.java
+ M src/test/java/net/bullettrain/xenopixelsmod/network/packet/CombatV3PacketTest.java
+ M src/test/java/net/bullettrain/xenopixelsmod/npc/path/NpcPathTest.java
+ M src/test/java/net/bullettrain/xenopixelsmod/npc/script/BundledNashornTest.java
+ M src/test/java/net/bullettrain/xenopixelsmod/npc/script/ExampleWrapperCallsTest.java
+ M src/test/java/net/bullettrain/xenopixelsmod/npc/script/ScriptFunctionCatalogTest.java
+ M src/test/java/net/bullettrain/xenopixelsmod/npc/script/api/xeno/XenoApiAdaptersTest.java
+ m tools/dmz-hair-builder-site
+?? ai/dirty-paths-native-api-extension-2026-10-09.txt
+?? ai/handoff-native-api-combat-2026-10-09.md
+?? ai/handoff-native-api-extension-2026-10-09.md
+?? docs/combat-v3/customnpcs-api-audit-2026-10-08.json
+?? docs/combat-v3/customnpcs-api-audit-2026-10-08.md
+?? docs/combat-v3/music-player-2026-10-08.md
+?? docs/customnpcs-gui-native-plan-2026-10-09.md
+?? docs/customnpcs-typed-bridge-2026-10-08.md
+?? docs/item-script-nbt-2026-10-08.md
+?? docs/native-item-projectiles-2026-10-09.md
+?? docs/native-lord-slug-script-2026-10-08.md
+?? docs/npc-dmz-saga-models-2026-10-08.md
+?? docs/npc-script-display-modes-2026-10-09.md
+?? docs/npc-script-path-pauses-2026-10-09.md
+?? docs/specialized-script-items-2026-10-09.md
+?? examples/customnpcs/customnpcs_full_api_bridge.js
+?? examples/customnpcs/xenopixels_lord_slug_regen.js
+?? src/main/java/net/bullettrain/xenopixelsmod/client/npc/DmzSagaModelAssets.java
+?? src/main/java/net/bullettrain/xenopixelsmod/npc/projectile/
+?? src/main/java/net/bullettrain/xenopixelsmod/npc/script/ProjectileScriptContext.java
+?? src/main/java/net/bullettrain/xenopixelsmod/npc/script/api/xeno/XenoArmorItemAdapter.java
+?? src/main/java/net/bullettrain/xenopixelsmod/npc/script/api/xeno/XenoBlockItemAdapter.java
+?? src/main/java/net/bullettrain/xenopixelsmod/npc/script/api/xeno/XenoBookItemAdapter.java
+?? src/main/java/net/bullettrain/xenopixelsmod/npc/script/api/xeno/XenoItemProjectileAdapter.java
+?? src/main/java/net/bullettrain/xenopixelsmod/npc/script/api/xeno/XenoMobAdapter.java
+?? src/main/java/net/bullettrain/xenopixelsmod/npc/script/api/xeno/XenoProjectileViews.java
+?? src/main/java/net/bullettrain/xenopixelsmod/npc/script/api/xeno/XenoTransporterAdapter.java
+?? src/test/java/net/bullettrain/xenopixelsmod/compat/npc/NpcProfileVisibilityTest.java
+?? src/test/java/net/bullettrain/xenopixelsmod/network/packet/XenoNpcDisplaySavePolicyTest.java
+?? src/test/java/net/bullettrain/xenopixelsmod/npc/projectile/
+?? src/test/java/net/bullettrain/xenopixelsmod/npc/script/LordSlugScriptTest.java
+?? src/test/java/net/bullettrain/xenopixelsmod/npc/script/ProjectileScriptContextTest.java
+?? src/test/java/net/bullettrain/xenopixelsmod/npc/script/api/xeno/XenoItemNbtTest.java
+?? src/test/java/net/bullettrain/xenopixelsmod/npc/script/api/xeno/XenoMobAdapterTest.java
+?? src/test/java/net/bullettrain/xenopixelsmod/npc/script/api/xeno/XenoSpecializedItemTest.java
+?? src/test/java/net/bullettrain/xenopixelsmod/npc/script/api/xeno/XenoSpecializedItemsTest.java
+?? src/test/java/net/bullettrain/xenopixelsmod/npc/script/api/xeno/XenoTransporterAdapterTest.java
+?? tools/verify_dmz_saga_model_assets.py

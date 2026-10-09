@@ -1,0 +1,4 @@
+# Nested Git repository copy; the root project is indexed separately.
+/XenoPixelsNetwork_qwen/
+/graphify-fresh/
+/graphify-final/

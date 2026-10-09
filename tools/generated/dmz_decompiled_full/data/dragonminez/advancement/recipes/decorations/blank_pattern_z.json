@@ -1,32 +1,3 @@
-{
-  "parent": "minecraft:recipes/root",
-  "criteria": {
-    "has_paper": {
-      "conditions": {
-        "items": [
-          {
-            "items": "minecraft:paper"
-          }
-        ]
-      },
-      "trigger": "minecraft:inventory_changed"
-    },
-    "has_the_recipe": {
-      "conditions": {
-        "recipe": "dragonminez:blank_pattern_z"
-      },
-      "trigger": "minecraft:recipe_unlocked"
-    }
-  },
-  "requirements": [
-    [
-      "has_the_recipe",
-      "has_paper"
-    ]
-  ],
-  "rewards": {
-    "recipes": [
-      "dragonminez:blank_pattern_z"
-    ]
-  }
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:efc4e0bc3fa6d715c0fcbd218fc64ea6867177c579686dbaae018eb0047e461e
+size 569

@@ -1,6 +1,3 @@
-{
-  "parent": "minecraft:item/generated",
-  "textures": {
-    "layer0": "dragonminez:item/patterns/pattern_cooler_soldier"
-  }
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:ab734fcc5ea9c364222b8528c0df534e65acb3703d9bf274aa14aa99c0ce8684
+size 128

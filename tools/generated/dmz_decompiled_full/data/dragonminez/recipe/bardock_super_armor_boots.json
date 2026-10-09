@@ -1,33 +1,3 @@
-{
-  "type": "dragonminez:kikono_crafting",
-  "crafting_time": 200,
-  "ingredients": [
-    [],
-    [],
-    [],
-    {
-      "item": "dragonminez:kikono_cloth"
-    },
-    [],
-    {
-      "item": "dragonminez:kikono_cloth"
-    },
-    {
-      "item": "dragonminez:kikono_string"
-    },
-    [],
-    {
-      "item": "dragonminez:kikono_string"
-    }
-  ],
-  "output": {
-    "count": 1,
-    "id": "dragonminez:bardock_super_armor_boots"
-  },
-  "pattern": {
-    "item": "dragonminez:pattern_bardock2"
-  },
-  "template": {
-    "item": "minecraft:iron_boots"
-  }
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:b54aa7040fcd25f2247428571069fe03a0dc210f22d24c157866f64debd6f7e4
+size 552

@@ -1,6 +1,3 @@
-{
-  "parent": "minecraft:item/generated",
-  "textures": {
-    "layer0": "dragonminez:item/armors/goku_whis_armor_leggings"
-  }
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:21f5707550a1e2c0f32687cba7d99965b0e52c5af74c2d3b7b77aa7d2b9de852
+size 128

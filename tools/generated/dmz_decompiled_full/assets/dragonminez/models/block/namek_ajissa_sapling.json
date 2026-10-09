@@ -1,7 +1,3 @@
-{
-  "parent": "minecraft:block/cross",
-  "render_type": "minecraft:cutout",
-  "textures": {
-    "cross": "dragonminez:block/namek_ajissa_sapling"
-  }
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:1af062a1ceb2c059f47a14d7ca590d51836416859f8da82c69c4ac4db34b605a
+size 151

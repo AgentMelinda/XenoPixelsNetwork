@@ -1,6 +1,3 @@
-{
-  "parent": "minecraft:item/generated",
-  "textures": {
-    "layer0": "dragonminez:item/patterns/pattern_raditz"
-  }
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:0e3879e84446a6a660329106d2308767c274226eb6526304e28565f85c9bcd4e
+size 120

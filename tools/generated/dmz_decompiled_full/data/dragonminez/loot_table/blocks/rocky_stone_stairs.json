@@ -1,21 +1,3 @@
-{
-  "type": "minecraft:block",
-  "pools": [
-    {
-      "bonus_rolls": 0.0,
-      "conditions": [
-        {
-          "condition": "minecraft:survives_explosion"
-        }
-      ],
-      "entries": [
-        {
-          "type": "minecraft:item",
-          "name": "dragonminez:rocky_stone_stairs"
-        }
-      ],
-      "rolls": 1.0
-    }
-  ],
-  "random_sequence": "dragonminez:blocks/rocky_stone_stairs"
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:a62af747098dd64c25499730c6b730eae2d032eb51c2426087b64f2ec33568d6
+size 408

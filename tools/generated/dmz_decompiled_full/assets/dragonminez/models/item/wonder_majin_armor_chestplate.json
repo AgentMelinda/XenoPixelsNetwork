@@ -1,6 +1,3 @@
-{
-  "parent": "minecraft:item/generated",
-  "textures": {
-    "layer0": "dragonminez:item/armors/wonder_majin_armor_chestplate"
-  }
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:95c0c7314862e505ffa028b452f268af8e04e67047d1f627567f81542fccc613
+size 133

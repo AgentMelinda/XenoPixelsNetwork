@@ -1,32 +1,3 @@
-{
-  "parent": "minecraft:recipes/root",
-  "criteria": {
-    "has_namek_kikono_ore": {
-      "conditions": {
-        "items": [
-          {
-            "items": "dragonminez:namek_kikono_ore"
-          }
-        ]
-      },
-      "trigger": "minecraft:inventory_changed"
-    },
-    "has_the_recipe": {
-      "conditions": {
-        "recipe": "dragonminez:kikono_shard_from_smelting_namek_kikono_ore"
-      },
-      "trigger": "minecraft:recipe_unlocked"
-    }
-  },
-  "requirements": [
-    [
-      "has_the_recipe",
-      "has_namek_kikono_ore"
-    ]
-  ],
-  "rewards": {
-    "recipes": [
-      "dragonminez:kikono_shard_from_smelting_namek_kikono_ore"
-    ]
-  }
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:fdd5fa87a397466777365d7cf49a58d88fd4e88db2ab7048bac921efdf5fc6e4
+size 660

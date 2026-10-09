@@ -1,8 +1,3 @@
-{
-  "values": [
-    {
-      "id": "xenopixelsmod:ballistic_missile",
-      "required": false
-    }
-  ]
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:3b8e72dd5a82801bc647f1fdff589cfc7f746bfa3d0326fac53f156a77248e65
+size 105

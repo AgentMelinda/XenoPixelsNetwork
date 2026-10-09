@@ -1,6 +1,3 @@
-{
-  "parent": "minecraft:item/generated",
-  "textures": {
-    "layer0": "dragonminez:item/armors/age1000_armor_boots"
-  }
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:b8782bc0f9de6b46cf0902e933494ac59b1af213b8d81ab8de392e0dde94009b
+size 123

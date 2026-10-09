@@ -1,6 +1,3 @@
-{
-  "parent": "minecraft:item/generated",
-  "textures": {
-    "layer0": "dragonminez:item/armors/age1000_armor_chestplate"
-  }
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:75b6bae9aa450c56acc69e56954db44cb9d11d32df00ca9daf49a758a6a3f299
+size 128

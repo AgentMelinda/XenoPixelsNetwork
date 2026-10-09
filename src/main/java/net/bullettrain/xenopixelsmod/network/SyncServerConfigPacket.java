@@ -238,6 +238,7 @@ public class SyncServerConfigPacket {
         // server) or the client's vanilla flames.
         buf.writeBoolean(d.effekseerEnabled);
         buf.writeBoolean(d.effekseerShipThrusters);
+        buf.writeBoolean(d.effekseerKiAttacks);
     }
 
     /** The synced snapshot (server: what will be sent; client: what was received). */
@@ -454,6 +455,7 @@ public class SyncServerConfigPacket {
         d.combatControllerMode = XenoServerConfig.normalizeCombatControllerMode(buf.readUtf(16));
         d.effekseerEnabled = buf.readBoolean();
         d.effekseerShipThrusters = buf.readBoolean();
+        d.effekseerKiAttacks = buf.readBoolean();
         return new SyncServerConfigPacket(d);
     }
 

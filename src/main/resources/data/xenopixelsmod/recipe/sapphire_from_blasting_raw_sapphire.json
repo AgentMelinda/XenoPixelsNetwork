@@ -1,11 +1,3 @@
-{
-  "type": "minecraft:blasting",
-  "category": "misc",
-  "cookingtime": 100,
-  "experience": 0.7,
-  "group": "sapphire",
-  "ingredient": {
-    "item": "xenopixelsmod:raw_sapphire"
-  },
-  "result": { "id": "xenopixelsmod:sapphire" }
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:fa1426d6138fa0fb1309d618257b3850449640e9808730095c228622925e4158
+size 244

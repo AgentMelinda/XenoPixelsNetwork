@@ -1,6 +1,3 @@
-{
-  "values": [
-    "#minecraft:has_structure/village_plains",
-    "#c:is_plains"
-  ]
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:01337649f9ba4a5366e2a820c767bf633d27b1a35a94b0510d8eb1b72aea09d7
+size 87

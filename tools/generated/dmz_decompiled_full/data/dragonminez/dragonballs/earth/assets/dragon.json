@@ -1,7 +1,3 @@
-{
-  "animation": "dragonminez:animations/entity/dragon/shenron.animation.json",
-  "id": "shenron",
-  "model": "dragonminez:geo/entity/dragon/shenron.geo.json",
-  "renderer_type": "default",
-  "texture": "dragonminez:textures/entity/dragon/shenron.png"
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:0d3e225ff1e2f4e3ee8cbf0f81f53f3cae9a02fc4d54a9d56a3e518acb739e78
+size 253

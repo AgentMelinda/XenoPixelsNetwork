@@ -1,8 +1,3 @@
-{
-  "parent": "dragonminez:staff",
-  "attributes": {
-    "crit_chance": 0.15,
-    "crit_damage": 0.10
-  }
-}
-
+version https://git-lfs.github.com/spec/v1
+oid sha256:2c7f15f9150f3ab71d68483102abde6f21f01477b19e1862ff4b0e98658b591f
+size 117

@@ -14,6 +14,8 @@ import org.spongepowered.asm.mixin.injection.Constant;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.ModifyConstant;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
+import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
+import net.bullettrain.xenopixelsmod.combat.v3.technique.V3TechniqueSelection;
 
 import java.util.List;
 import java.util.Objects;
@@ -32,6 +34,11 @@ public abstract class DmzSkillsInteractionMixin extends ScaledScreen {
 
     protected DmzSkillsInteractionMixin() {
         super(null);
+    }
+
+    @Inject(method = "getVisibleSkillNames", at = @At("RETURN"), cancellable = true, require = 1)
+    private void xenopixels$collapseRepeatedV3Attacks(CallbackInfoReturnable<List<String>> cir) {
+        cir.setReturnValue(V3TechniqueSelection.visible(cir.getReturnValue()));
     }
 
     @ModifyConstant(

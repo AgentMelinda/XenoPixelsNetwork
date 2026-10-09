@@ -1,14 +1,3 @@
-{
-  "type": "minecraft:smelting",
-  "category": "misc",
-  "cookingtime": 200,
-  "experience": 1.0,
-  "group": "gold_ingot",
-  "ingredient": {
-    "item": "dragonminez:namek_deepslate_gold_ore"
-  },
-  "result": {
-    "count": 1,
-    "id": "minecraft:gold_ingot"
-  }
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:378fd174c7f855ec98b611966e6050938a724086de2119d4980146b3f43f39ab
+size 266

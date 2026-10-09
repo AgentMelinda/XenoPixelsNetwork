@@ -1,6 +1,3 @@
-{
-  "parent": "minecraft:item/generated",
-  "textures": {
-    "layer0": "dragonminez:item/armors/chaoz_armor_helmet"
-  }
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:77337e3f8d22be7fdbb45f2833d8e11584b38d75d280c14eb0c982c55b336827
+size 122

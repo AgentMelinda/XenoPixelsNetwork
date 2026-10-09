@@ -1,19 +1,3 @@
-{
-  "targets": [
-    "swap"
-  ],
-  "passes": [
-    {
-      "name": "dragonminez:gravity_red",
-      "intarget": "minecraft:main",
-      "outtarget": "swap",
-      "uniforms": []
-    },
-    {
-      "name": "blit",
-      "intarget": "swap",
-      "outtarget": "minecraft:main",
-      "uniforms": []
-    }
-  ]
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:3dd704260e0a807e7eb893f2a09763162d2e2e7751d4983f5d489fa364aac812
+size 328

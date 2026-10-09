@@ -1,6 +1,3 @@
-{
-  "parent": "minecraft:item/generated",
-  "textures": {
-    "layer0": "dragonminez:item/armors/gilgamesh_armor_boots"
-  }
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:6fc36ab28bc50ed099f27b1f9bedbe664207c01ee1a05d58d6e622337492de1b
+size 125

@@ -182,6 +182,20 @@ public final class NpcKiAttackDispatcher {
         return npc != null && BeamClashManager.isClashing(npc.getUUID());
     }
 
+    /**
+     * Owner: while any of this NPC's Ki projectiles still exist in the world, the combat brain
+     * must not move them (stand still until the projectile despawns).
+     */
+    public static boolean ownsLiveProjectile(LivingEntity npc) {
+        if (npc == null || !(npc.level() instanceof ServerLevel level)) return false;
+        AABB box = npc.getBoundingBox().inflate(160.0);
+        for (AbstractKiProjectile ki : level.getEntitiesOfClass(AbstractKiProjectile.class, box,
+                p -> !p.isRemoved() && p.getOwner() == npc)) {
+            return true;
+        }
+        return false;
+    }
+
     public static boolean victimOwnsClashableBeam(LivingEntity victim) {
         if (victim == null || !(victim.level() instanceof ServerLevel level)) {
             return false;

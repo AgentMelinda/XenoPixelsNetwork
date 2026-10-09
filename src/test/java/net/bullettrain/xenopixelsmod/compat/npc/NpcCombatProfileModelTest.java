@@ -68,6 +68,17 @@ class NpcCombatProfileModelTest {
         assertEquals(source.modelTint, client.modelTint);
     }
 
+    @Test
+    void liveVisualPacketCarriesTintAndGlowing() {
+        NpcCombatProfile source = new NpcCombatProfile();
+        source.modelTint = 0x3366CC;
+        source.modelGlowing = true;
+        NpcCombatProfile client = new NpcCombatProfile();
+        client.applyVisualOptions(source.visualOptionsTag());
+        assertEquals(0x3366CC, client.modelTint);
+        assertTrue(client.modelGlowing, "modelGlowing must ride visualOptions for tracking clients");
+    }
+
     /**
      * The invariant behind the editor sending a subset: merging a few keys over a full profile must
      * change exactly those keys. If this stops holding, an editor save would clobber fields owned by

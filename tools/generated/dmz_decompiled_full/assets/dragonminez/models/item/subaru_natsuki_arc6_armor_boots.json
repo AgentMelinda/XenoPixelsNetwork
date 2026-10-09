@@ -1,6 +1,3 @@
-{
-  "parent": "minecraft:item/generated",
-  "textures": {
-    "layer0": "dragonminez:item/armors/subaru_natsuki_arc6_armor_boots"
-  }
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:e30ebb6f63b8b8137051c0e105fe622bbd25869dca9566d5b6d99f050507022f
+size 135

@@ -1,6 +1,3 @@
-{
-  "parent": "minecraft:item/generated",
-  "textures": {
-    "layer0": "dragonminez:item/armors/vegeta_z_armor_chestplate"
-  }
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:75c4b4f26ffe99ee95e4ae7cd6ae7a9a64f6b4686f9a92370e45af413e0a2689
+size 129

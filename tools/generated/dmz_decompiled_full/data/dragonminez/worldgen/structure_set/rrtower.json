@@ -1,13 +1,3 @@
-{
-  "placement": {
-    "type": "minecraft:random_spread",
-    "salt": 56345435345,
-    "separation": 24,
-    "spacing": 48,
-    "spread_type": "triangular"
-  },
-  "structures": [{
-    "structure": "dragonminez:rrtower",
-    "weight": 1
-  }]
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:ccee94448f999d7d63c4d506a42d4f24b58718d5e3c66e002a4440d6afefb6c4
+size 254

@@ -1,21 +1,3 @@
-{
-  "type": "minecraft:block",
-  "pools": [
-    {
-      "bonus_rolls": 0.0,
-      "conditions": [
-        {
-          "condition": "minecraft:survives_explosion"
-        }
-      ],
-      "entries": [
-        {
-          "type": "minecraft:item",
-          "name": "dragonminez:namek_sacred_fence"
-        }
-      ],
-      "rolls": 1.0
-    }
-  ],
-  "random_sequence": "dragonminez:blocks/namek_sacred_fence"
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:f2a3049ec6c1587cbada486728fc14aee1b93c0108ca59a11377776ee053d8ed
+size 408

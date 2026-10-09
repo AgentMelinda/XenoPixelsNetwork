@@ -1,8 +1,3 @@
-{
-  "values": [
-    "xenopixelsmod:missile_small",
-    "xenopixelsmod:missile_medium",
-    "xenopixelsmod:missile_large",
-    "xenopixelsmod:missile_mega"
-  ]
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:8dbebef147d7a7ce13fb1dcb972d110afabc61b30bfe9489c0381b49e23c9071
+size 161

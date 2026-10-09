@@ -3,7 +3,7 @@ package net.bullettrain.xenopixelsmod.compat.linearreader;
 import it.unimi.dsi.fastutil.longs.Long2ObjectMap;
 import java.lang.reflect.Field;
 
-/** Exact 1.3.0 merged cache field; resolving after mixin application preserves unsaved linear regions. */
+/** Verified 1.3.0/1.3.1 merged cache field; resolving after mixin application preserves unsaved linear regions. */
 public final class LinearStorageState {
     private static final ClassValue<Field> CACHE = new ClassValue<>() {
         @Override protected Field computeValue(Class<?> storage) {
@@ -12,7 +12,7 @@ public final class LinearStorageState {
                 field.setAccessible(true);
                 return field;
             } catch (ReflectiveOperationException exception) {
-                throw new IllegalStateException("LinearReader 1.3.0 linear cache unavailable; refusing unsafe format selection", exception);
+                throw new IllegalStateException("LinearReader linear cache unavailable; refusing unsafe format selection", exception);
             }
         }
     };

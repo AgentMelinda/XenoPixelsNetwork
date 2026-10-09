@@ -42,6 +42,26 @@ public abstract class StrikeAttackHandlerMixin {
         if (player == null || player.level().isClientSide) return;
         StatsData data = StatsProvider.get(StatsCapability.INSTANCE, player).orElse(null);
         if (data == null || data.getTechniques() == null) return;
+        if (data.getTechniques().getSelectedTechnique() instanceof StrikeAttackData v3
+                && net.bullettrain.xenopixelsmod.combat.v3.technique.V3TechniqueCatalog.owns(v3.getId())) {
+            // A catalog-owned id never falls through to a native strike, even when the cast is refused.
+            ci.cancel();
+            StrikeInterceptEvent intercept = new StrikeInterceptEvent(player, slotIndex, v3.getId());
+            if (!NeoForge.EVENT_BUS.post(intercept).isCanceled()) {
+                // The int DMZ passes is a preferred entity id; V3 only ever casts at its approved lock.
+                net.bullettrain.xenopixelsmod.combat.v3.technique.V3TechniqueRuntime.cast(player, net.bullettrain.xenopixelsmod.combat.v3.technique.V3TechniqueCatalog.find(v3.getId()), null);
+            }
+            return;
+        }
+        if (data.getTechniques().getSelectedTechnique() instanceof StrikeAttackData ultimate
+                && net.bullettrain.xenopixelsmod.combat.technique.UltimateFinisherTechnique.ID.equals(ultimate.getId())) {
+            StrikeInterceptEvent intercept = new StrikeInterceptEvent(player, slotIndex, ultimate.getId());
+            ci.cancel();
+            if (!NeoForge.EVENT_BUS.post(intercept).isCanceled()) {
+                net.bullettrain.xenopixelsmod.combat.v2.UltimateFinisher.cast(player, ultimate, slotIndex);
+            }
+            return;
+        }
 
         String[] slots = data.getTechniques().getEquippedSlots();
         if (slots != null && slotIndex >= 0 && slotIndex < slots.length) {

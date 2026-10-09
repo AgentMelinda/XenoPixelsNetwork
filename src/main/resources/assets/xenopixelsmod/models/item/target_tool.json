@@ -1,6 +1,3 @@
-{
-  "parent": "minecraft:item/generated",
-  "textures": {
-    "layer0": "xenopixelsmod:item/target_tool"
-  }
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:8655ca678b5b364017e333680f6179f958d898c3cf5c79006ed0a776f7e06d1b
+size 111

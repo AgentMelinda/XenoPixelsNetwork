@@ -1,33 +1,3 @@
-{
-  "type": "dragonminez:kikono_crafting",
-  "crafting_time": 200,
-  "ingredients": [
-    [],
-    [],
-    [],
-    {
-      "item": "dragonminez:kikono_cloth"
-    },
-    [],
-    {
-      "item": "dragonminez:kikono_cloth"
-    },
-    {
-      "item": "dragonminez:kikono_string"
-    },
-    [],
-    {
-      "item": "dragonminez:kikono_string"
-    }
-  ],
-  "output": {
-    "count": 1,
-    "id": "dragonminez:zamasu_armor_boots"
-  },
-  "pattern": {
-    "item": "dragonminez:pattern_zamasu"
-  },
-  "template": {
-    "item": "minecraft:iron_boots"
-  }
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:1d8847cc60fd938bfea93594c39bd38673fbb5d69e01a090341592ac37c81e71
+size 543

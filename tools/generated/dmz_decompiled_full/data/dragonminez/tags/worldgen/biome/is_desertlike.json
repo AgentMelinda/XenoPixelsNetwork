@@ -1,6 +1,3 @@
-{
-  "values": [
-    "#minecraft:has_structure/village_desert",
-    "#c:is_desert"
-  ]
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:065862e03f9a2e48e610ad0e04bbe8a5ce158b792d54513dc4bebed3f015a158
+size 87

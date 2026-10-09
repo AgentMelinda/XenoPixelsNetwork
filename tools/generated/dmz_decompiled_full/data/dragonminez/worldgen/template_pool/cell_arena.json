@@ -1,14 +1,3 @@
-{
-  "elements": [
-    {
-      "element": {
-        "element_type": "minecraft:single_pool_element",
-        "location": "dragonminez:cell_arena",
-        "processors": "dragonminez:foundation",
-        "projection": "rigid"
-      },
-      "weight": 1
-    }
-  ],
-  "fallback": "minecraft:empty"
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:985af53227ff0ea92e34183635a6ae92b8a1324a0036113c4a8339108d1904fe
+size 295

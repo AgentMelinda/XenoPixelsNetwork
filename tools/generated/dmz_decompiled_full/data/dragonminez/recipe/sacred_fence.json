@@ -1,22 +1,3 @@
-{
-  "type": "minecraft:crafting_shaped",
-  "category": "misc",
-  "group": "wooden_fence",
-  "key": {
-    "#": {
-      "item": "minecraft:stick"
-    },
-    "W": {
-      "item": "dragonminez:namek_sacred_planks"
-    }
-  },
-  "pattern": [
-    "W#W",
-    "W#W"
-  ],
-  "result": {
-    "count": 3,
-    "id": "dragonminez:namek_sacred_fence"
-  },
-  "show_notification": true
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:3d6a796d7f1bcc7f3883e2395417acd0704c5ca8f9c677fd04da7a5daa270418
+size 390

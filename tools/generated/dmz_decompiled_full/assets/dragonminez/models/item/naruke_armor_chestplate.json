@@ -1,6 +1,3 @@
-{
-  "parent": "minecraft:item/generated",
-  "textures": {
-    "layer0": "dragonminez:item/armors/naruke_armor_chestplate"
-  }
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:860d30a5e7e20259782a20a548ecdaaa0cf12005af9a026957570c14e71264f4
+size 127

@@ -1,14 +1,3 @@
-{
-  "type": "minecraft:smelting",
-  "category": "food",
-  "cookingtime": 200,
-  "experience": 0.35,
-  "group": "dragonminez",
-  "ingredient": {
-    "item": "dragonminez:frog_legs_raw"
-  },
-  "result": {
-    "count": 1,
-    "id": "dragonminez:frog_legs_cooked"
-  }
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:b5b9a4d04f9765941f851e898699689b10a303fa2091d994c6574a6083b6277e
+size 265

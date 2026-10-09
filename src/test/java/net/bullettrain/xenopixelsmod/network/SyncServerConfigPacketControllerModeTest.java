@@ -54,13 +54,17 @@ class SyncServerConfigPacketControllerModeTest {
         XenoServerConfig.Data sent = new XenoServerConfig.Data();
         sent.effekseerEnabled = true;
         sent.effekseerShipThrusters = false;
+        sent.effekseerKiAttacks = false;
         XenoServerConfig.Data received = roundTrip(sent);
         assertEquals(true, received.effekseerEnabled);
         assertEquals(false, received.effekseerShipThrusters);
+        assertEquals(false, received.effekseerKiAttacks);
         sent.effekseerEnabled = false;
         sent.effekseerShipThrusters = true;
+        sent.effekseerKiAttacks = true;
         received = roundTrip(sent);
         assertEquals(false, received.effekseerEnabled);
         assertEquals(true, received.effekseerShipThrusters);
+        assertEquals(true, received.effekseerKiAttacks);
     }
 }

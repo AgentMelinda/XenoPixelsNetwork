@@ -29,6 +29,36 @@ class NpcPathTest {
         return path;
     }
 
+    @Test
+    void pauseSurvivesProfileStorageAndCopyWithoutChangingOldRoutes() {
+        NpcPath path = of(3);
+        assertFalse(path.pauses());
+        path.setPauses(true);
+        path.setMode(NpcPath.Mode.PING_PONG);
+        NpcPath loaded = NpcPath.load(path.save());
+        assertTrue(loaded.pauses());
+        assertEquals(NpcPath.Mode.PING_PONG, loaded.mode());
+        NpcPath copy = path.copy();
+        copy.setPauses(false);
+        assertTrue(path.pauses());
+        assertFalse(copy.pauses());
+        assertFalse(NpcPath.load(new CompoundTag()).pauses());
+    }
+
+    @Test
+    void dwellCompletesOnceAndDoesNotPauseAtFailedWaypoints() {
+        int remaining = NpcPathWalker.dwellRemaining(true, true, false, -1);
+        assertEquals(20, remaining);
+        remaining = NpcPathWalker.dwellRemaining(true, true, false, remaining);
+        assertEquals(10, remaining);
+        remaining = NpcPathWalker.dwellRemaining(true, true, false, remaining);
+        assertEquals(0, remaining);
+        assertEquals(0, NpcPathWalker.dwellRemaining(true, true, false, remaining));
+        assertEquals(0, NpcPathWalker.dwellRemaining(false, true, false, -1));
+        assertEquals(0, NpcPathWalker.dwellRemaining(true, false, true, -1));
+        assertEquals(0, NpcPathWalker.dwellRemaining(true, true, true, -1));
+    }
+
     // ------------------------------------------------------------ shape
 
     @Test

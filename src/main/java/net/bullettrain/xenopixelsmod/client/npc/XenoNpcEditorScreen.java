@@ -919,12 +919,16 @@ public final class XenoNpcEditorScreen extends ScaledScreen implements ClientNpc
         r.add(field("Animation asset", profile.modelAnimation, 256,
                 value -> profile.modelAnimation = value, "ModelAnimation"));
         r.add(new EditorRow.Action("Select GeckoLib model", "mynpcs_button_row",
-                () -> openTexturePicker(profile.modelId, value -> {
+                () -> openGeckoModelPicker(profile.modelId, value -> {
                     profile.modelKind = NpcCombatProfile.MODEL_GECKOLIB;
                     profile.modelId = value;
                     profile.modelTexture = value;
+                    profile.modelAnimation = "";
+                    profile.skinPlayer = "";
                     markDirty("ModelKind");
                     markDirty("ModelTexture");
+                    markDirty("ModelAnimation");
+                    markDirty("SkinPlayer");
                 }, "ModelId")));
         r.add(new EditorRow.Text("", modelHint(), MUTED));
         r.add(disabledToggle("Living animation", true));
@@ -5179,6 +5183,15 @@ public final class XenoNpcEditorScreen extends ScaledScreen implements ClientNpc
             markDirty(key);
             rebuild();
         }));
+    }
+
+    private void openGeckoModelPicker(String current, Consumer<String> sink, String key) {
+        if (minecraft == null) return;
+        minecraft.setScreen(new XenoNpcTexturePickerScreen(this, current, selected -> {
+            sink.accept(selected);
+            markDirty(key);
+            rebuild();
+        }, true));
     }
 
     private EditorRow field(String label, String value, int max, Consumer<String> sink, String key) {

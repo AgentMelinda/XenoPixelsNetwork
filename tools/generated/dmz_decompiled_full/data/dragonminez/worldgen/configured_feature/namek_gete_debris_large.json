@@ -1,27 +1,3 @@
-{
-  "type": "minecraft:scattered_ore",
-  "config": {
-    "discard_chance_on_air_exposure": 1.0,
-    "size": 3,
-    "targets": [
-      {
-        "state": {
-          "Name": "dragonminez:gete_debris_ore"
-        },
-        "target": {
-          "block": "dragonminez:namek_stone",
-          "predicate_type": "minecraft:block_match"
-        }
-      },
-      {
-        "state": {
-          "Name": "dragonminez:gete_debris_ore"
-        },
-        "target": {
-          "block": "dragonminez:namek_deepslate",
-          "predicate_type": "minecraft:block_match"
-        }
-      }
-    ]
-  }
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:d71518bae258b406c68143aaaf88c4d17eddda468298b3fd49c4918fe53e406b
+size 588

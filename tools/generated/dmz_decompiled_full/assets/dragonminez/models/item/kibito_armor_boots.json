@@ -1,6 +1,3 @@
-{
-  "parent": "minecraft:item/generated",
-  "textures": {
-    "layer0": "dragonminez:item/armors/kibito_armor_boots"
-  }
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:aa874ecc943b664a2e0f1d5ae9d3284d58a3e290699f3ac4d540d1569a8813d8
+size 122

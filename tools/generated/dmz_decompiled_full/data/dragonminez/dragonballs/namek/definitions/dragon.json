@@ -1,13 +1,3 @@
-{
-  "asset_definition": "porunga",
-  "ball_set": "namek",
-  "dimensions": [
-    "dragonminez:namek"
-  ],
-  "entity_height": 20.0,
-  "entity_registry_name": "porunga",
-  "entity_width": 4.0,
-  "id": "porunga",
-  "wish_count": 3,
-  "wish_screen_id": "porunga"
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:40a258cc228c0d23e85a6f52315ee9687954eb5b3b534cce87ea7eb06503332d
+size 259

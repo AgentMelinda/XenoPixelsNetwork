@@ -1,16 +1,3 @@
-{
-  "elements": [
-    {
-      "element": {
-        "element_type": "minecraft:single_pool_element",
-        "location": "dragonminez:gero_lab_underground",
-        "processors": {
-          "processors": []
-        },
-        "projection": "rigid"
-      },
-      "weight": 1
-    }
-  ],
-  "fallback": "minecraft:empty"
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:500cab6892acddd118185f7381ef2366bf6064dcab1e77e3cc789c1c0f1d88c5
+size 319

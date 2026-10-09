@@ -1,8 +1,3 @@
-{
-  "animation": "dragonminez:animations/block/dball.animation.json",
-  "flat_texture_prefix": "dragonminez:block/custom/dballnamekblock",
-  "geo_model": "dragonminez:geo/block/dballnamek.geo.json",
-  "geo_texture_prefix": "dragonminez:textures/block/custom/dballnamekblock",
-  "id": "namek_ballset",
-  "inventory_texture_format": "dragonminez:item/dball%d_namek"
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:21fa9ccdb867ed7bf416526c17ad5feab6a482956a9ea94d14cc13998d353796
+size 365

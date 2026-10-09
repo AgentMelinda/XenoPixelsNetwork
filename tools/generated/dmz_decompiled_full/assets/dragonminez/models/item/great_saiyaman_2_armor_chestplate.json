@@ -1,6 +1,3 @@
-{
-  "parent": "minecraft:item/generated",
-  "textures": {
-    "layer0": "dragonminez:item/armors/great_saiyaman_2_armor_chestplate"
-  }
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:9ec85334da0aa23324f386a0b8adf46e443e06a1bd5d7b046d31e79237765bdb
+size 137

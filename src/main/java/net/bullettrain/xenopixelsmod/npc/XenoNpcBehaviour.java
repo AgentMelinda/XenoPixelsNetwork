@@ -51,6 +51,9 @@ public final class XenoNpcBehaviour {
         }
         npc.setInvisible(!profile.visible);
         npc.setGlowingTag(profile.modelGlowing);
+        if (npc instanceof XenoNpcEntity nativeNpc) {
+            nativeNpc.setCustomNameVisible(profile.showName(nativeNpc.getTarget() != null));
+        }
 
         // A changed hitbox scale has to be recomputed, or the old box stays until something else
         // happens to refresh it.
@@ -75,6 +78,9 @@ public final class XenoNpcBehaviour {
         }
         if (profile.burnsInSun && !profile.fireImmune && sunBurnTick) {
             npc.igniteForSeconds(SUN_BURN_SECONDS);
+        }
+        if (npc instanceof XenoNpcEntity nativeNpc) {
+            nativeNpc.setCustomNameVisible(profile.showName(nativeNpc.getTarget() != null));
         }
     }
 

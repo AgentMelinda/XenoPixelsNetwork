@@ -1,6 +1,3 @@
-{
-  "parent": "minecraft:item/generated",
-  "textures": {
-    "layer0": "dragonminez:item/armors/chaoz_armor_leggings"
-  }
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:b864b2267db24e96bfb5f26dba629796a32ebf5939878102c88fae47c64d34a6
+size 124

@@ -1,33 +1,3 @@
-{
-  "type": "dragonminez:kikono_crafting",
-  "crafting_time": 200,
-  "ingredients": [
-    [],
-    [],
-    [],
-    {
-      "item": "dragonminez:kikono_cloth"
-    },
-    [],
-    {
-      "item": "dragonminez:kikono_cloth"
-    },
-    {
-      "item": "dragonminez:kikono_string"
-    },
-    [],
-    {
-      "item": "dragonminez:kikono_string"
-    }
-  ],
-  "output": {
-    "count": 1,
-    "id": "dragonminez:a18_kame_armor_boots"
-  },
-  "pattern": {
-    "item": "dragonminez:pattern_a18_kame"
-  },
-  "template": {
-    "item": "minecraft:iron_boots"
-  }
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:2c72434c7be92608131228fadd23e7a46533895388bdb3c6d19ff5a0b5a6d212
+size 547

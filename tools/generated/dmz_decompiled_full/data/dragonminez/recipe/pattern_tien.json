@@ -1,25 +1,3 @@
-{
-  "type": "minecraft:crafting_shaped",
-  "category": "misc",
-  "group": "dragonminez",
-  "key": {
-    "#": {
-      "item": "dragonminez:blank_pattern_z"
-    },
-    "G": {
-      "item": "minecraft:green_dye"
-    },
-    "R": {
-      "item": "minecraft:red_dye"
-    }
-  },
-  "pattern": [
-    " #G",
-    "GGG",
-    "RRR"
-  ],
-  "result": {
-    "count": 1,
-    "id": "dragonminez:pattern_tien"
-  }
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:704857935fad7764222be3f60be61faf76a7f04cbd744042dd95ea90b1cc263e
+size 396

@@ -1,6 +1,3 @@
-{
-  "parent": "minecraft:item/generated",
-  "textures": {
-    "layer0": "dragonminez:item/patterns/pattern_tien"
-  }
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:ee5a0a75c034d3ba7f7c5729d067de49fe678dda59217f828ab15707e3e63002
+size 118

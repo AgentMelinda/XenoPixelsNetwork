@@ -23,7 +23,10 @@ public final class KiImpactEvents {
     public static void onJoin(EntityJoinLevelEvent event) {
         if (!(event.getEntity() instanceof KiExplosionVisualEntity visual)) return;
         if (!(event.getLevel() instanceof ServerLevel level) || event.loadedFromDisk()) return;
-        if (XenoEffects.play(level, EffectSlot.KI_IMPACT, visual.position(), null,
+        if (!net.bullettrain.xenopixelsmod.config.XenoServerConfig.effekseerKiAttacks
+                && visual.getPersistentData().getBoolean(net.bullettrain.xenopixelsmod.combat.v3.ki.V3NativeKi.OWNED_VISUAL)) return;
+        if (XenoEffects.play(level, EffectSlot.KI_IMPACT,
+                KiImpactRules.position(visual.position(), visual.getPersistentData().getBoolean(KiImpactRules.WAVE_VISUAL)), null,
                 KiImpactRules.size(visual.getMaxSize()), -1)) {
             event.setCanceled(true);
         }

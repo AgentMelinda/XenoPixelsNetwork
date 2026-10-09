@@ -1,6 +1,3 @@
-{
-  "parent": "minecraft:item/generated",
-  "textures": {
-    "layer0": "dragonminez:item/armors/fighter_armor_boots"
-  }
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:5314b588f0fe213e390e7e24cc11c324ea5ba296af75b2cdec06808f16a098bf
+size 123

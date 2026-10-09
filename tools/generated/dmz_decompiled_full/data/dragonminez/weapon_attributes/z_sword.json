@@ -1,8 +1,3 @@
-{
-  "parent": "dragonminez:claymore",
-  "attributes": {
-    "crit_chance": 0.15,
-    "crit_damage": 0.25
-  }
-}
-
+version https://git-lfs.github.com/spec/v1
+oid sha256:b70c084d5661e32ffcafd283bc648d265f399872e790df6dcf19cdb64fb5a169
+size 120

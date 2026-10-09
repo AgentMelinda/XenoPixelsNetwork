@@ -1,14 +1,3 @@
-{
-  "type": "minecraft:smelting",
-  "category": "misc",
-  "cookingtime": 200,
-  "experience": 2.5,
-  "group": "kikono",
-  "ingredient": {
-    "item": "dragonminez:namek_kikono_ore"
-  },
-  "result": {
-    "count": 1,
-    "id": "dragonminez:kikono_shard"
-  }
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:8528e5c61769d60fec9d86588158954da42d7b1797387371b192f451a0932137
+size 258

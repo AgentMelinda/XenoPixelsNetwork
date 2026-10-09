@@ -1,4 +1,3 @@
-{
-  "parent": "minecraft:item/generated",
-  "textures": { "layer0": "minecraft:item/blaze_powder" }
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:e0b9e800aa95e9274637a5bb279125271315ffa5c647cce257d81a79d61e022d
+size 102

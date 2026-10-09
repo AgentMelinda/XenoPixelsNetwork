@@ -130,6 +130,9 @@ public final class NpcCombatProfile {
     private static final String TAG_DISPLAY_OVERLAY = "DisplayOverlay";
     private static final String TAG_DISPLAY_OVERLAY_GLOW = "DisplayOverlayGlow";
     private static final String TAG_DISPLAY_LAYERS = "DisplayOuterLayers";
+    private static final String TAG_DISPLAY_SHOW_NAME = "DisplayShowName";
+    private static final String TAG_HIDE_DEAD_BODY = "HideDeadBody";
+    private static final String TAG_BOSS_BAR_MODE = "BossBarMode";
     private static final String TAG_FIRE_IMMUNE = "ImmuneToFire";
     private static final String TAG_BURNS_IN_SUN = "BurnsInSun";
     private static final String TAG_CAN_DROWN = "CanDrown";
@@ -619,6 +622,19 @@ public final class NpcCombatProfile {
     public boolean displayOverlayGlow;
     /** Whether the skin's outer layer (hat, jacket, sleeves, trousers) is drawn. */
     public boolean displayOuterLayers = true;
+    /** 0 always, 1 hidden, 2 while attacking; zero preserves old profiles. */
+    public int displayShowName;
+    public boolean hideDeadBody;
+    /** 1 always, 2 while attacking; the existing bossBar flag still enables the bar. */
+    public int bossBarMode = 1;
+
+    public boolean showName(boolean attacking) {
+        return displayShowName == 0 || displayShowName == 2 && attacking;
+    }
+
+    public boolean showBossBar(boolean attacking) {
+        return bossBar && (bossBarMode != 2 || attacking);
+    }
 
     // --- Behaviour flags -------------------------------------------------
     // The MyNPCs reference offers these on its Stats and Display tabs. Each maps onto a real
@@ -1734,6 +1750,9 @@ public final class NpcCombatProfile {
         profile.displayOverlay = tag.getString(TAG_DISPLAY_OVERLAY);
         profile.displayOverlayGlow = tag.getBoolean(TAG_DISPLAY_OVERLAY_GLOW);
         profile.displayOuterLayers = !tag.contains(TAG_DISPLAY_LAYERS) || tag.getBoolean(TAG_DISPLAY_LAYERS);
+        profile.displayShowName = Math.max(0, Math.min(2, tag.getInt(TAG_DISPLAY_SHOW_NAME)));
+        profile.hideDeadBody = tag.getBoolean(TAG_HIDE_DEAD_BODY);
+        profile.bossBarMode = tag.getInt(TAG_BOSS_BAR_MODE) == 2 ? 2 : 1;
         profile.fireImmune = tag.getBoolean(TAG_FIRE_IMMUNE);
         profile.burnsInSun = tag.getBoolean(TAG_BURNS_IN_SUN);
         // Absent keys must keep the shipped default rather than reading as false, or every NPC
@@ -1987,6 +2006,9 @@ public final class NpcCombatProfile {
         tag.putString(TAG_DISPLAY_OVERLAY, safe(displayOverlay));
         tag.putBoolean(TAG_DISPLAY_OVERLAY_GLOW, displayOverlayGlow);
         tag.putBoolean(TAG_DISPLAY_LAYERS, displayOuterLayers);
+        tag.putInt(TAG_DISPLAY_SHOW_NAME, Math.max(0, Math.min(2, displayShowName)));
+        tag.putBoolean(TAG_HIDE_DEAD_BODY, hideDeadBody);
+        tag.putInt(TAG_BOSS_BAR_MODE, bossBarMode == 2 ? 2 : 1);
         tag.putBoolean(TAG_FIRE_IMMUNE, fireImmune);
         tag.putBoolean(TAG_BURNS_IN_SUN, burnsInSun);
         tag.putBoolean(TAG_CAN_DROWN, canDrown);
@@ -2469,11 +2491,15 @@ public final class NpcCombatProfile {
         tag.putString(TAG_NIGHT_TEXTURE, safe(nightTexture));
         tag.putString(TAG_SKIN_PLAYER, safe(skinPlayer));
         tag.putInt(TAG_MODEL_TINT, modelTint & 0xFFFFFF);
+        tag.putBoolean(TAG_MODEL_GLOWING, modelGlowing);
         tag.putInt(TAG_BASE_SIZE, baseSize);
         tag.putString(TAG_DISPLAY_CAPE, safe(displayCape));
         tag.putString(TAG_DISPLAY_OVERLAY, safe(displayOverlay));
         tag.putBoolean(TAG_DISPLAY_OVERLAY_GLOW, displayOverlayGlow);
         tag.putBoolean(TAG_DISPLAY_LAYERS, displayOuterLayers);
+        tag.putInt(TAG_DISPLAY_SHOW_NAME, Math.max(0, Math.min(2, displayShowName)));
+        tag.putBoolean(TAG_HIDE_DEAD_BODY, hideDeadBody);
+        tag.putInt(TAG_BOSS_BAR_MODE, bossBarMode == 2 ? 2 : 1);
         tag.putString(TAG_AURA_COLOR_HEX, canonicalizeOptionalColor(auraColorHex));
         tag.putString(TAG_SELECTED_FORM_GROUP, safe(selectedFormGroup));
         tag.putString(TAG_SELECTED_FORM, safe(selectedFormId));
@@ -2540,11 +2566,15 @@ public final class NpcCombatProfile {
         if (tag.contains(TAG_NIGHT_TEXTURE)) nightTexture = tag.getString(TAG_NIGHT_TEXTURE);
         if (tag.contains(TAG_SKIN_PLAYER)) skinPlayer = tag.getString(TAG_SKIN_PLAYER);
         if (tag.contains(TAG_MODEL_TINT)) modelTint = tag.getInt(TAG_MODEL_TINT) & 0xFFFFFF;
+        if (tag.contains(TAG_MODEL_GLOWING)) modelGlowing = tag.getBoolean(TAG_MODEL_GLOWING);
         if (tag.contains(TAG_BASE_SIZE)) baseSize = Math.max(0, Math.min(30, tag.getInt(TAG_BASE_SIZE)));
         if (tag.contains(TAG_DISPLAY_CAPE)) displayCape = tag.getString(TAG_DISPLAY_CAPE);
         if (tag.contains(TAG_DISPLAY_OVERLAY)) displayOverlay = tag.getString(TAG_DISPLAY_OVERLAY);
         if (tag.contains(TAG_DISPLAY_OVERLAY_GLOW)) displayOverlayGlow = tag.getBoolean(TAG_DISPLAY_OVERLAY_GLOW);
         if (tag.contains(TAG_DISPLAY_LAYERS)) displayOuterLayers = tag.getBoolean(TAG_DISPLAY_LAYERS);
+        if (tag.contains(TAG_DISPLAY_SHOW_NAME)) displayShowName = Math.max(0, Math.min(2, tag.getInt(TAG_DISPLAY_SHOW_NAME)));
+        if (tag.contains(TAG_HIDE_DEAD_BODY)) hideDeadBody = tag.getBoolean(TAG_HIDE_DEAD_BODY);
+        if (tag.contains(TAG_BOSS_BAR_MODE)) bossBarMode = tag.getInt(TAG_BOSS_BAR_MODE) == 2 ? 2 : 1;
         setAuraColor(tag.getString(TAG_AURA_COLOR_HEX));
         selectedFormGroup = tag.getString(TAG_SELECTED_FORM_GROUP);
         selectedFormId = tag.getString(TAG_SELECTED_FORM);

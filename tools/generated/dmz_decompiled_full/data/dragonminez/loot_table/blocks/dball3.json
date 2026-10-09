@@ -1,21 +1,3 @@
-{
-  "type": "minecraft:block",
-  "pools": [
-    {
-      "bonus_rolls": 0.0,
-      "conditions": [
-        {
-          "condition": "minecraft:survives_explosion"
-        }
-      ],
-      "entries": [
-        {
-          "type": "minecraft:item",
-          "name": "dragonminez:dball3"
-        }
-      ],
-      "rolls": 1.0
-    }
-  ],
-  "random_sequence": "dragonminez:blocks/dball3"
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:9768570bbda63a7b7fab293ae33e95e60e21cb1b903a5587593f2bb9d2d50533
+size 384

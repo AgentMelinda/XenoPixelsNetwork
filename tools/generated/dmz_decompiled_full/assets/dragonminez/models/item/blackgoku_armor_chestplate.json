@@ -1,6 +1,3 @@
-{
-  "parent": "minecraft:item/generated",
-  "textures": {
-    "layer0": "dragonminez:item/armors/blackgoku_armor_chestplate"
-  }
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:7c2b06f0cc9b887178fefb35e65574557742630b5a3ac6269ea69e07991a6889
+size 130

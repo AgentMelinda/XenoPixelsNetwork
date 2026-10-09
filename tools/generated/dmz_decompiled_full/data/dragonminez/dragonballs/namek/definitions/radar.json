@@ -1,16 +1,3 @@
-{
-  "asset_definition": "namek_radar",
-  "ball_set": "namek",
-  "dimensions": [
-    "dragonminez:namek"
-  ],
-  "display_name": "Namek Dragon Radar",
-  "id": "namek_radar",
-  "item_registry_name": "namekdball_radar",
-  "ranges": [
-    150,
-    300
-  ],
-  "recipe_definition": "namek_radar_recipe",
-  "tooltip_key": "item.dragonminez.namekdball_radar.tooltip"
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:995d983b84d7cdf53860f3381d32684d67ae5f532309795b9b3a7b3226133a16
+size 359

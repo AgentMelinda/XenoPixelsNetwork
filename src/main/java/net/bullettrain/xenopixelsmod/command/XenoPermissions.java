@@ -185,12 +185,18 @@ public final class XenoPermissions {
     public static final PermissionNode<Boolean> XENOCOMBAT_STATUS =
             op("xenocombat.status", "Use /xenocombat status");
     public static final PermissionNode<Boolean> XENOCOMBAT_MODE =
-            op("xenocombat.mode", "Use /xenocombat mode legacy|bt3_manual");
+            op("xenocombat.mode", "Use /xenocombat mode legacy|bt3_manual|v2");
     public static final PermissionNode<Boolean> XENOCOMBAT_RELOAD =
             op("xenocombat.reload", "Use /xenocombat reload");
     /** Gates driving the manual BT3 controller once the server has it enabled. */
     public static final PermissionNode<Boolean> COMBAT_BT3_MANUAL_USE =
             everyone("combat.bt3manual.use", "Use the manual BT3 combat controller");
+    /** Gates driving XenoCombat v2 once the server has it enabled. */
+    public static final PermissionNode<Boolean> COMBAT_V2_USE =
+            everyone("combat.v2.use", "Use XenoCombat v2");
+    /** Gates the grab and throw under the legacy and manual controllers; v2 has its own node. */
+    public static final PermissionNode<Boolean> COMBAT_GRAB_USE =
+            everyone("combat.grab.use", "Grab and throw under the legacy and manual combat controllers");
 
     // -------------------------------------------------------------------------
     // /xenolock  (server — OP default)

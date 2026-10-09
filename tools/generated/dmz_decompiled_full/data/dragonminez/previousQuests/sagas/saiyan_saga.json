@@ -1,8 +1,3 @@
-{
-  "id": "saiyan_saga",
-  "name": "dmz.saga.saiyan_saga",
-  "requirements": {
-    "previousSaga": ""
-  },
-  "questFolder": "saga_saiyan"
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:87f3987b2b279c1ccd39b938a706d0e09847a69a0b4ba71d80c510f7c6b0fb5f
+size 146

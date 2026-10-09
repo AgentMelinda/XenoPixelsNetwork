@@ -1,6 +1,3 @@
-{
-  "parent": "minecraft:item/generated",
-  "textures": {
-    "layer0": "dragonminez:item/patterns/pattern_trunks_super"
-  }
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:3cc2c340abf6d7279625bedf51c2efa8688abc91575edc9bc54eca4b36c3b674
+size 126

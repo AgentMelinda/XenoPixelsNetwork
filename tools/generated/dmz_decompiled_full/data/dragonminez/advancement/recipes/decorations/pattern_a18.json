@@ -1,32 +1,3 @@
-{
-  "parent": "minecraft:recipes/root",
-  "criteria": {
-    "has_blank_pattern_z": {
-      "conditions": {
-        "items": [
-          {
-            "items": "dragonminez:blank_pattern_z"
-          }
-        ]
-      },
-      "trigger": "minecraft:inventory_changed"
-    },
-    "has_the_recipe": {
-      "conditions": {
-        "recipe": "dragonminez:pattern_a18"
-      },
-      "trigger": "minecraft:recipe_unlocked"
-    }
-  },
-  "requirements": [
-    [
-      "has_the_recipe",
-      "has_blank_pattern_z"
-    ]
-  ],
-  "rewards": {
-    "recipes": [
-      "dragonminez:pattern_a18"
-    ]
-  }
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:2f5a8d2bacced087f623f0d67bafc4c6537a810ba0792f485cf607c80bfaa2e1
+size 593

@@ -1,21 +1,3 @@
-{
-  "type": "minecraft:block",
-  "pools": [
-    {
-      "bonus_rolls": 0.0,
-      "conditions": [
-        {
-          "condition": "minecraft:survives_explosion"
-        }
-      ],
-      "entries": [
-        {
-          "type": "minecraft:item",
-          "name": "dragonminez:lotus_flower"
-        }
-      ],
-      "rolls": 1.0
-    }
-  ],
-  "random_sequence": "dragonminez:blocks/lotus_flower"
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:feadc6d434bd765f13261cfa553c6de2f94bf65d443e78aef18411d13f6ec78d
+size 396

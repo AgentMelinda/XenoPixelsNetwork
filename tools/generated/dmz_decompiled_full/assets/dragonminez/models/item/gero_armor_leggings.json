@@ -1,6 +1,3 @@
-{
-  "parent": "minecraft:item/generated",
-  "textures": {
-    "layer0": "dragonminez:item/armors/gero_armor_leggings"
-  }
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:ef78125f4ed1a6d5d7102a562e196eac1c1f75649f9f98fae1d465fec8974cd5
+size 123

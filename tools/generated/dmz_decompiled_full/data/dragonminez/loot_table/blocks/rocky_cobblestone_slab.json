@@ -1,21 +1,3 @@
-{
-  "type": "minecraft:block",
-  "pools": [
-    {
-      "bonus_rolls": 0.0,
-      "conditions": [
-        {
-          "condition": "minecraft:survives_explosion"
-        }
-      ],
-      "entries": [
-        {
-          "type": "minecraft:item",
-          "name": "dragonminez:rocky_cobblestone_slab"
-        }
-      ],
-      "rolls": 1.0
-    }
-  ],
-  "random_sequence": "dragonminez:blocks/rocky_cobblestone_slab"
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:884f00f9fc428b78f85597325514a8e6c998fd337ce45c6f8a28181c76d21a8c
+size 416

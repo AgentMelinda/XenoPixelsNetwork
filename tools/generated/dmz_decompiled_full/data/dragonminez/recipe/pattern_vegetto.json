@@ -1,31 +1,3 @@
-{
-  "type": "minecraft:crafting_shaped",
-  "category": "misc",
-  "group": "dragonminez",
-  "key": {
-    "#": {
-      "item": "dragonminez:blank_pattern_z"
-    },
-    "B": {
-      "item": "minecraft:blue_dye"
-    },
-    "C": {
-      "item": "minecraft:cyan_dye"
-    },
-    "O": {
-      "item": "minecraft:orange_dye"
-    },
-    "W": {
-      "item": "minecraft:white_dye"
-    }
-  },
-  "pattern": [
-    "B#B",
-    "BOB",
-    "WCW"
-  ],
-  "result": {
-    "count": 1,
-    "id": "dragonminez:pattern_vegetto"
-  }
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:bb2568a02806b7704f66a8fd301384db37ec0694b5cbfa433b8e920d07de586b
+size 508

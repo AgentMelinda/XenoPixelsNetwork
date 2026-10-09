@@ -1,14 +1,3 @@
-{
-  "type": "minecraft:smelting",
-  "category": "blocks",
-  "cookingtime": 200,
-  "experience": 0.7,
-  "group": "redstone",
-  "ingredient": {
-    "item": "dragonminez:namek_deepslate_redstone_ore"
-  },
-  "result": {
-    "count": 1,
-    "id": "minecraft:redstone"
-  }
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:c299b174628e8311fb8d53c45635371380855877c039ed68e72a18ce7b523fd7
+size 268

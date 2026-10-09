@@ -1,31 +1,3 @@
-{
-  "type": "minecraft:crafting_shaped",
-  "category": "misc",
-  "group": "dragonminez",
-  "key": {
-    "#": {
-      "item": "dragonminez:blank_pattern_z"
-    },
-    "B": {
-      "item": "minecraft:black_dye"
-    },
-    "G": {
-      "item": "minecraft:green_dye"
-    },
-    "R": {
-      "item": "minecraft:red_dye"
-    },
-    "Y": {
-      "item": "minecraft:yellow_dye"
-    }
-  },
-  "pattern": [
-    "R#R",
-    "GGG",
-    "BYB"
-  ],
-  "result": {
-    "count": 1,
-    "id": "dragonminez:pattern_great_saiyaman"
-  }
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:497fb133955f8f31568d46fd6162147ef53d6709f1ef807aaf7fae9c3357ea94
+size 515

@@ -1,6 +1,3 @@
-{
-  "parent": "minecraft:item/generated",
-  "textures": {
-    "layer0": "dragonminez:item/trillium_flower"
-  }
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:0afe34bd320c87756f863b2891f11748403dea1c225e6b90c54b6ad72e30eee4
+size 112

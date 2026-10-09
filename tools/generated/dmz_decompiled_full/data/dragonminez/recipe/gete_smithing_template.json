@@ -1,25 +1,3 @@
-{
-  "type": "minecraft:crafting_shaped",
-  "category": "misc",
-  "group": "dragonminez",
-  "key": {
-    "G": {
-      "item": "dragonminez:gete_scrap"
-    },
-    "I": {
-      "item": "minecraft:iron_ingot"
-    },
-    "T": {
-      "item": "minecraft:netherite_upgrade_smithing_template"
-    }
-  },
-  "pattern": [
-    "IGI",
-    "GTG",
-    "IGI"
-  ],
-  "result": {
-    "count": 1,
-    "id": "dragonminez:gete_smithing_template"
-  }
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:602987b96e63c03f4ff26bcd5c4e70a1a5888aff419945f2e3f401e5149a0941
+size 430

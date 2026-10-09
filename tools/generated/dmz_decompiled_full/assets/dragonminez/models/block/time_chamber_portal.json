@@ -1,6 +1,3 @@
-{
-  "parent": "minecraft:block/cube_all",
-  "textures": {
-    "all": "dragonminez:block/time_chamber_portal"
-  }
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:0ec852bc3f8d0186c8fd49c2ab87f517d4add4799324b81c235f8819a881b23a
+size 114

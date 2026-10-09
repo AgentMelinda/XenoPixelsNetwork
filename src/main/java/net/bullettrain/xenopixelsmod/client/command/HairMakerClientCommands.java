@@ -3,6 +3,7 @@ package net.bullettrain.xenopixelsmod.client.command;
 import com.mojang.brigadier.CommandDispatcher;
 import net.bullettrain.xenopixelsmod.XenoPixelsMod;
 import net.bullettrain.xenopixelsmod.client.ClientScreens;
+import net.bullettrain.xenopixelsmod.client.maker.MakerAccess;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
 import net.minecraft.network.chat.Component;
@@ -31,6 +32,10 @@ public final class HairMakerClientCommands {
     }
 
     private static int open(CommandSourceStack source) {
+        if (!MakerAccess.canOpenCosmeticMaker()) {
+            source.sendFailure(MakerAccess.denyCosmetic());
+            return 0;
+        }
         ClientScreens.openHairMaker.run();
         source.sendSuccess(() -> Component.literal(
                 "Opened Hair Editor (replace-current-style Apply; path READY / runtime unverified)."),

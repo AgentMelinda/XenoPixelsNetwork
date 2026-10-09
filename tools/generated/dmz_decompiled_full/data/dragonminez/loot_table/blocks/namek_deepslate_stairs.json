@@ -1,21 +1,3 @@
-{
-  "type": "minecraft:block",
-  "pools": [
-    {
-      "bonus_rolls": 0.0,
-      "conditions": [
-        {
-          "condition": "minecraft:survives_explosion"
-        }
-      ],
-      "entries": [
-        {
-          "type": "minecraft:item",
-          "name": "dragonminez:namek_deepslate_stairs"
-        }
-      ],
-      "rolls": 1.0
-    }
-  ],
-  "random_sequence": "dragonminez:blocks/namek_deepslate_stairs"
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:2639ded9a324b0be1c6f6e9227d0411a742fd94945bd03a533529b8557f60006
+size 416

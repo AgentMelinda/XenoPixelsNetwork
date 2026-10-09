@@ -1,13 +1,3 @@
-{
-  "replace": false,
-  "values": [
-    {
-      "id": "dragonminez:namek_frog",
-      "required": false
-    },
-    {
-      "id": "dragonminez:namek_frog_ginyu",
-      "required": false
-    }
-  ]
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:d67bea9e5c81c75afcb108d4007320da1e3718c08a264f6d7af66796c7ab9a5a
+size 208

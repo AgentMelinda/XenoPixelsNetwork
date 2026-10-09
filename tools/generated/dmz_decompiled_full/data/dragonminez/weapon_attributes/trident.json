@@ -1,20 +1,3 @@
-{
-  "attributes": {
-    "attack_range": 3.5,
-    "pose": "pose_two_handed_polearm",
-    "two_handed": true,
-    "category": "trident",
-    "attacks": [
-      {
-        "hitbox": "FORWARD_BOX",
-        "damage_multiplier": 1,
-        "angle": 0,
-        "upswing": 0.5,
-        "animation": "combat.one_handed_stab_right",
-        "swing_sound": {
-          "id": "dragonminez:spear_stab"
-        }
-      }
-    ]
-  }
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:7bffe4a55e696d578238f84755e62dca864b45fafef527db344a138ea4ff8b8a
+size 436

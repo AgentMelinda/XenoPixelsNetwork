@@ -1,6 +1,3 @@
-{
-  "parent": "minecraft:item/generated",
-  "textures": {
-    "layer0": "dragonminez:item/ki_battery"
-  }
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:1cbf5b6650444f82cd90c863bb61dfc154006e28118a8990c4dd78426cdf2602
+size 107

@@ -1,17 +1,3 @@
-{
-  "type": "minecraft:crafting_shaped",
-  "category": "building",
-  "group": "dragonminez",
-  "key": {
-    "#": {
-      "item": "dragonminez:namek_sacred_planks"
-    }
-  },
-  "pattern": [
-    "##"
-  ],
-  "result": {
-    "count": 1,
-    "id": "dragonminez:namek_sacred_pressure_plate"
-  }
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:787959c32839695d26137a2b58231145ea4ccc445b73ca16a2f5d8902e174d16
+size 290

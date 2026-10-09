@@ -43,6 +43,7 @@ public final class NpcPath {
     private static final String TAG_POINTS = "Points";
     private static final String TAG_MODE = "Mode";
     private static final String TAG_SPEED = "Speed";
+    private static final String TAG_PAUSES = "Pauses";
 
     /** What happens when the NPC reaches the last point. */
     public enum Mode {
@@ -101,6 +102,11 @@ public final class NpcPath {
     private final List<Point> points = new ArrayList<>();
     private Mode mode = Mode.LOOP;
     private double speed = DEFAULT_SPEED;
+    private boolean pauses;
+
+    public boolean pauses() { return pauses; }
+
+    public void setPauses(boolean value) { pauses = value; }
 
     public List<Point> points() {
         return Collections.unmodifiableList(points);
@@ -229,6 +235,7 @@ public final class NpcPath {
         tag.put(TAG_POINTS, list);
         tag.putString(TAG_MODE, mode.id());
         tag.putDouble(TAG_SPEED, speed);
+        tag.putBoolean(TAG_PAUSES, pauses);
         return tag;
     }
 
@@ -238,6 +245,7 @@ public final class NpcPath {
             return path;
         }
         path.setMode(Mode.byId(tag.getString(TAG_MODE)));
+        path.setPauses(tag.getBoolean(TAG_PAUSES));
         path.setSpeed(tag.contains(TAG_SPEED) ? tag.getDouble(TAG_SPEED) : DEFAULT_SPEED);
         ListTag list = tag.getList(TAG_POINTS, Tag.TAG_COMPOUND);
         // Truncated rather than trusted: a hand-edited or corrupted tag claiming a thousand points

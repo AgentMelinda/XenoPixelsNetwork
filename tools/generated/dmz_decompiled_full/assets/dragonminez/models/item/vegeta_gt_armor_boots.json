@@ -1,6 +1,3 @@
-{
-  "parent": "minecraft:item/generated",
-  "textures": {
-    "layer0": "dragonminez:item/armors/vegeta_gt_armor_boots"
-  }
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:24198784f5bf0facc20cfc34470cf6009b996321524ea99a850ded64b629065c
+size 125

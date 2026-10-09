@@ -83,6 +83,8 @@ public final class CombatControllerService {
      */
     public static void clearLiveCombatState(ServerPlayer player) {
         if (player == null) return;
+        net.bullettrain.xenopixelsmod.combat.v3.V3CombatServer.clear(player);
+        net.bullettrain.xenopixelsmod.combat.v2.V2CombatServer.clear(player);
         Bt3CinematicRushSystem.interrupt(player);
         ComboRouteMachine.cancel(player);
         ChaseFlightSystem.stopChase(player);
@@ -104,11 +106,17 @@ public final class CombatControllerService {
 
     @SubscribeEvent
     public static void onServerTick(ServerTickEvent.Post event) {
-        CombatControllerMode now = current();
-        if (CombatControllerMode.requiresCleanup(applied, now)) {
-            sweepAll(event.getServer(), applied, now);
+        if (reconcile(event.getServer())) {
             DmzHudCommands.broadcast();
         }
+    }
+
+    /** Apply any config drift before broadcasting or admitting another controller intent. */
+    public static boolean reconcile(MinecraftServer server) {
+        CombatControllerMode now = current();
+        if (!CombatControllerMode.requiresCleanup(applied, now)) return false;
+        sweepAll(server, applied, now);
+        return true;
     }
 
     @SubscribeEvent

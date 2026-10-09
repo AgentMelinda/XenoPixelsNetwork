@@ -1,6 +1,3 @@
-{
-  "parent": "minecraft:item/generated",
-  "textures": {
-    "layer0": "dragonminez:item/patterns/pattern_warrior_clan"
-  }
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:aed23abaddcb274f901f86b2a5ca86f915e01a6d219d016ca99eec412b7e0601
+size 126

@@ -1,6 +1,3 @@
-{
-  "parent": "minecraft:item/generated",
-  "textures": {
-    "layer0": "dragonminez:item/armors/shin_armor_leggings"
-  }
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:14c065ab5a6c70c4286ca87680cca095b09ebdc08494b05a03956bc391f0acc2
+size 123

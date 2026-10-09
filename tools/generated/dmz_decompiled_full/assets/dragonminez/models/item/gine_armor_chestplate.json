@@ -1,6 +1,3 @@
-{
-  "parent": "minecraft:item/generated",
-  "textures": {
-    "layer0": "dragonminez:item/armors/gine_armor_chestplate"
-  }
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:81b9249d6dc397139fdbac196fdf09a7e21645ee2c0014e8b675b980e3a796f6
+size 125

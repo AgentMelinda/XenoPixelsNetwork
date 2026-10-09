@@ -1,6 +1,3 @@
-{
-  "parent": "minecraft:item/generated",
-  "textures": {
-    "layer0": "dragonminez:item/armors/slug_armor_leggings"
-  }
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:101319349edb227f7c5349d389f3c6a682f344022c5d844c00b781cf2def7fac
+size 123

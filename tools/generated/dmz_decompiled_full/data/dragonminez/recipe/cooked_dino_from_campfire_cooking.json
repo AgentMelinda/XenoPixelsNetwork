@@ -1,10 +1,3 @@
-{
-  "type": "minecraft:campfire_cooking",
-  "category": "food",
-  "cookingtime": 600,
-  "experience": 0.35,
-  "ingredient": {
-    "item": "dragonminez:raw_dino_meat"
-  },
-  "result": { "id": "dragonminez:cooked_dino_meat" }
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:df4b5bfeb2b4400996d177ceb821574c9eb83b265adf2d1740bc9ebaf83008f9
+size 234

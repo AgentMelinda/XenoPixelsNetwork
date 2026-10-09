@@ -1,6 +1,3 @@
-{
-  "parent": "minecraft:item/generated",
-  "textures": {
-    "layer0": "dragonminez:item/armors/shin_armor_chestplate"
-  }
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:e9964c17c74e9654cca6ca936a2d63b45698dae9349ccfdce3ad0007f2986aab
+size 125

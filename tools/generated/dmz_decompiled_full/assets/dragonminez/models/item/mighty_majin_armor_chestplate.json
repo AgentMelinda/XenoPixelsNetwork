@@ -1,6 +1,3 @@
-{
-  "parent": "minecraft:item/generated",
-  "textures": {
-    "layer0": "dragonminez:item/armors/mighty_majin_armor_chestplate"
-  }
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:37e8eb8f306d16d70b4d412e5d5b4978a58b1b87878436c6bb3545fed25fe0ac
+size 133

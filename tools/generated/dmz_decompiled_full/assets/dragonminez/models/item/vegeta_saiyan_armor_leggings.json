@@ -1,6 +1,3 @@
-{
-  "parent": "minecraft:item/generated",
-  "textures": {
-    "layer0": "dragonminez:item/armors/vegeta_saiyan_armor_leggings"
-  }
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:ff9179aeba6cf3fa31efd7724905fe3ce29cd94f2ead6b8762bcd1ee8e737d70
+size 132

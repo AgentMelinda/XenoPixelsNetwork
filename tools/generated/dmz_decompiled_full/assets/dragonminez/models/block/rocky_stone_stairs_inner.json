@@ -1,8 +1,3 @@
-{
-  "parent": "minecraft:block/inner_stairs",
-  "textures": {
-    "bottom": "dragonminez:block/rocky_stone",
-    "side": "dragonminez:block/rocky_stone",
-    "top": "dragonminez:block/rocky_stone"
-  }
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:8cbbcb4af86d3f18e4aedd9910383cc27b7815f3052be0c51b746d89b6bd22e7
+size 202

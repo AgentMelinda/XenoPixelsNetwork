@@ -1,0 +1,137 @@
+<h2>Quest log — three layouts</h2>
+<p class="subtitle">
+  Styled from your image 69's toast: cyan 2px border, dark navy fill, gold headings, white body.
+  The toast itself is settled — it matches the reference. This is the <em>log screen</em>, which has
+  no reference shot, so pick the shape you want.
+</p>
+
+<style>
+  .mc { font-family: ui-monospace, "Consolas", monospace; }
+  .panel {
+    background: #0b1b2e; border: 2px solid #4fc3d9; border-radius: 2px;
+    color: #e8eef5; padding: 10px; font-size: 12px; line-height: 1.5;
+  }
+  .gold { color: #ffd54f; }
+  .dim  { color: #8fa3b8; }
+  .green{ color: #7ddf7d; }
+  .bar  { height: 6px; background: #14304d; border: 1px solid #2d5a80; margin-top: 3px; }
+  .bar > i { display: block; height: 100%; background: #4fc3d9; }
+  .row  { padding: 5px 6px; border-bottom: 1px solid #16324f; }
+  .row.sel { background: #14304d; border-left: 3px solid #ffd54f; }
+  .glyph { color: #ffd54f; margin-right: 5px; }
+  .tabs { display: flex; gap: 3px; margin-bottom: 6px; }
+  .tab  { padding: 3px 12px; background: #0b1b2e; border: 1px solid #2d5a80; color: #8fa3b8; font-size: 11px; }
+  .tab.on { background: #14304d; border-color: #4fc3d9; color: #ffd54f; }
+  .split { display: grid; grid-template-columns: 45% 55%; gap: 8px; }
+  .mock-wrap { margin-top: 10px; }
+  .mock-label { font-size: 11px; color: #8fa3b8; margin-bottom: 4px; letter-spacing: .04em; }
+  .worldbg {
+    background: linear-gradient(#1c2430, #2a3340); padding: 14px; border-radius: 4px;
+    position: relative;
+  }
+  .toast {
+    position: absolute; top: 8px; right: 8px; width: 190px;
+    background: #0b1b2e; border: 2px solid #4fc3d9; padding: 5px 8px; font-size: 11px;
+  }
+</style>
+
+<div class="options">
+
+  <div class="option" data-choice="a" onclick="toggleSelect(this)">
+    <div class="letter">A</div>
+    <div class="content">
+      <h3>Two-pane — list left, detail right</h3>
+      <p>The conventional quest-log shape. Objectives and rewards have room to breathe.
+         Needs a new two-column layout; the editor's row system is single-column.</p>
+      <div class="mock-wrap mc">
+        <div class="panel split">
+          <div>
+            <div class="gold" style="margin-bottom:4px">QUESTS</div>
+            <div class="row sel"><span class="glyph">▌</span>Gold</div>
+            <div class="row"><span class="glyph">▌</span>Wolf Trouble</div>
+            <div class="row"><span class="glyph">▌</span>Pay Respects</div>
+            <div class="row dim"><span class="glyph" style="color:#4a5f75">▌</span>Hunt <span class="green">✓</span></div>
+          </div>
+          <div>
+            <div class="gold">Gold</div>
+            <div class="dim" style="margin:3px 0 6px">Bring Stephanie something shiny.</div>
+            <div>Gold ore <span class="dim">3 / 10</span></div>
+            <div class="bar"><i style="width:30%"></i></div>
+            <div class="dim" style="margin-top:8px">Rewards</div>
+            <div>+2 skill points<br>+40 xp</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="option" data-choice="b" onclick="toggleSelect(this)">
+    <div class="letter">B</div>
+    <div class="content">
+      <h3>One list — Active above, Completed below</h3>
+      <p>Everything visible at once, no navigation. Reuses <code>EditorLayout</code> and the
+         <code>Page N / M</code> pager exactly as they are. Detail is inline, so a wordy quest
+         pushes the rest down.</p>
+      <div class="mock-wrap mc">
+        <div class="panel">
+          <div class="gold">ACTIVE</div>
+          <div class="row">
+            <span class="glyph">▌</span>Gold <span class="dim">3 / 10</span>
+            <div class="bar"><i style="width:30%"></i></div>
+          </div>
+          <div class="row">
+            <span class="glyph">▌</span>Wolf Trouble <span class="dim">1 / 5</span>
+            <div class="bar"><i style="width:20%"></i></div>
+          </div>
+          <div class="gold" style="margin-top:8px">COMPLETED</div>
+          <div class="row dim"><span class="glyph" style="color:#4a5f75">▌</span>Hunt <span class="green">✓</span></div>
+          <div class="row dim"><span class="glyph" style="color:#4a5f75">▌</span>Training <span class="green">✓</span></div>
+          <div class="dim" style="text-align:center;margin-top:6px">Page 1 / 2</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="option" data-choice="c" onclick="toggleSelect(this)">
+    <div class="letter">C</div>
+    <div class="content">
+      <h3>Tabs — Active / Completed</h3>
+      <p>Reuses <code>AtlasTabStrip</code>, already fit-aware after the X-button fix. One list at a
+         time, so completed quests never crowd active ones. Costs a click to see history.</p>
+      <div class="mock-wrap mc">
+        <div class="tabs">
+          <div class="tab on">Active</div>
+          <div class="tab">Completed</div>
+        </div>
+        <div class="panel">
+          <div class="row">
+            <span class="glyph">▌</span>Gold <span class="dim">3 / 10</span>
+            <div class="bar"><i style="width:30%"></i></div>
+          </div>
+          <div class="row">
+            <span class="glyph">▌</span>Wolf Trouble <span class="dim">1 / 5</span>
+            <div class="bar"><i style="width:20%"></i></div>
+          </div>
+          <div class="row">
+            <span class="glyph">▌</span>Pay Respects <span class="dim">2 / 3</span>
+            <div class="bar"><i style="width:66%"></i></div>
+          </div>
+          <div class="dim" style="text-align:center;margin-top:6px">Page 1 / 1</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<h2 style="margin-top:28px">The toast — already settled</h2>
+<p class="subtitle">Matched to image 69. Shown so you can confirm placement, not to choose.</p>
+<div class="mc worldbg" style="height:150px">
+  <div class="toast">
+    <div><span class="glyph">▌</span><span class="gold">New Quest</span></div>
+    <div><span class="glyph">▌</span>Gold</div>
+  </div>
+  <div class="dim" style="font-size:11px;position:absolute;bottom:10px;left:14px">
+    top-right, above the hotbar layer, fades after a few seconds
+  </div>
+</div>

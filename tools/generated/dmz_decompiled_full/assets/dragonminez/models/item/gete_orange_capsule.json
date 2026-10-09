@@ -1,6 +1,3 @@
-{
-  "parent": "minecraft:item/generated",
-  "textures": {
-    "layer0": "dragonminez:item/gete_orange_capsule"
-  }
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:b48874cbbb516a91b77c3fe1c714c13635b3ea53d09c2a88ab62f9aa2e0d14a4
+size 116

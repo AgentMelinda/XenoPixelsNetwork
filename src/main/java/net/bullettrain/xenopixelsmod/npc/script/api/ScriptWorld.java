@@ -12,6 +12,26 @@ public final class ScriptWorld {
         this.level = level;
     }
 
+    /** Typed native world API; legacy getDimension() still returns its resource-id string. */
+    public xenoapi.npcs.api.IWorld getAPI() {
+        if (level == null) throw new IllegalStateException("World API functions require a live server level");
+        return net.bullettrain.xenopixelsmod.npc.script.api.xeno.XenoApiAdapters.wrap(level);
+    }
+
+    /** Places a saved native clone from tabs 1-9, or returns null when its name is absent. */
+    public ScriptNpc spawnClone(double x, double y, double z, int tab, String name) {
+        var clone = new net.bullettrain.xenopixelsmod.npc.script.api.xeno.XenoCloneHandler()
+                .spawn(x, y, z, tab, name,
+                        net.bullettrain.xenopixelsmod.npc.script.api.xeno.XenoApiAdapters.wrap(level));
+        if (clone == null) return null;
+        var entity = net.bullettrain.xenopixelsmod.npc.script.api.xeno.XenoApiAdapters.unwrap(clone);
+        if (!(entity instanceof net.bullettrain.xenopixelsmod.npc.XenoNpcEntity npc)) {
+            throw new IllegalStateException("The native clone library returned a non-NPC entity");
+        }
+        var shared = net.bullettrain.xenopixelsmod.npc.script.NpcScriptHost.sharedState(npc);
+        return new ScriptNpc(npc, shared.temp(), shared.timers());
+    }
+
     /** Game time in ticks. */
     public long getTotalTime() {
         return level.getGameTime();

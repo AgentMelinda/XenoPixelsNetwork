@@ -1,33 +1,3 @@
-{
-  "type": "dragonminez:kikono_crafting",
-  "crafting_time": 200,
-  "ingredients": [
-    [],
-    [],
-    [],
-    {
-      "item": "dragonminez:kikono_cloth"
-    },
-    [],
-    {
-      "item": "dragonminez:kikono_cloth"
-    },
-    {
-      "item": "dragonminez:kikono_string"
-    },
-    [],
-    {
-      "item": "dragonminez:kikono_string"
-    }
-  ],
-  "output": {
-    "count": 1,
-    "id": "dragonminez:granola_armor_boots"
-  },
-  "pattern": {
-    "item": "dragonminez:pattern_granola"
-  },
-  "template": {
-    "item": "minecraft:iron_boots"
-  }
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:2b9e22a69de1bc96263fdb6b2893917691db7547082a3a8f2fdcfbb0ba97f27a
+size 545

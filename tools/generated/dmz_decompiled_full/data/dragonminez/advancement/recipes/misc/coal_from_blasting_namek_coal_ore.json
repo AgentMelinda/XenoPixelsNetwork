@@ -1,32 +1,3 @@
-{
-  "parent": "minecraft:recipes/root",
-  "criteria": {
-    "has_namek_coal_ore": {
-      "conditions": {
-        "items": [
-          {
-            "items": "dragonminez:namek_coal_ore"
-          }
-        ]
-      },
-      "trigger": "minecraft:inventory_changed"
-    },
-    "has_the_recipe": {
-      "conditions": {
-        "recipe": "dragonminez:coal_from_blasting_namek_coal_ore"
-      },
-      "trigger": "minecraft:recipe_unlocked"
-    }
-  },
-  "requirements": [
-    [
-      "has_the_recipe",
-      "has_namek_coal_ore"
-    ]
-  ],
-  "rewards": {
-    "recipes": [
-      "dragonminez:coal_from_blasting_namek_coal_ore"
-    ]
-  }
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:460f913fdd27e811ded0a323c27a7d97003c0b029e1bc9f430d5865700664a9f
+size 634

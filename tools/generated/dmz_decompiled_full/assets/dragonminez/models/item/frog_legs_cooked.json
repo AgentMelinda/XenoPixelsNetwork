@@ -1,6 +1,3 @@
-{
-  "parent": "minecraft:item/generated",
-  "textures": {
-    "layer0": "dragonminez:item/frog_legs_cooked"
-  }
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:58cfaeb96e4fc916fe491e7ac188d9f6142b639b959e00fce8a48bd59ae76987
+size 113

@@ -1,34 +1,3 @@
-{
-  "type": "dragonminez:kikono_crafting",
-  "ingredients": [
-    {
-      "item": "dragonminez:gete_ingot"
-    },
-    {
-      "item": "dragonminez:gete_ingot"
-    },
-    {
-      "item": "dragonminez:gete_ingot"
-    },
-    [],
-    {
-      "item": "dragonminez:kikono_stick"
-    },
-    [],
-    [],
-    {
-      "item": "dragonminez:kikono_stick"
-    },
-    []
-  ],
-  "output": {
-    "count": 1,
-    "id": "dragonminez:gete_pickaxe"
-  },
-  "pattern": {
-    "item": "dragonminez:pattern_gete"
-  },
-  "template": {
-    "item": "minecraft:iron_pickaxe"
-  }
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:86a8ab5fd1f2128f4e5d317c8ac373f41211f0c15add7ebdc84d1e0420e9d19c
+size 551

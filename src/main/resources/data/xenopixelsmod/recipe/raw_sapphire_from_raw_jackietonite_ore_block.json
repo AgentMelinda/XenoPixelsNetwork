@@ -1,13 +1,3 @@
-{
-  "type": "minecraft:crafting_shapeless",
-  "category": "misc",
-  "ingredients": [
-    {
-      "item": "xenopixelsmod:raw_jackietonite_ore_block"
-    }
-  ],
-  "result": {
-    "id": "xenopixelsmod:raw_sapphire",
-    "count": 9
-  }
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:b489df80b623b05547adf28c2f9ef679d1429da78ca75b1f364df774f91d2797
+size 245

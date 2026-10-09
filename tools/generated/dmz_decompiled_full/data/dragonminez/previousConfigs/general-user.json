@@ -1,34 +1,3 @@
-{
-  "configVersion": "2.1.2",
-  "firstPersonAnimated": true,
-  "impactFramesEnabled": false,
-  "techniqueHotbarRightSide": false,
-  "alwaysVisibleHudValues": false,
-  "hideHudNumbers": false,
-  "xenoverseHudPosX": 5,
-  "xenoverseHudPosY": 5,
-  "xenoverseHudScale": 1.0,
-  "advancedDescription": true,
-  "advancedDescriptionPercentage": true,
-  "alternativeHud": false,
-  "hexagonStatsDisplay": false,
-  "menuScaleMultiplier": 1.0,
-  "utilityMenuScaleMultiplier": 1.0,
-  "healthBarPosX": 10,
-  "healthBarPosY": 20,
-  "energyBarPosX": 10,
-  "energyBarPosY": 10,
-  "staminaBarPosX": 10,
-  "staminaBarPosY": 10,
-  "cameraMovementDuringFlight": true,
-  "liveCrowdinTranslations": true,
-  "showAccumulativeDamage": true,
-  "taiyokenInvertPalette": false,
-  "transformationOutlines": true,
-  "overShoulderMode": 2,
-  "overShoulderLeft": false,
-  "overShoulderBack": 3.0,
-  "overShoulderUp": 0.35,
-  "overShoulderSide": 1.45,
-  "overShoulderSmoothing": 0.4
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:e888ca44e81d5b71e518d132a8e0a992aa51fb5ff2f16f0abd7e689313819104
+size 983

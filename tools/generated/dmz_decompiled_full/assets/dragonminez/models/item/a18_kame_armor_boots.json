@@ -1,6 +1,3 @@
-{
-  "parent": "minecraft:item/generated",
-  "textures": {
-    "layer0": "dragonminez:item/armors/a18_kame_armor_boots"
-  }
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:990cfa93b8291f05086699580d1e90edde11efe4899a1584baf4018adbb45d90
+size 124

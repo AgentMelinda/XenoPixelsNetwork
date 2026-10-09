@@ -1,26 +1,3 @@
-{
-  "criteria": {
-    "tick": {
-      "trigger": "minecraft:tick"
-    }
-  },
-  "display": {
-    "background": "dragonminez:textures/block/rocky_stone.png",
-    "description": {
-      "translate": "advancements.dragonminez.root.description"
-    },
-    "icon": {
-      "count": 1,
-      "id": "dragonminez:dball4"
-    },
-    "title": {
-      "translate": "advancements.dragonminez.root.title"
-    }
-  },
-  "requirements": [
-    [
-      "tick"
-    ]
-  ],
-  "sends_telemetry_event": true
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:4b023ad5093a034e6a9b65105dbb988f1daf4438c119f246258ecc934a2ade05
+size 485

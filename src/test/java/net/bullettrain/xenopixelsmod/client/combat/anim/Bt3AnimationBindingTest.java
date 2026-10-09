@@ -8,6 +8,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 
 /**
  * Pins the four DragonMineZ clips the held-direction mash cycles are built out of.
@@ -129,5 +130,31 @@ class Bt3AnimationBindingTest {
         ResourceLocation[] onlyOurs = Bt3AnimationBinding.withAnimationFileIfBaked(null, true);
         assertEquals(1, onlyOurs.length);
         assertEquals(Bt3AnimationBinding.DMZ_ANIMATION_FILE, onlyOurs[0]);
+    }
+
+    @Test void occurrenceFileBakeIsIndependentAndDoesNotChangeExistingFallbackOrder() {
+        ResourceLocation nativeFile = ResourceLocation.parse("dragonminez:animations/entity/races/combat.animation.json");
+        ResourceLocation[] existing = {nativeFile};
+        assertSame(existing, Bt3AnimationBinding.withAnimationFilesIfBaked(existing, false, false));
+        assertArrayEquals(new ResourceLocation[]{nativeFile, Bt3AnimationBinding.V3_TECHNIQUE_ANIMATION_FILE},
+                Bt3AnimationBinding.withAnimationFilesIfBaked(existing, false, true));
+        assertArrayEquals(new ResourceLocation[]{nativeFile, Bt3AnimationBinding.DMZ_ANIMATION_FILE},
+                Bt3AnimationBinding.withAnimationFilesIfBaked(existing, true, false));
+        ResourceLocation[] both = Bt3AnimationBinding.withAnimationFilesIfBaked(existing, true, true);
+        assertArrayEquals(new ResourceLocation[]{nativeFile, Bt3AnimationBinding.DMZ_ANIMATION_FILE,
+                Bt3AnimationBinding.V3_TECHNIQUE_ANIMATION_FILE}, both);
+        assertSame(both, Bt3AnimationBinding.withAnimationFilesIfBaked(both, true, true));
+        assertEquals(0, Bt3AnimationBinding.withAnimationFilesIfBaked(null, false, false).length);
+    }
+
+    @Test void newOccurrenceNamesRouteToTheirOwnFileWhileOldGenerationNamesKeepTheirs() {
+        assertEquals(Bt3AnimationBinding.V3_TECHNIQUE_ANIMATION_FILE,
+                Bt3AnimationBinding.animationFileFor("combat.xeno_bt3_v3_goku_occurrence_fire"));
+        assertEquals(Bt3AnimationBinding.DMZ_ANIMATION_FILE,
+                Bt3AnimationBinding.animationFileFor("combat.xeno_jab_right_v3"));
+        assertEquals(Bt3AnimationBinding.DMZ_ANIMATION_FILE, Bt3AnimationBinding.animationFileFor(null));
+        assertTrue(Bt3AnimationBinding.customAnimationNames().containsAll(
+                net.bullettrain.xenopixelsmod.combat.v3.anim.V3AnimationCatalog.allNames()));
+        assertTrue(Bt3AnimationBinding.customAnimationNames().contains("combat.xeno_jab_right_v3"));
     }
 }

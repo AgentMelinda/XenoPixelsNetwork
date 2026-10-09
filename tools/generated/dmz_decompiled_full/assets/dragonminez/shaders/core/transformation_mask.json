@@ -1,34 +1,3 @@
-{
-  "vertex": "dragonminez:transformation_mask",
-  "fragment": "dragonminez:transformation_mask",
-  "attributes": [
-    "Position",
-    "Color",
-    "UV0"
-  ],
-  "samplers": [],
-  "uniforms": [
-    {
-      "name": "ModelViewMat",
-      "type": "matrix4x4",
-      "count": 16,
-      "values": [
-        1.0, 0.0, 0.0, 0.0,
-        0.0, 1.0, 0.0, 0.0,
-        0.0, 0.0, 1.0, 0.0,
-        0.0, 0.0, 0.0, 1.0
-      ]
-    },
-    {
-      "name": "ProjMat",
-      "type": "matrix4x4",
-      "count": 16,
-      "values": [
-        1.0, 0.0, 0.0, 0.0,
-        0.0, 1.0, 0.0, 0.0,
-        0.0, 0.0, 1.0, 0.0,
-        0.0, 0.0, 0.0, 1.0
-      ]
-    }
-  ]
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:77ef12f4e2091ef1f01af7e7061ed88221e044400dddc5f5d8926bf55c288861
+size 680

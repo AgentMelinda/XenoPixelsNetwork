@@ -1,4 +1,3 @@
-{
-  "parent": "minecraft:item/generated",
-  "textures": { "layer0": "minecraft:item/emerald" }
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:ab232596ca0eb521338e80f332792bbdc6c3d4b1103cb07a8dae7da26b1859f1
+size 97

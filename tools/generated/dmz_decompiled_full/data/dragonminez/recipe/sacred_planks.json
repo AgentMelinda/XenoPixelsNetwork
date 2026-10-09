@@ -1,14 +1,3 @@
-{
-  "type": "minecraft:crafting_shapeless",
-  "category": "building",
-  "group": "dmz_planks",
-  "ingredients": [
-    {
-      "tag": "dragonminez:namek_slog"
-    }
-  ],
-  "result": {
-    "count": 4,
-    "id": "dragonminez:namek_sacred_planks"
-  }
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:aa298d3ca5c2c8fecf8c0b1518af22e173ce1e881e5f41d59b27c2214c3bf470
+size 261

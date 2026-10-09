@@ -3,10 +3,15 @@ package net.bullettrain.xenopixelsmod.client;
 import com.mojang.blaze3d.systems.RenderSystem;
 import net.bullettrain.xenopixelsmod.XenoPixelsMod;
 import net.bullettrain.xenopixelsmod.client.combat.Bt3CombatClient;
+import net.bullettrain.xenopixelsmod.client.combat.v2.CombatStance;
+import net.bullettrain.xenopixelsmod.client.combat.v2.V2ClientState;
+import net.bullettrain.xenopixelsmod.client.combat.v2.V2InputLayer;
+import net.bullettrain.xenopixelsmod.client.combat.v2.V2Keys;
 import net.bullettrain.xenopixelsmod.client.config.XenoClientConfig;
 import net.bullettrain.xenopixelsmod.client.config.XenoCooldownHudConfig;
 import net.bullettrain.xenopixelsmod.client.config.XenoHudConfig;
 import net.bullettrain.xenopixelsmod.client.hud.HudDraw;
+import net.bullettrain.xenopixelsmod.combat.v2.V2State;
 import net.bullettrain.xenopixelsmod.network.Bt3CombatPacket;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.DeltaTracker;
@@ -696,6 +701,11 @@ public class XenoCooldownHudOverlay {
         CHIPS.clear();
         poolCursor = 0;
 
+        if (!editing && XenoServerClientState.v2Controller()) {
+            buildV2Chips(CHIPS, chipMc);
+            return CHIPS;
+        }
+
         List<Chip> list = CHIPS;
         float moveFrac = editing ? 0.45f : Bt3CombatClient.getMoveCooldownFraction();
         boolean moveCd = editing || Bt3CombatClient.isMoveOnCooldown();
@@ -743,6 +753,21 @@ public class XenoCooldownHudOverlay {
                     MeterMode.CHARGE, 0,
                     XenoClientConfig.bt3GuardClient && XenoServerClientState.guard(),
                     guarding || counter));
+        }
+        // Grab chip: the one XenoCombat v2 move this controller shares, on guard + punch. Lit
+        // while a grab is in progress; greyed while the server says none can be started (it is
+        // cooling down, or the server has not given these controllers the grab).
+        {
+            V2State grabState = V2ClientState.state();
+            boolean grabbing = editing
+                    || grabState == V2State.GRAB_STARTUP || grabState == V2State.GRAB_HOLD;
+            float grabMeter = editing ? 0.6f
+                    : (grabbing ? Math.max(0.15f, V2ClientState.grabFraction()) : 0f);
+            list.add(chip("Grab", "Grb", keyName(Bt3CombatClient.GUARD) + "+" + leftClickLabel(), 0xFF66BB6A,
+                    grabbing, grabMeter, "", MeterMode.CHARGE, 0,
+                    grabbing || (XenoClientConfig.bt3CombatClient && XenoServerClientState.combat()
+                            && V2ClientState.grabReady()),
+                    grabbing));
         }
         // Z-Burst / Ki cancel chips (mid-combo tools)
         {
@@ -824,6 +849,55 @@ public class XenoCooldownHudOverlay {
             list.add(chip(name, shortN, key, accent, busy, meter, time, mode, 0, enabled, busy));
         }
         return list;
+    }
+
+    /**
+     * The strip under XenoCombat v2: the same plates, labelled with the v2 moves and the keys v2
+     * actually reads. Showing the v1 list there told a v2 player that vanish was on A/D and the
+     * kick on middle mouse, neither of which is true in v2.
+     *
+     * <p>v2 keeps its timers on the server and shows them in the combat prompt, so these chips are
+     * a key legend that lights while its move is in progress rather than a set of cooldowns.
+     *
+     * <p>v2 only works while locked on, so the lock comes first and is lit while one is held, and
+     * every other chip is greyed out until then: the strip itself says what has to happen first.
+     */
+    private static void buildV2Chips(List<Chip> list, Minecraft mc) {
+        net.minecraft.world.entity.LivingEntity lock = CombatStance.lockedTarget();
+        boolean locked = lock != null;
+        list.add(chip("Lock", "Lck", keyName(V2Keys.LOCK), 0xFF66BB6A,
+                locked, locked ? 1f : 0f, "", MeterMode.CHARGE, 0, true, locked));
+
+        V2State state = V2ClientState.state();
+        boolean attacking = state == V2State.ATTACK;
+        list.add(chip("Punch", "Pch", keyName(V2Keys.LIGHT), 0xFFEF5350,
+                attacking, V2ClientState.windowFraction(), "", MeterMode.CHARGE, 0, locked, attacking));
+        list.add(chip("Kick", "Kik", keyName(V2Keys.HEAVY), 0xFFF48FB1,
+                false, 0f, "", MeterMode.CHARGE, 0, locked, false));
+
+        boolean counter = locked && V2ClientState.counterOpenAgainst(lock.getId());
+        boolean guarding = V2InputLayer.guarding();
+        float guardMeter = counter ? V2ClientState.counterFraction() : (guarding ? 1f : 0f);
+        list.add(chip(counter ? "Counter!" : "Guard", counter ? "Ctr" : "Grd",
+                counter ? "2x" + keyPair(mc.options.keyLeft, mc.options.keyRight) : keyName(V2Keys.GUARD),
+                counter ? 0xFF80DEEA : 0xFFB0BEC5,
+                guarding || counter, guardMeter, "", MeterMode.CHARGE, 0, locked, guarding || counter));
+
+        boolean grabbing = state == V2State.GRAB_STARTUP || state == V2State.GRAB_HOLD;
+        list.add(chip("Grab", "Grb", keyName(V2Keys.GUARD) + "+" + keyName(V2Keys.LIGHT), 0xFF66BB6A,
+                grabbing, grabbing ? Math.max(0.15f, V2ClientState.grabFraction()) : 0f, "",
+                MeterMode.CHARGE, 0, grabbing || (locked && V2ClientState.grabReady()), grabbing));
+        list.add(chip("Vanish", "Van", "2x" + keyPair(mc.options.keyLeft, mc.options.keyRight), 0xFF42A5F5,
+                false, 0f, "", MeterMode.COOLDOWN, 0, locked, false));
+
+        boolean chasing = state == V2State.TRAVEL;
+        boolean homing = locked && V2ClientState.homingOpen();
+        float chaseMeter = homing ? V2ClientState.homingFraction() : (chasing ? 1f : 0f);
+        // One tap of forward while a launched target can be homed on; twice otherwise.
+        list.add(chip("Chase", "Chs", (homing ? "" : "2x") + keyName(mc.options.keyUp), 0xFFFF8A65,
+                chasing || homing, chaseMeter, "", MeterMode.CHARGE, 0, locked, chasing || homing));
+        list.add(chip("Dash", "Dsh", keyName(Bt3CombatClient.DRAGON_DASH), 0xFFFFD54F,
+                false, 0f, "", MeterMode.CHARGE, 0, locked, false));
     }
 
     /** Chips for the current tick, and the pool they are drawn from. */

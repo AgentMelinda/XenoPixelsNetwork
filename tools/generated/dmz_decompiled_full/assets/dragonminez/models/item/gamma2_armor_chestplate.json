@@ -1,6 +1,3 @@
-{
-  "parent": "minecraft:item/generated",
-  "textures": {
-    "layer0": "dragonminez:item/armors/gamma2_armor_chestplate"
-  }
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:4b4d6a91d6b7606ba784677b2aa99ff2bed8ef445036075b4bf2cb2fc67ba6d7
+size 127

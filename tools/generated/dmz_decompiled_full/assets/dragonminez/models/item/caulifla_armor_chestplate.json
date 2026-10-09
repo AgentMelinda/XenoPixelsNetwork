@@ -1,6 +1,3 @@
-{
-  "parent": "minecraft:item/generated",
-  "textures": {
-    "layer0": "dragonminez:item/armors/caulifla_armor_chestplate"
-  }
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:dafd63d4c960d2ae9c3d279ff518b0562cf364f6e9d0afa899ace2642c3f893b
+size 129

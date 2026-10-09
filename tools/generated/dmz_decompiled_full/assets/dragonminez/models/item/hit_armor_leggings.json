@@ -1,6 +1,3 @@
-{
-  "parent": "minecraft:item/generated",
-  "textures": {
-    "layer0": "dragonminez:item/armors/hit_armor_leggings"
-  }
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:eed20c5f2f2294a6a2479def45e46a501c93fa472b3a3410fa4d37d2501fe2a4
+size 122

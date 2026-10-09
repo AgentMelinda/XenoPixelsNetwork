@@ -1,6 +1,3 @@
-{
-  "parent": "minecraft:item/generated",
-  "textures": {
-    "layer0": "dragonminez:item/patterns/pattern_vergil"
-  }
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:3d5fffdd81a6303ecdbb12285a3a337b095544ec46bba33a657cf25cec4220f5
+size 120

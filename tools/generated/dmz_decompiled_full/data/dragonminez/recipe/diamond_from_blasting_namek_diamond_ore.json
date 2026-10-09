@@ -1,14 +1,3 @@
-{
-  "type": "minecraft:blasting",
-  "category": "misc",
-  "cookingtime": 100,
-  "experience": 1.0,
-  "group": "diamond",
-  "ingredient": {
-    "item": "dragonminez:namek_diamond_ore"
-  },
-  "result": {
-    "count": 1,
-    "id": "minecraft:diamond"
-  }
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:1da83d2b65fb3f24f02f0884567b49429e32d3a949402acc8ab6354c1eaa2a87
+size 253

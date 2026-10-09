@@ -1,6 +1,3 @@
-{
-  "parent": "minecraft:item/generated",
-  "textures": {
-    "layer0": "dragonminez:item/armors/goku_kid_armor_chestplate"
-  }
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:20ac4836fcbab03c0a9ddf32a3c977572a8be5b26041564e5df446a4761e5aab
+size 129

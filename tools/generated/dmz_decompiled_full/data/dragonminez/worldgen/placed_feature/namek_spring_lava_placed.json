@@ -1,27 +1,3 @@
-{
-  "feature": "dragonminez:namek_spring_lava",
-  "placement": [
-    {
-      "type": "minecraft:count",
-      "count": 20
-    },
-    {
-      "type": "minecraft:in_square"
-    },
-    {
-      "type": "minecraft:height_range",
-      "height": {
-        "type": "minecraft:uniform",
-        "max_inclusive": {
-          "absolute": 256
-        },
-        "min_inclusive": {
-          "above_bottom": 0
-        }
-      }
-    },
-    {
-      "type": "minecraft:biome"
-    }
-  ]
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:85e0aab731d4a962646e56b96bf09b6d896ca695bc582aab98e91e8d09049e60
+size 472

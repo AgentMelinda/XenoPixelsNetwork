@@ -1,6 +1,3 @@
-{
-  "parent": "minecraft:item/generated",
-  "textures": {
-    "layer0": "dragonminez:item/armors/bardock_dbz_armor_leggings"
-  }
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:4e1281a0b4151635c0b0dd3b29db8ef8283b9583510c08de755b167d8ef784c0
+size 130

@@ -1,6 +1,3 @@
-{
-  "parent": "minecraft:item/generated",
-  "textures": {
-    "layer0": "dragonminez:item/armors/hit_armor_chestplate"
-  }
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:cf17eaa840a68fa50e005ab0df9a3fbe5b546e9a3400e33c4e817450bff2b87f
+size 124

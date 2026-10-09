@@ -1,6 +1,3 @@
-{
-  "parent": "minecraft:item/generated",
-  "textures": {
-    "layer0": "dragonminez:item/armors/vegetto_armor_boots"
-  }
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:95c62cfa7cd954688be4d6e2605497c201ad8982532dee684916ac6ee7623a89
+size 123

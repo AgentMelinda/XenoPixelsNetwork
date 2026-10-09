@@ -1,7 +1,3 @@
-{
-  "processors": [
-    {
-      "processor_type": "dragonminez:foundation"
-    }
-  ]
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:4d7649bc8f02b878466e23a1463f07c922ea764116a5b14f60daf74e189050c7
+size 86

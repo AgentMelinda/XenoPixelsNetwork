@@ -1,8 +1,3 @@
-{
-  "parent": "minecraft:block/slab_top",
-  "textures": {
-    "bottom": "dragonminez:block/namek_deepslate",
-    "side": "dragonminez:block/namek_deepslate",
-    "top": "dragonminez:block/namek_deepslate"
-  }
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:42cc95e2a61bd932b8ceb76b787bc04790e65ad819241a5c1135758e54557158
+size 210

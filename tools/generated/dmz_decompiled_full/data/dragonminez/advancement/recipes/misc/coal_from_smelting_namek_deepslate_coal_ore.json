@@ -1,32 +1,3 @@
-{
-  "parent": "minecraft:recipes/root",
-  "criteria": {
-    "has_namek_deepslate_coal_ore": {
-      "conditions": {
-        "items": [
-          {
-            "items": "dragonminez:namek_deepslate_coal_ore"
-          }
-        ]
-      },
-      "trigger": "minecraft:inventory_changed"
-    },
-    "has_the_recipe": {
-      "conditions": {
-        "recipe": "dragonminez:coal_from_smelting_namek_deepslate_coal_ore"
-      },
-      "trigger": "minecraft:recipe_unlocked"
-    }
-  },
-  "requirements": [
-    [
-      "has_the_recipe",
-      "has_namek_deepslate_coal_ore"
-    ]
-  ],
-  "rewards": {
-    "recipes": [
-      "dragonminez:coal_from_smelting_namek_deepslate_coal_ore"
-    ]
-  }
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:96b7901f13e62a2c335f2da15d3aae9ce41e765d0ac8b9d23d085e244c8b5cf0
+size 684

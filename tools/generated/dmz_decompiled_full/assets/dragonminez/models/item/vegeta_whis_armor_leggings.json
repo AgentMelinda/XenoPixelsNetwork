@@ -1,6 +1,3 @@
-{
-  "parent": "minecraft:item/generated",
-  "textures": {
-    "layer0": "dragonminez:item/armors/vegeta_whis_armor_leggings"
-  }
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:9636fca052de3a3287cd07e2320ef7e502c74ec1e140e3a333b7af97b9912ded
+size 130

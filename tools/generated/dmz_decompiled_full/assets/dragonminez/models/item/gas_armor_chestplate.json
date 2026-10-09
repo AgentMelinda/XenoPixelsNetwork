@@ -1,6 +1,3 @@
-{
-  "parent": "minecraft:item/generated",
-  "textures": {
-    "layer0": "dragonminez:item/armors/gas_armor_chestplate"
-  }
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:4282985cc10979732d5a5281cdda47d6ec578becf9d779cbec80bc8d0cc841c3
+size 124

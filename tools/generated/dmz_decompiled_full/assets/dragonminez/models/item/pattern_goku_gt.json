@@ -1,6 +1,3 @@
-{
-  "parent": "minecraft:item/generated",
-  "textures": {
-    "layer0": "dragonminez:item/patterns/pattern_goku_gt"
-  }
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:9f4206d27256fb0bae26671a8165bf6c5863f1eb299a5246939d3cdfc6c34b5b
+size 121

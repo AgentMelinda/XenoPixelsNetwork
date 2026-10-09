@@ -1,13 +1,3 @@
-{
-  "variants": {
-    "type=bottom": {
-      "model": "dragonminez:block/namek_stone_slab"
-    },
-    "type=double": {
-      "model": "dragonminez:block/namek_stone"
-    },
-    "type=top": {
-      "model": "dragonminez:block/namek_stone_slab_top"
-    }
-  }
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:678113d413e840e9edd7385005abf3800f8bf1b719343adfc41965769b4daa96
+size 258

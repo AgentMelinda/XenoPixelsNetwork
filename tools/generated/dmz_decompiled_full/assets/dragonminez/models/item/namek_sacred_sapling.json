@@ -1,6 +1,3 @@
-{
-  "parent": "minecraft:item/generated",
-  "textures": {
-    "layer0": "dragonminez:block/namek_sacred_sapling"
-  }
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:8048e0a28cb8d3d19a64a3c6bffc7df50a161c0ad0a78e2d23e900ea506fab00
+size 118

@@ -1,13 +1,3 @@
-{
-  "type": "minecraft:crafting_shapeless",
-  "category": "misc",
-  "ingredients": [
-    { "item": "xenopixelsmod:missile_large" },
-    { "item": "minecraft:iron_block" },
-    { "item": "minecraft:iron_block" }
-  ],
-  "result": {
-    "id": "xenopixelsmod:missile_mega",
-    "count": 1
-  }
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:d7bfce80c3a5b1eb5285ed88a267ff7e339c7db0ba8f3f9b4b35edaa32d049d8
+size 291

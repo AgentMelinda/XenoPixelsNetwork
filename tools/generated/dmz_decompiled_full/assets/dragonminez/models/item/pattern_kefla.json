@@ -1,6 +1,3 @@
-{
-  "parent": "minecraft:item/generated",
-  "textures": {
-    "layer0": "dragonminez:item/patterns/pattern_kefla"
-  }
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:fc3cce2819511c3fbbc65a637cd33fc3cf9e33de56fa6ca8fc748699994d37e2
+size 119

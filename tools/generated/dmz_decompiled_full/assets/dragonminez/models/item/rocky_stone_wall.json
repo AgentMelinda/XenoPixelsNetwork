@@ -1,6 +1,3 @@
-{
-  "parent": "minecraft:block/wall_inventory",
-  "textures": {
-    "wall": "dragonminez:block/rocky_stone"
-  }
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:543477f7489cc3f43451ffcbd3a858fdc162c21da394e187dbac258463994dad
+size 113

@@ -1,8 +1,3 @@
-{
-  "parent": "minecraft:block/inner_stairs",
-  "textures": {
-    "bottom": "dragonminez:block/namek_deepslate",
-    "side": "dragonminez:block/namek_deepslate",
-    "top": "dragonminez:block/namek_deepslate"
-  }
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:540325d07592a6495270d14ee31af762be8415805edbdf3f236d5e09f245edd6
+size 214

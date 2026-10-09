@@ -1,6 +1,3 @@
-{
-  "parent": "minecraft:item/handheld",
-  "textures": {
-    "layer0": "dragonminez:item/gete_hoe"
-  }
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:fc366d38b1fca3825572debb5dbf5c18c019f6a7a07173076a82250c5a72aa8c
+size 104

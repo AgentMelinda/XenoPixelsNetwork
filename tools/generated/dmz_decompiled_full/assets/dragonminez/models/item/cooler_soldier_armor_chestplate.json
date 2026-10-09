@@ -1,6 +1,3 @@
-{
-  "parent": "minecraft:item/generated",
-  "textures": {
-    "layer0": "dragonminez:item/armors/cooler_soldier_armor_chestplate"
-  }
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:7aac4c9defd78d6a4beeb2d6c341c2aebfdf6ac74bfd9f3cdcc9317fc8a56ef0
+size 135

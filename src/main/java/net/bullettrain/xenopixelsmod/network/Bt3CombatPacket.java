@@ -156,6 +156,10 @@ public class Bt3CombatPacket {
                     msg.action, XenoServerConfig.controllerMode())) {
                 return;
             }
+            // v2 has this fighter in a grab or a rush: no legacy action may cut across it.
+            if (net.bullettrain.xenopixelsmod.combat.v2.V2CombatServer.blocksLegacyAction(player)) {
+                return;
+            }
             if (msg.action == Action.SYNC_KI_CHARGE) {
                 // Protocol compatibility only. Older clients may still send this obsolete
                 // melee-charge message; it must not enter target validation or consume pacing.
@@ -1434,7 +1438,7 @@ net.bullettrain.xenopixelsmod.combat.VanishShadeFx.spawn(player, from);
         return net.bullettrain.xenopixelsmod.combat.Bt3Landing.isSpotOpen(player, pos);
     }
 
-    static void playItSound(ServerPlayer player, double x, double y, double z, boolean leave) {
+    public static void playItSound(ServerPlayer player, double x, double y, double z, boolean leave) {
         // Server-configured override first, so an operator can point vanish at their own sound
         // without a code change. An id that does not resolve falls through to the usual chain
         // rather than silencing the move.

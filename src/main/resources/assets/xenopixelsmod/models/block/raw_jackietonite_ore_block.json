@@ -1,6 +1,3 @@
-{
-  "parent": "minecraft:block/cube_all",
-  "textures": {
-    "all": "xenopixelsmod:block/raw_jackietonite_ore_block"
-  }
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:de89492385371c3c062f407cf8f8c73aef84e9478c2f79cca985e23658ff5685
+size 128

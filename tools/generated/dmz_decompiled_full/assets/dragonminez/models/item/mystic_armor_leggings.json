@@ -1,6 +1,3 @@
-{
-  "parent": "minecraft:item/generated",
-  "textures": {
-    "layer0": "dragonminez:item/armors/mystic_armor_leggings"
-  }
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:a785ba49acbef23efbaf8807d05d10ec8a398db1acad954257afb2654f9485e7
+size 125

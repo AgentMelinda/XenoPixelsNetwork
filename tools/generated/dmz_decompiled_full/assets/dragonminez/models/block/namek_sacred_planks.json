@@ -1,6 +1,3 @@
-{
-  "parent": "minecraft:block/cube_all",
-  "textures": {
-    "all": "dragonminez:block/namek_sacred_planks"
-  }
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:82a113b54408e690fd4b1609e078cb63cc6bc681fd16fb62e7f3c2fcd25033e8
+size 114

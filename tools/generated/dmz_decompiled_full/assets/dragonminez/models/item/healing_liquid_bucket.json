@@ -1,6 +1,3 @@
-{
-  "parent": "minecraft:item/generated",
-  "textures": {
-    "layer0": "dragonminez:item/healing_liquid_bucket"
-  }
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:bddfd410c186f5c4b8132961a8904df87a4eb4f573b03ea4a1cc74626d5d22d7
+size 118

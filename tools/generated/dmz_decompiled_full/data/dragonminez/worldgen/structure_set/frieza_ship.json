@@ -1,13 +1,3 @@
-{
-  "placement": {
-    "type": "dragonminez:biome_aware_placement",
-    "salt": 24681357,
-    "valid_biomes": "dragonminez:ajissa_plains"
-  },
-  "structures": [
-    {
-      "structure": "dragonminez:frieza_ship",
-      "weight": 1
-    }
-  ]
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:ff99fa7029cce1e60ff974d2e1c333ea78a90622e02ad3571d680b6a8dda10cc
+size 242

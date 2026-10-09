@@ -1,9 +1,3 @@
-{
-  "values": [
-    "#minecraft:has_structure/village_savanna",
-    "#minecraft:is_badlands",
-    "#minecraft:is_mountain",
-    "#minecraft:is_hill",
-    "dragonminez:rocky"
-  ]
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:4697c9bbdb616ed27103024029116c72d14e8d46171375d1da3bbe4ecd4e2e04
+size 179

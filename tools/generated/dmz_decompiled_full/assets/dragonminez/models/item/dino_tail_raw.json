@@ -1,6 +1,3 @@
-{
-  "parent": "minecraft:item/generated",
-  "textures": {
-    "layer0": "dragonminez:item/dino_tail_raw"
-  }
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:88d33d3b390dcdcd673bbcde488b08656fdf632fef0a66bf059cbce93448f723
+size 110

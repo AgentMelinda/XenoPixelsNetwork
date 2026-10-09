@@ -1,8 +1,3 @@
-{
-  "xenopixels_destroyer": {
-    "buyFromMaster": false,
-    "prices": [
-      500000
-    ]
-  }
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:b206f7d8bb4664a6f2df72a67cffb3d54712b64e061ee16000ebb85340412802
+size 105

@@ -1,25 +1,3 @@
-{
-  "type": "minecraft:crafting_shaped",
-  "category": "misc",
-  "group": "dragonminez",
-  "key": {
-    "#": {
-      "item": "dragonminez:blank_pattern_super"
-    },
-    "P": {
-      "item": "minecraft:purple_dye"
-    },
-    "R": {
-      "item": "minecraft:red_dye"
-    }
-  },
-  "pattern": [
-    "P#P",
-    "PPP",
-    "RRR"
-  ],
-  "result": {
-    "count": 1,
-    "id": "dragonminez:pattern_gohan_super"
-  }
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:344f2e14f9de815ede77cbd8a7f949ff1e89deaa6baf4dad666894f2c5701cad
+size 408

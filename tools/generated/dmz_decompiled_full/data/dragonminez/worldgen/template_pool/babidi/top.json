@@ -1,16 +1,3 @@
-{
-  "elements": [
-    {
-      "element": {
-        "element_type": "minecraft:single_pool_element",
-        "location": "dragonminez:babidi_top",
-        "processors": {
-          "processors": []
-        },
-        "projection": "rigid"
-      },
-      "weight": 1
-    }
-  ],
-  "fallback": "minecraft:empty"
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:1a842bab5874dbf9998143638cc8ce88b2f80892e2bd758ab319917a6bf37bde
+size 309

@@ -1,30 +1,3 @@
-{
-  "type": "minecraft:block",
-  "pools": [
-    {
-      "bonus_rolls": 0.0,
-      "conditions": [
-        {
-          "condition": "minecraft:survives_explosion"
-        }
-      ],
-      "entries": [
-        {
-          "type": "minecraft:item",
-          "conditions": [
-            {
-              "block": "dragonminez:kikono_station",
-              "condition": "minecraft:block_state_property",
-              "properties": {
-                "half": "lower"
-              }
-            }
-          ],
-          "name": "dragonminez:kikono_station"
-        }
-      ],
-      "rolls": 1.0
-    }
-  ],
-  "random_sequence": "dragonminez:blocks/kikono_station"
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:dc84bf8e0d27bb3bff3472a34a5794fc11af11e3f89d42ca7db5dfb06b2015a6
+size 659

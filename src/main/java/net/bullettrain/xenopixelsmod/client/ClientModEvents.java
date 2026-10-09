@@ -41,6 +41,8 @@ public final class ClientModEvents {
 
     @SubscribeEvent
     public static void registerRenderers(EntityRenderersEvent.RegisterRenderers event) {
+        event.registerEntityRenderer(ModEntities.NPC_ITEM_PROJECTILE.get(),
+                net.minecraft.client.renderer.entity.ThrownItemRenderer::new);
         event.registerEntityRenderer(ModEntities.BALLISTIC_MISSILE.get(), BallisticMissileRenderer::new);
         // The pilot seat is deliberately invisible — the seat block is what you see — but every
         // registered entity type still needs a renderer or the client fails on first spawn.

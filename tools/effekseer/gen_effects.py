@@ -1,7 +1,7 @@
 """Generates the mod's Effekseer effects: textures, .efkproj projects and compiled .efkefc files.
 
 Usage:
-  python tools/effekseer/gen_effects.py [all|hakai|thruster|explosion|sparking|aura|aura2|aura3|aura4 ...] [--effekseer DIR] [--preview]
+  python tools/effekseer/gen_effects.py [all|hakai|thruster|explosion|sparking|aura|aura2|aura3|aura4|ki ...] [--effekseer DIR] [--preview]
 
   --effekseer  folder holding Tool/bin/Effekseer.exe (1.80.x). Defaults to EFFEKSEER_HOME, then
                tools/new_particles/Effekseer1.80.6Win.
@@ -19,10 +19,10 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from efkgen import build  # noqa: E402
-from efkgen.effects import aura, aura2, aura3, aura4, explosion, hakai, sparking, thruster  # noqa: E402
+from efkgen.effects import aura, aura2, aura3, aura4, explosion, hakai, ki, sparking, thruster  # noqa: E402
 
 SETS = {'hakai': hakai, 'thruster': thruster, 'explosion': explosion, 'sparking': sparking, 'aura': aura,
-        'aura2': aura2, 'aura3': aura3, 'aura4': aura4}
+        'aura2': aura2, 'aura3': aura3, 'aura4': aura4, 'ki': ki}
 
 
 def main(argv=None):

@@ -1,6 +1,3 @@
-{
-  "parent": "minecraft:block/wall_inventory",
-  "textures": {
-    "wall": "dragonminez:block/namek_deepslate"
-  }
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:0d879935aa4642165e600eeceee35c5089e981b280fbad62febc7655eb1e4994
+size 117

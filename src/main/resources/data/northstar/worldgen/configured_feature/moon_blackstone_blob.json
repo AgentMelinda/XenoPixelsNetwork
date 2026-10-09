@@ -1,18 +1,3 @@
-{
-  "type": "minecraft:ore",
-  "config": {
-    "size": 64,
-    "discard_chance_on_air_exposure": 0.0,
-    "targets": [
-      {
-        "target": {
-          "predicate_type": "minecraft:tag_match",
-          "tag": "northstar:base_stone_moon"
-        },
-        "state": {
-          "Name": "minecraft:blackstone"
-        }
-      }
-    ]
-  }
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:8735a735384f40d95677b7057876530eb5e0ec9f7b59f4506416b452b55c7102
+size 344

@@ -1,6 +1,3 @@
-{
-  "selector": "xenopixelsmod:missile_chunk_loader_fork",
-  "properties": {
-    "sable:mass": 2.0
-  }
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:f42238b2cdcdc48fb0bcaedf16048ffca0a816f7e0defb30e972cace9aabd96b
+size 106

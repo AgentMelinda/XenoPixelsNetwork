@@ -1,21 +1,3 @@
-{
-  "type": "minecraft:block",
-  "pools": [
-    {
-      "bonus_rolls": 0.0,
-      "conditions": [
-        {
-          "condition": "minecraft:survives_explosion"
-        }
-      ],
-      "entries": [
-        {
-          "type": "minecraft:item",
-          "name": "dragonminez:namek_stripped_sacred_log"
-        }
-      ],
-      "rolls": 1.0
-    }
-  ],
-  "random_sequence": "dragonminez:blocks/namek_stripped_sacred_log"
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:68fae06c5bb8e9b3cad85b82149fe943958444b404df9ddc4cb6dfaab19a9bc2
+size 422

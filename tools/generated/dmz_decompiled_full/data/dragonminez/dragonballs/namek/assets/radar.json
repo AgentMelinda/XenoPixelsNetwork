@@ -1,7 +1,3 @@
-{
-  "id": "namek_radar",
-  "item_model": "dragonminez:item/dball_radar",
-  "item_texture": "dragonminez:item/dball_radar",
-  "radar_background_texture": "dragonminez:textures/gui/radar.png",
-  "radar_dot_texture": "dragonminez:textures/gui/radar_dot.png"
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:0793313cb7c443ad74ab06c85102180b9ef84d4c86e5fee661db9d368adcce61
+size 256

@@ -1,6 +1,3 @@
-{
-  "parent": "minecraft:item/generated",
-  "textures": {
-    "layer0": "dragonminez:item/armors/fusion_zamasu_armor_chestplate"
-  }
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:eaaf60d22d45c05923d943baec78e952113d1239de25357bf4375ba4f5b8ee00
+size 134

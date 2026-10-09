@@ -1,6 +1,3 @@
-{
-  "parent": "minecraft:block/cube_all",
-  "textures": {
-    "all": "dragonminez:block/gete_block"
-  }
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:91ceb55b7f5709ddb2d17a5acf25cecf9cef40b8ba237c5dddcce79928487235
+size 105

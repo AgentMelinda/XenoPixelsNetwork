@@ -1,6 +1,3 @@
-{
-  "parent": "minecraft:item/generated",
-  "textures": {
-    "layer0": "dragonminez:item/armors/a18_tournament_armor_chestplate"
-  }
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:09dea5ea4c8177319ca5ab238c5b5e5608c80764bb7089b2bbfb733d04258549
+size 135

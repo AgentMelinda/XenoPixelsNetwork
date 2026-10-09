@@ -1,6 +1,3 @@
-{
-  "parent": "minecraft:item/generated",
-  "textures": {
-    "layer0": "dragonminez:item/armors/a13_armor_chestplate"
-  }
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:6293980f1c09abe7303eb4468f3181413fe2852ec548ff2ac30b185f0435c38b
+size 124

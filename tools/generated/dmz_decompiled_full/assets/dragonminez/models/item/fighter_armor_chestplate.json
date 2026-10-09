@@ -1,6 +1,3 @@
-{
-  "parent": "minecraft:item/generated",
-  "textures": {
-    "layer0": "dragonminez:item/armors/fighter_armor_chestplate"
-  }
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:30efd90ecf012f692edf84a615a3128504b867c3fd33de024fe6b16e72f6ffe7
+size 128

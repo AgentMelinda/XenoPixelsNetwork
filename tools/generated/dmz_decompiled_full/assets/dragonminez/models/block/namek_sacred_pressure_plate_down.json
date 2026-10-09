@@ -1,6 +1,3 @@
-{
-  "parent": "minecraft:block/pressure_plate_down",
-  "textures": {
-    "texture": "dragonminez:block/namek_sacred_planks"
-  }
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:410fed26871185e5b065ba12529e31aea81ae266056986b267ea695becb8a69e
+size 129

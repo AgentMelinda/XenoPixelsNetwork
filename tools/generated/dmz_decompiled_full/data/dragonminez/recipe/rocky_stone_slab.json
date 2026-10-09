@@ -1,17 +1,3 @@
-{
-  "type": "minecraft:crafting_shaped",
-  "category": "building",
-  "group": "dragonminez",
-  "key": {
-    "#": {
-      "item": "dragonminez:rocky_stone"
-    }
-  },
-  "pattern": [
-    "###"
-  ],
-  "result": {
-    "count": 6,
-    "id": "dragonminez:rocky_stone_slab"
-  }
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:88cc88cb12f47c4b3f33f561a0ad413a7c8d0aa657c69048a47e6a99b0564fe9
+size 272

@@ -1,6 +1,3 @@
-{
-  "parent": "minecraft:block/cube_all",
-  "textures": {
-    "all": "dragonminez:block/namek_ajissa_log"
-  }
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:e33a13857caf9b083b8dc6abb54c201bc719d665adf3d7b1828a324cd9b2c565
+size 111

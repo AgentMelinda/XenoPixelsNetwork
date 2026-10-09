@@ -7,6 +7,7 @@ import net.bullettrain.xenopixelsmod.client.anim.XenoStudioClipCache;
 import net.bullettrain.xenopixelsmod.client.anim.XenoTechniqueAnimBindingsClient;
 import net.bullettrain.xenopixelsmod.combat.anim.Bt3AnimationCatalog;
 import net.bullettrain.xenopixelsmod.combat.anim.Bt3AnimationIntent;
+import net.bullettrain.xenopixelsmod.combat.v3.anim.V3AnimationCatalog;
 import net.minecraft.resources.ResourceLocation;
 
 import java.util.Collections;
@@ -51,6 +52,15 @@ public final class Bt3AnimationBinding {
     /** The animation file this mod adds to DragonMineZ's GeckoLib lookup. */
     public static final ResourceLocation DMZ_ANIMATION_FILE =
             ResourceLocation.fromNamespaceAndPath(XenoPixelsMod.MOD_ID, "animations/entity/bt3_combat.animation.json");
+
+    public static final ResourceLocation V3_TECHNIQUE_ANIMATION_FILE =
+            ResourceLocation.fromNamespaceAndPath(XenoPixelsMod.MOD_ID, V3AnimationCatalog.RESOURCE_PATH);
+
+    /** Occurrence clips keep earlier animation generations in their original file. */
+    public static ResourceLocation animationFileFor(String name) {
+        return name != null && name.startsWith(V3AnimationCatalog.PREFIX)
+                ? V3_TECHNIQUE_ANIMATION_FILE : DMZ_ANIMATION_FILE;
+    }
 
     /** Ticks per second, for turning a clip's authored length into beats. */
     private static final float TICKS_PER_SECOND = 20.0f;
@@ -176,16 +186,28 @@ public final class Bt3AnimationBinding {
         return withAnimationFile(existing);
     }
 
+    /** Append each optional file only after its own bake, preserving the existing fallback order. */
+    public static ResourceLocation[] withAnimationFilesIfBaked(ResourceLocation[] existing,
+                                                              boolean combatBaked, boolean techniquesBaked) {
+        ResourceLocation[] result = withAnimationFileIfBaked(existing, combatBaked);
+        if (!techniquesBaked) return result;
+        for (ResourceLocation entry : result) {
+            if (V3_TECHNIQUE_ANIMATION_FILE.equals(entry)) return result;
+        }
+        ResourceLocation[] extended = new ResourceLocation[result.length + 1];
+        System.arraycopy(result, 0, extended, 0, result.length);
+        extended[result.length] = V3_TECHNIQUE_ANIMATION_FILE;
+        return extended;
+    }
+
     /**
      * The {@code combat.xeno_*} names this mod ships, which DragonMineZ's
      * {@code CombatAnimationResolver} must be told about or it resolves them to nothing.
      */
     public static Set<String> customAnimationNames() {
         Set<String> bound = StudioClipBindings.boundAnimationNames();
-        if (bound.isEmpty()) {
-            return Bt3AnimationCatalog.customAnimationNames();
-        }
         Set<String> all = new LinkedHashSet<>(Bt3AnimationCatalog.customAnimationNames());
+        all.addAll(V3AnimationCatalog.allNames());
         for (String name : bound) {
             if (XenoStudioClipCache.has(name)) all.add(name);
         }

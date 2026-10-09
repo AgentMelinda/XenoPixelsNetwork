@@ -1,20 +1,3 @@
-{
-  "ambient_light": 0.0,
-  "bed_works": true,
-  "coordinate_scale": 100.0,
-  "effects": "dragonminez:htc_effects",
-  "fixed_time": 7500,
-  "has_ceiling": false,
-  "has_raids": false,
-  "has_skylight": true,
-  "height": 96,
-  "infiniburn": "#minecraft:infiniburn_overworld",
-  "logical_height": 96,
-  "min_y": -16,
-  "monster_spawn_block_light_limit": 0,
-  "monster_spawn_light_level": 0,
-  "natural": false,
-  "piglin_safe": false,
-  "respawn_anchor_works": true,
-  "ultrawarm": false
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:54b553c0760a52ddf675e0809ac1925d9e9d48ae56c77ab836190d306380059b
+size 487

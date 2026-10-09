@@ -1,1 +1,3 @@
-{"parent":"minecraft:item/handheld","loader":"neoforge:separate_transforms","base":{"parent":"dragonminez:item/laser_merus_3d"},"perspectives":{"gui":{"parent":"dragonminez:item/laser_merus_2d"},"ground":{"parent":"dragonminez:item/laser_merus_2d"},"fixed":{"parent":"dragonminez:item/laser_merus_2d"}}}
+version https://git-lfs.github.com/spec/v1
+oid sha256:68c882a5a00fa2daf01cfc974e232a384bb064d7859b4012c6017d53ff55fea0
+size 303

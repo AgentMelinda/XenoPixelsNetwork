@@ -1,6 +1,3 @@
-{
-  "parent": "minecraft:item/generated",
-  "textures": {
-    "layer0": "dragonminez:item/armors/zamasu_armor_leggings"
-  }
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:78f74165da3067938cb89e582099aa4a198f2a7ec8fdccb20699d25ca64efcdd
+size 125

@@ -40,6 +40,15 @@ class KiImpactTest {
     }
 
     @Test
+    void waveImpactUndoesOnlyTheNativeHalfBlockDrop() {
+        Vec3 impact = new Vec3(5, 64, 8);
+        assertEquals(impact, KiImpactRules.position(impact.add(0, -0.5, 0), true));
+        assertEquals(impact, KiImpactRules.position(impact, false));
+        Vec3 airborne = new Vec3(-3, 112.25, 7);
+        assertEquals(airborne, KiImpactRules.position(airborne.add(0, -0.5, 0), true));
+    }
+
+    @Test
     void itHasItsOwnSwitchAndSize() {
         XenoEffects.useSender((level, r) -> sent.add(r));
         XenoServerConfig.effekseerKiImpactScale = 2.0f;

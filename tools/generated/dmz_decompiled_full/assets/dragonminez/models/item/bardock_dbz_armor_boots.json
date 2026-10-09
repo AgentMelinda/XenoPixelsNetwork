@@ -1,6 +1,3 @@
-{
-  "parent": "minecraft:item/generated",
-  "textures": {
-    "layer0": "dragonminez:item/armors/bardock_dbz_armor_boots"
-  }
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:9f06186f907649a9d9ae81a748b2b2f17886ed1798cc9cff33e1f70589030770
+size 127

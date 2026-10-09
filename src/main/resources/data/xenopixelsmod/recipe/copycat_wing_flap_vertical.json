@@ -1,10 +1,3 @@
-{
-  "type": "minecraft:crafting_shapeless",
-  "category": "building",
-  "ingredients": [
-    { "item": "xenopixelsmod:wing_flap_vertical" },
-    { "item": "minecraft:glass" }
-  ],
-  "result": { "id": "xenopixelsmod:copycat_wing_flap_vertical", "count": 1 },
-  "show_notification": true
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:9a11a70fd97aaf3adc9d063df45c15eba54a70604ef7a000f9188ce19fb412c8
+size 288

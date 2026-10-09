@@ -1,32 +1,3 @@
-{
-  "parent": "minecraft:recipes/root",
-  "criteria": {
-    "has_namek_sacred_planks": {
-      "conditions": {
-        "items": [
-          {
-            "items": "dragonminez:namek_sacred_planks"
-          }
-        ]
-      },
-      "trigger": "minecraft:inventory_changed"
-    },
-    "has_the_recipe": {
-      "conditions": {
-        "recipe": "dragonminez:namek_sacred_pressure_plate"
-      },
-      "trigger": "minecraft:recipe_unlocked"
-    }
-  },
-  "requirements": [
-    [
-      "has_the_recipe",
-      "has_namek_sacred_planks"
-    ]
-  ],
-  "rewards": {
-    "recipes": [
-      "dragonminez:namek_sacred_pressure_plate"
-    ]
-  }
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:b8aaae6864bafb5cc225cfe2ff77e26d641a3174a2e79c47f969e781a6d631d2
+size 637

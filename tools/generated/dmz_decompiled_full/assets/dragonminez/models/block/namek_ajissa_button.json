@@ -1,6 +1,3 @@
-{
-  "parent": "minecraft:block/button",
-  "textures": {
-    "texture": "dragonminez:block/namek_ajissa_planks"
-  }
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:8aec0cc917518846a16590dd400a85c403fbb920971df9e7899f1863430803bc
+size 116

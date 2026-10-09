@@ -1,28 +1,3 @@
-{
-  "type": "minecraft:crafting_shaped",
-  "category": "redstone",
-  "group": "dragonminez",
-  "key": {
-    "C": {
-      "item": "dragonminez:t2_radar_chip"
-    },
-    "G": {
-      "item": "dragonminez:t2_radar_cpu"
-    },
-    "O": {
-      "item": "minecraft:observer"
-    },
-    "P": {
-      "item": "dragonminez:radar_piece"
-    }
-  },
-  "pattern": [
-    "OCO",
-    "PGP",
-    "CPC"
-  ],
-  "result": {
-    "count": 1,
-    "id": "dragonminez:namekdball_radar"
-  }
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:08c41d15d2eb7e0885beffad38339bbf58cc71c6f8392ee622cf87e098820222
+size 466

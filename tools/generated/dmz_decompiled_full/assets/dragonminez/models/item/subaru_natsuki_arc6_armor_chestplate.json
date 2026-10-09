@@ -1,6 +1,3 @@
-{
-  "parent": "minecraft:item/generated",
-  "textures": {
-    "layer0": "dragonminez:item/armors/subaru_natsuki_arc6_armor_chestplate"
-  }
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:a2ab009324771a5c68d4951e0bfa7181c7eb54bbd24282f5404ce72b72e7c777
+size 140

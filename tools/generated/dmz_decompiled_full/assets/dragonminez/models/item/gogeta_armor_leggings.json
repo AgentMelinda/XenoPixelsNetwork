@@ -1,6 +1,3 @@
-{
-  "parent": "minecraft:item/generated",
-  "textures": {
-    "layer0": "dragonminez:item/armors/gogeta_armor_leggings"
-  }
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:dce6cacebbcd4d11f3d52d76ec46c48a81464e5f3088f55be719cc30890dcf31
+size 125

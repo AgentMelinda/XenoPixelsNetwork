@@ -1,9 +1,3 @@
-{
-  "values": [
-    "dragonminez:gete_scrap",
-    "dragonminez:gete_ingot",
-    "dragonminez:kikono_shard",
-    "dragonminez:kikono_string",
-    "dragonminez:kikono_cloth"
-  ]
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:a8317876c2b339983f0badd2047ea0811dadc9ff521a518c974dc31ca0cf0215
+size 177

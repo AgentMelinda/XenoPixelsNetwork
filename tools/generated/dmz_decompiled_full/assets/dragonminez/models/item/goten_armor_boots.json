@@ -1,6 +1,3 @@
-{
-  "parent": "minecraft:item/generated",
-  "textures": {
-    "layer0": "dragonminez:item/armors/goten_armor_boots"
-  }
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:9961b7982a185e6ad6fbee3fc9eab5c8b5c9c0c803cc83180a170bca99464c9c
+size 121

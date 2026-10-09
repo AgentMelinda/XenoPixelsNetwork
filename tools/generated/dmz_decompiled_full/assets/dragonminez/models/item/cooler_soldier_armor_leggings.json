@@ -1,6 +1,3 @@
-{
-  "parent": "minecraft:item/generated",
-  "textures": {
-    "layer0": "dragonminez:item/armors/cooler_soldier_armor_leggings"
-  }
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:11cd8cda8317d229b22b1dffc6102ae8bdea64980a6dfe58e37f2f4664d1f7fa
+size 133

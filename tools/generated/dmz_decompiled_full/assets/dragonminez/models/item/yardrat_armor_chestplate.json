@@ -1,6 +1,3 @@
-{
-  "parent": "minecraft:item/generated",
-  "textures": {
-    "layer0": "dragonminez:item/armors/yardrat_armor_chestplate"
-  }
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:10f32050dfff8c89bf5243edb9a61d5db438207d21f2b4fb4d654527d605a3a3
+size 128

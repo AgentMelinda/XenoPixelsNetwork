@@ -1,6 +1,3 @@
-{
-  "parent": "minecraft:item/generated",
-  "textures": {
-    "layer0": "dragonminez:item/armors/evil_buu_armor_chestplate"
-  }
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:ab714b5317961ef0309f65c728d642b1e082285885699fe1dc9953c0b987d280
+size 129

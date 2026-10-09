@@ -26,6 +26,10 @@ public final class LockOnCycle {
         Minecraft mc = Minecraft.getInstance();
         LocalPlayer player = mc.player;
         if (player == null || mc.level == null) return;
+        if (net.bullettrain.xenopixelsmod.client.XenoServerClientState.v3Controller()) {
+            cycleV3(player, direction);
+            return;
+        }
 
         List<LivingEntity> candidates = gather(player, 48.0);
         if (candidates.isEmpty()) {
@@ -52,6 +56,33 @@ public final class LockOnCycle {
         setLocked(candidates.get(next));
     }
 
+    private static void cycleV3(LocalPlayer player, int direction) {
+        var mirror = net.bullettrain.xenopixelsmod.client.combat.v3.V3ClientState.target();
+        if (mirror == null) return;
+        Vec3 eye = player.getEyePosition();
+        Vec3 look = player.getLookAngle();
+        double range = net.bullettrain.xenopixelsmod.combat.v3.V3TargetingRules.LOCK_RANGE;
+        List<LivingEntity> candidates = new ArrayList<>(64);
+        player.level().getEntities(net.minecraft.world.level.entity.EntityTypeTest.forClass(LivingEntity.class),
+                player.getBoundingBox().inflate(range),
+                entity -> entity != player && entity.isAlive() && player.distanceToSqr(entity) >= 0.25
+                        && player.distanceToSqr(entity) <= range * range && player.hasLineOfSight(entity), candidates, 64);
+        candidates.sort(Comparator.comparingDouble((LivingEntity entity) -> {
+            Vec3 to = entity.getEyePosition().subtract(eye);
+            return to.lengthSqr() < 1.0e-8 ? 0 : -look.dot(to.normalize());
+        }).thenComparingDouble(player::distanceToSqr));
+        int current = -1;
+        for (int i = 0; i < candidates.size(); i++) {
+            if (mirror != null && mirror.target().equals(candidates.get(i).getUUID())) current = i;
+        }
+        if (candidates.isEmpty()) return;
+        int next = current < 0 ? (direction >= 0 ? 0 : candidates.size() - 1)
+                : Math.floorMod(current + (direction >= 0 ? 1 : -1), candidates.size());
+        net.bullettrain.xenopixelsmod.client.combat.v3.V3ClientState.send(
+                net.bullettrain.xenopixelsmod.combat.v3.V3Input.LOCK_CYCLE, candidates.get(next).getUUID(),
+                net.bullettrain.xenopixelsmod.combat.v3.V3Direction.NONE);
+    }
+
     private static List<LivingEntity> gather(LocalPlayer player, double range) {
         Vec3 eye = player.getEyePosition(1f);
         Vec3 look = player.getLookAngle();
@@ -62,6 +93,11 @@ public final class LockOnCycle {
             if (!(e instanceof LivingEntity living)) continue;
             double dist = player.distanceTo(living);
             if (dist > range || dist < 0.5) continue;
+            // The same sight test DragonMineZ's own lock makes. The "lock through blocks" setting
+            // answers it for the local player (DmzLockOnLosMixin), so with the setting on this
+            // passes everything, and with it off cycling no longer hops to a target behind a wall
+            // that the lock key itself would refuse.
+            if (!player.hasLineOfSight(living)) continue;
             list.add(living);
         }
         // Prefer more central / closer targets
@@ -98,6 +134,11 @@ public final class LockOnCycle {
 
     /** Public, safe lock adoption used by the optional XenoParty target-assist marker. */
     public static boolean lock(LivingEntity target) {
+        if (net.bullettrain.xenopixelsmod.client.XenoServerClientState.v3Controller()) {
+            return target != null && target.isAlive() && net.bullettrain.xenopixelsmod.client.combat.v3.V3ClientState.send(
+                    net.bullettrain.xenopixelsmod.combat.v3.V3Input.LOCK_ACQUIRE, target.getUUID(),
+                    net.bullettrain.xenopixelsmod.combat.v3.V3Direction.NONE);
+        }
         if (target == null || !target.isAlive() || !resolveField()) return false;
         try {
             lockedTargetField.set(null, target);

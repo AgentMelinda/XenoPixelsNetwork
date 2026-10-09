@@ -1,6 +1,3 @@
-{
-  "parent": "minecraft:item/generated",
-  "textures": {
-    "layer0": "dragonminez:item/black_nimbus"
-  }
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:1182c274f608360532288fe9eb5ed8fba89078b9d41082f2e6deac3c2b519be5
+size 109

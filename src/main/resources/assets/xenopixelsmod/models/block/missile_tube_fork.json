@@ -1,9 +1,3 @@
-{
-  "parent": "minecraft:block/cube_bottom_top",
-  "textures": {
-    "particle": "xenopixelsmod:block/missile_tube_side_fork",
-    "bottom": "xenopixelsmod:block/missile_tube_bottom_fork",
-    "top": "xenopixelsmod:block/missile_tube_top_fork",
-    "side": "xenopixelsmod:block/missile_tube_side_fork"
-  }
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:a59f773b4d04893be1ae62d4c00756438017fb06f224aac630f8a5fcb1991a55
+size 308

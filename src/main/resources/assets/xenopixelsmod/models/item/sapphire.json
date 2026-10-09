@@ -1,6 +1,3 @@
-{
-  "parent": "item/generated",
-  "textures": {
-    "layer0": "xenopixelsmod:item/sapphire"
-  }
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:db0421eecf781f7c173086ba75c2ae156bc305e69b1f97b7862eef002227f7ba
+size 102

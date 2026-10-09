@@ -1,13 +1,3 @@
-{
-  "placement": {
-    "type": "dragonminez:biome_aware_placement",
-    "salt": 87654321,
-    "valid_biomes": "#minecraft:is_ocean"
-  },
-  "structures": [
-    {
-      "structure": "dragonminez:roshi_house",
-      "weight": 1
-    }
-  ]
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:34252f85a3d8d6741aa6668f3122e5c9910f2fc2ca324df98b9da714654ec5b2
+size 236

@@ -1,6 +1,3 @@
-{
-  "parent": "minecraft:block/template_wall_side",
-  "textures": {
-    "wall": "dragonminez:block/rocky_cobblestone"
-  }
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:1f6568dab8328981876e46a51fd71d3c22e3acf755714e5721c491d0aaaf443d
+size 123

@@ -1,6 +1,7 @@
 package net.bullettrain.xenopixelsmod.network;
 
 import net.bullettrain.xenopixelsmod.combat.DmzAnimHelper;
+import net.bullettrain.xenopixelsmod.combat.controller.CombatControllerMode;
 import net.bullettrain.xenopixelsmod.config.XenoServerConfig;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.server.level.ServerPlayer;
@@ -34,10 +35,16 @@ public class ChargeAnimPacket {
         return new ChargeAnimPacket(buf.readEnum(Phase.class), buf.readEnum(DmzAnimHelper.ChargeStyle.class));
     }
 
+    /** Server ownership policy for the classic charge pose, evaluated when queued work runs. */
+    public static boolean allowed(Phase phase, CombatControllerMode mode) {
+        return phase != Phase.START || mode != CombatControllerMode.V3;
+    }
+
     public static void handle(ChargeAnimPacket msg, Supplier<NetworkEvent.Context> ctx) {
         ctx.get().enqueueWork(() -> {
             ServerPlayer player = ctx.get().getSender();
             if (player == null) return;
+            if (!allowed(msg.phase, XenoServerConfig.controllerMode())) return;
             if (msg.phase == Phase.CANCEL) {
                 DmzAnimHelper.broadcastChargeStop(player);
                 return;

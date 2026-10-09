@@ -1,18 +1,3 @@
-{
-  "type": "minecraft:crafting_shaped",
-  "category": "building",
-  "group": "wooden_slab",
-  "key": {
-    "#": {
-      "item": "dragonminez:namek_ajissa_planks"
-    }
-  },
-  "pattern": [
-    "###"
-  ],
-  "result": {
-    "count": 6,
-    "id": "dragonminez:namek_ajissa_slab"
-  },
-  "show_notification": true
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:1245e53e4c7fa03a156b2434c2e3411c96cec7107d5726f8eb43fd7c0f3ce15c
+size 327

@@ -1,6 +1,3 @@
-{
-  "parent": "minecraft:item/generated",
-  "textures": {
-    "layer0": "dragonminez:item/armors/vegeta_buu_armor_leggings"
-  }
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:8c99dbb66216dacbd4b9e72e1a2067ad2464b8da94d3e6912ad0527e47192b24
+size 129

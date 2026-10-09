@@ -1,6 +1,3 @@
-{
-  "parent": "minecraft:item/generated",
-  "textures": {
-    "layer0": "dragonminez:item/patterns/pattern_mighty_majin"
-  }
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:a83c6c7d170c2bfedf7d65097025c9d6283f9be3de898057cdcc4a882f086615
+size 126

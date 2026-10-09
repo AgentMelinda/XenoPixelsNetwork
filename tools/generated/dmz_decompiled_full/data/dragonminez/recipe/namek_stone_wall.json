@@ -1,18 +1,3 @@
-{
-  "type": "minecraft:crafting_shaped",
-  "category": "building",
-  "group": "dragonminez",
-  "key": {
-    "#": {
-      "item": "dragonminez:namek_stone"
-    }
-  },
-  "pattern": [
-    "###",
-    "###"
-  ],
-  "result": {
-    "count": 6,
-    "id": "dragonminez:namek_stone_wall"
-  }
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:ad9832104a66f1f54104308291291961543b22cd8e3d898f3ee10a7345e4d039
+size 283

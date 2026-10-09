@@ -1,6 +1,3 @@
-{
-  "parent": "minecraft:item/generated",
-  "textures": {
-    "layer0": "dragonminez:item/patterns/pattern_orange_high"
-  }
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:5b00a138bf81232c110a3e2f9b64710ab8de23901392c80587ee86c09e673853
+size 125

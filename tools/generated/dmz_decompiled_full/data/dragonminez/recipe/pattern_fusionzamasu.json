@@ -1,28 +1,3 @@
-{
-  "type": "minecraft:crafting_shaped",
-  "category": "misc",
-  "group": "dragonminez",
-  "key": {
-    "#": {
-      "item": "dragonminez:blank_pattern_super"
-    },
-    "B": {
-      "item": "minecraft:black_dye"
-    },
-    "G": {
-      "item": "minecraft:gray_dye"
-    },
-    "R": {
-      "item": "minecraft:red_dye"
-    }
-  },
-  "pattern": [
-    "G#G",
-    "BGB",
-    "RRR"
-  ],
-  "result": {
-    "count": 1,
-    "id": "dragonminez:pattern_fusionzamasu"
-  }
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:7e144c9fa8f7bd00541bb6566781bb66c430c5c2d10ff38b0c74d38331dce31b
+size 461

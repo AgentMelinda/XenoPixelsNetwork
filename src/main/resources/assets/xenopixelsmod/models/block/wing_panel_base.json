@@ -1,22 +1,3 @@
-{
-  "parent": "block/block",
-  "textures": {
-    "particle": "xenopixelsmod:block/wing_panel",
-    "skin": "xenopixelsmod:block/wing_panel",
-    "edge": "xenopixelsmod:block/wing_panel"
-  },
-  "elements": [
-    {
-      "from": [0, 6.5, 0],
-      "to": [16, 9.5, 12],
-      "faces": {
-        "up":    { "uv": [0, 0, 16, 12], "texture": "#skin" },
-        "down":  { "uv": [0, 0, 16, 12], "texture": "#skin" },
-        "north": { "uv": [0, 6.5, 16, 9.5], "texture": "#edge" },
-        "south": { "uv": [0, 6.5, 16, 9.5], "texture": "#edge" },
-        "east":  { "uv": [0, 6.5, 16, 9.5], "texture": "#edge" },
-        "west":  { "uv": [0, 6.5, 16, 9.5], "texture": "#edge" }
-      }
-    }
-  ]
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:89da28caa1d67c48f2289bd01c8645b69eaca805255fe6933748115fa0047468
+size 693

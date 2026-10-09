@@ -1,17 +1,3 @@
-{
-  "type": "minecraft:crafting_shaped",
-  "category": "building",
-  "group": "dragonminez",
-  "key": {
-    "#": {
-      "item": "dragonminez:namek_ajissa_planks"
-    }
-  },
-  "pattern": [
-    "##"
-  ],
-  "result": {
-    "count": 1,
-    "id": "dragonminez:namek_ajissa_pressure_plate"
-  }
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:6edf09387a901a5a5b7cbfec396631aaefbb2377b2278d96d233ad99e7456c13
+size 290

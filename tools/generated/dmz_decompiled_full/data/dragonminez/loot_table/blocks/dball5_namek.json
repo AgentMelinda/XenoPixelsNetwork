@@ -1,21 +1,3 @@
-{
-  "type": "minecraft:block",
-  "pools": [
-    {
-      "bonus_rolls": 0.0,
-      "conditions": [
-        {
-          "condition": "minecraft:survives_explosion"
-        }
-      ],
-      "entries": [
-        {
-          "type": "minecraft:item",
-          "name": "dragonminez:dball5_namek"
-        }
-      ],
-      "rolls": 1.0
-    }
-  ],
-  "random_sequence": "dragonminez:blocks/dball5_namek"
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:e4f38aa858f84167a113669a7de0d9e2e438b5e2dc1312d1b9019f48c6f8fdda
+size 396

@@ -1,6 +1,3 @@
-{
-  "parent": "minecraft:item/generated",
-  "textures": {
-    "layer0": "dragonminez:item/armors/slug_armor_boots"
-  }
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:63f82e0470568ee91a51fc688e370b2157c09c510c652bd106091232dbe5ce61
+size 120

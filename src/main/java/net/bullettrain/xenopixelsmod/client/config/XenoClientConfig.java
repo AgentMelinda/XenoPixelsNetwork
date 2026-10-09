@@ -25,7 +25,7 @@ public final class XenoClientConfig {
     private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
     private static final Path PATH = FMLPaths.CONFIGDIR.get().resolve("xenopixelsmod-client.json");
     /** Version 3 restores Guard while its dedicated key keeps right-click placement vanilla. */
-    private static final int CURRENT_CONFIG_VERSION = 6;
+    private static final int CURRENT_CONFIG_VERSION = 7;
 
     // --- UI ---
     public static boolean xenoHudEnabled = true;
@@ -69,6 +69,10 @@ public final class XenoClientConfig {
     public static boolean partyHudEnabled = true;
     /** Compact BT3 cooldown chip strip (vanish / chase / combo / charge). */
     public static boolean cooldownHudEnabled = true;
+    /** Show combat key prompts while a living DragonMineZ target is locked. */
+    public static boolean combatPromptsWithLockOn = true;
+    /** Show combat key prompts without a DragonMineZ lock, including grab/throw prompts. */
+    public static boolean combatPromptsWithoutLockOn = true;
 
     // --- Combat client (prediction / input) ---
     public static boolean bt3CombatClient = true;
@@ -171,6 +175,19 @@ public final class XenoClientConfig {
      * /xenoaura v1|v2|v3|v4, or Ki Actions in DMZ's X menu.
      */
     public static String auraVariant = "v4";
+    /** DragonMineZ ki attacks drawn with the HD Effekseer ki effects (true) or by DragonMineZ. /xenoaura ki. */
+    public static boolean hdKi = true;
+    /**
+     * Background music player (2026-10-08, owner request). Client-only: the server cannot set
+     * these through /xenoset. Tracks are sound-event ids resolved by this client's sound manager,
+     * so a resource pack can add its own; the default list is DragonMineZ's bundled menu music.
+     * /xenomusic on|off|next|prev|volume|track.
+     */
+    public static boolean musicEnabled = true;
+    public static float musicVolume = 0.45f;
+    public static int musicTrack = 0;
+    public static java.util.List<String> musicTracks = new java.util.ArrayList<>(
+            net.bullettrain.xenopixelsmod.client.music.XenoMusicTracks.defaults());
     /** HD aura resized every frame with the ki aura (true) or fixed when sent. /xenoaura live. */
     public static boolean auraLiveScale = true;
     /** Your own v2 aura in third person is drawn over particles (true). /xenoaura overlay. */
@@ -206,6 +223,23 @@ public final class XenoClientConfig {
      * can be told apart.
      */
     public static java.util.List<String> padRadialExtras = java.util.List.of();
+
+    /**
+     * XenoCombat v2 keybind cleanup: the first time the v2 controller is active, unbind every key
+     * mapping that does not belong to Minecraft, DragonMineZ or XenoPixels, after writing a backup.
+     * {@code /xenokeybind auto off} turns it off; {@code /xenokeybind restore} undoes it.
+     */
+    public static boolean keybindAutoClean = true;
+    /** Set once the automatic cleanup has run, so it never runs twice on its own. */
+    public static boolean keybindAutoCleanDone = false;
+    /** Translation-key prefixes of other mods whose bindings the cleanup must leave alone. */
+    public static java.util.List<String> keybindKeepPrefixes = java.util.List.of();
+    /** Which set of XenoCombat v2 default keys this profile has been moved to; see V2Keys. */
+    public static int v2KeyLayout = 0;
+    /** Which keybind-cleanup repairs this profile has had; see XenoKeybinds.repairOnce. */
+    public static int keybindRepair = 0;
+    /** Whether the shader reload key has been given its new home once; see XenoKeybinds.moveShaderReload. */
+    public static int shaderReloadKey = 0;
 
     /** Controller gameplay layer; BT3 is the first-install default and the last choice is saved. */
     public static PadMode padMode = PadMode.BT3;
@@ -395,6 +429,10 @@ public final class XenoClientConfig {
 
     private XenoClientConfig() {}
 
+    public static boolean showCombatPrompts(boolean locked) {
+        return locked ? combatPromptsWithLockOn : combatPromptsWithoutLockOn;
+    }
+
     public static void load() {
         if (!Files.exists(PATH)) {
             save();
@@ -467,6 +505,8 @@ public final class XenoClientConfig {
         d.senzuCooldownMessages = senzuCooldownMessages;
         d.partyHudEnabled = partyHudEnabled;
         d.cooldownHudEnabled = cooldownHudEnabled;
+        d.combatPromptsWithLockOn = combatPromptsWithLockOn;
+        d.combatPromptsWithoutLockOn = combatPromptsWithoutLockOn;
         d.bt3CombatClient = bt3CombatClient;
         d.bt3ComboClient = bt3ComboClient;
         d.bt3VanishClient = bt3VanishClient;
@@ -496,11 +536,22 @@ public final class XenoClientConfig {
         d.auraInnerBrightness = auraInnerBrightness;
         d.auraVariant = auraVariant;
         d.auraLiveScale = auraLiveScale;
+        d.hdKi = hdKi;
+        d.musicEnabled = musicEnabled;
+        d.musicVolume = musicVolume;
+        d.musicTrack = musicTrack;
+        d.musicTracks = musicTracks.isEmpty() ? null : java.util.List.copyOf(musicTracks);
         d.auraOverParticles = auraOverParticles;
         d.auraFirstPerson = auraFirstPerson;
         d.auraMaxHeight = auraMaxHeight;
         d.padRewrite = padRewrite;
         d.padRadialExtras = padRadialExtras.isEmpty() ? null : java.util.List.copyOf(padRadialExtras);
+        d.keybindAutoClean = keybindAutoClean;
+        d.keybindAutoCleanDone = keybindAutoCleanDone;
+        d.keybindKeepPrefixes = keybindKeepPrefixes.isEmpty() ? null : java.util.List.copyOf(keybindKeepPrefixes);
+        d.v2KeyLayout = v2KeyLayout;
+        d.keybindRepair = keybindRepair;
+        d.shaderReloadKey = shaderReloadKey;
         d.padMode = padMode.name();
         d.bt3BackstepClient = bt3BackstepClient;
         d.bt3ChargeAttackClient = bt3ChargeAttackClient;
@@ -587,6 +638,8 @@ public final class XenoClientConfig {
         senzuCooldownMessages = d.senzuCooldownMessages;
         partyHudEnabled = d.partyHudEnabled;
         cooldownHudEnabled = d.cooldownHudEnabled;
+        combatPromptsWithLockOn = d.combatPromptsWithLockOn;
+        combatPromptsWithoutLockOn = d.combatPromptsWithoutLockOn;
         bt3CombatClient = d.bt3CombatClient;
         bt3ComboClient = d.bt3ComboClient;
         bt3VanishClient = d.bt3VanishClient;
@@ -612,6 +665,13 @@ public final class XenoClientConfig {
         auraLayers = d.auraLayers == null || d.auraLayers;
         auraVariant = net.bullettrain.xenopixelsmod.fx.aura.HdAuraPlan.parseVariant(d.auraVariant);
         auraLiveScale = d.auraLiveScale == null || d.auraLiveScale;
+        hdKi = d.hdKi == null || d.hdKi;
+        musicEnabled = d.musicEnabled == null || d.musicEnabled;
+        musicVolume = d.musicVolume == null || !Float.isFinite(d.musicVolume) ? 0.45f
+                : Math.max(0.0f, Math.min(1.0f, d.musicVolume));
+        musicTracks = new java.util.ArrayList<>(
+                net.bullettrain.xenopixelsmod.client.music.XenoMusicTracks.sanitize(d.musicTracks));
+        musicTrack = d.musicTrack == null ? 0 : Math.floorMod(d.musicTrack, Math.max(1, musicTracks.size()));
         auraOverParticles = d.auraOverParticles == null || d.auraOverParticles;
         auraFirstPerson = d.auraFirstPerson == null || d.auraFirstPerson;
         auraMaxHeight = d.auraMaxHeight == null || !Float.isFinite(d.auraMaxHeight) ? 10.0f
@@ -629,6 +689,14 @@ public final class XenoClientConfig {
         // Absent means never configured, which takes the defaults. Bounded on read as well as on
         // write: this is a hand-editable JSON file, and a list of a thousand ids would otherwise
         // become a thousand radial slots nobody asked for.
+        keybindAutoClean = d.keybindAutoClean == null || d.keybindAutoClean;
+        keybindAutoCleanDone = d.keybindAutoCleanDone != null && d.keybindAutoCleanDone;
+        v2KeyLayout = d.v2KeyLayout == null ? 0 : d.v2KeyLayout;
+        keybindRepair = d.keybindRepair == null ? 0 : d.keybindRepair;
+        shaderReloadKey = d.shaderReloadKey == null ? 0 : d.shaderReloadKey;
+        keybindKeepPrefixes = d.keybindKeepPrefixes == null ? java.util.List.of()
+                : java.util.List.copyOf(d.keybindKeepPrefixes.stream()
+                        .filter(v -> v != null && !v.isBlank()).limit(64).toList());
         padRadialExtras = d.padRadialExtras == null ? java.util.List.of()
                 : java.util.List.copyOf(d.padRadialExtras.stream()
                         .filter(java.util.Objects::nonNull)
@@ -736,6 +804,8 @@ public final class XenoClientConfig {
         public boolean senzuCooldownMessages = true;
         public boolean partyHudEnabled = true;
         public boolean cooldownHudEnabled = true;
+        public boolean combatPromptsWithLockOn = true;
+        public boolean combatPromptsWithoutLockOn = true;
         public boolean bt3CombatClient = true;
         public boolean bt3ComboClient = true;
         public boolean bt3VanishClient = true;
@@ -765,11 +835,22 @@ public final class XenoClientConfig {
         public Float auraInnerBrightness;
         public String auraVariant;
         public Boolean auraLiveScale;
+        public Boolean hdKi;
+        public Boolean musicEnabled;
+        public Float musicVolume;
+        public Integer musicTrack;
+        public java.util.List<String> musicTracks;
         public Boolean auraOverParticles;
         public Boolean auraFirstPerson;
         public Float auraMaxHeight;
         public Boolean padRewrite;
         public java.util.List<String> padRadialExtras;
+        public Boolean keybindAutoClean;
+        public Boolean keybindAutoCleanDone;
+        public java.util.List<String> keybindKeepPrefixes;
+        public Integer v2KeyLayout;
+        public Integer keybindRepair;
+        public Integer shaderReloadKey;
         public String padMode;
         public boolean bt3BackstepClient = true;
         public boolean bt3ChargeAttackClient = true;

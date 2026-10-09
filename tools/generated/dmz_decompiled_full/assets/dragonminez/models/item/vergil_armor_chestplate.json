@@ -1,6 +1,3 @@
-{
-  "parent": "minecraft:item/generated",
-  "textures": {
-    "layer0": "dragonminez:item/armors/vergil_armor_chestplate"
-  }
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:6c9aa0e660fa635d31ebcc0df672a9c3ef032c9c5deaa81134adafe5ac9e8fc3
+size 127

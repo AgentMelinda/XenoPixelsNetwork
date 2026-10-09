@@ -1,25 +1,3 @@
-{
-  "type": "minecraft:crafting_shaped",
-  "category": "misc",
-  "group": "dragonminez",
-  "key": {
-    "#": {
-      "item": "dragonminez:blank_pattern_super"
-    },
-    "B": {
-      "item": "minecraft:black_dye"
-    },
-    "R": {
-      "item": "minecraft:red_dye"
-    }
-  },
-  "pattern": [
-    "B#B",
-    "RBR",
-    "RBR"
-  ],
-  "result": {
-    "count": 1,
-    "id": "dragonminez:pattern_pride_troops"
-  }
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:06bba3847d0c5d75b038c938471e79bbf1741531ad5507c8465b67bfcc4e80ae
+size 408

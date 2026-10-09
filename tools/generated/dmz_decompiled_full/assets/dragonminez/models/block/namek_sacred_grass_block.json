@@ -1,8 +1,3 @@
-{
-  "parent": "minecraft:block/cube_bottom_top",
-  "textures": {
-    "bottom": "dragonminez:block/namek_sacred_grass_block_down",
-    "side": "dragonminez:block/namek_sacred_grass_block_side",
-    "top": "dragonminez:block/namek_sacred_grass_block_top"
-  }
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:af8de83fb8aa76a485bb8140a7e6dbb59178a91080f92fdccd437eb8a42330a0
+size 258

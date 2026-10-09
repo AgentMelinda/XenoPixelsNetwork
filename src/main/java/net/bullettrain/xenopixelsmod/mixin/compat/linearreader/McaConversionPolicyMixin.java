@@ -8,7 +8,7 @@ import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
 
 import java.nio.file.Path;
 
-/** Exact LinearReader 1.3.0 converter: covers lazy conversion and bulk/manual conversion. */
+/** Verified LinearReader 1.3.0/1.3.1 converter: covers lazy conversion and bulk/manual conversion. */
 @Pseudo
 @Mixin(targets = "com.bugfunbug.linearreader.linear.MCAConverter", remap = false)
 public abstract class McaConversionPolicyMixin {

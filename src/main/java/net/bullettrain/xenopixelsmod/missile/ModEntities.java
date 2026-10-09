@@ -73,6 +73,13 @@ public final class ModEntities {
 
     private ModEntities() {}
 
+    public static final DeferredHolder<EntityType<?>, EntityType<net.bullettrain.xenopixelsmod.npc.projectile.XenoItemProjectileEntity>> NPC_ITEM_PROJECTILE =
+            ENTITIES.register("npc_item_projectile", () ->
+                    EntityType.Builder.<net.bullettrain.xenopixelsmod.npc.projectile.XenoItemProjectileEntity>of(
+                                    net.bullettrain.xenopixelsmod.npc.projectile.XenoItemProjectileEntity::new, MobCategory.MISC)
+                            .sized(0.25f, 0.25f).clientTrackingRange(8).updateInterval(1)
+                            .build(XenoPixelsMod.MOD_ID + ":npc_item_projectile"));
+
     public static void register(IEventBus bus) {
         ENTITIES.register(bus);
         // Copies are living bodies, so they need attributes. This is the mod's only such

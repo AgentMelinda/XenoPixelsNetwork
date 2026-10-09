@@ -1,6 +1,3 @@
-{
-  "parent": "minecraft:block/template_wall_post",
-  "textures": {
-    "wall": "dragonminez:block/namek_cobblestone"
-  }
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:22ffa1cba0356bd9dc4b7914419507edc7d59a774287a91aaba1e142730a648d
+size 123

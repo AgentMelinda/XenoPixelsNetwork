@@ -1,32 +1,3 @@
-{
-  "parent": "minecraft:recipes/root",
-  "criteria": {
-    "has_namek_ajissa_planks": {
-      "conditions": {
-        "items": [
-          {
-            "items": "dragonminez:namek_ajissa_planks"
-          }
-        ]
-      },
-      "trigger": "minecraft:inventory_changed"
-    },
-    "has_the_recipe": {
-      "conditions": {
-        "recipe": "dragonminez:namek_ajissa_pressure_plate"
-      },
-      "trigger": "minecraft:recipe_unlocked"
-    }
-  },
-  "requirements": [
-    [
-      "has_the_recipe",
-      "has_namek_ajissa_planks"
-    ]
-  ],
-  "rewards": {
-    "recipes": [
-      "dragonminez:namek_ajissa_pressure_plate"
-    ]
-  }
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:9561cf91753cddec8615f3861df7db9598bb407485b9afa23b4adea1cd699531
+size 637

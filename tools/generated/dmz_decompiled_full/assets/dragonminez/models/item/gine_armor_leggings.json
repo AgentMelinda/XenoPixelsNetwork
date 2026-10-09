@@ -1,6 +1,3 @@
-{
-  "parent": "minecraft:item/generated",
-  "textures": {
-    "layer0": "dragonminez:item/armors/gine_armor_leggings"
-  }
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:28714146cde053577260b858d8dfec3e989efd7fa0cc62d2d3e093866594cbf6
+size 123

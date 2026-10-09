@@ -1,0 +1,10 @@
+https://github.com/ChloePrime/AAAParticles
+https://github.com/ChloePrime/AAAParticles/wiki
+https://github.com/ChloePrime/AAAParticles/wiki/Advanced-Usage
+
+Curse Maven Snippet
+
+NeoForge
+implementation "curse.maven:aaa-particles-979809:8995061"
+
+Learn more about Curse Maven

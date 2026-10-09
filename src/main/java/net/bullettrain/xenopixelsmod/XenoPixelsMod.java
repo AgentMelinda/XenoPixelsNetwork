@@ -42,6 +42,7 @@ public class XenoPixelsMod {
         ModNetwork.register();
         // XenoAPI (xenoapi.npcs.api) over native NPCs; holds no world, resolves the server per call.
         net.bullettrain.xenopixelsmod.npc.script.api.xeno.NativeNpcApi.register();
+        net.bullettrain.xenopixelsmod.npc.script.api.xeno.gui.XenoGuiNetwork.register();
         net.bullettrain.xenopixelsmod.network.form.FormEditorNetwork.register();
         net.bullettrain.xenopixelsmod.network.race.RaceLabelNetwork.register();
         net.bullettrain.xenopixelsmod.network.taotto.TaottoNetwork.register();
@@ -84,6 +85,9 @@ public class XenoPixelsMod {
             net.bullettrain.xenopixelsmod.combat.technique.XenoRushTechniques.register();
             net.bullettrain.xenopixelsmod.combat.technique.XenoComboStrikes.register();
             net.bullettrain.xenopixelsmod.combat.technique.XenoSlotTechniques.register();
+            net.bullettrain.xenopixelsmod.combat.v3.technique.V3TechniqueCatalog.register();
+            net.bullettrain.xenopixelsmod.combat.v3.ki.XenoKiProfileCatalog.load();
+            net.bullettrain.xenopixelsmod.combat.v3.ki.V3NativeKi.ensureRegistered();
             // Sable thruster + moving-sub-level ballistic controls
             try {
                 net.bullettrain.xenopixelsmod.vs.XenoThrusterControl.ensureRegistered();

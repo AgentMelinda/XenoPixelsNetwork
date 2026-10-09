@@ -1,28 +1,3 @@
-{
-  "type": "minecraft:crafting_shaped",
-  "category": "equipment",
-  "group": "dragonminez",
-  "key": {
-    "B": {
-      "item": "minecraft:stone_button"
-    },
-    "P": {
-      "item": "minecraft:red_stained_glass_pane"
-    },
-    "R": {
-      "item": "dragonminez:radar_piece"
-    },
-    "T": {
-      "item": "dragonminez:t1_radar_cpu"
-    }
-  },
-  "pattern": [
-    "  R",
-    "PPT",
-    " B "
-  ],
-  "result": {
-    "count": 1,
-    "id": "dragonminez:red_scouter"
-  }
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:242e15d3fc91ab8934451dff43ae1da7150b2e173b7ca1d196549d7c0244650e
+size 473

@@ -1,6 +1,3 @@
-{
-  "parent": "minecraft:item/generated",
-  "textures": {
-    "layer0": "dragonminez:item/armors/a18_tournament_armor_leggings"
-  }
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:20a70b6eec03334b32d67f2bccf06157c859b010ef43ccea97e2402034bed823
+size 133

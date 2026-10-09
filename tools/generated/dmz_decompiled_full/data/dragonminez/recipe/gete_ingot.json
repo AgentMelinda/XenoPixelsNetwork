@@ -1,34 +1,3 @@
-{
-  "type": "minecraft:crafting_shapeless",
-  "category": "misc",
-  "group": "gete_ingot",
-  "ingredients": [
-    {
-      "item": "minecraft:netherite_scrap"
-    },
-    {
-      "item": "minecraft:netherite_scrap"
-    },
-    {
-      "item": "minecraft:netherite_scrap"
-    },
-    {
-      "item": "minecraft:netherite_scrap"
-    },
-    {
-      "item": "dragonminez:gete_scrap"
-    },
-    {
-      "item": "dragonminez:gete_scrap"
-    },
-    {
-      "item": "dragonminez:gete_scrap"
-    },
-    {
-      "item": "dragonminez:gete_scrap"
-    }
-  ],
-  "result": {
-    "id": "dragonminez:gete_ingot"
-  }
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:1b316152b1121172f51413d8dcc5bd0d068053fab9f70deb62348607c9e9dda5
+size 629

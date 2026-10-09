@@ -1,26 +1,3 @@
-{
-  "start": "root",
-  "nodes": {
-    "root": {
-      "text": "&eHello, {player}.&r What brings you out here?",
-      "options": [
-        { "text": "Who are you?", "type": "text", "target": "about" },
-        { "text": "Any work going?", "type": "text", "target": "work" },
-        { "text": "Nothing. Goodbye.", "type": "quit" }
-      ]
-    },
-    "about": {
-      "text": "I am {npc}. I have stood here a while.",
-      "options": [
-        { "text": "Back", "type": "text", "target": "root" },
-        { "text": "I see.", "type": "quit" }
-      ]
-    },
-    "work": {
-      "text": "Not yet. Ask me again when there is a quest board.",
-      "options": [
-        { "text": "Back", "type": "text", "target": "root" }
-      ]
-    }
-  }
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:60b0600a290add9d9763dc951c81e9da16527ba18b5584b47a60c2f662a98357
+size 740

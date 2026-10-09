@@ -1,6 +1,3 @@
-{
-  "parent": "minecraft:item/generated",
-  "textures": {
-    "layer0": "xenopixelsmod:item/zeni_1000"
-  }
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:ec8f7452837f3dcf81f9ba21bc1ecf915480a15d4a43473b095a89703a75a7fc
+size 115

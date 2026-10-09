@@ -1,33 +1,3 @@
-{
-  "type": "dragonminez:kikono_crafting",
-  "crafting_time": 200,
-  "ingredients": [
-    [],
-    [],
-    [],
-    {
-      "item": "dragonminez:kikono_cloth"
-    },
-    [],
-    {
-      "item": "dragonminez:kikono_cloth"
-    },
-    {
-      "item": "dragonminez:kikono_string"
-    },
-    [],
-    {
-      "item": "dragonminez:kikono_string"
-    }
-  ],
-  "output": {
-    "count": 1,
-    "id": "dragonminez:tien_armor_boots"
-  },
-  "pattern": {
-    "item": "dragonminez:pattern_tien"
-  },
-  "template": {
-    "item": "minecraft:iron_boots"
-  }
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:8d937f4eb5f930819443e9ada3b860a46c655b354e5a5ca77e14c30d2c229dc3
+size 539

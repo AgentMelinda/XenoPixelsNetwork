@@ -1,9 +1,3 @@
-{
-  "values": [
-    "dragonminez:namek_dirt",
-    "dragonminez:namek_grass_block",
-    "dragonminez:namek_sacred_grass_block",
-    "dragonminez:rocky_dirt",
-    "dragonminez:sacred_planet_grass_block"
-  ]
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:5d8c5d5d7fd17f786b942acad7775e772cf3d1f3b5e430eb5934f5438d1a805e
+size 206

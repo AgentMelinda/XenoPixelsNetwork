@@ -8,7 +8,22 @@ import net.bullettrain.xenopixelsmod.config.XenoServerConfig;
  * servers (network classes reference it). Methods only run on physical client via DistExecutor.
  */
 public final class ClientPacketHandlers {
+    public static void handleCombatV3KiVisual(net.bullettrain.xenopixelsmod.network.packet.CombatV3KiVisualPacket packet) {
+        net.bullettrain.xenopixelsmod.client.ki.V3NativeKiVisuals.apply(packet);
+    }
     private ClientPacketHandlers() {}
+
+    public static void handleCombatV3Camera(net.bullettrain.xenopixelsmod.network.packet.CombatV3CameraPacket packet) {
+        net.bullettrain.xenopixelsmod.client.camera.V3TechniqueCamera.apply(packet);
+    }
+
+    public static void handleCombatV3Config(net.bullettrain.xenopixelsmod.network.packet.CombatV3ConfigPacket packet) {
+        net.bullettrain.xenopixelsmod.client.combat.v3.V3ClientState.apply(packet);
+    }
+
+    public static void handleCombatV3State(net.bullettrain.xenopixelsmod.network.packet.CombatV3StatePacket packet) {
+        net.bullettrain.xenopixelsmod.client.combat.v3.V3ClientState.apply(packet);
+    }
 
     public static void handleDmzHudState(boolean dmzHudEnabled) {
         DmzHudClientState.setDmzHudEnabled(dmzHudEnabled);

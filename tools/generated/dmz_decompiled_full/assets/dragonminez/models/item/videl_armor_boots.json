@@ -1,6 +1,3 @@
-{
-  "parent": "minecraft:item/generated",
-  "textures": {
-    "layer0": "dragonminez:item/armors/videl_armor_boots"
-  }
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:1dd541ac50041a45799bdc83bd51a1462150b6181bdc7e7dbfcbf15d95145f4d
+size 121

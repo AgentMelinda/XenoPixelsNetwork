@@ -1,6 +1,3 @@
-{
-  "parent": "minecraft:item/generated",
-  "textures": {
-    "layer0": "dragonminez:item/patterns/pattern_trunks_kid"
-  }
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:4b6da0b092a09023ad5ff4a46f537c4967e7a5359350b1574eef31c87d57d7aa
+size 124

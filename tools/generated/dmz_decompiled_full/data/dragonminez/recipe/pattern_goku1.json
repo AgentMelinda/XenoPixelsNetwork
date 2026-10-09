@@ -1,25 +1,3 @@
-{
-  "type": "minecraft:crafting_shaped",
-  "category": "misc",
-  "group": "dragonminez",
-  "key": {
-    "#": {
-      "item": "dragonminez:blank_pattern_z"
-    },
-    "B": {
-      "item": "minecraft:blue_dye"
-    },
-    "O": {
-      "item": "minecraft:orange_dye"
-    }
-  },
-  "pattern": [
-    "B#B",
-    "OBO",
-    "OOO"
-  ],
-  "result": {
-    "count": 1,
-    "id": "dragonminez:pattern_goku1"
-  }
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:87caf1837c301d4657995979a2171503b84e34a6577a8b105ebd8ef522a19996
+size 399

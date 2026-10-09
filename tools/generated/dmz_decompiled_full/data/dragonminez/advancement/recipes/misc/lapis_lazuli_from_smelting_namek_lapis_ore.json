@@ -1,32 +1,3 @@
-{
-  "parent": "minecraft:recipes/root",
-  "criteria": {
-    "has_namek_lapis_ore": {
-      "conditions": {
-        "items": [
-          {
-            "items": "dragonminez:namek_lapis_ore"
-          }
-        ]
-      },
-      "trigger": "minecraft:inventory_changed"
-    },
-    "has_the_recipe": {
-      "conditions": {
-        "recipe": "dragonminez:lapis_lazuli_from_smelting_namek_lapis_ore"
-      },
-      "trigger": "minecraft:recipe_unlocked"
-    }
-  },
-  "requirements": [
-    [
-      "has_the_recipe",
-      "has_namek_lapis_ore"
-    ]
-  ],
-  "rewards": {
-    "recipes": [
-      "dragonminez:lapis_lazuli_from_smelting_namek_lapis_ore"
-    ]
-  }
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:6661dfd8b4a98d4762b9e82a73e2132d58070bb016ec428d79d2212250e37b14
+size 655

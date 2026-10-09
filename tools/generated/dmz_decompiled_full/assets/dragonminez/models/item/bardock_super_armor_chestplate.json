@@ -1,6 +1,3 @@
-{
-  "parent": "minecraft:item/generated",
-  "textures": {
-    "layer0": "dragonminez:item/armors/bardock_super_armor_chestplate"
-  }
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:db2abdddce3ab4a29d2ed58ef278527483737ce36e094e692f4ca3bc2c988a1e
+size 134

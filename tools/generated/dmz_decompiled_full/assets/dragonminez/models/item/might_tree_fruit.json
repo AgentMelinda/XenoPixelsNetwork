@@ -1,6 +1,3 @@
-{
-  "parent": "minecraft:item/generated",
-  "textures": {
-    "layer0": "dragonminez:item/might_tree_fruit"
-  }
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:b365c5b687f663bff5adb14493e28596bb049adb282b252c120ad2c264b29805
+size 113

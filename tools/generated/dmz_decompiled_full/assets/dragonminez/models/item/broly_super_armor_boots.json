@@ -1,6 +1,3 @@
-{
-  "parent": "minecraft:item/generated",
-  "textures": {
-    "layer0": "dragonminez:item/armors/broly_super_armor_boots"
-  }
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:9ece6214a40e39a7806f227b2902efb1044db61923563ded4ddf4689c453eab1
+size 127

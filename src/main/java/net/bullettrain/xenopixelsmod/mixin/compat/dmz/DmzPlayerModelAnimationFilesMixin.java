@@ -37,8 +37,9 @@ public abstract class DmzPlayerModelAnimationFilesMixin {
             cancellable = true)
     private void xeno$appendBt3AnimationFile(CallbackInfoReturnable<ResourceLocation[]> cir) {
         boolean baked = xeno$bt3FileBaked();
+        boolean techniquesBaked = xeno$v3TechniquesFileBaked();
         ResourceLocation[] current = cir.getReturnValue();
-        ResourceLocation[] extended = Bt3AnimationBinding.withAnimationFileIfBaked(current, baked);
+        ResourceLocation[] extended = Bt3AnimationBinding.withAnimationFilesIfBaked(current, baked, techniquesBaked);
         if (extended != current) {
             cir.setReturnValue(extended);
         }
@@ -58,6 +59,15 @@ public abstract class DmzPlayerModelAnimationFilesMixin {
     private static boolean xeno$bt3FileBaked() {
         try {
             return GeckoLibCache.getBakedAnimations().get(Bt3AnimationBinding.DMZ_ANIMATION_FILE) != null;
+        } catch (Throwable ignored) {
+            return false;
+        }
+    }
+
+    @Unique
+    private static boolean xeno$v3TechniquesFileBaked() {
+        try {
+            return GeckoLibCache.getBakedAnimations().get(Bt3AnimationBinding.V3_TECHNIQUE_ANIMATION_FILE) != null;
         } catch (Throwable ignored) {
             return false;
         }

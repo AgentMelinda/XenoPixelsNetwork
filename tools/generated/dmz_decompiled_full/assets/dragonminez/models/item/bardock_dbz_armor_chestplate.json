@@ -1,6 +1,3 @@
-{
-  "parent": "minecraft:item/generated",
-  "textures": {
-    "layer0": "dragonminez:item/armors/bardock_dbz_armor_chestplate"
-  }
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:eb0777a3b749b76bd12b30104fc2349ff2de8087ddedf53aac957f41f04aa54d
+size 132

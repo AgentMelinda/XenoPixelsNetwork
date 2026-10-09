@@ -48,18 +48,34 @@ public final class XenoApiAdapters {
 
     // ------------------------------------------------------------------ wrapping
 
-    /** The most specific adapter: NPC, player, living, or plain entity. Null stays null. */
+    /** Native NPC/player first, then specialized mobs, items, arrows and throwables. Null stays null. */
     public static IEntity<?> wrap(Entity entity) {
         if (entity == null) return null;
         if (entity instanceof XenoNpcEntity npc) return new XenoNpcAdapter(npc);
         if (entity instanceof ServerPlayer player) return new XenoPlayerAdapter(player);
+        if (entity instanceof Animal animal) return new XenoMobAdapter.AnimalView(animal);
+        if (entity instanceof AbstractVillager villager) return new XenoMobAdapter.VillagerView(villager);
+        if (entity instanceof net.minecraft.world.entity.Mob mob) {
+            return mob instanceof Enemy ? new XenoMobAdapter.MonsterView(mob) : new XenoMobAdapter<>(mob);
+        }
         if (entity instanceof LivingEntity living) return new XenoLivingAdapter<>(living);
         if (entity instanceof ItemEntity item) return new XenoEntityItemAdapter(item);
+        if (entity instanceof net.bullettrain.xenopixelsmod.npc.projectile.XenoItemProjectileEntity projectile)
+            return new XenoItemProjectileAdapter(projectile);
+        if (entity instanceof AbstractArrow arrow) return new XenoProjectileViews.ArrowView(arrow);
+        if (entity instanceof ThrowableProjectile throwable) return new XenoProjectileViews.ThrowableView(throwable);
         return new XenoEntityAdapter<>(entity);
     }
 
     public static IWorld wrap(ServerLevel level) { return level == null ? null : new XenoWorldAdapter(level); }
-    public static IItemStack wrap(ItemStack stack) { return stack == null ? null : new XenoItemAdapter(stack); }
+    public static IItemStack wrap(ItemStack stack) {
+        if (stack == null) return null;
+        if (stack.getItem() instanceof net.minecraft.world.item.ArmorItem) return new XenoArmorItemAdapter(stack);
+        if (stack.is(net.minecraft.world.item.Items.WRITTEN_BOOK) || stack.is(net.minecraft.world.item.Items.WRITABLE_BOOK))
+            return new XenoBookItemAdapter(stack);
+        if (stack.getItem() instanceof net.minecraft.world.item.BlockItem) return new XenoBlockItemAdapter(stack);
+        return new XenoItemAdapter(stack);
+    }
     public static INbt wrap(CompoundTag tag) { return tag == null ? null : new XenoNbtAdapter(tag); }
 
     public static IPos position(double x, double y, double z) {
@@ -91,7 +107,7 @@ public final class XenoApiAdapters {
 
     static CompoundTag unwrap(INbt tag) {
         if (tag == null) throw new IllegalArgumentException("NBT cannot be null");
-        if (tag instanceof XenoNbtAdapter nativeTag) return nativeTag.tag;
+        if (tag instanceof XenoNbtAdapter nativeTag) return nativeTag.data();
         throw new IllegalArgumentException("Foreign XenoAPI NBT adapter: " + tag.getClass().getName());
     }
 

@@ -1,6 +1,3 @@
-{
-  "parent": "minecraft:item/generated",
-  "textures": {
-    "layer0": "dragonminez:item/armors/yardrat_armor_boots"
-  }
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:855fe1cc6ee5cd59b8169f90ccb82068728691c0521e5a9b3a8ceb976402bcf4
+size 123

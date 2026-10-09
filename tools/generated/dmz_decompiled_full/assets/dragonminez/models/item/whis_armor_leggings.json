@@ -1,6 +1,3 @@
-{
-  "parent": "minecraft:item/generated",
-  "textures": {
-    "layer0": "dragonminez:item/armors/whis_armor_leggings"
-  }
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:64a1f027c4898c3648b26dda72bbe0ab537898210c8bb549b169048c041c4358
+size 123

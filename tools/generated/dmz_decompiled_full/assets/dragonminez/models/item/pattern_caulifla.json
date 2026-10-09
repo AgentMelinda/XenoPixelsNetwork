@@ -1,6 +1,3 @@
-{
-  "parent": "minecraft:item/generated",
-  "textures": {
-    "layer0": "dragonminez:item/patterns/pattern_caulifla"
-  }
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:6bdb4b951d71b0ec57faa87b13b7ea6401e035a2ccfe8e45e621780fb5c55675
+size 122

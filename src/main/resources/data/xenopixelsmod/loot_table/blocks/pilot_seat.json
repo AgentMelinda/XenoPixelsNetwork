@@ -1,21 +1,3 @@
-{
-  "type": "minecraft:block",
-  "pools": [
-    {
-      "bonus_rolls": 0.0,
-      "conditions": [
-        {
-          "condition": "minecraft:survives_explosion"
-        }
-      ],
-      "entries": [
-        {
-          "type": "minecraft:item",
-          "name": "xenopixelsmod:pilot_seat"
-        }
-      ],
-      "rolls": 1.0
-    }
-  ],
-  "random_sequence": "xenopixelsmod:blocks/pilot_seat"
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:d1348e5f671f91a368835a73851b1188e51fc573faf75bdf40c03388f2a6bc1e
+size 397

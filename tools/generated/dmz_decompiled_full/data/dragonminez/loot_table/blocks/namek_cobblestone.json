@@ -1,21 +1,3 @@
-{
-  "type": "minecraft:block",
-  "pools": [
-    {
-      "bonus_rolls": 0.0,
-      "conditions": [
-        {
-          "condition": "minecraft:survives_explosion"
-        }
-      ],
-      "entries": [
-        {
-          "type": "minecraft:item",
-          "name": "dragonminez:namek_cobblestone"
-        }
-      ],
-      "rolls": 1.0
-    }
-  ],
-  "random_sequence": "dragonminez:blocks/namek_cobblestone"
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:fe3480073f89590833fa5aad2b2dd7c8ff9d81ed0df965d8fb6cbaff1d476369
+size 406

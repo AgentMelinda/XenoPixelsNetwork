@@ -1,6 +1,3 @@
-{
-  "parent": "minecraft:item/generated",
-  "textures": {
-    "layer0": "dragonminez:item/patterns/pattern_chaoz"
-  }
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:de8fe3117babf587139789ef52423a8ca5f00c4981b15a0aa01dab9149deacd0
+size 119

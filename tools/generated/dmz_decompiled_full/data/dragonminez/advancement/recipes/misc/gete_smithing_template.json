@@ -1,32 +1,3 @@
-{
-  "parent": "minecraft:recipes/root",
-  "criteria": {
-    "has_gete_scrap": {
-      "conditions": {
-        "items": [
-          {
-            "items": "dragonminez:gete_scrap"
-          }
-        ]
-      },
-      "trigger": "minecraft:inventory_changed"
-    },
-    "has_the_recipe": {
-      "conditions": {
-        "recipe": "dragonminez:gete_smithing_template"
-      },
-      "trigger": "minecraft:recipe_unlocked"
-    }
-  },
-  "requirements": [
-    [
-      "has_the_recipe",
-      "has_gete_scrap"
-    ]
-  ],
-  "rewards": {
-    "recipes": [
-      "dragonminez:gete_smithing_template"
-    ]
-  }
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:f13c4f7894a88951a8cda416bd3874d047fa19c8f75a2a51bcb1871e9f6433c8
+size 600

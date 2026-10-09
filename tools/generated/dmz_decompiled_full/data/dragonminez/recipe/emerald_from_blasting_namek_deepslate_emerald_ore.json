@@ -1,14 +1,3 @@
-{
-  "type": "minecraft:blasting",
-  "category": "misc",
-  "cookingtime": 100,
-  "experience": 1.0,
-  "group": "emerald",
-  "ingredient": {
-    "item": "dragonminez:namek_deepslate_emerald_ore"
-  },
-  "result": {
-    "count": 1,
-    "id": "minecraft:emerald"
-  }
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:a883229949f3bbeb4a9509301f637ae108560120faca09511b1ee7d54ce0a34b
+size 263

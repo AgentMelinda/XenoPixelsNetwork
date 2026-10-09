@@ -1,6 +1,3 @@
-{
-  "parent": "minecraft:item/generated",
-  "textures": {
-    "layer0": "dragonminez:item/armors/capsule_corp_armor_boots"
-  }
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:aba1dd0be00398dbf4598740b3fad01697b19c46e90dbc0bc845cffbf23e0dc3
+size 128

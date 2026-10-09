@@ -1,32 +1,3 @@
-{
-  "parent": "minecraft:recipes/root",
-  "criteria": {
-    "has_t1_radar_cpu": {
-      "conditions": {
-        "items": [
-          {
-            "items": "dragonminez:t1_radar_cpu"
-          }
-        ]
-      },
-      "trigger": "minecraft:inventory_changed"
-    },
-    "has_the_recipe": {
-      "conditions": {
-        "recipe": "dragonminez:blue_scouter"
-      },
-      "trigger": "minecraft:recipe_unlocked"
-    }
-  },
-  "requirements": [
-    [
-      "has_the_recipe",
-      "has_t1_radar_cpu"
-    ]
-  ],
-  "rewards": {
-    "recipes": [
-      "dragonminez:blue_scouter"
-    ]
-  }
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:4fa431dda2192b5e5a6e9e1799863fdebcde8abb789250e4fb94801bfe4c48dd
+size 586

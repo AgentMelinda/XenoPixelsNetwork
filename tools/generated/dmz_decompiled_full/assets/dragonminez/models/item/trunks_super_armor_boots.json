@@ -1,6 +1,3 @@
-{
-  "parent": "minecraft:item/generated",
-  "textures": {
-    "layer0": "dragonminez:item/armors/trunks_super_armor_boots"
-  }
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:f545aa8cd254e9edb6997cd5b7ec098976599499075211b46d66327599dbe90a
+size 128

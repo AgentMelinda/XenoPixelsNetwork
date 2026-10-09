@@ -1,10 +1,3 @@
-{
-  "type": "minecraft:crafting_shapeless",
-  "category": "building",
-  "ingredients": [
-    { "item": "xenopixelsmod:copycat_wing_flap_vertical" },
-    { "item": "minecraft:glowstone" }
-  ],
-  "result": { "id": "xenopixelsmod:copycat_wing_flap_vertical_lit", "count": 1 },
-  "show_notification": true
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:f3371d5d0944058c87e917b7daa3c07ffcfb7515f09872a91a7e643290449c80
+size 304

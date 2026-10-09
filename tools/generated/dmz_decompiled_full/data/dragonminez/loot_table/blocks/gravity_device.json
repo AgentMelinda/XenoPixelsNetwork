@@ -1,21 +1,3 @@
-{
-  "type": "minecraft:block",
-  "pools": [
-    {
-      "bonus_rolls": 0.0,
-      "conditions": [
-        {
-          "condition": "minecraft:survives_explosion"
-        }
-      ],
-      "entries": [
-        {
-          "type": "minecraft:item",
-          "name": "dragonminez:gravity_device"
-        }
-      ],
-      "rolls": 1.0
-    }
-  ],
-  "random_sequence": "dragonminez:blocks/gravity_device"
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:e1c86817ec37d92d3a78bedf963ba8f32323162570531b21b499c78a16705825
+size 400

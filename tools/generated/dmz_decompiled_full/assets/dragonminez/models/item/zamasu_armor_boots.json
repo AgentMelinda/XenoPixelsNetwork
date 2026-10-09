@@ -1,6 +1,3 @@
-{
-  "parent": "minecraft:item/generated",
-  "textures": {
-    "layer0": "dragonminez:item/armors/zamasu_armor_boots"
-  }
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:7d32e8db191ea7622901cd22347683bfba4aeb72acd4978016d873e98afb816d
+size 122

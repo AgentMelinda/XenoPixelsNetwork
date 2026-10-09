@@ -1,32 +1,3 @@
-{
-  "parent": "minecraft:recipes/root",
-  "criteria": {
-    "has_frog_legs_raw": {
-      "conditions": {
-        "items": [
-          {
-            "items": "dragonminez:frog_legs_raw"
-          }
-        ]
-      },
-      "trigger": "minecraft:inventory_changed"
-    },
-    "has_the_recipe": {
-      "conditions": {
-        "recipe": "dragonminez:frog_legs_cooked_campfire"
-      },
-      "trigger": "minecraft:recipe_unlocked"
-    }
-  },
-  "requirements": [
-    [
-      "has_the_recipe",
-      "has_frog_legs_raw"
-    ]
-  ],
-  "rewards": {
-    "recipes": [
-      "dragonminez:frog_legs_cooked_campfire"
-    ]
-  }
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:5eaa443a5721e5784e972c821e4911055b595d3741e3791b6d32023b86a33409
+size 615

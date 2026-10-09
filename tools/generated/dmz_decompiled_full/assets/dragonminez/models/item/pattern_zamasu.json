@@ -1,6 +1,3 @@
-{
-  "parent": "minecraft:item/generated",
-  "textures": {
-    "layer0": "dragonminez:item/patterns/pattern_zamasu"
-  }
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:edbcc2d17e527eb7270e915962b35648506c3cc9a630b2683db0b385f9410742
+size 120

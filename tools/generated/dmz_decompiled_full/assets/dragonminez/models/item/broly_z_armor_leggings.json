@@ -1,6 +1,3 @@
-{
-  "parent": "minecraft:item/generated",
-  "textures": {
-    "layer0": "dragonminez:item/armors/broly_z_armor_leggings"
-  }
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:b3348556bf58a9210c42eb1702f237d2e505fde6e61262c2a768782055643ad2
+size 126

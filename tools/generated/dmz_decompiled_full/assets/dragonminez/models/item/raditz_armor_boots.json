@@ -1,6 +1,3 @@
-{
-  "parent": "minecraft:item/generated",
-  "textures": {
-    "layer0": "dragonminez:item/armors/raditz_armor_boots"
-  }
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:840a655f8275ea50f149970413f95e18adb5d55db3d1db97f91909bd901ddb06
+size 122

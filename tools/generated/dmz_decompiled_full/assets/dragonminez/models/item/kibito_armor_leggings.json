@@ -1,6 +1,3 @@
-{
-  "parent": "minecraft:item/generated",
-  "textures": {
-    "layer0": "dragonminez:item/armors/kibito_armor_leggings"
-  }
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:76c765c38821c9c5d54510ec0bf2c468159bb21eff6b3928b91a3ca08b0038fd
+size 125

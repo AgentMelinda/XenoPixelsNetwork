@@ -1,32 +1,3 @@
-{
-  "parent": "minecraft:recipes/root",
-  "criteria": {
-    "has_gete_ingot": {
-      "conditions": {
-        "items": [
-          {
-            "items": "dragonminez:gete_ingot"
-          }
-        ]
-      },
-      "trigger": "minecraft:inventory_changed"
-    },
-    "has_the_recipe": {
-      "conditions": {
-        "recipe": "dragonminez:gete_green_capsule"
-      },
-      "trigger": "minecraft:recipe_unlocked"
-    }
-  },
-  "requirements": [
-    [
-      "has_the_recipe",
-      "has_gete_ingot"
-    ]
-  ],
-  "rewards": {
-    "recipes": [
-      "dragonminez:gete_green_capsule"
-    ]
-  }
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:4b775631370446ba1d7a632a9fd33f2831331478444ae397d0dc6969fad5afa3
+size 592

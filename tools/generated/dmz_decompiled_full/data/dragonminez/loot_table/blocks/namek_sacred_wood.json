@@ -1,21 +1,3 @@
-{
-  "type": "minecraft:block",
-  "pools": [
-    {
-      "bonus_rolls": 0.0,
-      "conditions": [
-        {
-          "condition": "minecraft:survives_explosion"
-        }
-      ],
-      "entries": [
-        {
-          "type": "minecraft:item",
-          "name": "dragonminez:namek_sacred_wood"
-        }
-      ],
-      "rolls": 1.0
-    }
-  ],
-  "random_sequence": "dragonminez:blocks/namek_sacred_wood"
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:7ff1bbb06a5c5eba8e6746775f2ba05ced23def4d5f8c8f01aa074f40d302e75
+size 406

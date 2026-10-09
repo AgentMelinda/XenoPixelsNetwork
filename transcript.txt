@@ -1,0 +1,890 @@
+# Plan.md and XenoServerConfig
+
+## User
+
+continue the work in plan.md and the unfinished work from it that started touching the next clasess XenoServerConfig.java
+
+## Assistant
+
+I'll start from `plan.md` and the current `XenoServerConfig.java` work so we can pick up the unfinished classes without inventing APIs.
+
+### Tool Read File V2
+
+```
+{"path":"C:\\Users\\Admin\\.cursor\\plugins\\cache\\cursor-public\\superpowers\\d884ae04edebef577e82ff7c4e143debd0bbec99\\skills\\using-superpowers\\SKILL.md"}
+```
+
+### Tool Read File V2
+
+```
+{"path":"C:\\Users\\Admin\\.claude\\skills\\minecraft-modding\\SKILL.md"}
+```
+
+### Tool Read File V2
+
+```
+{"path":"C:\\Users\\Admin\\.grok\\worktrees\\dragonminez\\XenoPixelsNetwork_qwen\\ai\\README.md"}
+```
+
+### Tool Glob File Search
+
+```
+{"globPattern":"**/plan.md"}
+```
+
+### Tool Get Mcp Tools
+
+```
+{"server":"cursor-app-control","toolName":"rename_chat","toolCallId":"call-7eba18af-d79a-4f5c-ad5e-a397fbae35c3-4\nfc_95144776-62f0-9375-b4b6-26a6d266f136_4"}
+```
+
+### Tool Read File V2
+
+```
+{"path":"C:\\Users\\Admin\\.grok\\worktrees\\dragonminez\\XenoPixelsNetwork_qwen\\plan.md"}
+```
+
+### Tool Read File V2
+
+```
+{"path":"C:\\Users\\Admin\\.cursor\\plugins\\cache\\cursor-public\\superpowers\\d884ae04edebef577e82ff7c4e143debd0bbec99\\skills\\executing-plans\\SKILL.md"}
+```
+
+### Tool Read File V2
+
+```
+{"path":"C:\\Users\\Admin\\.grok\\worktrees\\dragonminez\\XenoPixelsNetwork_qwen\\ai\\skills\\java-neoforge.md"}
+```
+
+### Tool Glob File Search
+
+```
+{"globPattern":"**/XenoServerConfig.java"}
+```
+
+### Tool Read File V2
+
+```
+{"path":"C:\\Users\\Admin\\.grok\\worktrees\\dragonminez\\XenoPixelsNetwork_qwen\\ai\\agents\\claude.md","limit":80}
+```
+
+### Tool Mcp
+
+```
+{"name":"cursor-app-control-rename_chat","args":{"title":"Continue XenoServerConfig plan"},"toolCallId":"call-5f098942-40be-4dd9-a26a-7488940c80a3-10\nfc_7c8a179b-30dd-9804-890e-9ed3af283c89_5","providerIdentifier":"cursor-app-control","toolName":"rename_chat","smartModeApprovalOnly":false,"skipApproval":false,"serverIdentifier":"cursor-app-control"}
+```
+
+## User
+
+continue the work in plan.md and the unfinished work from it that started touching the next clasess XenoServerConfig.java
+
+## Assistant
+
+I'm using the executing-plans approach: load the plan, check what's already landed in the tree, then continue. Let me inspect the working tree and `XenoServerConfig.java`.
+
+### Tool Run Terminal Command V2
+
+### Tool Read File V2
+
+```
+{"path":"C:\\Users\\Admin\\.grok\\worktrees\\dragonminez\\XenoPixelsNetwork_qwen\\src\\main\\java\\net\\bullettrain\\xenopixelsmod\\config\\XenoServerConfig.java"}
+```
+
+### Tool Run Terminal Command V2
+
+### Tool Ripgrep Raw Search
+
+```
+{"pattern":"combatControllerMode|CombatControllerMode|bt3_manual|BT3_MANUAL","outputMode":"files_with_matches","caseInsensitive":false,"multiline":false,"toolCallId":"toolu_01KPnuTx1xnehaPpg2BiA3rL","offset":0}
+```
+
+### Tool Ripgrep Raw Search
+
+```
+{"pattern":"combatControllerMode|CombatControllerMode|bt3Manual|Bt3Manual","path":"C:\\Users\\Admin\\.grok\\worktrees\\dragonminez\\XenoPixelsNetwork_qwen\\src\\main\\java\\net\\bullettrain\\xenopixelsmod\\config\\XenoServerConfig.java","outputMode":"content","caseInsensitive":false,"multiline":false,"toolCallId":"toolu_01D8e7FF2PMCwUwz7VbScq8v","offset":0}
+```
+
+### Tool Ripgrep Raw Search
+
+```
+{"pattern":"bt3\\w*Enabled|Bt3\\w*Enabled","path":"C:\\Users\\Admin\\.grok\\worktrees\\dragonminez\\XenoPixelsNetwork_qwen\\src\\main\\java\\net\\bullettrain\\xenopixelsmod\\config\\XenoServerConfig.java","outputMode":"content","caseInsensitive":false,"headLimit":60,"multiline":false,"toolCallId":"toolu_01DGVPqcScr7Hc2mnqwSJ6cv","offset":0}
+```
+
+### Tool Run Terminal Command V2
+
+### Tool Read File V2
+
+```
+{"path":"C:\\Users\\Admin\\.grok\\worktrees\\dragonminez\\XenoPixelsNetwork_qwen\\src\\main\\java\\net\\bullettrain\\xenopixelsmod\\config\\XenoServerConfig.java","offset":60,"limit":130}
+```
+
+### Tool Read File V2
+
+```
+{"path":"C:\\Users\\Admin\\.grok\\worktrees\\dragonminez\\XenoPixelsNetwork_qwen\\src\\main\\java\\net\\bullettrain\\xenopixelsmod\\config\\XenoServerConfig.java","offset":2500,"limit":120}
+```
+
+### Tool Read File V2
+
+```
+{"path":"C:\\Users\\Admin\\.cursor\\projects\\c-Users-Admin-grok-worktrees-dragonminez-XenoPixelsNetwork-qwen\\agent-tools\\1375ee03-9d02-4604-88fb-059a635d91da.txt"}
+```
+
+## Assistant
+
+The mode field exists only in `XenoServerConfig.java` so far; nothing else references it yet. Let me look at the leftover notes about where the prior session stopped and the config diff.
+
+### Tool Run Terminal Command V2
+
+### Tool Read File V2
+
+```
+{"path":"C:\\Users\\Admin\\.grok\\worktrees\\dragonminez\\XenoPixelsNetwork_qwen\\src\\main\\java\\net\\bullettrain\\xenopixelsmod\\config\\XenoServerConfigKeys.java"}
+```
+
+### Tool Read File V2
+
+```
+{"path":"C:\\Users\\Admin\\.grok\\worktrees\\dragonminez\\XenoPixelsNetwork_qwen\\src\\main\\java\\net\\bullettrain\\xenopixelsmod\\network\\SyncServerConfigPacket.java"}
+```
+
+## User
+
+use all minecraft skills and superpowers skill
+
+## User
+
+/minecraft-modding /using-superpowers /superdesign
+
+### Tool Read File V2
+
+```
+{"path":"C:\\Users\\Admin\\.claude\\skills\\minecraft-testing\\SKILL.md"}
+```
+
+### Tool Read File V2
+
+```
+{"path":"C:\\Users\\Admin\\.cursor\\plugins\\cache\\cursor-public\\superpowers\\d884ae04edebef577e82ff7c4e143debd0bbec99\\skills\\test-driven-development\\SKILL.md"}
+```
+
+### Tool Read File V2
+
+```
+{"path":"C:\\Users\\Admin\\.cursor\\plugins\\cache\\cursor-public\\superpowers\\d884ae04edebef577e82ff7c4e143debd0bbec99\\skills\\verification-before-completion\\SKILL.md"}
+```
+
+### Tool Read File V2
+
+```
+{"path":"C:\\Users\\Admin\\.cursor\\projects\\c-Users-Admin-grok-worktrees-dragonminez-XenoPixelsNetwork-qwen\\terminals\\927440.txt"}
+```
+
+### Tool Read File V2
+
+```
+{"path":"C:\\Users\\Admin\\.grok\\worktrees\\dragonminez\\XenoPixelsNetwork_qwen\\ai\\skills\\networking.md"}
+```
+
+### Tool Read File V2
+
+```
+{"path":"C:\\Users\\Admin\\.grok\\worktrees\\dragonminez\\XenoPixelsNetwork_qwen\\ai\\skills\\testing-runtime.md"}
+```
+
+### Tool Read File V2
+
+```
+{"path":"C:\\Users\\Admin\\.grok\\worktrees\\dragonminez\\XenoPixelsNetwork_qwen\\grokstopedinmiddle.txt"}
+```
+
+### Tool Glob File Search
+
+```
+{"globPattern":"plan/**"}
+```
+
+### Tool Ripgrep Raw Search
+
+```
+{"pattern":"PROTOCOL|protocol","path":"C:\\Users\\Admin\\.grok\\worktrees\\dragonminez\\XenoPixelsNetwork_qwen\\src\\main\\java\\net\\bullettrain\\xenopixelsmod\\network\\ModNetwork.java","outputMode":"content","context":2,"caseInsensitive":false,"multiline":false,"toolCallId":"toolu_01FaRW8H9eEcnkr6ZRHk9rdd","offset":0}
+```
+
+### Tool Ripgrep Raw Search
+
+```
+{"pattern":"class |public static .*\\(|literal\\(\"|XenoServerConfig\\.(save|load|broadcast|sync)","path":"C:\\Users\\Admin\\.grok\\worktrees\\dragonminez\\XenoPixelsNetwork_qwen\\src\\main\\java\\net\\bullettrain\\xenopixelsmod\\command\\XenoConfigCommands.java","outputMode":"content","caseInsensitive":false,"headLimit":80,"multiline":false,"toolCallId":"toolu_01JmN2VsoJiZGYivJNsSbRxd","offset":0}
+```
+
+### Tool Ripgrep Raw Search
+
+```
+{"pattern":"public static .*\\(","path":"C:\\Users\\Admin\\.grok\\worktrees\\dragonminez\\XenoPixelsNetwork_qwen\\src\\main\\java\\net\\bullettrain\\xenopixelsmod\\command\\XenoPermissions.java","outputMode":"content","caseInsensitive":false,"multiline":false,"toolCallId":"toolu_018G61noRkFnVktWRC4qiij2","offset":0}
+```
+
+### Tool Ripgrep Raw Search
+
+```
+{"pattern":"public static .*\\(|private static final Map|static final .*Map<","path":"C:\\Users\\Admin\\.grok\\worktrees\\dragonminez\\XenoPixelsNetwork_qwen\\src\\main\\java\\net\\bullettrain\\xenopixelsmod\\combat\\Bt3CombatEvents.java","outputMode":"content","caseInsensitive":false,"headLimit":120,"multiline":false,"toolCallId":"toolu_015kUT1nqU2mH2CCpCnvktxX","offset":0}
+```
+
+### Tool Ripgrep Raw Search
+
+```
+{"pattern":"combatControllerMode|xenocombat|bt3_manual|XenoServerConfig\\.java","path":"C:\\Users\\Admin\\.grok\\worktrees\\dragonminez\\XenoPixelsNetwork_qwen\\grokstopedinmiddle.txt","outputMode":"content","caseInsensitive":false,"headLimit":60,"multiline":false,"toolCallId":"toolu_01UdUKsy629ieKvcch7EYWPT","offset":0}
+```
+
+### Tool Read File V2
+
+```
+{"path":"C:\\Users\\Admin\\.grok\\worktrees\\dragonminez\\XenoPixelsNetwork_qwen\\src\\main\\java\\net\\bullettrain\\xenopixelsmod\\command\\XenoConfigCommands.java"}
+```
+
+### Tool Read File V2
+
+```
+{"path":"C:\\Users\\Admin\\.grok\\worktrees\\dragonminez\\XenoPixelsNetwork_qwen\\src\\main\\java\\net\\bullettrain\\xenopixelsmod\\command\\XenoPermissions.java","offset":1,"limit":120}
+```
+
+## User
+
+we have the session here unleft aswell C:\Users\Admin\.copilot\session-state\fe5c5e12-07bb-49f9-8b9e-e7a064d085f1
+
+## Assistant
+
+Let me look at that Copilot session state to recover where the prior session left off.
+
+### Tool Run Terminal Command V2
+
+### Tool Read File V2
+
+```
+{"path":"C:\\Users\\Admin\\.copilot\\session-state\\fe5c5e12-07bb-49f9-8b9e-e7a064d085f1\\checkpoints\\004-planning-ultimate-bt3-controll.md"}
+```
+
+### Tool Read File V2
+
+```
+{"path":"C:\\Users\\Admin\\.copilot\\session-state\\fe5c5e12-07bb-49f9-8b9e-e7a064d085f1\\checkpoints\\index.md"}
+```
+
+### Tool Read File V2
+
+```
+{"path":"C:\\Users\\Admin\\.copilot\\session-state\\fe5c5e12-07bb-49f9-8b9e-e7a064d085f1\\rewind-file-snapshots\\tracking.json"}
+```
+
+### Tool Run Terminal Command V2
+
+### Tool Read File V2
+
+```
+{"path":"C:\\Users\\Admin\\.grok\\worktrees\\dragonminez\\XenoPixelsNetwork_qwen\\src\\main\\java\\net\\bullettrain\\xenopixelsmod\\config\\XenoServerConfig.java","offset":36,"limit":24}
+```
+
+### Tool Read File V2
+
+```
+{"path":"C:\\Users\\Admin\\.grok\\worktrees\\dragonminez\\XenoPixelsNetwork_qwen\\src\\main\\java\\net\\bullettrain\\xenopixelsmod\\config\\XenoServerConfig.java","offset":958,"limit":70}
+```
+
+### Tool Read File V2
+
+```
+{"path":"C:\\Users\\Admin\\.grok\\worktrees\\dragonminez\\XenoPixelsNetwork_qwen\\src\\main\\java\\net\\bullettrain\\xenopixelsmod\\command\\XenoPermissions.java","offset":120,"limit":210}
+```
+
+### Tool Read File V2
+
+```
+{"path":"C:\\Users\\Admin\\.grok\\worktrees\\dragonminez\\XenoPixelsNetwork_qwen\\src\\test\\java\\net\\bullettrain\\xenopixelsmod\\config\\XenoServerConfigKeysTest.java"}
+```
+
+### Tool Ripgrep Raw Search
+
+```
+{"pattern":"handleServerConfig|XenoServerConfig\\.apply|XenoServerConfig\\.isBt3|bt3CombatEnabled","path":"C:\\Users\\Admin\\.grok\\worktrees\\dragonminez\\XenoPixelsNetwork_qwen\\src\\main\\java\\net\\bullettrain\\xenopixelsmod\\client","outputMode":"content","caseInsensitive":false,"headLimit":40,"multiline":false,"toolCallId":"toolu_018hgCWZkYhT2ReMC7r97SQj","offset":0}
+```
+
+### Tool Ripgrep Raw Search
+
+```
+{"pattern":"public static void broadcast|SyncServerConfigPacket","path":"C:\\Users\\Admin\\.grok\\worktrees\\dragonminez\\XenoPixelsNetwork_qwen\\src\\main\\java\\net\\bullettrain\\xenopixelsmod\\command\\DmzHudCommands.java","outputMode":"content","contextAfter":12,"caseInsensitive":false,"multiline":false,"toolCallId":"toolu_01FKj3uSMX1kYXk7qTfjH7wg","offset":0}
+```
+
+### Tool Ripgrep Raw Search
+
+```
+{"pattern":"public static \\w[\\w<>, ]* \\w+\\(","path":"C:\\Users\\Admin\\.grok\\worktrees\\dragonminez\\XenoPixelsNetwork_qwen\\src\\main\\java\\net\\bullettrain\\xenopixelsmod\\combat\\Bt3CombatLimiter.java","outputMode":"content","caseInsensitive":false,"multiline":false,"toolCallId":"toolu_011sngUdg6A1Vn8scSMPSiLA","offset":0}
+```
+
+## User
+
+request was plan the ultimate BT3-style manual combo controller and bt3 styke comnat toggaleable and switchable from
+current all combat state xeno system and without my answers i should have the old system by default on and a
+command/config to enable new system to tes with new chorogorphy animations and everything and spining working head
+because old v4 spining animation head wont spin but i can make it spin in the anim editor so ues that skin/body
+parts from there
+
+### Tool Read File V2
+
+```
+{"path":"C:\\Users\\Admin\\.grok\\worktrees\\dragonminez\\XenoPixelsNetwork_qwen\\src\\main\\java\\net\\bullettrain\\xenopixelsmod\\client\\ClientPacketHandlers.java"}
+```
+
+### Tool Read File V2
+
+```
+{"path":"C:\\Users\\Admin\\.grok\\worktrees\\dragonminez\\XenoPixelsNetwork_qwen\\src\\main\\java\\net\\bullettrain\\xenopixelsmod\\client\\XenoServerClientState.java","limit":40}
+```
+
+### Tool Read File V2
+
+```
+{"path":"C:\\Users\\Admin\\.grok\\worktrees\\dragonminez\\XenoPixelsNetwork_qwen\\src\\main\\java\\net\\bullettrain\\xenopixelsmod\\combat\\Bt3CombatLimiter.java"}
+```
+
+### Tool Read File V2
+
+```
+{"path":"C:\\Users\\Admin\\.grok\\worktrees\\dragonminez\\XenoPixelsNetwork_qwen\\src\\main\\java\\net\\bullettrain\\xenopixelsmod\\combat\\Bt3CombatEvents.java","offset":160,"limit":60}
+```
+
+### Tool Read File V2
+
+```
+{"path":"C:\\Users\\Admin\\.grok\\worktrees\\dragonminez\\XenoPixelsNetwork_qwen\\src\\main\\java\\net\\bullettrain\\xenopixelsmod\\network\\ModNetwork.java","offset":118,"limit":30}
+```
+
+### Tool Ripgrep Raw Search
+
+```
+{"pattern":"FriendlyByteBuf|Unpooled","path":"C:\\Users\\Admin\\.grok\\worktrees\\dragonminez\\XenoPixelsNetwork_qwen\\src\\test\\java","outputMode":"files_with_matches","caseInsensitive":false,"multiline":false,"toolCallId":"toolu_01HtiKeugGh94wV5mFJPjuuw","offset":0}
+```
+
+### Tool Ripgrep Raw Search
+
+```
+{"pattern":"public static void (handle|onLogout|clear\\w*|reset\\w*|cancel\\w*)\\(","path":"C:\\Users\\Admin\\.grok\\worktrees\\dragonminez\\XenoPixelsNetwork_qwen\\src\\main\\java\\net\\bullettrain\\xenopixelsmod\\combat","outputMode":"content","caseInsensitive":false,"headLimit":80,"multiline":false,"toolCallId":"toolu_01VZUmNEq7jCwa8Ev9NjdzUY","offset":0}
+```
+
+### Tool Ripgrep Raw Search
+
+```
+{"pattern":"private static (void|int) handle|public static void handle|case \\w+ ->|XenoServerConfig\\.bt3CombatEnabled","path":"C:\\Users\\Admin\\.grok\\worktrees\\dragonminez\\XenoPixelsNetwork_qwen\\src\\main\\java\\net\\bullettrain\\xenopixelsmod\\network\\Bt3CombatPacket.java","outputMode":"content","caseInsensitive":false,"headLimit":60,"multiline":false,"toolCallId":"toolu_01EeMM4NcUadRtABAciPPpQE","offset":0}
+```
+
+### Tool Read File V2
+
+```
+{"path":"C:\\Users\\Admin\\.grok\\worktrees\\dragonminez\\XenoPixelsNetwork_qwen\\src\\test\\java\\net\\bullettrain\\xenopixelsmod\\network\\NpcAppearancePacketAuraTest.java","limit":40}
+```
+
+### Tool Read File V2
+
+```
+{"path":"C:\\Users\\Admin\\.grok\\worktrees\\dragonminez\\XenoPixelsNetwork_qwen\\src\\main\\java\\net\\bullettrain\\xenopixelsmod\\network\\Bt3CombatPacket.java","offset":60,"limit":190}
+```
+
+### Tool Ripgrep Raw Search
+
+```
+{"pattern":"public static void (stopChase|clearFollowup|clear|cancel|stop\\w*)\\(","path":"C:\\Users\\Admin\\.grok\\worktrees\\dragonminez\\XenoPixelsNetwork_qwen\\src\\main\\java\\net\\bullettrain\\xenopixelsmod\\combat","glob":"{ChaseFlightSystem,Bt3CinematicRushSystem,Bt3SparkingSystem,ChargeOverchargeManager,Bt3RushState*}.java","outputMode":"content","caseInsensitive":false,"multiline":false,"toolCallId":"toolu_01UkaJCxULvatgiNBE8f4JAP","offset":0}
+```
+
+### Tool Ripgrep Raw Search
+
+```
+{"pattern":"public static void onLogout\\(PlayerEvent.PlayerLoggedOutEvent event\\) \\{","path":"C:\\Users\\Admin\\.grok\\worktrees\\dragonminez\\XenoPixelsNetwork_qwen\\src\\main\\java\\net\\bullettrain\\xenopixelsmod\\combat","glob":"{Bt3CinematicRushSystem,Bt3SparkingSystem,ChargeOverchargeManager,ChaseFlightSystem}.java","outputMode":"content","contextAfter":10,"caseInsensitive":false,"multiline":false,"toolCallId":"toolu_019WyX4z5Pr7CzkzwKRzMUk8","offset":0}
+```
+
+### Tool Ripgrep Raw Search
+
+```
+{"pattern":"static \\w+ (stopChase|interrupt|forget|isActive)\\(","path":"C:\\Users\\Admin\\.grok\\worktrees\\dragonminez\\XenoPixelsNetwork_qwen\\src\\main\\java\\net\\bullettrain\\xenopixelsmod\\combat","glob":"{ChaseFlightSystem,Bt3CinematicRushSystem,ChargeOverchargeManager}.java","outputMode":"content","caseInsensitive":false,"multiline":false,"toolCallId":"toolu_01LjqbWFomB7tMQ9iPZf5nAm","offset":0}
+```
+
+### Tool Read File V2
+
+```
+{"path":"C:\\Users\\Admin\\.grok\\worktrees\\dragonminez\\XenoPixelsNetwork_qwen\\src\\main\\java\\net\\bullettrain\\xenopixelsmod\\config\\XenoServerConfig.java","offset":1068,"limit":14}
+```
+
+### Tool Read File V2
+
+```
+{"path":"C:\\Users\\Admin\\.grok\\worktrees\\dragonminez\\XenoPixelsNetwork_qwen\\src\\main\\java\\net\\bullettrain\\xenopixelsmod\\config\\XenoServerConfig.java","offset":1346,"limit":14}
+```
+
+## Assistant
+
+I have the full picture now. Setting up the task list and starting Phase 2 with TDD (red first).
+
+### Tool Todo Write
+
+### Tool Ripgrep Raw Search
+
+```
+{"pattern":"Action\\.COMBO_HIT|Action\\.CINEMATIC_RUSH|XenoServerClientState\\.(combat|combo)\\(\\)","path":"C:\\Users\\Admin\\.grok\\worktrees\\dragonminez\\XenoPixelsNetwork_qwen\\src\\main\\java\\net\\bullettrain\\xenopixelsmod\\client\\combat\\Bt3CombatClient.java","outputMode":"content","caseInsensitive":false,"multiline":false,"toolCallId":"toolu_01HbAHf8ho4doTQFfTKQE6as","offset":0}
+```
+
+### Tool Ripgrep Raw Search
+
+```
+{"pattern":"public static void broadcast\\w*\\(","path":"C:\\Users\\Admin\\.grok\\worktrees\\dragonminez\\XenoPixelsNetwork_qwen\\src\\main\\java\\net\\bullettrain\\xenopixelsmod\\combat\\DmzAnimHelper.java","outputMode":"content","caseInsensitive":false,"multiline":false,"toolCallId":"toolu_01Gjg3h9H5vG6k63Vyr347in","offset":0}
+```
+
+### Tool Read File V2
+
+```
+{"path":"C:\\Users\\Admin\\.grok\\worktrees\\dragonminez\\XenoPixelsNetwork_qwen\\ai\\handoff-template.md"}
+```
+
+## Assistant
+
+Writing the failing tests first.
+
+### Tool Edit File V2
+
+### Tool Edit File V2
+
+### Tool Edit File V2
+
+### Tool Edit File V2
+
+## Assistant
+
+Now running the new tests to confirm they fail for the right reason (missing classes/members) before implementing.
+
+### Tool Run Terminal Command V2
+
+### Tool Run Terminal Command V2
+
+## Assistant
+
+Offline cache lacks the settings plugin; retrying online.
+
+### Tool Run Terminal Command V2
+
+## Assistant
+
+RED confirmed: the tests fail only on the missing symbols. Now the implementation — pure types first.
+
+### Tool Edit File V2
+
+### Tool Edit File V2
+
+### Tool Edit File V2
+
+## Assistant
+
+Now config: route normalization through the enum, bump the config version, and register the key.
+
+### Tool Ripgrep Raw Search
+
+```
+{"pattern":"CURRENT_CONFIG_VERSION = |normalizeCombatControllerMode\\(String mode\\)|public static String combatControllerMode|public String combatControllerMode","path":"C:\\Users\\Admin\\.grok\\worktrees\\dragonminez\\XenoPixelsNetwork_qwen\\src\\main\\java\\net\\bullettrain\\xenopixelsmod\\config\\XenoServerConfig.java","outputMode":"content","contextBefore":6,"contextAfter":4,"caseInsensitive":false,"multiline":false,"toolCallId":"toolu_018NrfENLRWNHPU1cGDB5f7L","offset":0}
+```
+
+### Tool Ripgrep Raw Search
+
+```
+{"pattern":"text\\(\"|private static void text\\(|static void register|npcSayEnabled","path":"C:\\Users\\Admin\\.grok\\worktrees\\dragonminez\\XenoPixelsNetwork_qwen\\src\\main\\java\\net\\bullettrain\\xenopixelsmod\\config\\XenoServerConfigKeys.java","outputMode":"content","contextAfter":3,"caseInsensitive":false,"headLimit":30,"multiline":false,"toolCallId":"toolu_01AqWV85QWrEQRSSEBySZRbT","offset":0}
+```
+
+### Tool Read File V2
+
+```
+{"path":"C:\\Users\\Admin\\.grok\\worktrees\\dragonminez\\XenoPixelsNetwork_qwen\\src\\main\\java\\net\\bullettrain\\xenopixelsmod\\config\\XenoServerConfigKeys.java","offset":548,"limit":14}
+```
+
+### Tool Ripgrep Raw Search
+
+```
+{"pattern":"Bumped to 1[0-9]|version 1[0-9]|17\\b","path":"C:\\Users\\Admin\\.grok\\worktrees\\dragonminez\\XenoPixelsNetwork_qwen\\src\\main\\java\\net\\bullettrain\\xenopixelsmod\\config\\XenoServerConfig.java","outputMode":"content","caseInsensitive":false,"headLimit":12,"multiline":false,"toolCallId":"toolu_01BSFHdzoWuiHEHS6P3EMZ8B","offset":0}
+```
+
+### Tool Edit File V2
+
+### Tool Edit File V2
+
+### Tool Edit File V2
+
+### Tool Ripgrep Raw Search
+
+```
+{"pattern":"public static (Result|List<String>|\\w+) (get|set|suggest|list)\\(|public final boolean ok|public final String message|record Result","path":"C:\\Users\\Admin\\.grok\\worktrees\\dragonminez\\XenoPixelsNetwork_qwen\\src\\main\\java\\net\\bullettrain\\xenopixelsmod\\config\\XenoServerConfigKeys.java","outputMode":"content","contextAfter":6,"caseInsensitive":false,"multiline":false,"toolCallId":"toolu_01UGYnbCpeJdyhUhJjyJFqTA","offset":0}
+```
+
+### Tool Read File V2
+
+```
+{"path":"C:\\Users\\Admin\\.grok\\worktrees\\dragonminez\\XenoPixelsNetwork_qwen\\src\\main\\java\\net\\bullettrain\\xenopixelsmod\\network\\SyncServerConfigPacket.java","limit":60}
+```
+
+### Tool Ripgrep Raw Search
+
+```
+{"pattern":"hakaiGlowColor|public static SyncServerConfigPacket decode|public XenoServerConfig.Data|return new SyncServerConfigPacket|\\.data\\b","path":"C:\\Users\\Admin\\.grok\\worktrees\\dragonminez\\XenoPixelsNetwork_qwen\\src\\main\\java\\net\\bullettrain\\xenopixelsmod\\network\\SyncServerConfigPacket.java","outputMode":"content","contextBefore":2,"contextAfter":4,"caseInsensitive":false,"multiline":false,"toolCallId":"toolu_016rWrDdLYVL84YvEbVSrbXS","offset":0}
+```
+
+### Tool Read File V2
+
+```
+{"path":"C:\\Users\\Admin\\.grok\\worktrees\\dragonminez\\XenoPixelsNetwork_qwen\\src\\main\\java\\net\\bullettrain\\xenopixelsmod\\network\\SyncServerConfigPacket.java","offset":225,"limit":12}
+```
+
+### Tool Edit File V2
+
+### Tool Edit File V2
+
+### Tool Edit File V2
+
+### Tool Edit File V2
+
+### Tool Ripgrep Raw Search
+
+```
+{"pattern":"\"69\"|PROTOCOL","path":"C:\\Users\\Admin\\.grok\\worktrees\\dragonminez\\XenoPixelsNetwork_qwen\\src","glob":"*.java","outputMode":"content","caseInsensitive":false,"multiline":false,"toolCallId":"toolu_019ADyZQNudez9MQnidEsoSA","offset":0}
+```
+
+### Tool Read File V2
+
+```
+{"path":"C:\\Users\\Admin\\.grok\\worktrees\\dragonminez\\XenoPixelsNetwork_qwen\\src\\main\\java\\net\\bullettrain\\xenopixelsmod\\command\\XenoPermissions.java"}
+```
+
+### Tool Edit File V2
+
+### Tool Todo Write
+
+### Tool Read File V2
+
+```
+{"path":"C:\\Users\\Admin\\.grok\\worktrees\\dragonminez\\XenoPixelsNetwork_qwen\\src\\main\\java\\net\\bullettrain\\xenopixelsmod\\combat\\Bt3CombatEvents.java","offset":30,"limit":130}
+```
+
+### Tool Ripgrep Raw Search
+
+```
+{"pattern":"public static void (broadcast|syncTo)\\(|static void persist\\(|XenoServerConfig\\.save\\(\\)","path":"C:\\Users\\Admin\\.grok\\worktrees\\dragonminez\\XenoPixelsNetwork_qwen\\src\\main\\java\\net\\bullettrain\\xenopixelsmod\\command","glob":"{DmzHudCommands,XenoConfigCommands}.java","outputMode":"content","contextAfter":8,"caseInsensitive":false,"multiline":false,"toolCallId":"toolu_01Pajggxg9xFQpsDKCj1Johc","offset":0}
+```
+
+### Tool Ripgrep Raw Search
+
+```
+{"pattern":"public static void stopChase\\(|public static void interrupt\\(|public static void cancel\\(","path":"C:\\Users\\Admin\\.grok\\worktrees\\dragonminez\\XenoPixelsNetwork_qwen\\src\\main\\java\\net\\bullettrain\\xenopixelsmod\\combat","glob":"{ChaseFlightSystem,Bt3CinematicRushSystem,HakaiChannelSystem}.java","outputMode":"content","contextAfter":6,"caseInsensitive":false,"multiline":false,"toolCallId":"toolu_013tUeivLPQqsER6gL1AMU8c","offset":0}
+```
+
+### Tool Ripgrep Raw Search
+
+```
+{"pattern":"static \\w+ stopChase\\(|static boolean isChasing\\(|static \\w+ (isCharging|isActive|stop)\\(","path":"C:\\Users\\Admin\\.grok\\worktrees\\dragonminez\\XenoPixelsNetwork_qwen\\src\\main\\java\\net\\bullettrain\\xenopixelsmod\\combat","glob":"{ChaseFlightSystem,ChargeOverchargeManager}.java","outputMode":"content","contextAfter":3,"caseInsensitive":false,"multiline":false,"toolCallId":"toolu_01L2PApwc8JBBUiDMHeZBPSH","offset":0}
+```
+
+### Tool Ripgrep Raw Search
+
+```
+{"pattern":"public static \\w+ \\w+\\(ServerPlayer","path":"C:\\Users\\Admin\\.grok\\worktrees\\dragonminez\\XenoPixelsNetwork_qwen\\src\\main\\java\\net\\bullettrain\\xenopixelsmod\\combat","glob":"ChaseFlightSystem.java","outputMode":"content","caseInsensitive":false,"multiline":false,"toolCallId":"toolu_01GHcZHajuWamhap6qnCpPFA","offset":0}
+```
+
+### Tool Glob File Search
+
+```
+{"targetDirectory":"C:\\Users\\Admin\\.grok\\worktrees\\dragonminez\\XenoPixelsNetwork_qwen\\src\\main\\java","globPattern":"**/ChaseFlightSystem.java"}
+```
+
+### Tool Ripgrep Raw Search
+
+```
+{"pattern":"public static \\w+ \\w+\\(ServerPlayer","path":"C:\\Users\\Admin\\.grok\\worktrees\\dragonminez\\XenoPixelsNetwork_qwen\\src\\main\\java\\net\\bullettrain\\xenopixelsmod\\network\\ChaseFlightSystem.java","outputMode":"content","caseInsensitive":false,"multiline":false,"toolCallId":"toolu_016YSDRhnDLM8xtnTHdr5uWe","offset":0}
+```
+
+## Assistant
+
+Now the per-player reset hooks in the limiter and events, then the service that ties them together.
+
+### Tool Edit File V2
+
+### Tool Edit File V2
+
+### Tool Edit File V2
+
+### Tool Ripgrep Raw Search
+
+```
+{"pattern":"ServerTickEvent\\.(Post|Pre)|ServerStartedEvent","path":"C:\\Users\\Admin\\.grok\\worktrees\\dragonminez\\XenoPixelsNetwork_qwen\\src\\main\\java","outputMode":"content","caseInsensitive":false,"headLimit":6,"multiline":false,"toolCallId":"toolu_01HwkXgRfiSWfo7AP1ZZS8fo","offset":0}
+```
+
+### Tool Read File V2
+
+```
+{"path":"C:\\Users\\Admin\\.grok\\worktrees\\dragonminez\\XenoPixelsNetwork_qwen\\src\\main\\java\\net\\bullettrain\\xenopixelsmod\\command\\XenoConfigCommands.java","limit":80}
+```
+
+### Tool Ripgrep Raw Search
+
+```
+{"pattern":"private static int reload\\(","path":"C:\\Users\\Admin\\.grok\\worktrees\\dragonminez\\XenoPixelsNetwork_qwen\\src\\main\\java\\net\\bullettrain\\xenopixelsmod\\command\\XenoConfigCommands.java","outputMode":"content","contextAfter":30,"caseInsensitive":false,"multiline":false,"toolCallId":"toolu_011gE6m3Kg3RM8QSXNuUpxzB","offset":0}
+```
+
+## Assistant
+
+Now the `/xenocombat` command.
+
+### Tool Edit File V2
+
+### Tool Edit File V2
+
+### Tool Read File V2
+
+```
+{"path":"C:\\Users\\Admin\\.grok\\worktrees\\dragonminez\\XenoPixelsNetwork_qwen\\src\\main\\java\\net\\bullettrain\\xenopixelsmod\\client\\combat\\Bt3CombatClient.java","offset":1636,"limit":60}
+```
+
+### Tool Read File V2
+
+```
+{"path":"C:\\Users\\Admin\\.grok\\worktrees\\dragonminez\\XenoPixelsNetwork_qwen\\src\\main\\java\\net\\bullettrain\\xenopixelsmod\\client\\combat\\Bt3CombatClient.java","offset":1838,"limit":30}
+```
+
+### Tool Edit File V2
+
+### Tool Todo Write
+
+## Assistant
+
+Now the focused test run (GREEN check).
+
+### Tool Run Terminal Command V2
+
+## User
+
+/minecraft-imagegen /minecraft-modding /minecraft-resource-pack /minecraft-datapack /minecraft-testing /brainstorming /superdesign /using-superpowers /requesting-code-review /visualize
+
+### Tool Read File V2
+
+```
+{"path":"C:\\Users\\Admin\\.cursor\\projects\\c-Users-Admin-grok-worktrees-dragonminez-XenoPixelsNetwork-qwen/terminals/927441.txt"}
+```
+
+## Assistant
+
+Still compiling. While that runs, I'll do the work that doesn't depend on it: check the tree state and locate the Phase 2 checklist in `plan.md` to record progress.
+
+### Tool Run Terminal Command V2
+
+### Tool Ripgrep Raw Search
+
+```
+{"pattern":"^#+ |^- \\[ \\]|^\\d+\\. |Phase 2|Phase 3","path":"C:\\Users\\Admin\\.grok\\worktrees\\dragonminez\\XenoPixelsNetwork_qwen\\plan.md","outputMode":"content","caseInsensitive":false,"multiline":false,"toolCallId":"toolu_01EPCboFjQyrgoUu5VJahB2o","offset":0}
+```
+
+### Tool Read File V2
+
+```
+{"path":"C:\\Users\\Admin\\.grok\\worktrees\\dragonminez\\XenoPixelsNetwork_qwen\\plan.md","limit":80}
+```
+
+## Assistant
+
+Let me check on the test run now.
+
+### Tool Await
+
+```
+{"taskId":"927441","blockUntilMs":240000}
+```
+
+### Tool Read File V2
+
+```
+{"path":"C:\\Users\\Admin\\.cursor\\projects\\c-Users-Admin-grok-worktrees-dragonminez-XenoPixelsNetwork-qwen/terminals/927441.txt"}
+```
+
+## User
+
+they all matter
+
+## Assistant
+
+Understood — I'll work every attached skill into this phase where it has a real deliverable, and say explicitly where one routes to a later phase. First, the focused test result.
+
+### Tool Read File V2
+
+```
+{"path":"C:\\Users\\Admin\\.cursor\\projects\\c-Users-Admin-grok-worktrees-dragonminez-XenoPixelsNetwork-qwen/terminals/927441.txt"}
+```
+
+## Assistant
+
+Green, but "BUILD SUCCESSFUL" alone isn't proof the tests executed. Checking the JUnit reports, then launching the full suite in the background while I run the code review.
+
+### Tool Run Terminal Command V2
+
+## Assistant
+
+33 tests executed, 0 failures. Now the full suite in the background, and the code review subagent in parallel.
+
+### Tool Run Terminal Command V2
+
+### Tool New agent
+
+## Assistant
+
+The reviewer's summary arrived without the detailed findings; asking for the full list.
+
+### Tool New agent
+
+## User
+
+is the new combat only using a controller aka joystick?
+
+### Tool Ripgrep Raw Search
+
+```
+{"pattern":"gamepad|joystick|GLFW_JOYSTICK|Controllable|glfwGetGamepadState","path":"C:\\Users\\Admin\\.grok\\worktrees\\dragonminez\\XenoPixelsNetwork_qwen\\src\\main\\java","outputMode":"files_with_matches","caseInsensitive":true,"multiline":false,"toolCallId":"toolu_018pXUH5H3MY4JKnJ8f2wf8K","offset":0}
+```
+
+## Assistant
+
+No. "Controller" in the plan and in the code (`CombatControllerMode`, `CombatControllerService`) means the *software* combat controller — the input-to-state-machine layer that decides what a punch/dash/guard does — not a gamepad.
+
+Input for the new `bt3_manual` mode is keyboard + mouse first, exactly like the current Xeno combat: left click mash/hold, directional keys for strike variants (body blow / uppercut / hook / sweep), the dash key + strike for rush routes, guard/vanish/ki keys as cancel branches. The plan says "reuse the existing Xeno key/controller infrastructure", and the repo already has a gamepad layer (`client/pad/XenoPadInput`, `Bt3ControllerInput`, `PadChords`, `XenoPadBinds`, Controlify entrypoint) that today feeds the legacy combat. In Phase 4 both keyboard/mouse and that pad layer will be routed to whichever controller is selected, so a gamepad works if you use one, but is never required.
+
+Server-side it does not matter which device produced the input: the client only sends intent packets, and the server owns targets, combo step, timing windows, costs and damage.
+
+Status of the work so far, since I was mid-task:
+
+- Phase 2 (mode model) is implemented and the focused tests pass (33 tests, 0 failures): `CombatControllerMode` enum with fail-safe `legacy` default, `combatControllerMode` config key (aliases `combatmode`, `bt3mode`…), config version 18, `SyncServerConfigPacket` appended field + protocol 70, permissions, `/xenocombat status|mode|reload`, `CombatControllerService` atomic sweep + tick watcher, and server-side refusal of legacy `COMBO_HIT`/`CINEMATIC_RUSH` while in `bt3_manual`.
+- Full `./gradlew test` is running in the background.
+- The code-review subagent flagged two Important items I will fix next: the `/xenoset combatControllerMode` path can broadcast one tick before the sweep runs, and `setMode` can print "already X" after a sweep actually ran. I'm waiting on its detailed report to apply the fixes precisely.
+
+## User
+
+<timestamp>Sunday, Sep 20, 2026, 4:52 PM (UTC+3)</timestamp>
+<system_notification>
+The following task has finished. If you were already aware, ignore this notification and do not restate prior responses.
+
+<task>
+kind: shell
+status: success
+task_id: 927440
+title: Read stop notes and combat mode config diff hunks
+tool_call_id: toolu_01GeZtxjB2oodXgw9RCEL2QL
+output_path: C:\Users\Admin\.cursor\projects\c-Users-Admin-grok-worktrees-dragonminez-XenoPixelsNetwork-qwen\terminals\927440.txt
+</task>
+</system_notification>
+
+## User
+
+<timestamp>Sunday, Sep 20, 2026, 4:52 PM (UTC+3)</timestamp>
+<system_notification>
+The following task has finished. If you were already aware, ignore this notification and do not restate prior responses.
+
+<task>
+kind: shell
+status: success
+task_id: 927442
+title: Run full unit test suite in background
+tool_call_id: toolu_01Ky1GsiY27ySvDKQRS7e2Sm
+output_path: C:\Users\Admin\.cursor\projects\c-Users-Admin-grok-worktrees-dragonminez-XenoPixelsNetwork-qwen\terminals\927442.txt
+</task>
+</system_notification>
+<user_query>Briefly inform the user about the task result and perform any follow-up actions (if needed).</user_query>
+
+### Tool Read File V2
+
+```
+{"path":"C:\\Users\\Admin\\.cursor\\projects\\c-Users-Admin-grok-worktrees-dragonminez-XenoPixelsNetwork-qwen\\terminals\\927442.txt"}
+```
+
+### Tool Run Terminal Command V2
+
+## Assistant
+
+The full suite is green: `./gradlew test -PofflineMcMeta` → BUILD SUCCESSFUL, 204 suites, 1167 tests, 0 failures, 0 errors, 0 skipped (aggregated from the JUnit XML, not just the exit code). The earlier notification was just the prior session's read-only diff scan finishing; nothing to act on there.
+
+Next I'm applying the two Important review findings (sweep-before-broadcast on the `/xenoset` path, and the `setMode` return value) once the reviewer's detailed report lands, then re-running the focused tests and writing the dated handoff.
+
+## User
+
+<timestamp>Sunday, Sep 20, 2026, 4:53 PM (UTC+3)</timestamp>
+<system_notification>
+The following task has finished. If you were already aware, ignore this notification and do not restate prior responses.
+
+<task>
+kind: subagent
+status: success
+task_id: 4ad41240-dde1-4110-8a3a-a2aeed310905
+title: Get full review findings
+tool_call_id: toolu_01AUBskMGcbUU63JXM4fqSZt
+agent_id: 4ad41240-dde1-4110-8a3a-a2aeed310905
+detail: <user_visible_high_level_summary>
+Full report delivered. Strengths and eight issues documented with file:line evidence; two Important (broadcast-before-sweep on the /xenoset path, setMode returning false after a sweep in the previous==next && applied!=next state), one coverage gap, five Minor. Verdict: ready to proceed after fixing I-1 and I-2.
+</user_visible_high_level_summary>
+<response>
+The full report is above.
+</response>
+output_path: c:\Users\Admin\.cursor\projects\c-Users-Admin-grok-worktrees-dragonminez-XenoPixelsNetwork-qwen\agent-transcripts\5f2c776b-a7ce-4ced-9921-94a3939cf948\subagents\4ad41240-dde1-4110-8a3a-a2aeed310905.jsonl
+</task>
+</system_notification>
+<user_query>Perform any necessary follow-up actions in response to the subagent completion above. If no follow-up work is needed, no further action is required. If you mention an agent or subagent in your response, link it with the `[Name](id)` Don't use generic label such as `[agent]`, `[worker]`, or `[subagent]`. For cloud subagents, when the agent has edited code, link to `[Review](bc-id#changes)`, or, if you know the exact added and deleted line counts, `[Review +A −D](bc-id#changes)`, replacing A and D with those counts. Never write A or D literally. Use `[Try Live](bc-id#desktop)` only when the agent used computer use. Don't repeat the same confirmation every time.</user_query>
+
+### Tool Ripgrep Raw Search
+
+```
+{"pattern":"(I-1|I-2|Important|Minor|Coverage|Critical)","path":"c:\\Users\\Admin\\.cursor\\projects\\c-Users-Admin-grok-worktrees-dragonminez-XenoPixelsNetwork-qwen\\agent-transcripts\\5f2c776b-a7ce-4ced-9921-94a3939cf948\\subagents\\4ad41240-dde1-4110-8a3a-a2aeed310905.jsonl","outputMode":"count","caseInsensitive":false,"multiline":false,"toolCallId":"toolu_01KMLpezZDK986YwicktMShX","offset":0}
+```
+
+### Tool Run Terminal Command V2
+
+### Tool Ripgrep Raw Search
+
+```
+{"pattern":"Important","path":"c:\\Users\\Admin\\.cursor\\projects\\c-Users-Admin-grok-worktrees-dragonminez-XenoPixelsNetwork-qwen\\agent-transcripts\\5f2c776b-a7ce-4ced-9921-94a3939cf948\\subagents\\4ad41240-dde1-4110-8a3a-a2aeed310905.jsonl","outputMode":"content","caseInsensitive":false,"multiline":false,"toolCallId":"toolu_01WPPWsH2cC7baz3Kmf2hSy1","offset":0}
+```
+
+### Tool Run Terminal Command V2
+
+### Tool Run Terminal Command V2
+
+### Tool Read File V2
+
+```
+{"path":"C:\\Users\\Admin\\AppData\\Local\\Temp\\review.md"}
+```
+
+### Tool Ripgrep Raw Search
+
+```
+{"pattern":"public static boolean \\w+\\((ServerPlayer|UUID)","path":"C:\\Users\\Admin\\.grok\\worktrees\\dragonminez\\XenoPixelsNetwork_qwen\\src\\main\\java\\net\\bullettrain\\xenopixelsmod\\combat\\overcharge\\ChargeOverchargeManager.java","outputMode":"content","caseInsensitive":false,"multiline":false,"toolCallId":"toolu_01693nvyQRz4Ezm1joyohp7h","offset":0}
+```
+
+### Tool Ripgrep Raw Search
+
+```
+{"pattern":"LOGGER|private static final Logger","path":"C:\\Users\\Admin\\.grok\\worktrees\\dragonminez\\XenoPixelsNetwork_qwen\\src\\main\\java\\net\\bullettrain\\xenopixelsmod\\config\\XenoServerConfig.java","outputMode":"content","caseInsensitive":false,"headLimit":3,"multiline":false,"toolCallId":"toolu_01LqCMvubkbySgkcibhgoWgS","offset":0}
+```
+
+### Tool Ripgrep Raw Search
+
+```
+{"pattern":"public static boolean isActive\\(ServerPlayer|public static boolean isChanneling\\(|public static boolean isChasing\\(ServerPlayer player\\)","path":"C:\\Users\\Admin\\.grok\\worktrees\\dragonminez\\XenoPixelsNetwork_qwen\\src\\main\\java\\net\\bullettrain\\xenopixelsmod","outputMode":"content","caseInsensitive":false,"multiline":false,"toolCallId":"toolu_01TrsPSrQrMcjyiRgNaurs7g","offset":0}
+```
+
+### Tool Run Terminal Command V2
+
+## Assistant
+
+Now the fixes, tests first for the new pure `decide` table (I-3).
+
+### Tool Edit File V2
+
+### Tool Edit File V2
+
+## Assistant
+
+Now the service (I-1, I-2, M-1) and command (I-2, M-7).
+
+### Tool Edit File V2

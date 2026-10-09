@@ -1,6 +1,3 @@
-{
-  "parent": "minecraft:item/generated",
-  "textures": {
-    "layer0": "dragonminez:item/armors/wonder_majin_armor_boots"
-  }
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:7549b7bfe1c6238c63ae3ca755d4b74ef07efcb3064242d4ee54e2d8e76d0123
+size 128

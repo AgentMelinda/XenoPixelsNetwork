@@ -1,6 +1,3 @@
-{
-  "parent": "minecraft:block/button",
-  "textures": {
-    "texture": "dragonminez:block/namek_sacred_planks"
-  }
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:521f5fc983f3139d5bef60b1074a00400160c7c52f42a1fd9177e12fc36f6747
+size 116

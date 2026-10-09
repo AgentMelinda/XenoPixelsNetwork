@@ -1,6 +1,3 @@
-{
-  "parent": "minecraft:item/generated",
-  "textures": {
-    "layer0": "dragonminez:item/armors/vegetto_armor_chestplate"
-  }
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:33e1e0f2fcab77cbb3a4519ac410e19c4ca683355aa22a015175766bd8c34661
+size 128

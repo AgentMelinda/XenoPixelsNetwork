@@ -1,6 +1,3 @@
-{
-  "parent": "minecraft:item/generated",
-  "textures": {
-    "layer0": "dragonminez:item/armors/whis_armor_boots"
-  }
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:0984038c51394e5ee1d66466e644a1c334915ce9db767a22e801b2d05da8f07c
+size 120

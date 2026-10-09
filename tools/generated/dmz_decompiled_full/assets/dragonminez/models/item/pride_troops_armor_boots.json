@@ -1,6 +1,3 @@
-{
-  "parent": "minecraft:item/generated",
-  "textures": {
-    "layer0": "dragonminez:item/armors/pride_troops_armor_boots"
-  }
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:8e3810b76c917d491d7cf8172c2930231f2b93139ab16ffcd82c81b3db3ad410
+size 128

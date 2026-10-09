@@ -1,6 +1,3 @@
-{
-  "parent": "minecraft:item/generated",
-  "textures": {
-    "layer0": "dragonminez:item/armors/a17_super_armor_boots"
-  }
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:e53557ad663afbef82055bf60cb1b376ecf8603064ab0f77ae67f3a29d134727
+size 125

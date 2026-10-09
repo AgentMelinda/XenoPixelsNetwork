@@ -1,6 +1,3 @@
-{
-  "parent": "minecraft:item/handheld",
-  "textures": {
-    "layer0": "dragonminez:item/gete_pickaxe"
-  }
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:69c07c1a670a37c5c52b4198bf8599e87545dbd6177eea881e84e7b70ce91593
+size 108

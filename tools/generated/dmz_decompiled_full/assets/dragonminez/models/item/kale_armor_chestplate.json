@@ -1,6 +1,3 @@
-{
-  "parent": "minecraft:item/generated",
-  "textures": {
-    "layer0": "dragonminez:item/armors/kale_armor_chestplate"
-  }
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:30ffca96dbe3e94fe7198016e69697a3d6ff0153f37a9d360138e80b8269b9b9
+size 125

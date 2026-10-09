@@ -61,6 +61,9 @@ public final class XenoServerConfigKeys {
     private static final Map<String, String> ALIAS = new LinkedHashMap<>();
 
     static {
+        integer("npcHitRecoveryTicks", "NPC hit recovery before turning/attacking (0-200 ticks; 0 disables)",
+                () -> XenoServerConfig.npcHitRecoveryTicks,
+                v -> XenoServerConfig.npcHitRecoveryTicks = Math.max(0, Math.min(200, v)), "npcHitRecovery");
         bool("bt3CombatEnabled", "Master combat switch",
                 () -> XenoServerConfig.bt3CombatEnabled,
                 v -> XenoServerConfig.bt3CombatEnabled = v,
@@ -288,6 +291,14 @@ public final class XenoServerConfigKeys {
                 () -> XenoServerConfig.effekseerKiImpacts,
                 v -> XenoServerConfig.effekseerKiImpacts = v,
                 "kiimpact", "kifx");
+        bool("effekseerKiAttacks", "Owned Combat V3 ki: true = AAA HD effects, false = native DragonMineZ rendering (legacy; prefer kiAttackVisualMode)",
+                () -> XenoServerConfig.effekseerKiAttacks,
+                v -> {
+                    XenoServerConfig.effekseerKiAttacks = v;
+                    XenoServerConfig.kiAttackVisualMode = v ? "aaa" : "dmz";
+                },
+                "hdki", "kiattacks");
+        // String modes use the bool bridge above plus /xenokiattacks; registry string helper may be absent.
         flt("effekseerKiImpactScale", "Ki explosion impact size (0.05-5)",
                 () -> XenoServerConfig.effekseerKiImpactScale,
                 v -> XenoServerConfig.effekseerKiImpactScale = XenoServerConfig.effectScale(v),
@@ -392,9 +403,9 @@ public final class XenoServerConfigKeys {
                 () -> (float) XenoServerConfig.vanishSide,
                 v -> XenoServerConfig.vanishSide = Math.max(0.0, Math.min(8.0, v)),
                 "vanishside");
-        flt("chargePunchKnockback", "Charged punch knockback distance (1 = original, 0-10)",
+        flt("chargePunchKnockback", "Charged punch knockback distance (1 = original, 0-30)",
                 () -> XenoServerConfig.chargePunchKnockback,
-                v -> XenoServerConfig.chargePunchKnockback = Math.max(0f, Math.min(10f, v)),
+                v -> XenoServerConfig.chargePunchKnockback = Math.max(0f, Math.min(30f, v)),
                 "punchkb", "punchknockback");
         bool("chargePunchParabolic", "Charged punch throws the target in an arc (parabola)",
                 () -> XenoServerConfig.chargePunchParabolic,
@@ -410,7 +421,7 @@ public final class XenoServerConfigKeys {
                 "kicktap");
         flt("kickKnockbackScale", "Kick knockback distance scale",
                 () -> XenoServerConfig.kickKnockbackScale,
-                v -> XenoServerConfig.kickKnockbackScale = Math.max(0.1f, Math.min(8f, v)),
+                v -> XenoServerConfig.kickKnockbackScale = Math.max(0.1f, Math.min(30f, v)),
                 "kickkb", "kickknockback");
         integer("comboAnimGeneration", "Combat animation generation: 1 original, 2 twins, 3 BT3, 4 centred BT3 rush",
                 () -> XenoServerConfig.comboAnimGeneration,
@@ -874,7 +885,7 @@ public final class XenoServerConfigKeys {
                 v -> XenoServerConfig.npcCommandsIgnoreCommandBlockSetting = v,
                 "npccommands", "npccommandblock");
         text("combatControllerMode",
-                "Combat controller: legacy (default, pre-manual Xeno) or bt3_manual. "
+                "Combat controller: legacy (default, v1), bt3_manual, or v2 (XenoCombat v2). "
                         + "Prefer /xenocombat mode so live combat state is swept on switch",
                 XenoServerConfig::normalizedCombatControllerMode,
                 v -> XenoServerConfig.combatControllerMode = XenoServerConfig.normalizeCombatControllerMode(v),

@@ -1,11 +1,3 @@
-{
-  "parent": "bettercombat:sword",
-  "attributes" : {
-    "attack_range": 2.4,
-    "category": "cutlass",
-    "attacks": [
-      {},
-      {}
-    ]
-  }
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:1225739ec566fce0272adb59078444d0d675a4485609077c9bf16f4f02f590e7
+size 164

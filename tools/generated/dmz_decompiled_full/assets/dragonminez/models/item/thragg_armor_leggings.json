@@ -1,6 +1,3 @@
-{
-  "parent": "minecraft:item/generated",
-  "textures": {
-    "layer0": "dragonminez:item/armors/thragg_armor_leggings"
-  }
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:1d155b309ed01cc5332877cd23857a4143ffb63180e80c5bb88cea4f2c02cef9
+size 125

@@ -1,6 +1,3 @@
-{
-  "parent": "minecraft:item/generated",
-  "textures": {
-    "layer0": "dragonminez:item/patterns/pattern_goku_super"
-  }
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:4f60894303b595d3b0aebc3f27c936aa234c3c7c31d7cb318919034af9573cbd
+size 124

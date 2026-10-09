@@ -1,8 +1,3 @@
-{
-  "id": "android_saga",
-  "name": "dmz.saga.android_saga",
-  "requirements": {
-    "previousSaga": "frieza_saga"
-  },
-  "questFolder": "saga_android"
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:88bf5d6f0168a6e41d9568857985416ac6e8bb3691a1dc205f4dbbf30458bd47
+size 160

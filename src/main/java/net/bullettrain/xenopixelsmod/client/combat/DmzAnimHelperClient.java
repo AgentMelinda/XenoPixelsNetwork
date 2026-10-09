@@ -55,10 +55,7 @@ public final class DmzAnimHelperClient {
         if (!XenoClientConfig.bt3CombatAnims) return;
         String anim = switch (style) {
             case FIST_LIGHT -> XenoTechniqueAnimBindingsClient.resolve(TechniqueAnimSlot.CHARGE_PUNCH);
-            case FIST_HEAVY -> XenoTechniqueAnimBindingsClient.clipFor(TechniqueAnimSlot.CHARGE_PUNCH)
-                    != null
-                    ? XenoTechniqueAnimBindingsClient.resolve(TechniqueAnimSlot.CHARGE_PUNCH)
-                    : DmzAnimHelper.CHARGE_HEAVY;
+            case FIST_HEAVY -> XenoTechniqueAnimBindingsClient.resolve(TechniqueAnimSlot.CHARGE_PUNCH);
             case KICK -> XenoTechniqueAnimBindingsClient.resolve(TechniqueAnimSlot.CHARGE_KICK);
             case DRAGON -> XenoTechniqueAnimBindingsClient.resolve(TechniqueAnimSlot.CHARGE_KI);
         };
@@ -147,8 +144,9 @@ public final class DmzAnimHelperClient {
         ClientStrikeChain.clear();
 
         if (style == ChargeStyle.KICK) {
+            String resolved = XenoTechniqueAnimBindingsClient.resolve(TechniqueAnimSlot.CHARGE_KICK_FIRE);
             boolean custom = XenoTechniqueAnimBindingsClient.clipFor(TechniqueAnimSlot.CHARGE_KICK_FIRE)
-                    != null;
+                    != null || DmzAnimHelper.weightedChargeRelease(resolved);
             String primary = custom
                     ? XenoTechniqueAnimBindingsClient.resolve(TechniqueAnimSlot.CHARGE_KICK_FIRE)
                     : (fullyCharged ? DmzAnimHelper.KICK_GUT_R : DmzAnimHelper.KICK_GUT_L);
@@ -182,7 +180,8 @@ public final class DmzAnimHelperClient {
 
         // Fist
         boolean customFire = XenoTechniqueAnimBindingsClient.clipFor(TechniqueAnimSlot.CHARGE_PUNCH_FIRE)
-                != null;
+                != null || DmzAnimHelper.weightedChargeRelease(
+                        XenoTechniqueAnimBindingsClient.resolve(TechniqueAnimSlot.CHARGE_PUNCH_FIRE));
         String fire = customFire
                 ? XenoTechniqueAnimBindingsClient.resolve(TechniqueAnimSlot.CHARGE_PUNCH_FIRE)
                 : (fullyCharged ? DmzAnimHelper.CHARGE_HEAVY_FIRE : DmzAnimHelper.CHARGE_LIGHT_FIRE);

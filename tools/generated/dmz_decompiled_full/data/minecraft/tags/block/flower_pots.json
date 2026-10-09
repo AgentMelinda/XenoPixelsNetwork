@@ -1,14 +1,3 @@
-{
-  "values": [
-    "dragonminez:potted_chrysanthemum_flower",
-    "dragonminez:potted_marigold_flower",
-    "dragonminez:potted_amaryllis_flower",
-    "dragonminez:potted_catharanthus_roseus_flower",
-    "dragonminez:potted_trillium_flower",
-    "dragonminez:potted_sacred_chrysanthemum_flower",
-    "dragonminez:potted_sacred_marigold_flower",
-    "dragonminez:potted_amaryllis_flower",
-    "dragonminez:potted_catharanthus_roseus_flower",
-    "dragonminez:potted_trillium_flower"
-  ]
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:8d7f0fb739cea9d261c4a04673b5a04bb35386baf4a70183de0ad3e8aff042b2
+size 488

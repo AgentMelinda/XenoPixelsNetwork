@@ -1,6 +1,3 @@
-{
-  "parent": "minecraft:item/generated",
-  "textures": {
-    "layer0": "dragonminez:item/patterns/pattern_evil_buu"
-  }
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:831ad55834ef17461565ead111c0aeff72f4fafd289de5608dfb906ac371739b
+size 122

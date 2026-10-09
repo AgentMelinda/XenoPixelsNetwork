@@ -1,33 +1,3 @@
-{
-  "replace": false,
-  "values": [
-    {
-      "id": "dragonminez:gete_sword",
-      "required": false
-    },
-    {
-      "id": "dragonminez:swords",
-      "required": false
-    },
-    {
-      "id": "dragonminez:yajirobe_katana",
-      "required": false
-    },
-    {
-      "id": "dragonminez:z_sword",
-      "required": false
-    },
-    {
-      "id": "dragonminez:brave_sword",
-      "required": false
-    },
-    {
-      "id": "dragonminez:dimensional_sword",
-      "required": false
-    },
-    {
-      "id": "dragonminez:power_pole",
-      "required": false
-    }
-  ]
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:07f9f98ecb38c4d500571cd1d73c098146b331a872bf6469767e61807b73b2e1
+size 603

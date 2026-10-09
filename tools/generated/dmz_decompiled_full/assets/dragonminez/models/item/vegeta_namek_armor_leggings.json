@@ -1,6 +1,3 @@
-{
-  "parent": "minecraft:item/generated",
-  "textures": {
-    "layer0": "dragonminez:item/armors/vegeta_namek_armor_leggings"
-  }
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:b7104bce0ceb9654b102a191f72d25d419ff0b1dd641e02f4ba540cbbd856996
+size 131

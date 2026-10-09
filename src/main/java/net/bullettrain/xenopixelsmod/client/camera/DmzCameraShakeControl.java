@@ -12,6 +12,6 @@ public final class DmzCameraShakeControl {
     }
 
     public static boolean suppress() {
-        return !XenoClientConfig.dmzCameraShake;
+        return !XenoClientConfig.dmzCameraShake || V3TechniqueCamera.active() || UltimateFinisherCamera.active();
     }
 }

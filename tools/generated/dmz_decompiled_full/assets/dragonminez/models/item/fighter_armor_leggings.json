@@ -1,6 +1,3 @@
-{
-  "parent": "minecraft:item/generated",
-  "textures": {
-    "layer0": "dragonminez:item/armors/fighter_armor_leggings"
-  }
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:4ecf818bdb38244eb274e07d3139bfe7744e8439f1bb0c54427400f2ba7b16df
+size 126

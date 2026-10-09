@@ -1,6 +1,3 @@
-{
-  "parent": "minecraft:item/generated",
-  "textures": {
-    "layer0": "dragonminez:item/yellow_capsule"
-  }
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:a7e761cb36253fbdb7967eb7a386d580591201958a165ae5f0e050ee9ba287b1
+size 111

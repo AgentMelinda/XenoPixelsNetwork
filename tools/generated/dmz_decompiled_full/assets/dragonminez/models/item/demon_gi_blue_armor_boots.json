@@ -1,6 +1,3 @@
-{
-  "parent": "minecraft:item/generated",
-  "textures": {
-    "layer0": "dragonminez:item/armors/demon_gi_blue_armor_boots"
-  }
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:88e4b2c12b738557aa2bcf65ebc0590911ceb7c3649811fe441e77a4d9aca66d
+size 129

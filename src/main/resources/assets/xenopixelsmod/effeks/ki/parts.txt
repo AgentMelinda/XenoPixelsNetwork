@@ -1,0 +1,13 @@
+charge
+ball
+giant
+wave_body
+wave_head
+wave_muzzle
+laser
+spiral
+disc
+explosion
+shield
+area
+impact

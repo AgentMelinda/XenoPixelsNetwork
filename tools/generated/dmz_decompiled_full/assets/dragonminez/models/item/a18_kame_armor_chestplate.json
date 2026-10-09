@@ -1,6 +1,3 @@
-{
-  "parent": "minecraft:item/generated",
-  "textures": {
-    "layer0": "dragonminez:item/armors/a18_kame_armor_chestplate"
-  }
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:632b6f5cc9eb400068e997678d0cc5b3a09715bab15fdd8fb76b2e024b477d72
+size 129

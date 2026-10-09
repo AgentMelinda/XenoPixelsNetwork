@@ -1,16 +1,3 @@
-{
-  "elements": [
-    {
-      "element": {
-        "element_type": "minecraft:single_pool_element",
-        "location": "dragonminez:gero_lab_stairs",
-        "processors": {
-          "processors": []
-        },
-        "projection": "rigid"
-      },
-      "weight": 1
-    }
-  ],
-  "fallback": "minecraft:empty"
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:e55a0c171ca4bd899920f1815002f2ecd9853edaf528ec5db25e2aa36302d85b
+size 314

@@ -1,6 +1,3 @@
-{
-  "parent": "minecraft:item/generated",
-  "textures": {
-    "layer0": "dragonminez:item/patterns/pattern_beerus"
-  }
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:6d2ff923d31f88007f90392b3ec7b7033ddf1b740c3a933c424da9d77a129f41
+size 120

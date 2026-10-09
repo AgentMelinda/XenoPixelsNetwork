@@ -1,6 +1,3 @@
-{
-  "parent": "minecraft:block/cube_all",
-  "textures": {
-    "all": "dragonminez:block/rocky_stone"
-  }
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:aeb578a9968b936d0311e125d3f6474a7749a076a070394a394ef9bf5d7524cf
+size 106

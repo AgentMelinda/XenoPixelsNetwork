@@ -1,6 +1,3 @@
-{
-  "parent": "minecraft:item/generated",
-  "textures": {
-    "layer0": "dragonminez:item/armors/trunks_kid_armor_leggings"
-  }
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:d38f2db75113169c8383852d2a6059e335e354f71922312e3d2f21c389e0b1bb
+size 129

@@ -1,6 +1,3 @@
-{
-  "parent": "minecraft:item/generated",
-  "textures": {
-    "layer0": "dragonminez:item/armors/gero_armor_boots"
-  }
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:d36e7d693c5e761a2e8eb50c6d4dd6344285bf1be8188a2a7d7ecb4004726f8f
+size 120

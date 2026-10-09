@@ -1,27 +1,3 @@
-{
-  "feature": "dragonminez:namek_gold_ore",
-  "placement": [
-    {
-      "type": "minecraft:count",
-      "count": 10
-    },
-    {
-      "type": "minecraft:in_square"
-    },
-    {
-      "type": "minecraft:height_range",
-      "height": {
-        "type": "minecraft:uniform",
-        "max_inclusive": {
-          "absolute": 32
-        },
-        "min_inclusive": {
-          "absolute": -64
-        }
-      }
-    },
-    {
-      "type": "minecraft:biome"
-    }
-  ]
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:f45d0a576759aa184ce1c41c75381730d639d1ef31df791ee28915d22e0f4968
+size 466

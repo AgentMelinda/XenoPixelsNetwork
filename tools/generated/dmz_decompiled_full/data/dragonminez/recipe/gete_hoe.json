@@ -1,32 +1,3 @@
-{
-  "type": "dragonminez:kikono_crafting",
-  "ingredients": [
-    {
-      "item": "dragonminez:gete_ingot"
-    },
-    {
-      "item": "dragonminez:gete_ingot"
-    },
-    [],
-    [],
-    {
-      "item": "dragonminez:kikono_stick"
-    },
-    [],
-    [],
-    {
-      "item": "dragonminez:kikono_stick"
-    },
-    []
-  ],
-  "output": {
-    "count": 1,
-    "id": "dragonminez:gete_hoe"
-  },
-  "pattern": {
-    "item": "dragonminez:pattern_gete"
-  },
-  "template": {
-    "item": "minecraft:iron_hoe"
-  }
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:68c3c9940b9f521ce77898536c929f8b83a4321298536933dcafcbe51fc3097f
+size 499

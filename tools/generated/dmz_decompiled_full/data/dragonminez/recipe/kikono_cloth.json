@@ -1,26 +1,3 @@
-{
-  "type": "minecraft:crafting_shapeless",
-  "category": "redstone",
-  "group": "dragonminez",
-  "ingredients": [
-    {
-      "item": "dragonminez:kikono_string"
-    },
-    {
-      "item": "dragonminez:kikono_string"
-    },
-    {
-      "item": "dragonminez:kikono_string"
-    },
-    {
-      "item": "dragonminez:kikono_string"
-    },
-    {
-      "item": "dragonminez:armor_crafting_kit"
-    }
-  ],
-  "result": {
-    "count": 1,
-    "id": "dragonminez:kikono_cloth"
-  }
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:a87ece865373adbadb647762aeffcf0f2b505a520081816072cd0f070fae6332
+size 471

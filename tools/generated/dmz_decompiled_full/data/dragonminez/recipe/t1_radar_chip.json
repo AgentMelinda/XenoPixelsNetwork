@@ -1,28 +1,3 @@
-{
-  "type": "minecraft:crafting_shaped",
-  "category": "redstone",
-  "group": "dragonminez",
-  "key": {
-    "B": {
-      "item": "minecraft:repeater"
-    },
-    "G": {
-      "item": "minecraft:green_concrete"
-    },
-    "P": {
-      "item": "dragonminez:radar_piece"
-    },
-    "R": {
-      "item": "minecraft:redstone"
-    }
-  },
-  "pattern": [
-    "RBR",
-    "GPG",
-    "RBR"
-  ],
-  "result": {
-    "count": 1,
-    "id": "dragonminez:t1_radar_chip"
-  }
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:bce7594a9b51ba9c665ca1293567615b2b33daf838105dfb973808a589fb5509
+size 456

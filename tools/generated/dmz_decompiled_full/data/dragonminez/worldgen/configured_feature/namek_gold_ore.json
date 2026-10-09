@@ -1,27 +1,3 @@
-{
-  "type": "minecraft:ore",
-  "config": {
-    "discard_chance_on_air_exposure": 0.0,
-    "size": 9,
-    "targets": [
-      {
-        "state": {
-          "Name": "dragonminez:namek_gold_ore"
-        },
-        "target": {
-          "block": "dragonminez:namek_stone",
-          "predicate_type": "minecraft:block_match"
-        }
-      },
-      {
-        "state": {
-          "Name": "dragonminez:namek_deepslate_gold_ore"
-        },
-        "target": {
-          "block": "dragonminez:namek_deepslate",
-          "predicate_type": "minecraft:block_match"
-        }
-      }
-    ]
-  }
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:83283190a4d6561d0fd26bc95c42fcf0a8724e6d984eec5ed5f708474e983273
+size 586

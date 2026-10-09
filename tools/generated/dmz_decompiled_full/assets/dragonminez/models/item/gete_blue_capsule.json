@@ -1,6 +1,3 @@
-{
-  "parent": "minecraft:item/generated",
-  "textures": {
-    "layer0": "dragonminez:item/gete_blue_capsule"
-  }
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:dca0add9af999480f25663f71ae538e417b2ca51a2f4efb3304f8230e9250eee
+size 114

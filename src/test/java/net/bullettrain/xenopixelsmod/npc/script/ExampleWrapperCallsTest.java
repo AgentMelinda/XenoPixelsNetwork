@@ -30,8 +30,10 @@ class ExampleWrapperCallsTest {
         Path folder = Path.of(System.getProperty("xenopixels.projectDir"), "examples", "customnpcs");
         Set<String> player = methods(ScriptPlayer.class);
         Set<String> npc = methods(ScriptNpc.class);
+        Set<String> world = methods(net.bullettrain.xenopixelsmod.npc.script.api.ScriptWorld.class);
         Pattern playerCall = Pattern.compile("\\bplayer\\.([A-Za-z]+)\\(");
         Pattern npcCall = Pattern.compile("\\bnpc\\.([A-Za-z]+)\\(");
+        Pattern worldCall = Pattern.compile("\\bworld\\.([A-Za-z]+)\\(");
         List<String> missing = new ArrayList<>();
         try (var files = Files.list(folder)) {
             for (Path script : files.filter(p -> p.getFileName().toString().startsWith("xenopixels_")
@@ -41,6 +43,8 @@ class ExampleWrapperCallsTest {
                 while (m.find()) if (!player.contains(m.group(1))) missing.add(script.getFileName() + ": player." + m.group(1));
                 m = npcCall.matcher(text);
                 while (m.find()) if (!npc.contains(m.group(1))) missing.add(script.getFileName() + ": npc." + m.group(1));
+                m = worldCall.matcher(text);
+                while (m.find()) if (!world.contains(m.group(1))) missing.add(script.getFileName() + ": world." + m.group(1));
             }
         }
         assertEquals(List.of(), missing);

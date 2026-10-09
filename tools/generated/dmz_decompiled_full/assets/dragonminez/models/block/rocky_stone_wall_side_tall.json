@@ -1,6 +1,3 @@
-{
-  "parent": "minecraft:block/template_wall_side_tall",
-  "textures": {
-    "wall": "dragonminez:block/rocky_stone"
-  }
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:4e213eeb9fc2ba820b9782b194d0e392d03d3a7806ae3bbd96dbd13202839d35
+size 122

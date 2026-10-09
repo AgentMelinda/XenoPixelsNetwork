@@ -1,6 +1,3 @@
-{
-  "parent": "minecraft:item/generated",
-  "textures": {
-    "layer0": "dragonminez:item/green_scouter"
-  }
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:f7fcd695bbca4073f4e921a243e785c075460d0a3d69ebd470e1d38195afd94b
+size 110

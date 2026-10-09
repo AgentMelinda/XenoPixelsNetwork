@@ -1,6 +1,3 @@
-{
-  "parent": "minecraft:item/generated",
-  "textures": {
-    "layer0": "dragonminez:item/armors/videl_armor_chestplate"
-  }
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:571a23f88bee73e00dca962fa2e79a173af333ac3b19827b6ebdfec558bde6b1
+size 126

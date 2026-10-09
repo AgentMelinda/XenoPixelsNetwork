@@ -1,14 +1,3 @@
-{
-  "type": "minecraft:smelting",
-  "category": "misc",
-  "cookingtime": 200,
-  "experience": 1.0,
-  "group": "diamond",
-  "ingredient": {
-    "item": "dragonminez:namek_diamond_ore"
-  },
-  "result": {
-    "count": 1,
-    "id": "minecraft:diamond"
-  }
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:afcb146f9c76adb8d71f28cd9f7a5c22960ebc508915c0ebbe0565e9dbd7e999
+size 253

@@ -1,14 +1,3 @@
-{
-  "type": "minecraft:blasting",
-  "category": "misc",
-  "cookingtime": 100,
-  "experience": 0.7,
-  "group": "iron_ingot",
-  "ingredient": {
-    "item": "dragonminez:namek_deepslate_iron_ore"
-  },
-  "result": {
-    "count": 1,
-    "id": "minecraft:iron_ingot"
-  }
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:97108d9236370ca16454533cf835012fac8229759296c8bb87af8caf50c88289
+size 266

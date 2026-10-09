@@ -1,6 +1,3 @@
-{
-  "parent": "minecraft:block/cube_all",
-  "textures": {
-    "all": "dragonminez:block/namek_cobblestone"
-  }
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:9a834324f2c4b6f77d575671583c16e7957d6bcf57ee1b497549740c53e0942d
+size 112

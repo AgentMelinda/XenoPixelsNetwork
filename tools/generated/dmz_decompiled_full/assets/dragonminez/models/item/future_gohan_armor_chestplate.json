@@ -1,6 +1,3 @@
-{
-  "parent": "minecraft:item/generated",
-  "textures": {
-    "layer0": "dragonminez:item/armors/future_gohan_armor_chestplate"
-  }
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:7bb47674250808b5f351fa95162432a0de76631377db3033a10646ad9d3156a2
+size 133

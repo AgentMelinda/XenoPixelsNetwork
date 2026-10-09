@@ -1,25 +1,3 @@
-{
-  "type": "minecraft:crafting_shaped",
-  "category": "misc",
-  "group": "dragonminez",
-  "key": {
-    "#": {
-      "item": "dragonminez:blank_pattern_z"
-    },
-    "B": {
-      "item": "minecraft:blue_dye"
-    },
-    "N": {
-      "item": "minecraft:black_dye"
-    }
-  },
-  "pattern": [
-    "B#B",
-    "NNN",
-    "BBB"
-  ],
-  "result": {
-    "count": 1,
-    "id": "dragonminez:pattern_turles"
-  }
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:34ca8904092c118133cad41c45bb94697f3161c586adc85cd989294cdec7768b
+size 399

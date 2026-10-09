@@ -1,8 +1,3 @@
-{
-  "parent": "minecraft:block/inner_stairs",
-  "textures": {
-    "bottom": "dragonminez:block/namek_cobblestone",
-    "side": "dragonminez:block/namek_cobblestone",
-    "top": "dragonminez:block/namek_cobblestone"
-  }
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:1e9b74c1fd5db4bf45fccb32c7b4ea3aa6b6f159af0c02bb9d0bf1f2d1c84c96
+size 220

@@ -1,6 +1,3 @@
-{
-  "parent": "minecraft:block/template_wall_side",
-  "textures": {
-    "wall": "dragonminez:block/namek_stone"
-  }
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:8ca41c019985369a36e803a7ac63721cc7aa8757a738b00d7f4f3899ca2655e5
+size 117

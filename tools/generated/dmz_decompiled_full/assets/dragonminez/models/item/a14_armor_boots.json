@@ -1,6 +1,3 @@
-{
-  "parent": "minecraft:item/generated",
-  "textures": {
-    "layer0": "dragonminez:item/armors/a14_armor_boots"
-  }
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:ce96df3cc512bee9453f806c17db9634e98ced855744481cdf45802c9b5ff51a
+size 119

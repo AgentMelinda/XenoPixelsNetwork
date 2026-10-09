@@ -1,6 +1,3 @@
-{
-  "parent": "minecraft:item/generated",
-  "textures": {
-    "layer0": "dragonminez:item/flying_nimbus"
-  }
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:431694a50903611fc9de6ec25b321ccfa66a74505a34400300b733661e67ecf8
+size 110

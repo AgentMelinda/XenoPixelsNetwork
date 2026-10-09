@@ -1,9 +1,3 @@
-{
-  "parent": "minecraft:block/orientable",
-  "textures": {
-    "particle": "xenopixelsmod:block/ship_vls_guidance_side",
-    "top": "xenopixelsmod:block/ship_vls_guidance_top",
-    "front": "xenopixelsmod:block/ship_vls_guidance_front",
-    "side": "xenopixelsmod:block/ship_vls_guidance_side"
-  }
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:13d8822abca3721ce4bf8ac0bb54798b779324654cb095356bee58ebe56605c3
+size 301

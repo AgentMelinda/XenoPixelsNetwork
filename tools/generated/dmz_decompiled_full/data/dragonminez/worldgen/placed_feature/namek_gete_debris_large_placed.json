@@ -1,27 +1,3 @@
-{
-  "feature": "dragonminez:namek_gete_debris_large",
-  "placement": [
-    {
-      "type": "minecraft:count",
-      "count": 1
-    },
-    {
-      "type": "minecraft:in_square"
-    },
-    {
-      "type": "minecraft:height_range",
-      "height": {
-        "type": "minecraft:trapezoid",
-        "max_inclusive": {
-          "absolute": -16
-        },
-        "min_inclusive": {
-          "absolute": -64
-        }
-      }
-    },
-    {
-      "type": "minecraft:biome"
-    }
-  ]
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:81a5a3500fad1905b29ffb649f5e101173c3ac6763fe76932f3a38c3d6a6e7cb
+size 477

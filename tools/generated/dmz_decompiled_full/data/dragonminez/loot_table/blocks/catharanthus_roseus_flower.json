@@ -1,21 +1,3 @@
-{
-  "type": "minecraft:block",
-  "pools": [
-    {
-      "bonus_rolls": 0.0,
-      "conditions": [
-        {
-          "condition": "minecraft:survives_explosion"
-        }
-      ],
-      "entries": [
-        {
-          "type": "minecraft:item",
-          "name": "dragonminez:catharanthus_roseus_flower"
-        }
-      ],
-      "rolls": 1.0
-    }
-  ],
-  "random_sequence": "dragonminez:blocks/catharanthus_roseus_flower"
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:2b2f7c5237ec5f0f0ba9c8fbfe6a293860cf32594f7393e0e86fedba05be6688
+size 424

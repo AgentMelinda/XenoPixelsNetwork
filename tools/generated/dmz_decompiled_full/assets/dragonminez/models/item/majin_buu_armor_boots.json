@@ -1,6 +1,3 @@
-{
-  "parent": "minecraft:item/generated",
-  "textures": {
-    "layer0": "dragonminez:item/armors/majin_buu_armor_boots"
-  }
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:930ff8eb38dae9d916ebde8daf891fa50503770a64a03c7ba7cf71e5c61a89c5
+size 125

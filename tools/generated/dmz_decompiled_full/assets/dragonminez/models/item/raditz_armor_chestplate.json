@@ -1,6 +1,3 @@
-{
-  "parent": "minecraft:item/generated",
-  "textures": {
-    "layer0": "dragonminez:item/armors/raditz_armor_chestplate"
-  }
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:6434589c3791784177db6234296971d50ecaba8596e1b996e6e4a56993565cbb
+size 127

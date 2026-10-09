@@ -1,18 +1,3 @@
-{
-  "type": "minecraft:block",
-  "pools": [
-    {
-      "rolls": 1,
-      "entries": [
-        {
-          "type": "minecraft:item",
-          "name": "xenopixelsmod:copycat_glowstone"
-        }
-      ],
-      "conditions": [
-        { "condition": "minecraft:survives_explosion" }
-      ]
-    }
-  ],
-  "random_sequence": "xenopixelsmod:blocks/copycat_glowstone"
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:5d49fa8cbc266a5231e044c55e73aa98da55c7f45ebe473b608f793f5d89990d
+size 365

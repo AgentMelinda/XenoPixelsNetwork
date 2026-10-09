@@ -1,6 +1,3 @@
-{
-  "parent": "minecraft:item/generated",
-  "textures": {
-    "layer0": "dragonminez:item/armors/turles_armor_leggings"
-  }
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:ef1315bb162a1ec78028ac117e119f238a75ad6a85265e64aeb4359bc4a0db55
+size 125

@@ -1,6 +1,3 @@
-{
-  "parent": "minecraft:item/generated",
-  "textures": {
-    "layer0": "dragonminez:item/armors/slug_armor_chestplate"
-  }
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:b11519a62bf90dc81b8a7175a60eaf0d4824397900c3ad4764fc32af78b0f553
+size 125

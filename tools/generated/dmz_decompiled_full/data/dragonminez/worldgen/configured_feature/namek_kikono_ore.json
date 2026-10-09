@@ -1,36 +1,3 @@
-{
-  "type": "minecraft:ore",
-  "config": {
-    "discard_chance_on_air_exposure": 0.0,
-    "size": 8,
-    "targets": [
-      {
-        "state": {
-          "Name": "dragonminez:namek_kikono_ore"
-        },
-        "target": {
-          "block": "dragonminez:namek_stone",
-          "predicate_type": "minecraft:block_match"
-        }
-      },
-      {
-        "state": {
-          "Name": "dragonminez:namek_kikono_ore"
-        },
-        "target": {
-          "block": "dragonminez:namek_deepslate",
-          "predicate_type": "minecraft:block_match"
-        }
-      },
-      {
-        "state": {
-          "Name": "dragonminez:namek_kikono_ore"
-        },
-        "target": {
-          "block": "dragonminez:namek_dirt",
-          "predicate_type": "minecraft:block_match"
-        }
-      }
-    ]
-  }
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:4bf8d44667b659b8432fe1574f35d05d9b011f656bca1dcc5dd633f23f440f07
+size 803

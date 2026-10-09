@@ -1,17 +1,3 @@
-{
-  "type": "minecraft:crafting_shapeless",
-  "category": "misc",
-  "group": "dragonminez",
-  "ingredients": [
-    {
-      "item": "dragonminez:yellow_capsule"
-    },
-    {
-      "item": "dragonminez:gete_ingot"
-    }
-  ],
-  "result": {
-    "count": 1,
-    "id": "dragonminez:gete_yellow_capsule"
-  }
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:a3aebe69c5958f006594fa51cd161628540e83ac89613c5b78d853b5c7617c63
+size 302

@@ -1,6 +1,3 @@
-{
-  "parent": "minecraft:item/generated",
-  "textures": {
-    "layer0": "dragonminez:item/patterns/pattern_shin"
-  }
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:0fa6cb60cb94e13b31fea7c020db056fd9e96a01d2266e720812f854ee451edb
+size 118

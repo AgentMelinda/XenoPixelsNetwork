@@ -1,6 +1,3 @@
-{
-  "parent": "minecraft:item/generated",
-  "textures": {
-    "layer0": "dragonminez:item/armors/gohan_super_armor_boots"
-  }
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:665d7a6a23497ed11384d126013249e8b9139d3cebf51bbd7fa8c7462a3c5c22
+size 127

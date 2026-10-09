@@ -1,6 +1,3 @@
-{
-  "parent": "minecraft:item/generated",
-  "textures": {
-    "layer0": "dragonminez:item/weight_turtle_shell"
-  }
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:734f060968cd5f6116644797a3402829dc01110a393f8663f4aba293316bc1a9
+size 116

@@ -1,17 +1,3 @@
-{
-  "type": "minecraft:crafting_shapeless",
-  "category": "equipment",
-  "group": "dragonminez",
-  "ingredients": [
-    {
-      "item": "minecraft:red_wool"
-    },
-    {
-      "item": "minecraft:shears"
-    }
-  ],
-  "result": {
-    "count": 1,
-    "id": "dragonminez:armor_crafting_kit"
-  }
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:974a3c98ead2219e0e9430438de9bae7ccfb0bd57b76fcbdc61a667271814494
+size 292

@@ -1,32 +1,3 @@
-{
-  "parent": "minecraft:recipes/root",
-  "criteria": {
-    "has_rocky_stone": {
-      "conditions": {
-        "items": [
-          {
-            "items": "dragonminez:rocky_stone"
-          }
-        ]
-      },
-      "trigger": "minecraft:inventory_changed"
-    },
-    "has_the_recipe": {
-      "conditions": {
-        "recipe": "dragonminez:rocky_stone_stairs"
-      },
-      "trigger": "minecraft:recipe_unlocked"
-    }
-  },
-  "requirements": [
-    [
-      "has_the_recipe",
-      "has_rocky_stone"
-    ]
-  ],
-  "rewards": {
-    "recipes": [
-      "dragonminez:rocky_stone_stairs"
-    ]
-  }
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:b73c9235971dd1f00c1b25b17090518dde40f4b3f474068f1b5033660df339b7
+size 595

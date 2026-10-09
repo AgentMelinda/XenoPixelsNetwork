@@ -1,6 +1,3 @@
-{
-  "parent": "minecraft:block/cube_all",
-  "textures": {
-    "all": "dragonminez:block/namek_sacred_log"
-  }
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:64b00886961dbc84e8423fc466c36b575c32c100d40621bdf3ba9da25c34ce54
+size 111

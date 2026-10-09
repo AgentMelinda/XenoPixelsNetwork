@@ -1,25 +1,3 @@
-{
-  "type": "minecraft:crafting_shaped",
-  "category": "misc",
-  "group": "dragonminez",
-  "key": {
-    "#": {
-      "item": "minecraft:paper"
-    },
-    "R": {
-      "item": "minecraft:red_wool"
-    },
-    "W": {
-      "item": "minecraft:white_wool"
-    }
-  },
-  "pattern": [
-    "RRR",
-    "#W#",
-    "RRR"
-  ],
-  "result": {
-    "count": 1,
-    "id": "dragonminez:blank_pattern_z"
-  }
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:3c85e1af89af1888b8a02e8e279c6b86b8681fbb2c2c4e742fecf90efaa7ed13
+size 389

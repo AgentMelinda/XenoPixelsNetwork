@@ -1,27 +1,3 @@
-{
-  "type": "minecraft:ore",
-  "config": {
-    "discard_chance_on_air_exposure": 1.0,
-    "size": 2,
-    "targets": [
-      {
-        "state": {
-          "Name": "dragonminez:gete_debris_ore"
-        },
-        "target": {
-          "block": "dragonminez:namek_stone",
-          "predicate_type": "minecraft:block_match"
-        }
-      },
-      {
-        "state": {
-          "Name": "dragonminez:gete_debris_ore"
-        },
-        "target": {
-          "block": "dragonminez:namek_deepslate",
-          "predicate_type": "minecraft:block_match"
-        }
-      }
-    ]
-  }
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:997a0151161e565ce251bf4bbe185cfeedbc6163d17dfb0db99a60d87de89309
+size 578

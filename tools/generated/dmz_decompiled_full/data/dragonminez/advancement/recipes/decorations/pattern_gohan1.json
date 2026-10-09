@@ -1,32 +1,3 @@
-{
-  "parent": "minecraft:recipes/root",
-  "criteria": {
-    "has_blue_dye": {
-      "conditions": {
-        "items": [
-          {
-            "items": "minecraft:blue_dye"
-          }
-        ]
-      },
-      "trigger": "minecraft:inventory_changed"
-    },
-    "has_the_recipe": {
-      "conditions": {
-        "recipe": "dragonminez:pattern_gohan1"
-      },
-      "trigger": "minecraft:recipe_unlocked"
-    }
-  },
-  "requirements": [
-    [
-      "has_the_recipe",
-      "has_blue_dye"
-    ]
-  ],
-  "rewards": {
-    "recipes": [
-      "dragonminez:pattern_gohan1"
-    ]
-  }
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:5d08f6d491d3ef0c7e86c98a7b8d1a36bef99e3eba8640e441c745de3149d5b6
+size 576

@@ -33,6 +33,7 @@ public final class XenoRushTechniques {
     }
 
     public static void register() {
+        UltimateFinisherTechnique.register();
         register(RUSH_LEFT, "Xeno Rush Left", "combat.xeno_dmz_punch_left_v4", 1.0f, 8);
         register(RUSH_RIGHT, "Xeno Rush Right", "combat.xeno_dmz_punch_right_v4", 1.0f, 8);
         register(RUSH_BREAKER, "Xeno Rush Breaker", "combat.xeno_cross_left_v2", 1.25f, 12);
@@ -57,6 +58,7 @@ public final class XenoRushTechniques {
             return;
         }
         var techniques = data.getTechniques();
+        UltimateFinisherTechnique.unlock(player);
         for (String id : RUSH_IDS) {
             StrikeAttackData strike = PredefinedTechniques.STRIKE_REGISTRY.get(id);
             if (strike != null) {

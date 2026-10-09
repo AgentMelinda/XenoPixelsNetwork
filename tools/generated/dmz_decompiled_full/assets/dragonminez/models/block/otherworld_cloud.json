@@ -1,6 +1,3 @@
-{
-  "parent": "minecraft:block/cube_all",
-  "textures": {
-    "all": "dragonminez:block/otherworld_cloud"
-  }
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:06f69a21cf07362e44b0a484122d838be1563cfe88f3fcdd5184583b294574fb
+size 111

@@ -195,6 +195,11 @@ public final class NpcProfileLifecycle {
                 }
                 NpcResources.tick(npc, profile);
                 NpcNegativeEffectPersistence.capture(npc);
+                // Recovery yields the whole combat pass, including ki-sense body rotation. Keep
+                // resource maintenance above, and leave impulse/scripted-arc movement untouched.
+                if (NpcKnockbackGrace.active(npc)
+                        || net.bullettrain.xenopixelsmod.combat.v3.technique.V3TechniqueRuntime
+                                .isControlledVictim(npc.getUUID())) return false;
                 boolean aiEvading = npc instanceof Mob mob
                         && net.bullettrain.xenopixelsmod.npc.NpcAiGoals.isEvading(mob);
                 if (profile.combatBrain && !aiEvading

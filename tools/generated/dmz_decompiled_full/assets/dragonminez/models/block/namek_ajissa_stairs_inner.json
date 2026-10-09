@@ -1,8 +1,3 @@
-{
-  "parent": "minecraft:block/inner_stairs",
-  "textures": {
-    "bottom": "dragonminez:block/namek_ajissa_planks",
-    "side": "dragonminez:block/namek_ajissa_planks",
-    "top": "dragonminez:block/namek_ajissa_planks"
-  }
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:4157feb2bc35c2a2001940f6db632c5ac162f233af601bc5c643d726cd044e90
+size 226

@@ -1,6 +1,3 @@
-{
-  "parent": "minecraft:item/generated",
-  "textures": {
-    "layer0": "dragonminez:item/armors/warrior_clan_armor_chestplate"
-  }
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:16003e7f4e4b8413933f9dccfe20fd1d5cf94bf40f78374004ebb8ff30d1cee4
+size 133

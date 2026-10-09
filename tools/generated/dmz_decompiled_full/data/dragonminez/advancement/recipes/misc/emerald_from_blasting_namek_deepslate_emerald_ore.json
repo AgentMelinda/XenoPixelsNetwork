@@ -1,32 +1,3 @@
-{
-  "parent": "minecraft:recipes/root",
-  "criteria": {
-    "has_namek_deepslate_emerald_ore": {
-      "conditions": {
-        "items": [
-          {
-            "items": "dragonminez:namek_deepslate_emerald_ore"
-          }
-        ]
-      },
-      "trigger": "minecraft:inventory_changed"
-    },
-    "has_the_recipe": {
-      "conditions": {
-        "recipe": "dragonminez:emerald_from_blasting_namek_deepslate_emerald_ore"
-      },
-      "trigger": "minecraft:recipe_unlocked"
-    }
-  },
-  "requirements": [
-    [
-      "has_the_recipe",
-      "has_namek_deepslate_emerald_ore"
-    ]
-  ],
-  "rewards": {
-    "recipes": [
-      "dragonminez:emerald_from_blasting_namek_deepslate_emerald_ore"
-    ]
-  }
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:9171a45df7781892055e24e9ecba0905bd93e2d2cc15a99182087b6a4f1590c1
+size 705

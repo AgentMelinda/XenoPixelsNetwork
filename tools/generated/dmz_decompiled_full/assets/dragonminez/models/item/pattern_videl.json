@@ -1,6 +1,3 @@
-{
-  "parent": "minecraft:item/generated",
-  "textures": {
-    "layer0": "dragonminez:item/patterns/pattern_videl"
-  }
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:4723530f508b02e916d07e61d5bc521dbb3448787e4c6b718a4343f938b74f32
+size 119

@@ -1,18 +1,3 @@
-{
-  "type": "minecraft:spring_feature",
-  "config": {
-    "hole_count": 1,
-    "requires_block_below": true,
-    "rock_count": 4,
-    "state": {
-      "Name": "dragonminez:namek_water_fluid",
-      "Properties": {
-        "falling": "true"
-      }
-    },
-    "valid_blocks": [
-      "dragonminez:namek_stone",
-      "dragonminez:namek_dirt"
-    ]
-  }
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:209310a653ad4db8932dd3141e55adfa86d746c7efe679d7976264d5aafcd5dd
+size 352

@@ -1,7 +1,3 @@
-{
-  "variants": {
-    "": {
-      "model": "dragonminez:block/namek_sacred_grass_block"
-    }
-  }
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:9743b92704f7954826838679772979a9785ab610a4765ec91145f42f0f86edea
+size 99

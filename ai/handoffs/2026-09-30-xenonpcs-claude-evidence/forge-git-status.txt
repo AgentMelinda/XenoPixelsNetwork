@@ -1,0 +1,31 @@
+ M src/main/java/net/bullettrain/xenonpcs/client/compat/npc/NpcAnimationClient.java
+ M src/main/java/net/bullettrain/xenonpcs/client/compat/npc/NpcFullDmzRenderer.java
+ M src/main/java/net/bullettrain/xenonpcs/client/npc/XenoNpcGeoRenderer.java
+ M src/main/java/net/bullettrain/xenonpcs/client/npc/dialog/DialogueBubbleRenderer.java
+ M src/main/java/net/bullettrain/xenonpcs/client/npc/speech/SpeechBubbleRenderer.java
+ M src/main/java/net/bullettrain/xenonpcs/client/render/WorldToScreenCache.java
+ M src/main/java/net/bullettrain/xenonpcs/compat/npc/NpcBrainKiRotation.java
+ M src/main/java/net/bullettrain/xenonpcs/compat/npc/NpcCombatBrain.java
+ M src/main/java/net/bullettrain/xenonpcs/compat/npc/NpcCombatMoves.java
+ M src/main/java/net/bullettrain/xenonpcs/compat/npc/NpcLedgeApproach.java
+ M src/main/java/net/bullettrain/xenonpcs/compat/npc/brain/v2/NpcSagaCombatBrain.java
+ M src/main/java/net/bullettrain/xenonpcs/npc/XenoNpcEntity.java
+ M src/main/java/net/bullettrain/xenonpcs/npc/brain/XenoNpcBrainV5.java
+ M src/main/java/net/bullettrain/xenonpcs/npc/job/NpcSocialBehaviour.java
+?? ctx-1201.txt
+?? errors-1201.txt
+?? logs/
+?? runclient-bubble-movement-fix.log
+?? runclient-codex-release-fix.log
+?? runclient-codex-release-fix2.log
+?? runclient-final-combat-fix.log
+?? runserver-1201.log
+?? runserver-codex-resume-1201.log
+?? src/main/java/net/bullettrain/xenonpcs/anim/AnimClipsEvents.java
+?? src/main/java/net/bullettrain/xenonpcs/client/npc/speech/BubbleBillboardGeometry.java
+?? src/main/java/net/bullettrain/xenonpcs/client/npc/speech/NpcBubbleAnchor.java
+?? src/main/java/net/bullettrain/xenonpcs/compat/npc/NpcCombatMotionPolicy.java
+?? src/test/java/net/bullettrain/xenonpcs/client/npc/speech/BubbleBillboardGeometryTest.java
+?? src/test/java/net/bullettrain/xenonpcs/compat/npc/GenericKiRotationTest.java
+?? test-1201.log
+?? wiki/

@@ -115,6 +115,7 @@ final class XenoNpcSavePolicy {
             "SkinPlayer",
             "ModelGlowing", "ImmuneToFire", "BurnsInSun", "CanDrown", "NoFallDamage",
             "PotionImmune", "CobwebAffected", "Visible", "HitboxScale", "BossBar",
+            "DisplayShowName", "HideDeadBody", "BossBarMode",
             // NightTexture is editable again because it finally has a runtime consumer:
             // NpcCombatProfile.textureFor is read by both XenoNpcRenderer and XenoNpcGeoModel, so
             // an NPC really does change skin after dusk. It was correctly excluded while the field
@@ -244,6 +245,13 @@ final class XenoNpcSavePolicy {
         for (String key : tag.getAllKeys()) {
             if (!EDITABLE_KEYS.contains(key)) {
                 return Validation.reject("field is not editor-owned: " + key);
+            }
+            if (key.equals("DisplayShowName") || key.equals("BossBarMode")) {
+                int minimum = key.equals("BossBarMode") ? 1 : 0;
+                if (!tag.contains(key, Tag.TAG_INT) || tag.getInt(key) < minimum || tag.getInt(key) > 2) {
+                    return Validation.reject("invalid display mode: " + key);
+                }
+                continue;
             }
             if (key.equals("SkinPlayer")) {
                 if (!tag.contains(key, Tag.TAG_STRING)

@@ -1,6 +1,3 @@
-{
-  "parent": "minecraft:item/generated",
-  "textures": {
-    "layer0": "dragonminez:block/namek_fern"
-  }
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:b93292c80d389a7aa550a126da53f5c8235451244234697357811ebbbf402dd1
+size 108

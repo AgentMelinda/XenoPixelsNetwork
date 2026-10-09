@@ -1,28 +1,3 @@
-{
-  "type": "minecraft:crafting_shaped",
-  "category": "misc",
-  "group": "dragonminez",
-  "key": {
-    "#": {
-      "item": "dragonminez:blank_pattern_super"
-    },
-    "A": {
-      "item": "minecraft:gray_dye"
-    },
-    "W": {
-      "item": "minecraft:white_dye"
-    },
-    "Y": {
-      "item": "minecraft:yellow_dye"
-    }
-  },
-  "pattern": [
-    "A#A",
-    "AWA",
-    "YYY"
-  ],
-  "result": {
-    "count": 1,
-    "id": "dragonminez:pattern_vegeta_whis"
-  }
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:d4c817bc18da915d29cb975965bfd673f966f3c0af6bb1f5486b0fa02cf23777
+size 463

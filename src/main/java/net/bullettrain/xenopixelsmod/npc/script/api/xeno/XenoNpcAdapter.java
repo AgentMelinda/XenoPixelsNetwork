@@ -295,12 +295,43 @@ public final class XenoNpcAdapter extends XenoLivingAdapter<XenoNpcEntity> imple
 
     @Override
     public IProjectile shootItem(IEntityLiving target, IItemStack item, int accuracy) {
-        throw XenoApiAdapters.unsupported("ICustomNpc.shootItem (native NPCs fire ki attacks, not item projectiles)");
+        serverThread();
+        var other = XenoApiAdapters.unwrap(target);
+        if (!(other instanceof net.minecraft.world.entity.LivingEntity living) || other.level() != entity.level()
+                || !living.isAlive() || other == entity)
+            throw new IllegalArgumentException("shootItem target must be another live entity in the same level");
+        return shootItem(other.getX(), other.getY() + other.getBbHeight() * 0.5, other.getZ(), item, accuracy);
     }
 
     @Override
     public IProjectile shootItem(double x, double y, double z, IItemStack item, int accuracy) {
-        throw XenoApiAdapters.unsupported("ICustomNpc.shootItem (native NPCs fire ki attacks, not item projectiles)");
+        serverThread();
+        if (!entity.isAlive() || entity.isRemoved())
+            throw new IllegalStateException("A dead or removed NPC cannot shoot an item");
+        XenoApiAdapters.requireFinite("ICustomNpc.shootItem", x, y, z);
+        net.bullettrain.xenopixelsmod.npc.projectile.ItemProjectileRules.accuracy(accuracy);
+        var stack = XenoApiAdapters.unwrap(item);
+        if (stack.isEmpty()) throw new IllegalArgumentException("shootItem requires a nonempty item");
+        var destination = new net.minecraft.world.phys.Vec3(x, y, z);
+        var start = entity.getEyePosition().add(0, -0.1, 0);
+        if (!net.bullettrain.xenopixelsmod.npc.projectile.ItemProjectileRules.allowedDistance(destination.distanceToSqr(start))
+                || !entity.level().hasChunkAt(BlockPos.containing(destination)))
+            throw new IllegalArgumentException("shootItem destination must be loaded, nonzero and within 256 blocks");
+        var projectile = new net.bullettrain.xenopixelsmod.npc.projectile.XenoItemProjectileEntity(
+                net.bullettrain.xenopixelsmod.missile.ModEntities.NPC_ITEM_PROJECTILE.get(), entity.level());
+        projectile.setOwner(entity);
+        projectile.setPos(start);
+        projectile.setItem(stack.copyWithCount(1));
+        var profile = net.bullettrain.xenopixelsmod.compat.npc.NpcCombatProfile.readCached(entity);
+        String gravity = net.bullettrain.xenopixelsmod.compat.npc.NpcCombatProfile.canonicalProjectileGravity(profile.npcProjectileGravity);
+        if (gravity.equals("accelerate") || gravity.equals("constant"))
+            throw XenoApiAdapters.unsupported("ICustomNpc.shootItem: constant and accelerated item-projectile gravity are not implemented");
+        projectile.configure(profile.npcProjectileStrength, profile.npcProjectileKnockback,
+                profile.npcProjectileSpeed, accuracy, !"none".equals(gravity));
+        projectile.setGlowingTag(profile.npcProjectileGlows);
+        projectile.aim(destination.subtract(start));
+        if (!entity.level().addFreshEntity(projectile)) throw new IllegalStateException("Item projectile spawn was refused");
+        return new XenoItemProjectileAdapter(projectile);
     }
 
     @Override

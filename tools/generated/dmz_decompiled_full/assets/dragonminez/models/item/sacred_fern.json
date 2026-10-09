@@ -1,6 +1,3 @@
-{
-  "parent": "minecraft:item/generated",
-  "textures": {
-    "layer0": "dragonminez:block/sacred_fern"
-  }
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:06553f80db652e99d52a53d218e3977e606f20d3a3d831d68236777a4e08c195
+size 109

@@ -2,6 +2,84 @@
 
 ## Unreleased
 
+- Add XenoCombat v2 as an opt-in combat controller: `/xenocombat mode v2` (the existing combat is
+  v1 and stays the default; `/xenocombat mode legacy` switches back). v2 rewrites the combo as a
+  data-driven graph with light/heavy branches and four-way directional variants, and rewrites
+  chase, dragon homing, Z-Burst, Dragon Dash, step (was sonic sway), vanish, super counter,
+  cinematic rush and the rush strikes' hit reactions on one shared travel mover. Adds grab and
+  throw, with `GrabEvent` for addons. Tuning is in `config/xenopixelsmod-combat-v2.json`; routes
+  can be replaced with `config/xenopixelsmod/combat_v2_combo_graph.json`. See `docs/combat-v2.md`.
+- v2 after the first playtest (2026-10-06):
+  - The heavy attack is kicks: W + heavy launches, S + heavy slams, a held heavy kicks the target
+    away in an arc. Kicks never came out before because beats cost stamina that DragonMineZ had
+    already emptied; v2 strikes no longer pay DragonMineZ's per-hit stamina cost
+    (`strikesDrainStamina`) and no shipped beat costs stamina.
+  - A v2 hit deals DragonMineZ melee damage times the beat's scale, clears Minecraft's hit
+    cooldown so every beat of a string lands, measures reach from the eyes to the target's hitbox,
+    does not land through a wall, and falls back to whoever is in front when its target is out of
+    reach. Strings are paced by authored recovery times, not the click rate.
+  - Vanish is v2's own: on B (V is DragonMineZ's stats menu), works while being hit, reaches 12
+    blocks, blinks a short way when there is no target, and attacks miss for 8 ticks afterwards.
+  - Chase, dragon homing and Dragon Dash light the aura and take DragonMineZ's flight pose when
+    Fly is learned, as v1's chase does, and detour over obstacles.
+  - The rush strikes' launch and automatic chase now start when DragonMineZ releases the strike
+    instead of when it begins.
+  - Jump no longer steps; the step is a double-tap of A, D or S. E tapped opens the inventory even
+    mid-fight and held guards. A villager or player under the crosshair no longer turns the combat
+    stance on, so empty-handed right click works on them again.
+  - The v2 lock key is DragonMineZ's own lock, so it obeys Ki Sense and the "lock through blocks"
+    setting.
+  - The combat prompt moved from the middle of the screen to the bottom, above the hotbar, on new
+    plates from the DMZ-style panel generator (pill, hex, tray, arrow, burst). Branches are named
+    for what they do: after three punches the light attack reads "Kick". The COMBAT strip lists
+    the v2 keys while v2 is running.
+  - Grabs respect the server's PvP rules and do not hold a target that cannot be hurt.
+- Fix rush combo and lift combo routes dropping every second hit to Minecraft's hit cooldown.
+  This is a v1 path and applies in every combat mode.
+- Add `/xenokeybind` (client): back up all key bindings, unbind every binding that is not
+  Minecraft's, DragonMineZ's or XenoPixels', restore a backup, and apply the Xenoverse-style
+  layout. The cleanup runs once automatically the first time v2 is active unless turned off with
+  `/xenokeybind auto false`; it always writes a backup first.
+- XenoCombat v2 only works while locked on. Every v2 move needs a DragonMineZ lock on a target and
+  is made at that target; with nothing locked, left click is DragonMineZ's own punch, every key
+  has its ordinary meaning and no prompt is drawn. Strikes and grabs no longer pick a target of
+  their own, and a super counter only answers the locked target. The server refuses any v2 input
+  that does not name a target the fighter could have locked. The two exceptions are breaking out
+  of a grab and stopping a chase.
+- Fix the view snapping and twitching during Xeno Rush Left, Right, Breaker and Finisher thrown at
+  a locked target, in every combat mode. DragonMineZ teleported the attacker behind the target,
+  snapped the view round, and re-snapped it every tick against the lock-on camera. The attacker
+  now lands on their own side of the target and the server no longer aims them, leaving the view
+  to the lock-on camera as in the rush and lift combos. A rush strike thrown with nothing locked
+  is unchanged. With the legacy controller, the automatic chase after a breaker or finisher now
+  starts when the strike ends rather than during it.
+- Fix a client crash on typing in the creative inventory search
+  (`Encountered GL error off-thread ... Invalid key -1`). The keybind cleanup had unbound Create's
+  Shift, Ctrl and Alt modifier bindings, which Create reads straight from the keyboard. The
+  cleanup now leaves any binding whose default key is Shift, Ctrl or Alt alone; profiles it
+  already cleaned have those bindings put back once from the backup; and asking whether an
+  unbound key is held is no longer an error for any mod.
+- Add grab and throw to the `legacy` (default) and `bt3_manual` combat controllers: guard + punch
+  (right mouse + left mouse) grabs the locked target, W / S / Space / Shift aims the throw, one
+  tap of W afterwards chases, and punch breaks out of someone else's grab. It is the XenoCombat v2
+  grab under the same rules, and like it needs a DragonMineZ lock on the target. The green combat
+  prompt now shows under these controllers too, for the grab only (`RMB+LMB Grab`, `Throw`,
+  `W Chase`, `LMB Break free`), and the COMBAT strip gains a Grab chip. On by default: set
+  `grabOutsideV2` to `false` in `config/xenopixelsmod-combat-v2.json` to keep the grab to v2.
+  New permission `combat.grab.use` (everyone by default).
+- Grab, in every mode: the defender's guard comes down as the grab lands rather than after; a
+  cinematic rush, rush or lift combo or chase the defender had under way stops; whoever is held,
+  player or mob, cannot strike; riders and mounts cannot be grabbed; the grabber now plays a
+  reach-in pose and a throw pose (none was sent before); and a fighter who dies while held is no
+  longer left believing they still are.
+- Move Iris's "reload shaders" binding off R to Page Up, under every combat controller. R is
+  DragonMineZ's dash, and the reload rebuilt every chunk on screen on each dash. Checked on every
+  launch, so restoring a keybind backup does not bring it back; rebind it in Controls as usual.
+- Network protocol 103: `CombatV2InputPacket` and `CombatV2StatePacket` appended since 101, and
+  changed since 102. Clients and servers must update together.
+- The 2026-10-06 v2 changes are built and unit-tested but have not been run in a game yet;
+  `docs/combat-v2.md` lists what is unverified.
+
 ## 0.5.9-1.21.1 — 2026-10-04
 
 - Resolve YAWP ki flags through its native responsible-region evaluator, including dimensional

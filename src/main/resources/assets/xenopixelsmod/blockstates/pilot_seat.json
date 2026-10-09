@@ -1,8 +1,3 @@
-{
-  "variants": {
-    "facing=north": { "model": "xenopixelsmod:block/pilot_seat" },
-    "facing=south": { "model": "xenopixelsmod:block/pilot_seat", "y": 180 },
-    "facing=west":  { "model": "xenopixelsmod:block/pilot_seat", "y": 270 },
-    "facing=east":  { "model": "xenopixelsmod:block/pilot_seat", "y": 90 }
-  }
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:6006e4037edc98f315b4ce67aff92fb6bb83b5490aa491a7569e4109bd618a2c
+size 320

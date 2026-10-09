@@ -103,6 +103,8 @@ public final class XenoMakerHubScreen extends ScaledScreen {
         addRenderableWidget(navButton(navX, y, "Hair Editor", b -> openHair()));
         y += btnH + NAV_GAP;
         addRenderableWidget(navButton(navX, y, "Taotto", b -> openTaotto()));
+        y += btnH + NAV_GAP;
+        addRenderableWidget(navButton(navX, y, "Ki Profiles", b -> openKiProfiles()));
         y += btnH + NAV_GAP + 8;
         addRenderableWidget(navButton(navX, y, "Close", b -> onClose()));
 
@@ -117,26 +119,62 @@ public final class XenoMakerHubScreen extends ScaledScreen {
     }
 
     private void openRace() {
+        if (!MakerAccess.canOpenCosmeticMaker()) {
+            if (minecraft != null && minecraft.player != null) {
+                minecraft.player.displayClientMessage(MakerAccess.denyCosmetic(), false);
+            }
+            return;
+        }
         if (minecraft != null) {
             minecraft.setScreen(new RaceCharacterMakerScreen(this));
         }
     }
 
     private void openForms() {
+        if (!MakerAccess.canOpenFormMaker()) {
+            if (minecraft != null && minecraft.player != null) {
+                minecraft.player.displayClientMessage(MakerAccess.denyForm(), false);
+            }
+            return;
+        }
         if (minecraft != null) {
             minecraft.setScreen(new FormMakerScreen(this));
         }
     }
 
     private void openHair() {
+        if (!MakerAccess.canOpenCosmeticMaker()) {
+            if (minecraft != null && minecraft.player != null) {
+                minecraft.player.displayClientMessage(MakerAccess.denyCosmetic(), false);
+            }
+            return;
+        }
         if (minecraft != null) {
             minecraft.setScreen(new HairMakerScreen(this));
         }
     }
 
     private void openTaotto() {
+        if (!MakerAccess.canOpenCosmeticMaker()) {
+            if (minecraft != null && minecraft.player != null) {
+                minecraft.player.displayClientMessage(MakerAccess.denyCosmetic(), false);
+            }
+            return;
+        }
         if (minecraft != null) {
             minecraft.setScreen(new TaottoMakerScreen(this));
+        }
+    }
+
+    private void openKiProfiles() {
+        if (!MakerAccess.canOpenCosmeticMaker()) {
+            if (minecraft != null && minecraft.player != null) {
+                minecraft.player.displayClientMessage(MakerAccess.denyCosmetic(), false);
+            }
+            return;
+        }
+        if (minecraft != null) {
+            minecraft.setScreen(new KiProfileMakerScreen(this));
         }
     }
 

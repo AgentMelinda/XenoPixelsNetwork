@@ -1,6 +1,3 @@
-{
-  "parent": "minecraft:item/generated",
-  "textures": {
-    "layer0": "dragonminez:item/pothala_pair"
-  }
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:b20f1e8b0af320f361b2d1985278c98e153ece4b230c55b9e6f551f90b23880e
+size 109

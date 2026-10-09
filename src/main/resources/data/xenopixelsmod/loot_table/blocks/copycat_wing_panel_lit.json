@@ -1,12 +1,3 @@
-{
-  "type": "minecraft:block",
-  "pools": [
-    {
-      "bonus_rolls": 0.0,
-      "conditions": [ { "condition": "minecraft:survives_explosion" } ],
-      "entries": [ { "type": "minecraft:item", "name": "xenopixelsmod:copycat_wing_panel_lit" } ],
-      "rolls": 1.0
-    }
-  ],
-  "random_sequence": "xenopixelsmod:blocks/copycat_wing_panel_lit"
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:0ff266a6163da322bb02d3dda94239a783130c0d181fd27727c969e74331b3f2
+size 347

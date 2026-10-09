@@ -1,0 +1,22 @@
+❯ it cant be enabled to all only by setting the form group level using /dmzform
+
+  Ran 5 shell commands
+
+I'll need to add xenopixels_destroyer.png to both gui/icons/ and gui/radial/ for Hakaishin, matching the existing icon style—checking the current icons now for reference.
+
+  Read 1 file, ran 1 shell command
+
+The existing icons are glossy orbs with a rising symbol and soft glow, so I'll build a Hakaishin version in tools/: a violet Hakai orb with destruction energy, rendered at 4× and scaled down.
+
+● Write(tools\gen_hakaishin_icon.py)
+Wrote 137 lines to tools\gen_hakaishin_icon.py
+"""Generate the Hakaishin form-group icon (DMZ formType ``xenopixels_destroyer``).
+
+DMZ looks the icon up by formType name in two places, the transformation radial and the skills
+screen, so the same image is written to both::
+
+    assets/dragonminez/textures/gui/radial/xenopixels_destroyer.png
+    assets/dragonminez/textures/gui/icons/xenopixels_destroyer.png
+
+The style follows the bundled Xeno group icons (xenopixels_divinity, xenopixels_dark_frieza): a
+glossy orb in the lower half, a symbot outer glow on a transparent

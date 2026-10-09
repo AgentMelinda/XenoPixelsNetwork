@@ -1,13 +1,3 @@
-{
-  "placement": {
-    "type": "dragonminez:biome_aware_placement",
-    "salt": 66332211,
-    "valid_biomes": "#dragonminez:is_land"
-  },
-  "structures": [
-    {
-      "structure": "dragonminez:trunks_ship",
-      "weight": 1
-    }
-  ]
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:95bf5f0e6e664a347916a06d15a02300ed9834937837786c825da19c7c3c48c8
+size 237

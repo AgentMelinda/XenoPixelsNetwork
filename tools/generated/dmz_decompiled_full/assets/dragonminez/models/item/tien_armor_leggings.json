@@ -1,6 +1,3 @@
-{
-  "parent": "minecraft:item/generated",
-  "textures": {
-    "layer0": "dragonminez:item/armors/tien_armor_leggings"
-  }
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:b3482fddc764de36a4f9093c27b95b34022b93e12003df412591bdeebb8ff31a
+size 123

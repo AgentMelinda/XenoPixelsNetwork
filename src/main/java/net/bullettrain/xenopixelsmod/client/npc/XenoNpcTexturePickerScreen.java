@@ -32,10 +32,11 @@ public final class XenoNpcTexturePickerScreen extends ScaledScreen {
     private static final int MUTED = 0xFF8AA4B8;
     private static final int CYAN = 0xFF45D8FF;
     private static final int GOLD = 0xFFFFC14A;
-    private static final List<String> CATEGORIES = List.of("All", "Entity", "Block", "Item", "GUI", "Other");
+    private static final List<String> CATEGORIES = List.of("All", "Entity", "GeckoLib", "Block", "Item", "GUI", "Other");
     private static final int ROW_H = 17;
 
     private final Screen parent;
+    private final boolean modelOnly;
     private final Consumer<String> onSelected;
     private final List<ResourceLocation> allTextures;
     private final List<String> namespaces;
@@ -59,11 +60,17 @@ public final class XenoNpcTexturePickerScreen extends ScaledScreen {
     private int previewImageH = 64;
 
     public XenoNpcTexturePickerScreen(Screen parent, String initial, Consumer<String> onSelected) {
-        super(Component.literal("Select NPC Texture"));
+        this(parent, initial, onSelected, false);
+    }
+
+    public XenoNpcTexturePickerScreen(Screen parent, String initial, Consumer<String> onSelected, boolean modelOnly) {
+        super(Component.literal(modelOnly ? "Select GeckoLib Model" : "Select NPC Texture"));
         this.parent = parent;
+        this.modelOnly = modelOnly;
         this.onSelected = onSelected;
         Minecraft mc = Minecraft.getInstance();
-        this.allTextures = NpcTextureCatalog.loadedTextures(mc.getResourceManager());
+        this.allTextures = modelOnly ? NpcTextureCatalog.loadedModels(mc.getResourceManager())
+                : NpcTextureCatalog.loadedTextures(mc.getResourceManager());
         List<String> found = new ArrayList<>();
         found.add("All namespaces");
         allTextures.stream().map(ResourceLocation::getNamespace).distinct().sorted().forEach(found::add);
@@ -93,7 +100,7 @@ public final class XenoNpcTexturePickerScreen extends ScaledScreen {
         previewW = Math.max(48, x + w - previewX - 16);
 
         search = new EditBox(font, listX, y + 29, Math.max(75, listW), 18,
-                Component.literal("Search textures"));
+                Component.literal(modelOnly ? "Search models" : "Search textures"));
         search.setMaxLength(128);
         search.setHint(Component.literal("Search namespace or path"));
         search.setResponder(ignored -> filter());
@@ -152,8 +159,8 @@ public final class XenoNpcTexturePickerScreen extends ScaledScreen {
         graphics.fill(0, 0, width, height, 0xA0000000);
         beginUiScale(graphics);
         AtlasPanel.fittedInto(FRAME, x, y, getUiWidth() - 8, getUiHeight() - 8).render(graphics);
-        graphics.drawString(font, "Select NPC Texture", x + 17, y + 10, GOLD, false);
-        graphics.drawString(font, visible.size() + " textures", x + w - 110, y + 10, MUTED, false);
+        graphics.drawString(font, modelOnly ? "Select GeckoLib Model" : "Select NPC Texture", x + 17, y + 10, GOLD, false);
+        graphics.drawString(font, visible.size() + (modelOnly ? " models" : " textures"), x + w - 110, y + 10, MUTED, false);
         graphics.fill(listX, listY, listX + listW, listY + listH, 0x8005101B);
         graphics.fill(previewX - 5, listY, x + w - 15, listY + listH, 0x8005101B);
 
@@ -170,7 +177,7 @@ public final class XenoNpcTexturePickerScreen extends ScaledScreen {
                     id.equals(selected) ? CYAN : WHITE, false);
         }
         if (visible.isEmpty()) {
-            graphics.drawString(font, "No matching textures", listX + 6, listY + 7, MUTED, false);
+            graphics.drawString(font, modelOnly ? "No matching models" : "No matching textures", listX + 6, listY + 7, MUTED, false);
         }
         drawPreview(graphics);
         super.render(graphics, (int) toUiX(mouseX), (int) toUiY(mouseY), partialTick);

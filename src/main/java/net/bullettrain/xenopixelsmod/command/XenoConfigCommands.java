@@ -6,6 +6,7 @@ import com.mojang.brigadier.suggestion.SuggestionProvider;
 import net.bullettrain.xenopixelsmod.XenoPixelsMod;
 import net.bullettrain.xenopixelsmod.combat.overcharge.OverchargeVoices;
 import net.bullettrain.xenopixelsmod.combat.targeting.LockOnConfig;
+import net.bullettrain.xenopixelsmod.combat.v3.V3Config;
 import net.bullettrain.xenopixelsmod.config.XenoConfigRegistry;
 import net.bullettrain.xenopixelsmod.config.XenoPartyConfig;
 import net.bullettrain.xenopixelsmod.config.XenoPerfConfig;
@@ -18,6 +19,8 @@ import net.minecraft.network.chat.Component;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.neoforge.event.RegisterCommandsEvent;
+import java.io.IOException;
+import java.util.function.Consumer;
 
 /**
  * Dedicated-server front-end for every server-owned config store.
@@ -65,13 +68,13 @@ public final class XenoConfigCommands {
                         .executes(ctx -> reload(ctx.getSource(), "all"))
                         .then(Commands.argument("store", StringArgumentType.word())
                                 .suggests((c, b) -> SharedSuggestionProvider.suggest(
-                                        new String[] {"all", "combat", "party", "lockon", "perf"}, b))
+                                        new String[] {"all", "combat", "v3", "party", "lockon", "perf"}, b))
                                 .executes(ctx -> reload(ctx.getSource(),
                                         StringArgumentType.getString(ctx, "store")))))
                 .executes(ctx -> {
                     ctx.getSource().sendSuccess(() -> Component.literal(
                             "Usage: /xenoconfig list [prefix] | get <key> | set <key> <value> "
-                                    + "| reload [combat|party|lockon|perf|all]\n"
+                                    + "| reload [combat|v3|party|lockon|perf|all]\n"
                                     + "Aliases: /xenoget <key>, /xenoset <key> <value>"), false);
                     return 1;
                 }));
@@ -145,6 +148,12 @@ public final class XenoConfigCommands {
     }
 
     private static int set(CommandSourceStack source, String key, String value) {
+        var entry = XenoConfigRegistry.resolve(key);
+        if (entry != null && entry.store == XenoConfigRegistry.Store.V3) {
+            return setV3(key, value, V3Config::persist, XenoConfigCommands::syncV3,
+                    message -> source.sendSuccess(() -> Component.literal(message), true),
+                    message -> source.sendFailure(Component.literal(message)));
+        }
         XenoConfigRegistry.Result result = XenoConfigRegistry.set(key, value);
         if (!result.ok) {
             source.sendFailure(Component.literal(result.message));
@@ -153,6 +162,34 @@ public final class XenoConfigCommands {
         persist(result.store);
         source.sendSuccess(() -> Component.literal(result.message), true);
         return 1;
+    }
+
+    @FunctionalInterface
+    interface V3Persistence { void save() throws IOException; }
+
+    /** The V3 command transaction; other stores retain their existing command behavior. */
+    static int setV3(String key, String value, V3Persistence persistence, Runnable afterPersist,
+                     Consumer<String> success, Consumer<String> failure) {
+        V3Config.Values previous = V3Config.get();
+        var result = XenoConfigRegistry.set(key, value);
+        if (!result.ok) { failure.accept(result.message); return 0; }
+        try { persistence.save(); }
+        catch (Exception exception) {
+            V3Config.apply(previous);
+            failure.accept("V3 config was not saved; effective settings restored. Check "
+                    + "xenopixelsmod-combat-v3.json and filesystem permissions: " + exception.getMessage());
+            return 0;
+        }
+        afterPersist.run();
+        success.accept(result.message);
+        return 1;
+    }
+
+    private static void syncV3() {
+        var server = net.neoforged.neoforge.server.ServerLifecycleHooks.getCurrentServer();
+        net.bullettrain.xenopixelsmod.combat.controller.CombatControllerService.reconcile(server);
+        net.bullettrain.xenopixelsmod.combat.v3.V3CombatServer.clearAll(server);
+        DmzHudCommands.broadcast();
     }
 
     private static void persist(XenoConfigRegistry.Store store) {
@@ -165,23 +202,30 @@ public final class XenoConfigCommands {
             case PARTY -> XenoPartyConfig.save();
             case LOCKON -> LockOnConfig.save();
             case PERF -> XenoPerfConfig.save();
+            case V3 -> throw new IllegalStateException("V3 settings require the transactional command path");
         }
     }
 
     private static int reload(CommandSourceStack source, String store) {
         String which = store == null ? "all" : store.trim().toLowerCase();
         boolean combat = which.equals("all") || which.equals("combat");
+        boolean v3 = combat || which.equals("v3");
         boolean party = which.equals("all") || which.equals("party");
         boolean lockon = which.equals("all") || which.equals("lockon");
         boolean perf = which.equals("all") || which.equals("perf");
-        if (!combat && !party && !lockon && !perf) {
+        if (!combat && !v3 && !party && !lockon && !perf) {
             source.sendFailure(Component.literal(
-                    "Unknown store '" + store + "'. Use combat, party, lockon, perf, or all"));
+                    "Unknown store '" + store + "'. Use combat, v3, party, lockon, perf, or all"));
             return 0;
         }
         if (combat) {
             XenoServerConfig.load();
             OverchargeVoices.reload();
+        }
+        if (v3) {
+            net.bullettrain.xenopixelsmod.combat.v3.V3Config.load();
+            net.bullettrain.xenopixelsmod.combat.controller.CombatControllerService.reconcile(source.getServer());
+            net.bullettrain.xenopixelsmod.combat.v3.V3CombatServer.clearAll(source.getServer());
             DmzHudCommands.broadcast();
         }
         if (party) XenoPartyConfig.load();

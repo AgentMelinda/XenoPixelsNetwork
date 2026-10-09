@@ -1,6 +1,3 @@
-{
-  "parent": "minecraft:item/generated",
-  "textures": {
-    "layer0": "dragonminez:item/armors/turles_armor_chestplate"
-  }
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:40bb8cd03610a67ee1fcad142dbc3a1dbeeea9be658bddd012510634e0ab11ad
+size 127

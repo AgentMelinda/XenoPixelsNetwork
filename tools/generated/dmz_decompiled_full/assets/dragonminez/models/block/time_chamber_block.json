@@ -1,6 +1,3 @@
-{
-  "parent": "minecraft:block/cube_all",
-  "textures": {
-    "all": "dragonminez:block/time_chamber_block"
-  }
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:f752772bacdc62ebe5b058a26a7ddacd8d8818ca27bccfd2aba3bd54c3130b4c
+size 113

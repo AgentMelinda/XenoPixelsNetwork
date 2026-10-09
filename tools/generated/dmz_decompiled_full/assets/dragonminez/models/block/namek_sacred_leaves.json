@@ -1,7 +1,3 @@
-{
-  "parent": "minecraft:block/leaves",
-  "render_type": "minecraft:cutout",
-  "textures": {
-    "all": "dragonminez:block/namek_sacred_leaves"
-  }
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:daa74c95a834a39ae5e024d15c77ff729ac32a382b9cda9d877c2e98059b58ee
+size 149

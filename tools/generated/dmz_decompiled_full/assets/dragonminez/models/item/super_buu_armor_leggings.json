@@ -1,6 +1,3 @@
-{
-  "parent": "minecraft:item/generated",
-  "textures": {
-    "layer0": "dragonminez:item/armors/super_buu_armor_leggings"
-  }
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:af1e681b0f7b3e90309fe3821e01db59231e4ae03bb5694f347ba45032b67e97
+size 128

@@ -1,7 +1,3 @@
-{
-  "parent": "minecraft:block/template_orientable_trapdoor_open",
-  "render_type": "minecraft:cutout",
-  "textures": {
-    "texture": "dragonminez:block/namek_ajissa_trapdoor"
-  }
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:0e8151e4fe258790be30b8672b7f919c045bf47d65ad33adb5cacce3d99dbd7b
+size 182

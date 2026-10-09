@@ -1,6 +1,3 @@
-{
-  "parent": "minecraft:item/generated",
-  "textures": {
-    "layer0": "dragonminez:item/patterns/pattern_kale"
-  }
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:ff3f3c5d512c0bb57033da01c4f723f4df84386dba676c9f21b36571babb1232
+size 118

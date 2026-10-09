@@ -1,6 +1,3 @@
-{
-  "parent": "minecraft:item/generated",
-  "textures": {
-    "layer0": "dragonminez:item/armors/a18_cell_armor_boots"
-  }
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:7e412c02ab53f4507a1a980e8d302d895294a56501e15afa4c0238dcb193d2b3
+size 124

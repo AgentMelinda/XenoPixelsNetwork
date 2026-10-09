@@ -1,6 +1,3 @@
-{
-  "parent": "minecraft:item/generated",
-  "textures": {
-    "layer0": "dragonminez:item/patterns/pattern_turles"
-  }
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:f76bca78118339d8b58714bffe2b8e7963c5ff974c58b0cac382fac2aaa7646d
+size 120

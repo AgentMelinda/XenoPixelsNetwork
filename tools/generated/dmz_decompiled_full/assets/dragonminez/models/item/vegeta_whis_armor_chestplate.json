@@ -1,6 +1,3 @@
-{
-  "parent": "minecraft:item/generated",
-  "textures": {
-    "layer0": "dragonminez:item/armors/vegeta_whis_armor_chestplate"
-  }
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:386da0b6b60ff9554944b7cca8feb11df35754f0c0f729aed95fccb5e37323fc
+size 132

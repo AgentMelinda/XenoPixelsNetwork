@@ -1,31 +1,3 @@
-{
-  "type": "minecraft:crafting_shaped",
-  "category": "misc",
-  "group": "dragonminez",
-  "key": {
-    "#": {
-      "item": "dragonminez:blank_pattern_super"
-    },
-    "B": {
-      "item": "minecraft:blue_dye"
-    },
-    "L": {
-      "item": "minecraft:light_blue_dye"
-    },
-    "P": {
-      "item": "minecraft:purple_dye"
-    },
-    "W": {
-      "item": "minecraft:white_dye"
-    }
-  },
-  "pattern": [
-    "P#P",
-    "BPB",
-    "LWL"
-  ],
-  "result": {
-    "count": 1,
-    "id": "dragonminez:pattern_beerus"
-  }
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:efd934e55cde18a18ed9f2f9a7326462b55ef336b4c292cc63dd3af26e180fe4
+size 517

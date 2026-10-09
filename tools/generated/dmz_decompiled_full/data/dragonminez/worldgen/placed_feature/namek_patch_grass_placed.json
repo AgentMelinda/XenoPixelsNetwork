@@ -1,21 +1,3 @@
-{
-  "feature": "dragonminez:namek_patch_grass_configured",
-  "placement": [
-    {
-      "type": "minecraft:noise_threshold_count",
-      "above_noise": 10,
-      "below_noise": 5,
-      "noise_level": -0.800000011920929
-    },
-    {
-      "type": "minecraft:in_square"
-    },
-    {
-      "type": "minecraft:heightmap",
-      "heightmap": "WORLD_SURFACE_WG"
-    },
-    {
-      "type": "minecraft:biome"
-    }
-  ]
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:2d598593382ebbcaf24ee4b80a0dbba72027b07831f8ce2a9fe00885d22775ba
+size 413

@@ -1,6 +1,3 @@
-{
-  "parent": "minecraft:item/generated",
-  "textures": {
-    "layer0": "dragonminez:item/armors/granola_armor_chestplate"
-  }
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:f8417451b17d6b762f0c59ba285af67fc72fe48d2d82d49c70a63824954bc875
+size 128

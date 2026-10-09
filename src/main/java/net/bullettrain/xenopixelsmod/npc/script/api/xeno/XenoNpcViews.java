@@ -150,13 +150,12 @@ final class XenoNpcViews {
 
         @Override public boolean isVisibleTo(IPlayer player) { return read(npc, p -> p.visible); }
 
-        /** 0 hidden, 1 shown; 2 (shown when attacking) reads and writes as shown. */
-        @Override public int getBossbar() { return read(npc, p -> p.bossBar) ? 1 : 0; }
+        @Override public int getBossbar() { return read(npc, p -> p.bossBar ? p.bossBarMode : 0); }
 
         @Override
         public void setBossbar(int type) {
             if (type < 0 || type > 2) throw new IllegalArgumentException("INPCDisplay.setBossbar: type must be 0-2");
-            edit(npc, p -> p.bossBar = type != 0);
+            edit(npc, p -> { p.bossBar = type != 0; p.bossBarMode = type == 2 ? 2 : 1; });
         }
 
         @Override public int getSize() { return read(npc, p -> p.baseSize <= 0 ? 5 : p.baseSize); }
@@ -169,8 +168,11 @@ final class XenoNpcViews {
 
         @Override public int getTint() { return read(npc, p -> p.modelTint); }
         @Override public void setTint(int color) { edit(npc, p -> p.modelTint = color & 0xFFFFFF); }
-        @Override public int getShowName() { throw none("INPCDisplay.getShowName"); }
-        @Override public void setShowName(int type) { throw none("INPCDisplay.setShowName"); }
+        @Override public int getShowName() { return read(npc, p -> p.displayShowName); }
+        @Override public void setShowName(int type) {
+            if (type < 0 || type > 2) throw new IllegalArgumentException("INPCDisplay.setShowName: type must be 0-2");
+            edit(npc, p -> p.displayShowName = type);
+        }
         @Override public void setCapeTexture(String texture) { String v = text("INPCDisplay.setCapeTexture", texture, 256); edit(npc, p -> p.displayCape = v); }
         @Override public String getCapeTexture() { return read(npc, p -> p.displayCape); }
         @Override public void setOverlayTexture(String texture) { String v = text("INPCDisplay.setOverlayTexture", texture, 256); edit(npc, p -> p.displayOverlay = v); }
@@ -340,8 +342,8 @@ final class XenoNpcViews {
             npc.npcData().setRespawnDelayTicks(seconds * 20);
         }
 
-        @Override public boolean getHideDeadBody() { throw none("INPCStats.getHideDeadBody"); }
-        @Override public void setHideDeadBody(boolean hide) { throw none("INPCStats.setHideDeadBody"); }
+        @Override public boolean getHideDeadBody() { return read(npc, p -> p.hideDeadBody); }
+        @Override public void setHideDeadBody(boolean hide) { edit(npc, p -> p.hideDeadBody = hide); }
 
         /** How far the NPC notices targets: its follow-range attribute. */
         @Override
@@ -566,8 +568,18 @@ final class XenoNpcViews {
             edit(npc, p -> p.stayHome = type == 0);
         }
 
-        @Override public int getNavigationType() { throw none("INPCAi.getNavigationType"); }
-        @Override public void setNavigationType(int type) { throw none("INPCAi.setNavigationType"); }
+        @Override public int getNavigationType() {
+            var navigation = npc.getNavigation();
+            if (navigation instanceof net.minecraft.world.entity.ai.navigation.GroundPathNavigation) return 0;
+            if (navigation instanceof net.minecraft.world.entity.ai.navigation.FlyingPathNavigation) return 1;
+            if (navigation instanceof net.minecraft.world.entity.ai.navigation.WaterBoundPathNavigation) return 2;
+            throw none("INPCAi.getNavigationType (unmapped native navigator)");
+        }
+        @Override public void setNavigationType(int type) {
+            if (type < 0 || type > 2) throw new IllegalArgumentException("INPCAi.setNavigationType: type must be 0-2");
+            XenoApiAdapters.requireServerThread(npc.level());
+            if (type != getNavigationType()) throw none("INPCAi.setNavigationType (native navigator replacement)");
+        }
         @Override public int getStandingType() { throw none("INPCAi.getStandingType"); }
         @Override public void setStandingType(int type) { throw none("INPCAi.setStandingType"); }
         @Override public boolean getAttackInvisible() { return read(npc, p -> p.aiAttackInvisible); }
@@ -597,12 +609,16 @@ final class XenoNpcViews {
 
         /** 0 loop, 1 back and forth, 2 once. */
         @Override public int getMovingPathType() { return read(npc, p -> p.path == null ? 0 : p.path.mode().ordinal()); }
-        @Override public boolean getMovingPathPauses() { throw none("INPCAi.getMovingPathPauses"); }
+        @Override public boolean getMovingPathPauses() { return read(npc, p -> p.path != null && p.path.pauses()); }
 
         @Override
         public void setMovingPathType(int type, boolean pauses) {
             if (type < 0 || type >= NpcPath.Mode.values().length) throw new IllegalArgumentException("INPCAi.setMovingPathType: type must be 0-2");
-            edit(npc, p -> { if (p.path != null) p.path.setMode(NpcPath.Mode.values()[type]); });
+            edit(npc, p -> {
+                if (p.path == null) p.path = new NpcPath();
+                p.path.setMode(NpcPath.Mode.values()[type]);
+                p.path.setPauses(pauses);
+            });
         }
 
         /** CustomNPCs' 0 break, 1 open, 2 disabled. */
@@ -815,7 +831,11 @@ final class XenoNpcViews {
     }
 
     static INPCRole role(XenoNpcEntity npc) {
-        return npc.role() == XenoNpcRole.TRADER ? new Trader(npc) : () -> roleType(npc.role());
+        return switch (npc.role()) {
+            case TRADER -> new Trader(npc);
+            case TRANSPORTER -> new XenoTransporterAdapter(npc);
+            default -> () -> roleType(npc.role());
+        };
     }
 
     /** A trader's shop. Trades are item ids and counts natively, so components on a stack are not kept. */
@@ -861,10 +881,76 @@ final class XenoNpcViews {
 
     /** The job, in CustomNPCs' {@link JobType} numbering, which the native job list follows. */
     static INPCJob job(XenoNpcEntity npc) {
+        NpcCombatProfile currentProfile = NpcCombatProfile.readCached(npc);
+        if (currentProfile.jobEnabled) {
+            if (XenoNpcJob.byId(currentProfile.job) == XenoNpcJob.BARD) return new Bard(npc);
+            if (XenoNpcJob.byId(currentProfile.job) == XenoNpcJob.FOLLOWER) return new Follower(npc);
+        }
         return () -> {
             NpcCombatProfile profile = NpcCombatProfile.readCached(npc);
             if (!profile.jobEnabled) return JobType.NONE;
             return XenoNpcJob.byId(profile.job).ordinal();
         };
+    }
+
+    public static final class Bard implements INPCJob, xenoapi.npcs.api.entity.data.role.IJobBard {
+        private final XenoNpcEntity npc;
+        Bard(XenoNpcEntity npc) { this.npc = npc; }
+        @Override public int getType() { return currentJobType(npc); }
+        @Override public String getSong() { return read(npc, p -> p.bardSound); }
+        @Override public void setSong(String song) {
+            String value = text("IJobBard.setSong", song, 128);
+            if (!value.isEmpty() && net.bullettrain.xenopixelsmod.compat.npc.NpcCustomSounds.resolve(value) == null) {
+                throw new IllegalArgumentException("IJobBard.setSong: unknown sound id " + value);
+            }
+            edit(npc, p -> p.bardSound = value);
+        }
+        @Override public boolean getLooping() { return read(npc, p -> p.bardLoops); }
+        @Override public void setLooping(boolean enabled) { edit(npc, p -> p.bardLoops = enabled); }
+        @Override public boolean getIsBackground() { return read(npc, p -> p.bardJukebox); }
+        @Override public void setIsBackground(boolean enabled) { edit(npc, p -> p.bardJukebox = enabled); }
+        @Override public int getMinRange() { return read(npc, p -> p.bardOnDistance); }
+        @Override public void setMinRange(int range) {
+            bardRange(range);
+            edit(npc, p -> p.bardOnDistance = range);
+        }
+        @Override public int getMaxRange() { return read(npc, p -> p.bardOffDistance); }
+        @Override public void setMaxRange(int range) {
+            bardRange(range);
+            edit(npc, p -> p.bardOffDistance = range);
+        }
+        @Override public boolean getHasMaxRange() { return read(npc, p -> p.bardHasOffDistance); }
+        @Override public void setHasMaxRange(boolean enabled) { edit(npc, p -> p.bardHasOffDistance = enabled); }
+    }
+
+    static void bardRange(int range) {
+        if (range < 0 || range > NpcCombatProfile.MAX_BARD_DISTANCE) {
+            throw new IllegalArgumentException("IJobBard: range must be 0-128");
+        }
+    }
+
+    private static int currentJobType(XenoNpcEntity npc) {
+        NpcCombatProfile profile = NpcCombatProfile.readCached(npc);
+        return profile.jobEnabled ? XenoNpcJob.byId(profile.job).ordinal() : JobType.NONE;
+    }
+
+    public static final class Follower implements xenoapi.npcs.api.entity.data.role.IJobFollower {
+        private final XenoNpcEntity npc;
+        Follower(XenoNpcEntity npc) { this.npc = npc; }
+        @Override public int getType() { return currentJobType(npc); }
+        @Override public String getFollowing() { return read(npc, p -> p.followerName); }
+        @Override public void setFollowing(String name) {
+            String value = text("IJobFollower.setFollowing", name, 64);
+            edit(npc, p -> p.followerName = value);
+        }
+        @Override public boolean isFollowing() {
+            return net.bullettrain.xenopixelsmod.npc.job.NpcFollowerJob.followed(npc,
+                    NpcCombatProfile.readCached(npc)) != null;
+        }
+        @Override public xenoapi.npcs.api.entity.ICustomNpc<?> getFollowingNpc() {
+            var target = net.bullettrain.xenopixelsmod.npc.job.NpcFollowerJob.followed(npc,
+                    NpcCombatProfile.readCached(npc));
+            return target instanceof XenoNpcEntity nativeNpc ? new XenoNpcAdapter(nativeNpc) : null;
+        }
     }
 }

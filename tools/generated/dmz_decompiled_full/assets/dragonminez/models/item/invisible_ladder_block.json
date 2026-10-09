@@ -1,1 +1,3 @@
-{"parent":"minecraft:item/generated","textures":{"layer0":"dragonminez:block/invisible_ladder_block"}}
+version https://git-lfs.github.com/spec/v1
+oid sha256:b690990d04374695ced2f7020b0cd1596d4846424d5ee893168e89212aba06eb
+size 102

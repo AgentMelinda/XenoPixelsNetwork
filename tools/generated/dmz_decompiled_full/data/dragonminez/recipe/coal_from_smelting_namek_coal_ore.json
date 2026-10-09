@@ -1,14 +1,3 @@
-{
-  "type": "minecraft:smelting",
-  "category": "misc",
-  "cookingtime": 200,
-  "experience": 0.1,
-  "group": "coal",
-  "ingredient": {
-    "item": "dragonminez:namek_coal_ore"
-  },
-  "result": {
-    "count": 1,
-    "id": "minecraft:coal"
-  }
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:6726736405b0b5702e1d349ea9279838f32a73171470c3d61a3bc308d143ac61
+size 244

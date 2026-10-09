@@ -9,7 +9,7 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
 import java.nio.file.Path;
 
-/** Exact 1.3.0 candidate predicate; excludes disabled files from bulk progress totals as well. */
+/** Verified 1.3.0/1.3.1 candidate predicate; excludes disabled files from bulk progress totals as well. */
 @Pseudo
 @Mixin(targets = "com.bugfunbug.linearreader.linear.BulkMcaConverter", remap = false)
 public abstract class BulkConversionPolicyMixin {

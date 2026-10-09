@@ -1,6 +1,3 @@
-{
-  "parent": "minecraft:item/generated",
-  "textures": {
-    "layer0": "dragonminez:item/workout_weights"
-  }
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:06f1bb5fbe7a890a5388ef568cbc841538243ef5b9561dfd325f2356ad34bfc9
+size 112

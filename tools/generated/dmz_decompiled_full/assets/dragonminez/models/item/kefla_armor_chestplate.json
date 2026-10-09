@@ -1,6 +1,3 @@
-{
-  "parent": "minecraft:item/generated",
-  "textures": {
-    "layer0": "dragonminez:item/armors/kefla_armor_chestplate"
-  }
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:9c7ed5f05d106c039bfc2379222e13417cf4e879b7c4be1d4ca158f38c0c36c9
+size 126

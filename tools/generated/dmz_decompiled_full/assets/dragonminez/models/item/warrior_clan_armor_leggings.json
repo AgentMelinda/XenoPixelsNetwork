@@ -1,6 +1,3 @@
-{
-  "parent": "minecraft:item/generated",
-  "textures": {
-    "layer0": "dragonminez:item/armors/warrior_clan_armor_leggings"
-  }
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:582b4d7a81a0c31048d95065fdef0a2a7277f6b9d6b54e541fd8903113353e88
+size 131

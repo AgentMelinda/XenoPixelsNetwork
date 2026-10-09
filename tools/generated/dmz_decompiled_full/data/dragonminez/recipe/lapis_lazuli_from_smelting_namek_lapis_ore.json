@@ -1,14 +1,3 @@
-{
-  "type": "minecraft:smelting",
-  "category": "misc",
-  "cookingtime": 200,
-  "experience": 0.2,
-  "group": "lapis_lazuli",
-  "ingredient": {
-    "item": "dragonminez:namek_lapis_ore"
-  },
-  "result": {
-    "count": 1,
-    "id": "minecraft:lapis_lazuli"
-  }
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:f9399421e5f87687eb341562871ca68389249c5ecad98dec2f9d06da616bdd95
+size 261

@@ -1,21 +1,3 @@
-{
-  "type": "minecraft:block",
-  "pools": [
-    {
-      "bonus_rolls": 0.0,
-      "conditions": [
-        {
-          "condition": "minecraft:survives_explosion"
-        }
-      ],
-      "entries": [
-        {
-          "type": "minecraft:item",
-          "name": "dragonminez:time_chamber_block"
-        }
-      ],
-      "rolls": 1.0
-    }
-  ],
-  "random_sequence": "dragonminez:blocks/time_chamber_block"
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:7c9cec63598073a3126b932b9b469e680f173818aff3928248f5b6ea96c8e322
+size 408

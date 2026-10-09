@@ -1,6 +1,3 @@
-{
-  "parent": "minecraft:block/template_fence_gate_open",
-  "textures": {
-    "texture": "dragonminez:block/namek_sacred_planks"
-  }
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:63d7d0917d71f6025bd70f81b4c2c57204d46b71517799a16822ad596d365f4f
+size 134

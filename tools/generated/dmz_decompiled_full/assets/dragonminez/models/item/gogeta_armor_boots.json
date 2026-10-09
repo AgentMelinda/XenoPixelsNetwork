@@ -1,6 +1,3 @@
-{
-  "parent": "minecraft:item/generated",
-  "textures": {
-    "layer0": "dragonminez:item/armors/gogeta_armor_boots"
-  }
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:072e94b513253920d6fafe94c17b14a1d0d4d749f974d59785432ff6e1212042
+size 122

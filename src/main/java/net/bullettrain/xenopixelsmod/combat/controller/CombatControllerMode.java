@@ -9,12 +9,19 @@ import java.util.Locale;
  * <p>{@link #LEGACY} is the pre-manual Xeno/DMZ controller and is the default forever: an owner
  * who never touches the config, or whose file is malformed, must get the combat they already
  * had. {@link #BT3_MANUAL} is the explicit opt-in for the server-authoritative manual BT3
- * controller and its choreography. No Minecraft dependency so it can be unit-tested and reused
+ * controller and its choreography, and {@link #V2} for the rewritten v2 combat. No Minecraft dependency so it can be unit-tested and reused
  * by the addon API later.
  */
 public enum CombatControllerMode {
     LEGACY("legacy"),
-    BT3_MANUAL("bt3_manual");
+    BT3_MANUAL("bt3_manual"),
+    /**
+     * XenoCombat v2: the state-machine controller under {@code combat.v2}. Appended, and opt-in
+     * exactly like {@link #BT3_MANUAL}; {@link #LEGACY} (v1) stays the default.
+     */
+    V2("v2"),
+    /** Opt-in V3 controller. Existing persisted ids and default remain stable. */
+    V3("v3");
 
     public static final CombatControllerMode DEFAULT = LEGACY;
 

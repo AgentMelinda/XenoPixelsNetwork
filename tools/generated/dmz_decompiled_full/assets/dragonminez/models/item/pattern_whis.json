@@ -1,6 +1,3 @@
-{
-  "parent": "minecraft:item/generated",
-  "textures": {
-    "layer0": "dragonminez:item/patterns/pattern_whis"
-  }
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:81016957fa58ebf67c1ed359b5b47b6fd86b074299e19363d8be4769a647507a
+size 118

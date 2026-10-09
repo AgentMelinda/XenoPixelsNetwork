@@ -1,6 +1,3 @@
-{
-  "parent": "minecraft:item/generated",
-  "textures": {
-    "layer0": "dragonminez:item/armors/strongest_armor_boots"
-  }
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:0cbd9155dfc6a2e22497788fe52b9a692f38c4ae66d11369b65f5402d205f7c9
+size 125

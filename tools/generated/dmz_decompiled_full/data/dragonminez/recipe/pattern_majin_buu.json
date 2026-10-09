@@ -1,28 +1,3 @@
-{
-  "type": "minecraft:crafting_shaped",
-  "category": "misc",
-  "group": "dragonminez",
-  "key": {
-    "#": {
-      "item": "dragonminez:blank_pattern_z"
-    },
-    "B": {
-      "item": "minecraft:black_dye"
-    },
-    "M": {
-      "item": "minecraft:magenta_dye"
-    },
-    "Y": {
-      "item": "minecraft:yellow_dye"
-    }
-  },
-  "pattern": [
-    "B#B",
-    "MMM",
-    "BYB"
-  ],
-  "result": {
-    "count": 1,
-    "id": "dragonminez:pattern_majin_buu"
-  }
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:1a969743bbbe4e0e0f84e6a5f16e743e65a62f65a128b891985742a22d7068a1
+size 460

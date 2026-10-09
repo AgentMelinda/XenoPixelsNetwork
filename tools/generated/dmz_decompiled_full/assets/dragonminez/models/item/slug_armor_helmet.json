@@ -1,6 +1,3 @@
-{
-  "parent": "minecraft:item/generated",
-  "textures": {
-    "layer0": "dragonminez:item/armors/slug_armor_helmet"
-  }
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:ae7f02bd7b78f2894d67b3c281f183ee8af69767657f88d9491d8aa04bf7147c
+size 121

@@ -1,14 +1,3 @@
-{
-  "values": [
-    "dragonminez:chrysanthemum_flower",
-    "dragonminez:marigold_flower",
-    "dragonminez:amaryllis_flower",
-    "dragonminez:catharanthus_roseus_flower",
-    "dragonminez:trillium_flower",
-    "dragonminez:sacred_chrysanthemum_flower",
-    "dragonminez:sacred_marigold_flower",
-    "dragonminez:sacred_amaryllis_flower",
-    "dragonminez:sacred_catharanthus_roseus_flower",
-    "dragonminez:sacred_trillium_flower"
-  ]
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:64a8b3f322452df7cca72c59b57a6a361ac7e21a3bce388e7108fefdb5b8b96b
+size 439

@@ -1,14 +1,3 @@
-{
-  "type": "minecraft:crafting_shapeless",
-  "category": "building",
-  "group": "dmz_planks",
-  "ingredients": [
-    {
-      "tag": "dragonminez:namek_alog"
-    }
-  ],
-  "result": {
-    "count": 4,
-    "id": "dragonminez:namek_ajissa_planks"
-  }
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:bd7f2f290fcd6e94a806b4c260b0320088dd16708288904fae4f41b70cdcb15c
+size 261

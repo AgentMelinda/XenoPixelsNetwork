@@ -272,6 +272,11 @@ public final class ComboRouteMachine {
             }
         }
         float scale = XenoServerConfig.comboDamageScale;
+        // Route hits are the same size and closer together than Minecraft's half-second hit
+        // cooldown, which drops a hit that is not bigger than the last: every second beat of a
+        // rush or lift combo played its animation and did nothing. The route's own timing is the
+        // pace here, so the cooldown is cleared, as the NPC strike dispatcher already does.
+        target.invulnerableTime = 0;
         target.hurt(player.damageSources().playerAttack(player), base * scale);
         Vec3 away = target.position().subtract(player.position());
         Vec3 flat = new Vec3(away.x, 0.0, away.z);

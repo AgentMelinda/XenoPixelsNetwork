@@ -1,6 +1,3 @@
-{
-  "parent": "minecraft:item/generated",
-  "textures": {
-    "layer0": "dragonminez:item/patterns/pattern_king_vegeta"
-  }
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:d880eed0c72f48e22091d35a521faf2a62508db75b6ddd46ae11ff732b43abe4
+size 125

@@ -1,6 +1,3 @@
-{
-  "parent": "minecraft:item/generated",
-  "textures": {
-    "layer0": "dragonminez:item/armors/goku_kid_armor_leggings"
-  }
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:b7aac8b3613093e418307f92d2424229dfc512b913b19931b722dd097d3ea8b4
+size 127

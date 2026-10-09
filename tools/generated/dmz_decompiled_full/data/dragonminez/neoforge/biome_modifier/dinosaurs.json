@@ -1,25 +1,3 @@
-{
-  "type": "neoforge:add_spawns",
-  "biomes": "#dragonminez:has_dinosaurs",
-  "spawners": [{
-    "type": "dragonminez:dino1",
-    "weight": 22,
-    "minCount": 1,
-    "maxCount": 2
-  },{
-    "type": "dragonminez:dino2",
-    "weight": 18,
-    "minCount": 1,
-    "maxCount": 2
-  },{
-    "type": "dragonminez:dino3",
-    "weight": 14,
-    "minCount": 1,
-    "maxCount": 2
-  },{
-    "type": "dragonminez:dinokid",
-    "weight": 10,
-    "minCount": 1,
-    "maxCount": 3
-  }]
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:d4fd8c655b3800f316f19fd28708ecf0b6ebf7dc4461fad1443b8110594559af
+size 498

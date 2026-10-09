@@ -1,13 +1,3 @@
-{
-  "values": [
-    "dragonminez:namek_diamond_ore",
-    "dragonminez:namek_gold_ore",
-    "dragonminez:namek_redstone_ore",
-    "dragonminez:namek_emerald_ore",
-    "dragonminez:namek_deepslate_diamond_ore",
-    "dragonminez:namek_deepslate_gold_ore",
-    "dragonminez:namek_deepslate_redstone_ore",
-    "dragonminez:namek_deepslate_emerald_ore",
-    "dragonminez:fuel_generator"
-  ]
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:5104c5074aca3233155f42a263a99537540a59f959da97de3c3282f6c6248fb6
+size 386

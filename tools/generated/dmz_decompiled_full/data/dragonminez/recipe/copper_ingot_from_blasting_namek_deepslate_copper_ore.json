@@ -1,14 +1,3 @@
-{
-  "type": "minecraft:blasting",
-  "category": "misc",
-  "cookingtime": 100,
-  "experience": 0.7,
-  "group": "copper_ingot",
-  "ingredient": {
-    "item": "dragonminez:namek_deepslate_copper_ore"
-  },
-  "result": {
-    "count": 1,
-    "id": "minecraft:copper_ingot"
-  }
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:6d2d2a418eb820eaa66b5d8df104e2db6c776df918518b679e6d2203db7f0fb1
+size 272

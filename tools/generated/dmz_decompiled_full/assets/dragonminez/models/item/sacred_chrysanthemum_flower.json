@@ -1,6 +1,3 @@
-{
-  "parent": "minecraft:item/generated",
-  "textures": {
-    "layer0": "dragonminez:item/sacred_chrysanthemum_flower"
-  }
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:a6f16fbc3bdda8461872cbfabc7f10a9c4e4880a94b1f01fdae200985e85e2ef
+size 124

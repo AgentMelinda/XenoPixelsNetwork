@@ -5,11 +5,18 @@ import net.bullettrain.xenopixelsmod.compat.npc.NpcKiAim;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.phys.AABB;
 import org.spongepowered.asm.mixin.Mixin;
+import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Constant;
 import org.spongepowered.asm.mixin.injection.ModifyConstant;
 import org.spongepowered.asm.mixin.injection.ModifyVariable;
 import org.spongepowered.asm.mixin.injection.Redirect;
+import org.spongepowered.asm.mixin.injection.Inject;
+import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
+import net.bullettrain.xenopixelsmod.client.XenoServerClientState;
+import net.bullettrain.xenopixelsmod.client.combat.v3.V3ClientState;
+import net.minecraft.client.Minecraft;
+import net.neoforged.neoforge.client.event.ClientTickEvent;
 
 /**
  * Target: {@code LockOnEvent} acquire/persist/HUD.
@@ -22,6 +29,30 @@ import org.spongepowered.asm.mixin.injection.Redirect;
  */
 @Mixin(value = LockOnEvent.class, remap = false)
 public abstract class DmzLockOnNpcMixin {
+    @Unique private static boolean xenopixels$v3WasActive;
+
+    @Inject(method = "toggleLock", at = @At("HEAD"), cancellable = true)
+    private static void xenopixels$v3RequestLock(CallbackInfo ci) {
+        if (!XenoServerClientState.v3Controller()) return;
+        Minecraft mc = Minecraft.getInstance();
+        if (mc.player != null && mc.screen == null) V3ClientState.toggleLock();
+        ci.cancel();
+    }
+
+    @Inject(method = "onClientTick", at = @At("HEAD"), cancellable = true)
+    private static void xenopixels$v3RetainApprovedTarget(ClientTickEvent.Post event, CallbackInfo ci) {
+        if (!XenoServerClientState.v3Controller()) {
+            if (xenopixels$v3WasActive) {
+                DmzLockOnAccessor.xenopixels$setLockedTarget(null);
+                DmzLockOnAccessor.xenopixels$setMarkerVisible(false);
+                xenopixels$v3WasActive = false;
+            }
+            return;
+        }
+        xenopixels$v3WasActive = true;
+        V3ClientState.syncNativeLock();
+        ci.cancel();
+    }
 
     @Redirect(
             method = "findTargetInFront",

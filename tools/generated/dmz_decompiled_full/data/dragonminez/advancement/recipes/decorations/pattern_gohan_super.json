@@ -1,32 +1,3 @@
-{
-  "parent": "minecraft:recipes/root",
-  "criteria": {
-    "has_blank_pattern_super": {
-      "conditions": {
-        "items": [
-          {
-            "items": "dragonminez:blank_pattern_super"
-          }
-        ]
-      },
-      "trigger": "minecraft:inventory_changed"
-    },
-    "has_the_recipe": {
-      "conditions": {
-        "recipe": "dragonminez:pattern_gohan_super"
-      },
-      "trigger": "minecraft:recipe_unlocked"
-    }
-  },
-  "requirements": [
-    [
-      "has_the_recipe",
-      "has_blank_pattern_super"
-    ]
-  ],
-  "rewards": {
-    "recipes": [
-      "dragonminez:pattern_gohan_super"
-    ]
-  }
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:69539383cd807ef573e9453e31779e2281110b7d267f9a1385060fe4b4b1c2e0
+size 621

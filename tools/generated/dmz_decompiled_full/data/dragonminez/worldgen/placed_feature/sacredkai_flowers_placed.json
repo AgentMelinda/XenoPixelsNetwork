@@ -1,25 +1,3 @@
-{
-  "feature": "dragonminez:sacredkai_flowers",
-  "placement": [
-    {
-      "type": "minecraft:noise_threshold_count",
-      "above_noise": 3,
-      "below_noise": 8,
-      "noise_level": -0.800000011920929
-    },
-    {
-      "type": "minecraft:rarity_filter",
-      "chance": 10
-    },
-    {
-      "type": "minecraft:in_square"
-    },
-    {
-      "type": "minecraft:heightmap",
-      "heightmap": "WORLD_SURFACE_WG"
-    },
-    {
-      "type": "minecraft:biome"
-    }
-  ]
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:9d771fcb2840f8ebfdbc1a9d832d7033221a19044ec0b2b1861f9219742fd7c6
+size 474

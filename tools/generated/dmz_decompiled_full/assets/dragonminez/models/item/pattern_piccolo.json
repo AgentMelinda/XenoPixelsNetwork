@@ -1,6 +1,3 @@
-{
-  "parent": "minecraft:item/generated",
-  "textures": {
-    "layer0": "dragonminez:item/patterns/pattern_piccolo"
-  }
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:4fe43429d27558c578921c61354589b6ffbf07d059d1f7e21d32af9aa1aa55dc
+size 121

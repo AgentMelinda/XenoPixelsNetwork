@@ -11,6 +11,12 @@ import java.util.concurrent.ConcurrentHashMap;
 /** A player as a script sees it: the entity view plus messaging and XenoPixels progression. */
 public final class ScriptPlayer extends ScriptEntity {
     private final ServerPlayer player;
+    /** Typed native player API, alongside this wrapper's legacy helpers. */
+    public xenoapi.npcs.api.entity.IPlayer<?> getAPI() {
+        if (player == null) throw new IllegalStateException("Player API functions require a live server player");
+        return (xenoapi.npcs.api.entity.IPlayer<?>)
+                net.bullettrain.xenopixelsmod.npc.script.api.xeno.XenoApiAdapters.wrap(player);
+    }
     private static final Map<java.util.UUID, Map<String, Object>> TEMP = new ConcurrentHashMap<>();
 
     ScriptPlayer(ServerPlayer player) {

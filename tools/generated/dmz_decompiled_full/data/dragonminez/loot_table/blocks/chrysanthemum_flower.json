@@ -1,21 +1,3 @@
-{
-  "type": "minecraft:block",
-  "pools": [
-    {
-      "bonus_rolls": 0.0,
-      "conditions": [
-        {
-          "condition": "minecraft:survives_explosion"
-        }
-      ],
-      "entries": [
-        {
-          "type": "minecraft:item",
-          "name": "dragonminez:chrysanthemum_flower"
-        }
-      ],
-      "rolls": 1.0
-    }
-  ],
-  "random_sequence": "dragonminez:blocks/chrysanthemum_flower"
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:86392199d617e16779a853416e5291c79f01bcdeac2247f2338463c1a033d362
+size 412

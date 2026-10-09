@@ -1,25 +1,3 @@
-{
-  "type": "minecraft:crafting_shaped",
-  "category": "redstone",
-  "group": "dragonminez",
-  "key": {
-    "I": {
-      "item": "minecraft:iron_ingot"
-    },
-    "R": {
-      "item": "minecraft:redstone"
-    },
-    "S": {
-      "item": "minecraft:string"
-    }
-  },
-  "pattern": [
-    "SIS",
-    "IRI",
-    "SIS"
-  ],
-  "result": {
-    "count": 1,
-    "id": "dragonminez:radar_piece"
-  }
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:f45f1371fdf9a3214b9e6e2c3ba35618b4dda4a107e5767573a4b819cc34f64e
+size 390

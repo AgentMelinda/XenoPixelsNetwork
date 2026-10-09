@@ -1,6 +1,3 @@
-{
-  "parent": "minecraft:item/generated",
-  "textures": {
-    "layer0": "dragonminez:item/armors/majin21_armor_chestplate"
-  }
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:ead3f073c8e94104faee5a1bb2fe78e8e65f444609fd1961bf87cf7fce5ad6a0
+size 128

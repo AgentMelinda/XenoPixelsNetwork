@@ -1,32 +1,3 @@
-{
-  "parent": "minecraft:recipes/root",
-  "criteria": {
-    "has_t1_radar_chip": {
-      "conditions": {
-        "items": [
-          {
-            "items": "dragonminez:t1_radar_chip"
-          }
-        ]
-      },
-      "trigger": "minecraft:inventory_changed"
-    },
-    "has_the_recipe": {
-      "conditions": {
-        "recipe": "dragonminez:energy_cable"
-      },
-      "trigger": "minecraft:recipe_unlocked"
-    }
-  },
-  "requirements": [
-    [
-      "has_the_recipe",
-      "has_t1_radar_chip"
-    ]
-  ],
-  "rewards": {
-    "recipes": [
-      "dragonminez:energy_cable"
-    ]
-  }
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:c690ed83a5bc1d085227c9952f9237003c62bd7643d7c7c83049df91fca680f6
+size 589

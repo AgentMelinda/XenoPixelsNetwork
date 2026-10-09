@@ -1,8 +1,3 @@
-{
-  "parent": "minecraft:block/outer_stairs",
-  "textures": {
-    "bottom": "dragonminez:block/rocky_stone",
-    "side": "dragonminez:block/rocky_stone",
-    "top": "dragonminez:block/rocky_stone"
-  }
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:559a94927f00723abecf716242b7a38b6d05406c85463cef92ea61cf9b8703b9
+size 202

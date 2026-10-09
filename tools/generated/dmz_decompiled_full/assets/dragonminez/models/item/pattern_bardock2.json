@@ -1,6 +1,3 @@
-{
-  "parent": "minecraft:item/generated",
-  "textures": {
-    "layer0": "dragonminez:item/patterns/pattern_bardock2"
-  }
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:448fb825ca6ee54b16cf368f9980591f882f494d9c1613e06e4484750981a9aa
+size 122

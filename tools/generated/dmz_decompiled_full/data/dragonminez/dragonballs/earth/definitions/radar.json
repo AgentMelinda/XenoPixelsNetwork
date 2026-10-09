@@ -1,16 +1,3 @@
-{
-  "asset_definition": "earth_radar",
-  "ball_set": "earth",
-  "dimensions": [
-    "minecraft:overworld"
-  ],
-  "display_name": "Dragon Radar",
-  "id": "earth_radar",
-  "item_registry_name": "dball_radar",
-  "ranges": [
-    150,
-    300
-  ],
-  "recipe_definition": "earth_radar_recipe",
-  "tooltip_key": "item.dragonminez.dball_radar.tooltip"
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:7ed58ce2f022f5da97e535851646d20eda65ab08eb616d585f1c77bd9559983f
+size 345

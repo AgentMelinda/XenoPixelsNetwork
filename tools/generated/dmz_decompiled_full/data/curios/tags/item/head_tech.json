@@ -1,16 +1,3 @@
-{
-  "replace": false,
-  "values": [
-    "dragonminez:pothala_left",
-    "dragonminez:pothala_right",
-    "dragonminez:green_pothala_left",
-    "dragonminez:green_pothala_right",
-    "dragonminez:pothala_pair",
-    "dragonminez:green_pothala_pair",
-    "dragonminez:red_scouter",
-    "dragonminez:blue_scouter",
-    "dragonminez:green_scouter",
-    "dragonminez:purple_scouter",
-    "dragonminez:anti_ki_cloak"
-  ]
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:d8f46056b09640ae6c6a068fb8d1b0b2ff46d27fc44574d090cf522886cc2e2b
+size 430

@@ -1,13 +1,3 @@
-{
-  "name": "dragonminez:rrtower",
-  "fallback": "minecraft:empty",
-  "elements": [{
-    "weight": 1,
-    "element": {
-      "location": "dragonminez:rrtower",
-      "processors": "minecraft:empty",
-      "projection": "rigid",
-      "element_type": "minecraft:single_pool_element"
-    }
-  }]
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:eb33ac22b128aaa5914ab6eefb2997b440eec06da7ab31b2077d0a4fdadd3ade
+size 306

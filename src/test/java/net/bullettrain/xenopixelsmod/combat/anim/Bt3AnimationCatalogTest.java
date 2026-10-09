@@ -11,6 +11,8 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Path;
+import java.util.zip.ZipFile;
 import java.util.Map;
 import java.util.Set;
 
@@ -41,6 +43,21 @@ class Bt3AnimationCatalogTest {
             assertNotNull(in, ANIMATION_FILE + " is not on the test classpath");
             return JsonParser.parseReader(new InputStreamReader(in, StandardCharsets.UTF_8))
                     .getAsJsonObject().getAsJsonObject("animations");
+        }
+    }
+
+    private static JsonObject nativeAnimations() throws IOException {
+        // NeoForge's test module class loader does not expose another mod's asset resources.
+        String projectDir = System.getProperty("xenopixels.projectDir");
+        assertNotNull(projectDir, "Gradle must provide xenopixels.projectDir");
+        Path root = Path.of(projectDir);
+        try (ZipFile jar = new ZipFile(root.resolve("libs/dragonminez-2.1.3.jar").toFile())) {
+            var entry = jar.getEntry("assets/dragonminez/animations/entity/races/combat.animation.json");
+            assertNotNull(entry);
+            try (InputStream in = jar.getInputStream(entry)) {
+                return JsonParser.parseReader(new InputStreamReader(in, StandardCharsets.UTF_8))
+                        .getAsJsonObject().getAsJsonObject("animations");
+            }
         }
     }
 
@@ -162,21 +179,51 @@ class Bt3AnimationCatalogTest {
     }
 
     @Test
-    void crossAliasesMatchTheGenerationFourDmzCopies() throws IOException {
+    void generationFourPunchArmCorrectionPreservesNativeTimingAndLegs() throws IOException {
         JsonObject ours = animations();
-        assertEquals(ours.getAsJsonObject("combat.xeno_dmz_punch_left_v4"),
-                ours.getAsJsonObject("combat.xeno_cross_left"));
-        assertEquals(ours.getAsJsonObject("combat.xeno_dmz_punch_right_v4"),
-                ours.getAsJsonObject("combat.xeno_cross_right"));
+        JsonObject nativeClips = nativeAnimations();
+        for (String side : new String[]{"left", "right"}) {
+            JsonObject source = nativeClips.getAsJsonObject("combat.one_handed_punch_" + side);
+            JsonObject corrected = ours.getAsJsonObject("combat.xeno_dmz_punch_" + side + "_v4");
+            assertEquals(source.get("animation_length"), corrected.get("animation_length"));
+            for (var bone : source.getAsJsonObject("bones").entrySet()) {
+                if (bone.getKey().equals("left_arm") || bone.getKey().equals("right_arm")) continue;
+                assertEquals(bone.getValue(), corrected.getAsJsonObject("bones").get(bone.getKey()), bone.getKey());
+            }
+        }
     }
 
     @Test
     void crossV1AndV2UseDmzsExactLeftAndRightMovement() throws IOException {
         JsonObject ours = animations();
+        JsonObject nativeClips = nativeAnimations();
         for (String side : new String[]{"left", "right"}) {
-            JsonObject source = ours.getAsJsonObject("combat.xeno_dmz_punch_" + side + "_v4");
+            JsonObject source = nativeClips.getAsJsonObject("combat.one_handed_punch_" + side);
             assertEquals(source, ours.getAsJsonObject("combat.xeno_cross_" + side));
             assertEquals(source, ours.getAsJsonObject("combat.xeno_cross_" + side + "_v2"));
+        }
+    }
+
+    @Test void newCombatArmsDoNotTranslateBehindTheShoulderOrSwingBackDuringKicks() throws IOException {
+        for (var entry : animations().entrySet()) {
+            String name = entry.getKey();
+            if (!(name.endsWith("_v3") || name.endsWith("_v4") || name.startsWith("combat.xeno_charge_")
+                    || name.startsWith("combat.xeno_cinematic_rush_"))) continue;
+            JsonObject bones = entry.getValue().getAsJsonObject().getAsJsonObject("bones");
+            for (String arm : new String[]{"left_arm", "right_arm"}) {
+                JsonObject channels = bones.getAsJsonObject(arm);
+                if (channels == null) continue;
+                for (String channel : new String[]{"rotation", "position"}) {
+                    JsonObject frames = channels.getAsJsonObject(channel);
+                    if (frames == null) continue;
+                    for (var frame : frames.entrySet()) {
+                        var vector = frame.getValue().getAsJsonObject().getAsJsonArray("vector");
+                        int axis = channel.equals("position") ? 2 : 0;
+                        assertTrue(vector.get(axis).getAsDouble() <= 0,
+                                name + " " + arm + " " + channel + " moves backward at " + frame.getKey());
+                    }
+                }
+            }
         }
     }
 
@@ -220,6 +267,38 @@ class Bt3AnimationCatalogTest {
                         .getAsJsonArray("vector").get(1).getAsDouble()));
             }
             assertTrue(maximumYaw >= 359.0, intent + " only turns " + maximumYaw + " degrees");
+        }
+    }
+
+    @Test
+    void chargedClipsHoldTheirChamberAndReleaseFromTheSameWholeBodyPose() throws IOException {
+        JsonObject animations = animations();
+        Set<String> rig = Set.of("root", "waist", "head", "left_arm", "right_arm", "left_leg", "right_leg");
+        for (String kind : new String[]{"punch", "kick"}) {
+            String name = "combat.xeno_charge_" + kind;
+            String recovery = kind.equals("punch") ? "0.95" : "1.05";
+            JsonObject hold = animations.getAsJsonObject(name + "_hold").getAsJsonObject("bones");
+            JsonObject fire = animations.getAsJsonObject(name + "_fire").getAsJsonObject("bones");
+            assertEquals(rig, hold.keySet());
+            assertEquals(rig, fire.keySet());
+            for (String bone : rig) {
+                JsonObject chamber = hold.getAsJsonObject(bone).getAsJsonObject("rotation");
+                JsonObject release = fire.getAsJsonObject(bone).getAsJsonObject("rotation");
+                assertEquals(chamber.get("0.55"), release.get("0.0"), kind + " snaps its " + bone + " on release");
+                assertEquals(chamber.get("0.0"), release.get(recovery), kind + " fails to recover its " + bone);
+                if (hold.getAsJsonObject(bone).has("position")) {
+                    JsonObject heldPosition = hold.getAsJsonObject(bone).getAsJsonObject("position");
+                    JsonObject releasedPosition = fire.getAsJsonObject(bone).getAsJsonObject("position");
+                    assertEquals(heldPosition.get("0.55"), releasedPosition.get("0.0"),
+                            kind + " jumps its " + bone + " position on release");
+                    assertEquals(heldPosition.get("0.0"), releasedPosition.get(recovery),
+                            kind + " fails to recover its " + bone + " position");
+                }
+                assertFalse(hold.getAsJsonObject(bone).has("scale"));
+                assertFalse(fire.getAsJsonObject(bone).has("scale"));
+            }
+            assertTrue(Bt3AnimationCatalog.customAnimationNames().contains(name + "_hold"));
+            assertTrue(Bt3AnimationCatalog.customAnimationNames().contains(name + "_fire"));
         }
     }
 

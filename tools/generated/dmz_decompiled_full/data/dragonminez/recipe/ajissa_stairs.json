@@ -1,20 +1,3 @@
-{
-  "type": "minecraft:crafting_shaped",
-  "category": "building",
-  "group": "wooden_stairs",
-  "key": {
-    "#": {
-      "item": "dragonminez:namek_ajissa_planks"
-    }
-  },
-  "pattern": [
-    "#  ",
-    "## ",
-    "###"
-  ],
-  "result": {
-    "count": 4,
-    "id": "dragonminez:namek_ajissa_stairs"
-  },
-  "show_notification": true
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:6844d9c664d56ea18e343f037269117259bac5445403be1bd4726a499ab774d9
+size 355

@@ -1,13 +1,3 @@
-{
-  "placement": {
-    "type": "dragonminez:biome_aware_placement",
-    "salt": 18273645,
-    "valid_biomes": "#dragonminez:is_mountainlike"
-  },
-  "structures": [
-    {
-      "structure": "dragonminez:babidi",
-      "weight": 1
-    }
-  ]
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:0a97db7df9b986b388521a4ee9bba4dddc0f68d968bd452e2a7da93dd23e8a0b
+size 240

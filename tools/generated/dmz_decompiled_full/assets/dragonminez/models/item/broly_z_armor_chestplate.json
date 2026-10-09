@@ -1,6 +1,3 @@
-{
-  "parent": "minecraft:item/generated",
-  "textures": {
-    "layer0": "dragonminez:item/armors/broly_z_armor_chestplate"
-  }
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:9635351a8423cd5e8f95d80ba166e498134e0eca712aef0299918f6063f699cd
+size 128

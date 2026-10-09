@@ -1,6 +1,3 @@
-{
-  "parent": "minecraft:item/generated",
-  "textures": {
-    "layer0": "dragonminez:item/patterns/pattern_majin21"
-  }
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:a6ed88555c43242eb5043dd85c4cf2032bdfc85f350f3f0ecde118b53325b53f
+size 121

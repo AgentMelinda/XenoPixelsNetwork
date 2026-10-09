@@ -1,6 +1,3 @@
-{
-  "parent": "minecraft:item/generated",
-  "textures": {
-    "layer0": "dragonminez:item/armors/gero_armor_chestplate"
-  }
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:02f34eaa5becf94de89fb097df9f7710e3117571462746fef6015fd8251c3a67
+size 125

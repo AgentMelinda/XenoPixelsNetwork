@@ -1,28 +1,3 @@
-{
-  "formSkillsAdd": [
-    "api_example_forms"
-  ],
-  "skillOfferings": {
-    "whis": [
-      "api_example_forms"
-    ]
-  },
-  "exclusiveFormSkills": {
-    "api_example_forms": [
-      "whis"
-    ]
-  },
-  "skillCosts": {
-    "api_example_forms": {
-      "costs": [
-        1
-      ],
-      "allowedRaces": []
-    }
-  },
-  "nonFormSkillOfferings": {
-    "goku": [
-      "fly"
-    ]
-  }
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:07c7b6c0f614e63b58080840c5686aa05cad485a7bb7803602bd89c994b38804
+size 387

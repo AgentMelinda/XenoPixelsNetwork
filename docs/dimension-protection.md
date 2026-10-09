@@ -1,12 +1,17 @@
 # Dimension protection and LinearReader conversion
 
-**Version:** XenoPixels 0.5.10-1.21.1
+**Version:** XenoPixels 0.5.11-1.21.1
 
 **Checked:** 2026-10-05
 
 ## LinearReader conversion controls
 
-The integration supports the exact **LinearReader 1.3.0 NeoForge 1.21.1–1.21.4** jar.
+The integration supports verified **LinearReader 1.3.0 and 1.3.1 NeoForge 1.21.1–1.21.4** builds.
+The owner-provided 1.3.1 jar is 8,822,740 bytes with SHA-256
+`d2f34483a3313a7660848414d85e43f9014f9cf97a4e2918cbbedd711284b2ef`.
+Startup validation and mixin activation share the same exact-version allowlist. Unverified versions
+are still rejected when conversion restrictions are enabled, so an unsupported reader cannot
+silently bypass the configured policy.
 LinearReader is optional and is not bundled. Commands require operator level 2.
 
 Disable new MCA-to-linear conversion in Otherworld:

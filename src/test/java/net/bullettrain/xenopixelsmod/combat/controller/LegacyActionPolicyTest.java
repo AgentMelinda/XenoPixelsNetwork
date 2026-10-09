@@ -15,6 +15,24 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  */
 class LegacyActionPolicyTest {
 
+    @Test void v3RefusesOwnedRoutesAndKeepsExplicitUtilities() {
+        for (var action : new Bt3CombatPacket.Action[]{Bt3CombatPacket.Action.COMBO_HIT,
+                Bt3CombatPacket.Action.CHARGE_FIST, Bt3CombatPacket.Action.CHARGE_KICK,
+                Bt3CombatPacket.Action.DRAGON_DASH, Bt3CombatPacket.Action.CHASE_DASH,
+                Bt3CombatPacket.Action.CHASE_STOP, Bt3CombatPacket.Action.CINEMATIC_RUSH,
+                Bt3CombatPacket.Action.RUSH_COMBO, Bt3CombatPacket.Action.LIFT_COMBO,
+                Bt3CombatPacket.Action.BACKSTEP, Bt3CombatPacket.Action.VANISH}) {
+            assertFalse(LegacyActionPolicy.allowed(action, CombatControllerMode.V3), action.toString());
+        }
+        for (var action : new Bt3CombatPacket.Action[]{Bt3CombatPacket.Action.GUARD,
+                Bt3CombatPacket.Action.KI_BLAST_CANCEL, Bt3CombatPacket.Action.SYNC_KI_CHARGE,
+                Bt3CombatPacket.Action.HAKAI_START, Bt3CombatPacket.Action.HAKAI_CANCEL,
+                Bt3CombatPacket.Action.MULTIFORM, Bt3CombatPacket.Action.ZANZOKEN,
+                Bt3CombatPacket.Action.ULTIMATE, Bt3CombatPacket.Action.SPARKING}) {
+            assertTrue(LegacyActionPolicy.allowed(action, CombatControllerMode.V3), action.toString());
+        }
+    }
+
     @Test
     void legacyModeAcceptsEveryExistingAction() {
         for (Bt3CombatPacket.Action action : Bt3CombatPacket.Action.values()) {

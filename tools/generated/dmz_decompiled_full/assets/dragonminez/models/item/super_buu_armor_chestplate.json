@@ -1,6 +1,3 @@
-{
-  "parent": "minecraft:item/generated",
-  "textures": {
-    "layer0": "dragonminez:item/armors/super_buu_armor_chestplate"
-  }
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:8907fdd73b10f226b0b5416bc0f7d20b0c95f04c5bb709dec4450baf5825691f
+size 130

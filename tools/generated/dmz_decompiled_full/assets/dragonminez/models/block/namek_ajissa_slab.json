@@ -1,8 +1,3 @@
-{
-  "parent": "minecraft:block/slab",
-  "textures": {
-    "bottom": "dragonminez:block/namek_ajissa_planks",
-    "side": "dragonminez:block/namek_ajissa_planks",
-    "top": "dragonminez:block/namek_ajissa_planks"
-  }
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:f8f5ffe7f48381645dac02a45ee8da7ad7250de494a99066b35ddfadcfe6c6c0
+size 218

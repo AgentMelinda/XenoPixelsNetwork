@@ -1,21 +1,3 @@
-{
-  "type": "minecraft:block",
-  "pools": [
-    {
-      "bonus_rolls": 0.0,
-      "conditions": [
-        {
-          "condition": "minecraft:survives_explosion"
-        }
-      ],
-      "entries": [
-        {
-          "type": "minecraft:item",
-          "name": "dragonminez:sacred_amaryllis_flower"
-        }
-      ],
-      "rolls": 1.0
-    }
-  ],
-  "random_sequence": "dragonminez:blocks/sacred_amaryllis_flower"
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:ff531fc50345629e5ab6dff710d989601aeb0792fa4c120d8668444eebc717f2
+size 418

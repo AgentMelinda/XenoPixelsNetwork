@@ -1,6 +1,3 @@
-{
-  "parent": "minecraft:item/generated",
-  "textures": {
-    "layer0": "dragonminez:item/patterns/pattern_broly_super"
-  }
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:4e784954517b99ec7c9a8509d2e36ab6814d9b5bd8150896537a1ec9a9bc8797
+size 125

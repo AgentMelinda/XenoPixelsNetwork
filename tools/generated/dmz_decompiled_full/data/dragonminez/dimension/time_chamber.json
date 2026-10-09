@@ -1,11 +1,3 @@
-{
-  "type": "dragonminez:time_chamber",
-  "generator": {
-    "type": "minecraft:noise",
-    "biome_source": {
-      "type": "minecraft:fixed",
-      "biome": "dragonminez:hyperbolic_time_chamber"
-    },
-    "settings": "dragonminez:time_chamber"
-  }
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:6b99e896307c253c685f543a1a80e18171346518cbbf4a0da417ad96a3fa01bc
+size 251

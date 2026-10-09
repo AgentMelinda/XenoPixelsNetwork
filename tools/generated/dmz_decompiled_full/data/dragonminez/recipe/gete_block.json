@@ -1,18 +1,3 @@
-{
-  "type": "minecraft:crafting_shaped",
-  "category": "building",
-  "key": {
-    "#": {
-      "item": "dragonminez:gete_ingot"
-    }
-  },
-  "pattern": [
-    "###",
-    "###",
-    "###"
-  ],
-  "result": {
-    "id": "dragonminez:gete_block"
-  },
-  "show_notification": true
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:28de9090ae48005f0c1d56db21b0a71268611c5469b0b352a3a79d4f1d7104fa
+size 291

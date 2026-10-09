@@ -1,6 +1,3 @@
-{
-  "parent": "minecraft:block/cube_all",
-  "textures": {
-    "all": "dragonminez:block/namek_ajissa_planks"
-  }
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:a8f8b299b1b77bd30791b5932e80ade6db33483b68dc9f9ed12762f245a1dec2
+size 114

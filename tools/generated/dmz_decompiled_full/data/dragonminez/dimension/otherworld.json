@@ -1,11 +1,3 @@
-{
-  "type": "dragonminez:otherworld",
-  "generator": {
-    "type": "minecraft:noise",
-    "biome_source": {
-      "type": "minecraft:fixed",
-      "biome": "dragonminez:other_world"
-    },
-    "settings": "dragonminez:otherworld"
-  }
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:247c2e6254d2ab444245c5e018e477e6dd9f7bbefa50b4b869f394175d838f79
+size 235

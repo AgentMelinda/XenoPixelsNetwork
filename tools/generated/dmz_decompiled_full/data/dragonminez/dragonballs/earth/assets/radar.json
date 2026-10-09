@@ -1,7 +1,3 @@
-{
-  "id": "earth_radar",
-  "item_model": "dragonminez:item/dball_radar",
-  "item_texture": "dragonminez:item/dball_radar",
-  "radar_background_texture": "dragonminez:textures/gui/radar.png",
-  "radar_dot_texture": "dragonminez:textures/gui/radar_dot.png"
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:9d69a635a4f914d03b9f94117f810b69c71a8640fa481dc327fbf64a85b55005
+size 256

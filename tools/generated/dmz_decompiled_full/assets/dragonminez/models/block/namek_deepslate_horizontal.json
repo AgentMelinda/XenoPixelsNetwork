@@ -1,7 +1,3 @@
-{
-  "parent": "minecraft:block/cube_column_horizontal",
-  "textures": {
-    "end": "dragonminez:block/namek_deepslate",
-    "side": "dragonminez:block/namek_deepslate"
-  }
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:9721399a33030278732add6b7494b6c4ea8d3151da01380393169dbcb1524f14
+size 173

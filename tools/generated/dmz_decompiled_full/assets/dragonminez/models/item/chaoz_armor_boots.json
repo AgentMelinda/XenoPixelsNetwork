@@ -1,6 +1,3 @@
-{
-  "parent": "minecraft:item/generated",
-  "textures": {
-    "layer0": "dragonminez:item/armors/chaoz_armor_boots"
-  }
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:a000341c9d1c4bce57b40b59298e226daf044dc924695c228b814d9f1db597fd
+size 121

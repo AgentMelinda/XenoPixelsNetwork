@@ -1,15 +1,3 @@
-{
-  "type": "dragonminez:tall_jigsaw",
-  "biomes": "#dragonminez:is_land",
-  "max_distance_from_center": 160,
-  "min_start_y": 63,
-  "project_start_to_heightmap": "WORLD_SURFACE_WG",
-  "size": 3,
-  "spawn_overrides": {},
-  "start_height": {
-    "absolute": 1
-  },
-  "start_pool": "dragonminez:babidi",
-  "step": "surface_structures",
-  "use_expansion_hack": false
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:1573c1b7b3234f5c3a985c8f4fadeb9622e0bf0b46351e12d961db0785c36f77
+size 365

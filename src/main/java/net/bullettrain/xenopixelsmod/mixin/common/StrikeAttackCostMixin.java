@@ -29,6 +29,10 @@ public abstract class StrikeAttackCostMixin {
     @Inject(method = "getCalculatedCost", at = @At("HEAD"), cancellable = true)
     private void xenopixels$rushCost(StatsData statsData, CallbackInfoReturnable<Double> cir) {
         String id = ((StrikeAttackData) (Object) this).getId();
+        if (net.bullettrain.xenopixelsmod.combat.technique.UltimateFinisherTechnique.ID.equals(id)) {
+            cir.setReturnValue(40.0);
+            return;
+        }
         if (XenoComboStrikes.isComboId(id)) {
             cir.setReturnValue(Math.max(0.0, XenoServerConfig.comboRouteKiCost));
             return;
@@ -41,6 +45,10 @@ public abstract class StrikeAttackCostMixin {
     @Inject(method = "getActualCooldown", at = @At("HEAD"), cancellable = true)
     private void xenopixels$rushCooldown(CallbackInfoReturnable<Integer> cir) {
         String id = ((StrikeAttackData) (Object) this).getId();
+        if (net.bullettrain.xenopixelsmod.combat.technique.UltimateFinisherTechnique.ID.equals(id)) {
+            cir.setReturnValue(net.bullettrain.xenopixelsmod.combat.technique.UltimateFinisherTechnique.COOLDOWN_TICKS);
+            return;
+        }
         if (XenoComboStrikes.isComboId(id)) {
             cir.setReturnValue(Math.max(1, XenoServerConfig.comboRouteCooldownTicks));
             return;

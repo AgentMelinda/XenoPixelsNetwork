@@ -1,6 +1,3 @@
-{
-  "parent": "minecraft:item/generated",
-  "textures": {
-    "layer0": "dragonminez:item/namek_water_bucket"
-  }
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:5ec37a540ac267dc4bd73695f826f84eada6dba0c7da39b4619f96bd2fe9c2f2
+size 115

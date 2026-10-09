@@ -1,0 +1,7 @@
+// Isolated startup validation: never share the running client's worlds, mods or logs.
+gradle.projectsEvaluated {
+    def validationProject = gradle.rootProject
+    validationProject.neoForge.runs.getByName('server').gameDirectory = validationProject.file('build/ultimate-finisher-server-runtime')
+    validationProject.tasks.named('uninstallDevShaderMods') { enabled = false }
+    validationProject.tasks.named('uninstallDevPadMods') { enabled = false }
+}

@@ -1,21 +1,3 @@
-{
-  "type": "minecraft:block",
-  "pools": [
-    {
-      "bonus_rolls": 0.0,
-      "conditions": [
-        {
-          "condition": "minecraft:survives_explosion"
-        }
-      ],
-      "entries": [
-        {
-          "type": "minecraft:item",
-          "name": "dragonminez:namek_sacred_trapdoor"
-        }
-      ],
-      "rolls": 1.0
-    }
-  ],
-  "random_sequence": "dragonminez:blocks/namek_sacred_trapdoor"
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:e3ea66cc894a111647585d3fa2d7634e1b8d4642e45a4c1619008cbc3aee4e99
+size 414

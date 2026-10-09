@@ -1,1 +1,3 @@
-{"parent":"minecraft:item/handheld","loader":"neoforge:separate_transforms","base":{"parent":"dragonminez:item/yajirobe_katana_3d"},"perspectives":{"gui":{"parent":"dragonminez:item/yajirobe_katana_2d"},"ground":{"parent":"dragonminez:item/yajirobe_katana_2d"},"fixed":{"parent":"dragonminez:item/yajirobe_katana_2d"}}}
+version https://git-lfs.github.com/spec/v1
+oid sha256:97cfb1febd34eef75a46ae5d8b516062c482a487a711953d771b7abaa0f102fe
+size 319

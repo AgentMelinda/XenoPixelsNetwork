@@ -1,1 +1,3 @@
-{"parent":"minecraft:block/cube_column","textures":{"end":"dragonminez:block/gete_debris_top","side":"dragonminez:block/gete_debris_side"}}
+version https://git-lfs.github.com/spec/v1
+oid sha256:e09603d044d8eed53fff3122e5954215ad1acba3c433325ed13aae19a82eccff
+size 139

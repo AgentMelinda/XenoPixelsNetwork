@@ -1,6 +1,3 @@
-{
-  "parent": "minecraft:item/generated",
-  "textures": {
-    "layer0": "dragonminez:item/namek_sacred_door"
-  }
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:f2cf8bf69f9798e8006d2898f22f9da6f61ae00bf53b2b46372fb4ff72763079
+size 114

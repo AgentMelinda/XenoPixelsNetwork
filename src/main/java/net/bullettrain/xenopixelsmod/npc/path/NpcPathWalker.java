@@ -35,6 +35,13 @@ public final class NpcPathWalker {
      * started is done immediately and one that is inching sideways never is.
      */
     public static final int POINT_TIMEOUT_TICKS = 400;
+    public static final int POINT_PAUSE_TICKS = 20;
+
+    /** -1 begins a dwell, zero has completed it. Timeouts never create a dwell. */
+    static int dwellRemaining(boolean pauses, boolean arrived, boolean gaveUp, int remaining) {
+        if (!pauses || !arrived || gaveUp) return 0;
+        return remaining < 0 ? POINT_PAUSE_TICKS : Math.max(0, remaining - CHECK_TICKS);
+    }
 
     private NpcPathWalker() {
     }
@@ -134,6 +141,13 @@ public final class NpcPathWalker {
             return;
         }
 
+        int dwell = dwellRemaining(path.pauses(), arrived, gaveUp, npc.pathDwellTicks());
+        npc.setPathDwellTicks(dwell);
+        if (dwell > 0) {
+            npc.getNavigation().stop();
+            return;
+        }
+
         int next = path.next(index, npc.pathForward());
         npc.setPathForward(path.nextForward(index, npc.pathForward()));
         if (next < 0) {
@@ -159,6 +173,7 @@ public final class NpcPathWalker {
         }
         npc.setPathIndex(index);
         npc.setPathPointTicks(0);
+        npc.setPathDwellTicks(-1);
         // A new destination, so any record of failing to reach the last one is meaningless - an
         // NPC that got wedged once must not refuse to walk for the rest of its life.
         net.bullettrain.xenopixelsmod.npc.movement.NpcMovementOwner.clearProgress(npc);

@@ -1,6 +1,3 @@
-{
-  "parent": "minecraft:item/generated",
-  "textures": {
-    "layer0": "dragonminez:item/marigold_flower"
-  }
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:08b3ae2470b0e6b9cde61b3049de4ce04e995def9107571ab159e0e3396090f2
+size 112

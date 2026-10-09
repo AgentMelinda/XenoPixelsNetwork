@@ -1,21 +1,3 @@
-{
-  "type": "minecraft:block",
-  "pools": [
-    {
-      "bonus_rolls": 0.0,
-      "conditions": [
-        {
-          "condition": "minecraft:survives_explosion"
-        }
-      ],
-      "entries": [
-        {
-          "type": "minecraft:item",
-          "name": "dragonminez:energy_cable"
-        }
-      ],
-      "rolls": 1.0
-    }
-  ],
-  "random_sequence": "dragonminez:blocks/energy_cable"
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:aed5d790c7918497c386acd366124a473b66f7074ab26ae6117be2ed60c27de4
+size 396

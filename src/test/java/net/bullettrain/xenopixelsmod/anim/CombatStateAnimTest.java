@@ -38,8 +38,8 @@ class CombatStateAnimTest {
     void emptyDefaultsLeaveTheBuiltInMoveInPlace() {
         assertEquals("", TechniqueAnimSlot.TRANSFORM.defaultAnim());
         assertEquals("", TechniqueAnimSlot.PUNCH.defaultAnim());
-        assertEquals(DmzAnimHelper.CHARGE_LIGHT, TechniqueAnimSlot.CHARGE_PUNCH.defaultAnim());
-        assertEquals(DmzAnimHelper.CHARGE_HEAVY, TechniqueAnimSlot.CHARGE_KICK.defaultAnim());
+        assertEquals(net.bullettrain.xenopixelsmod.combat.v2.V2ChargeRules.PUNCH_HOLD, TechniqueAnimSlot.CHARGE_PUNCH.defaultAnim());
+        assertEquals(net.bullettrain.xenopixelsmod.combat.v2.V2ChargeRules.KICK_HOLD, TechniqueAnimSlot.CHARGE_KICK.defaultAnim());
     }
 
     @Test

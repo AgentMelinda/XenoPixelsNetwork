@@ -1,14 +1,3 @@
-{
-  "xenopixels_dark_frieza": {
-    "buyFromMaster": true,
-    "prices": [
-      280000
-    ]
-  },
-  "xenopixels_destroyer": {
-    "buyFromMaster": false,
-    "prices": [
-      500000
-    ]
-  }
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:09b724c36715e8af18c773c9948d81bbab8f85ced51f9d4c1a51a6d403ae32ae
+size 208

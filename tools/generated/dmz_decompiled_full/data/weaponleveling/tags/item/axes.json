@@ -1,9 +1,3 @@
-{
-  "replace": false,
-  "values": [
-    {
-      "id": "dragonminez:gete_axe",
-      "required": false
-    }
-  ]
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:cfa5fb05a5d22b0828451ca76d8e628a404368c9c90af4210a8996c004947640
+size 121

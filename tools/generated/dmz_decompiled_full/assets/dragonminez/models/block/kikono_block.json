@@ -1,6 +1,3 @@
-{
-  "parent": "minecraft:block/cube_all",
-  "textures": {
-    "all": "dragonminez:block/kikono_block"
-  }
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:8bf6714ed9346893f5b833c8594f09a88b9fdccc48bd9f0103ee99d6f94876c0
+size 107

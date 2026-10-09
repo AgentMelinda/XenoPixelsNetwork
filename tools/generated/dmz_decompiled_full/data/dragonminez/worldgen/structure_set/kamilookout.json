@@ -1,12 +1,3 @@
-{
-  "placement": {
-    "type": "dragonminez:unique_near_spawn",
-    "salt": 55667788
-  },
-  "structures": [
-    {
-      "structure": "dragonminez:kamilookout",
-      "weight": 1
-    }
-  ]
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:e3921c351615ee1c246a93b1f794b8793280d6d4416b23e1069ab605f4584fc8
+size 189

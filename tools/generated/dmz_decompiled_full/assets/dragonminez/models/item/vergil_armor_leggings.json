@@ -1,6 +1,3 @@
-{
-  "parent": "minecraft:item/generated",
-  "textures": {
-    "layer0": "dragonminez:item/armors/vergil_armor_leggings"
-  }
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:234601144eb5da4494fb83c54edff9080ec1531322548ac93af099d3cc86f9fa
+size 125

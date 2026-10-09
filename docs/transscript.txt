@@ -1,0 +1,1784 @@
+╭──────────────────────────────────────────────────╮
+│ >_ OpenAI Codex (v0.155.1)                       │
+│                                                  │
+│ model:       gpt-5.6-sol high   /model to change │
+│ directory:   C:\XenoPixelsNetwork_qwen           │
+│ permissions: YOLO mode                           │
+╰──────────────────────────────────────────────────╯
+
+  To get started, describe a task or try one of these commands:
+
+  /init - create an AGENTS.md file with instructions for Codex
+  /status - show current session configuration
+  /permissions - choose what Codex is allowed to do
+  /model - choose what model and reasoning effort to use
+  /review - review any changes and find issues
+
+• Installed Designer plugin. No additional app authentication is required.
+
+• Installed Superpowers plugin. No additional app authentication is required.
+
+• Installed 01 Superdesign plugin. No additional app authentication is required.
+
+• Installed Logo Designer plugin. No additional app authentication is required.
+
+• Installed Minecraft Codex Skills plugin. No additional app authentication is required.
+
+• Model changed to gpt-5.6-sol medium for Plan mode.
+
+
+› extend the current mod ui maker to also better selected and moving and resizing elemnts and speperate each elemnts in
+  the dmz ui studio and start the implment of the ai brain v4/v5 that utlize ai-brain.md dmz ai brain to our mynpcs/
+  customnpc intergation via combat tab and start the laying ground work for our new freaking npcs system that will in
+  the futere replace mynpcs/customnpcs it needs to be very perfoment and tps friendly and have the same features as
+  doco.md has a new npcs able by us also look at C:
+  \Users\Admin\.grok\worktrees\dragonminez\XenoPixelsNetwork_qwen\xenopixels-code-review.md
+
+
+⚠ Model metadata for `gpt-5.6-sol` not found. Defaulting to fallback metadata; this can degrade performance and cause
+  issues.
+
+⚠ Skill descriptions were shortened to fit the skills context budget. Codex can still see every skill, but some
+  descriptions are shorter. Disable unused skills or plugins to leave more room for the rest.
+
+• I’ll map the existing UI, NPC integrations, design docs, and review notes first. Then I’ll narrow the feature
+  boundaries and produce a decision-complete implementation plan.
+
+• Ran $files = @(
+  │   'C:\Users\Admin\.codex\plugins\cache\openai-curated-remote\superpowers\6.4.1\skills\using-superpowers\SKILL.md',
+  │   'C:\Users\Admin\.codex\plugins\cache\openai-curated-remote\superpowers\6.4.1\skills\brainstorming\SKILL.md',
+  │ … +15 lines
+  └
+    ===== C:\Users\Admin\.codex\plugins\cache\openai-curated-remote\superpowers\6.4.1\skills\using-superpowers\SKILL.md
+    … +1762 lines (ctrl + t to view transcript)
+    -a--- 17967     7/25/2026 1:48:26 AM  XENOVERSE_FEATURES.md
+
+
+
+› use all skills
+
+
+• I’m using all applicable planning and Minecraft skills, not unrelated media/logo skills. Next I’m tracing the actual
+  UI studio, combat-tab integrations, NPC architecture, and the two specification documents.
+
+• Ran Write-Output '===== SKILL: CODEX ADAPTATION ====='
+  │ Get-Content -LiteralPath 'C:
+  │ \Users\Admin\.codex\plugins\cache\openai-curated-remote\superpowers\6.4.1\skills\using-superpowers\references\codex-
+  │ … +20 lines
+  └ ===== SKILL: CODEX ADAPTATION =====
+    ## Subagent dispatch requires multi-agent support
+    … +2145 lines (ctrl + t to view transcript)
+    src/main/java\net\bullettrain\xenopixelsmod\client\compat\npc\mynpcs\gui\GuiNpcDmzAppearance.java
+    src/main/java\net\bullettrain\xenopixelsmod\client\compat\npc\mynpcs\gui\GuiNpcDmz.java
+
+• Ran Write-Output '===== STATUS ====='; git status --short
+  │ Write-Output '===== AI README HEADINGS ====='; rg -n '^#{1,4} ' ai/README.md
+  │ Write-Output '===== AI PLAYBOOK CANDIDATES ====='; rg --files ai | rg -i 'ui|npc|mod|brain|plan|playbook|skill'
+  │ … +11 lines
+  └ ===== STATUS =====
+     M docs/hakai-body-fade.md
+    … +1427 lines (ctrl + t to view transcript)
+    src/main/java\net\bullettrain\xenopixelsmod\client\gui\FlightPlannerScreen.java:1264:        if (draggedPhaseHandle
+    >= 0) { updatePhaseHandle(graphFraction(mouseX)); return true; }
+
+
+› $/minecraft-imagegen /minecraft-modding /minecraft-resource-pack /minecraft-datapack /minecraft-testing /
+  brainstorming /superdesign /using-superpowers /requesting-code-review /visualize
+
+
+• I’m loading the exact skills you named and applying their relevant planning constraints. I’ll use the design/visual
+  skills to inspect the studio UX, while keeping image generation optional unless the plan needs new mockups or assets.
+
+• Ran $skillFiles = @(
+  │ 'C:\Users\Admin\.codex\skills\minecraft-imagegen\SKILL.md',
+  │ 'C:\Users\Admin\.codex\skills\minecraft-modding\SKILL.md',
+  │ … +14 lines
+  └
+    ===== C:\Users\Admin\.codex\skills\minecraft-imagegen\SKILL.md =====
+    … +2948 lines (ctrl + t to view transcript)
+    inspectable UI is needed.
+
+
+• The requested skills are loaded. I’m now grounding the plan in the repository’s exact classes and document
+  requirements, especially the dirty-tree overlap so the eventual implementation won’t overwrite existing work.
+
+• Unrecognized command '/minecraft-imagegen'. Type "/" for a list of supported commands.
+
+• Unrecognized command '/minecraft-imagegen'. Type "/" for a list of supported commands.
+
+• Ran Write-Output '===== AI README ====='; Get-Content -LiteralPath 'ai\README.md' -Raw
+  │ Write-Output '===== UI/NPC PLAYBOOK MATCHES ====='; rg -n -i 'ui|studio|npc|brain|combat|mixin|performance' ai/*.md
+  │ ai/**/*.md 2>$null | Select-Object -First 300
+  │ … +8 lines
+  └ ===== AI README =====
+    # AI Work Guide
+    … +315 lines (ctrl + t to view transcript)
+    src/main/resources\assets\xenopixelsmod\textures\gui\dmz_menus\neon\minigames_left.png
+    src/main/resources\assets\xenopixelsmod\textures\gui\dmz_menus\neon\minigames_characterbuttons.png
+
+• Ran $docs=@('ai-brain.md','doco.md','xenopixels-code-review.md','C:
+  │ \Users\Admin\.grok\worktrees\dragonminez\XenoPixelsNetwork_qwen\xenopixels-code-review.md','XENOPIXELS_UI_STUDIO_C
+  │ ONCEPT.md'); foreach($f in $docs){ Write-Output "`n===== $f ====="; rg -n '^#{1,4} ' -- "$f" }
+  │ … +3 lines
+  └
+    ===== ai-brain.md =====
+    … +293 lines (ctrl + t to view transcript)
+    - Gameplay-only events remain manual pending until someone performs the real action.
+
+
+• Ran $paths=@(
+  │ 'src/main/java/net/bullettrain/xenopixelsmod/client/ui/studio/DmzGuiStudioScreen.java',
+  │ 'src/main/java/net/bullettrain/xenopixelsmod/client/ui/studio/UiStudioScreen.java',
+  │ … +9 lines
+  └ ===== RELEVANT STATUS =====
+    ?? src/main/java/net/bullettrain/xenopixelsmod/client/compat/npc/gui/GuiNpcDmzBrain.java
+    … +1401 lines (ctrl + t to view transcript)
+            }
+        }
+
+
+› $/minecraft-imagegen $/minecraft-modding $/minecraft-resource-pack $/minecraft-datapack $/minecraft-testing $/
+  brainstorming $/superdesign $/using-superpowers $/requesting-code-review $/visualize
+
+
+• Those exact skills are active for this plan. I’m separating three workstreams now: studio interaction/model changes,
+  AI-brain adapter work, and the independent high-performance NPC foundation.
+
+• Ran Write-Output '===== UI PACKAGE FILES ====='; rg --files src/main/java/net/bullettrain/xenopixelsmod/ui src/main/
+  │ java/net/bullettrain/xenopixelsmod/client/ui
+  │ Write-Output '===== DMZ STUDIO METHODS ====='; rg -n '^\s*(public|private|protected) .+\(' src/main/java/net/
+  │ … +10 lines
+  └ ===== UI PACKAGE FILES =====
+    src/main/java/net/bullettrain/xenopixelsmod/ui\UiStudioSession.java
+    … +679 lines (ctrl + t to view transcript)
+    src/test\java\net\bullettrain\xenopixelsmod\compat\npc\clone\NpcCloneConverterTest.java
+    src/test\java\net\bullettrain\xenopixelsmod\compat\npc\brain\v2\NpcSagaCombatBrainTest.java
+
+• Ran function Show-Lines($path,$start,$count){ Write-Output "`n===== $path [$start..$($start+$count-1)] ====="; $i=0;
+  │ Get-Content -LiteralPath $path | ForEach-Object { $i++; if($i -ge $start -and $i -lt ($start+$count)){ '{0,4}:
+  │ {1}' -f $i,$_ } } }
+  │ … +6 lines
+  └
+    ===== src/main/java/net/bullettrain/xenopixelsmod/ui/UiStudioSession.java [1..280] =====
+    … +1656 lines (ctrl + t to view transcript)
+    documentation, memory of similar mods, or guesswork; each entry traces to a specific file, class, registry name, or
+    localization string inside the jar itself.*
+
+• Ran Write-Output '===== NPC COMPAT TREE ====='; rg --files src/main/java/net/bullettrain/xenopixelsmod/compat/npc src/
+  │ main/java/net/bullettrain/xenopixelsmod/client/compat/npc | Sort-Object
+  │ Write-Output '===== BRAIN REFERENCES ====='; rg -n -i 'brainVersion|combatBrain|NpcSagaCombatBrain|CombatContext|
+  │ … +8 lines
+  └ ===== NPC COMPAT TREE =====
+    src/main/java/net/bullettrain/xenopixelsmod/client/compat/npc\DmzLockOnClient.java
+    … +842 lines (ctrl + t to view transcript)
+    build.gradle:509:            artifact tasks.named('jarJar')
+    build.gradle:537:                "-PdmzJar=${dragonMineZJar.absolutePath}"
+
+• Ran function Show-Lines($path,$start,$count){ $i=0; Get-Content -LiteralPath $path | ForEach-Object { $i++; if($i -ge
+  │ $start -and $i -lt ($start+$count)){ '{0,4}: {1}' -f $i,$_ } } }
+  │ Write-Output '===== DMZ STUDIO 100-488 ====='; Show-Lines 'src/main/java/net/bullettrain/xenopixelsmod/client/ui/
+  │ … +8 lines
+  └ ===== DMZ STUDIO 100-488 =====
+     100:     private void rebuildChrome() {
+    … +838 lines (ctrl + t to view transcript)
+    86779569A806DFE81E901A304E…
+
+
+
+› @/minecraft-imagegen @/minecraft-modding @/minecraft-resource-pack @/minecraft-datapack @/minecraft-testing @/
+  brainstorming @/superdesign @/using-superpowers @/requesting-code-review @/visualize
+
+
+• The named skills are confirmed and in use. I’m visually inspecting the existing studio concept next, then I’ll resolve
+  the remaining product choices around v4/v5 scope and the replacement-NPC milestone.
+
+• Viewed Image
+  └ XENOPIXELS_UI_STUDIO_CONCEPT.png
+
+• Ran Write-Output '===== CORE NPC FILES ====='; rg --files src/main/java/net/bullettrain/xenopixelsmod/compat/npc | rg
+  │ -v 'clone|brain/v2' | Sort-Object
+  │ Write-Output '===== PROFILE/VERSION SYMBOLS ====='; rg -n 'enum Brain|BrainVersion|brainVersion|runBrainDecision|
+  │ … +10 lines
+  └ ===== CORE NPC FILES =====
+    src/main/java/net/bullettrain/xenopixelsmod/compat/npc\brain\v2\NpcSagaCombatBrain.java
+    … +631 lines (ctrl + t to view transcript)
+    src/main/java\net\bullettrain\xenopixelsmod\mixin\compat\customnpcs\RenderCustomNpcHairMixin.java:30:
+    renderer.addLayer(new NpcHaloLayer(renderer));
+
+• Ran $files=@(
+  │ 'src/main/java/net/bullettrain/xenopixelsmod/compat/npc/NpcCombatBrainVersion.java',
+  │ 'src/main/java/net/bullettrain/xenopixelsmod/compat/npc/NpcCombatBrain.java',
+  │ … +5 lines
+  └
+    ===== src/main/java/net/bullettrain/xenopixelsmod/compat/npc/NpcCombatBrainVersion.java =====
+    … +3013 lines (ctrl + t to view transcript)
+    }
+
+
+• The repository already has basic single-select dragging/resizing and v1–v3 combat brains, but both are untracked work-
+  in-progress. I need to lock three high-impact choices before specifying changes around that existing work.
+
+• Questions 3/3 answered
+  • How much of the new Xeno NPC replacement system should this first implementation milestone deliver?
+    answer: Vertical slice (Recommended)
+  • What should distinguish AI Brain v4 from v5?
+    answer: V4 MyNPC, V5 native
+  • How should the code-review findings be handled in this work?
+    answer: Fix all findings
+
+
+› our npc to extend dmz menus/guis and create new once for our wand
+
+
+• Understood: the native Xeno NPC will reuse/extend the DMZ visual language, while your own wand opens dedicated Xeno
+  NPC menus rather than depending on MyNPCs’ editor. I’m tracing the current wand hooks, menu mixins, entity registries,
+  and whether the review findings still exist.
+
+• Ran Write-Output '===== WAND / NPC EDITOR REFERENCES ====='; rg -n -i 'wand|npc editor|edit npc|GuiNpc|MenuDmz|
+  │ DmzMenu|open.*npc|npc.*screen' src/main/java/net/bullettrain/xenopixelsmod src/main/resources | Select-Object
+  │ -First 800
+  │ … +8 lines
+  └ ===== WAND / NPC EDITOR REFERENCES =====
+    src/main/resources\xenopixelsmod.mixins.json:68:    "client.DmzMenuPreviewLookMixin",
+    … +1347 lines (ctrl + t to view transcript)
+    src/main/java/net/bullettrain/xenopixelsmod\mixin\common\StatsDataFormMultiplierMixin.java:65:        } catch
+    (Throwable t) {
+
+• Ran Write-Output '===== ITEM REGISTRY FILES ====='; rg --files src/main/java/net/bullettrain/xenopixelsmod | rg
+  │ 'ModItems|Item.java$|items?/'
+  │ Write-Output '===== NPC WAND EXACT HITS ====='; rg -n -i '\bwand\b|NpcWand|WandItem|editor item' src/main/java/net/
+  │ … +12 lines
+  └ ===== ITEM REGISTRY FILES =====
+    src/main/java/net/bullettrain/xenopixelsmod\item\custom\TargetToolItem.java
+    … +405 lines (ctrl + t to view transcript)
+
+    ===== REVIEW TARGET STATUS =====
+
+• Ran Write-Output '===== MOD ITEM REGISTRIES ====='; rg -n 'DeferredRegister\.Items|DeferredRegister<Item>|
+  │ Registries\.ITEM|public static final.*ITEM' src/main/java/net/bullettrain/xenopixelsmod | Select-Object -First 300
+  │ Write-Output '===== REVIEW TARGET FILES ====='; rg --files src/main/java/net/bullettrain/xenopixelsmod | rg
+  │ … +10 lines
+  └ ===== MOD ITEM REGISTRIES =====
+    src/main/java/net/bullettrain/xenopixelsmod\shop\SignShopTarget.java:36:        if
+    … +127 lines (ctrl + t to view transcript)
+    src/test/java\net\bullettrain\xenopixelsmod\client\anim\StudioClipBindingsTest.java
+    src/test/java\net\bullettrain\xenopixelsmod\client\anim\studio\StudioBoneSpaceTest.java
+
+• The native editor direction is clear. Three remaining choices affect core data structures and controls: multi-
+  selection in the studio, what the wand targets, and whether native NPCs use one data-driven entity type.
+
+• Questions 3/3 answered
+  • Should the DMZ UI Studio support true multi-selection in this milestone?
+    answer: Multi-select (Recommended)
+  • What should the new Xeno NPC wand edit?
+    answer: Native plus import
+  • How should the first native NPC entity model be structured?
+    answer: None of the above
+    note: all
+
+• “all” can be reconciled as a shared component architecture supporting multiple body families and role presets, without
+  duplicating systems per entity type. I’m checking the documented feature matrix and current editor contracts before
+  locking that as the plan default.
+
+• Ran function Show-Lines($path,$start,$count){ Write-Output "`n===== $path $start ====="; $i=0; Get-Content
+  │ -LiteralPath $path | ForEach-Object { $i++; if($i -ge $start -and $i -lt ($start+$count)){ '{0,4}: {1}' -f $i,
+  │ $_ } } }
+  │ … +9 lines
+  └
+    ===== XENOPIXELS_UI_STUDIO_CONCEPT.md 274 =====
+    … +1103 lines (ctrl + t to view transcript)
+    }
+
+
+• Questions 1/1 answered
+  • For “all,” which first-milestone interpretation should the plan lock in?
+    answer: All role entities now
+
+• The product choices are now locked: multi-select studio, v4 for both legacy NPC mods, v5 for native Xeno NPCs, one-way
+  wand import, and all initial role entity types. I’m doing a final feasibility pass over review targets, networking,
+  persistence, and test seams before writing the complete plan.
+
+• Ran Write-Output '===== BRANCH / HEAD ====='; git branch --show-current; git rev-parse HEAD; git rev-parse
+  │ --show-toplevel
+  │ Write-Output '===== REVIEW TARGET PATHS ====='; rg --files | rg '(^|/)(PlotSale|MmoEconBridge|SignShopPurchase|
+  │ … +15 lines
+  └ ===== BRANCH / HEAD =====
+    1.21.1
+    … +921 lines (ctrl + t to view transcript)
+    1230:            brainVersion = NpcCombatBrainVersion.fromStored(tag.getInt(TAG_BRAIN_VERSION));
+    1285:        out.put("version", (brainVersion == null ? NpcCombatBrainVersion.V1 : brainVersion).label());
+
+• Ran $names=@('PlotSale.java','MmoEconBridge.java','SignShopPurchase.java','ShipBallisticController.java'); foreach($n
+  │ in $names){ Write-Output "===== $n ====="; Get-ChildItem -Recurse -File -Filter $n | ForEach-Object { $_.FullName;
+  │ git status --short -- $_.FullName; rg -n 'buy\(|withdraw|transfer|owner|invoke|toUnits|catch \(Throwable|double
+  │ … +6 lines
+  └ ===== PlotSale.java =====
+    C:\XenoPixelsNetwork_qwen\src\main\java\net\bullettrain\xenopixelsmod\plot\PlotSale.java
+    … +175 lines (ctrl + t to view transcript)
+    ?? src/test/java/net/bullettrain/xenopixelsmod/compat/npc/brain/
+    ?? src/test/java/net/bullettrain/xenopixelsmod/ui/
+
+• Ran $i=0; Get-Content xenopixels-code-review.md | ForEach-Object { $i++; if($i -ge 1 -and $i -le 190){ '{0,4}: {1}' -f
+  │ $i,$_ } }
+  └    1: # XenoPixels Network (v0.3.7-1.21.1) — Code Review
+       2:
+    … +199 lines (ctrl + t to view transcript)
+     190: | 1 | Plot purchase can charge the buyer with no refund if ownership transfer fails | `plot/PlotSale.java` |
+    **High** — real money loss |
+
+• Ran $i=0; Get-Content xenopixels-code-review.md | ForEach-Object { $i++; if($i -ge 48 -and $i -le 142){ '{0,4}: {1}'
+  │ -f $i,$_ } }
+  └   48: ## 3. `MmoEconBridge` resolves overloaded methods by name + argument count only — not by parameter type
+      49:
+    … +94 lines (ctrl + t to view transcript)
+     141: ---
+     142:
+
+• Proposed Plan
+
+
+  # DMZ UI Studio, AI Brain v4/v5, and Xeno NPC Foundation
+
+  ## Summary
+
+  - Preserve and extend the current untracked UI/NPC work rather than replacing it; record the dirty tree and restrict
+    edits to explicitly reviewed paths.
+
+  - First resolve all nine findings from xenopixels-code-review.md, which is byte-identical to the external Grok
+    worktree copy.
+
+  - Upgrade the DMZ UI Studio with true multi-selection, a layers hierarchy, precise movement/resizing, locking,
+    visibility, snapping, grouping, and gesture-level undo.
+
+  - Add AI Brain v4 for MyNPCs and CustomNPCs; add AI Brain v5 exclusively for native Xeno NPC entities.
+  - Ship a native NPC vertical slice with generic humanoid/creature entities plus separate trader, guard, companion,
+    and quest entity types.
+
+  - Add a Xeno NPC Wand with dedicated DMZ-styled menus and safe, one-way legacy-NPC import. Imports never modify or
+    delete the original NPC.
+
+  ## Implementation Changes
+
+  ### 1. Review and Safety Fixes
+
+  - Make plot purchases transaction-safe: revalidate the listing and owner immediately before settlement, perform
+    compensating rollback on partial failure, and return a distinct reconciliation failure if rollback itself fails.
+
+  - Make MmoEconBridge fail closed unless both balance and money APIs resolve; select reflected overloads by
+    compatible parameter types, preserve boolean/status returns, and log resolution failures without exposing player
+    data.
+
+  - Declare the optional mmoecon dependency, consolidate the duplicate Create dependency block, and simplify the
+    misleading ballistic-controller ternary.
+
+  - Refuse late shop-sign auto-registration when ownership cannot be established; require a legitimate sign edit or
+    explicit administrative repair instead of persisting an ownerless shop.
+
+  - Replace the seven reviewed catch (Throwable) sites with the narrow expected exceptions and rate-limited debug/
+    warning logs.
+
+  - Keep these fixes as a separately reviewable change set before beginning the studio and NPC work.
+
+  ### 2. DMZ UI Studio
+
+  - Replace the single selectedId state in UiStudioSession with an ordered selection set and primary selection while
+    preserving convenience methods for single-selection callers.
+
+  - Add editor-only node metadata for locked and editor-hidden state; runtime visibility remains separate and
+    serialized independently.
+
+  - Add a real layers panel synchronized with the canvas and inspector:
+      - Hierarchical rows with depth, name, type, visibility, lock, and selection state.
+      - Shift-click ranges, Ctrl-click toggling, search/filter, rename, reorder, reparent/unparent, duplicate, group/
+        ungroup, and delete.
+
+      - Draw order follows hierarchy order; locked or editor-hidden elements cannot be canvas-selected.
+
+  - Improve canvas interaction in DmzGuiStudioScreen:
+      - Topmost-element hit testing with click cycling for overlapping elements.
+      - Drag-box selection and Shift/Ctrl selection modifiers.
+      - Eight resize handles plus a group bounding box for multiple selections.
+      - Group movement and proportional group resizing while preserving each child’s relative position.
+      - Arrow-key nudging; Shift uses the current snap size and Ctrl temporarily disables snapping.
+      - Snap to grid, canvas edges/centers, parent edges/centers, sibling edges/centers, and safe-area bounds.
+      - Visible selection outlines, element labels, parent bounds, snap guides, and distinct locked/hidden styling.
+
+  - Treat an entire pointer gesture as one undo command. Inspector changes, reorder operations, grouping, duplication,
+    visibility, and lock changes also receive undo/redo entries.
+
+  - Use a three-pane DMZ layout—layers, canvas, inspector—at large resolutions, with collapsible/tabbed side panels at
+    smaller GUI scales.
+
+  - Extract selection, geometry, snapping, hierarchy, and undo behavior into Minecraft-independent classes so focused
+    unit tests do not require a client.
+
+  - Preserve existing UI JSON compatibility by assigning defaults when the new editor metadata is absent.
+
+  ### 3. AI Brain v4 and v5
+
+  - Extend NpcCombatBrainVersion from v1–v3 to v1–v5 with stable stored values 4 and 5; old or unknown stored values
+    continue to fall back safely.
+
+  - Introduce an internal shared brain contract:
+      - Immutable combat-context snapshot.
+      - Intent/decision result with target, movement, skill, and cooldown requirements.
+      - Host adapter for reading state and executing approved actions.
+      - Per-entity memory/blackboard with bounded expiry.
+      - Budgeted scheduler and deterministic random source for testing.
+
+  - Implement v4 as the legacy integration engine for both MyNPCs and CustomNPCs:
+      - Port the verified context and decision hierarchy from ai-brain.md: target validity, distance bands, resource
+        state, health, locomotion, blocking, reaction locks, skill readiness, combo pools, and repositioning.
+
+      - Route actions only through existing verified combat helpers such as melee, ki dispatch, forms, flight,
+        animations, and target control.
+
+      - Keep optional mod classes behind their existing separate MyNPCs/CustomNPCs adapters and mixins.
+      - Expose v4 in both legacy Combat/Brain tabs with grouped pages for awareness, movement, defense, melee, ki,
+        transformations, cooldowns, and debugging.
+
+  - Implement v5 only for native Xeno NPCs:
+      - Reuse the v4 decision vocabulary, but run through native components rather than reflected legacy fields.
+      - Add bounded threat memory, role policy, squad/owner context, target persistence, and native pathing controls.
+      - Prevent legacy NPC profiles from selecting v5; decoding v5 on a legacy host falls back to v4 and reports the
+        correction in the editor.
+
+  - Performance defaults:
+      - No level-wide entity scans during ordinary NPC ticks.
+      - At most 32 high-level brain decisions globally per server tick.
+      - Combat decisions every 10 ticks, alert/non-combat decisions every 20 ticks, and dormant checks every 40 ticks.
+      - Expensive path recalculation no more than once per 10 ticks per NPC unless the target becomes invalid.
+      - Event-driven cache invalidation on target death, unload, dimension change, profile update, and NPC removal.
+      - Keep animation/combo advancement separate from high-level decisions so active attacks remain responsive.
+
+  ### 4. Native Xeno NPC System
+
+  - Add a shared component-driven XenoNpcEntity foundation and register these first-milestone types:
+      - Generic humanoid.
+      - Generic creature.
+      - Trader.
+      - Guard.
+      - Companion.
+      - Quest NPC.
+
+  - Specialized entity types supply default body family and role policy, while all persistent features live in
+    reusable components rather than duplicated subclasses.
+
+  - Initial components:
+      - Identity, display name, ownership, permissions, and provenance.
+      - Appearance/body family and DMZ-compatible visual profile.
+      - Stats, inventory/equipment, combat profile, and v5 brain state.
+      - Job/role policy, faction membership, dialogue references, quest references, and companion owner/mode.
+      - Versioned persistence and dirty-state tracking.
+
+  - Initial functional role behavior:
+      - Guard: configurable defended owner/faction/area and hostile-target policy.
+      - Companion: owner binding plus follow, stay, defend, and passive modes.
+      - Trader: persistent trade-definition reference and interaction entry point.
+      - Quest NPC: persistent dialogue/quest-definition references and interaction entry point.
+      - Generic humanoid/creature: editable neutral foundation without forced role behavior.
+
+  - Store per-entity state in versioned entity NBT. Store reusable dialogue, quest, faction, trade, appearance, and
+    role definitions as codec-validated datapack JSON under the XenoPixels namespace.
+
+  - Maintain event-driven server indexes for UUID, owner, faction, role, and nearby-active NPCs; never rebuild indexes
+    by scanning every loaded entity.
+
+  - Keep this system internal during the first milestone. Do not add unstable classes under the published api/**
+    compatibility surface.
+
+  ### 5. Xeno NPC Wand and Menus
+
+  - Register xeno_npc_wand with a resource-pack item model, localization, recipe/creative-tab entry, DMZ-styled
+    texture, and six matching role/body icons.
+
+  - Produce one reviewable image-generation concept sheet for the wand and role icons, then convert selected concepts
+    into pixel-aligned shipping PNGs with verified dimensions and resource locations.
+
+  - Wand behavior:
+      - Use in air: open a creation palette for the six native NPC types.
+      - Use on a native NPC: request server authorization, then open its dedicated editor.
+      - Use on a MyNPCs or CustomNPCs entity: open a one-way import preview.
+      - Sneak-use never bypasses permissions; destructive replacement is not provided.
+
+  - Import flow:
+      - Read supported legacy appearance, stats, equipment, combat profile, faction, dialogue, quest, role/job, and
+        script metadata through separate optional adapters.
+
+      - Show supported, transformed, and unsupported fields before confirmation.
+      - On confirmation, create a new native NPC with a new UUID and provenance pointing to the source mod and source
+        UUID.
+
+      - Leave the source NPC unchanged and present; no overwrite, deletion, or automatic migration.
+
+  - Add dedicated DMZ-styled editor screens with persistent tabs:
+      - General, Appearance, Stats, Combat, Brain, Role, Dialogue, Quest, Faction, Inventory, and Diagnostics.
+      - General through Brain and the applicable Role page are fully functional in this milestone.
+      - Remaining tabs edit schema-backed references and validation state, laying the foundation for later doco.md
+        feature parity without pretending those complete systems already exist.
+
+  - Keep edits server-authoritative with revision numbers. Reject stale saves and return the current server revision
+    for client refresh.
+
+  - Append core NPC payloads without renumbering existing ModNetwork registrations; use delta/profile packets rather
+    than synchronizing entire NPC definitions every tick.
+
+  ## Interfaces and Compatibility
+
+  - Existing UI documents remain loadable; new editor-only node fields default to unlocked, visible-in-editor, and
+    unselected.
+
+  - Existing NPC brain stored values 1–3 remain unchanged. Values 4 and 5 are append-only.
+  - v4 is available only when hosted by MyNPCs or CustomNPCs compatibility entities; v5 is available only to native
+    Xeno NPC entities.
+
+  - Define versioned internal schemas for native NPC NBT and datapack definitions, starting at schema version 1.
+  - Legacy import is additive-only and idempotent per explicit operation; repeated imports create separate NPCs unless
+    the user selects an existing imported target in a future migration tool.
+
+  - No current published XenoPixels API symbol is removed or behaviorally repurposed.
+
+  ## Test and Review Plan
+
+  - Add pure unit tests for multi-selection, marquee selection, overlapping hit tests, group movement/resizing, all
+    snap sources, locked/hidden nodes, hierarchy operations, and single-command undo behavior.
+
+  - Add document round-trip and backward-compatibility tests for the new editor metadata.
+  - Add deterministic v4/v5 decision tests covering distance bands, resource starvation, reaction locks, flight
+    transitions, transformations, combo selection, target invalidation, and per-tick budget exhaustion.
+
+  - Extend profile serialization tests for v4/v5 and verify that legacy hosts reject/fallback from v5.
+  - Add adapter tests for both MyNPCs and CustomNPCs plus import tests proving the source NPC is never changed.
+  - Add native-NPC persistence, entity-type default, role behavior, permission, stale-revision, and datapack-codec
+    tests.
+
+  - Add review-regression tests for plot rollback, overload resolution, partial MMO Econ availability, failed
+    withdrawals, and ownerless sign discovery.
+
+  - Run focused test classes first, followed by:
+      - ./gradlew test
+      - ./gradlew build jarJar serverJar -PofflineMcMeta
+      - ./gradlew buildApiExampleAddon -PofflineMcMeta
+      - Confirm the server jar contains zero entries under META-INF/jarjar/.
+
+  - Perform fresh runtime validation:
+      - Dedicated server startup with neither legacy NPC mod installed.
+      - Client startup with MyNPCs, then separately with CustomNPCs.
+      - Create and edit every native NPC type with the wand.
+      - Import one NPC from each legacy mod and confirm the originals remain unchanged.
+      - Exercise v4 through a legacy Combat tab and v5 through a native NPC Brain tab.
+      - Open the studio at multiple GUI scales and test multi-select, moving, resizing, layers, undo, save, reload,
+        and runtime rendering.
+
+  - Profile a controlled scene with 100 idle native NPCs and 25 simultaneously fighting NPCs; record average and p95
+    scheduler time, decision counts, path recalculations, and server MSPT. Target the NPC scheduler itself at no more
+    than 2 ms p95 on the test machine, while clearly labeling runtime performance as machine-specific evidence.
+
+  - Finish with two explicit review passes: correctness/security and TPS/client-render performance. Record exact
+    commands, logs, artifact hashes, unverified gameplay items, and dirty paths in the repository handoff template.
+
+  ## Assumptions
+
+  - “All role entities now” means the six registered entity types listed above, with functional foundational behavior—
+    not full completion of every feature documented in doco.md.
+
+  - Full parity for jobs, roles, dialogue authoring, quests, factions, scripting, world-building tools, spawners,
+    recipes, databases, and third-party integrations remains a staged roadmap built on the new components and datapack
+    schemas.
+
+  - The current DMZ UI Studio, brain v1–v3, and NPC compatibility files are user-owned untracked/modified work and
+    must be extended in place without cleanup or blanket resets.
+
+  - Existing DMZ textures and widgets remain the primary visual language; generated artwork is limited to the wand/
+    icon concept sheet and reviewed shipping assets.
+
+  - The repository’s applicable current date for logs and durable documentation is 2026-09-20.
+
+
+  Worked for 10m 14s · done 9:25 PM
+
+• Model changed to gpt-5.6-sol high for Default mode.
+
+
+› Implement the plan.
+
+
+• I’m starting with the safest dependency order: baseline tests, review fixes, then studio, brain, and native NPC
+  slices. I’ll preserve the existing dirty/untracked work and validate each subsystem before broad builds.
+
+• Ran $files=@(
+  │ 'C:\Users\Admin\.codex\plugins\cache\openai-curated-remote\superpowers\6.4.1\skills\executing-plans\SKILL.md',
+  │ 'C:
+  │ … +7 lines
+  └
+    ===== C:\Users\Admin\.codex\plugins\cache\openai-curated-remote\superpowers\6.4.1\skills\executing-plans\SKILL.md
+    … +1452 lines (ctrl + t to view transcript)
+    1.21.1
+    53a025e45a4fecc2aeb1a2d062db550f88bbf571
+
+• Baseline first: I’m running the existing UI/brain tests and checking exact review-target source before writing tests.
+
+• Waited for background terminal · .\gradlew.bat test --tests "net.bullettrain.xenopixelsmod.ui.*" --tests
+"net.bullettrain.xenopixelsmod.compat.npc.NpcCombatBrainVersionTest" --tests
+"net.bullettrain.xenopixelsmod.compat.npc.brain.v2.NpcSagaCombatBrainTest" -PofflineMcMeta
+
+• Ran .\gradlew.bat test --tests "net.bullettrain.xenopixelsmod.ui.*" --tests
+  │ "net.bullettrain.xenopixelsmod.compat.npc.NpcCombatBrainVersionTest" --tests
+  │ "net.bullettrain.xenopixelsmod.compat.npc.brain.v2.NpcSagaCombatBrainTest" -PofflineMcMeta
+  └ To honour the JVM settings for this build a single-use Daemon process will be forked. For more on this, please refer
+    to https://docs.gradle.org/8.8/userguide/gradle_daemon.html#sec:disabling_the_daemon in the Gradle documentation.
+    … +65 lines (ctrl + t to view transcript)
+    BUILD SUCCESSFUL in 26s
+    9 actionable tasks: 5 executed, 2 from cache, 2 up-to-date
+
+• Baseline UI/brain tests are green. I’m adding regression tests for the economy and dependency findings before patching
+  production code.
+
+• Ran Get-Content src/main/java/net/bullettrain/xenopixelsmod/compat/mmoecon/MmoEconBridge.java -Raw
+  │ Write-Output '===== PLOT SALE ====='; Get-Content src/main/java/net/bullettrain/xenopixelsmod/plot/PlotSale.java
+  │ -Raw
+  │ … +5 lines
+  └ package net.bullettrain.xenopixelsmod.compat.mmoecon;
+
+    … +585 lines (ctrl + t to view transcript)
+    src/test/java/net/bullettrain/xenopixelsmod/plot\PlotYaWPTest.java:63:    @Test
+    src/test/java/net/bullettrain/xenopixelsmod/plot\PlotYaWPTest.java:69:    @Test
+
+• Ran Get-Content src/test/java/net/bullettrain/xenopixelsmod/compat/mmoecon/MmoEconBridgeTest.java -Raw
+  │ Write-Output '===== PLOT SALE TEST ====='; Get-Content src/test/java/net/bullettrain/xenopixelsmod/plot/
+  │ PlotSaleTest.java -Raw
+  │ … +9 lines
+  └ package net.bullettrain.xenopixelsmod.compat.mmoecon;
+
+    … +460 lines (ctrl + t to view transcript)
+    1830-    }
+    1831-}
+
+• Ran rg -n 'MmoEconBridge\.toUnits|transferPrice\(' src/main/java src/test/java
+  │ rg -n 'invokeStaticVoid|findMethod|invokeStatic\(' src/main/java/net/bullettrain/xenopixelsmod/compat/mmoecon/
+  │ MmoEconBridge.java
+  │ … +6 lines
+  └ src/main/java\net\bullettrain\xenopixelsmod\command\PlotCommands.java:407:                lease.renter(),
+    MmoEconBridge.format(MmoEconBridge.toUnits(lease.pricePerPeriod())),
+    … +331 lines (ctrl + t to view transcript)
+     104:     }
+     105:
+
+• I found existing regression coverage for the old bridge behavior. I’m flipping those tests to the safer contract and
+  adding overload-resolution coverage so they fail before the production patch.
+
+• Waited for background terminal · @'
+*** Begin Patch
+*** Update File: src/test/java/net/bullettrain/xenopixelsmod/compat/mmoecon/MmoEconBridgeTest.java
+@@
+     public static final class Fixture {
+@@
+         public static void subtractBalance(UUID player, long amount) {
+@@
+         }
++
++        public static void subtractBalance(UUID player, double amount) {
++            throw new AssertionError("wrong overload selected: " + amount);
++        }
+@@
+-    void falseReturningMethodStillCountsAsSuccess() {
+-        // invokeStaticVoid reports "the call completed", not "the result was truthy" — so a method
+-        // whose result is false is still a completed call, which is what the void case needs.
+-        assertTrue(MmoEconBridge.invokeStaticVoid(Fixture.class, "hasFunds", PLAYER, 1L));
++    void nonVoidMethodIsRejectedByVoidInvoker() {
++        assertFalse(MmoEconBridge.invokeStaticVoid(Fixture.class, "hasFunds", PLAYER, 1L));
++    }
++
++    @Test
++    void overloadResolutionUsesArgumentTypes() {
++        Fixture.calls = 0;
++        assertTrue(MmoEconBridge.invokeStaticVoid(Fixture.class, "subtractBalance", PLAYER, 250L));
++        assertEquals(1, Fixture.calls);
++        assertEquals(250L, Fixture.lastAmount);
+     }
+*** End Patch
+'@ | apply_patch
+.\gradlew.bat test --tests "net.bullettrain.xenopixelsmod.compat.mmoecon.MmoEconBridgeTest" -PofflineMcMeta
+
+• Ran @'
+  │ *** Begin Patch
+  │ *** Update File: src/test/java/net/bullettrain/xenopixelsmod/compat/mmoecon/MmoEconBridgeTest.java
+  │ … +29 lines
+  └ Error: --codex-run-as-apply-patch requires a UTF-8 PATCH argument.
+    To honour the JVM settings for this build a single-use Daemon process will be forked. For more on this, please refer
+    … +18 lines (ctrl + t to view transcript)
+    BUILD SUCCESSFUL in 20s
+    9 actionable tasks: 1 executed, 8 up-to-date
+
+• The first patch command was rejected before changing files; the baseline test reran unchanged. I’m retrying with the
+  required direct apply_patch invocation, then I’ll capture the expected red test.
+
+• Ran $patch = @'
+  │ *** Begin Patch
+  │ *** Update File: src/test/java/net/bullettrain/xenopixelsmod/compat/mmoecon/MmoEconBridgeTest.java
+  │ … +30 lines
+  └ Invalid patch: The last line of the patch must be '*** End Patch'
+    To honour the JVM settings for this build a single-use Daemon process will be forked. For more on this, please refer
+    … +18 lines (ctrl + t to view transcript)
+    BUILD SUCCESSFUL in 6s
+    9 actionable tasks: 9 up-to-date
+
+• Ran cmd.exe /c "apply_patch <<'PATCH'
+  │ *** Begin Patch
+  │ *** Update File: src/test/java/net/bullettrain/xenopixelsmod/compat/mmoecon/MmoEconBridgeTest.java
+  │ … +29 lines
+  └ << was unexpected at this time.
+
+• PowerShell is passing CRLF into the patch wrapper. I’m normalizing the patch argument to LF and continuing the red-
+  green cycle.
+
+• Ran $patch = @'
+  │ *** Begin Patch
+  │ *** Update File: src/test/java/net/bullettrain/xenopixelsmod/compat/mmoecon/MmoEconBridgeTest.java
+  │ … +32 lines
+  └ Invalid patch: The last line of the patch must be '*** End Patch'
+
+• Called Patch economy bridge tests
+  └ spawnSync apply_patch ENOENT
+
+• Ran Get-Command apply_patch | Format-List *
+  └
+    HelpUri            :
+    … +27 lines (ctrl + t to view transcript)
+    ParameterSets      :
+
+
+• Ran Get-Content -LiteralPath (Get-Command apply_patch).Path -Raw
+  └ @echo off
+    "%~dp0..\..\..\..
+    \AppData\Roaming\npm\node_modules\@openai\codex\node_modules\@openai\codex-win32-x64\vendor\x86_64-pc-windows-msvc\b
+    in\codex.exe" --codex-run-as-apply-patch %*
+
+
+• Called Patch economy tests
+  └ Warning: execFileSync was declared with const; use let for reassignable variables.
+    Success. Updated the following files:
+    M src/test/java/net/bullettrain/xenopixelsmod/compat/mmoecon/MmoEconBridgeTest.java
+
+
+• Waited for background terminal · .\gradlew.bat test --tests
+"net.bullettrain.xenopixelsmod.compat.mmoecon.MmoEconBridgeTest" -PofflineMcMeta
+
+• Ran .\gradlew.bat test --tests "net.bullettrain.xenopixelsmod.compat.mmoecon.MmoEconBridgeTest" -PofflineMcMeta
+  └ To honour the JVM settings for this build a single-use Daemon process will be forked. For more on this, please refer
+    to https://docs.gradle.org/8.8/userguide/gradle_daemon.html#sec:disabling_the_daemon in the Gradle documentation.
+    … +34 lines (ctrl + t to view transcript)
+    BUILD FAILED in 22s
+    9 actionable tasks: 2 executed, 7 up-to-date
+
+• The new bridge test fails exactly on the unsafe non-void behavior. I’m patching typed overload resolution, full
+  availability checks, verified debits, and fail-closed currency conversion.
+
+• Called Harden MMO Econ bridge
+  └ Success. Updated the following files:
+    M src/main/java/net/bullettrain/xenopixelsmod/compat/mmoecon/MmoEconBridge.java
+
+
+• Waited for background terminal · .\gradlew.bat test --tests
+"net.bullettrain.xenopixelsmod.compat.mmoecon.MmoEconBridgeTest" -PofflineMcMeta
+
+• Ran .\gradlew.bat test --tests "net.bullettrain.xenopixelsmod.compat.mmoecon.MmoEconBridgeTest" -PofflineMcMeta
+  └ To honour the JVM settings for this build a single-use Daemon process will be forked. For more on this, please refer
+    to https://docs.gradle.org/8.8/userguide/gradle_daemon.html#sec:disabling_the_daemon in the Gradle documentation.
+    … +17 lines (ctrl + t to view transcript)
+    BUILD SUCCESSFUL in 25s
+    9 actionable tasks: 3 executed, 6 up-to-date
+
+• Ran $i=0; Get-Content src/main/java/net/bullettrain/xenopixelsmod/plot/PlotSale.java | ForEach-Object { $i++; if($i
+  │ -le 90){ '{0,4}: {1}' -f $i,$_ } }
+  │ $i=0; Get-Content src/test/java/net/bullettrain/xenopixelsmod/plot/PlotSaleTest.java | ForEach-Object { $i++; if($i
+  │ … +5 lines
+  └    1: package net.bullettrain.xenopixelsmod.plot;
+       2:
+    … +213 lines (ctrl + t to view transcript)
+     168: ordering="AFTER"
+     169: side="BOTH"
+
+• Ran rg -n 'PlotSale\.Result|case TRANSFER_FAILED|case NO_PLOT' src/main/java src/test/java | rg -v 'PlotSale.java'
+  └ src/main/java\net\bullettrain\xenopixelsmod\plot\PlotSignInteraction.java:78:        PlotSale.Result result =
+    PlotSale.buy(player, reference);
+    … +24 lines (ctrl + t to view transcript)
+    src/main/java\net\bullettrain\xenopixelsmod\command\PlotCommands.java:200:            case TRANSFER_FAILED -> "The
+    payment failed; the plot was not transferred.";
+
+• Called Fix reviewed economy and metadata issues
+  └ Success. Updated the following files:
+    M src/main/java/net/bullettrain/xenopixelsmod/plot/PlotSale.java
+    M src/main/java/net/bullettrain/xenopixelsmod/plot/PlotSignInteraction.java
+    M src/main/java/net/bullettrain/xenopixelsmod/command/PlotCommands.java
+    M src/main/java/net/bullettrain/xenopixelsmod/shop/SignShopPurchase.java
+    M src/main/java/net/bullettrain/xenopixelsmod/plot/PlotLease.java
+    M src/main/java/net/bullettrain/xenopixelsmod/vs/ShipBallisticController.java
+    M src/test/java/net/bullettrain/xenopixelsmod/plot/PlotSaleTest.java
+    M src/main/resources/META-INF/neofo...
+
+• Economy and metadata fixes are patched. Next I’m narrowing the seven reviewed broad catches without touching unrelated
+  defensive guards.
+
+• Ran foreach($p in @('src/main/java/net/bullettrain/xenopixelsmod/dmz/form/DmzFormEditorService.java','src/main/java/
+  │ net/bullettrain/xenopixelsmod/combat/ZanzokenConfusion.java','src/main/java/net/bullettrain/xenopixelsmod/compat/
+  │ npc/NpcCombatProfile.java','src/main/java/net/bullettrain/xenopixelsmod/aero/AeroLinkManager.java','src/main/java/
+  │ … +14 lines
+  └ ===== src/main/java/net/bullettrain/xenopixelsmod/dmz/form/DmzFormEditorService.java =====
+    123:                XenoPixelsMod.LOGGER.error("DMZ form editor transaction rolled back", failure);
+    … +249 lines (ctrl + t to view transcript)
+     674:      * Abort every ship flight in progress, in every dimension.
+     675:      *
+
+• I’m moving to the core requested functionality now. First I’ll refactor the Minecraft-free studio session and tests,
+  then wire the DMZ screen to the new multi-selection geometry.
+
+• Ran $i=0; Get-Content src/main/java/net/bullettrain/xenopixelsmod/ui/UiStudioSession.java | ForEach-Object { $i++;
+  │ if($i -ge 1 -and $i -le 380){ '{0,4}: {1}' -f $i,$_ } }
+  │ Write-Output '===== NODE ====='; Get-Content src/main/java/net/bullettrain/xenopixelsmod/ui/UiNode.java -Raw
+  │ … +2 lines
+  └    1: package net.bullettrain.xenopixelsmod.ui;
+       2:
+    … +573 lines (ctrl + t to view transcript)
+    }
+
+
+• Ran rg -n '^\s*public |^\s*private |^\s*static ' src/main/java/net/bullettrain/xenopixelsmod/ui/UiStudioSession.java
+  │ $i=0; Get-Content src/main/java/net/bullettrain/xenopixelsmod/ui/UiStudioSession.java | ForEach-Object { $i++; if($i
+  │ -ge 170 -and $i -le 380){ '{0,4}: {1}' -f $i,$_ } }
+  │ … +2 lines
+  └ 13:public final class UiStudioSession {
+    14:    private static final int[] SNAPS = {1, 2, 4, 8, 16};
+    … +304 lines (ctrl + t to view transcript)
+      50:     }
+      51: }
+
+• Called Add studio multi-select tests
+  └ Success. Updated the following files:
+    M src/test/java/net/bullettrain/xenopixelsmod/ui/UiStudioSessionTest.java
+
+
+• Ran .\gradlew.bat test --tests "net.bullettrain.xenopixelsmod.ui.UiStudioSessionTest" -PofflineMcMeta
+  └ To honour the JVM settings for this build a single-use Daemon process will be forked. For more on this, please refer
+    to https://docs.gradle.org/8.8/userguide/gradle_daemon.html#sec:disabling_the_daemon in the Gradle documentation.
+    … +76 lines (ctrl + t to view transcript)
+    BUILD FAILED in 13s
+    4 actionable tasks: 3 executed, 1 up-to-date
+
+• The studio tests now fail on the missing multi-selection API as intended. I’m implementing that API while preserving
+  the existing single-selection calls used by the screen.
+
+• Called Implement studio multi-selection
+  └ Command failed: C:\Users\Admin\AppData\Roaming\npm\node_modules\@openai\codex\node_modules\@openai\codex-win32-
+        x64\vendor\x86_64-pc-windows-msvc\bin\codex.exe --codex-run-as-apply-patch *** Begin Patch
+    *** Update File: src/main/java/net/bullettrain/xenopixelsmod/ui/UiNode.java
+    @@
+         public boolean visible = true;
+    +    /** Hidden only inside Studio; runtime visibility remains {@link #visible}. */
+    +    public boolean editorHidden;
+    +    /** Prevents canvas manipulation while still allowing layer-panel selection. */
+    +    public boolean editorLocked;
+    @@
+             next.v...
+
+• Ran $i=0; Get-Content src/main/java/net/bullettrain/xenopixelsmod/ui/UiStudioSession.java | ForEach-Object { $i++;
+  │ if(($i -ge 1 -and $i -le 75) -or ($i -ge 235 -and $i -le 365)){ '{0,4}: {1}' -f $i,$_ } }
+  └    1: package net.bullettrain.xenopixelsmod.ui;
+       2:
+    … +202 lines (ctrl + t to view transcript)
+     364:         while (find(document.root, base + i) != null) {
+     365:             i++;
+
+• Called Add studio selection state
+  └ Success. Updated the following files:
+    M src/main/java/net/bullettrain/xenopixelsmod/ui/UiNode.java
+    M src/main/java/net/bullettrain/xenopixelsmod/ui/UiStudioSession.java
+
+
+• Called Complete studio selection operations
+  └ Success. Updated the following files:
+    M src/main/java/net/bullettrain/xenopixelsmod/ui/UiStudioSession.java
+
+
+• Ran .\gradlew.bat test --tests "net.bullettrain.xenopixelsmod.ui.UiStudioSessionTest" --tests
+  │ "net.bullettrain.xenopixelsmod.compat.mmoecon.MmoEconBridgeTest" --tests
+  │ "net.bullettrain.xenopixelsmod.plot.PlotSaleTest" -PofflineMcMeta
+  └ To honour the JVM settings for this build a single-use Daemon process will be forked. For more on this, please refer
+    to https://docs.gradle.org/8.8/userguide/gradle_daemon.html#sec:disabling_the_daemon in the Gradle documentation.
+    … +28 lines (ctrl + t to view transcript)
+    BUILD FAILED in 8s
+    2 actionable tasks: 1 executed, 1 up-to-date
+
+• The focused build caught duplicate editor metadata already present in the user’s untracked node model. I’m reconciling
+  that overlap rather than replacing either copy.
+
+• Ran $i=0; Get-Content src/main/java/net/bullettrain/xenopixelsmod/ui/UiNode.java | ForEach-Object { $i++; '{0,4}: {1}'
+  │ -f $i,$_ }
+  └    1: package net.bullettrain.xenopixelsmod.ui;
+       2:
+    … +57 lines (ctrl + t to view transcript)
+      60:     }
+      61: }
+
+• Called Remove duplicate studio fields
+  └ Success. Updated the following files:
+    M src/main/java/net/bullettrain/xenopixelsmod/ui/UiNode.java
+
+
+• Waited for background terminal · .\gradlew.bat test --tests "net.bullettrain.xenopixelsmod.ui.UiStudioSessionTest"
+--tests "net.bullettrain.xenopixelsmod.compat.mmoecon.MmoEconBridgeTest" --tests
+"net.bullettrain.xenopixelsmod.plot.PlotSaleTest" -PofflineMcMeta
+
+• Ran .\gradlew.bat test --tests "net.bullettrain.xenopixelsmod.ui.UiStudioSessionTest" --tests
+  │ "net.bullettrain.xenopixelsmod.compat.mmoecon.MmoEconBridgeTest" --tests
+  │ "net.bullettrain.xenopixelsmod.plot.PlotSaleTest" -PofflineMcMeta
+  └ To honour the JVM settings for this build a single-use Daemon process will be forked. For more on this, please refer
+    to https://docs.gradle.org/8.8/userguide/gradle_daemon.html#sec:disabling_the_daemon in the Gradle documentation.
+    … +17 lines (ctrl + t to view transcript)
+    BUILD SUCCESSFUL in 25s
+    9 actionable tasks: 3 executed, 6 up-to-date
+
+• Ran $i=0; Get-Content src/main/java/net/bullettrain/xenopixelsmod/client/ui/studio/DmzGuiStudioScreen.java |
+  │ ForEach-Object { $i++; if($i -ge 340 -and $i -le 488){ '{0,4}: {1}' -f $i,$_ } }
+  │ Write-Output '===== UI LAID OUT ====='; Get-Content src/main/java/net/bullettrain/xenopixelsmod/ui/UiLaidOut.java
+  │ … +3 lines
+  └  340:         float r;
+     341:         float g;
+    … +290 lines (ctrl + t to view transcript)
+    }
+
+
+• Ran $i=0; Get-Content src/main/java/net/bullettrain/xenopixelsmod/client/ui/studio/DmzGuiStudioScreen.java |
+  │ ForEach-Object { $i++; if($i -ge 100 -and $i -le 245){ '{0,4}: {1}' -f $i,$_ } }
+  └  100:     private void rebuildChrome() {
+     101:         clearWidgets();
+    … +142 lines (ctrl + t to view transcript)
+     244:     }
+     245:
+
+• Ran $i=0; Get-Content src/main/java/net/bullettrain/xenopixelsmod/client/ui/studio/DmzGuiStudioScreen.java |
+  │ ForEach-Object { $i++; if($i -ge 410 -and $i -le 470){ '{0,4}: {1}' -f $i,$_ } }
+  └  410:         }
+     411:         return super.mouseClicked(mouseX, mouseY, button);
+    … +57 lines (ctrl + t to view transcript)
+     469:     private static UiLaidOut findLaid(UiLaidOut root, String id) {
+     470:         if (root == null) {
+
+• The session layer is green. I’m wiring the visible layers panel, shift/ctrl selection, grouped dragging, locked/hidden
+  controls, and keyboard nudging into the DMZ screen.
+
+• Called Wire DMZ studio multi-select UI
+  └ Success. Updated the following files:
+    M src/main/java/net/bullettrain/xenopixelsmod/client/ui/studio/DmzGuiStudioScreen.java
+
+
+• Ran .\gradlew.bat compileJava -PofflineMcMeta
+  └ To honour the JVM settings for this build a single-use Daemon process will be forked. For more on this, please refer
+    to https://docs.gradle.org/8.8/userguide/gradle_daemon.html#sec:disabling_the_daemon in the Gradle documentation.
+    … +8 lines (ctrl + t to view transcript)
+    BUILD SUCCESSFUL in 9s
+    2 actionable tasks: 1 executed, 1 up-to-date
+
+• Studio multi-selection now compiles. I’m extending the brain version contract next, then adding a shared budgeted
+  context/intent engine that both legacy v4 and native v5 can host.
+
+• Ran Get-Content src/test/java/net/bullettrain/xenopixelsmod/compat/npc/NpcCombatBrainVersionTest.java -Raw
+  │ rg -n 'brainVersion|isV2\(|isV3\(|case V[123]' src/main/java/net/bullettrain/xenopixelsmod/compat/npc src/main/java/
+  │ net/bullettrain/xenopixelsmod/client/compat/npc | Select-Object -First 300
+  │ … +2 lines
+  └ package net.bullettrain.xenopixelsmod.compat.npc;
+
+    … +582 lines (ctrl + t to view transcript)
+    }
+
+
+• Ran rg -n 'brainVersion|NpcSagaCombatBrain|runBrainDecision|decide\(' src/main/java/net/bullettrain/xenopixelsmod/
+  │ compat/npc/NpcCombatBrain.java
+  │ $i=0; Get-Content src/main/java/net/bullettrain/xenopixelsmod/compat/npc/NpcCombatBrain.java | ForEach-Object { $i+
+  │ … +1 lines
+  └   90:             FLIGHT.remove(npcId);
+      91:             MELEE_WHIFFS.remove(npcId);
+    … +157 lines (ctrl + t to view transcript)
+     249:     public static void tick(MinecraftServer server, LivingEntity npc, NpcCombatProfile profile,
+     250:                             LivingEntity victim, int serverTick) {
+
+• Ran $i=0; Get-Content src/main/java/net/bullettrain/xenopixelsmod/compat/npc/NpcCombatBrain.java | ForEach-Object
+  │ { $i++; if($i -ge 244 -and $i -le 390){ '{0,4}: {1}' -f $i,$_ } }
+  └  244:     /**
+     245:      * One decision for one NPC.
+    … +143 lines (ctrl + t to view transcript)
+     389:             return false;
+     390:         }
+
+• Called Add v4 and v5 brain tests
+  └ Success. Updated the following files:
+    A src/test/java/net/bullettrain/xenopixelsmod/compat/npc/brain/v4/NpcCombatBrainV4Test.java
+    M src/test/java/net/bullettrain/xenopixelsmod/compat/npc/NpcCombatBrainVersionTest.java
+
+
+• Ran .\gradlew.bat test --tests "net.bullettrain.xenopixelsmod.compat.npc.NpcCombatBrainVersionTest" --tests
+  │ "net.bullettrain.xenopixelsmod.compat.npc.brain.v4.NpcCombatBrainV4Test" -PofflineMcMeta
+  └ To honour the JVM settings for this build a single-use Daemon process will be forked. For more on this, please refer
+    to https://docs.gradle.org/8.8/userguide/gradle_daemon.html#sec:disabling_the_daemon in the Gradle documentation.
+    … +158 lines (ctrl + t to view transcript)
+    BUILD FAILED in 8s
+    4 actionable tasks: 1 executed, 3 up-to-date
+
+• Called Implement brain versions and v4 core
+  └ Success. Updated the following files:
+    A src/main/java/net/bullettrain/xenopixelsmod/compat/npc/brain/v4/NpcCombatIntentV4.java
+    A src/main/java/net/bullettrain/xenopixelsmod/compat/npc/brain/v4/NpcCombatContextV4.java
+    A src/main/java/net/bullettrain/xenopixelsmod/compat/npc/brain/v4/NpcCombatBrainV4.java
+    A src/main/java/net/bullettrain/xenopixelsmod/compat/npc/brain/v4/NpcBrainBudget.java
+    M src/main/java/net/bullettrain/xenopixelsmod/compat/npc/NpcCombatBrainVersion.java
+
+
+• Called Integrate legacy brain v4
+  └ Success. Updated the following files:
+    M src/main/java/net/bullettrain/xenopixelsmod/compat/npc/NpcCombatBrain.java
+
+
+• Legacy v4 is integrated behind the existing scheduler. I’m now building the native vertical slice: six registered
+  types, shared persistent components, v5 scheduler hooks, and the Xeno NPC Wand/editor entry without linking client
+  classes on the server.
+
+• Ran $i=0; Get-Content src/main/java/net/bullettrain/xenopixelsmod/network/ModNetwork.java | ForEach-Object { $i++;
+  │ if($i -ge 1 -and $i -le 190){ '{0,4}: {1}' -f $i,$_ } }
+  │ Write-Output '===== PACKET PATTERN ====='; Get-Content src/main/java/net/bullettrain/xenopixelsmod/network/packet/
+  │ … +7 lines
+  └    1: package net.bullettrain.xenopixelsmod.network;
+       2:
+    … +936 lines (ctrl + t to view transcript)
+        }
+
+
+• Ran rg -n 'registerMessage|register\(' src/main/java/net/bullettrain/xenopixelsmod/network/ModNetwork.java |
+  │ Select-Object -Last 120
+  │ $i=0; Get-Content src/main/java/net/bullettrain/xenopixelsmod/network/ModNetwork.java | ForEach-Object { $i++; if($i
+  │ … +2 lines
+  └ 150:    public static void register() {
+     100:      * vanishGap, vanishSide.
+    … +446 lines (ctrl + t to view transcript)
+    }
+
+
+• Ran rg -n 'interactLivingEntity\(|useOn\(|InteractionResultHolder<ItemStack> use\(' src/main/java/net/bullettrain/
+  │ xenopixelsmod/item src/main/java/net/bullettrain/xenopixelsmod | Select-Object -First 80
+  │ Get-Content src/main/java/net/bullettrain/xenopixelsmod/client/ClientModEvents.java -First 90
+  │ … +3 lines
+  └ src/main/java/net/bullettrain/xenopixelsmod/item\custom\TargetToolItem.java:66:    public
+    InteractionResultHolder<ItemStack> use(Level level, Player player, InteractionHand hand) {
+    … +204 lines (ctrl + t to view transcript)
+    src/main/resources/assets/xenopixelsmod/lang/en_us.json:14:  "item.xenopixelsmod.missile_mega": "Mega Ballistic
+    Missile",
+
+• Ran rg -n 'sendToPlayer|send\(.*ServerPlayer|PacketDistributor' src/main/java/net/bullettrain/xenopixelsmod/network
+  │ src/main/java/net/bullettrain/xenopixelsmod | Select-Object -First 80
+  │ $i=0; Get-Content src/main/java/net/bullettrain/xenopixelsmod/network/ModNetwork.java | ForEach-Object { $i++; if($i
+  │ … +1 lines
+  └ src/main/java/net/bullettrain/xenopixelsmod/network\GuidanceV2Network.java:64:            CHANNEL.sendToPlayer(new
+    VersionPacket(GuidanceConfig.version()), player);
+    … +297 lines (ctrl + t to view transcript)
+     359:                 .consumerMainThread(net.bullettrain.xenopixelsmod.network.packet.NpcProfileSavePacket::handle)
+     360:                 .add();
+
+• Ran $i=0; Get-Content src/main/java/net/bullettrain/xenopixelsmod/network/ModNetwork.java | ForEach-Object { $i++;
+  │ if($i -ge 340 -and $i -le 455){ '{0,4}: {1}' -f $i,$_ } }
+  │ Get-Content src/main/java/net/bullettrain/xenopixelsmod/network/packet/OpenPartyScreenPacket.java -Raw
+  └  340:
+     341:         CHANNEL.messageBuilder(net.bullettrain.xenopixelsmod.network.packet.NpcAuraPacket.class, id++,
+    … +127 lines (ctrl + t to view transcript)
+    }
+
+
+• Called Add native NPC data tests
+  └ Success. Updated the following files:
+    A src/test/java/net/bullettrain/xenopixelsmod/npc/XenoNpcDataTest.java
+
+
+• Called Implement native NPC data model
+  └ Success. Updated the following files:
+    A src/main/java/net/bullettrain/xenopixelsmod/npc/XenoNpcRole.java
+    A src/main/java/net/bullettrain/xenopixelsmod/npc/XenoNpcData.java
+
+
+• Ran Get-Content src/main/java/net/bullettrain/xenopixelsmod/combat/clone/XenoCloneEntity.java -First 180
+  │ Get-Content src/main/java/net/bullettrain/xenopixelsmod/client/PilotSeatRenderer.java -Raw
+  │ Get-Content src/main/java/net/bullettrain/xenopixelsmod/client/ClientModEvents.java -First 60
+  └ package net.bullettrain.xenopixelsmod.combat.clone;
+
+    … +274 lines (ctrl + t to view transcript)
+         * guessed), and this event is NeoForge's hook for baking one that isn't reachable any other
+         * way.
+
+• Ran rg -n 'addAdditionalSaveData|readAdditionalSaveData|registerGoals|createAttributes' src/main/java/net/bullettrain/
+  │ xenopixelsmod/combat/clone/XenoCloneEntity.java | Select-Object -First 40
+  │ $i=0; Get-Content src/main/java/net/bullettrain/xenopixelsmod/combat/clone/XenoCloneEntity.java | ForEach-Object
+  │ … +1 lines
+  └ 113:    public static AttributeSupplier.Builder createAttributes() {
+    489:    public void readAdditionalSaveData(CompoundTag tag) {
+    … +82 lines (ctrl + t to view transcript)
+     229:         // no amount of target, whiff or cooldown work made any difference to it, and it cannot be
+     230:         // stopped by an animation packet either -- NpcDmzAnim.stop only reaches DMZ's ki
+
+• Called Add native Xeno NPC entities
+  └ Success. Updated the following files:
+    A src/main/java/net/bullettrain/xenopixelsmod/npc/XenoNpcEntity.java
+    A src/main/java/net/bullettrain/xenopixelsmod/npc/brain/XenoNpcBrainV5.java
+    A src/main/java/net/bullettrain/xenopixelsmod/client/npc/XenoNpcRenderer.java
+    M src/main/java/net/bullettrain/xenopixelsmod/missile/ModEntities.java
+    M src/main/java/net/bullettrain/xenopixelsmod/client/ClientModEvents.java
+
+
+• Ran .\gradlew.bat compileJava -PofflineMcMeta
+  └ To honour the JVM settings for this build a single-use Daemon process will be forked. For more on this, please refer
+    to https://docs.gradle.org/8.8/userguide/gradle_daemon.html#sec:disabling_the_daemon in the Gradle documentation.
+    … +11 lines (ctrl + t to view transcript)
+    BUILD SUCCESSFUL in 13s
+    2 actionable tasks: 1 executed, 1 up-to-date
+
+• The six native types compile. I’m adding the wand now, including the requested Minecraft image-generation pass for its
+  DMZ-styled icon, then wiring creation/edit/import behavior.
+
+• Generated Image:
+  └ Create a single Minecraft Java Edition item icon concept for a mod named XenoPixels: a futuristic NPC editor wand in
+  Dragon Ball-inspired dark gunmetal and black, with a bright cyan rectangular holographic core and small gold accents.
+  Strict pixel-art aesthetic, orthographic 3/4 item view, strong readable silhouette, transparent background, no text,
+  no logo, no glow outside the silhouette, designed to be downscaled cleanly to a 16x16 Minecraft inventory texture.
+  Centered with generous transparent padding.
+  └ Saved to:
+  file:///C:/Users/Admin/.codex/generated_images/01a0bfff-c0dc-7b12-8dce-d93e6292ac00/call_JclVGyJvoTtHSADIE96obDP9.png
+
+• Ran Get-Content src/main/java/net/bullettrain/xenopixelsmod/network/packet/NpcProfileSavePacket.java -First 140
+  │ Get-Content src/main/java/net/bullettrain/xenopixelsmod/client/ClientScreens.java -Raw
+  │ Get-Content src/main/java/net/bullettrain/xenopixelsmod/client/screen/PartyScreen.java -First 80 2>$null
+  └ package net.bullettrain.xenopixelsmod.network.packet;
+
+    … +219 lines (ctrl + t to view transcript)
+    }
+
+
+• Ran rg -n 'ClientScreens\.openParty|ClientScreens\.openTargetTool|openGuidance =' src/main/java/net/bullettrain/
+  │ xenopixelsmod
+  └ src/main/java/net/bullettrain/xenopixelsmod\XenoPixelsMod.java:147:
+    net.bullettrain.xenopixelsmod.client.ClientScreens.openTargetTool = () ->
+    … +8 lines (ctrl + t to view transcript)
+    src/main/java/net/bullettrain/xenopixelsmod\item\custom\TargetToolItem.java:75:
+    ClientScreens.openTargetTool.run();
+
+• Ran $i=0; Get-Content src/main/java/net/bullettrain/xenopixelsmod/XenoPixelsMod.java | ForEach-Object { $i++; if($i
+  │ -ge 130 -and $i -le 195){ '{0,4}: {1}' -f $i,$_ } }
+  └  130:
+     131:     // You can use EventBusSubscriber to automatically register all static methods in the class annotated with
+    … +58 lines (ctrl + t to view transcript)
+     189:     }
+     190: }
+
+• The v5 data/entity foundation is in place. I’m completing the usable vertical slice now: server-authoritative wand
+  spawning, native editor packets/screen, and one-way legacy import confirmation.
+
+• Called Add native NPC editor networking
+  └ Success. Updated the following files:
+    A src/main/java/net/bullettrain/xenopixelsmod/network/packet/OpenXenoNpcEditorPacket.java
+    A src/main/java/net/bullettrain/xenopixelsmod/network/packet/XenoNpcSavePacket.java
+    A src/main/java/net/bullettrain/xenopixelsmod/client/npc/XenoNpcEditorScreen.java
+    M src/main/java/net/bullettrain/xenopixelsmod/client/ClientScreens.java
+
+
+• Called Wire Xeno NPC wand and editor
+  └ Success. Updated the following files:
+    A src/main/java/net/bullettrain/xenopixelsmod/item/custom/XenoNpcWandItem.java
+    M src/main/java/net/bullettrain/xenopixelsmod/network/ModNetwork.java
+    M src/main/java/net/bullettrain/xenopixelsmod/XenoPixelsMod.java
+    M src/main/java/net/bullettrain/xenopixelsmod/missile/ModEntities.java
+    M src/main/java/net/bullettrain/xenopixelsmod/item/ModsItems.java
+
+
+⚠ Heads up, you have less than 50% of your 5h limit left. Run /status for a breakdown.
+
+• Ran .\gradlew.bat compileJava -PofflineMcMeta
+  └ To honour the JVM settings for this build a single-use Daemon process will be forked. For more on this, please refer
+    to https://docs.gradle.org/8.8/userguide/gradle_daemon.html#sec:disabling_the_daemon in the Gradle documentation.
+    … +13 lines (ctrl + t to view transcript)
+    BUILD SUCCESSFUL in 15s
+    2 actionable tasks: 1 executed, 1 up-to-date
+
+• The wand/editor networking compiles. I’m adding the generated resource-pack asset, item model/localization, creative-
+  tab exposure, then running the complete focused test set.
+
+• Ran Get-Content src/main/java/net/bullettrain/xenopixelsmod/item/ModCreativeModTabs.java -Raw
+  │ Get-Content src/main/resources/assets/xenopixelsmod/models/item/target_tool.json -Raw
+  │ Get-Content src/main/resources/assets/xenopixelsmod/lang/en_us.json -First 30
+  └ package net.bullettrain.xenopixelsmod.item;
+
+    … +117 lines (ctrl + t to view transcript)
+      "block.xenopixelsmod.ship_thruster_fork": "Ship Thruster (fork)",
+      "block.xenopixelsmod.pilot_seat": "Seated Control Chair",
+
+• Called Add Xeno NPC wand resources
+  └ Success. Updated the following files:
+    A src/main/resources/assets/xenopixelsmod/models/item/xeno_npc_wand.json
+    M src/main/java/net/bullettrain/xenopixelsmod/item/ModCreativeModTabs.java
+    M src/main/resources/assets/xenopixelsmod/lang/en_us.json
+
+
+• Ran $source='C:
+  │ \Users\Admin\.codex\generated_images\01a0bfff-c0dc-7b12-8dce-d93e6292ac00\call_JclVGyJvoTtHSADIE96obDP9.png';
+  │ $dest='C:\XenoPixelsNetwork_qwen\src\main\resources\assets\xenopixelsmod\textures\item\xeno_npc_wand.png';
+  │ … +3 lines
+  └ COPIED 1284x1225 439812 bytes
+
+• The wand asset and resources are wired. I’m running focused UI, brain, native-NPC, economy, and resource compilation
+  tests now, then I’ll fix any integration failures.
+
+• Waited for background terminal · .\gradlew.bat test --tests "net.bullettrain.xenopixelsmod.ui.*" --tests
+"net.bullettrain.xenopixelsmod.compat.npc.NpcCombatBrainVersionTest" --tests
+"net.bullettrain.xenopixelsmod.compat.npc.brain.v4.NpcCombatBrainV4Test" --tests
+"net.bullettrain.xenopixelsmod.npc.XenoNpcDataTest" --tests
+"net.bullettrain.xenopixelsmod.compat.mmoecon.MmoEconBridgeTest" --tests
+"net.bullettrain.xenopixelsmod.plot.PlotSaleTest" -PofflineMcMeta
+
+• Ran .\gradlew.bat test --tests "net.bullettrain.xenopixelsmod.ui.*" --tests
+  │ "net.bullettrain.xenopixelsmod.compat.npc.NpcCombatBrainVersionTest" --tests
+  │ "net.bullettrain.xenopixelsmod.compat.npc.brain.v4.NpcCombatBrainV4Test" --tests
+  │ … +3 lines
+  └ To honour the JVM settings for this build a single-use Daemon process will be forked. For more on this, please refer
+    to https://docs.gradle.org/8.8/userguide/gradle_daemon.html#sec:disabling_the_daemon in the Gradle documentation.
+    … +21 lines (ctrl + t to view transcript)
+    BUILD SUCCESSFUL in 26s
+    9 actionable tasks: 4 executed, 5 up-to-date
+
+• Focused tests are green. I’m finishing the remaining review findings now; several broad catches were already narrowed
+  in the user’s current work, so I’m only patching the still-present reviewed sites.
+
+• Ran Get-Content src/main/java/net/bullettrain/xenopixelsmod/combat/ZanzokenConfusion.java -First 25
+  │ Get-Content src/main/java/net/bullettrain/xenopixelsmod/aero/AeroLinkManager.java -First 30
+  │ Get-Content src/main/java/net/bullettrain/xenopixelsmod/client/combat/AfterimageGhostRenderer.java -First 25
+  │ … +6 lines
+  └ package net.bullettrain.xenopixelsmod.combat;
+
+    … +122 lines (ctrl + t to view transcript)
+    src/main/java/net/bullettrain/xenopixelsmod/combat/ZanzokenConfusion.java:144:            } catch (Throwable
+    ignored) {
+
+• Called Narrow reviewed broad catches
+  └ Success. Updated the following files:
+    M src/main/java/net/bullettrain/xenopixelsmod/combat/ZanzokenConfusion.java
+    M src/main/java/net/bullettrain/xenopixelsmod/aero/AeroLinkManager.java
+    M src/main/java/net/bullettrain/xenopixelsmod/client/combat/AfterimageGhostRenderer.java
+    M src/main/java/net/bullettrain/xenopixelsmod/vs/ShipBallisticController.java
+
+
+• Ran .\gradlew.bat compileJava -PofflineMcMeta
+  └ To honour the JVM settings for this build a single-use Daemon process will be forked. For more on this, please refer
+    to https://docs.gradle.org/8.8/userguide/gradle_daemon.html#sec:disabling_the_daemon in the Gradle documentation.
+    … +14 lines (ctrl + t to view transcript)
+    BUILD SUCCESSFUL in 11s
+    2 actionable tasks: 1 executed, 1 up-to-date
+
+• Native/editor compilation is clean. I’m doing one more studio interaction pass: eight resize handles, anchored edge
+  resizing, and lock-aware transforms so resizing feels like an actual editor rather than a single corner drag.
+
+• Called Add eight-way studio resizing
+  └ Command failed: C:\Users\Admin\AppData\Roaming\npm\node_modules\@openai\codex\node_modules\@openai\codex-win32-
+        x64\vendor\x86_64-pc-windows-msvc\bin\codex.exe --codex-run-as-apply-patch *** Begin Patch
+    *** Update File: src/main/java/net/bullettrain/xenopixelsmod/ui/UiStudioSession.java
+    @@
+         public void resizeSelected(int w, int h) {
+    @@
+         }
+    +
+    +    public void transformSelected(int x, int y, int w, int h) {
+    +        UiNode node = find(document.root, selectedId);
+    +        if (node == null || node.editorLocked || node.editorHidden) return;
+    +        node.x = snapTo...
+
+• Ran rg -n 'dragLast|LayerRow|onHandle|selectedIds\(\).size|resizeSelected|mouseReleased' src/main/java/net/
+  │ bullettrain/xenopixelsmod/client/ui/studio/DmzGuiStudioScreen.java
+  │ $i=0; Get-Content src/main/java/net/bullettrain/xenopixelsmod/client/ui/studio/DmzGuiStudioScreen.java |
+  │ … +1 lines
+  └ 66:    private int dragLastDesignX;
+    67:    private int dragLastDesignY;
+    … +135 lines (ctrl + t to view transcript)
+     585:     }
+     586: }
+
+• Called Add resize transform state
+  └ Success. Updated the following files:
+    M src/main/java/net/bullettrain/xenopixelsmod/ui/UiStudioSession.java
+    M src/main/java/net/bullettrain/xenopixelsmod/client/ui/studio/DmzGuiStudioScreen.java
+
+
+• Called Add eight-way resize handles
+  └ Success. Updated the following files:
+    M src/main/java/net/bullettrain/xenopixelsmod/client/ui/studio/DmzGuiStudioScreen.java
+
+
+• Ran .\gradlew.bat compileJava -PofflineMcMeta
+  └ To honour the JVM settings for this build a single-use Daemon process will be forked. For more on this, please refer
+    to https://docs.gradle.org/8.8/userguide/gradle_daemon.html#sec:disabling_the_daemon in the Gradle documentation.
+    … +25 lines (ctrl + t to view transcript)
+    BUILD FAILED in 8s
+    2 actionable tasks: 1 executed, 1 up-to-date
+
+• The resize compile found another overlap from the earlier partial patch: transformSelected already existed. I’m
+  removing only the duplicate and rerunning compilation.
+
+• Ran rg -n 'transformSelected' src/main/java/net/bullettrain/xenopixelsmod/ui/UiStudioSession.java
+  │ $i=0; Get-Content src/main/java/net/bullettrain/xenopixelsmod/ui/UiStudioSession.java | ForEach-Object { $i++; if($i
+  │ -ge 360 -and $i -le 420){ '{0,4}: {1}' -f $i,$_ } }
+  └ 395:    public void transformSelected(int x, int y, int w, int h) {
+    404:    public void transformSelected(int x, int y, int w, int h) {
+    … +59 lines (ctrl + t to view transcript)
+     419:     }
+     420:
+
+• Called Remove duplicate resize transform
+  └ Success. Updated the following files:
+    M src/main/java/net/bullettrain/xenopixelsmod/ui/UiStudioSession.java
+
+
+• Ran .\gradlew.bat compileJava -PofflineMcMeta
+  └ To honour the JVM settings for this build a single-use Daemon process will be forked. For more on this, please refer
+    to https://docs.gradle.org/8.8/userguide/gradle_daemon.html#sec:disabling_the_daemon in the Gradle documentation.
+    … +8 lines (ctrl + t to view transcript)
+    BUILD SUCCESSFUL in 9s
+    2 actionable tasks: 1 executed, 1 up-to-date
+
+• The eight-handle resize pass compiles. Next I’m adding data-driven role definitions and schema validation so future
+  dialogue/quest/job systems grow from datapacks instead of hardcoded entity logic.
+
+• Ran rg -n 'AddReloadListenerEvent|PreparableReloadListener|SimpleJsonResourceReloadListener|
+  │ ResourceManagerReloadListener' src/main/java/net/bullettrain/xenopixelsmod | Select-Object -First 100
+  │ rg -n 'GSON|JsonParser|ResourceManager' src/main/java/net/bullettrain/xenopixelsmod | Select-Object -First 100
+  └ src/main/java/net/bullettrain/xenopixelsmod\client\hud\CharacterPortraitCache.java:27:import
+    net.minecraft.server.packs.resources.ResourceManagerReloadListener;
+    … +107 lines (ctrl + t to view transcript)
+    src/main/java/net/bullettrain/xenopixelsmod\client\anim\XenoClipSources.java:93:        Optional<Resource> resource
+    = minecraft.getResourceManager().getResource(file);
+
+⚠ Skill descriptions were shortened to fit the skills context budget. Codex can still see every skill, but some
+  descriptions are shorter. Disable unused skills or plugins to leave more room for the rest.
+
+• Context compacted · 1m 01s
+
+• Core systems are in place. I’m finishing schema groundwork, then running full validation and review.
+
+• Ran git status --short; Write-Output '--- XenoNpcData ---'; Get-Content src/main/java/net/bullettrain/xenopixelsmod/
+  │ npc/XenoNpcData.java; Write-Output '--- build deps gson ---'; rg -n "gson|Gson|ReloadListener|AddReload"
+  │ build.gradle src/main/java | Select-Object -First 120
+  └  M docs/hakai-body-fade.md
+     M docs/shops-and-plots.md
+    … +729 lines (ctrl + t to view transcript)
+    src/main/java\net\bullettrain\xenopixelsmod\combat\overcharge\OverchargeVoices.java:5:import
+    com.google.gson.reflect.TypeToken;
+
+• Ran Get-Content src/main/java/net/bullettrain/xenopixelsmod/npc/XenoNpcData.java; Write-Output '--- role ---';
+  │ Get-Content src/main/java/net/bullettrain/xenopixelsmod/npc/XenoNpcRole.java; Write-Output '--- test ---';
+  │ Get-Content src/test/java/net/bullettrain/xenopixelsmod/npc/XenoNpcDataTest.java; Write-Output '--- gson test
+  │ … +2 lines
+  └ package net.bullettrain.xenopixelsmod.npc;
+
+    … +185 lines (ctrl + t to view transcript)
+    src/test/java/net/bullettrain/xenopixelsmod\client\anim\studio\AnimSceneTest.java:14:        AnimScene parsed =
+    AnimScene.fromJson(scene.toJson());
+
+• Ran Get-Content src/test/java/net/bullettrain/xenopixelsmod/npc/XenoNpcDataTest.java -Raw; Get-Content src/main/java/
+  │ net/bullettrain/xenopixelsmod/npc/XenoNpcEntity.java -Raw; Get-Content src/main/java/net/bullettrain/
+  │ xenopixelsmod/npc/brain/XenoNpcBrainV5.java -Raw
+  └ package net.bullettrain.xenopixelsmod.npc;
+
+    … +150 lines (ctrl + t to view transcript)
+    }
+
+
+• The remaining gap is the data contract. I’m adding validated role definitions without guessing unverified reload APIs.
+
+• Ran rg -n "SimpleJsonResourceReloadListener|PreparableReloadListener|AddReloadListenerEvent|Register.*Reload" src/
+  │ main/java tools/generated | Select-Object -First 120; rg -n "class AddReloadListenerEvent|record
+  │ AddReloadListenerEvent|AddReloadListenerEvent" "$env:USERPROFILE\.gradle\caches" -g "*.java" -g "*.txt" -g
+  │ … +1 lines
+  └ src/main/java\net\bullettrain\xenopixelsmod\client\hud\CharacterPortraitCache.java:30:import
+    net.neoforged.neoforge.client.event.RegisterClientReloadListenersEvent;
+    … +24 lines (ctrl + t to view transcript)
+    tools/generated\dmz_decompiled_full\com\dragonminez\common\dragonball\DragonDefinitionReloadListener.java:16:public
+    class DragonDefinitionReloadListener extends SimpleJsonResourceReloadListener {
+
+• Ran Get-Content tools/generated/dmz_decompiled_full/com/dragonminez/common/wish/DragonWishRegistry.java -TotalCount
+  │ 180; Write-Output '--- registration ---'; Get-Content tools/generated/dmz_decompiled_full/com/dragonminez/common/
+  │ events/ForgeCommonEvents.java | Select-Object -Skip 680 -First 35; Write-Output '--- Xeno event classes ---'; rg
+  │ … +2 lines
+  └ package com.dragonminez.common.wish;
+
+    … +210 lines (ctrl + t to view transcript)
+    src/main/java/net/bullettrain/xenopixelsmod\combat\Bt3CombatEvents.java:36:@EventBusSubscriber(modid =
+    XenoPixelsMod.MOD_ID)
+
+• Ran Get-Content src/main/java/net/bullettrain/xenopixelsmod/XenoPixelsMod.java -TotalCount 90; Get-Content src/main/
+  │ java/net/bullettrain/xenopixelsmod/event/DmzHooks.java -TotalCount 60; rg -n "LOGGER|LOG\." src/main/java/net/
+  │ bullettrain/xenopixelsmod/XenoPixelsMod.java src/main/java/net/bullettrain/xenopixelsmod | Select-Object -First 40
+  └ package net.bullettrain.xenopixelsmod;
+
+    … +182 lines (ctrl + t to view transcript)
+    src/main/java/net/bullettrain/xenopixelsmod\vs\ShipBallisticController.java:233:
+    XenoPixelsMod.LOGGER.info("Registered Sable ballistic physics callback");
+
+• Ran rg -n "fromNamespaceAndPath\(" src/main/java | Select-Object -First 20; rg -n "JsonObject.*getAsJson|
+  │ GsonHelper.getAsString" src/main/java/net/bullettrain/xenopixelsmod | Select-Object -First 30
+  └ src/main/java\com\lightning\northstar\world\dimension\NorthstarDimensions.java:46:        return
+    ResourceLocation.fromNamespaceAndPath("northstar", path);
+    … +56 lines (ctrl + t to view transcript)
+    src/main/java/net/bullettrain/xenopixelsmod\mixin\compat\dmz\DmzJsonSchemaXenoFieldsMixin.java:18:        JsonObject
+    forms = copy.getAsJsonObject("forms");
+
+• I verified the exact NeoForge reload hook from the pinned DMZ reference. Now I’m wiring real datapack-driven role
+  definitions into v5.
+
+• Called Add NPC role schemas
+  └ Warning: execFileSync was declared with const; use let for reassignable variables.
+    Warning: patch was declared with const; use let for reassignable variables.
+    Success. Updated the following files:
+    A src/main/java/net/bullettrain/xenopixelsmod/npc/XenoNpcRoleDefinition.java
+    A src/main/java/net/bullettrain/xenopixelsmod/npc/XenoNpcRoleDefinitions.java
+    A src/test/java/net/bullettrain/xenopixelsmod/npc/XenoNpcRoleDefinitionTest.java
+    A src/main/resources/data/xenopixelsmod/xeno_npcs/roles/humanoid.json
+    A src/main/resources/data/xenopixelsmod/xeno_npcs/roles/creature.json...
+
+• Role definitions now reload from datapacks with safe fallbacks. I’m compiling the new contract and native brain
+  integration next.
+
+• Ran .\gradlew.bat test --tests "net.bullettrain.xenopixelsmod.npc.*" --tests
+  │ "net.bullettrain.xenopixelsmod.compat.npc.brain.v4.NpcCombatBrainV4Test" -PofflineMcMeta
+  └ To honour the JVM settings for this build a single-use Daemon process will be forked. For more on this, please refer
+    to https://docs.gradle.org/8.8/userguide/gradle_daemon.html#sec:disabling_the_daemon in the Gradle documentation.
+    … +21 lines (ctrl + t to view transcript)
+    BUILD SUCCESSFUL in 27s
+    9 actionable tasks: 4 executed, 5 up-to-date
+
+• Focused tests pass. I’m reviewing the full patch surface before the slower distribution builds.
+
+• Ran Get-Content C:
+  │ \Users\Admin\.codex\plugins\cache\openai-curated-remote\superpowers\6.4.1\skills\requesting-code-review\SKILL.md
+  │ -Raw; Write-Output '--- verification skill ---'; Get-Content C:
+  │ … +10 lines
+  └ ---
+    name: requesting-code-review
+    … +248 lines (ctrl + t to view transcript)
+    warning: in the working copy of 'src/test/java/net/bullettrain/xenopixelsmod/plot/PlotSaleTest.java', LF will be
+    replaced by CRLF the next time Git touches it
+
+• The review playbook requires an independent reviewer. I’m dispatching that while the full test suite runs.
+
+• Spawned 01a0c02c-8969-76c1-aa6c-bb3587ac33be (gpt-5.6-sol high)
+  └ Act as a strict code reviewer for the uncommitted working-tree implementation in C:\XenoPixelsNetwork_qwen. Base
+  commit and current HEAD are both 53a025e45a4...
+
+• Ran .\gradlew.bat test -PofflineMcMeta
+  └ To honour the JVM settings for this build a single-use Daemon process will be forked. For more on this, please refer
+    to https://docs.gradle.org/8.8/userguide/gradle_daemon.html#sec:disabling_the_daemon in the Gradle documentation.
+    … +34 lines (ctrl + t to view transcript)
+    BUILD FAILED in 22s
+    9 actionable tasks: 1 executed, 8 up-to-date
+
+• The full suite found one metadata-ordering regression from the MMOEcon dependency edit. I’m correcting that targeted
+  contract now.
+
+• Ran Get-Content src/test/java/net/bullettrain/xenopixelsmod/ModMetadataOrderingTest.java | Select-Object -First 110;
+  │ Write-Output '--- dependency blocks ---'; rg -n -C 5 "dependencies\.xenopixelsmod|modId=\"(dragonminez|mmoecon|
+  │ mynpcs|customnpcs)\"" src/main/resources/META-INF/neoforge.mods.toml
+  └ package net.bullettrain.xenopixelsmod;
+
+    … +106 lines (ctrl + t to view transcript)
+         | The term 'dragonminez' is not recognized as a name of a cmdlet, function, script file, or executable program.
+    Check the spelling of the name, or if a path was included, verify that the path is correct and try again.
+
+• Ran Select-String -Path src/main/resources/META-INF/neoforge.mods.toml -Pattern
+  │ 'modId="dragonminez"','modId="mmoecon"','modId="create"' -Context 4,4
+  └
+      src\main\resources\META-INF\neoforge.mods.toml:47:#     parallel dispatch, while
+    … +33 lines (ctrl + t to view transcript)
+      src\main\resources\META-INF\neoforge.mods.toml:161:side="BOTH"
+
+
+• Called Fix dependency ordering
+  └ Success. Updated the following files:
+    M src/main/resources/META-INF/neoforge.mods.toml
+
+
+• Ran .\gradlew.bat test -PofflineMcMeta
+  └ To honour the JVM settings for this build a single-use Daemon process will be forked. For more on this, please refer
+    to https://docs.gradle.org/8.8/userguide/gradle_daemon.html#sec:disabling_the_daemon in the Gradle documentation.
+    … +34 lines (ctrl + t to view transcript)
+    BUILD FAILED in 25s
+    9 actionable tasks: 2 executed, 7 up-to-date
+
+• Explored
+  └ Read TEST-net.bullettrain.xenopixelsmod.ModMetadataOrderingTest.xml
+
+• Ran $lines = Get-Content src/main/resources/META-INF/neoforge.mods.toml; for ($i=0; $i -lt $lines.Length; $i++) { if
+  │ ($lines[$i] -match '^modId=') { '{0}: {1}' -f ($i+1), $lines[$i] } }
+  └ 6: modId="${mod_id}"
+    21: modId="neoforge"
+    … +12 lines (ctrl + t to view transcript)
+    157: modId="create"
+    166: modId="modernui"
+
+• Ran Get-Content src/main/resources/META-INF/neoforge.mods.toml | Select-Object -Skip 54 -First 30; Write-Output '---';
+  │ Get-Content src/main/resources/META-INF/neoforge.mods.toml | Select-Object -Skip 145 -First 20
+  └ side="BOTH"
+
+    … +47 lines (ctrl + t to view transcript)
+    # ModernUI-NeoForge 1.21.1 install still coexists cleanly with the nested copy.
+    [[dependencies.${mod_id}]]
+
+⚠ Heads up, you have less than 25% of your 5h limit left. Run /status for a breakdown.
+
+• Called Restore metadata order
+  └ mod_id is not defined
+
+• Called Restore metadata order
+  └ Success. Updated the following files:
+    M src/main/resources/META-INF/neoforge.mods.toml
+
+
+• Ran .\gradlew.bat test -PofflineMcMeta
+  └ To honour the JVM settings for this build a single-use Daemon process will be forked. For more on this, please refer
+    to https://docs.gradle.org/8.8/userguide/gradle_daemon.html#sec:disabling_the_daemon in the Gradle documentation.
+    … +17 lines (ctrl + t to view transcript)
+    BUILD SUCCESSFUL in 25s
+    9 actionable tasks: 2 executed, 7 up-to-date
+
+• All 1,244 tests pass after restoring the declared dependency order. Next is the full distribution build and server-jar
+  audit.
+
+• Ran .\gradlew.bat build jarJar serverJar -PofflineMcMeta
+  └ To honour the JVM settings for this build a single-use Daemon process will be forked. For more on this, please refer
+    to https://docs.gradle.org/8.8/userguide/gradle_daemon.html#sec:disabling_the_daemon in the Gradle documentation.
+    … +24 lines (ctrl + t to view transcript)
+    BUILD SUCCESSFUL in 12s
+    13 actionable tasks: 3 executed, 10 up-to-date
+
+• Ran .\gradlew.bat buildApiExampleAddon -PofflineMcMeta; Write-Output '--- server jars ---'; Get-ChildItem
+  │ build\libs\*server*.jar | Select-Object FullName,Length,LastWriteTime; Write-Output '--- jarjar entries ---';
+  │ $serverJar = Get-ChildItem build\libs\*server*.jar | Sort-Object LastWriteTime -Descending | Select-Object -First
+  │ … +2 lines
+  └ To honour the JVM settings for this build a single-use Daemon process will be forked. For more on this, please refer
+    to https://docs.gradle.org/8.8/userguide/gradle_daemon.html#sec:disabling_the_daemon in the Gradle documentation.
+    … +40 lines (ctrl + t to view transcript)
+    count=0
+
+
+• Distribution and API boundary builds pass; the server jar contains zero nested Jar-in-Jar entries. I’m doing the fresh
+  runtime startup check now.
+
+• Waited for background terminal · .\gradlew.bat runApiTestClient
+
+↳ Interacted with background terminal · .\gradlew.bat runApiTestClient
+  └
+
+↳ Interacted with background terminal · .\gradlew.bat runApiTestClient
+  └ Y
+
+• Ran .\gradlew.bat runApiTestClient
+  └ To honour the JVM settings for this build a single-use Daemon process will be forked. For more on this, please refer
+    to https://docs.gradle.org/8.8/userguide/gradle_daemon.html#sec:disabling_the_daemon in the Gradle documentation.
+    … +1295 lines (ctrl + t to view transcript)
+    iyan_mouth_0.png
+    Terminate batch job (Y/N)? Y
+
+• The fresh client reached a world and completed the API ping/pong. I’m inspecting the exact log evidence and reviewer
+  findings before final fixes.
+
+• Ran $log='run/logs/latest.log'; Get-Item $log | Select-Object FullName,Length,LastWriteTime; Select-String -Path $log
+  │ -Pattern 'Loaded 6 native NPC role definitions','network.ping','network.pong','Dev joined the
+  │ game','ERROR','FATAL' | Select-Object -Last 80
+  └
+    FullName                                      Length LastWriteTime
+    … +22 lines (ctrl + t to view transcript)
+                                                       1
+
+
+• Ran git status --short -- src/main/java/net/bullettrain/xenopixelsmod/compat/mmoecon/MmoEconBridge.java src/main/java/
+  │ net/bullettrain/xenopixelsmod/plot src/main/java/net/bullettrain/xenopixelsmod/shop src/main/java/net/bullettrain/
+  │ xenopixelsmod/ui src/main/java/net/bullettrain/xenopixelsmod/client/ui src/main/java/net/bullettrain/
+  │ … +8 lines
+  └  M src/main/java/net/bullettrain/xenopixelsmod/compat/mmoecon/MmoEconBridge.java
+     M src/main/java/net/bullettrain/xenopixelsmod/compat/npc/NpcAppearanceFx.java
+    … +57 lines (ctrl + t to view transcript)
+    ?? src/test/java/net/bullettrain/xenopixelsmod/npc/
+    ?? src/test/java/net/bullettrain/xenopixelsmod/ui/
+
+• Ran rg -n "Loaded [0-9]+ native NPC role definitions|network\.(ping|pong)|Dev joined the game|\[(ERROR|FATAL)\]" run/
+  │ logs/latest.log | Select-Object -Last 100
+  └ 320:[20Sep2026 21:59:55.897] [Render thread/INFO] [net.bullettrain.xenopixelsmod.XenoPixelsMod/]: Loaded 6 native
+    NPC role definitions
+    … +3 lines (ctrl + t to view transcript)
+    560:[20Sep2026 22:00:06.026] [Render thread/INFO] [net.bullettrain.xenopixels.example.ApiExampleAddon/]:
+    [xeno-api-example] network.pong count=1 detail=128721968003800
+
+• Waiting for 01a0c02c-8969-76c1-aa6c-bb3587ac33be
+
+• Finished waiting
+  └ No agents completed yet
+
+• Runtime evidence is clean for startup, datapack loading, world join, and packet round-trip. I’m doing a final security
+  and interaction pass while review completes.
+
+• Ran Get-Content src/main/java/net/bullettrain/xenopixelsmod/network/packet/XenoNpcSavePacket.java -Raw; Write-Output
+  │ '--- wand ---'; Get-Content src/main/java/net/bullettrain/xenopixelsmod/item/custom/XenoNpcWandItem.java -Raw;
+  │ Write-Output '--- editor ---'; Get-Content src/main/java/net/bullettrain/xenopixelsmod/client/npc/
+  │ … +3 lines
+  └ package net.bullettrain.xenopixelsmod.network.packet;
+
+    … +321 lines (ctrl + t to view transcript)
+    src/main/java/net/bullettrain/xenopixelsmod/ui/UiStudioSession.java-429-
+    src/main/java/net/bullettrain/xenopixelsmod/ui/UiStudioSession.java-430-    private String uniqueId(String type) {
+
+• Ran Get-Content src/main/java/net/bullettrain/xenopixelsmod/item/custom/XenoNpcWandItem.java -Raw; Write-Output '---
+  │ entity registration ---'; rg -n -C 3 "XENO_NPC|xenoNpcType|XenoNpcEntity" src/main/java/net/bullettrain/
+  │ xenopixelsmod/missile/ModEntities.java src/main/java/net/bullettrain/xenopixelsmod/client/ClientModEvents.java
+  │ … +2 lines
+  └ package net.bullettrain.xenopixelsmod.item.custom;
+
+    … +183 lines (ctrl + t to view transcript)
+    src/main/java/net/bullettrain/xenopixelsmod/missile/ModEntities.java-112-    }
+    src/main/java/net/bullettrain/xenopixelsmod/missile/ModEntities.java-113-}
+
+• Waiting for 01a0c02c-8969-76c1-aa6c-bb3587ac33be
+
+• Finished waiting
+  └ No agents completed yet
+
+• Explored
+  └ Read xenopixels-code-review.md
+
+• Ran $text=Get-Content xenopixels-code-review.md; $start=($text | Select-String '^## 7\.' | Select-Object -First
+  │ 1).LineNumber; $end=($text | Select-String '^## 8\.' | Select-Object -First 1).LineNumber; $text[($start-1)..
+  │ ($end-2)]
+  └ ## 7. Seven `catch (Throwable ...) {}` blocks swallow real errors, not just expected failures
+
+    … +18 lines (ctrl + t to view transcript)
+    ---
+
+
+⚠ Heads up, you have less than 10% of your 5h limit left. Run /status for a breakdown.
+
+• Ran rg -n -C 2 "catch \(Throwable" src/main/java/net/bullettrain/xenopixelsmod/dmz/form/DmzFormEditorService.java src/
+  │ main/java/net/bullettrain/xenopixelsmod/combat/ZanzokenConfusion.java src/main/java/net/bullettrain/xenopixelsmod/
+  │ compat/npc/NpcCombatProfile.java src/main/java/net/bullettrain/xenopixelsmod/aero/AeroLinkManager.java src/main/
+  │ … +3 lines
+  └ src/main/java/net/bullettrain/xenopixelsmod/vs/ShipBallisticController.java-1260-                    currentNose.x,
+    currentNose.y, currentNose.z,
+    … +57 lines (ctrl + t to view transcript)
+    src/main/java/net/bullettrain/xenopixelsmod/vs/ShipBallisticController.java-1831-        }
+    src/main/java/net/bullettrain/xenopixelsmod/vs/ShipBallisticController.java-1832-    }
+
+• Ran git diff -U4 -- src/main/java/net/bullettrain/xenopixelsmod/vs/ShipBallisticController.java | Select-Object -First
+  │ 220; rg -n -C 4 "getMass|mass" src/main/java/net/bullettrain/xenopixelsmod/vs/ShipBallisticController.java |
+  │ Select-Object -First 100
+  └ warning: in the working copy of 'src/main/java/net/bullettrain/xenopixelsmod/vs/ShipBallisticController.java', LF
+    will be replaced by CRLF the next time Git touches it
+    … +131 lines (ctrl + t to view transcript)
+    1400:            Vector3dc com = subLevel.getMassTracker().getCenterOfMass();
+    1401-            if (com != null) {
+
+• Ran Get-ChildItem -Path . -Filter doco.md -Recurse -ErrorAction SilentlyContinue | Select-Object -ExpandProperty
+  │ FullName; if (Test-Path doco.md) { Get-Content doco.md -TotalCount 220 }; if (Test-Path ai-brain.md)
+  │ { Write-Output '--- ai-brain.md headings ---'; rg -n '^#|^##|^###' ai-brain.md | Select-Object -First 120 }
+  └ C:\XenoPixelsNetwork_qwen\doco.md
+    C:\XenoPixelsNetwork_qwen\docs\doco.md
+    … +233 lines (ctrl + t to view transcript)
+    221:## 10. How quests plug into all of this
+    237:## Summary table: which AI system governs which mobs
+
+• The implementation now has a real schema boundary, but feature parity is intentionally staged. I’m documenting the
+  exact v5 contract and unimplemented MyNPCs-parity areas.
+
+• Called Document NPC v5 foundation
+  └ Success. Updated the following files:
+    A docs/xeno-npcs-v5.md
+
+
+• Explored
+  └ Read xeno-npcs-v5.md
+
+• Waiting for 01a0c02c-8969-76c1-aa6c-bb3587ac33be
+
+⚠ Heads up, you have less than 5% of your 5h limit left. Run /status for a breakdown.
+
+• Finished waiting
+  └ No agents completed yet
+
+• Sent input to 01a0c02c-8969-76c1-aa6c-bb3587ac33be
+  └ Please finish now with the highest-confidence findings only. Prioritize critical/important correctness, security,
+  performance, and integration issues in the ...
+
+• Ran rg -n "NpcCombatBrainVersion|brainVersion|Brain v" src/main/java/net/bullettrain/xenopixelsmod/client/compat/npc
+  │ src/main/java/net/bullettrain/xenopixelsmod/compat/npc | Select-Object -First 160; git diff --stat -- src/main/
+  │ java/net/bullettrain/xenopixelsmod/ui src/main/java/net/bullettrain/xenopixelsmod/client/ui src/main/java/net/
+  │ … +3 lines
+  └ src/main/java/net/bullettrain/xenopixelsmod/compat/npc\mynpcs\NpcXenoScriptApi.java:11:import
+    net.bullettrain.xenopixelsmod.compat.npc.NpcCombatBrainVersion;
+    … +46 lines (ctrl + t to view transcript)
+     src/main/resources/META-INF/neoforge.mods.toml     | 29 ++++-----
+     6 files changed, 93 insertions(+), 36 deletions(-)
+
+• Ran Get-Content src/main/java/net/bullettrain/xenopixelsmod/compat/npc/NpcCombatBrainVersion.java -Raw; Get-Content
+  │ src/test/java/net/bullettrain/xenopixelsmod/compat/npc/NpcCombatBrainVersionTest.java -Raw; Get-Content src/main/
+  │ java/net/bullettrain/xenopixelsmod/compat/npc/NpcCombatProfile.java | Select-Object -Skip 1180 -First 60;
+  │ … +3 lines
+  └ package net.bullettrain.xenopixelsmod.compat.npc;
+
+    … +265 lines (ctrl + t to view transcript)
+         * {@code disengage}, {@code vanish}, {@code zanzoken}, {@code chase}, {@code deflectBlast},
+         * {@code deflectWave}.
+
+• I found one boundary leak: scripts could assign native-only v5 to legacy NPCs. I’m closing that path and adding
+  regression coverage.
+
+• Called Enforce native v5 boundary
+  └ Command failed: C:\Users\Admin\AppData\Roaming\npm\node_modules\@openai\codex\node_modules\@openai\codex-win32-
+        x64\vendor\x86_64-pc-windows-msvc\bin\codex.exe --codex-run-as-apply-patch *** Begin Patch
+    *** Update File: src/main/java/net/bullettrain/xenopixelsmod/compat/npc/NpcCombatBrainVersion.java
+    @@
+         public static NpcCombatBrainVersion byName(String name) {
+    @@
+             };
+         }
+    +
+    +    public static NpcCombatBrainVersion byLegacyName(String name) {
+    +        return byName(name).legacyCompatible();
+    +    }
+    @@
+         public boolean isNativeV5() {
+             return th...
+
+• Ran rg -n -C 4 "withBrainVersion|TAG_BRAIN_VERSION|setBrainVersion" src/main/java/net/bullettrain/xenopixelsmod/
+  │ compat/npc/NpcCombatProfile.java src/main/java/net/bullettrain/xenopixelsmod/compat/npc/NpcXenoScriptApi.java src/
+  │ main/java/net/bullettrain/xenopixelsmod/compat/npc/mynpcs/NpcXenoScriptApi.java | Select-Object -First 160; rg -n
+  │ … +2 lines
+  └ src/main/java/net/bullettrain/xenopixelsmod/compat/npc/mynpcs/NpcXenoScriptApi.java-388-    public boolean
+    setCombatBrain(ICustomNpc npc, boolean on) {
+    … +75 lines (ctrl + t to view transcript)
+        ^
+    error: unclosed group
+
+• Called Enforce native v5 boundary
+  └ Success. Updated the following files:
+    M src/main/java/net/bullettrain/xenopixelsmod/compat/npc/NpcCombatBrainVersion.java
+    M src/main/java/net/bullettrain/xenopixelsmod/compat/npc/NpcCombatProfile.java
+    M src/main/java/net/bullettrain/xenopixelsmod/compat/npc/NpcXenoScriptApi.java
+    M src/main/java/net/bullettrain/xenopixelsmod/compat/npc/mynpcs/NpcXenoScriptApi.java
+    M src/test/java/net/bullettrain/xenopixelsmod/compat/npc/NpcCombatBrainVersionTest.java
+
+
+• Ran .\gradlew.bat test --tests "net.bullettrain.xenopixelsmod.compat.npc.NpcCombatBrainVersionTest" --tests
+  │ "net.bullettrain.xenopixelsmod.compat.npc.brain.v4.NpcCombatBrainV4Test" --tests
+  │ "net.bullettrain.xenopixelsmod.npc.*" -PofflineMcMeta
+  └ To honour the JVM settings for this build a single-use Daemon process will be forked. For more on this, please refer
+    to https://docs.gradle.org/8.8/userguide/gradle_daemon.html#sec:disabling_the_daemon in the Gradle documentation.
+    … +71 lines (ctrl + t to view transcript)
+    BUILD FAILED in 15s
+    2 actionable tasks: 2 executed
+
+codex resume 01a0bfff-c0dc-7b12-8dce-d93e6292ac00

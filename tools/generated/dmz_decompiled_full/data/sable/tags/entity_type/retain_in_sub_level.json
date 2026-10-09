@@ -1,9 +1,3 @@
-{
-  "replace": false,
-  "values": [
-    "dragonminez:ki_blast",
-    "dragonminez:ki_laser",
-    "dragonminez:ki_wave",
-    "dragonminez:ki_disc"
-  ]
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:91dc233aacb1ba066aeb0dacdf0ce00ce56b19d2a4756bf23ce2fd1619e89c88
+size 160

@@ -1,6 +1,3 @@
-{
-  "parent": "minecraft:item/generated",
-  "textures": {
-    "layer0": "dragonminez:item/armors/xeno_goku_armor_boots"
-  }
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:37fc8a984853aad0af9cfba472d29ce9599350015a0969dbe32f7c7cb743222a
+size 125

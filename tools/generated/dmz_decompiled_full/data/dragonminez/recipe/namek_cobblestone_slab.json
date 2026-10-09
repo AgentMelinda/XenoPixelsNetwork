@@ -1,17 +1,3 @@
-{
-  "type": "minecraft:crafting_shaped",
-  "category": "building",
-  "group": "dragonminez",
-  "key": {
-    "#": {
-      "item": "dragonminez:namek_cobblestone"
-    }
-  },
-  "pattern": [
-    "###"
-  ],
-  "result": {
-    "count": 4,
-    "id": "dragonminez:namek_cobblestone_slab"
-  }
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:34df79036b34bfbd04ff36075e39052b3104d54a4ffc5f319146584809491eb0
+size 284

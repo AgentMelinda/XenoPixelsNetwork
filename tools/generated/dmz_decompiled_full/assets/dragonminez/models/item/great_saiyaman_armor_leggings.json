@@ -1,6 +1,3 @@
-{
-  "parent": "minecraft:item/generated",
-  "textures": {
-    "layer0": "dragonminez:item/armors/great_saiyaman_armor_leggings"
-  }
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:f8758ca6d1b5314d3cfb3da377b86d16c610fb6ff2e270a4ac8fff839359edbc
+size 133

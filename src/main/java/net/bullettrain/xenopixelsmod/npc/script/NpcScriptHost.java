@@ -37,11 +37,11 @@ import java.util.concurrent.ConcurrentHashMap;
  */
 @net.neoforged.fml.common.EventBusSubscriber(modid = XenoPixelsMod.MOD_ID)
 public final class NpcScriptHost {
-    /** The hooks this runtime fires, each from a real call site on {@link XenoNpcEntity}. */
+    /** NPC hooks and exact-tab projectile hooks; projectile hooks require enableEvents capture. */
     public static final List<String> HOOKS = List.of(
             "init", "tick", "interact", "damaged", "died", "kill", "target", "targetLost",
             "collide", "meleeAttack", "rangedLaunched", "timer", "dialog", "dialogOption", "rangedAttack",
-            "trigger");
+            "trigger", "projectileTick", "projectileImpact");
 
     /** Bindings every tab gets, for the screen's Functions panel. */
     public static final List<String> BINDINGS = List.of(
@@ -209,10 +209,41 @@ public final class NpcScriptHost {
         }
     }
 
+    private static ProjectileScriptContext.Token projectileToken(XenoNpcEntity npc, Host host) {
+        var npcRef = new java.lang.ref.WeakReference<>(npc);
+        var hostRef = new java.lang.ref.WeakReference<>(host);
+        var levelRef = new java.lang.ref.WeakReference<>(npc.level());
+        ProjectileScriptContext.Token[] binding = new ProjectileScriptContext.Token[1];
+        binding[0] = new ProjectileScriptContext.Token(() -> {
+            XenoNpcEntity current = npcRef.get();
+            Host expected = hostRef.get();
+            if (current == null || expected == null || current.isRemoved() || !current.isAlive()
+                    || current.level() != levelRef.get() || HOSTS.get(current.getUUID()) != expected) return false;
+            NpcScriptContainer scripts = NpcCombatProfile.readCached(current).scripts;
+            return scripts != null && scripts.enabled() && !scripts.isEmpty()
+                    && expected.fingerprint.equals(fingerprint(scripts))
+                    && expected.tabs.contains(binding[0].boundInstance());
+        }, error -> {
+            XenoNpcEntity current = npcRef.get();
+            Host expected = hostRef.get();
+            if (current != null && expected != null) reportError(current, expected, error);
+        }, npc.level());
+        return binding[0];
+    }
+
+    private static NpcScriptResult callTab(XenoNpcEntity npc, Host host,
+                                         NpcScriptEngine.Instance tab, String hook, Object event) {
+        ProjectileScriptContext.Token token = projectileToken(npc, host);
+        token.bind(tab);
+        try (ProjectileScriptContext.Scope ignored = ProjectileScriptContext.enter(token)) {
+            return tab.call(hook, event);
+        }
+    }
+
     private static void dispatchTyped(XenoNpcEntity npc, Host host, String hook, Object typed) {
         for (NpcScriptEngine.Instance tab : host.tabs) {
             if (!tab.hasFunction(hook)) continue;
-            NpcScriptResult result = tab.call(hook, typed);
+            NpcScriptResult result = callTab(npc, host, tab, hook, typed);
             if (!result.ok()) reportError(npc, host, hook + ": " + result.describe());
         }
     }
@@ -222,7 +253,7 @@ public final class NpcScriptHost {
             if (!tab.hasFunction(hook)) {
                 continue;
             }
-            NpcScriptResult result = tab.call(hook, event);
+            NpcScriptResult result = callTab(npc, host, tab, hook, event);
             if (!result.ok()) {
                 reportError(npc, host, hook + ": " + result.describe());
             }
@@ -302,7 +333,12 @@ public final class NpcScriptHost {
                     .putString("script", tab.scriptId())
                     .putString("scriptName", "tab " + index)
                     .build();
-            NpcScriptEngine.Instance instance = engine.instantiate(source, scope);
+            ProjectileScriptContext.Token token = projectileToken(npc, built);
+            NpcScriptEngine.Instance instance;
+            try (ProjectileScriptContext.Scope ignored = ProjectileScriptContext.enter(token)) {
+                instance = engine.instantiate(source, scope);
+            }
+            if (instance.ok()) token.bind(instance);
             if (!instance.ok()) {
                 reportError(npc, built, "tab " + index + " failed to load: "
                         + instance.loadResult().describe());
@@ -319,7 +355,7 @@ public final class NpcScriptHost {
                 null, 0.0f, xeno);
         for (NpcScriptEngine.Instance tab : host.tabs) {
             if (tab.hasFunction("init")) {
-                NpcScriptResult result = tab.call("init", event);
+                NpcScriptResult result = callTab(npc, host, tab, "init", event);
                 if (!result.ok()) reportError(npc, host, "init: " + result.describe());
             }
         }
@@ -340,8 +376,18 @@ public final class NpcScriptHost {
     }
 
     static String fingerprint(NpcScriptContainer container) {
-        return XenoNpcScripts.generation() + "|" + container.language() + "|"
-                + String.join(",", container.referencedIds()) + "|" + container.tabs().size();
+        StringBuilder key = new StringBuilder().append(XenoNpcScripts.generation()).append('|');
+        fingerprintPart(key, container.language());
+        for (NpcScriptContainer.Tab tab : container.tabs()) {
+            key.append('T');
+            fingerprintPart(key, tab.scriptId());
+            key.append(tab.loaded().size()).append(':');
+            for (String loaded : tab.loaded()) fingerprintPart(key, loaded);
+        }
+        return key.toString();
+    }
+    private static void fingerprintPart(StringBuilder key, String value) {
+        key.append(value.length()).append(':').append(value);
     }
 
     private static final SimpleDateFormat STAMP = new SimpleDateFormat("HH:mm:ss");

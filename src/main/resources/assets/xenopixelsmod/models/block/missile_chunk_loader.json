@@ -1,9 +1,3 @@
-{
-  "parent": "minecraft:block/orientable",
-  "textures": {
-    "particle": "xenopixelsmod:block/missile_chunk_loader_side",
-    "top": "xenopixelsmod:block/missile_chunk_loader_top",
-    "front": "xenopixelsmod:block/missile_chunk_loader_front",
-    "side": "xenopixelsmod:block/missile_chunk_loader_side"
-  }
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:d54ed846ca96c4153d0aeb0985a55083ffc357bfaed4d90ff876c32054055db4
+size 313

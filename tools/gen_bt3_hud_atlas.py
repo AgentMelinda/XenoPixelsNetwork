@@ -101,6 +101,139 @@ def load_sprites():
     return out
 
 
+# --- measured geometry -------------------------------------------------------------------
+#
+# The renderer needs more than each sprite's rectangle: it needs to know where inside a sprite the
+# art expects live data to go -- which pixels of the portrait ring are safe to draw a face behind,
+# where each ki/stamina segment starts, and how wide the health bar's lit track is. Those numbers
+# are properties of the art, so they are measured off the art in the same pass that packs it rather
+# than being read off a screenshot by hand and pasted into Java, where a re-cropped source would
+# silently leave them pointing at the wrong pixels.
+
+
+def _lit(pixel):
+    """A pixel belonging to a bar's lit fill rather than to its gap or its dark shell."""
+    r, g, b, a = pixel
+    return a >= 150 and max(r, g, b) >= 110 and (r + g + b) >= 150
+
+
+def _dark(pixel):
+    """An opaque pixel of a frame's dark interior well."""
+    r, g, b, a = pixel
+    return a >= 200 and (r + g + b) < 70
+
+
+def _runs(image, y, predicate):
+    """Maximal horizontal runs of matching pixels on one row."""
+    pixels = image.load()
+    out = []
+    start = None
+    for x in range(image.width):
+        if predicate(pixels[x, y]):
+            if start is None:
+                start = x
+        elif start is not None:
+            out.append((start, x - start))
+            start = None
+    if start is not None:
+        out.append((start, image.width - start))
+    return out
+
+
+def _column_runs(image, x, predicate):
+    pixels = image.load()
+    out = []
+    start = None
+    for y in range(image.height):
+        if predicate(pixels[x, y]):
+            if start is None:
+                start = y
+        elif start is not None:
+            out.append((start, y - start))
+            start = None
+    if start is not None:
+        out.append((start, image.height - start))
+    return out
+
+
+def segment_track(image, name):
+    """Where each lit segment of a segmented bar begins, read off the bar's middle row.
+
+    The segment count is the art's, not a guess from the bar's width: these sprites are slanted
+    parallelograms with uneven end caps, so width/count lands a segment boundary a pixel or two off
+    every time and the error accumulates across the bar.
+    """
+    found = _runs(image, image.height // 2, _lit)
+    if not found:
+        raise BuildError(name + " has no lit pixels on its middle row; the crop or the art moved")
+    widths = sorted(w for _, w in found)
+    return {
+        "starts": [x for x, _ in found],
+        "width": widths[len(widths) // 2],
+    }
+
+
+def fill_track(image, name):
+    """The lit run of a continuous (unsegmented) fill bar."""
+    found = _runs(image, image.height // 2, _lit)
+    if not found:
+        raise BuildError(name + " has no lit pixels on its middle row; the crop or the art moved")
+    start = found[0][0]
+    end = found[-1][0] + found[-1][1]
+    return {"x": start, "width": end - start}
+
+
+def interior_well(image, name):
+    """The dark rectangle inside a frame, where dynamic text belongs."""
+    row = _runs(image, image.height // 2, _dark)
+    if not row:
+        raise BuildError(name + " has no dark interior on its middle row")
+    x, width = max(row, key=lambda run: run[1])
+    column = _column_runs(image, x + width // 2, _dark)
+    if not column:
+        raise BuildError(name + " has no dark interior on its middle column")
+    y, height = max(column, key=lambda run: run[1])
+    return {"x": x, "y": y, "width": width, "height": height}
+
+
+def opaque_well(image, name):
+    """The largest centred square the sprite covers completely.
+
+    A portrait drawn in this square and then overdrawn with the ring cannot show a corner outside
+    the ring, because every pixel of the square is opaque in the ring art. Anything larger has to
+    be masked, and the bundle ships no mask for this ring.
+    """
+    alpha = image.split()[3].load()
+    cx = image.width / 2.0
+    cy = image.height / 2.0
+    best = None
+    half = 2
+    while True:
+        x0, y0 = int(round(cx - half)), int(round(cy - half))
+        x1, y1 = int(round(cx + half)), int(round(cy + half))
+        if x0 < 0 or y0 < 0 or x1 > image.width or y1 > image.height:
+            break
+        if all(alpha[x, y] >= 235 for y in range(y0, y1) for x in range(x0, x1)):
+            best = {"x": x0, "y": y0, "width": x1 - x0, "height": y1 - y0}
+        else:
+            break
+        half += 1
+    if best is None:
+        raise BuildError(name + " has no opaque centre to draw a portrait behind")
+    return best
+
+
+def measure(sprites):
+    """Every geometry fact the renderer reads out of the art, in atlas pixels."""
+    return {
+        "PORTRAIT_WELL": opaque_well(sprites["PORTRAIT_RING"], "PORTRAIT_RING"),
+        "NAMEPLATE_WELL": interior_well(sprites["NAMEPLATE"], "NAMEPLATE"),
+        "HP_TRACK": fill_track(sprites["HP_BAR"], "HP_BAR"),
+        "KI_TRACK": segment_track(sprites["KI_BAR"], "KI_BAR"),
+        "STAMINA_TRACK": segment_track(sprites["STAMINA_BAR"], "STAMINA_BAR"),
+    }
+
+
 def pack(sprites):
     """Shelf packing, tallest first.
 
@@ -158,7 +291,7 @@ def contact_sheet(sprites, placed):
     return merged.resize((sheet.width * 2, sheet.height * 2), Image.NEAREST)
 
 
-def java_source(placed):
+def java_source(placed, geometry):
     lines = [
         "package net.bullettrain.xenopixelsmod.client.hud;",
         "",
@@ -191,11 +324,81 @@ def java_source(placed):
         x, y, w, h = placed[name]
         lines.append("    public static final Sprite " + name + " = new Sprite("
                      + str(x) + ", " + str(y) + ", " + str(w) + ", " + str(h) + ");")
+    lines += [
+        "",
+        "    /** A rectangle inside one sprite, in that sprite's own pixels. */",
+        "    public record Well(int x, int y, int width, int height) {}",
+        "",
+        "    /**",
+        "     * The square of {@link #PORTRAIT_RING} that the ring covers completely.",
+        "     *",
+        "     * <p>Measured rather than chosen: a portrait drawn here and then overdrawn with the",
+        "     * ring cannot show a corner outside it. The bundle ships no mask for this ring, so",
+        "     * anything larger would need one.",
+        "     */",
+        "    public static final Well PORTRAIT_WELL = new Well("
+        + well_args(geometry["PORTRAIT_WELL"]) + ");",
+        "",
+        "    /** The dark interior of {@link #NAMEPLATE}, where the player name belongs. */",
+        "    public static final Well NAMEPLATE_WELL = new Well("
+        + well_args(geometry["NAMEPLATE_WELL"]) + ");",
+        "",
+        "    /** Left edge of the lit fill inside {@link #HP_BAR}. */",
+        "    public static final int HP_TRACK_X = " + str(geometry["HP_TRACK"]["x"]) + ";",
+        "    /** Width of that fill at full health, so a fraction can be clipped out of it. */",
+        "    public static final int HP_TRACK_WIDTH = "
+        + str(geometry["HP_TRACK"]["width"]) + ";",
+        "",
+        "    /**",
+        "     * Left edge of every lit segment in {@link #KI_BAR}.",
+        "     *",
+        "     * <p>Read off the art rather than divided out of the bar's width. The segments are",
+        "     * slanted parallelograms with uneven end caps, so an even division puts a boundary a",
+        "     * pixel or two inside the wrong segment and the error grows along the bar.",
+        "     */",
+        "    private static final int[] KI_SEGMENT_STARTS = {"
+        + ", ".join(str(v) for v in geometry["KI_TRACK"]["starts"]) + "};",
+        "    /** Width of one lit ki segment. */",
+        "    public static final int KI_SEGMENT_WIDTH = "
+        + str(geometry["KI_TRACK"]["width"]) + ";",
+        "",
+        "    /** Left edge of every lit segment in {@link #STAMINA_BAR}. */",
+        "    private static final int[] STAMINA_SEGMENT_STARTS = {"
+        + ", ".join(str(v) for v in geometry["STAMINA_TRACK"]["starts"]) + "};",
+        "    /** Width of one lit stamina segment. */",
+        "    public static final int STAMINA_SEGMENT_WIDTH = "
+        + str(geometry["STAMINA_TRACK"]["width"]) + ";",
+        "",
+        "    /** How many segments the ki art is drawn with. */",
+        "    public static int kiSegmentCount() {",
+        "        return KI_SEGMENT_STARTS.length;",
+        "    }",
+        "",
+        "    /** Left edge of ki segment {@code index}, within {@link #KI_BAR}. */",
+        "    public static int kiSegmentStart(int index) {",
+        "        return KI_SEGMENT_STARTS[index];",
+        "    }",
+        "",
+        "    /** How many segments the stamina art is drawn with. */",
+        "    public static int staminaSegmentCount() {",
+        "        return STAMINA_SEGMENT_STARTS.length;",
+        "    }",
+        "",
+        "    /** Left edge of stamina segment {@code index}, within {@link #STAMINA_BAR}. */",
+        "    public static int staminaSegmentStart(int index) {",
+        "        return STAMINA_SEGMENT_STARTS[index];",
+        "    }",
+    ]
     lines += ["", "    private XenoBt3HudAtlas() {", "    }", "}", ""]
     return "\n".join(lines)
 
 
-def manifest_json(placed):
+def well_args(well):
+    """The four ints of a measured well, in the order the Java record declares them."""
+    return ", ".join(str(well[key]) for key in ("x", "y", "width", "height"))
+
+
+def manifest_json(placed, geometry):
     payload = {
         "generator": "tools/gen_bt3_hud_atlas.py",
         "source": BUNDLE.name,
@@ -205,6 +408,10 @@ def manifest_json(placed):
             name: {"x": x, "y": y, "width": w, "height": h, "source": SPRITES[name]}
             for name, (x, y, w, h) in sorted(placed.items())
         },
+        # Measured off the packed art, and the same numbers the generated Java carries. The
+        # renderer reads the Java; this copy exists so the geometry can be diffed and reviewed
+        # without compiling anything.
+        "geometry": {name: geometry[name] for name in sorted(geometry)},
     }
     return json.dumps(payload, indent=2) + "\n"
 
@@ -219,13 +426,14 @@ def main():
         sprites = load_sprites()
         placed = pack(sprites)
         validate(placed)
+        geometry = measure(sprites)
     except BuildError as err:
         print("error: " + str(err), file=sys.stderr)
         return 1
 
     atlas = render(sprites, placed)
-    java = java_source(placed)
-    manifest = manifest_json(placed)
+    java = java_source(placed, geometry)
+    manifest = manifest_json(placed, geometry)
 
     if args.check:
         stale = []

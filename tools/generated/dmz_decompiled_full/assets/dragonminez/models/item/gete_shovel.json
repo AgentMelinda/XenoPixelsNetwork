@@ -1,6 +1,3 @@
-{
-  "parent": "minecraft:item/handheld",
-  "textures": {
-    "layer0": "dragonminez:item/gete_shovel"
-  }
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:04784d413af4dcb0997c4ce76b26ca25a19d8dd7fa0928bcc3e87a42632c8ce8
+size 107

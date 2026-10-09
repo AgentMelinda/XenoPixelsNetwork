@@ -1,24 +1,3 @@
-{
-  "targets": [
-    "swap",
-    "h_blur"
-  ],
-  "passes": [
-    {
-      "name": "dragonminez:utility_blur_h",
-      "intarget": "minecraft:main",
-      "outtarget": "h_blur"
-    },
-    {
-      "name": "dragonminez:utility_blur_v",
-      "intarget": "h_blur",
-      "outtarget": "swap"
-    },
-    {
-      "name": "blit",
-      "intarget": "swap",
-      "outtarget": "minecraft:main",
-      "blend": { "func": "add", "srcrgb": "one", "dstrgb": "zero" }
-    }
-  ]
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:928085f3f7881fdfca21540797d38902e5df2d9566866b94cdeeeb1f3617ed42
+size 488

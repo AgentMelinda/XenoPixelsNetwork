@@ -1,6 +1,3 @@
-{
-  "parent": "item/generated",
-  "textures": {
-    "layer0": "xenopixelsmod:item/missile_small"
-  }
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:873092b12e9dbd8e22cca463e4ef676aabf5d4a163cc335f1a00f86d5c8838fc
+size 103

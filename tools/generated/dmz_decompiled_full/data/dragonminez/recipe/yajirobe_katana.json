@@ -1,25 +1,3 @@
-{
-  "type": "minecraft:crafting_shaped",
-  "category": "equipment",
-  "group": "dragonminez",
-  "key": {
-    "G": {
-      "item": "minecraft:gold_ingot"
-    },
-    "I": {
-      "item": "minecraft:iron_ingot"
-    },
-    "S": {
-      "item": "minecraft:stick"
-    }
-  },
-  "pattern": [
-    "  I",
-    "GI ",
-    "SG "
-  ],
-  "result": {
-    "count": 1,
-    "id": "dragonminez:yajirobe_katana"
-  }
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:5229f4cba0c748721df59ab6ba4b4f1d64a8e0bb21f3acae9fc678a8cae6d31d
+size 396

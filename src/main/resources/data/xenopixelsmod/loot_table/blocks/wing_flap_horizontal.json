@@ -1,21 +1,3 @@
-{
-  "type": "minecraft:block",
-  "pools": [
-    {
-      "bonus_rolls": 0.0,
-      "conditions": [
-        {
-          "condition": "minecraft:survives_explosion"
-        }
-      ],
-      "entries": [
-        {
-          "type": "minecraft:item",
-          "name": "xenopixelsmod:wing_flap_horizontal"
-        }
-      ],
-      "rolls": 1.0
-    }
-  ],
-  "random_sequence": "xenopixelsmod:blocks/wing_flap_horizontal"
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:593cad786a3e8f8b31213d5b5e71da37c9cb2454267f28fe6491430916a0ac52
+size 417

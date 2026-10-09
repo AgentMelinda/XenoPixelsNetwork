@@ -1,14 +1,3 @@
-{
-  "elements": [
-    {
-      "element": {
-        "element_type": "minecraft:single_pool_element",
-        "location": "dragonminez:piccolo_house",
-        "processors": "dragonminez:foundation",
-        "projection": "rigid"
-      },
-      "weight": 1
-    }
-  ],
-  "fallback": "minecraft:empty"
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:f1dc9ada7aca91cc1584e482d6f2e0c97663ee13a3ec981b4e695e93f2dfe356
+size 298

@@ -1,13 +1,3 @@
-{
-  "name": "dragonminez:village_ajissa/ajissa_center",
-  "fallback": "minecraft:empty",
-  "elements": [{
-    "weight": 1,
-    "element": {
-      "location": "dragonminez:village_ajissa/ajissa_center/ajissa_center",
-      "processors": "minecraft:empty",
-      "projection": "rigid",
-      "element_type": "minecraft:single_pool_element"
-    }
-  }]
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:66aa387f47600e983358b69f77b21830e6e10024a8237b0e8098a372e9bd7b86
+size 362

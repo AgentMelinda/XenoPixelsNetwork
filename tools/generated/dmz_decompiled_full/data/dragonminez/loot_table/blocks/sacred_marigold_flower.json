@@ -1,21 +1,3 @@
-{
-  "type": "minecraft:block",
-  "pools": [
-    {
-      "bonus_rolls": 0.0,
-      "conditions": [
-        {
-          "condition": "minecraft:survives_explosion"
-        }
-      ],
-      "entries": [
-        {
-          "type": "minecraft:item",
-          "name": "dragonminez:sacred_marigold_flower"
-        }
-      ],
-      "rolls": 1.0
-    }
-  ],
-  "random_sequence": "dragonminez:blocks/sacred_marigold_flower"
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:1652790a456fae1fdfaeefa369ce6506374309457957fa55c88bb2f95bca9962
+size 416

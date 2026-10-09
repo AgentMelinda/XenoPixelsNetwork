@@ -1,6 +1,3 @@
-{
-  "parent": "minecraft:item/generated",
-  "textures": {
-    "layer0": "dragonminez:item/armors/orange_high_armor_boots"
-  }
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:190c1c5cf67a0492c84f5a2a67b41b41127c31d0ccacd946fbb3da7f0ab68b76
+size 127

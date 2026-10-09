@@ -1,6 +1,3 @@
-{
-  "parent": "minecraft:item/generated",
-  "textures": {
-    "layer0": "dragonminez:item/chrysanthemum_flower"
-  }
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:704ad7b02f3f9c3df653ec3d60635476e74a99578ccc54dfe0657f065339e1bc
+size 117

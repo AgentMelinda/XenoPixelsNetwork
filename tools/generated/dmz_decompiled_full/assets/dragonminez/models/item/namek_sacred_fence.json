@@ -1,6 +1,3 @@
-{
-  "parent": "minecraft:block/fence_inventory",
-  "textures": {
-    "texture": "dragonminez:block/namek_sacred_planks"
-  }
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:0411b524f53ca80a92111b3a2d369b949290cdc978ca1824fe46fcd8fc467f6f
+size 125

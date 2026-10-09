@@ -1,6 +1,3 @@
-{
-  "parent": "minecraft:item/generated",
-  "textures": {
-    "layer0": "dragonminez:item/patterns/pattern_a14"
-  }
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:2430686ca26276eac0c0f9a51d3e92c5a7182375c73d2c754cbf1430a66ee713
+size 117

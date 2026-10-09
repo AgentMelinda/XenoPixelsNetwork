@@ -1,21 +1,3 @@
-{
-  "type": "minecraft:block",
-  "pools": [
-    {
-      "bonus_rolls": 0.0,
-      "conditions": [
-        {
-          "condition": "minecraft:survives_explosion"
-        }
-      ],
-      "entries": [
-        {
-          "type": "minecraft:item",
-          "name": "dragonminez:namek_ajissa_trapdoor"
-        }
-      ],
-      "rolls": 1.0
-    }
-  ],
-  "random_sequence": "dragonminez:blocks/namek_ajissa_trapdoor"
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:3f07690aa32c27e27693c983820b4b233687f4710f208dea8ea8ea8930aa1c25
+size 414

@@ -1,6 +1,3 @@
-{
-  "parent": "minecraft:item/generated",
-  "textures": {
-    "layer0": "dragonminez:item/armors/a18_cell_armor_leggings"
-  }
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:3a893fcc7996ffaa30b56d680f08c3654c0a5dac09ab8ccec8767036becb2187
+size 127

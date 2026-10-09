@@ -1,6 +1,3 @@
-{
-  "parent": "minecraft:block/cube_all",
-  "textures": {
-    "all": "dragonminez:block/namek_stripped_ajissa_wood"
-  }
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:2f1cee54fdc519af0f95893ac2d90c8f568064e27a68259ad21103be1e56bc75
+size 121

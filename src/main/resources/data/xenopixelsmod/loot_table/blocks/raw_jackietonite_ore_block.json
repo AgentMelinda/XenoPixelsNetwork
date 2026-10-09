@@ -1,21 +1,3 @@
-{
-  "type": "minecraft:block",
-  "pools": [
-    {
-      "bonus_rolls": 0.0,
-      "conditions": [
-        {
-          "condition": "minecraft:survives_explosion"
-        }
-      ],
-      "entries": [
-        {
-          "type": "minecraft:item",
-          "name": "xenopixelsmod:raw_jackietonite_ore_block"
-        }
-      ],
-      "rolls": 1.0
-    }
-  ],
-  "random_sequence": "xenopixelsmod:blocks/raw_jackietonite_ore_block"
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:4e576e4238d06c3ff51ca32b607c74e75f96fcbc5e62829af4e6264f461b17d0
+size 448

@@ -1,35 +1,3 @@
-{
-  "id": "kaiosama_buu_warning",
-  "title": "dmz.sidequest.kaiosama_buu.name",
-  "description": "dmz.sidequest.kaiosama_buu.desc",
-  "type": "SIDEQUEST",
-  "category": "training",
-  "parallel_objectives": false,
-  "party_scaling": true,
-  "secret": false,
-  "claim_mode": "TREE_OR_NPC",
-  "quest_giver": "kingkai",
-  "turn_in": "kingkai",
-  "prerequisites": {
-    "operator": "AND",
-    "conditions": [
-      {
-        "type": "SAGA_QUEST",
-        "sagaId": "buu_saga",
-        "questId": 1
-      }
-    ]
-  },
-  "objectives": [
-    {
-      "type": "TALK_TO",
-      "npcId": "kingkai"
-    }
-  ],
-  "rewards": [
-    {
-      "type": "TPS",
-      "amount": 72000
-    }
-  ]
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:60ca9111d5a8624321715b649db31fb896509565bb287c10430f91585c47753f
+size 706

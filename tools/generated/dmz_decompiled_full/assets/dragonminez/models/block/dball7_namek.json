@@ -1,6 +1,3 @@
-{
-  "parent": "minecraft:block/cube_all",
-  "textures": {
-    "all": "dragonminez:block/custom/dballnamekblock7"
-  }
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:af0cceaa1e50cdab1eccfe762b13c4dc121c7611e27917456e9eecfea600430e
+size 118

@@ -1,14 +1,3 @@
-{
-  "type": "minecraft:smoking",
-  "category": "food",
-  "cookingtime": 100,
-  "experience": 0.35,
-  "group": "dragonminez",
-  "ingredient": {
-    "item": "dragonminez:frog_legs_raw"
-  },
-  "result": {
-    "count": 1,
-    "id": "dragonminez:frog_legs_cooked"
-  }
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:57ff7212bfd0aa46848bd8659d1b8368dc0b320f3ae7b039b26d0548656bb077
+size 264

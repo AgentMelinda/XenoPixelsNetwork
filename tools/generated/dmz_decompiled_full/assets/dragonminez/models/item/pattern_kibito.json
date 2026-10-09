@@ -1,6 +1,3 @@
-{
-  "parent": "minecraft:item/generated",
-  "textures": {
-    "layer0": "dragonminez:item/patterns/pattern_kibito"
-  }
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:44db368a25abee2c3e88ac943e6bbe86cb59945dfb9ae845903179fe9953bfe0
+size 120

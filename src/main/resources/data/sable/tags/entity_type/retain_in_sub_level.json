@@ -1,7 +1,3 @@
-{
-  "replace": false,
-  "values": [
-    "xenopixelsmod:pilot_seat",
-    "xenopixelsmod:pilot_seat_fork"
-  ]
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:bb87706b1327bb186160dae5b3caddef83bfba9657f7d72718b9c7b9c11442ca
+size 110

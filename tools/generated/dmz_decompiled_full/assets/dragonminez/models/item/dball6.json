@@ -1,6 +1,3 @@
-{
-  "parent": "minecraft:item/generated",
-  "textures": {
-    "layer0": "dragonminez:item/dball6"
-  }
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:f58af2603dce0f299485a8ccde823f00da91e868cea1dc50d9ffc92b844a91bc
+size 103

@@ -1,28 +1,3 @@
-{
-  "type": "minecraft:crafting_shaped",
-  "category": "misc",
-  "group": "dragonminez",
-  "key": {
-    "#": {
-      "item": "dragonminez:blank_pattern_super"
-    },
-    "R": {
-      "item": "minecraft:red_dye"
-    },
-    "W": {
-      "item": "minecraft:white_dye"
-    },
-    "Y": {
-      "item": "minecraft:yellow_dye"
-    }
-  },
-  "pattern": [
-    "Y#Y",
-    "RYR",
-    "RWR"
-  ],
-  "result": {
-    "count": 1,
-    "id": "dragonminez:pattern_gas"
-  }
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:073dbaa5601f9f12dca6d971a42d4db530b02c8e399e3f5e7e713cb94ca0370f
+size 454

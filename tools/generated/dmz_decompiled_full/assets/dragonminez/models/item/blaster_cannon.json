@@ -1,1 +1,3 @@
-{"parent":"minecraft:item/handheld","loader":"neoforge:separate_transforms","base":{"parent":"dragonminez:item/blaster_cannon_3d"},"perspectives":{"gui":{"parent":"dragonminez:item/blaster_cannon_2d"},"ground":{"parent":"dragonminez:item/blaster_cannon_2d"},"fixed":{"parent":"dragonminez:item/blaster_cannon_2d"}}}
+version https://git-lfs.github.com/spec/v1
+oid sha256:8384f85999a146529727d860f3dea670e665ad8d5bcdc9a2a9d07387ce37858c
+size 315

@@ -1,6 +1,3 @@
-{
-  "parent": "minecraft:item/generated",
-  "textures": {
-    "layer0": "dragonminez:item/namek_ajissa_door"
-  }
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:d4f384834b633e91bc4b8fb75ee7f3bb9a5298cc70b2ffc88a601962563a1206
+size 114

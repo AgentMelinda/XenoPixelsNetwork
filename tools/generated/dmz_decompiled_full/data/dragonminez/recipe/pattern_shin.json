@@ -1,31 +1,3 @@
-{
-  "type": "minecraft:crafting_shaped",
-  "category": "misc",
-  "group": "dragonminez",
-  "key": {
-    "#": {
-      "item": "dragonminez:blank_pattern_z"
-    },
-    "C": {
-      "item": "minecraft:cyan_dye"
-    },
-    "L": {
-      "item": "minecraft:light_blue_dye"
-    },
-    "O": {
-      "item": "minecraft:orange_dye"
-    },
-    "R": {
-      "item": "minecraft:red_dye"
-    }
-  },
-  "pattern": [
-    "C#C",
-    "LRL",
-    "OCO"
-  ],
-  "result": {
-    "count": 1,
-    "id": "dragonminez:pattern_shin"
-  }
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:62ab5cd39a50ab4746afafc34aaf3fb9d8484e42629b2ead4b9b21c9efd9cc26
+size 509

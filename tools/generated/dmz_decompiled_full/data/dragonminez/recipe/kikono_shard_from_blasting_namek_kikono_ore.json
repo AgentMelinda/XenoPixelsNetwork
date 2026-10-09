@@ -1,14 +1,3 @@
-{
-  "type": "minecraft:blasting",
-  "category": "misc",
-  "cookingtime": 100,
-  "experience": 2.5,
-  "group": "kikono",
-  "ingredient": {
-    "item": "dragonminez:namek_kikono_ore"
-  },
-  "result": {
-    "count": 1,
-    "id": "dragonminez:kikono_shard"
-  }
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:4fd7de0d48b56986a33e8c9aaa381631f3cf14e7d26d4347d49b9ef2e5af93f6
+size 258

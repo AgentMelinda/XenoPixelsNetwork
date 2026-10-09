@@ -1,0 +1,892 @@
+ M .gitignore
+ M CHANGELOG.md
+ M ai/repo-facts.md
+ M ai/skills/client-ui-assets.md
+ M ai/skills/networking.md
+ M build.gradle
+ M docs/hakai-body-fade.md
+ M docs/shops-and-plots.md
+ M docs/xeno-anim-studio.md
+ M examples/customnpcs/xenopixels_ecma_full.js
+ M examples/customnpcs/xenopixels_player_clips.js
+ M examples/customnpcs/xenopixels_ssj_show.js
+ M examples/customnpcs/xenopixels_ssj_show_fixed.js
+ M examples/xenopixels-api-addon/README.md
+ M examples/xenopixels-api-addon/src/main/java/net/bullettrain/xenopixels/example/ApiExampleAddon.java
+ M gradle.properties
+ M plan.md
+ M scripts/mirror_mynpcs_form_studio.py
+ M settings.gradle
+ M src/main/java/net/bullettrain/xenopixelsmod/XenoPixelsMod.java
+ M src/main/java/net/bullettrain/xenopixelsmod/aero/AeroLinkManager.java
+ M src/main/java/net/bullettrain/xenopixelsmod/aero/control/AeroFlightCore.java
+ M src/main/java/net/bullettrain/xenopixelsmod/aero/seat/XenoPilotSeatEntity.java
+ M src/main/java/net/bullettrain/xenopixelsmod/anim/AnimClipsEvents.java
+ M src/main/java/net/bullettrain/xenopixelsmod/anim/XenoAnimPlayback.java
+ M src/main/java/net/bullettrain/xenopixelsmod/anim/XenoClipLibrary.java
+ M src/main/java/net/bullettrain/xenopixelsmod/api/XenoPixelsApi.java
+ M src/main/java/net/bullettrain/xenopixelsmod/api/anim/XenoAnimApi.java
+ M src/main/java/net/bullettrain/xenopixelsmod/api/dmz/DmzAccess.java
+ M src/main/java/net/bullettrain/xenopixelsmod/api/dmz/DmzSync.java
+ M src/main/java/net/bullettrain/xenopixelsmod/block/ModBlocks.java
+ M src/main/java/net/bullettrain/xenopixelsmod/block/custom/MissileTubeBlock.java
+ M src/main/java/net/bullettrain/xenopixelsmod/block/custom/PilotSeatBlock.java
+ M src/main/java/net/bullettrain/xenopixelsmod/block/custom/ShipVlsGuidanceBlock.java
+ M src/main/java/net/bullettrain/xenopixelsmod/block/custom/WingPanelDebugRotation.java
+ M src/main/java/net/bullettrain/xenopixelsmod/block/custom/WingPanelPose.java
+ M src/main/java/net/bullettrain/xenopixelsmod/block/entity/MissileTubeBlockEntity.java
+ M src/main/java/net/bullettrain/xenopixelsmod/block/entity/ModBlockEntities.java
+ M src/main/java/net/bullettrain/xenopixelsmod/block/entity/PilotSeatBlockEntity.java
+ M src/main/java/net/bullettrain/xenopixelsmod/block/entity/ShipThrusterBlockEntity.java
+ M src/main/java/net/bullettrain/xenopixelsmod/block/entity/ShipVlsGuidanceBlockEntity.java
+ M src/main/java/net/bullettrain/xenopixelsmod/block/entity/WingPanelBlockEntity.java
+ M src/main/java/net/bullettrain/xenopixelsmod/capability/XenoPlayerData.java
+ M src/main/java/net/bullettrain/xenopixelsmod/client/BallisticMissileRenderer.java
+ M src/main/java/net/bullettrain/xenopixelsmod/client/ClientConnectionState.java
+ M src/main/java/net/bullettrain/xenopixelsmod/client/ClientGuidance.java
+ M src/main/java/net/bullettrain/xenopixelsmod/client/ClientModEvents.java
+ M src/main/java/net/bullettrain/xenopixelsmod/client/ClientPacketHandlers.java
+ M src/main/java/net/bullettrain/xenopixelsmod/client/ClientScreens.java
+ M src/main/java/net/bullettrain/xenopixelsmod/client/XenoCooldownHudOverlay.java
+ M src/main/java/net/bullettrain/xenopixelsmod/client/XenoHudOverlay.java
+ M src/main/java/net/bullettrain/xenopixelsmod/client/XenoHudRegistration.java
+ M src/main/java/net/bullettrain/xenopixelsmod/client/XenoServerClientState.java
+ M src/main/java/net/bullettrain/xenopixelsmod/client/XenoTechniqueHotbarOverlay.java
+ M src/main/java/net/bullettrain/xenopixelsmod/client/aero/FlightControllerModel.java
+ M src/main/java/net/bullettrain/xenopixelsmod/client/aero/FlightControllerRenderer.java
+ M src/main/java/net/bullettrain/xenopixelsmod/client/anim/XenoAnimClip.java
+ M src/main/java/net/bullettrain/xenopixelsmod/client/anim/XenoClipLibraryClient.java
+ M src/main/java/net/bullettrain/xenopixelsmod/client/anim/XenoClipSources.java
+ M src/main/java/net/bullettrain/xenopixelsmod/client/anim/XenoStudioClipCache.java
+ M src/main/java/net/bullettrain/xenopixelsmod/client/combat/AfterimageGhostRenderer.java
+ M src/main/java/net/bullettrain/xenopixelsmod/client/combat/AlphaMultiBufferSource.java
+ M src/main/java/net/bullettrain/xenopixelsmod/client/combat/Bt3CombatClient.java
+ M src/main/java/net/bullettrain/xenopixelsmod/client/combat/Bt3DirectBind.java
+ M src/main/java/net/bullettrain/xenopixelsmod/client/combat/ChargeAttackGlowRenderer.java
+ M src/main/java/net/bullettrain/xenopixelsmod/client/combat/DmzAnimHelperClient.java
+ M src/main/java/net/bullettrain/xenopixelsmod/client/combat/HakaiFade.java
+ M src/main/java/net/bullettrain/xenopixelsmod/client/combat/XenoCloneProxyCleanup.java
+ M src/main/java/net/bullettrain/xenopixelsmod/client/combat/ZanzokenFade.java
+ M src/main/java/net/bullettrain/xenopixelsmod/client/combat/anim/Bt3AnimationBinding.java
+ M src/main/java/net/bullettrain/xenopixelsmod/client/combat/aura/XenoAuraScaling.java
+ M src/main/java/net/bullettrain/xenopixelsmod/client/command/SableCullClientCommands.java
+ M src/main/java/net/bullettrain/xenopixelsmod/client/command/WingPanelDebugCommands.java
+ M src/main/java/net/bullettrain/xenopixelsmod/client/command/XenoAnimCommands.java
+ M src/main/java/net/bullettrain/xenopixelsmod/client/command/XenoBindCommands.java
+ M src/main/java/net/bullettrain/xenopixelsmod/client/command/XenoHudCommands.java
+ M src/main/java/net/bullettrain/xenopixelsmod/client/compat/npc/NpcAnimationClient.java
+ M src/main/java/net/bullettrain/xenopixelsmod/client/compat/npc/NpcAppearanceClient.java
+ M src/main/java/net/bullettrain/xenopixelsmod/client/compat/npc/NpcAuraClient.java
+ M src/main/java/net/bullettrain/xenopixelsmod/client/compat/npc/NpcDmzHairLayer.java
+ M src/main/java/net/bullettrain/xenopixelsmod/client/compat/npc/NpcFullDmzRenderer.java
+ M src/main/java/net/bullettrain/xenopixelsmod/client/compat/npc/NpcGeckoHaloLayer.java
+ M src/main/java/net/bullettrain/xenopixelsmod/client/compat/npc/gui/GuiNpcDmz.java
+ M src/main/java/net/bullettrain/xenopixelsmod/client/compat/npc/gui/GuiNpcDmzAppearance.java
+ M src/main/java/net/bullettrain/xenopixelsmod/client/compat/npc/gui/GuiNpcDmzAuraEditor.java
+ M src/main/java/net/bullettrain/xenopixelsmod/client/compat/npc/gui/GuiNpcDmzFormAuraPreview.java
+ M src/main/java/net/bullettrain/xenopixelsmod/client/compat/npc/gui/GuiNpcDmzSkills.java
+ M src/main/java/net/bullettrain/xenopixelsmod/client/compat/npc/gui/GuiNpcDmzStack.java
+ M src/main/java/net/bullettrain/xenopixelsmod/client/compat/npc/mynpcs/gui/GuiNpcDmz.java
+ M src/main/java/net/bullettrain/xenopixelsmod/client/compat/npc/mynpcs/gui/GuiNpcDmzAppearance.java
+ M src/main/java/net/bullettrain/xenopixelsmod/client/compat/npc/mynpcs/gui/GuiNpcDmzAuraEditor.java
+ M src/main/java/net/bullettrain/xenopixelsmod/client/compat/npc/mynpcs/gui/GuiNpcDmzSkills.java
+ M src/main/java/net/bullettrain/xenopixelsmod/client/compat/npc/mynpcs/gui/GuiNpcDmzStack.java
+ M src/main/java/net/bullettrain/xenopixelsmod/client/config/DmzMenuMode.java
+ M src/main/java/net/bullettrain/xenopixelsmod/client/config/XenoAuraConfig.java
+ M src/main/java/net/bullettrain/xenopixelsmod/client/config/XenoClientConfig.java
+ M src/main/java/net/bullettrain/xenopixelsmod/client/config/XenoHudConfig.java
+ M src/main/java/net/bullettrain/xenopixelsmod/client/gui/FlightPlannerScreen.java
+ M src/main/java/net/bullettrain/xenopixelsmod/client/hud/XenoBt3HudAtlas.java
+ M src/main/java/net/bullettrain/xenopixelsmod/client/hud/XenoFlightHudOverlay.java
+ M src/main/java/net/bullettrain/xenopixelsmod/client/pad/XenoControlifyEntrypoint.java
+ M src/main/java/net/bullettrain/xenopixelsmod/client/pad/XenoPadInput.java
+ M src/main/java/net/bullettrain/xenopixelsmod/client/render/WingPanelBlockEntityRenderer.java
+ M src/main/java/net/bullettrain/xenopixelsmod/client/render/WorldToScreenCache.java
+ M src/main/java/net/bullettrain/xenopixelsmod/client/screen/DmzFormTrainerScreen.java
+ M src/main/java/net/bullettrain/xenopixelsmod/client/screen/UnblurredScreen.java
+ M src/main/java/net/bullettrain/xenopixelsmod/client/screen/XenoAnimStudioScreen.java
+ M src/main/java/net/bullettrain/xenopixelsmod/client/screen/XenoDmzScreenSwap.java
+ M src/main/java/net/bullettrain/xenopixelsmod/client/screen/XenoPartyHudEditScreen.java
+ M src/main/java/net/bullettrain/xenopixelsmod/client/screen/XenoPartyScreen.java
+ M src/main/java/net/bullettrain/xenopixelsmod/combat/Bt3CinematicRushSystem.java
+ M src/main/java/net/bullettrain/xenopixelsmod/combat/Bt3CombatEvents.java
+ M src/main/java/net/bullettrain/xenopixelsmod/combat/Bt3CombatLimiter.java
+ M src/main/java/net/bullettrain/xenopixelsmod/combat/DmzAnimHelper.java
+ M src/main/java/net/bullettrain/xenopixelsmod/combat/FistInputPolicy.java
+ M src/main/java/net/bullettrain/xenopixelsmod/combat/HakaiChannelSystem.java
+ M src/main/java/net/bullettrain/xenopixelsmod/combat/KiDeflect.java
+ M src/main/java/net/bullettrain/xenopixelsmod/combat/ZanzokenConfusion.java
+ M src/main/java/net/bullettrain/xenopixelsmod/combat/ZanzokenRing.java
+ M src/main/java/net/bullettrain/xenopixelsmod/combat/anim/Bt3AnimationCatalog.java
+ M src/main/java/net/bullettrain/xenopixelsmod/combat/anim/TechniqueAnimSlot.java
+ M src/main/java/net/bullettrain/xenopixelsmod/combat/clone/CloneCombatBridge.java
+ M src/main/java/net/bullettrain/xenopixelsmod/combat/clone/CloneCombatPolicy.java
+ M src/main/java/net/bullettrain/xenopixelsmod/combat/clone/CloneTargetTracker.java
+ M src/main/java/net/bullettrain/xenopixelsmod/combat/clone/XenoCloneEntity.java
+ M src/main/java/net/bullettrain/xenopixelsmod/combat/clone/XenoCloneSystem.java
+ M src/main/java/net/bullettrain/xenopixelsmod/combat/fx/CombatFx.java
+ M src/main/java/net/bullettrain/xenopixelsmod/combat/fx/HakaiFx.java
+ M src/main/java/net/bullettrain/xenopixelsmod/combat/fx/SparkingAuraFx.java
+ M src/main/java/net/bullettrain/xenopixelsmod/combat/overcharge/ChargeOverchargeManager.java
+ M src/main/java/net/bullettrain/xenopixelsmod/combat/technique/XenoRushTechniqueEvents.java
+ M src/main/java/net/bullettrain/xenopixelsmod/combat/technique/XenoRushTechniques.java
+ M src/main/java/net/bullettrain/xenopixelsmod/combat/technique/XenoSlotTechniques.java
+ M src/main/java/net/bullettrain/xenopixelsmod/command/HakaiCommands.java
+ M src/main/java/net/bullettrain/xenopixelsmod/command/KiDurationCommands.java
+ M src/main/java/net/bullettrain/xenopixelsmod/command/MissileCommands.java
+ M src/main/java/net/bullettrain/xenopixelsmod/command/NpcProfileCommands.java
+ M src/main/java/net/bullettrain/xenopixelsmod/command/PerfCommands.java
+ M src/main/java/net/bullettrain/xenopixelsmod/command/PlotCommands.java
+ M src/main/java/net/bullettrain/xenopixelsmod/command/ProgressionCommands.java
+ M src/main/java/net/bullettrain/xenopixelsmod/command/XenoConfigCommands.java
+ M src/main/java/net/bullettrain/xenopixelsmod/command/XenoPermissions.java
+ M src/main/java/net/bullettrain/xenopixelsmod/command/XenoStructureCommands.java
+ M src/main/java/net/bullettrain/xenopixelsmod/compat/computercraft/VlsGuidancePeripheral.java
+ M src/main/java/net/bullettrain/xenopixelsmod/compat/mmoecon/MmoEconBridge.java
+ M src/main/java/net/bullettrain/xenopixelsmod/compat/npc/NpcAppearanceFx.java
+ M src/main/java/net/bullettrain/xenopixelsmod/compat/npc/NpcAuraFx.java
+ M src/main/java/net/bullettrain/xenopixelsmod/compat/npc/NpcCombatBrain.java
+ M src/main/java/net/bullettrain/xenopixelsmod/compat/npc/NpcCombatMoves.java
+ M src/main/java/net/bullettrain/xenopixelsmod/compat/npc/NpcCombatProfile.java
+ M src/main/java/net/bullettrain/xenopixelsmod/compat/npc/NpcCombatProtection.java
+ M src/main/java/net/bullettrain/xenopixelsmod/compat/npc/NpcCounterpartSync.java
+ M src/main/java/net/bullettrain/xenopixelsmod/compat/npc/NpcCuriosInventory.java
+ M src/main/java/net/bullettrain/xenopixelsmod/compat/npc/NpcDisplayApply.java
+ M src/main/java/net/bullettrain/xenopixelsmod/compat/npc/NpcDmzAnim.java
+ M src/main/java/net/bullettrain/xenopixelsmod/compat/npc/NpcFlightBridge.java
+ M src/main/java/net/bullettrain/xenopixelsmod/compat/npc/NpcFormDisplayTuning.java
+ M src/main/java/net/bullettrain/xenopixelsmod/compat/npc/NpcFormLookup.java
+ M src/main/java/net/bullettrain/xenopixelsmod/compat/npc/NpcHairBridge.java
+ M src/main/java/net/bullettrain/xenopixelsmod/compat/npc/NpcKiAim.java
+ M src/main/java/net/bullettrain/xenopixelsmod/compat/npc/NpcKiAttackDispatcher.java
+ M src/main/java/net/bullettrain/xenopixelsmod/compat/npc/NpcKiCooldowns.java
+ M src/main/java/net/bullettrain/xenopixelsmod/compat/npc/NpcMeleeDamage.java
+ M src/main/java/net/bullettrain/xenopixelsmod/compat/npc/NpcPartyQuestObjectives.java
+ M src/main/java/net/bullettrain/xenopixelsmod/compat/npc/NpcProfileLifecycle.java
+ M src/main/java/net/bullettrain/xenopixelsmod/compat/npc/NpcQuestCompletionSync.java
+ M src/main/java/net/bullettrain/xenopixelsmod/compat/npc/NpcResources.java
+ M src/main/java/net/bullettrain/xenopixelsmod/compat/npc/NpcSkillSet.java
+ M src/main/java/net/bullettrain/xenopixelsmod/compat/npc/NpcStatMath.java
+ M src/main/java/net/bullettrain/xenopixelsmod/compat/npc/NpcStrikeDispatcher.java
+ M src/main/java/net/bullettrain/xenopixelsmod/compat/npc/NpcTargetKeeper.java
+ M src/main/java/net/bullettrain/xenopixelsmod/compat/npc/NpcTechniqueMath.java
+ M src/main/java/net/bullettrain/xenopixelsmod/compat/npc/NpcTransformSystem.java
+ M src/main/java/net/bullettrain/xenopixelsmod/compat/npc/NpcVitalityMath.java
+ M src/main/java/net/bullettrain/xenopixelsmod/compat/npc/NpcVitalitySync.java
+ M src/main/java/net/bullettrain/xenopixelsmod/compat/npc/NpcXenoScriptApi.java
+ M src/main/java/net/bullettrain/xenopixelsmod/compat/npc/PredefinedTechniqueLookup.java
+ M src/main/java/net/bullettrain/xenopixelsmod/compat/npc/clone/NpcCloneConverter.java
+ M src/main/java/net/bullettrain/xenopixelsmod/compat/npc/mynpcs/NpcXenoScriptApi.java
+ M src/main/java/net/bullettrain/xenopixelsmod/compat/sable/SableContraptionCull.java
+ M src/main/java/net/bullettrain/xenopixelsmod/config/XenoConfigRegistry.java
+ M src/main/java/net/bullettrain/xenopixelsmod/config/XenoPerfConfig.java
+ M src/main/java/net/bullettrain/xenopixelsmod/config/XenoServerConfig.java
+ M src/main/java/net/bullettrain/xenopixelsmod/config/XenoServerConfigKeys.java
+ M src/main/java/net/bullettrain/xenopixelsmod/data/ModDatapacks.java
+ M src/main/java/net/bullettrain/xenopixelsmod/dmz/DmzContentBootstrap.java
+ M src/main/java/net/bullettrain/xenopixelsmod/event/DmzHooks.java
+ M src/main/java/net/bullettrain/xenopixelsmod/event/KiOverchargeHandler.java
+ M src/main/java/net/bullettrain/xenopixelsmod/features/progression/CombatSkills.java
+ M src/main/java/net/bullettrain/xenopixelsmod/features/progression/ParallelQuests.java
+ M src/main/java/net/bullettrain/xenopixelsmod/features/progression/ProgressionEvents.java
+ M src/main/java/net/bullettrain/xenopixelsmod/features/transformation/XenoFormRegistry.java
+ M src/main/java/net/bullettrain/xenopixelsmod/item/ModCreativeModTabs.java
+ M src/main/java/net/bullettrain/xenopixelsmod/item/ModsItems.java
+ M src/main/java/net/bullettrain/xenopixelsmod/item/custom/PanelConfiguratorItem.java
+ M src/main/java/net/bullettrain/xenopixelsmod/item/custom/StrawBerrySenzuItem.java
+ M src/main/java/net/bullettrain/xenopixelsmod/item/custom/TargetToolItem.java
+ M src/main/java/net/bullettrain/xenopixelsmod/missile/BallisticMissileEntity.java
+ M src/main/java/net/bullettrain/xenopixelsmod/missile/BallisticTrajectory.java
+ M src/main/java/net/bullettrain/xenopixelsmod/missile/MissileChunkLoadManager.java
+ M src/main/java/net/bullettrain/xenopixelsmod/missile/ModEntities.java
+ M src/main/java/net/bullettrain/xenopixelsmod/mixin/ConditionalMixinPlugin.java
+ M src/main/java/net/bullettrain/xenopixelsmod/mixin/client/DmzZanzokenPlayerFadeMixin.java
+ M src/main/java/net/bullettrain/xenopixelsmod/mixin/client/EntityRenderDispatcherHakaiFadeMixin.java
+ M src/main/java/net/bullettrain/xenopixelsmod/mixin/client/ScreenDmzMenuBackgroundMixin.java
+ M src/main/java/net/bullettrain/xenopixelsmod/mixin/common/KiGriefSourceMixin.java
+ M src/main/java/net/bullettrain/xenopixelsmod/mixin/common/KiWaveAimMixin.java
+ M src/main/java/net/bullettrain/xenopixelsmod/mixin/common/PathPackResourcesDiagnosticMixin.java
+ M src/main/java/net/bullettrain/xenopixelsmod/mixin/common/StrikeAttackCostMixin.java
+ M src/main/java/net/bullettrain/xenopixelsmod/mixin/common/VanillaPackResourcesDiagnosticMixin.java
+ M src/main/java/net/bullettrain/xenopixelsmod/mixin/compat/cnpcgecko/RenderCustomModelHairMixin.java
+ M src/main/java/net/bullettrain/xenopixelsmod/mixin/compat/controlify/ControlifyBt3ModeMixin.java
+ M src/main/java/net/bullettrain/xenopixelsmod/mixin/compat/customnpcs/ContainerNpcInvCuriosMixin.java
+ M src/main/java/net/bullettrain/xenopixelsmod/mixin/compat/customnpcs/GuiNpcInvCuriosMixin.java
+ M src/main/java/net/bullettrain/xenopixelsmod/mixin/compat/customnpcs/GuiNpcMenuDmzTabMixin.java
+ M src/main/java/net/bullettrain/xenopixelsmod/mixin/compat/customnpcs/GuiNpcStatsDmzAuthorityMixin.java
+ M src/main/java/net/bullettrain/xenopixelsmod/mixin/compat/dmz/DmzCombatAnimationRegistryMixin.java
+ M src/main/java/net/bullettrain/xenopixelsmod/mixin/compat/dmz/DmzGeoModelBt3AnimationMixin.java
+ M src/main/java/net/bullettrain/xenopixelsmod/mixin/compat/dmz/DmzHairFollowBodyMixin.java
+ M src/main/java/net/bullettrain/xenopixelsmod/mixin/compat/dmz/DmzPlayerModelAnimationFilesMixin.java
+ M src/main/java/net/bullettrain/xenopixelsmod/mixin/compat/dmz/StrikeAttackHandlerMixin.java
+ M src/main/java/net/bullettrain/xenopixelsmod/mixin/compat/mynpcs/ContainerNpcInvCuriosMixin.java
+ M src/main/java/net/bullettrain/xenopixelsmod/mixin/compat/mynpcs/GuiNpcInvCuriosMixin.java
+ M src/main/java/net/bullettrain/xenopixelsmod/mixin/compat/mynpcs/GuiNpcMenuDmzTabMixin.java
+ M src/main/java/net/bullettrain/xenopixelsmod/mixin/compat/mynpcs/GuiNpcStatsDmzAuthorityMixin.java
+ M src/main/java/net/bullettrain/xenopixelsmod/mixin/compat/mynpcs/PlayerChatEventMixin.java
+ M src/main/java/net/bullettrain/xenopixelsmod/mixin/compat/mynpcs/PlayerScriptDataEnabledMixin.java
+ M src/main/java/net/bullettrain/xenopixelsmod/mixin/compat/sable/SableEntityGetterCullMixin.java
+ M src/main/java/net/bullettrain/xenopixelsmod/network/AnimClipsNetwork.java
+ M src/main/java/net/bullettrain/xenopixelsmod/network/Bt3CombatPacket.java
+ M src/main/java/net/bullettrain/xenopixelsmod/network/ModNetwork.java
+ M src/main/java/net/bullettrain/xenopixelsmod/network/SyncServerConfigPacket.java
+ M src/main/java/net/bullettrain/xenopixelsmod/network/packet/GuidanceControlPacket.java
+ M src/main/java/net/bullettrain/xenopixelsmod/network/packet/NpcAnimationPacket.java
+ M src/main/java/net/bullettrain/xenopixelsmod/network/packet/NpcAppearancePacket.java
+ M src/main/java/net/bullettrain/xenopixelsmod/network/packet/NpcProfileSavePacket.java
+ M src/main/java/net/bullettrain/xenopixelsmod/network/packet/NpcProfileSaveResultPacket.java
+ M src/main/java/net/bullettrain/xenopixelsmod/plot/PlotLease.java
+ M src/main/java/net/bullettrain/xenopixelsmod/plot/PlotLeaseTicker.java
+ M src/main/java/net/bullettrain/xenopixelsmod/plot/PlotSale.java
+ M src/main/java/net/bullettrain/xenopixelsmod/plot/PlotSignInteraction.java
+ M src/main/java/net/bullettrain/xenopixelsmod/shop/SignShopPurchase.java
+ M src/main/java/net/bullettrain/xenopixelsmod/util/XenoIdentifierDiagnostics.java
+ M src/main/java/net/bullettrain/xenopixelsmod/vs/ShipBallisticController.java
+ M src/main/java/net/bullettrain/xenopixelsmod/vs/ShipBallisticTicker.java
+ M src/main/resources/META-INF/neoforge.mods.toml
+ M src/main/resources/assets/dragonminez/lang/en_us.json
+ M src/main/resources/assets/xenopixelsmod/animations/entity/bt3_combat.animation.json
+ M src/main/resources/assets/xenopixelsmod/dmz/content_catalog.json
+ M src/main/resources/assets/xenopixelsmod/lang/en_us.json
+ M src/main/resources/data/sable/tags/entity_type/destroy_with_sub_level.json
+ M src/main/resources/data/sable/tags/entity_type/retain_in_sub_level.json
+ M src/main/resources/data/xenopixelsmod/dmz/content_catalog.json
+ M src/main/resources/data/xenopixelsmod/dmz/races/frostdemon/form_skill_prices.json
+ M src/main/resources/data/xenopixelsmod/dmz/races/saiyan/form_skill_prices.json
+ M src/main/resources/data/xenopixelsmod/dmz/skills_patch.json
+ M src/main/resources/xenopixelsmod.compat.mixins.json
+ M src/main/resources/xenopixelsmod.mixins.json
+ M src/test/java/net/bullettrain/xenopixelsmod/anim/XenoTechniqueAnimBindingsTest.java
+ M src/test/java/net/bullettrain/xenopixelsmod/api/anim/XenoAnimApiTest.java
+ M src/test/java/net/bullettrain/xenopixelsmod/client/anim/XenoAnimClipTest.java
+ M src/test/java/net/bullettrain/xenopixelsmod/client/combat/Bt3DirectBindTest.java
+ M src/test/java/net/bullettrain/xenopixelsmod/client/combat/HakaiFadeTest.java
+ M src/test/java/net/bullettrain/xenopixelsmod/client/combat/anim/Bt3AnimationBindingTest.java
+ M src/test/java/net/bullettrain/xenopixelsmod/client/compat/npc/NpcFullDmzRendererTest.java
+ M src/test/java/net/bullettrain/xenopixelsmod/client/config/DmzMenuModeTest.java
+ M src/test/java/net/bullettrain/xenopixelsmod/combat/CloneWhiffPolicyTest.java
+ M src/test/java/net/bullettrain/xenopixelsmod/combat/FistInputPolicyTest.java
+ M src/test/java/net/bullettrain/xenopixelsmod/combat/ZanzokenRingTest.java
+ M src/test/java/net/bullettrain/xenopixelsmod/combat/clone/CloneCombatPolicyTest.java
+ M src/test/java/net/bullettrain/xenopixelsmod/compat/mmoecon/MmoEconBridgeTest.java
+ M src/test/java/net/bullettrain/xenopixelsmod/compat/npc/NpcCombatProfileMeleeAnimationTest.java
+ M src/test/java/net/bullettrain/xenopixelsmod/compat/npc/NpcCombatProfileProtectionTest.java
+ M src/test/java/net/bullettrain/xenopixelsmod/compat/npc/NpcCuriosInventoryTest.java
+ M src/test/java/net/bullettrain/xenopixelsmod/compat/npc/NpcDmzAppearanceTest.java
+ M src/test/java/net/bullettrain/xenopixelsmod/compat/npc/NpcStatMathTest.java
+ M src/test/java/net/bullettrain/xenopixelsmod/compat/npc/NpcVitalityMathTest.java
+ M src/test/java/net/bullettrain/xenopixelsmod/compat/npc/clone/NpcCloneConverterTest.java
+ M src/test/java/net/bullettrain/xenopixelsmod/config/XenoServerConfigKeysTest.java
+ M src/test/java/net/bullettrain/xenopixelsmod/missile/BallisticFlightPlannerTest.java
+ M src/test/java/net/bullettrain/xenopixelsmod/plot/PlotSaleTest.java
+ M tools/gen_bt3_hud_atlas.py
+ M tools/generated/xeno_bt3_hud_atlas.json
+ M wiki/Advanced-07-XenoPixels-CustomNPC-Scripting.md
+ M wiki/CustomNPCs-XenoPixels-Scripting-CoOwner.md
+ M wiki/Home.md
+ M wiki/_Sidebar.md
+?? .superpowers/
+?? 1
+?? 9mm_mafioner_version_C_fixed_320.mp3
+?? CLAUDE_ANIM_STUDIO_HANDOFF_2026-09-11.md
+?? CLAUDE_DMZ_FORM_STUDIO_HANDOFF_2026-09-11.md
+?? CLAUDE_DMZ_NEON_MENUS_HANDOFF_2026-09-12.md
+?? CLAUDE_GROK_SESSION_HANDOFF_2026-09-11.md
+?? CLAUDE_HAKAI_STUDIO_HANDOFF_2026-09-12.md
+?? CLAUDE_HAKAI_ZANZOKEN_FIX_HANDOFF_2026-09-12.md
+?? CLAUDE_HANDOFF_2026-09-27.md
+?? CLAUDE_NPC_DMZ_STATS_HANDOFF_2026-09-14.md
+?? ControlIfy-Intergation-rewrite-from-scratch/
+?? GROK_HANDOFF_DEEPSEEK_CONTINUE_2026-09-11.md
+?? ModsThatFuckinGWorldGen/
+?? QWEN_HANDOFF_2026-09-27.md
+?? XENOPIXELS_UI_STUDIO_CONCEPT.md
+?? XenoMyNpcsGuiOrderImages/
+?? XenoNPCsAPI/
+?? XenoPixelsNetwork_qwen/
+?? a.md
+?? ai-brain.md
+?? ai/handoff-claude-f68a257c-2026-09-30-evidence.json
+?? ai/handoff-claude-f68a257c-2026-09-30.md
+?? ai/handoff-codex-2026-09-24.md
+?? ai/handoff-gecko-combo-2026-09-27.md
+?? ai/handoff-native-mynpcs-scripts-2026-09-27.md
+?? ai/handoff-native-xenoapi-adapters-2026-09-27.md
+?? ai/handoff-npc-combat-gekko-wave-2026-09-27.md
+?? ai/handoff-npc-wave-studio-script-errors-2026-09-27.md
+?? ai/handoff-xenoapi-event-foundation-2026-09-27.md
+?? ai/handoff-xenonpcs-release-2026-09-30-evidence.json
+?? ai/handoff-xenonpcs-release-2026-09-30.md
+?? assets/
+?? c/
+?? codex-26-09-26-stopped-session-converstaion.md
+?? config/
+?? context.txt
+?? "doco (1).md"
+?? doco.md
+?? docs.md
+?? docs/atlas-ui-doco.md
+?? docs/controlify-integration-rewrite.md
+?? docs/doco.md
+?? docs/effekseer-fx.md
+?? docs/guidance-v3.md
+?? docs/handoff-2026-09-21-xeno-npc.md
+?? docs/handoff-2026-09-23-xeno-npc-parity-slice.md
+?? docs/handoff-2026-09-23-xeno-npc-scenes.md
+?? docs/handoff-2026-09-23-xeno-npc.md
+?? docs/native-mynpcs-script-compat.md
+?? docs/native-xenoapi-adapters.md
+?? docs/npc-animation-combat-flow.html
+?? docs/reflection-evidence.md
+?? docs/superpowers/
+?? docs/transscript.txt
+?? docs/xeno-npc-geckolib.md
+?? docs/xeno-npc-handoff-2026-09-23-dialogue-pather-trader.md
+?? docs/xeno-npc-mynpcs-feature-boundary.md
+?? docs/xeno-npc-parity-2026-09-23.md
+?? docs/xeno-npc-scenes.md
+?? docs/xeno-npc-schema.md
+?? docs/xeno-npcs-v5.md
+?? docs/xeno-sign-shops-and-plots.md
+?? examples/customnpcs/README.md
+?? examples/customnpcs/xenoapi_forge_events.js
+?? examples/customnpcs/xenoapi_guard_patrol.js
+?? examples/customnpcs/xenoapi_native_greeter.js
+?? examples/customnpcs/xenoapi_npc_settings.js
+?? examples/customnpcs/xenoapi_player_bubbles.js
+?? examples/customnpcs/xenoapi_player_events.js
+?? examples/customnpcs/xenopixels_charge_brain.js
+?? examples/customnpcs/xenopixels_charge_counter.js
+?? examples/customnpcs/xenopixels_charge_kick.js
+?? examples/customnpcs/xenopixels_charge_melee.js
+?? examples/customnpcs/xenopixels_combo_rush.js
+?? examples/customnpcs/xenopixels_hakai.js
+?? examples/customnpcs/xenopixels_play_clips.js
+?? examples/customnpcs/xenopixels_player_chat.js
+?? examples/customnpcs/xenopixels_player_say.js
+?? examples/customnpcs/xenopixels_say_greeter.js
+?? examples/customnpcs/xenopixels_ssj1_to_ssj3_clips.js
+?? examples/customnpcs/xenopixels_state_clips.js
+?? examples/xenopixels-api-addon/.vscode/
+?? exports/
+?? featureguireferencemynpcs.md
+?? grokstopedinmiddle.txt
+?? libs/aaa_particles-neoforge-1.21.1-2.3.1.jar
+?? libs/ai-brain.md
+?? libs/architectury-13.0.8-neoforge.jar
+?? log.txt
+?? mynpcsfeatureslist.md
+?? patches/
+?? plan/
+?? plan_codex_1.md
+?? planmd.md
+?? planplan.md
+?? proof/
+?? scripts/xenoapi_capabilities.py
+?? src/generated/
+?? src/main/java/net/bullettrain/xenopixelsmod/aero/GuidanceConfig.java
+?? src/main/java/net/bullettrain/xenopixelsmod/aero/GuidanceV2Events.java
+?? src/main/java/net/bullettrain/xenopixelsmod/aero/GuidanceVersion.java
+?? src/main/java/net/bullettrain/xenopixelsmod/aero/v2/
+?? src/main/java/net/bullettrain/xenopixelsmod/anim/CombatStateAnim.java
+?? src/main/java/net/bullettrain/xenopixelsmod/anim/XenoClipChat.java
+?? src/main/java/net/bullettrain/xenopixelsmod/anim/XenoClipChatEvents.java
+?? src/main/java/net/bullettrain/xenopixelsmod/api/event/MissileWarheadEvent.java
+?? src/main/java/net/bullettrain/xenopixelsmod/block/custom/CopycatWingFlapHorizontalForkBlock.java
+?? src/main/java/net/bullettrain/xenopixelsmod/block/custom/CopycatWingFlapVerticalForkBlock.java
+?? src/main/java/net/bullettrain/xenopixelsmod/block/custom/CopycatWingPanelForkBlock.java
+?? src/main/java/net/bullettrain/xenopixelsmod/block/custom/PilotSeatForkBlock.java
+?? src/main/java/net/bullettrain/xenopixelsmod/block/custom/WingFlapHorizontalForkBlock.java
+?? src/main/java/net/bullettrain/xenopixelsmod/block/custom/WingFlapVerticalForkBlock.java
+?? src/main/java/net/bullettrain/xenopixelsmod/block/custom/WingPanelForkBlock.java
+?? src/main/java/net/bullettrain/xenopixelsmod/client/aero/FlightControllerDebugRotation.java
+?? src/main/java/net/bullettrain/xenopixelsmod/client/anim/XenoClipChatClient.java
+?? src/main/java/net/bullettrain/xenopixelsmod/client/aura/
+?? src/main/java/net/bullettrain/xenopixelsmod/client/combat/NpcChargeGlowClient.java
+?? src/main/java/net/bullettrain/xenopixelsmod/client/command/FlightControllerDebugCommands.java
+?? src/main/java/net/bullettrain/xenopixelsmod/client/command/UiStudioCommands.java
+?? src/main/java/net/bullettrain/xenopixelsmod/client/command/XenoAuraCommands.java
+?? src/main/java/net/bullettrain/xenopixelsmod/client/compat/npc/NpcFlyPose.java
+?? src/main/java/net/bullettrain/xenopixelsmod/client/compat/npc/NpcGeckoHeadAttach.java
+?? src/main/java/net/bullettrain/xenopixelsmod/client/compat/npc/gui/GuiNpcDmzBrain.java
+?? src/main/java/net/bullettrain/xenopixelsmod/client/compat/npc/gui/GuiNpcDmzBrainMenuButton.java
+?? src/main/java/net/bullettrain/xenopixelsmod/client/compat/npc/mynpcs/gui/GuiNpcDmzBrain.java
+?? src/main/java/net/bullettrain/xenopixelsmod/client/compat/npc/mynpcs/gui/GuiNpcDmzBrainMenuButton.java
+?? src/main/java/net/bullettrain/xenopixelsmod/client/gui/FlightPlannerV2Screen.java
+?? src/main/java/net/bullettrain/xenopixelsmod/client/guidance/
+?? src/main/java/net/bullettrain/xenopixelsmod/client/hud/Bt3HudState.java
+?? src/main/java/net/bullettrain/xenopixelsmod/client/hud/FormHudTint.java
+?? src/main/java/net/bullettrain/xenopixelsmod/client/hud/GuidanceV2ArtLayout.java
+?? src/main/java/net/bullettrain/xenopixelsmod/client/hud/GuidanceV2HudOverlay.java
+?? src/main/java/net/bullettrain/xenopixelsmod/client/hud/XenoBt3HudLayout.java
+?? src/main/java/net/bullettrain/xenopixelsmod/client/hud/XenoBt3HudView.java
+?? src/main/java/net/bullettrain/xenopixelsmod/client/npc/
+?? src/main/java/net/bullettrain/xenopixelsmod/client/pad2/
+?? src/main/java/net/bullettrain/xenopixelsmod/client/render/MissileModelDrawer.java
+?? src/main/java/net/bullettrain/xenopixelsmod/client/render/MissileTubeBlockEntityRenderer.java
+?? src/main/java/net/bullettrain/xenopixelsmod/client/ui/
+?? src/main/java/net/bullettrain/xenopixelsmod/combat/Bt3KickAndPunchRules.java
+?? src/main/java/net/bullettrain/xenopixelsmod/combat/Bt3Landing.java
+?? src/main/java/net/bullettrain/xenopixelsmod/combat/HakaiAreaRules.java
+?? src/main/java/net/bullettrain/xenopixelsmod/combat/HakaiAreaSystem.java
+?? src/main/java/net/bullettrain/xenopixelsmod/combat/HakaiBlockErasure.java
+?? src/main/java/net/bullettrain/xenopixelsmod/combat/HakaiBlockScan.java
+?? src/main/java/net/bullettrain/xenopixelsmod/combat/HakaiErase.java
+?? src/main/java/net/bullettrain/xenopixelsmod/combat/clone/CloneDetectRange.java
+?? src/main/java/net/bullettrain/xenopixelsmod/combat/clone/CloneFightPolicy.java
+?? src/main/java/net/bullettrain/xenopixelsmod/combat/clone/MultiFormCombatBrain.java
+?? src/main/java/net/bullettrain/xenopixelsmod/combat/combo/
+?? src/main/java/net/bullettrain/xenopixelsmod/combat/controller/
+?? src/main/java/net/bullettrain/xenopixelsmod/combat/fx/HakaiEffectRules.java
+?? src/main/java/net/bullettrain/xenopixelsmod/combat/passive/
+?? src/main/java/net/bullettrain/xenopixelsmod/combat/technique/XenoComboStrikes.java
+?? src/main/java/net/bullettrain/xenopixelsmod/combat/technique/XenoStrikeSkills.java
+?? src/main/java/net/bullettrain/xenopixelsmod/command/EffectCommands.java
+?? src/main/java/net/bullettrain/xenopixelsmod/command/GuidanceCommands.java
+?? src/main/java/net/bullettrain/xenopixelsmod/command/MultiFormCommands.java
+?? src/main/java/net/bullettrain/xenopixelsmod/command/NpcImportCommands.java
+?? src/main/java/net/bullettrain/xenopixelsmod/command/PlayerScriptsCommands.java
+?? src/main/java/net/bullettrain/xenopixelsmod/command/SuperCounterCommands.java
+?? src/main/java/net/bullettrain/xenopixelsmod/command/XenoCombatCommands.java
+?? src/main/java/net/bullettrain/xenopixelsmod/command/XenoNpcCloneCommands.java
+?? src/main/java/net/bullettrain/xenopixelsmod/command/XenoNpcSceneCommands.java
+?? src/main/java/net/bullettrain/xenopixelsmod/command/XenoSaveCommands.java
+?? src/main/java/net/bullettrain/xenopixelsmod/command/XenobrainCommands.java
+?? src/main/java/net/bullettrain/xenopixelsmod/compat/dmz/DmzEntityCatalog.java
+?? src/main/java/net/bullettrain/xenopixelsmod/compat/dmz/DmzPartialStatsNbt.java
+?? src/main/java/net/bullettrain/xenopixelsmod/compat/npc/NpcAuraAnim.java
+?? src/main/java/net/bullettrain/xenopixelsmod/compat/npc/NpcBrainKiRotation.java
+?? src/main/java/net/bullettrain/xenopixelsmod/compat/npc/NpcBrainPolicy.java
+?? src/main/java/net/bullettrain/xenopixelsmod/compat/npc/NpcChargeMoves.java
+?? src/main/java/net/bullettrain/xenopixelsmod/compat/npc/NpcCombatBrainVersion.java
+?? src/main/java/net/bullettrain/xenopixelsmod/compat/npc/NpcCombatRanges.java
+?? src/main/java/net/bullettrain/xenopixelsmod/compat/npc/NpcCustomSounds.java
+?? src/main/java/net/bullettrain/xenopixelsmod/compat/npc/NpcDamageCategory.java
+?? src/main/java/net/bullettrain/xenopixelsmod/compat/npc/NpcDamageReport.java
+?? src/main/java/net/bullettrain/xenopixelsmod/compat/npc/NpcDmzStats.java
+?? src/main/java/net/bullettrain/xenopixelsmod/compat/npc/NpcFlightOwnership.java
+?? src/main/java/net/bullettrain/xenopixelsmod/compat/npc/NpcFlightPolicy.java
+?? src/main/java/net/bullettrain/xenopixelsmod/compat/npc/NpcHakai.java
+?? src/main/java/net/bullettrain/xenopixelsmod/compat/npc/NpcKiDeflectPolicy.java
+?? src/main/java/net/bullettrain/xenopixelsmod/compat/npc/NpcKiProjectileEffects.java
+?? src/main/java/net/bullettrain/xenopixelsmod/compat/npc/NpcKiProjectileMath.java
+?? src/main/java/net/bullettrain/xenopixelsmod/compat/npc/NpcLedgeApproach.java
+?? src/main/java/net/bullettrain/xenopixelsmod/compat/npc/NpcMeleeAnimCycle.java
+?? src/main/java/net/bullettrain/xenopixelsmod/compat/npc/NpcPlayerChatRewriteEvents.java
+?? src/main/java/net/bullettrain/xenopixelsmod/compat/npc/NpcProfileDiff.java
+?? src/main/java/net/bullettrain/xenopixelsmod/compat/npc/NpcProfileKeys.java
+?? src/main/java/net/bullettrain/xenopixelsmod/compat/npc/NpcProfileWatchers.java
+?? src/main/java/net/bullettrain/xenopixelsmod/compat/npc/NpcScriptLists.java
+?? src/main/java/net/bullettrain/xenopixelsmod/compat/npc/NpcScriptSay.java
+?? src/main/java/net/bullettrain/xenopixelsmod/compat/npc/NpcSprintSkill.java
+?? src/main/java/net/bullettrain/xenopixelsmod/compat/npc/NpcStatScaling.java
+?? src/main/java/net/bullettrain/xenopixelsmod/compat/npc/NpcStatsAttributeHost.java
+?? src/main/java/net/bullettrain/xenopixelsmod/compat/npc/NpcStatsDataAccess.java
+?? src/main/java/net/bullettrain/xenopixelsmod/compat/npc/NpcTechniqueLevels.java
+?? src/main/java/net/bullettrain/xenopixelsmod/compat/npc/PlayerScriptsGate.java
+?? src/main/java/net/bullettrain/xenopixelsmod/compat/npc/brain/
+?? src/main/java/net/bullettrain/xenopixelsmod/compat/sable/SableHakaiBlocks.java
+?? src/main/java/net/bullettrain/xenopixelsmod/compat/worldgen/
+?? src/main/java/net/bullettrain/xenopixelsmod/features/progression/ActiveQuest.java
+?? src/main/java/net/bullettrain/xenopixelsmod/features/progression/MasterPrerequisites.java
+?? src/main/java/net/bullettrain/xenopixelsmod/features/progression/QuestAvailability.java
+?? src/main/java/net/bullettrain/xenopixelsmod/features/progression/QuestBook.java
+?? src/main/java/net/bullettrain/xenopixelsmod/features/progression/QuestCommandTargets.java
+?? src/main/java/net/bullettrain/xenopixelsmod/features/progression/QuestCompletionMode.java
+?? src/main/java/net/bullettrain/xenopixelsmod/features/progression/QuestDialogueFilter.java
+?? src/main/java/net/bullettrain/xenopixelsmod/features/progression/QuestHunts.java
+?? src/main/java/net/bullettrain/xenopixelsmod/features/progression/QuestMail.java
+?? src/main/java/net/bullettrain/xenopixelsmod/features/progression/QuestNpcTarget.java
+?? src/main/java/net/bullettrain/xenopixelsmod/features/progression/QuestObjective.java
+?? src/main/java/net/bullettrain/xenopixelsmod/features/progression/QuestRepeat.java
+?? src/main/java/net/bullettrain/xenopixelsmod/features/progression/QuestReward.java
+?? src/main/java/net/bullettrain/xenopixelsmod/features/progression/QuestRewardOriginPolicy.java
+?? src/main/java/net/bullettrain/xenopixelsmod/features/progression/QuestRuntime.java
+?? src/main/java/net/bullettrain/xenopixelsmod/features/progression/QuestStep.java
+?? src/main/java/net/bullettrain/xenopixelsmod/features/progression/QuestSync.java
+?? src/main/java/net/bullettrain/xenopixelsmod/features/progression/XenoQuests.java
+?? src/main/java/net/bullettrain/xenopixelsmod/features/transformation/passive/
+?? src/main/java/net/bullettrain/xenopixelsmod/fx/
+?? src/main/java/net/bullettrain/xenopixelsmod/gametest/
+?? src/main/java/net/bullettrain/xenopixelsmod/item/ModItemTags.java
+?? src/main/java/net/bullettrain/xenopixelsmod/item/custom/MissileItem.java
+?? src/main/java/net/bullettrain/xenopixelsmod/item/custom/MissileRadarItem.java
+?? src/main/java/net/bullettrain/xenopixelsmod/item/custom/PanelConfiguratorForkItem.java
+?? src/main/java/net/bullettrain/xenopixelsmod/item/custom/SenzuRestore.java
+?? src/main/java/net/bullettrain/xenopixelsmod/item/custom/ShipToolActions.java
+?? src/main/java/net/bullettrain/xenopixelsmod/item/custom/ShipToolMode.java
+?? src/main/java/net/bullettrain/xenopixelsmod/item/custom/ShipToolModes.java
+?? src/main/java/net/bullettrain/xenopixelsmod/item/custom/XenoNpcClonerItem.java
+?? src/main/java/net/bullettrain/xenopixelsmod/item/custom/XenoNpcJarItem.java
+?? src/main/java/net/bullettrain/xenopixelsmod/item/custom/XenoNpcMounterItem.java
+?? src/main/java/net/bullettrain/xenopixelsmod/item/custom/XenoNpcPathToolItem.java
+?? src/main/java/net/bullettrain/xenopixelsmod/item/custom/XenoNpcPayload.java
+?? src/main/java/net/bullettrain/xenopixelsmod/item/custom/XenoNpcScriptToolItem.java
+?? src/main/java/net/bullettrain/xenopixelsmod/item/custom/XenoNpcTeleporterItem.java
+?? src/main/java/net/bullettrain/xenopixelsmod/item/custom/XenoNpcTool.java
+?? src/main/java/net/bullettrain/xenopixelsmod/item/custom/XenoNpcWandItem.java
+?? src/main/java/net/bullettrain/xenopixelsmod/item/custom/XenoNpcWandRoleSelection.java
+?? src/main/java/net/bullettrain/xenopixelsmod/item/custom/ZeniCashItem.java
+?? src/main/java/net/bullettrain/xenopixelsmod/missile/MissileEject.java
+?? src/main/java/net/bullettrain/xenopixelsmod/missile/MissileFlightCorridor.java
+?? src/main/java/net/bullettrain/xenopixelsmod/missile/MissileFlightSim.java
+?? src/main/java/net/bullettrain/xenopixelsmod/missile/MissileGuidance.java
+?? src/main/java/net/bullettrain/xenopixelsmod/missile/MissileLookTarget.java
+?? src/main/java/net/bullettrain/xenopixelsmod/missile/MissileSize.java
+?? src/main/java/net/bullettrain/xenopixelsmod/missile/MissileSpeed.java
+?? src/main/java/net/bullettrain/xenopixelsmod/missile/MissileWarhead.java
+?? src/main/java/net/bullettrain/xenopixelsmod/missile/MissileWarheadCompat.java
+?? src/main/java/net/bullettrain/xenopixelsmod/missile/WarheadDetonator.java
+?? src/main/java/net/bullettrain/xenopixelsmod/missile/v3/
+?? src/main/java/net/bullettrain/xenopixelsmod/mixin/SharedNpcMixinPolicy.java
+?? src/main/java/net/bullettrain/xenopixelsmod/mixin/client/DmzResourceSyncPartialLoadMixin.java
+?? src/main/java/net/bullettrain/xenopixelsmod/mixin/client/DmzStudioClipFinishMixin.java
+?? src/main/java/net/bullettrain/xenopixelsmod/mixin/client/EntityAuraRimGlowColorMixin.java
+?? src/main/java/net/bullettrain/xenopixelsmod/mixin/client/MinecraftAuraRimGlowMixin.java
+?? src/main/java/net/bullettrain/xenopixelsmod/mixin/common/KiCloneOwnerGateMixin.java
+?? src/main/java/net/bullettrain/xenopixelsmod/mixin/common/KiDestroyBlockSafetyMixin.java
+?? src/main/java/net/bullettrain/xenopixelsmod/mixin/common/KiExplosionMaxRadiusMixin.java
+?? src/main/java/net/bullettrain/xenopixelsmod/mixin/common/SkillsConfigStrikeSkillsMixin.java
+?? src/main/java/net/bullettrain/xenopixelsmod/mixin/common/StatsDataNpcHostMixin.java
+?? src/main/java/net/bullettrain/xenopixelsmod/mixin/common/StatsNpcHostMixin.java
+?? src/main/java/net/bullettrain/xenopixelsmod/mixin/common/StatsProviderNpcGetMixin.java
+?? src/main/java/net/bullettrain/xenopixelsmod/mixin/compat/controlify/ControlifyWideRadialMixin.java
+?? src/main/java/net/bullettrain/xenopixelsmod/mixin/compat/customnpcs/PlayerChatEventMixin.java
+?? src/main/java/net/bullettrain/xenopixelsmod/mixin/compat/customnpcs/PlayerScriptDataEnabledMixin.java
+?? src/main/java/net/bullettrain/xenopixelsmod/mixin/compat/customnpcs/ScriptContainerXenoBindingMixin.java
+?? src/main/java/net/bullettrain/xenopixelsmod/mixin/compat/dmz/DmzAuraGhostNpcMixin.java
+?? src/main/java/net/bullettrain/xenopixelsmod/mixin/compat/dmz/DmzAuraLayersInvoker.java
+?? src/main/java/net/bullettrain/xenopixelsmod/mixin/compat/dmz/DmzDefensePenetrationMixin.java
+?? src/main/java/net/bullettrain/xenopixelsmod/mixin/compat/dmz/DmzHdAuraQueueMixin.java
+?? src/main/java/net/bullettrain/xenopixelsmod/mixin/compat/dmz/DmzStudioPlayableKeyMixin.java
+?? src/main/java/net/bullettrain/xenopixelsmod/mixin/compat/mynpcs/ScriptContainerXenoBindingMixin.java
+?? src/main/java/net/bullettrain/xenopixelsmod/mixin/compat/zfastnoise/
+?? src/main/java/net/bullettrain/xenopixelsmod/network/GuidanceV2Network.java
+?? src/main/java/net/bullettrain/xenopixelsmod/network/packet/BindXenoNpcScriptPacket.java
+?? src/main/java/net/bullettrain/xenopixelsmod/network/packet/NpcProfileRefreshPacket.java
+?? src/main/java/net/bullettrain/xenopixelsmod/network/packet/NpcProfileRequestPacket.java
+?? src/main/java/net/bullettrain/xenopixelsmod/network/packet/NpcScriptPacket.java
+?? src/main/java/net/bullettrain/xenopixelsmod/network/packet/NpcScriptResultPacket.java
+?? src/main/java/net/bullettrain/xenopixelsmod/network/packet/NpcStoreDialoguePacket.java
+?? src/main/java/net/bullettrain/xenopixelsmod/network/packet/NpcStoreQuestPacket.java
+?? src/main/java/net/bullettrain/xenopixelsmod/network/packet/OpenXenoNpcDialoguePacket.java
+?? src/main/java/net/bullettrain/xenopixelsmod/network/packet/OpenXenoNpcEditorPacket.java
+?? src/main/java/net/bullettrain/xenopixelsmod/network/packet/OpenXenoNpcScriptPacket.java
+?? src/main/java/net/bullettrain/xenopixelsmod/network/packet/QuestCompletionPopupPacket.java
+?? src/main/java/net/bullettrain/xenopixelsmod/network/packet/RequestNpcStoreDialoguePacket.java
+?? src/main/java/net/bullettrain/xenopixelsmod/network/packet/RequestNpcStoreQuestPacket.java
+?? src/main/java/net/bullettrain/xenopixelsmod/network/packet/RequestXenoNpcEditorPacket.java
+?? src/main/java/net/bullettrain/xenopixelsmod/network/packet/SyncBanksPacket.java
+?? src/main/java/net/bullettrain/xenopixelsmod/network/packet/SyncFactionsPacket.java
+?? src/main/java/net/bullettrain/xenopixelsmod/network/packet/SyncNaturalSpawnsPacket.java
+?? src/main/java/net/bullettrain/xenopixelsmod/network/packet/SyncNpcStoreIndexPacket.java
+?? src/main/java/net/bullettrain/xenopixelsmod/network/packet/SyncQuestsPacket.java
+?? src/main/java/net/bullettrain/xenopixelsmod/network/packet/SyncStandingsPacket.java
+?? src/main/java/net/bullettrain/xenopixelsmod/network/packet/XenoNpcActionPacket.java
+?? src/main/java/net/bullettrain/xenopixelsmod/network/packet/XenoNpcBankPacket.java
+?? src/main/java/net/bullettrain/xenopixelsmod/network/packet/XenoNpcDataSavePolicy.java
+?? src/main/java/net/bullettrain/xenopixelsmod/network/packet/XenoNpcDeletePacket.java
+?? src/main/java/net/bullettrain/xenopixelsmod/network/packet/XenoNpcDialoguePacket.java
+?? src/main/java/net/bullettrain/xenopixelsmod/network/packet/XenoNpcEditorLockPacket.java
+?? src/main/java/net/bullettrain/xenopixelsmod/network/packet/XenoNpcEditorSaveResultPacket.java
+?? src/main/java/net/bullettrain/xenopixelsmod/network/packet/XenoNpcInventoryOpenPacket.java
+?? src/main/java/net/bullettrain/xenopixelsmod/network/packet/XenoNpcNearbyPackets.java
+?? src/main/java/net/bullettrain/xenopixelsmod/network/packet/XenoNpcSavePacket.java
+?? src/main/java/net/bullettrain/xenopixelsmod/network/packet/XenoNpcSavePolicy.java
+?? src/main/java/net/bullettrain/xenopixelsmod/network/packet/XenoNpcSpeechPacket.java
+?? src/main/java/net/bullettrain/xenopixelsmod/network/packet/XenoNpcStoreWritePacket.java
+?? src/main/java/net/bullettrain/xenopixelsmod/network/packet/XenoNpcTravelPacket.java
+?? src/main/java/net/bullettrain/xenopixelsmod/npc/
+?? src/main/java/net/bullettrain/xenopixelsmod/server/
+?? src/main/java/net/bullettrain/xenopixelsmod/ui/
+?? src/main/java/net/bullettrain/xenopixelsmod/vs/ShipV3Driver.java
+?? src/main/resources/assets/dragonminez/textures/gui/icons/xenopixels_destroyer.png
+?? src/main/resources/assets/dragonminez/textures/gui/radial/xenopixels_destroyer.png
+?? src/main/resources/assets/xenopixelsmod/animations/social/
+?? src/main/resources/assets/xenopixelsmod/blockstates/copycat_wing_flap_horizontal_fork.json
+?? src/main/resources/assets/xenopixelsmod/blockstates/copycat_wing_flap_horizontal_lit_fork.json
+?? src/main/resources/assets/xenopixelsmod/blockstates/copycat_wing_flap_vertical_fork.json
+?? src/main/resources/assets/xenopixelsmod/blockstates/copycat_wing_flap_vertical_lit_fork.json
+?? src/main/resources/assets/xenopixelsmod/blockstates/copycat_wing_panel_fork.json
+?? src/main/resources/assets/xenopixelsmod/blockstates/copycat_wing_panel_lit_fork.json
+?? src/main/resources/assets/xenopixelsmod/blockstates/missile_chunk_loader_fork.json
+?? src/main/resources/assets/xenopixelsmod/blockstates/missile_tube_fork.json
+?? src/main/resources/assets/xenopixelsmod/blockstates/pilot_seat_fork.json
+?? src/main/resources/assets/xenopixelsmod/blockstates/ship_thruster_fork.json
+?? src/main/resources/assets/xenopixelsmod/blockstates/ship_vls_guidance_fork.json
+?? src/main/resources/assets/xenopixelsmod/blockstates/wing_flap_horizontal_fork.json
+?? src/main/resources/assets/xenopixelsmod/blockstates/wing_flap_vertical_fork.json
+?? src/main/resources/assets/xenopixelsmod/blockstates/wing_panel_fork.json
+?? src/main/resources/assets/xenopixelsmod/effeks/
+?? src/main/resources/assets/xenopixelsmod/models/block/copycat_wing_flap_horizontal_fork.json
+?? src/main/resources/assets/xenopixelsmod/models/block/copycat_wing_flap_horizontal_lit_fork.json
+?? src/main/resources/assets/xenopixelsmod/models/block/copycat_wing_flap_vertical_fork.json
+?? src/main/resources/assets/xenopixelsmod/models/block/copycat_wing_flap_vertical_lit_fork.json
+?? src/main/resources/assets/xenopixelsmod/models/block/copycat_wing_panel_fork.json
+?? src/main/resources/assets/xenopixelsmod/models/block/copycat_wing_panel_lit_fork.json
+?? src/main/resources/assets/xenopixelsmod/models/block/missile_chunk_loader_fork.json
+?? src/main/resources/assets/xenopixelsmod/models/block/missile_tube_fork.json
+?? src/main/resources/assets/xenopixelsmod/models/block/pilot_seat_fork.json
+?? src/main/resources/assets/xenopixelsmod/models/block/ship_thruster_fork.json
+?? src/main/resources/assets/xenopixelsmod/models/block/ship_thruster_on_fork.json
+?? src/main/resources/assets/xenopixelsmod/models/block/ship_vls_guidance_fork.json
+?? src/main/resources/assets/xenopixelsmod/models/block/wing_flap_horizontal_fork.json
+?? src/main/resources/assets/xenopixelsmod/models/block/wing_flap_vertical_fork.json
+?? src/main/resources/assets/xenopixelsmod/models/block/wing_panel_base_fork.json
+?? src/main/resources/assets/xenopixelsmod/models/block/wing_panel_flap_fork.json
+?? src/main/resources/assets/xenopixelsmod/models/block/wing_panel_fork.json
+?? src/main/resources/assets/xenopixelsmod/models/item/copycat_wing_flap_horizontal_fork.json
+?? src/main/resources/assets/xenopixelsmod/models/item/copycat_wing_flap_horizontal_lit_fork.json
+?? src/main/resources/assets/xenopixelsmod/models/item/copycat_wing_flap_vertical_fork.json
+?? src/main/resources/assets/xenopixelsmod/models/item/copycat_wing_flap_vertical_lit_fork.json
+?? src/main/resources/assets/xenopixelsmod/models/item/copycat_wing_panel_fork.json
+?? src/main/resources/assets/xenopixelsmod/models/item/copycat_wing_panel_lit_fork.json
+?? src/main/resources/assets/xenopixelsmod/models/item/missile_chunk_loader_fork.json
+?? src/main/resources/assets/xenopixelsmod/models/item/missile_large.json
+?? src/main/resources/assets/xenopixelsmod/models/item/missile_medium.json
+?? src/main/resources/assets/xenopixelsmod/models/item/missile_mega.json
+?? src/main/resources/assets/xenopixelsmod/models/item/missile_radar.json
+?? src/main/resources/assets/xenopixelsmod/models/item/missile_small.json
+?? src/main/resources/assets/xenopixelsmod/models/item/missile_tube_fork.json
+?? src/main/resources/assets/xenopixelsmod/models/item/panel_configurator_fork.json
+?? src/main/resources/assets/xenopixelsmod/models/item/pilot_seat_fork.json
+?? src/main/resources/assets/xenopixelsmod/models/item/ship_thruster_fork.json
+?? src/main/resources/assets/xenopixelsmod/models/item/ship_vls_guidance_fork.json
+?? src/main/resources/assets/xenopixelsmod/models/item/target_tool_fork.json
+?? src/main/resources/assets/xenopixelsmod/models/item/wing_flap_horizontal_fork.json
+?? src/main/resources/assets/xenopixelsmod/models/item/wing_flap_vertical_fork.json
+?? src/main/resources/assets/xenopixelsmod/models/item/wing_panel_fork.json
+?? src/main/resources/assets/xenopixelsmod/textures/block/copycat_wing_flap_horizontal_fork.png
+?? src/main/resources/assets/xenopixelsmod/textures/block/copycat_wing_flap_horizontal_lit_fork.png
+?? src/main/resources/assets/xenopixelsmod/textures/block/copycat_wing_flap_vertical_fork.png
+?? src/main/resources/assets/xenopixelsmod/textures/block/copycat_wing_flap_vertical_lit_fork.png
+?? src/main/resources/assets/xenopixelsmod/textures/block/copycat_wing_panel_fork.png
+?? src/main/resources/assets/xenopixelsmod/textures/block/copycat_wing_panel_lit_fork.png
+?? src/main/resources/assets/xenopixelsmod/textures/block/flight_controller_fork.png
+?? src/main/resources/assets/xenopixelsmod/textures/block/flight_controller_glowmask_fork.png
+?? src/main/resources/assets/xenopixelsmod/textures/block/missile_chunk_loader_fork.png
+?? src/main/resources/assets/xenopixelsmod/textures/block/missile_chunk_loader_front_fork.png
+?? src/main/resources/assets/xenopixelsmod/textures/block/missile_chunk_loader_side_fork.png
+?? src/main/resources/assets/xenopixelsmod/textures/block/missile_chunk_loader_top_fork.png
+?? src/main/resources/assets/xenopixelsmod/textures/block/missile_tube_bottom_fork.png
+?? src/main/resources/assets/xenopixelsmod/textures/block/missile_tube_fork.png
+?? src/main/resources/assets/xenopixelsmod/textures/block/missile_tube_side_fork.png
+?? src/main/resources/assets/xenopixelsmod/textures/block/missile_tube_top_fork.png
+?? src/main/resources/assets/xenopixelsmod/textures/block/pilot_seat_cushion_fork.png
+?? src/main/resources/assets/xenopixelsmod/textures/block/pilot_seat_frame_fork.png
+?? src/main/resources/assets/xenopixelsmod/textures/block/ship_thruster_back_fork.png
+?? src/main/resources/assets/xenopixelsmod/textures/block/ship_thruster_fork.png
+?? src/main/resources/assets/xenopixelsmod/textures/block/ship_thruster_front_fork.png
+?? src/main/resources/assets/xenopixelsmod/textures/block/ship_thruster_front_on_fork.png
+?? src/main/resources/assets/xenopixelsmod/textures/block/ship_thruster_on_fork.png
+?? src/main/resources/assets/xenopixelsmod/textures/block/ship_thruster_side_fork.png
+?? src/main/resources/assets/xenopixelsmod/textures/block/ship_vls_guidance_fork.png
+?? src/main/resources/assets/xenopixelsmod/textures/block/ship_vls_guidance_front_fork.png
+?? src/main/resources/assets/xenopixelsmod/textures/block/ship_vls_guidance_side_fork.png
+?? src/main/resources/assets/xenopixelsmod/textures/block/ship_vls_guidance_top_fork.png
+?? src/main/resources/assets/xenopixelsmod/textures/block/wing_flap_horizontal_fork.png
+?? src/main/resources/assets/xenopixelsmod/textures/block/wing_flap_vertical_fork.png
+?? src/main/resources/assets/xenopixelsmod/textures/block/wing_panel_fork.png
+?? src/main/resources/assets/xenopixelsmod/textures/gui/atlas/
+?? src/main/resources/assets/xenopixelsmod/textures/gui/guidance_v2_atlas.png
+?? src/main/resources/assets/xenopixelsmod/textures/gui/xeno_bt3_hud_atlas_neutral.png
+?? src/main/resources/assets/xenopixelsmod/textures/item/missile_large.png
+?? src/main/resources/assets/xenopixelsmod/textures/item/missile_medium.png
+?? src/main/resources/assets/xenopixelsmod/textures/item/missile_mega.png
+?? src/main/resources/assets/xenopixelsmod/textures/item/missile_radar.png
+?? src/main/resources/assets/xenopixelsmod/textures/item/missile_small.png
+?? src/main/resources/assets/xenopixelsmod/textures/item/panel_configurator_fork.png
+?? src/main/resources/assets/xenopixelsmod/textures/item/target_tool_fork.png
+?? src/main/resources/assets/xenopixelsmod/textures/item/xeno_npc_cloner.png
+?? src/main/resources/assets/xenopixelsmod/textures/item/xeno_npc_jar.png
+?? src/main/resources/assets/xenopixelsmod/textures/item/xeno_npc_mounter.png
+?? src/main/resources/assets/xenopixelsmod/textures/item/xeno_npc_path_tool.png
+?? src/main/resources/assets/xenopixelsmod/textures/item/xeno_npc_script_tool.png
+?? src/main/resources/assets/xenopixelsmod/textures/item/xeno_npc_teleporter.png
+?? src/main/resources/assets/xenopixelsmod/textures/item/xeno_npc_wand.png
+?? src/main/resources/assets/xenopixelsmod/ui/
+?? src/main/resources/data/xenopixelsmod/curios/entities/xeno_npcs.json
+?? src/main/resources/data/xenopixelsmod/dmz/races/bioandroid/
+?? src/main/resources/data/xenopixelsmod/dmz/races/frostdemon/forms/xenopixels_hakaishin.json
+?? src/main/resources/data/xenopixelsmod/dmz/races/human/
+?? src/main/resources/data/xenopixelsmod/dmz/races/majin/
+?? src/main/resources/data/xenopixelsmod/dmz/races/namekian/
+?? src/main/resources/data/xenopixelsmod/dmz/races/saiyan/forms/xenopixels_hakaishin.json
+?? src/main/resources/data/xenopixelsmod/form_passives.json
+?? src/main/resources/data/xenopixelsmod/npcs/
+?? src/main/resources/data/xenopixelsmod/recipe/missile_large.json
+?? src/main/resources/data/xenopixelsmod/recipe/missile_medium.json
+?? src/main/resources/data/xenopixelsmod/recipe/missile_mega.json
+?? src/main/resources/data/xenopixelsmod/recipe/missile_small.json
+?? src/main/resources/data/xenopixelsmod/structure/
+?? src/main/resources/data/xenopixelsmod/tags/item/
+?? src/main/resources/data/xenopixelsmod/xeno_npcs/
+?? src/main/resources/datapacks/xeno_ship_masses/data/sable/physics_block_properties/copycat_wing_flap_horizontal_fork.json
+?? src/main/resources/datapacks/xeno_ship_masses/data/sable/physics_block_properties/copycat_wing_flap_horizontal_lit_fork.json
+?? src/main/resources/datapacks/xeno_ship_masses/data/sable/physics_block_properties/copycat_wing_flap_vertical_fork.json
+?? src/main/resources/datapacks/xeno_ship_masses/data/sable/physics_block_properties/copycat_wing_flap_vertical_lit_fork.json
+?? src/main/resources/datapacks/xeno_ship_masses/data/sable/physics_block_properties/copycat_wing_panel_fork.json
+?? src/main/resources/datapacks/xeno_ship_masses/data/sable/physics_block_properties/copycat_wing_panel_lit_fork.json
+?? src/main/resources/datapacks/xeno_ship_masses/data/sable/physics_block_properties/missile_chunk_loader_fork.json
+?? src/main/resources/datapacks/xeno_ship_masses/data/sable/physics_block_properties/missile_tube_fork.json
+?? src/main/resources/datapacks/xeno_ship_masses/data/sable/physics_block_properties/pilot_seat_fork.json
+?? src/main/resources/datapacks/xeno_ship_masses/data/sable/physics_block_properties/ship_thruster_fork.json
+?? src/main/resources/datapacks/xeno_ship_masses/data/sable/physics_block_properties/ship_vls_guidance_fork.json
+?? src/main/resources/datapacks/xeno_ship_masses/data/sable/physics_block_properties/wing_flap_horizontal_fork.json
+?? src/main/resources/datapacks/xeno_ship_masses/data/sable/physics_block_properties/wing_flap_vertical_fork.json
+?? src/main/resources/datapacks/xeno_ship_masses/data/sable/physics_block_properties/wing_panel_fork.json
+?? src/test/java/net/bullettrain/xenopixelsmod/RepoRoot.java
+?? src/test/java/net/bullettrain/xenopixelsmod/aero/GuidanceConfigPersistTest.java
+?? src/test/java/net/bullettrain/xenopixelsmod/aero/GuidanceForkLangTest.java
+?? src/test/java/net/bullettrain/xenopixelsmod/aero/GuidanceVersionTest.java
+?? src/test/java/net/bullettrain/xenopixelsmod/aero/v2/
+?? src/test/java/net/bullettrain/xenopixelsmod/anim/CombatStateAnimTest.java
+?? src/test/java/net/bullettrain/xenopixelsmod/anim/WaveClipContentTest.java
+?? src/test/java/net/bullettrain/xenopixelsmod/anim/XenoClipChatTest.java
+?? src/test/java/net/bullettrain/xenopixelsmod/api/dmz/
+?? src/test/java/net/bullettrain/xenopixelsmod/block/
+?? src/test/java/net/bullettrain/xenopixelsmod/capability/
+?? src/test/java/net/bullettrain/xenopixelsmod/client/aero/
+?? src/test/java/net/bullettrain/xenopixelsmod/client/combat/ZanzokenFadeTest.java
+?? src/test/java/net/bullettrain/xenopixelsmod/client/compat/npc/NpcGeckoHeadAttachTest.java
+?? src/test/java/net/bullettrain/xenopixelsmod/client/config/XenoAuraConfigLimitsTest.java
+?? src/test/java/net/bullettrain/xenopixelsmod/client/gui/
+?? src/test/java/net/bullettrain/xenopixelsmod/client/hud/Bt3HudStateTest.java
+?? src/test/java/net/bullettrain/xenopixelsmod/client/hud/FormHudTintTest.java
+?? src/test/java/net/bullettrain/xenopixelsmod/client/hud/GuidanceV2ArtLayoutTest.java
+?? src/test/java/net/bullettrain/xenopixelsmod/client/hud/XenoBt3HudAtlasTest.java
+?? src/test/java/net/bullettrain/xenopixelsmod/client/hud/XenoBt3HudLayoutTest.java
+?? src/test/java/net/bullettrain/xenopixelsmod/client/npc/
+?? src/test/java/net/bullettrain/xenopixelsmod/client/pad2/
+?? src/test/java/net/bullettrain/xenopixelsmod/client/ui/
+?? src/test/java/net/bullettrain/xenopixelsmod/combat/Bt3KickAndPunchRulesTest.java
+?? src/test/java/net/bullettrain/xenopixelsmod/combat/Bt3LandingTest.java
+?? src/test/java/net/bullettrain/xenopixelsmod/combat/HakaiAreaRulesTest.java
+?? src/test/java/net/bullettrain/xenopixelsmod/combat/HakaiBlockScanTest.java
+?? src/test/java/net/bullettrain/xenopixelsmod/combat/KiDeflectNpcEligibilityTest.java
+?? src/test/java/net/bullettrain/xenopixelsmod/combat/ZanzokenConfusionTest.java
+?? src/test/java/net/bullettrain/xenopixelsmod/combat/clone/CloneDetectRangeTest.java
+?? src/test/java/net/bullettrain/xenopixelsmod/combat/clone/CloneFightPolicyTest.java
+?? src/test/java/net/bullettrain/xenopixelsmod/combat/clone/CloneTargetTrackerTest.java
+?? src/test/java/net/bullettrain/xenopixelsmod/combat/combo/
+?? src/test/java/net/bullettrain/xenopixelsmod/combat/controller/
+?? src/test/java/net/bullettrain/xenopixelsmod/combat/fx/HakaiEffectRulesTest.java
+?? src/test/java/net/bullettrain/xenopixelsmod/combat/fx/SparkingAuraStyleTest.java
+?? src/test/java/net/bullettrain/xenopixelsmod/combat/technique/XenoComboStrikesTest.java
+?? src/test/java/net/bullettrain/xenopixelsmod/combat/technique/XenoStrikeSkillsTest.java
+?? src/test/java/net/bullettrain/xenopixelsmod/command/EffectCommandsTest.java
+?? src/test/java/net/bullettrain/xenopixelsmod/command/GuidanceCommandsTreeTest.java
+?? src/test/java/net/bullettrain/xenopixelsmod/command/NpcImportCommandsTest.java
+?? src/test/java/net/bullettrain/xenopixelsmod/compat/dmz/DmzEntityCatalogTest.java
+?? src/test/java/net/bullettrain/xenopixelsmod/compat/dmz/DmzPartialStatsNbtTest.java
+?? src/test/java/net/bullettrain/xenopixelsmod/compat/npc/BrainXenoSpecialsTest.java
+?? src/test/java/net/bullettrain/xenopixelsmod/compat/npc/BridgeBubbleApiTest.java
+?? src/test/java/net/bullettrain/xenopixelsmod/compat/npc/MixinPolicyTest.java
+?? src/test/java/net/bullettrain/xenopixelsmod/compat/npc/NpcAdvancedTabTest.java
+?? src/test/java/net/bullettrain/xenopixelsmod/compat/npc/NpcAttackSlotsTest.java
+?? src/test/java/net/bullettrain/xenopixelsmod/compat/npc/NpcBattlePowerWiringTest.java
+?? src/test/java/net/bullettrain/xenopixelsmod/compat/npc/NpcBrainKiBandPreferenceTest.java
+?? src/test/java/net/bullettrain/xenopixelsmod/compat/npc/NpcBrainKiRotationTest.java
+?? src/test/java/net/bullettrain/xenopixelsmod/compat/npc/NpcBrainPolicyTest.java
+?? src/test/java/net/bullettrain/xenopixelsmod/compat/npc/NpcChargeMovesTest.java
+?? src/test/java/net/bullettrain/xenopixelsmod/compat/npc/NpcCombatBrainAbandonTest.java
+?? src/test/java/net/bullettrain/xenopixelsmod/compat/npc/NpcCombatBrainVersionTest.java
+?? src/test/java/net/bullettrain/xenopixelsmod/compat/npc/NpcCombatProfileBrainFlagsTest.java
+?? src/test/java/net/bullettrain/xenopixelsmod/compat/npc/NpcCombatProfileModelTest.java
+?? src/test/java/net/bullettrain/xenopixelsmod/compat/npc/NpcCombatRangesTest.java
+?? src/test/java/net/bullettrain/xenopixelsmod/compat/npc/NpcComboSwingRangeTest.java
+?? src/test/java/net/bullettrain/xenopixelsmod/compat/npc/NpcCuriosLayoutTest.java
+?? src/test/java/net/bullettrain/xenopixelsmod/compat/npc/NpcDisplayApplySizeTest.java
+?? src/test/java/net/bullettrain/xenopixelsmod/compat/npc/NpcDmzBrainVersionsTest.java
+?? src/test/java/net/bullettrain/xenopixelsmod/compat/npc/NpcDmzStatsTest.java
+?? src/test/java/net/bullettrain/xenopixelsmod/compat/npc/NpcFlightBridgeTest.java
+?? src/test/java/net/bullettrain/xenopixelsmod/compat/npc/NpcFlightPolicyTest.java
+?? src/test/java/net/bullettrain/xenopixelsmod/compat/npc/NpcFormCompatibilityTest.java
+?? src/test/java/net/bullettrain/xenopixelsmod/compat/npc/NpcFreshProfileDefaultsTest.java
+?? src/test/java/net/bullettrain/xenopixelsmod/compat/npc/NpcHakaiTest.java
+?? src/test/java/net/bullettrain/xenopixelsmod/compat/npc/NpcKiDeflectPolicyTest.java
+?? src/test/java/net/bullettrain/xenopixelsmod/compat/npc/NpcKiProjectileMathTest.java
+?? src/test/java/net/bullettrain/xenopixelsmod/compat/npc/NpcLedgeApproachTest.java
+?? src/test/java/net/bullettrain/xenopixelsmod/compat/npc/NpcMaxHealthOverrideTest.java
+?? src/test/java/net/bullettrain/xenopixelsmod/compat/npc/NpcMeleeAnimCycleTest.java
+?? src/test/java/net/bullettrain/xenopixelsmod/compat/npc/NpcMeleeHeightReachTest.java
+?? src/test/java/net/bullettrain/xenopixelsmod/compat/npc/NpcNativeCombatPropertiesTest.java
+?? src/test/java/net/bullettrain/xenopixelsmod/compat/npc/NpcNightTextureTest.java
+?? src/test/java/net/bullettrain/xenopixelsmod/compat/npc/NpcPinNativeCombatTest.java
+?? src/test/java/net/bullettrain/xenopixelsmod/compat/npc/NpcProfileDiffTest.java
+?? src/test/java/net/bullettrain/xenopixelsmod/compat/npc/NpcProfileKeysTest.java
+?? src/test/java/net/bullettrain/xenopixelsmod/compat/npc/NpcQuestCompletionSyncTest.java
+?? src/test/java/net/bullettrain/xenopixelsmod/compat/npc/NpcScriptListsTest.java
+?? src/test/java/net/bullettrain/xenopixelsmod/compat/npc/NpcScriptSayTest.java
+?? src/test/java/net/bullettrain/xenopixelsmod/compat/npc/NpcStaminaAffordabilityTest.java
+?? src/test/java/net/bullettrain/xenopixelsmod/compat/npc/NpcTechniqueLevelsTest.java
+?? src/test/java/net/bullettrain/xenopixelsmod/compat/npc/NpcV9SwingFallbackTest.java
+?? src/test/java/net/bullettrain/xenopixelsmod/compat/npc/PlayerScriptsGateTest.java
+?? src/test/java/net/bullettrain/xenopixelsmod/compat/npc/RangedProjectileParityTest.java
+?? src/test/java/net/bullettrain/xenopixelsmod/compat/npc/brain/
+?? src/test/java/net/bullettrain/xenopixelsmod/compat/sable/
+?? src/test/java/net/bullettrain/xenopixelsmod/compat/worldgen/
+?? src/test/java/net/bullettrain/xenopixelsmod/config/EffekseerConfigTest.java
+?? src/test/java/net/bullettrain/xenopixelsmod/config/NpcMeleeHeightMigrationTest.java
+?? src/test/java/net/bullettrain/xenopixelsmod/config/XenoComboKnockTravelConfigTest.java
+?? src/test/java/net/bullettrain/xenopixelsmod/config/XenoPerfConfigSableCullTest.java
+?? src/test/java/net/bullettrain/xenopixelsmod/data/
+?? src/test/java/net/bullettrain/xenopixelsmod/dmz/HakaishinContentTest.java
+?? src/test/java/net/bullettrain/xenopixelsmod/features/progression/
+?? src/test/java/net/bullettrain/xenopixelsmod/features/transformation/
+?? src/test/java/net/bullettrain/xenopixelsmod/fx/
+?? src/test/java/net/bullettrain/xenopixelsmod/item/
+?? src/test/java/net/bullettrain/xenopixelsmod/missile/MissileEjectLaunchHeightTest.java
+?? src/test/java/net/bullettrain/xenopixelsmod/missile/MissileFlightCorridorTest.java
+?? src/test/java/net/bullettrain/xenopixelsmod/missile/MissileFlightSimTest.java
+?? src/test/java/net/bullettrain/xenopixelsmod/missile/MissileGuidanceTest.java
+?? src/test/java/net/bullettrain/xenopixelsmod/missile/MissileLaunchLogicTest.java
+?? src/test/java/net/bullettrain/xenopixelsmod/missile/MissileLookTargetTest.java
+?? src/test/java/net/bullettrain/xenopixelsmod/missile/MissileWarheadCompatTest.java
+?? src/test/java/net/bullettrain/xenopixelsmod/missile/MissileWindingTest.java
+?? src/test/java/net/bullettrain/xenopixelsmod/missile/v3/
+?? src/test/java/net/bullettrain/xenopixelsmod/network/NpcAppearancePacketAuraTest.java
+?? src/test/java/net/bullettrain/xenopixelsmod/network/NpcScriptPacketContractTest.java
+?? src/test/java/net/bullettrain/xenopixelsmod/network/OpenXenoNpcDialoguePacketTest.java
+?? src/test/java/net/bullettrain/xenopixelsmod/network/ProtocolVersion.java
+?? src/test/java/net/bullettrain/xenopixelsmod/network/QuestCompletionPopupPacketTest.java
+?? src/test/java/net/bullettrain/xenopixelsmod/network/SyncQuestsPacketTest.java
+?? src/test/java/net/bullettrain/xenopixelsmod/network/SyncServerConfigPacketControllerModeTest.java
+?? src/test/java/net/bullettrain/xenopixelsmod/network/SyncStandingsPacketTest.java
+?? src/test/java/net/bullettrain/xenopixelsmod/network/XenoNpcDataSavePolicyTest.java
+?? src/test/java/net/bullettrain/xenopixelsmod/network/packet/NpcScriptSavePolicyTest.java
+?? src/test/java/net/bullettrain/xenopixelsmod/network/packet/SavePolicyCapTest.java
+?? src/test/java/net/bullettrain/xenopixelsmod/network/packet/XenoNpcEditorSaveResultPacketTest.java
+?? src/test/java/net/bullettrain/xenopixelsmod/network/packet/XenoNpcNearbyPacketsTest.java
+?? src/test/java/net/bullettrain/xenopixelsmod/network/packet/XenoNpcSavePolicyTest.java
+?? src/test/java/net/bullettrain/xenopixelsmod/npc/
+?? src/test/java/net/bullettrain/xenopixelsmod/server/
+?? src/test/java/net/bullettrain/xenopixelsmod/testsupport/
+?? src/test/java/net/bullettrain/xenopixelsmod/ui/
+?? src/test/java/net/bullettrain/xenopixelsmod/util/
+?? src/test/java/net/bullettrain/xenopixelsmod/vs/ShipV3DriverTest.java
+?? src/test/resources/META-INF/
+?? src/test/resources/junit-platform.properties
+?? todays_crashreports/
+?? todolist.md
+?? tools/atlas-panels/
+?? tools/effekseer/
+?? tools/extract_session_images.py
+?? tools/gen_guidance_v2_art.py
+?? tools/gen_hakaishin_icon.py
+?? tools/gen_hud_neutral_atlas.py
+?? tools/gen_npc_tool_models.py
+?? tools/gen_zeni_assets.py
+?? tools/generated/dmz_neon_minigames_proof.png
+?? tools/generated/dmz_neon_party_proof.png
+?? tools/generated/dmz_neon_quests_proof.png
+?? tools/generated/dmz_neon_settings_proof.png
+?? tools/generated/dmz_neon_skills_proof.png
+?? tools/guidance_v2_art/
+?? tools/new_particles/
+?? transcript.txt
+?? wiki/Xeno-Shops-and-Plots.md
+?? wiki/XenoAPI.md
+?? xeno-npc-parity-map.html
+?? xenopixels-addon-development/
+?? xenopixels-code-review.md

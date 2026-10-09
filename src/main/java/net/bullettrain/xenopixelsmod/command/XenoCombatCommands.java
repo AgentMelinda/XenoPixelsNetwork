@@ -17,7 +17,7 @@ import net.neoforged.neoforge.event.RegisterCommandsEvent;
 import java.util.Arrays;
 
 /**
- * {@code /xenocombat mode legacy|bt3_manual}, {@code /xenocombat status}, {@code /xenocombat reload}.
+ * {@code /xenocombat mode legacy|bt3_manual|v2}, {@code /xenocombat status}, {@code /xenocombat reload}.
  *
  * <p>The operator-facing switch for the combat controller. Unlike {@code /xenoset
  * combatControllerMode}, an unknown mode here is an error rather than a silent fall-back to
@@ -64,10 +64,19 @@ public final class XenoCombatCommands {
         sb.append(" | bt3Combat=").append(XenoServerConfig.bt3CombatEnabled ? "on" : "off");
         sb.append(" | bt3Combo=").append(XenoServerConfig.bt3ComboEnabled ? "on" : "off");
         sb.append(" | cinematicRush=").append(XenoServerConfig.bt3CinematicRushEnabled ? "on" : "off");
+        sb.append(" | grab=").append(grabStatus());
         if (mode == CombatControllerMode.BT3_MANUAL && !XenoServerConfig.bt3CombatEnabled) {
             sb.append(" | NOTE: bt3CombatEnabled is off, manual input is refused");
         }
         return sb.toString();
+    }
+
+    /** Which controllers have the grab: it is the one XenoCombat v2 move the others share. */
+    private static String grabStatus() {
+        net.bullettrain.xenopixelsmod.combat.v2.V2Config.Values cfg =
+                net.bullettrain.xenopixelsmod.combat.v2.V2Config.get();
+        if (!cfg.grabEnabled) return "off";
+        return cfg.grabOutsideV2 ? "every controller" : "v2 only";
     }
 
     private static int status(CommandSourceStack source) {
@@ -97,12 +106,17 @@ public final class XenoCombatCommands {
     private static int reload(CommandSourceStack source) {
         CombatControllerMode before = CombatControllerService.current();
         XenoServerConfig.load();
+        net.bullettrain.xenopixelsmod.combat.v2.V2Config.load();
+        net.bullettrain.xenopixelsmod.combat.v3.V3Config.load();
+        net.bullettrain.xenopixelsmod.combat.v2.combo.ComboGraphs.reload();
+        CombatControllerService.reconcile(source.getServer());
+        net.bullettrain.xenopixelsmod.combat.v3.V3CombatServer.clearAll(source.getServer());
         CombatControllerMode after = CombatControllerService.current();
-        // The tick watcher sweeps on drift; force it now so the operator's message is accurate.
-        if (before != after) {
-            CombatControllerService.setMode(source.getServer(), after);
-        } else {
-            DmzHudCommands.broadcast();
+        // Reconciliation and V3 session invalidation above precede every new snapshot.
+        DmzHudCommands.broadcast();
+        if (before == after) {
+            // The reload may have turned the grab on or off; that reaches clients as fighter state.
+            net.bullettrain.xenopixelsmod.combat.v2.V2CombatServer.resyncAll(source.getServer());
         }
         source.sendSuccess(() -> Component.literal("Reloaded combat config. " + statusLine()), true);
         return 1;

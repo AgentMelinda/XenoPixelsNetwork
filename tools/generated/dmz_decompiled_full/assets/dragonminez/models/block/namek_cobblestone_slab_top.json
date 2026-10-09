@@ -1,8 +1,3 @@
-{
-  "parent": "minecraft:block/slab_top",
-  "textures": {
-    "bottom": "dragonminez:block/namek_cobblestone",
-    "side": "dragonminez:block/namek_cobblestone",
-    "top": "dragonminez:block/namek_cobblestone"
-  }
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:2d7865026d3aa7322f1662f73f6c822a1cf7c0fb80702c97a05b280580dfad77
+size 216

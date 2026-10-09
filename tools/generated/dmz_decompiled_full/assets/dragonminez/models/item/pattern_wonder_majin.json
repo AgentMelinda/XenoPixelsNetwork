@@ -1,6 +1,3 @@
-{
-  "parent": "minecraft:item/generated",
-  "textures": {
-    "layer0": "dragonminez:item/patterns/pattern_wonder_majin"
-  }
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:a780a0674760a3227825dd501adebba54cf50ffb197e44c19e7586b19eeb8372
+size 126

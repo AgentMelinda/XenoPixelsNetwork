@@ -1,9 +1,3 @@
-{
-  "replace": false,
-  "values": [
-    "dragonminez:namek_water_fluid",
-    "dragonminez:healing_fluid",
-    "dragonminez:flowing_namek_water_fluid",
-    "dragonminez:flowing_healing_fluid"
-  ]
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:f8f276cd6177bd613a0dd12e84ddf71e7596c3320ccbf544b70b8a48e3a49898
+size 204

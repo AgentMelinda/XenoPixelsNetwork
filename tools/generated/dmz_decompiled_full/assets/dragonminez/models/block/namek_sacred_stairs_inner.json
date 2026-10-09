@@ -1,8 +1,3 @@
-{
-  "parent": "minecraft:block/inner_stairs",
-  "textures": {
-    "bottom": "dragonminez:block/namek_sacred_planks",
-    "side": "dragonminez:block/namek_sacred_planks",
-    "top": "dragonminez:block/namek_sacred_planks"
-  }
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:33542a4bb08f16c774c98d7ba52ddd078365fa8833cf25279ca688aec15299e8
+size 226

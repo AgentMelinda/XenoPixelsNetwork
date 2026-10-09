@@ -1,20 +1,3 @@
-{
-  "type": "minecraft:crafting_shaped",
-  "category": "redstone",
-  "group": "wooden_door",
-  "key": {
-    "#": {
-      "item": "dragonminez:namek_ajissa_planks"
-    }
-  },
-  "pattern": [
-    "##",
-    "##",
-    "##"
-  ],
-  "result": {
-    "count": 3,
-    "id": "dragonminez:namek_ajissa_door"
-  },
-  "show_notification": true
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:1afb58f2eb59f4acb0629741abf57bdae03f6e1ad795225cdf34cae4b029ca66
+size 348

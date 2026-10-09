@@ -1,6 +1,3 @@
-{
-  "parent": "minecraft:item/generated",
-  "textures": {
-    "layer0": "dragonminez:item/armors/goku_gt_armor_boots"
-  }
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:d8ca7348cf33a8aed0398bf47f28dbb53e6aeeb4b38431711b2f056f24382809
+size 123

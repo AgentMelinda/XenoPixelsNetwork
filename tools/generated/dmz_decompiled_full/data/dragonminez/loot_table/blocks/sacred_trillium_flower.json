@@ -1,21 +1,3 @@
-{
-  "type": "minecraft:block",
-  "pools": [
-    {
-      "bonus_rolls": 0.0,
-      "conditions": [
-        {
-          "condition": "minecraft:survives_explosion"
-        }
-      ],
-      "entries": [
-        {
-          "type": "minecraft:item",
-          "name": "dragonminez:sacred_trillium_flower"
-        }
-      ],
-      "rolls": 1.0
-    }
-  ],
-  "random_sequence": "dragonminez:blocks/sacred_trillium_flower"
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:edeb8463388412c428417e5c03a38a257a3376ccd0145b444b495fee287b1513
+size 416

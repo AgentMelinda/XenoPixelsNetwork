@@ -1,6 +1,3 @@
-{
-  "selector": "xenopixelsmod:ship_vls_guidance_fork",
-  "properties": {
-    "sable:mass": 2.5
-  }
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:d3f025f2b6295e264cd8ab86750ae67f7fbf1332fd9aa93e25221f026db2c992
+size 103

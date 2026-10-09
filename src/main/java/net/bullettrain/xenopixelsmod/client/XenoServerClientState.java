@@ -13,6 +13,10 @@ public final class XenoServerClientState {
 
     public static void apply(XenoServerConfig.Data incoming) {
         if (incoming == null) return;
+        if (controllerMode() != net.bullettrain.xenopixelsmod.combat.controller.CombatControllerMode
+                .fromId(incoming.combatControllerMode)) {
+            net.bullettrain.xenopixelsmod.client.combat.v3.V3ClientState.reset();
+        }
         data = incoming;
         DmzHudClientState.setDmzHudEnabled(incoming.dmzHudEnabled);
     }
@@ -37,6 +41,17 @@ public final class XenoServerClientState {
                 == net.bullettrain.xenopixelsmod.combat.controller.CombatControllerMode.BT3_MANUAL;
     }
 
+    /** True when the server runs XenoCombat v2 (and combat is on at all). */
+    public static boolean v2Controller() {
+        return data.bt3CombatEnabled && controllerMode()
+                == net.bullettrain.xenopixelsmod.combat.controller.CombatControllerMode.V2;
+    }
+
+    public static boolean v3Controller() {
+        return data.bt3CombatEnabled && controllerMode()
+                == net.bullettrain.xenopixelsmod.combat.controller.CombatControllerMode.V3;
+    }
+
     /** Whether the client may drive the legacy mash string under the current server mode. */
     public static boolean legacyComboAllowed() {
         return net.bullettrain.xenopixelsmod.combat.controller.LegacyActionPolicy
@@ -52,6 +67,7 @@ public final class XenoServerClientState {
     }
 
     public static void clear() {
+        net.bullettrain.xenopixelsmod.client.combat.v3.V3ClientState.reset();
         data = new XenoServerConfig.Data();
         DmzHudClientState.setDmzHudEnabled(false);
     }

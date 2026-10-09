@@ -1,6 +1,3 @@
-{
-  "parent": "minecraft:item/generated",
-  "textures": {
-    "layer0": "xenopixelsmod:item/panel_configurator"
-  }
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:78218163a1757208b2c522d545eda7a305acac6bc19cb3c9407bb590cb4aa658
+size 118

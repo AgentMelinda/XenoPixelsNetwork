@@ -1,6 +1,3 @@
-{
-  "parent": "minecraft:item/generated",
-  "textures": {
-    "layer0": "dragonminez:item/armors/chaoz_armor_chestplate"
-  }
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:e2cdeef606f533efd9154e3b7e3ee70e04d3d4145664e471b3b39b682e1905e7
+size 126

@@ -31,6 +31,8 @@ public final class XenoHudRegistration {
                 new net.bullettrain.xenopixelsmod.client.hud.XenoFlightHudOverlay()::render);
         event.registerAbove(DMZ_TOP, ResourceLocation.fromNamespaceAndPath(XenoPixelsMod.MOD_ID, "xeno_guidance_v2_hud"),
                 new net.bullettrain.xenopixelsmod.client.hud.GuidanceV2HudOverlay()::render);
+        event.registerAbove(DMZ_TOP, ResourceLocation.fromNamespaceAndPath(XenoPixelsMod.MOD_ID, "xeno_combat_prompt"),
+                new net.bullettrain.xenopixelsmod.client.combat.v2.CombatPromptOverlay()::render);
         event.registerAbove(DMZ_TOP, ResourceLocation.fromNamespaceAndPath(XenoPixelsMod.MOD_ID, "xeno_crosshair_hud"),
                 new net.bullettrain.xenopixelsmod.client.hud.XenoCrosshairHudLayer()::render);
         // Last, so the impact flash washes over the HUD rather than under it — a flash the

@@ -1,6 +1,3 @@
-{
-  "parent": "minecraft:item/generated",
-  "textures": {
-    "layer0": "dragonminez:item/patterns/pattern_gohan1"
-  }
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:a7afbf9ccd72624ddfbf0f9509246e789fc04204a2539e62074e4c3de2f91bbd
+size 120

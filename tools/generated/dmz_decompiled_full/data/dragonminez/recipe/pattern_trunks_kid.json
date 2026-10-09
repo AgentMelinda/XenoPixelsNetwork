@@ -1,25 +1,3 @@
-{
-  "type": "minecraft:crafting_shaped",
-  "category": "misc",
-  "group": "dragonminez",
-  "key": {
-    "#": {
-      "item": "dragonminez:blank_pattern_z"
-    },
-    "G": {
-      "item": "minecraft:green_dye"
-    },
-    "O": {
-      "item": "minecraft:orange_dye"
-    }
-  },
-  "pattern": [
-    "G#G",
-    "GGG",
-    "OOO"
-  ],
-  "result": {
-    "count": 1,
-    "id": "dragonminez:pattern_trunks_kid"
-  }
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:a26f13e144c19b795fe5cec252ce9a65a085e17b122df477edeeb94b4825f054
+size 405

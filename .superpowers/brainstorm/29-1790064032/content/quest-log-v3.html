@@ -1,0 +1,120 @@
+<h2>Quest log — corrected again, from your §3.1</h2>
+<p class="subtitle">
+  Categories are <b>left-side buttons</b>, not top tabs. Tab group is
+  <b>Inventory → Factions → Quests</b>, in that order. Log text pages through
+  <code>TextBlockClient</code>-style forward/back. <code>quest.noquests</code> when empty.
+  <b>Complete with …</b> shows only when the quest names a completion NPC.
+</p>
+
+<style>
+  .mc { font-family: ui-monospace, "Consolas", monospace; }
+  .panel { background:#0b1b2e; border:2px solid #4fc3d9; color:#e8eef5; font-size:12px;
+           line-height:1.5; display:grid; grid-template-columns:26% 30% 44%; }
+  .gold { color:#ffd54f; } .dim { color:#8fa3b8; } .green { color:#7ddf7d; }
+  .col { padding:8px; }
+  .col + .col { border-left:1px solid #16324f; }
+  .catbtn { display:block; padding:4px 8px; margin-bottom:3px; background:#0b1b2e;
+            border:1px solid #2d5a80; color:#8fa3b8; font-size:11px; }
+  .catbtn.on { background:#14304d; border-color:#4fc3d9; color:#ffd54f; }
+  .row { padding:4px 6px; border-bottom:1px solid #16324f; }
+  .row.sel { background:#14304d; border-left:3px solid #ffd54f; }
+  .glyph { color:#ffd54f; margin-right:5px; }
+  .bar { height:6px; background:#14304d; border:1px solid #2d5a80; margin-top:3px; }
+  .bar > i { display:block; height:100%; background:#4fc3d9; }
+  .pg { display:flex; align-items:center; gap:8px; color:#8fa3b8; font-size:11px; margin-top:4px; }
+  .pgbtn { border:1px solid #2d5a80; padding:0 6px; color:#4fc3d9; }
+  .tabs { display:flex; gap:3px; margin-bottom:0; }
+  .ptab { padding:4px 14px; background:#3a3a3a; border:2px solid #666; border-bottom:none;
+          color:#bbb; font-size:11px; }
+  .ptab.on { background:#0b1b2e; border-color:#4fc3d9; color:#ffd54f; }
+  .ptab.gone { opacity:.45; }
+  .gap { background:#2a1414; border-left:3px solid #d96f6f; padding:8px 10px; margin:6px 0; font-size:13px; }
+  .gap b { color:#e08a8a; }
+  .ok { background:#132a19; border-left:3px solid #6fd98a; padding:8px 10px; margin:6px 0; font-size:13px; }
+  .ok b { color:#8ae0a0; }
+</style>
+
+<div class="mc">
+  <div class="tabs">
+    <div class="ptab">Inventory</div>
+    <div class="ptab gone">Factions</div>
+    <div class="ptab on">Quests</div>
+  </div>
+  <div class="panel">
+    <div class="col">
+      <div class="dim" style="font-size:11px;margin-bottom:4px">CATEGORIES</div>
+      <span class="catbtn on">Main</span>
+      <span class="catbtn">Side 2</span>
+      <span class="catbtn">Side 10</span>
+      <span class="catbtn">Guild</span>
+    </div>
+    <div class="col">
+      <div class="row sel"><span class="glyph">▌</span>Gold</div>
+      <div class="row"><span class="glyph">▌</span>Wolf Trouble</div>
+      <div class="row"><span class="glyph">▌</span>Pay Respects</div>
+    </div>
+    <div class="col">
+      <div class="gold">Gold</div>
+      <div style="margin:4px 0 0">
+        Stephanie has been asking around for<br>
+        something shiny. She mentioned earrings,<br>
+        and she is not subtle about it.
+      </div>
+      <div class="pg"><span class="pgbtn">◀</span> Page 1 / 2 <span class="pgbtn">▶</span></div>
+
+      <div class="dim" style="margin-top:8px">Objectives</div>
+      <div>Gold ore <span class="dim">3 / 10</span></div>
+      <div class="bar"><i style="width:30%"></i></div>
+
+      <div class="green" style="margin-top:8px">Complete with Stephanie</div>
+    </div>
+  </div>
+  <p class="subtitle" style="font-size:11px;margin-top:6px">
+    Factions tab shown faded — see below. Empty category renders <code>quest.noquests</code>.
+  </p>
+</div>
+
+<h2 style="margin-top:26px">Your spec answered my open question</h2>
+
+<div class="ok">
+  <b>Completion is a per-quest mode, not a global rule.</b> <code>EnumQuestCompletion</code> is
+  <b>NPC</b> or <b>Instant</b>. So a quest can auto-complete at target <em>or</em> sit at full
+  progress waiting to be handed in — the author picks. Ours default to <b>Instant</b>, which is
+  exactly today's behaviour, so no existing quest changes meaning. <b>Complete with …</b> renders
+  only in NPC mode.
+</div>
+
+<h2 style="margin-top:22px">What I propose is in this spec, and what is not</h2>
+
+<div class="ok">
+  <b>In.</b> Many active quests · completed history · <code>category</code> ·
+  quest log text + completed text · page controls · completion mode (NPC/Instant) + hand-in ·
+  the left-category log screen · <code>quest.noquests</code> · the New Quest toast ·
+  the dead <code>MasterPrerequisites</code> gate · <code>/xenoquest</code> commands.
+</div>
+
+<div class="gap">
+  <b>Out — each its own spec.</b> The <b>Availability engine</b> (§3.5) is the big one: 4 dialog
+  checks, 4 quest checks, daytime, 2 faction conditions, 2 scoreboard conditions, min level — and
+  you note it is reused by visibility, marks, item giver, conversation and builder. That is a
+  general conditional-content engine, not quest logic, and it should not be born inside a quest
+  spec. Also out: quest types <b>Item / Location / Area Kill / Manual</b>, repeat rules
+  (<code>EnumQuestRepeat</code>: MC/RL Daily/Weekly), mail, <code>nextQuestid</code> chaining,
+  Random Item reward, and the dialog wheel.
+</div>
+
+<div class="gap">
+  <b>Still unresolved: the Factions tab.</b> Your tab group is Inventory → Factions → Quests, but we
+  have no player-facing faction screen at all — <code>client/npc/faction/</code> holds only the sync
+  mirror. Quests can ship as the second tab now and Factions slot in between later, or Factions
+  comes first so the group is right from the start.
+</div>
+
+<div class="gap">
+  <b>Our objective types do not line up with theirs.</b> Theirs: Item · Dialog · Kill · Location ·
+  Area Kill · Manual. Ours: <code>KILL_MOBS</code> · <code>KILL_PLAYERS</code> ·
+  <code>KILL_TYPE</code> · <code>DUMMY_DAMAGE</code> · <code>DUMMY_HITS</code> ·
+  <code>TALK_TO_NPC</code>. Their one "Kill" covers our three; our two dummy types are ours alone;
+  their Dialog ties to a specific <em>dialog option</em> where our <code>TALK_TO_NPC</code> only
+  counts the conversation. Worth deciding whether to converge or keep both vocabularies.
+</div>

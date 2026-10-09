@@ -1,6 +1,3 @@
-{
-  "parent": "minecraft:item/generated",
-  "textures": {
-    "layer0": "dragonminez:item/armors/granola_armor_boots"
-  }
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:bd8608df29c8260e0327a0b7410fcb9f6b33dbf160b04e6727088d262088df42
+size 123

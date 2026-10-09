@@ -1,4 +1,3 @@
-{
-  "parent": "minecraft:item/generated",
-  "textures": { "layer0": "minecraft:item/ender_pearl" }
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:4f539184755450647ba7bcb139fc2303fba5f1fb1b64d01936c5a2cdd67858ff
+size 101

@@ -1,6 +1,3 @@
-{
-  "parent": "minecraft:item/generated",
-  "textures": {
-    "layer0": "dragonminez:item/armors/gine_armor_boots"
-  }
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:19060036c6e7adbc840c99d865cb47f9fcf78e79ea69117b9e362c0c80322a60
+size 120

@@ -1,6 +1,3 @@
-{
-  "parent": "minecraft:item/generated",
-  "textures": {
-    "layer0": "dragonminez:item/t1_radar_chip"
-  }
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:3243da56e6b7a6c2729bc9d9208cc343925258e063879d9124201c6eba66dc0f
+size 110

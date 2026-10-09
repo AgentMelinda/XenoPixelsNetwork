@@ -1,21 +1,3 @@
-{
-  "type": "minecraft:block",
-  "pools": [
-    {
-      "bonus_rolls": 0.0,
-      "conditions": [
-        {
-          "condition": "minecraft:survives_explosion"
-        }
-      ],
-      "entries": [
-        {
-          "type": "minecraft:item",
-          "name": "dragonminez:kikono_block"
-        }
-      ],
-      "rolls": 1.0
-    }
-  ],
-  "random_sequence": "dragonminez:blocks/kikono_block"
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:4cfe9f199ebe7a806d7e4f4e119997d9cc75bec1ffddb4112c2fa172f51a5374
+size 396

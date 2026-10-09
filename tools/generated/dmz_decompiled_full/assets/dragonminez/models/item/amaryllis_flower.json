@@ -1,6 +1,3 @@
-{
-  "parent": "minecraft:item/generated",
-  "textures": {
-    "layer0": "dragonminez:item/amaryllis_flower"
-  }
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:6acb8cbde6ba5ba9073e5418191867d3522e9c22aee8a6ef1d14cd9478bb4b01
+size 113

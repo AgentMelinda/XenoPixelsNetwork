@@ -66,6 +66,23 @@ public final class XenoEffects {
                 EffekSender.Follow.LOOK) == Outcome.PLAYED;
     }
 
+    /** Ki is seen from further away than a punch: a beam's far end is a long way from its caster. */
+    private static final double KI_EXTRA_RANGE = 64.0;
+
+    /**
+     * One of Combat V3's ki effects ({@code effeks/ki/<asset>}), under effekseerKiAttacks. They come
+     * in every colour, so they are named by asset and not by slot.
+     *
+     * @param forward where the effect's +Z points, or null for an upright effect
+     */
+    public static boolean playKi(ServerLevel level, String asset, Vec3 pos, Vec3 forward, float scale) {
+        if (level == null || asset == null || pos == null || !XenoServerConfig.effekseerEnabled
+                || !XenoServerConfig.effekseerKiAttacks) return false;
+        return send(level, EffectSlot.KI_IMPACT, new EffekSender.Request(
+                ResourceLocation.fromNamespaceAndPath(XenoPixelsMod.MOD_ID, "ki/" + asset), pos, forward, scale,
+                GATE.range(EffectSlot.KI_IMPACT) + KI_EXTRA_RANGE));
+    }
+
     /** As {@link #attempt}, for a hit recorded at {@code gameTick} (the punch hook plays later). */
     static Outcome attemptAt(ServerLevel level, long gameTick, EffectSlot slot, Vec3 pos, Vec3 forward, float scale,
                              int targetId) {

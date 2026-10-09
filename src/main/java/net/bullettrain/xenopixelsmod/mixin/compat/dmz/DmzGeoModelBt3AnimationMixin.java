@@ -81,21 +81,22 @@ public abstract class DmzGeoModelBt3AnimationMixin {
             return null;
         }
         Animation studio = XenoStudioClipCache.get(name);
+        var animationFile = Bt3AnimationBinding.animationFileFor(name);
         BakedAnimations baked = GeckoLibCache.getBakedAnimations()
-                .get(Bt3AnimationBinding.DMZ_ANIMATION_FILE);
+                .get(animationFile);
         Animation shipped = baked == null ? null : baked.getAnimation(name);
         Animation chosen = StudioAnimLookup.preferStudio(name, studio, shipped);
         if (chosen != null) {
             if (xeno$loggedHit.compareAndSet(false, true)) {
                 XenoPixelsMod.LOGGER.info("Resolved {} before GeckoLib fallbacks from {}",
-                        name, Bt3AnimationBinding.DMZ_ANIMATION_FILE);
+                        name, animationFile);
             }
             return chosen;
         }
         if (baked == null && xeno$loggedMiss.compareAndSet(false, true)) {
             XenoPixelsMod.LOGGER.warn(
                     "GeckoLib did not bake {} — combat.xeno_* clips use studio cache only",
-                    Bt3AnimationBinding.DMZ_ANIMATION_FILE);
+                    animationFile);
         }
         return null;
     }

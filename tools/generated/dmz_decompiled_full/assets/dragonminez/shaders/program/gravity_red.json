@@ -1,19 +1,3 @@
-{
-  "blend": {
-    "func": "add",
-    "srcrgb": "one",
-    "dstrgb": "zero"
-  },
-  "vertex": "blit",
-  "fragment": "dragonminez:gravity_red",
-  "attributes": [ "Position" ],
-  "samplers": [
-    { "name": "DiffuseSampler" }
-  ],
-  "uniforms": [
-    { "name": "ProjMat", "type": "matrix4x4", "count": 16, "values": [ 1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0 ] },
-    { "name": "InSize",    "type": "float",     "count": 2,  "values": [ 1.0, 1.0 ] },
-    { "name": "OutSize",   "type": "float",     "count": 2,  "values": [ 1.0, 1.0 ] },
-    { "name": "Intensity", "type": "float",     "count": 1,  "values": [ 0.0 ] }
-  ]
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:364516444a174f798cd3af8a96acb5adfd890e38bee4356c18ae8389755b9b12
+size 679

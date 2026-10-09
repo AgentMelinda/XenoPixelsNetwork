@@ -1,32 +1,3 @@
-{
-  "parent": "minecraft:recipes/root",
-  "criteria": {
-    "has_kikono_string": {
-      "conditions": {
-        "items": [
-          {
-            "items": "dragonminez:kikono_string"
-          }
-        ]
-      },
-      "trigger": "minecraft:inventory_changed"
-    },
-    "has_the_recipe": {
-      "conditions": {
-        "recipe": "dragonminez:kikono_cloth"
-      },
-      "trigger": "minecraft:recipe_unlocked"
-    }
-  },
-  "requirements": [
-    [
-      "has_the_recipe",
-      "has_kikono_string"
-    ]
-  ],
-  "rewards": {
-    "recipes": [
-      "dragonminez:kikono_cloth"
-    ]
-  }
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:eb9681e3ab8d3cb6383c1db1955d14b262c127d48477714b9d1b82498a78158c
+size 589

@@ -1,20 +1,3 @@
-{
-  "asset_definition": "earth_ballset",
-  "blocks": {
-    "1": "dball1",
-    "2": "dball2",
-    "3": "dball3",
-    "4": "dball4",
-    "5": "dball5",
-    "6": "dball6",
-    "7": "dball7"
-  },
-  "copies": 1,
-  "dimensions": [
-    "minecraft:overworld"
-  ],
-  "display_name": "Earth Dragon Ball",
-  "id": "earth",
-  "spawn_range": 1000,
-  "summon_radius": 5
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:232cac94bfebb59b4bbb1b0b0f47b9e21858af4575401e935ba77adaa486bee0
+size 357

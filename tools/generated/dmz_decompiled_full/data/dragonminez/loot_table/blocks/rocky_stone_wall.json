@@ -1,21 +1,3 @@
-{
-  "type": "minecraft:block",
-  "pools": [
-    {
-      "bonus_rolls": 0.0,
-      "conditions": [
-        {
-          "condition": "minecraft:survives_explosion"
-        }
-      ],
-      "entries": [
-        {
-          "type": "minecraft:item",
-          "name": "dragonminez:rocky_stone_wall"
-        }
-      ],
-      "rolls": 1.0
-    }
-  ],
-  "random_sequence": "dragonminez:blocks/rocky_stone_wall"
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:ad951e668455a50e9280fad634690e3d797360598f1c25e51fe878e908224a80
+size 404

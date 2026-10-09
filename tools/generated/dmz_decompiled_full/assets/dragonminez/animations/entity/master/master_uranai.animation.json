@@ -1,1 +1,3 @@
-{"format_version":"1.8.0","animations":{"idle":{"loop":true,"bones":{"root":{"position":{"vector":[0,"4+math.sin(query.anim_time*150)*-0.15",0]}},"waist":{"position":{"vector":[0,"-0.7+math.sin(query.anim_time *220) *0.1",0]}}}},"walk":{"loop":true,"bones":{"root":{"position":{"vector":[0,"4+math.sin(query.anim_time*150)*-0.15",0]}},"waist":{"position":{"vector":[0,"-0.7+math.sin(query.anim_time *220) *0.1",0]}}}}},"geckolib_format_version":2}
+version https://git-lfs.github.com/spec/v1
+oid sha256:ec443e3549570904d9794e61b5322fd0c49986f04bd7fb547e78425aed3725c3
+size 447

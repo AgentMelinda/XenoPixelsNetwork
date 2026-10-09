@@ -88,6 +88,9 @@ public final class DmzHudCommands {
                         .requires(XenoPermissions.require(XenoPermissions.XENOSERVER_RELOAD))
                         .executes(ctx -> {
                             XenoServerConfig.load();
+                            net.bullettrain.xenopixelsmod.combat.v3.V3Config.load();
+                            net.bullettrain.xenopixelsmod.combat.controller.CombatControllerService.reconcile(ctx.getSource().getServer());
+                            net.bullettrain.xenopixelsmod.combat.v3.V3CombatServer.clearAll(ctx.getSource().getServer());
                             OverchargeVoices.reload();
                             broadcast();
                             ctx.getSource().sendSuccess(
@@ -181,12 +184,18 @@ public final class DmzHudCommands {
     }
 
     public static void broadcast() {
+        var server = net.neoforged.neoforge.server.ServerLifecycleHooks.getCurrentServer();
+        net.bullettrain.xenopixelsmod.combat.controller.CombatControllerService.reconcile(server);
         ModNetwork.sendToAll(new SyncServerConfigPacket(XenoServerConfig.snapshot()));
         ModNetwork.sendToAll(new SyncDmzHudStatePacket(XenoServerConfig.dmzHudEnabled));
+        net.bullettrain.xenopixelsmod.combat.v3.V3CombatServer.resyncAll(server);
     }
 
     private static void syncTo(ServerPlayer player) {
+        net.bullettrain.xenopixelsmod.combat.controller.CombatControllerService.reconcile(player.getServer());
         ModNetwork.sendToPlayer(player, new SyncServerConfigPacket(XenoServerConfig.snapshot()));
         ModNetwork.sendToPlayer(player, new SyncDmzHudStatePacket(XenoServerConfig.dmzHudEnabled));
+        net.bullettrain.xenopixelsmod.combat.v3.V3CombatServer.clear(player);
+        net.bullettrain.xenopixelsmod.combat.v3.V3CombatServer.syncTo(player);
     }
 }

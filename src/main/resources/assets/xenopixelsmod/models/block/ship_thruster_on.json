@@ -1,12 +1,3 @@
-{
-  "parent": "minecraft:block/cube",
-  "textures": {
-    "particle": "xenopixelsmod:block/ship_thruster_side",
-    "north": "xenopixelsmod:block/ship_thruster_front_on",
-    "south": "xenopixelsmod:block/ship_thruster_back",
-    "east": "xenopixelsmod:block/ship_thruster_side",
-    "west": "xenopixelsmod:block/ship_thruster_side",
-    "up": "xenopixelsmod:block/ship_thruster_side",
-    "down": "xenopixelsmod:block/ship_thruster_side"
-  }
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:405657331634667086a3987b5a15ef4f43d81e349999ab6504c5478a3eaf04b7
+size 445

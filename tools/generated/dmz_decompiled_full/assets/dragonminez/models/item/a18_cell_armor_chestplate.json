@@ -1,6 +1,3 @@
-{
-  "parent": "minecraft:item/generated",
-  "textures": {
-    "layer0": "dragonminez:item/armors/a18_cell_armor_chestplate"
-  }
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:b0a0399e59099bfb122305572814c51a3b3d49027e3672e8aa55c88554b157dc
+size 129

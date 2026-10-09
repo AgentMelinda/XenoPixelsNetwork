@@ -56,6 +56,12 @@ public final class XenoAuraCommands {
         root = root.then(Commands.literal("live")
                 .then(Commands.literal("on").executes(ctx -> live(ctx.getSource(), true)))
                 .then(Commands.literal("off").executes(ctx -> live(ctx.getSource(), false))));
+        root = root.then(Commands.literal("ki")
+                .then(Commands.literal("on").executes(ctx -> ki(ctx.getSource(), true)))
+                .then(Commands.literal("off").executes(ctx -> ki(ctx.getSource(), false)))
+                // The same as off, under the name people look for.
+                .then(Commands.literal("dmz").executes(ctx -> ki(ctx.getSource(), false)))
+                .then(Commands.literal("original").executes(ctx -> ki(ctx.getSource(), false))));
         root = root.then(Commands.literal("maxheight")
                 .then(Commands.argument("times", com.mojang.brigadier.arguments.FloatArgumentType.floatArg(1f, 10f))
                         .executes(ctx -> maxHeight(ctx.getSource(),
@@ -123,6 +129,15 @@ public final class XenoAuraCommands {
         XenoClientConfig.save();
         source.sendSuccess(() -> Component.literal("HD aura: stretched at most " + times
                 + "x tall by the ki aura height"), false);
+        return 1;
+    }
+
+    private static int ki(CommandSourceStack source, boolean on) {
+        XenoClientConfig.hdKi = on;
+        XenoClientConfig.save();
+        source.sendSuccess(() -> Component.literal(on
+                ? "HD ki: DragonMineZ ki attacks are drawn with the HD effects"
+                : "HD ki: off, DragonMineZ draws its own ki attacks"), false);
         return 1;
     }
 

@@ -1,21 +1,3 @@
-{
-  "type": "minecraft:block",
-  "pools": [
-    {
-      "bonus_rolls": 0.0,
-      "conditions": [
-        {
-          "condition": "minecraft:survives_explosion"
-        }
-      ],
-      "entries": [
-        {
-          "type": "minecraft:item",
-          "name": "dragonminez:fuel_generator"
-        }
-      ],
-      "rolls": 1.0
-    }
-  ],
-  "random_sequence": "dragonminez:blocks/fuel_generator"
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:756388910ef09d58aabd9091c4d7534461878b352b75ab3b7b54a849f9167e05
+size 400

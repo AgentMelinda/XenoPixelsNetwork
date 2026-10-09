@@ -28,6 +28,7 @@ python tools/effekseer/gen_effects.py hakai --preview  # also save editor frame 
 | `hakai` | `hakai_channel`, `hakai_crumble`, `hakai_erase`, `hakai_palm` | Dragon Ball Super Hakai: purple veil, violet shards breaking away, no explosion |
 | `thruster` | `missile_thruster`, `ship_thruster` | Rocket exhaust: white-hot core, orange-red flame cone, Mach diamonds, sparks, red glow, reddish-grey smoke trail |
 | `sparking` | `sparking_aura`, `sparking_burst` | Budokai Tenkaichi 3 Sparking: gold ki veil, lightning, embers, dust ring, rocks; a flash and shockwave at the start |
+| `ki` | `ki/ki_<part>_<hex>`: 13 parts x the aura palette (90 colours) | HD Dragon Ball Super ki, one look per DragonMineZ ki type: `charge`, `ball`, `giant`, `wave_body`/`wave_head`/`wave_muzzle`, `laser`, `spiral`, `disc`, `explosion`, `shield`, `area`, `impact`. Played by `V3KiShots` (server) and `HdKiClient` (DMZ ki, client) through `KiLook`. Full build ~10 min; `KI_COLOURS=29b6f6` builds one colour. Borrows CC-0 sample textures (see `effeks/credits.txt`) |
 | `aura` / `aura2` / `aura3` | shared colour folders | HD auras: v1 billow column, v2 spiked silhouette, v3 silhouette + punch edges + form-coloured sparking |
 
 **Aura look changes.** A definition or colour tweak for aura3 needs a full

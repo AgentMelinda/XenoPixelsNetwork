@@ -1,6 +1,3 @@
-{
-  "parent": "minecraft:item/generated",
-  "textures": {
-    "layer0": "dragonminez:item/armors/invencible_blue_armor_chestplate"
-  }
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:21bcef07c5af0490a2d4155b0e2e97487700517e9e4466f861c87db94d5afa1e
+size 136

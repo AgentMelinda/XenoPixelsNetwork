@@ -1,8 +1,3 @@
-{
-  "parent": "minecraft:block/cube_bottom_top",
-  "textures": {
-    "bottom": "dragonminez:block/sacred_planet_grass_block_down",
-    "side": "dragonminez:block/sacred_planet_grass_block_side",
-    "top": "dragonminez:block/sacred_planet_grass_block_top"
-  }
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:68ab4f4c36d21bf38f67fa2ee7e6881a93b028dcd4411d1b3c1b61180951bae9
+size 261

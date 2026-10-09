@@ -1,30 +1,3 @@
-{
-  "attributes": {
-    "attack_range": 2.5,
-    "two_handed": true,
-    "category": "double_axe",
-    "attacks": [
-      {
-        "hitbox": "HORIZONTAL_PLANE",
-        "damage_multiplier": 1,
-        "angle": 180,
-        "upswing": 0.5,
-        "animation": "combat.two_handed_slash_horizontal_right",
-        "swing_sound": {
-          "id": "dragonminez:double_axe_swing"
-        }
-      },
-      {
-        "hitbox": "HORIZONTAL_PLANE",
-        "damage_multiplier": 1,
-        "angle": 360,
-        "upswing": 0.5,
-        "animation": "combat.two_handed_spin",
-        "swing_sound": {
-          "id": "dragonminez:double_axe_swing",
-          "pitch": 1.1
-        }
-      }
-    ]
-  }
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:6237d107e335eaba1297ec4766db39dc5a44e87498125d993dbc67ee3ee41330
+size 721

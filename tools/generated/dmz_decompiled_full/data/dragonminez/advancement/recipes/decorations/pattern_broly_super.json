@@ -1,32 +1,3 @@
-{
-  "parent": "minecraft:recipes/root",
-  "criteria": {
-    "has_blank_pattern_super": {
-      "conditions": {
-        "items": [
-          {
-            "items": "dragonminez:blank_pattern_super"
-          }
-        ]
-      },
-      "trigger": "minecraft:inventory_changed"
-    },
-    "has_the_recipe": {
-      "conditions": {
-        "recipe": "dragonminez:pattern_broly_super"
-      },
-      "trigger": "minecraft:recipe_unlocked"
-    }
-  },
-  "requirements": [
-    [
-      "has_the_recipe",
-      "has_blank_pattern_super"
-    ]
-  ],
-  "rewards": {
-    "recipes": [
-      "dragonminez:pattern_broly_super"
-    ]
-  }
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:831204b2d58bf1d0b6ba56ee0f26f61b47b6daeaaabdad327235f205767d2df8
+size 621

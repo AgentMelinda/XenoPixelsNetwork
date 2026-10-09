@@ -1,31 +1,3 @@
-{
-  "type": "minecraft:crafting_shaped",
-  "category": "redstone",
-  "group": "dragonminez",
-  "key": {
-    "B": {
-      "item": "minecraft:blue_concrete"
-    },
-    "O": {
-      "item": "minecraft:observer"
-    },
-    "P": {
-      "item": "dragonminez:radar_piece"
-    },
-    "R": {
-      "item": "minecraft:redstone_torch"
-    },
-    "T": {
-      "item": "dragonminez:t1_radar_cpu"
-    }
-  },
-  "pattern": [
-    "ROR",
-    "BPB",
-    "TTT"
-  ],
-  "result": {
-    "count": 1,
-    "id": "dragonminez:t2_radar_chip"
-  }
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:3697e8aeeb9beb810e3494225a174004cc6c8f58f6eaca20eacab5ef62669aaf
+size 520

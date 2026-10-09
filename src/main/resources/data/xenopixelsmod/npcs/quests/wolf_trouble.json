@@ -1,14 +1,3 @@
-{
-  "title": "Wolf Trouble",
-  "description": "Drive off 5 wolves",
-  "target": 5,
-  "objective": "kill_type",
-  "parameter": "minecraft:wolf",
-  "reward": {
-    "skill_points": 1,
-    "experience": 40,
-    "items": [
-      { "id": "minecraft:cooked_beef", "count": 4 }
-    ]
-  }
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:11dc783e0b32e9371b841ead5b0a980a7ab56e54e73290a3d18822ba9afbe98a
+size 282

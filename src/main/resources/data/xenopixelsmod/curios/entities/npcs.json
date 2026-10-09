@@ -1,25 +1,3 @@
-{
-  "replace": false,
-  "entities": [
-    "customnpcs:customnpc",
-    "customnpcs:customnpc64x32",
-    "customnpcs:customnpcalex",
-    "customnpcs:customnpcclassic",
-    "mynpcs:customnpc",
-    "mynpcs:customnpc64x32",
-    "mynpcs:customnpcalex",
-    "mynpcs:customnpcclassic"
-  ],
-  "slots": [
-    "curio",
-    "head",
-    "necklace",
-    "back",
-    "body",
-    "bracelet",
-    "hands",
-    "ring",
-    "belt",
-    "charm"
-  ]
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:4e08ee126fdfcd0752a956b9d0c352affb94e1a33a42857af0eb048ae980eddb
+size 431

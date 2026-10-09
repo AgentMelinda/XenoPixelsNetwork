@@ -1,13 +1,3 @@
-{
-  "placement": {
-    "type": "dragonminez:biome_aware_placement",
-    "salt": 99887766,
-    "valid_biomes": "#dragonminez:is_rockybiome"
-  },
-  "structures": [
-    {
-      "structure": "dragonminez:gero_lab",
-      "weight": 1
-    }
-  ]
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:121668724c7d235d0f1246e756dd841f561e2e541d9235a4a01d2de1a5aa8541
+size 240

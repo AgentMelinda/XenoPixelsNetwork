@@ -1,6 +1,3 @@
-{
-  "parent": "minecraft:item/generated",
-  "textures": {
-    "layer0": "dragonminez:item/saiyan_ship"
-  }
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:5d134420f8ac3ba86c64cfd435cb920e8e1ff0f252b81b2582840709d0e62192
+size 108

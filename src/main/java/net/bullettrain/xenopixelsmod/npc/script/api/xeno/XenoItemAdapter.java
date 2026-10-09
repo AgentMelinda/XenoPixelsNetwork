@@ -33,10 +33,10 @@ import java.util.Objects;
 
 /**
  * A live item stack as XenoAPI's {@link IItemStack}; changes apply to the wrapped stack. Item NBT
- * does not exist in 1.21.1: {@link #hasNbt}/{@link #removeNbt} act on the custom-data component
- * and {@link #getItemNbt} is a detached save snapshot.
+ * is represented by components in 1.21.1: {@link #getNbt}/{@link #hasNbt}/{@link #removeNbt}
+ * act on custom data, while {@link #getItemNbt} is a detached full-stack save snapshot.
  */
-public final class XenoItemAdapter implements IItemStack {
+public class XenoItemAdapter implements IItemStack {
     static final int MAX_LORE_LINES = 64;
     static final int MAX_ENCHANT_LEVEL = 255;
 
@@ -168,7 +168,9 @@ public final class XenoItemAdapter implements IItemStack {
 
     // ------------------------------------------------------------------ data
 
-    @Override public boolean hasNbt() { return stack.has(DataComponents.CUSTOM_DATA); }
+    @Override public boolean hasNbt() {
+        return !stack.getOrDefault(DataComponents.CUSTOM_DATA, net.minecraft.world.item.component.CustomData.EMPTY).isEmpty();
+    }
     @Override public void removeNbt() { stack.remove(DataComponents.CUSTOM_DATA); }
 
     /** A detached snapshot of the whole saved stack; writing to it changes nothing. */
@@ -180,13 +182,13 @@ public final class XenoItemAdapter implements IItemStack {
 
     // ------------------------------------------------------------------ copies / comparison
 
-    @Override public IItemStack copy() { return new XenoItemAdapter(stack.copy()); }
+    @Override public IItemStack copy() { return XenoApiAdapters.wrap(stack.copy()); }
 
     /** Splits {@code stackSize} items off this stack into a new one, as vanilla {@code split}. */
     @Override
     public IItemStack split(int stackSize) {
         if (stackSize < 1) throw new IllegalArgumentException("IItemStack.split: size must be at least 1");
-        return new XenoItemAdapter(stack.split(stackSize));
+        return XenoApiAdapters.wrap(stack.split(stackSize));
     }
 
     @Override
@@ -320,7 +322,15 @@ public final class XenoItemAdapter implements IItemStack {
         throw XenoApiAdapters.unsupported("IItemStack.getMCItemStack (raw handles are not exposed)");
     }
 
-    @Override public INbt getNbt() { throw XenoApiAdapters.unsupported("IItemStack.getNbt (1.21 items have components, not NBT; use getItemNbt)"); }
+    /**
+     * Live custom-data view; built-in name, lore and enchantment components remain separate.
+     * Reading does not create custom data. Setters re-read the latest component and commit a copy.
+     */
+    @Override public INbt getNbt() {
+        return XenoNbtAdapter.ofView(() -> stack.getOrDefault(DataComponents.CUSTOM_DATA,
+                        net.minecraft.world.item.component.CustomData.EMPTY).copyTag(),
+                tag -> net.minecraft.world.item.component.CustomData.set(DataComponents.CUSTOM_DATA, stack, tag));
+    }
     /**
      * Wears the stack by {@code damage}, as use would: unbreaking applies, and a stack that breaks
      * is used up. {@code living} is who wears it; null wears it with no one to credit.

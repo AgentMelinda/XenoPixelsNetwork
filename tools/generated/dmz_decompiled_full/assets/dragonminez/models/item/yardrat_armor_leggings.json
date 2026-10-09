@@ -1,6 +1,3 @@
-{
-  "parent": "minecraft:item/generated",
-  "textures": {
-    "layer0": "dragonminez:item/armors/yardrat_armor_leggings"
-  }
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:2020d15a8205c91d2f878ed46725f64eba07cb93a2a1d79d8137c7bfa4681720
+size 126

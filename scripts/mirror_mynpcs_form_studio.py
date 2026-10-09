@@ -9,7 +9,7 @@ SRC = pathlib.Path("src/main/java/net/bullettrain/xenopixelsmod/client/compat/np
 DST = pathlib.Path("src/main/java/net/bullettrain/xenopixelsmod/client/compat/npc/mynpcs/gui")
 FILES = ["GuiNpcDmzForms.java", "GuiNpcDmzFormEditor.java", "GuiNpcDmzFormAuraPreview.java",
          "GuiNpcDmzTrainerPicker.java", "GuiNpcDmz.java", "GuiNpcDmzStack.java",
-         "GuiNpcDmzSkills.java", "GuiNpcDmzSkillMaster.java"]
+         "GuiNpcDmzSkills.java", "GuiNpcDmzSkillMaster.java", "GuiNpcDmzBrain.java"]
 
 for name in FILES:
     text = (SRC / name).read_text(encoding="utf-8")

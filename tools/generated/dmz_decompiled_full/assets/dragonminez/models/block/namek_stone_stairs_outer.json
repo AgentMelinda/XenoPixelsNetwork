@@ -1,8 +1,3 @@
-{
-  "parent": "minecraft:block/outer_stairs",
-  "textures": {
-    "bottom": "dragonminez:block/namek_stone",
-    "side": "dragonminez:block/namek_stone",
-    "top": "dragonminez:block/namek_stone"
-  }
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:e01419ac41f4bd18bc502d0a2ef82ce470be9000f685279c7381515c20de57c1
+size 202

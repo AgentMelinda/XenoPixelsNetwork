@@ -1,30 +1,3 @@
-{
-  "type": "minecraft:crafting_shaped",
-  "category": "misc",
-  "key": {
-    "A": {
-      "item": "minecraft:anvil"
-    },
-    "C": {
-      "item": "dragonminez:t1_radar_cpu"
-    },
-    "I": {
-      "item": "minecraft:iron_block"
-    },
-    "R": {
-      "item": "minecraft:repeater"
-    },
-    "W": {
-      "tag": "dragonminez:weighted_items"
-    }
-  },
-  "pattern": [
-    "RWR",
-    "ICI",
-    "RAR"
-  ],
-  "result": {
-    "count": 1,
-    "id": "dragonminez:gravity_device"
-  }
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:fd0e7ad5a1e532e32e1d33680cdad4e925e0ea6b7af5efc6496189addd5a3322
+size 481

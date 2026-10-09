@@ -1,6 +1,3 @@
-{
-  "parent": "minecraft:item/generated",
-  "textures": {
-    "layer0": "dragonminez:item/armors/wonder_majin_armor_leggings"
-  }
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:b79bce19acde177dfdb2cbbceeefc7234c29fc2ede71bd3c1d597bc8ca659012
+size 131

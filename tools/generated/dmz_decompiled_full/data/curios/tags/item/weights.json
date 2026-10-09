@@ -1,8 +1,3 @@
-{
-  "replace": false,
-  "values": [
-    "dragonminez:weight_turtle_shell",
-    "dragonminez:workout_weights",
-    "dragonminez:weight_piccolo_cape"
-  ]
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:a78ba1b1c96f2d5bc6516222a1079f9daf4f02087f4161bdbf7b145f2cb8fb1f
+size 162

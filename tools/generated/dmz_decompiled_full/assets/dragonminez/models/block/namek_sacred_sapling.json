@@ -1,7 +1,3 @@
-{
-  "parent": "minecraft:block/cross",
-  "render_type": "minecraft:cutout",
-  "textures": {
-    "cross": "dragonminez:block/namek_sacred_sapling"
-  }
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:43ccb7ccce09e9f316bed91c27361f8fb797628287795e4b93e28cd7dfd3a729
+size 151

@@ -1,6 +1,3 @@
-{
-  "parent": "minecraft:item/generated",
-  "textures": {
-    "layer0": "dragonminez:item/armors/invencible_blue_armor_leggings"
-  }
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:b357bb68a96886295703c6b31e2ab1d49fbc51b5949cdbbbc669bdcbbb47c454
+size 134

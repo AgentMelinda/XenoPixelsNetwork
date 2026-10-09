@@ -1,6 +1,3 @@
-{
-  "parent": "minecraft:item/generated",
-  "textures": {
-    "layer0": "dragonminez:item/armors/thragg_armor_boots"
-  }
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:6845b9abf82939ac490b79b84864cbe32a033932ee21e8330f03a71a81715b51
+size 122

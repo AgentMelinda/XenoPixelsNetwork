@@ -1,6 +1,3 @@
-{
-  "parent": "minecraft:item/generated",
-  "textures": {
-    "layer0": "dragonminez:item/weight_piccolo_cape"
-  }
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:aeaefda74986f7c90a5689726f1e4bb8570ae2ebbfeccebc34badbceadd9178e
+size 116

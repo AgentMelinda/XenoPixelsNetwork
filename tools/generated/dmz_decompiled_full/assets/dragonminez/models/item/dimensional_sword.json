@@ -1,1 +1,3 @@
-{"parent":"minecraft:item/handheld","loader":"neoforge:separate_transforms","base":{"parent":"dragonminez:item/dimensional_sword_3d"},"perspectives":{"gui":{"parent":"dragonminez:item/dimensional_sword_2d"},"ground":{"parent":"dragonminez:item/dimensional_sword_2d"},"fixed":{"parent":"dragonminez:item/dimensional_sword_2d"}}}
+version https://git-lfs.github.com/spec/v1
+oid sha256:dc84ac494b1761d923a757d48f5b811dd27aba278f78a355fb5201e286eb5638
+size 327

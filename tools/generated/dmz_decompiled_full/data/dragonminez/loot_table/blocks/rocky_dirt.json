@@ -1,21 +1,3 @@
-{
-  "type": "minecraft:block",
-  "pools": [
-    {
-      "bonus_rolls": 0.0,
-      "conditions": [
-        {
-          "condition": "minecraft:survives_explosion"
-        }
-      ],
-      "entries": [
-        {
-          "type": "minecraft:item",
-          "name": "dragonminez:rocky_dirt"
-        }
-      ],
-      "rolls": 1.0
-    }
-  ],
-  "random_sequence": "dragonminez:blocks/rocky_dirt"
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:0439e16403198bb204168872347e29528512841464f1835f10f51b6aa5c4b0a4
+size 392

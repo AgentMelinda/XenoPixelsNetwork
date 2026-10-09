@@ -1,6 +1,3 @@
-{
-  "parent": "minecraft:item/generated",
-  "textures": {
-    "layer0": "dragonminez:item/armors/beerus_armor_boots"
-  }
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:a5c5ed937282ac7a09d356603f95585643177dd4db8d28b934e90157bfef717c
+size 122

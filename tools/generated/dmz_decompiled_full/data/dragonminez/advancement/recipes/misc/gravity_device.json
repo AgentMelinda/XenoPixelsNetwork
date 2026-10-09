@@ -1,32 +1,3 @@
-{
-  "parent": "minecraft:recipes/root",
-  "criteria": {
-    "has_radar_cpu": {
-      "conditions": {
-        "items": [
-          {
-            "items": "dragonminez:t1_radar_cpu"
-          }
-        ]
-      },
-      "trigger": "minecraft:inventory_changed"
-    },
-    "has_the_recipe": {
-      "conditions": {
-        "recipe": "dragonminez:gravity_device"
-      },
-      "trigger": "minecraft:recipe_unlocked"
-    }
-  },
-  "requirements": [
-    [
-      "has_the_recipe",
-      "has_radar_cpu"
-    ]
-  ],
-  "rewards": {
-    "recipes": [
-      "dragonminez:gravity_device"
-    ]
-  }
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:bd2b58981c916e3d976e6964492092cc335c88562a7498c080e2f4a5ded84c6d
+size 584

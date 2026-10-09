@@ -1,13 +1,3 @@
-{
-  "asset_definition": "shenron",
-  "ball_set": "earth",
-  "dimensions": [
-    "minecraft:overworld"
-  ],
-  "entity_height": 17.0,
-  "entity_registry_name": "shenron",
-  "entity_width": 3.0,
-  "id": "shenron",
-  "wish_count": 1,
-  "wish_screen_id": "shenron"
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:af20fc1168013b7ee276b905ca744b9aef438e00daa6200f0cbcb9b524166baf
+size 261

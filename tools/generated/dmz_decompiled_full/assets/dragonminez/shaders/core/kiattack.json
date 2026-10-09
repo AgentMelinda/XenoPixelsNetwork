@@ -1,27 +1,3 @@
-{
-  "blend": {
-    "func": "add",
-    "srcrgb": "srcalpha",
-    "dstrgb": "1-srcalpha"
-  },
-  "vertex": "dragonminez:kiattack",
-  "fragment": "dragonminez:kiattack",
-  "attributes": ["Position", "Color", "UV0", "UV1", "UV2", "Normal"],
-  "samplers": [{"name": "DiffuseSampler"}],
-  "uniforms": [
-    { "name": "ModelViewMat", "type": "matrix4x4", "count": 16, "values": [1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0] },
-    { "name": "ProjMat", "type": "matrix4x4", "count": 16, "values": [1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0] },
-    { "name": "colorCore", "type": "float", "count": 3, "values": [1.0, 1.0, 1.0] },
-    { "name": "colorBorder", "type": "float", "count": 3, "values": [1.0, 1.0, 1.0] },
-    { "name": "colorOutline", "type": "float", "count": 3, "values": [1.0, 1.0, 1.0] },
-    { "name": "alphaMult", "type": "float", "count": 1, "values": [1.0] },
-    { "name": "time", "type": "float", "count": 1, "values": [0.0] },
-    { "name": "texBlend", "type": "float", "count": 1, "values": [0.0] },
-    { "name": "bloomMode", "type": "float", "count": 1, "values": [0.0] },
-    { "name": "globalAlpha", "type": "float", "count": 1, "values": [1.0] },
-    { "name": "shapeMode", "type": "float", "count": 1, "values": [0.0] },
-    { "name": "localPosMode", "type": "float", "count": 1, "values": [0.0] },
-    { "name": "zCut", "type": "float", "count": 1, "values": [-1.0] },
-    { "name": "zCutFar", "type": "float", "count": 1, "values": [2.0] }
-  ]
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:417bf93bdfb7860d55fa15d9eea27190f6d59b4c3d077bcdc4c77b9563c19f79
+size 1565

@@ -1,6 +1,3 @@
-{
-  "parent": "minecraft:item/generated",
-  "textures": {
-    "layer0": "dragonminez:item/dball3_namek"
-  }
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:df983b7ecc3ce1ac8d345087321d41363e080eece833847458258111a48f5a84
+size 109

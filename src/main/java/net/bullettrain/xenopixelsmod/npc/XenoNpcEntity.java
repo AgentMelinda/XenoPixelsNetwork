@@ -290,7 +290,7 @@ public class XenoNpcEntity extends PathfinderMob
 
     private void updateBossBar(NpcCombatProfile profile) {
         if (nativeBossBar == null) return;
-        nativeBossBar.setVisible(profile.bossBar && isAlive());
+        nativeBossBar.setVisible(profile.showBossBar(getTarget() != null) && isAlive());
         if (!profile.bossBar) return;
         nativeBossBar.setName(getDisplayName());
         nativeBossBar.setColor(XenoNpcBehaviour.bossBarColor(profile));
@@ -330,6 +330,10 @@ public class XenoNpcEntity extends PathfinderMob
     // worth keeping - is on the profile and saved there.
     private int pathIndex = -1;
     private int pathPointTicks;
+    private int pathDwellTicks = -1;
+
+    public int pathDwellTicks() { return pathDwellTicks; }
+    public void setPathDwellTicks(int ticks) { pathDwellTicks = ticks; }
     private boolean pathForward = true;
 
     /** Which point of its route this NPC is heading for, or -1 when it is not patrolling. */
@@ -567,6 +571,42 @@ public class XenoNpcEntity extends PathfinderMob
 
     @Override
     public void aiStep() {
+        boolean controlledVictim = !level().isClientSide()
+                && net.bullettrain.xenopixelsmod.combat.v3.technique.V3TechniqueRuntime
+                        .isControlledVictim(getUUID());
+        boolean recovering = !level().isClientSide()
+                && (net.bullettrain.xenopixelsmod.compat.npc.NpcKnockbackGrace.active(this)
+                || controlledVictim);
+        if (recovering) {
+            // Mob NoAI also disables local travel. Run the vanilla bookkeeping without goals,
+            // then consume the impulse once after restoring ordinary AI ownership. A cinematic
+            // or editor NoAI NPC stays under its external movement controller.
+            // Owner revert 2026-03-22: do not force face-away/toward — keep the yaw that already
+            // existed this tick so fly combat can keep facing the player.
+            boolean previousNoAi = isNoAi();
+            float yaw = getYRot(), pitch = getXRot(), head = yHeadRot, body = yBodyRot;
+            getNavigation().stop();
+            if (controlledVictim || previousNoAi) {
+                // Keep externally owned flags entirely untouched, including callback release.
+                super.aiStep();
+                return;
+            }
+            setNoAi(true);
+            try {
+                super.aiStep();
+            } finally {
+                if (!net.bullettrain.xenopixelsmod.combat.v3.technique.V3TechniqueRuntime
+                        .isControlledVictim(getUUID())) setNoAi(false);
+            }
+            if (net.bullettrain.xenopixelsmod.combat.v3.technique.V3TechniqueRuntime
+                    .isControlledVictim(getUUID())) return;
+            super.travel(net.minecraft.world.phys.Vec3.ZERO);
+            setYRot(yaw);
+            setXRot(pitch);
+            yHeadRot = head;
+            yBodyRot = body;
+            return;
+        }
         if (!level().isClientSide()) {
             net.bullettrain.xenopixelsmod.compat.npc.NpcTargetKeeper.dropInvalidTarget(this);
         }

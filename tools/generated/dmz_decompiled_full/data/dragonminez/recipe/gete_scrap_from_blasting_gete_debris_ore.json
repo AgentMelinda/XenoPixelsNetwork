@@ -1,14 +1,3 @@
-{
-  "type": "minecraft:blasting",
-  "category": "misc",
-  "cookingtime": 100,
-  "experience": 3.5,
-  "group": "gete",
-  "ingredient": {
-    "item": "dragonminez:gete_debris_ore"
-  },
-  "result": {
-    "count": 1,
-    "id": "dragonminez:gete_scrap"
-  }
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:b3c05b506cc185a3a2403fecb909f501e35dd188473d8d658ed4bfdb00c99260
+size 253

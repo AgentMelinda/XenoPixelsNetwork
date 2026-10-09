@@ -1,8 +1,3 @@
-{
-  "parent": "minecraft:block/door_top_right_open",
-  "render_type": "minecraft:cutout",
-  "textures": {
-    "bottom": "dragonminez:block/namek_ajissa_door_bottom",
-    "top": "dragonminez:block/namek_ajissa_door_top"
-  }
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:f38e168c87f383b9bb9094c97c94531c29f35bb261b1035d879fbcd406592bcb
+size 224

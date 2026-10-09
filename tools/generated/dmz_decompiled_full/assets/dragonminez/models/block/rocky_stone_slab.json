@@ -1,8 +1,3 @@
-{
-  "parent": "minecraft:block/slab",
-  "textures": {
-    "bottom": "dragonminez:block/rocky_stone",
-    "side": "dragonminez:block/rocky_stone",
-    "top": "dragonminez:block/rocky_stone"
-  }
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:f1575c7df496b6573d8cf03b57ce0c5a7b2c27b5fd9817c09f4933517c6aa818
+size 194

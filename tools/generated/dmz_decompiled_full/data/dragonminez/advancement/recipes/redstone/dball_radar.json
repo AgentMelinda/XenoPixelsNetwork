@@ -1,32 +1,3 @@
-{
-  "parent": "minecraft:recipes/root",
-  "criteria": {
-    "has_t1_radar_chip": {
-      "conditions": {
-        "items": [
-          {
-            "items": "dragonminez:t1_radar_chip"
-          }
-        ]
-      },
-      "trigger": "minecraft:inventory_changed"
-    },
-    "has_the_recipe": {
-      "conditions": {
-        "recipe": "dragonminez:dball_radar"
-      },
-      "trigger": "minecraft:recipe_unlocked"
-    }
-  },
-  "requirements": [
-    [
-      "has_the_recipe",
-      "has_t1_radar_chip"
-    ]
-  ],
-  "rewards": {
-    "recipes": [
-      "dragonminez:dball_radar"
-    ]
-  }
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:67a94518676ad128bc34c14b3d8b9bc839878213177f6530380dd458460dd318
+size 587

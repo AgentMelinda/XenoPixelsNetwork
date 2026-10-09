@@ -1,6 +1,3 @@
-{
-  "parent": "minecraft:block/pressure_plate_up",
-  "textures": {
-    "texture": "dragonminez:block/namek_ajissa_planks"
-  }
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:bb23fe3e9cf520bf559f6c5ad9e220a0053d3ebfad604624a6424dd643d3193a
+size 127

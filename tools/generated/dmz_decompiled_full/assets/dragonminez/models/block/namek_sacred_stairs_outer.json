@@ -1,8 +1,3 @@
-{
-  "parent": "minecraft:block/outer_stairs",
-  "textures": {
-    "bottom": "dragonminez:block/namek_sacred_planks",
-    "side": "dragonminez:block/namek_sacred_planks",
-    "top": "dragonminez:block/namek_sacred_planks"
-  }
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:ae2e36a37729e9d7a75b2074bf63ed79ba56dc1e1070ed576174b26cb32dde07
+size 226

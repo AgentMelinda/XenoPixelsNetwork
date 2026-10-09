@@ -1,13 +1,3 @@
-{
-  "placement": {
-    "type": "dragonminez:biome_aware_placement",
-    "salt": 44332211,
-    "valid_biomes": "#dragonminez:is_sacredland"
-  },
-  "structures": [
-    {
-      "structure": "dragonminez:elder_guru",
-      "weight": 1
-    }
-  ]
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:35ec45de6b1fbea891d7780a7313c4c22ad6e0428260ed8c95f973bb57c6466d
+size 242

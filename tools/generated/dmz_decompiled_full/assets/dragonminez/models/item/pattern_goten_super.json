@@ -1,6 +1,3 @@
-{
-  "parent": "minecraft:item/generated",
-  "textures": {
-    "layer0": "dragonminez:item/patterns/pattern_goten_super"
-  }
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:81dec7d649a625719ec811a83fe135f4948a0856b8791dfbcfbce127f6575a28
+size 125

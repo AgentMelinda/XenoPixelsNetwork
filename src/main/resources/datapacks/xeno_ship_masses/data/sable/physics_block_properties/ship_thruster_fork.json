@@ -1,6 +1,3 @@
-{
-  "selector": "xenopixelsmod:ship_thruster_fork",
-  "properties": {
-    "sable:mass": 3.0
-  }
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:d66400d7fd33046cab5ea11f89bcb10e01a8f0e5225196b1c1b88a5876634daf
+size 99

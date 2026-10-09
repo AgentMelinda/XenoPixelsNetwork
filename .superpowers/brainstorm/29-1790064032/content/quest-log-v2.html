@@ -1,0 +1,105 @@
+<h2>Quest log — corrected structure</h2>
+<p class="subtitle">
+  Redrawn from your description: category tabs (natural sort) → quest list in the selected
+  category → detail with paginated log text, objectives, and the NPC who completes it.
+  Reached from beside the inventory, not from the editor.
+</p>
+
+<style>
+  .mc { font-family: ui-monospace, "Consolas", monospace; }
+  .panel { background:#0b1b2e; border:2px solid #4fc3d9; color:#e8eef5; font-size:12px; line-height:1.5; }
+  .gold { color:#ffd54f; } .dim { color:#8fa3b8; } .green { color:#7ddf7d; }
+  .ctabs { display:flex; gap:2px; padding:6px 6px 0; }
+  .ctab { padding:3px 10px; background:#0b1b2e; border:1px solid #2d5a80; border-bottom:none;
+          color:#8fa3b8; font-size:11px; }
+  .ctab.on { background:#14304d; border-color:#4fc3d9; color:#ffd54f; }
+  .body { display:grid; grid-template-columns:38% 62%; gap:8px; padding:8px; border-top:1px solid #4fc3d9; }
+  .row { padding:4px 6px; border-bottom:1px solid #16324f; }
+  .row.sel { background:#14304d; border-left:3px solid #ffd54f; }
+  .glyph { color:#ffd54f; margin-right:5px; }
+  .bar { height:6px; background:#14304d; border:1px solid #2d5a80; margin-top:3px; }
+  .bar > i { display:block; height:100%; background:#4fc3d9; }
+  .pager { text-align:center; color:#8fa3b8; font-size:11px; margin-top:6px; }
+  .gap { background:#2a1414; border-left:3px solid #d96f6f; padding:8px 10px; margin:6px 0;
+         font-size:13px; }
+  .gap b { color:#e08a8a; }
+  .invmock { display:flex; align-items:flex-start; gap:6px; margin-top:8px; }
+  .invbox { width:180px; height:96px; background:#c6c6c6; border:2px solid #555; }
+  .sidetab { width:30px; height:28px; background:#0b1b2e; border:2px solid #4fc3d9;
+             color:#ffd54f; font-size:14px; display:flex; align-items:center; justify-content:center; }
+  .sidetab.ghost { background:#3a3a3a; border-color:#666; color:#888; }
+</style>
+
+<div class="mc">
+  <div class="panel">
+    <div class="ctabs">
+      <div class="ctab on">Main</div>
+      <div class="ctab">Side 2</div>
+      <div class="ctab">Side 10</div>
+      <div class="ctab">Guild</div>
+    </div>
+    <div class="body">
+      <div>
+        <div class="row sel"><span class="glyph">▌</span>Gold</div>
+        <div class="row"><span class="glyph">▌</span>Wolf Trouble</div>
+        <div class="row"><span class="glyph">▌</span>Pay Respects</div>
+        <div class="row dim"><span class="glyph" style="color:#4a5f75">▌</span>Hunt <span class="green">✓</span></div>
+      </div>
+      <div>
+        <div class="gold">Gold</div>
+        <div style="margin:4px 0 2px">
+          Stephanie has been asking around for something<br>
+          shiny. She mentioned earrings.
+        </div>
+        <div class="pager" style="text-align:left">Page 1 / 2</div>
+        <div class="dim" style="margin-top:8px">Objectives</div>
+        <div>Gold ore <span class="dim">3 / 10</span></div>
+        <div class="bar"><i style="width:30%"></i></div>
+        <div class="dim" style="margin-top:8px">Turn in to</div>
+        <div class="green">Stephanie</div>
+      </div>
+    </div>
+  </div>
+
+  <p class="subtitle" style="margin-top:14px">Entry point — a tab beside the inventory, the way
+    <code>XenoInventoryEffects</code> already anchors its effect rail off
+    <code>getGuiLeft()</code> / <code>getXSize()</code>.</p>
+  <div class="invmock">
+    <div class="invbox"></div>
+    <div>
+      <div class="sidetab">❑</div>
+      <div class="sidetab ghost" style="margin-top:3px">⚑</div>
+    </div>
+  </div>
+  <p class="subtitle" style="font-size:11px">quest log (lit) · faction (greyed — see below)</p>
+</div>
+
+<h2 style="margin-top:26px">What this needs that doesn't exist yet</h2>
+
+<div class="gap">
+  <b>Quests have no category.</b> <code>QuestDef</code> is
+  <code>(id, title, desc, target, goal, reward)</code> — no category field, so there is nothing to
+  build tabs from. The <em>world store</em> already groups them (<code>quests/&lt;group&gt;/&lt;id&gt;.json</code>,
+  <code>QUESTS("quests", true)</code>) so the folder can serve as the category — but datapack quests
+  under <code>npcs/quests/*.json</code> are flat and would each need a <code>"category"</code>.
+</div>
+
+<div class="gap">
+  <b>No log text, and no completed text.</b> There is only <code>description</code>, a one-liner.
+  Paginating it would be paginating a single sentence. MyNPCs carries <code>Text</code> and
+  <code>CompleteText</code> separately — both recorded in <code>docs/xeno-npc-schema.md</code>.
+</div>
+
+<div class="gap">
+  <b>No completion NPC.</b> Nothing records who a quest is turned in to; today a quest completes
+  the instant its counter hits target. MyNPCs has <code>CompleterNpc</code> plus a
+  <code>QuestCompletion</code> mode — "complete by NPC" versus player-manual. That is a
+  <em>behaviour</em> change, not just a display field: it adds a hand-in step.
+</div>
+
+<div class="gap">
+  <b>There is no player-facing faction screen to sit beside.</b>
+  <code>client/npc/faction/</code> holds only <code>ClientFactions</code>, the sync mirror — factions
+  are editor-only. So either that tab is MyNPCs' and ours ships alone for now, or a player faction
+  screen is a second sub-project.
+</div>

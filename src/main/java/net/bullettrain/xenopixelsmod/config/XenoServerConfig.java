@@ -62,7 +62,7 @@ public final class XenoServerConfig {
      * <p>Bumped to 27 (2026-10-03) for {@code tournamentOutOfBoundsLose} (default false; geometry-only v1).
      * Bumped to 26 (2026-10-03) for tournament queue+KotH keys ({@code tournamentEnabled=false}).
      */
-    private static final int CURRENT_CONFIG_VERSION = 27;
+    private static final int CURRENT_CONFIG_VERSION = 28;
 
     // --- HUD / DMZ ---
     /**
@@ -73,6 +73,8 @@ public final class XenoServerConfig {
      * accident, and because a killed NPC respawns anyway - deletion is its own action.
      */
     public static boolean xenoNpcKillCommandImmune = true;
+    /** Server ticks during which a damaged NPC cannot turn or resume an attack (0-200). */
+    public static int npcHitRecoveryTicks = 10;
 
     /**
      * Whether a dialogue option may run a server command.
@@ -335,8 +337,21 @@ public final class XenoServerConfig {
     public static boolean effekseerSparkingSmooth = false;
     /** A ki attack's explosion plays the punch impact instead of DMZ's explosion visual. */
     public static boolean effekseerKiImpacts = true;
+    /** Owned Combat V3 ki uses HD Effekseer effects; off restores native DragonMineZ rendering. */
+    public static boolean effekseerKiAttacks = true;
+    /** Strike Ki presentation: dmz | aaa | neweffects (neweffects aliases aaa HD). */
+    public static String kiAttackVisualMode = "aaa";
     /** Size of that impact (on top of the blast's own size). */
     public static float effekseerKiImpactScale = 1.0f;
+
+    /** Resolved Strike Ki presentation mode (falls back to legacy {@link #effekseerKiAttacks}). */
+    public static net.bullettrain.xenopixelsmod.combat.v3.ki.KiAttackVisualMode kiAttackVisual() {
+        try {
+            return net.bullettrain.xenopixelsmod.combat.v3.ki.KiAttackVisualMode.parse(kiAttackVisualMode);
+        } catch (RuntimeException ignored) {
+            return net.bullettrain.xenopixelsmod.combat.v3.ki.KiAttackVisualMode.fromLegacy(effekseerKiAttacks);
+        }
+    }
     /**
      * Per-effect size on top of its category size, keyed by slot folder name (for example
      * {@code missile_explosion}); /xenoset <slot> <scale>. 2026-09-29 owner: sparking_flight 3.5.
@@ -1379,6 +1394,7 @@ public final class XenoServerConfig {
         d.npcCommandsIgnoreCommandBlockSetting = npcCommandsIgnoreCommandBlockSetting;
         d.combatControllerMode = normalizedCombatControllerMode();
         d.bt3CombatEnabled = bt3CombatEnabled;
+        d.npcHitRecoveryTicks = npcHitRecoveryTicks;
         d.bt3ComboEnabled = bt3ComboEnabled;
         d.bt3CinematicRushEnabled = bt3CinematicRushEnabled;
         d.bt3VanishEnabled = bt3VanishEnabled;
@@ -1486,6 +1502,8 @@ public final class XenoServerConfig {
         d.effekseerExplosionScale = effekseerExplosionScale;
         d.effekseerSparkingSmooth = effekseerSparkingSmooth;
         d.effekseerKiImpacts = effekseerKiImpacts;
+        d.effekseerKiAttacks = effekseerKiAttacks;
+        d.kiAttackVisualMode = kiAttackVisualMode;
         d.effekseerKiImpactScale = effekseerKiImpactScale;
         d.effekseerSlotScales = new LinkedHashMap<>(effekseerSlotScales);
         d.thrusterImpulseGuardEnabled = thrusterImpulseGuardEnabled;
@@ -1752,6 +1770,7 @@ public final class XenoServerConfig {
         npcCommandsIgnoreCommandBlockSetting = d.npcCommandsIgnoreCommandBlockSetting;
         combatControllerMode = normalizeCombatControllerMode(d.combatControllerMode);
         bt3CombatEnabled = d.bt3CombatEnabled;
+        npcHitRecoveryTicks = Math.max(0, Math.min(200, d.npcHitRecoveryTicks));
         bt3ComboEnabled = d.bt3ComboEnabled;
         bt3CinematicRushEnabled = d.bt3CinematicRushEnabled;
         bt3VanishEnabled = d.bt3VanishEnabled;
@@ -1826,6 +1845,9 @@ public final class XenoServerConfig {
                 ? Math.max(0.05f, Math.min(50.0f, d.effekseerExplosionScale)) : 15.0f;
         effekseerSparkingSmooth = d.effekseerSparkingSmooth;
         effekseerKiImpacts = d.effekseerKiImpacts;
+        effekseerKiAttacks = d.effekseerKiAttacks;
+        kiAttackVisualMode = d.kiAttackVisualMode == null || d.kiAttackVisualMode.isBlank()
+                ? (effekseerKiAttacks ? "aaa" : "dmz") : d.kiAttackVisualMode;
         effekseerKiImpactScale = effectScale(d.effekseerKiImpactScale);
         effekseerSlotScales.clear();
         effekseerSlotScales.putAll(DEFAULT_SLOT_SCALES());
@@ -3163,6 +3185,7 @@ public final class XenoServerConfig {
         public boolean npcCommandsIgnoreCommandBlockSetting = false;
         public String combatControllerMode = "legacy";
         public boolean bt3CombatEnabled = true;
+        public int npcHitRecoveryTicks = 10;
         public boolean bt3ComboEnabled = true;
         public boolean bt3CinematicRushEnabled = true;
         public boolean bt3VanishEnabled = true;
@@ -3225,6 +3248,8 @@ public final class XenoServerConfig {
         public float effekseerExplosionScale = 15.0f;
         public boolean effekseerSparkingSmooth = false;
         public boolean effekseerKiImpacts = true;
+        public boolean effekseerKiAttacks = true;
+        public String kiAttackVisualMode = "aaa";
         public float effekseerKiImpactScale = 1.0f;
         public Map<String, Float> effekseerSlotScales = DEFAULT_SLOT_SCALES();
 

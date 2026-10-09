@@ -1,13 +1,3 @@
-{
-  "placement": {
-    "type": "minecraft:random_spread",
-    "salt": 92037394,
-    "separation": 8,
-    "spacing": 34,
-    "spread_type": "triangular"
-  },
-  "structures": [{
-    "structure": "dragonminez:village_ajissa",
-    "weight": 1
-  }]
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:0d9c0294c8874c5e09d877988b5a9a73dcd5a905bc821505ed55476ebffd66c6
+size 257

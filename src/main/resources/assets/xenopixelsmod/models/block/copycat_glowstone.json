@@ -1,6 +1,3 @@
-{
-  "parent": "minecraft:block/cube_all",
-  "textures": {
-    "all": "xenopixelsmod:block/copycat_glowstone"
-  }
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:a9f66a48e3dd098a030848df4c5ee827612df0cf756e642f01422f9ffdaf0f2a
+size 115

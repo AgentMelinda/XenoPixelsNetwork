@@ -42,8 +42,9 @@ public class ConditionalMixinPlugin implements IMixinConfigPlugin {
             var mods = FMLLoader.getLoadingModList();
             var file = mods == null ? null : mods.getModFileById("linearreader");
             boolean supported = file != null && file.getMods().stream().anyMatch(mod ->
-                    mod.getModId().equals("linearreader") && mod.getVersion().toString().equals("1.3.0"));
-            if (file != null && !supported) LOGGER.error("LinearReader dimension policy requires verified version 1.3.0; integration skipped");
+                    mod.getModId().equals("linearreader") && net.bullettrain.xenopixelsmod.compat.linearreader.LinearReaderCompatibility.supports(mod.getVersion().toString()));
+            if (file != null && !supported) LOGGER.error("LinearReader dimension policy requires verified version {}; integration skipped",
+                    net.bullettrain.xenopixelsmod.compat.linearreader.LinearReaderCompatibility.SUPPORTED_VERSIONS);
             return supported;
         }
         // Package-based gates under mixin.compat.*

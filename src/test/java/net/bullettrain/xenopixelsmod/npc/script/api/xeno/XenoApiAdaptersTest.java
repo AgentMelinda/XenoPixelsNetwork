@@ -54,10 +54,9 @@ class XenoApiAdaptersTest {
     @Test
     void unsupportedOperationsNameTheMethodAndTheCapabilityTable() {
         IItemStack item = XenoApiAdapters.wrap(new ItemStack(Items.STONE));
-        var error = assertThrows(UnsupportedOperationException.class, item::getNbt);
-        assertTrue(error.getMessage().contains("IItemStack.getNbt"));
+        var error = assertThrows(UnsupportedOperationException.class, item::getMCItemStack);
+        assertTrue(error.getMessage().contains("IItemStack.getMCItemStack"));
         assertTrue(error.getMessage().contains(XenoApiAdapters.CAPABILITY_DOC));
-        assertThrows(UnsupportedOperationException.class, item::getMCItemStack);
     }
 
     // ------------------------------------------------------------------ positions

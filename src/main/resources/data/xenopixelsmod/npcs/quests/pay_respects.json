@@ -1,11 +1,3 @@
-{
-  "title": "Pay Respects",
-  "description": "Speak to three masters",
-  "target": 3,
-  "objective": "talk_to_npc",
-  "parameter": "master",
-  "reward": {
-    "skill_points": 1,
-    "experience": 20
-  }
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:2a477d5780b0d01ba3f8db1314ad55d2e7eecb62f473d33bb6c6e9c8817fa0f0
+size 206

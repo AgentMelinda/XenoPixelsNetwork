@@ -1,6 +1,3 @@
-{
-  "parent": "minecraft:item/generated",
-  "textures": {
-    "layer0": "dragonminez:item/armors/subaru_natsuki_armor_leggings"
-  }
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:55d05542ae23b6706c387d405a81138b46814467460729867d132f00f3fb04eb
+size 133

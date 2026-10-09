@@ -1,6 +1,3 @@
-{
-  "parent": "minecraft:item/generated",
-  "textures": {
-    "layer0": "dragonminez:item/kikono_stick"
-  }
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:4db7e3ce50aaee721b77ace3e6a2db8b22f9a600f7cdad7c28bf2ab364233208
+size 109

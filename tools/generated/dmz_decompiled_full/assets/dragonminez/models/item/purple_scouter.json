@@ -1,6 +1,3 @@
-{
-  "parent": "minecraft:item/generated",
-  "textures": {
-    "layer0": "dragonminez:item/purple_scouter"
-  }
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:755897f4a1ba128cf6492b65a7908bfe033d50b93f4509464afb92d7121047ee
+size 111

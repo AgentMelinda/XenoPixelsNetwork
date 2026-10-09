@@ -1,6 +1,3 @@
-{
-  "parent": "minecraft:item/generated",
-  "textures": {
-    "layer0": "dragonminez:item/armors/tien_armor_chestplate"
-  }
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:cd50cd7ae23332fcd6696d080fa3b8a3f1841ae79d1e3e7c2fb23b5a98fe0b91
+size 125

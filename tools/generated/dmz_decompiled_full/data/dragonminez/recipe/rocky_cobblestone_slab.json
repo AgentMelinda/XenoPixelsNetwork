@@ -1,17 +1,3 @@
-{
-  "type": "minecraft:crafting_shaped",
-  "category": "building",
-  "group": "dragonminez",
-  "key": {
-    "#": {
-      "item": "dragonminez:rocky_cobblestone"
-    }
-  },
-  "pattern": [
-    "###"
-  ],
-  "result": {
-    "count": 6,
-    "id": "dragonminez:rocky_cobblestone_slab"
-  }
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:fb79703d311fd3317847a7195f13ffdf8c1a9d0f099d790450b349e55dec0454
+size 284

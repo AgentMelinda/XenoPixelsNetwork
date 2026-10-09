@@ -1,14 +1,3 @@
-{
-  "type": "minecraft:smelting",
-  "category": "misc",
-  "cookingtime": 200,
-  "experience": 1.0,
-  "group": "emerald",
-  "ingredient": {
-    "item": "dragonminez:namek_emerald_ore"
-  },
-  "result": {
-    "count": 1,
-    "id": "minecraft:emerald"
-  }
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:8317f8afd9a11878a6ea20db5bcdda503ac6aee81a7e40b9a58edf21778641ff
+size 253

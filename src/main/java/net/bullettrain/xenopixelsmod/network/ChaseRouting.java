@@ -8,14 +8,16 @@ package net.bullettrain.xenopixelsmod.network;
  * above climb away from its target instead of diving onto it: the floor under the target looked
  * like a wall, the detour raised the waypoint relative to the player's already high position, and
  * the next tick blocked again on the same floor.
+ *
+ * <p>Public so the XenoCombat v2 mover plans its detours with the same rules.
  */
-final class ChaseRouting {
+public final class ChaseRouting {
 
     /** A near-vertical approach has nothing to climb over, so it never detours. */
-    static final double MIN_HORIZONTAL_FOR_DETOUR = 1.5;
+    public static final double MIN_HORIZONTAL_FOR_DETOUR = 1.5;
 
     /** How close to the destination a hit must be before it counts as the target's own ground. */
-    static final double DESTINATION_TOLERANCE = 1.5;
+    public static final double DESTINATION_TOLERANCE = 1.5;
 
     private ChaseRouting() {
     }
@@ -26,12 +28,12 @@ final class ChaseRouting {
      * @param hitDistance         distance from the start of the clip to what it struck
      * @param destinationDistance distance from the start of the clip to the destination
      */
-    static boolean obstructs(double hitDistance, double destinationDistance) {
+    public static boolean obstructs(double hitDistance, double destinationDistance) {
         return hitDistance < destinationDistance - DESTINATION_TOLERANCE;
     }
 
     /** Detour only when the route actually goes somewhere horizontally. */
-    static boolean detourWorthwhile(double horizontalDistance) {
+    public static boolean detourWorthwhile(double horizontalDistance) {
         return horizontalDistance >= MIN_HORIZONTAL_FOR_DETOUR;
     }
 
@@ -41,12 +43,12 @@ final class ChaseRouting {
      * <p>Measuring from the player instead meant a player already above the obstacle was told to
      * climb again, every tick, forever.
      */
-    static double clearanceY(double obstructionY, double bodyHeight, double clearance) {
+    public static double clearanceY(double obstructionY, double bodyHeight, double clearance) {
         return obstructionY + bodyHeight + clearance;
     }
 
     /** A detour that would not get the player above the obstruction is not worth taking. */
-    static boolean detourReachable(double requiredY, double startY, double maxClimb) {
+    public static boolean detourReachable(double requiredY, double startY, double maxClimb) {
         return requiredY > startY && requiredY <= startY + maxClimb;
     }
 }

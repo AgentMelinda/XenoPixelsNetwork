@@ -1,6 +1,3 @@
-{
-  "parent": "minecraft:item/generated",
-  "textures": {
-    "layer0": "dragonminez:item/armors/gamma1_armor_leggings"
-  }
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:02def7776065a3227213f1294a73b52ba1f12718e2da757de057f91ea58c979c
+size 125

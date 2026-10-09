@@ -1,6 +1,3 @@
-{
-  "parent": "minecraft:item/generated",
-  "textures": {
-    "layer0": "dragonminez:item/armors/warrior_clan_armor_boots"
-  }
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:f8827ecc743d890830395f4fe5342b301858ae96f05d084fbbc07194da80fe0a
+size 128

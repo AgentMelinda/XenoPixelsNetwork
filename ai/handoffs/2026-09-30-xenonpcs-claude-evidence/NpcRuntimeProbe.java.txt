@@ -1,0 +1,113 @@
+package devprobe;
+
+import net.minecraftforge.fml.common.Mod;
+import net.minecraftforge.api.distmarker.Dist;
+import net.minecraftforge.eventbus.api.SubscribeEvent;
+import net.minecraftforge.event.TickEvent;
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.Screenshot;
+import net.minecraft.client.gui.screens.PauseScreen;
+import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.level.GameType;
+import net.minecraft.core.BlockPos;
+import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.phys.AABB;
+import net.bullettrain.xenonpcs.XenoNpcsMod;
+import net.bullettrain.xenonpcs.missile.ModEntities;
+import net.bullettrain.xenonpcs.npc.XenoNpcEntity;
+import net.bullettrain.xenonpcs.compat.npc.*;
+import net.bullettrain.xenonpcs.npc.lines.XenoNpcSpeech;
+import com.dragonminez.common.init.entities.ki.KiWaveEntity;
+
+/** Temporary isolated-world probe; source included only by a temporary Gradle init script. */
+@Mod.EventBusSubscriber(modid="xenonpcs", value=Dist.CLIENT)
+public class NpcRuntimeProbe {
+    static volatile int age;
+    static int captured = -1;
+    static XenoNpcEntity greeter, fighter;
+    static ServerPlayer viewer;
+    static double lastX, lastY, lastZ;
+
+    @SubscribeEvent public static void server(TickEvent.ServerTickEvent e) {
+        if (e.phase != TickEvent.Phase.END || e.getServer().getPlayerList().getPlayers().isEmpty()) return;
+        if (!e.getServer().getWorldPath(net.minecraft.world.level.storage.LevelResource.ROOT).toString()
+                .contains("Codex NPC Regression 20260930")) return;
+        age++;
+        if (age == 40) {
+            viewer = e.getServer().getPlayerList().getPlayers().get(0);
+            var level = viewer.serverLevel();
+            level.setDayTime(6000);
+            level.getEntitiesOfClass(XenoNpcEntity.class,new AABB(-20,90,-20,20,120,20)).forEach(n -> n.discard());
+            for (int x=-16;x<=16;x++) for (int z=-16;z<=16;z++) {
+                level.setBlockAndUpdate(new BlockPos(x,100,z), Blocks.BEDROCK.defaultBlockState());
+                for (int y=101;y<=113;y++) level.setBlockAndUpdate(new BlockPos(x,y,z),Blocks.AIR.defaultBlockState());
+            }
+            viewer.setGameMode(GameType.CREATIVE);
+            viewer.teleportTo(level, 0,101,4,180,0);
+            greeter = ModEntities.XENO_NPC_TRADER.get().create(level);
+            greeter.moveTo(0,101,0,0,0);
+            var p = NpcCombatProfile.read(greeter);
+            p.combatBrain=false; p.socialGestures=true; p.bubbleDurationTicks=600;
+            p.appearance.mode=NpcDmzAppearance.Mode.FULL;
+            p.write(greeter);
+            greeter.setNoAi(true);
+            level.addFreshEntity(greeter);
+            XenoNpcsMod.LOGGER.info("RUNTIME_PROBE greeter spawned; canAnimate={}", NpcDmzAnim.canAnimate(greeter));
+        }
+        if (age == 50) {
+            XenoNpcsMod.LOGGER.info("RUNTIME_PROBE speech sent={} id={}",XenoNpcSpeech.say(greeter,"Centered above the NPC",viewer),greeter.getId());
+        }
+        if (age == 140) {
+            NpcKiAttackDispatcher.fireKiWave(greeter, NpcCombatProfile.read(greeter), -1, viewer, 0);
+            XenoNpcsMod.LOGGER.info("RUNTIME_PROBE dispatched generic wave");
+        }
+        if (age >= 140 && age <= 180 && age % 5 == 0) {
+            for (var wave : viewer.serverLevel().getEntitiesOfClass(KiWaveEntity.class,new AABB(-20,90,-20,20,115,20)))
+                XenoNpcsMod.LOGGER.info("RUNTIME_PROBE wave age={} firing={} yaw={} pitch={}",wave.tickCount,wave.isFiring(),wave.getYRot(),wave.getXRot());
+        }
+        if (age == 210) viewer.teleportTo(viewer.serverLevel(),4,101,0,90,0);
+        if (age == 270) { viewer.setNoGravity(true); viewer.teleportTo(viewer.serverLevel(),0,105,4,180,40); }
+        if (age == 330) {
+            viewer.setNoGravity(false); viewer.setGameMode(GameType.SURVIVAL); viewer.setInvulnerable(true);
+            viewer.teleportTo(viewer.serverLevel(),0,101,12,180,0);
+            fighter=ModEntities.XENO_NPC_HUMANOID.get().create(viewer.serverLevel());
+            fighter.moveTo(0,101,0,0,0);
+            var p=NpcCombatProfile.read(fighter); p.appearance.mode=NpcDmzAppearance.Mode.FULL; p.write(fighter);
+            viewer.serverLevel().addFreshEntity(fighter); fighter.setTarget(viewer);
+            lastX=fighter.getX(); lastY=fighter.getY(); lastZ=fighter.getZ();
+            XenoNpcsMod.LOGGER.info("RUNTIME_PROBE teleport gates vanish={} chase={} backstep={}",
+                    NpcCombatMoves.vanish(fighter,viewer,0),NpcCombatMoves.chase(fighter,viewer),NpcCombatMoves.backstep(fighter,viewer));
+        }
+        if (age > 330 && age <= 500 && age % 10 == 0 && fighter != null) {
+            XenoNpcsMod.LOGGER.info("RUNTIME_PROBE motion pos=({},{},{}) dist={} flight={} step={}",
+                    fighter.getX(),fighter.getY(),fighter.getZ(),fighter.distanceTo(viewer),
+                    NpcFlightOwnership.brainDirectsFlight(fighter.getUUID()),
+                    Math.sqrt(Math.pow(fighter.getX()-lastX,2)+Math.pow(fighter.getY()-lastY,2)+Math.pow(fighter.getZ()-lastZ,2)));
+            lastX=fighter.getX(); lastY=fighter.getY(); lastZ=fighter.getZ();
+        }
+    }
+
+    static boolean traced;
+    @SubscribeEvent public static void stage(net.minecraftforge.client.event.RenderLevelStageEvent e) {
+        if (age >= 60 && !traced && e.getStage() == net.minecraftforge.client.event.RenderLevelStageEvent.Stage.AFTER_WEATHER) {
+            traced=true;
+            XenoNpcsMod.LOGGER.info("RUNTIME_PROBE stage pose={} modelview={}", e.getPoseStack().last().pose(),com.mojang.blaze3d.systems.RenderSystem.getModelViewMatrix());
+        }
+    }
+    @SubscribeEvent public static void client(TickEvent.ClientTickEvent e) {
+        if (e.phase != TickEvent.Phase.END) return;
+        var mc=Minecraft.getInstance();
+        if (mc.level==null) return;
+        mc.options.pauseOnLostFocus=false;
+        if (mc.screen instanceof PauseScreen) mc.setScreen(null);
+        int tick=age;
+        if (tick >= 50 && tick <= 80) XenoNpcsMod.LOGGER.info("RUNTIME_PROBE client bubbles={}", net.bullettrain.xenonpcs.client.npc.speech.SpeechBubbleQueue.activeSnapshot());
+        boolean picture=(tick>=40 && tick<=80 && tick%5==0)
+                || (tick>=140 && tick<=180 && tick%10==0) || tick==230 || tick==290 || tick==400;
+        if (picture && captured!=tick) {
+            captured=tick;
+            Screenshot.grab(new java.io.File("C:/Users/Admin/AppData/Local/Temp/codex-npc-probe-evidence"),
+                    "npc-probe-"+tick+".png",mc.getMainRenderTarget(),message -> {});
+        }
+    }
+}

@@ -1,6 +1,3 @@
-{
-  "parent": "minecraft:item/generated",
-  "textures": {
-    "layer0": "dragonminez:item/raw_baby_dino_meat"
-  }
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:6f5c3341fdd793d119be90c912b1a13fdee19cb966d6ae9074a45608d7e310b2
+size 115

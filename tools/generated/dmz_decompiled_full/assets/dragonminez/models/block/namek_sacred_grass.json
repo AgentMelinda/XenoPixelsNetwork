@@ -1,1 +1,3 @@
-{"parent":"minecraft:block/cross","textures":{"cross":"dragonminez:block/namek_sacred_grass"},"render_type":"cutout"}
+version https://git-lfs.github.com/spec/v1
+oid sha256:f8038c953cf5a12a0439f47907dc343119ac3ad99753649158f14d1f4340dc5e
+size 117

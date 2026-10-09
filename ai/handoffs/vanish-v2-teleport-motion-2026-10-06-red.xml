@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="net.bullettrain.xenopixelsmod.combat.v2.V2TeleportMotionTest" tests="1" skipped="0" failures="1" errors="0" timestamp="2026-10-06T15:40:12" hostname="DESKTOP-3VIKBOV" time="0.104">
+  <properties/>
+  <testcase name="vanishClearsOldMotionAndQueuesTheResetForTheClient()" classname="net.bullettrain.xenopixelsmod.combat.v2.V2TeleportMotionTest" time="0.104">
+    <failure message="org.opentest4j.AssertionFailedError: the tracker must send zero velocity to the fighter's client ==&gt; expected: &lt;true&gt; but was: &lt;false&gt;" type="org.opentest4j.AssertionFailedError">org.opentest4j.AssertionFailedError: the tracker must send zero velocity to the fighter's client ==&gt; expected: &lt;true&gt; but was: &lt;false&gt;
+	at app//org.junit.jupiter.api.AssertionFailureBuilder.build(AssertionFailureBuilder.java:151)
+	at app//org.junit.jupiter.api.AssertionFailureBuilder.buildAndThrow(AssertionFailureBuilder.java:132)
+	at app//org.junit.jupiter.api.AssertTrue.failNotTrue(AssertTrue.java:63)
+	at app//org.junit.jupiter.api.AssertTrue.assertTrue(AssertTrue.java:36)
+	at app//org.junit.jupiter.api.Assertions.assertTrue(Assertions.java:214)
+	at TRANSFORMER/xenopixelsmod@0.5.11-1.21.1/net.bullettrain.xenopixelsmod.combat.v2.V2TeleportMotionTest.vanishClearsOldMotionAndQueuesTheResetForTheClient(V2TeleportMotionTest.java:24)
+	at java.base@21.0.11/java.lang.reflect.Method.invoke(Method.java:580)
+	at java.base@21.0.11/java.util.ArrayList.forEach(ArrayList.java:1596)
+	at java.base@21.0.11/java.util.ArrayList.forEach(ArrayList.java:1596)
+</failure>
+  </testcase>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

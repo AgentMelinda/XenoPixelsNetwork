@@ -1,32 +1,3 @@
-{
-  "parent": "minecraft:recipes/root",
-  "criteria": {
-    "has_rocky_cobblestone": {
-      "conditions": {
-        "items": [
-          {
-            "items": "dragonminez:rocky_cobblestone"
-          }
-        ]
-      },
-      "trigger": "minecraft:inventory_changed"
-    },
-    "has_the_recipe": {
-      "conditions": {
-        "recipe": "dragonminez:rocky_cobblestone_stairs"
-      },
-      "trigger": "minecraft:recipe_unlocked"
-    }
-  },
-  "requirements": [
-    [
-      "has_the_recipe",
-      "has_rocky_cobblestone"
-    ]
-  ],
-  "rewards": {
-    "recipes": [
-      "dragonminez:rocky_cobblestone_stairs"
-    ]
-  }
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:6bb8b44e907f3f5afe056ebbcf865123a383208f56db2f80c8669a0828f0fb81
+size 625

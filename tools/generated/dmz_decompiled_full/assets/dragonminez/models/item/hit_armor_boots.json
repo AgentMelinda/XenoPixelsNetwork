@@ -1,6 +1,3 @@
-{
-  "parent": "minecraft:item/generated",
-  "textures": {
-    "layer0": "dragonminez:item/armors/hit_armor_boots"
-  }
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:56ab2dc89a568009ecc81b3a5d9e16894c91ff901df59b476f4d48f4d248bc5e
+size 119

@@ -14,6 +14,8 @@ class XenoConfigRegistryTest {
     private final boolean savedFf = XenoPartyConfig.friendlyFireDefault;
     private final boolean savedPartyFf = LockOnConfig.respectPartyFriendlyFire;
     private final boolean savedCombat = XenoServerConfig.bt3CombatEnabled;
+    private final net.bullettrain.xenopixelsmod.combat.v3.V3Config.Values savedV3 =
+            net.bullettrain.xenopixelsmod.combat.v3.V3Config.get();
 
     @AfterEach
     void restore() {
@@ -22,6 +24,16 @@ class XenoConfigRegistryTest {
         XenoPartyConfig.friendlyFireDefault = savedFf;
         LockOnConfig.respectPartyFriendlyFire = savedPartyFf;
         XenoServerConfig.bt3CombatEnabled = savedCombat;
+        net.bullettrain.xenopixelsmod.combat.v3.V3Config.apply(savedV3);
+    }
+
+    @Test void v3AliasUsesSeparateStoreWithoutChangingLegacyRange() {
+        double legacyRange = XenoServerConfig.dragonDashRange;
+        assertEquals("v3.dragonDashRange", XenoConfigRegistry.resolve("dragonDashRange").id);
+        assertEquals(XenoConfigRegistry.Store.V3, XenoConfigRegistry.set("dragonDashRange", "999").store);
+        assertTrue(XenoConfigRegistry.suggest("v3.").contains("v3.dragonDashRange"));
+        assertTrue(XenoConfigRegistry.get("v3.heavyAttackerStaminaCost").ok);
+        assertEquals(legacyRange, XenoServerConfig.dragonDashRange);
     }
 
     @Test

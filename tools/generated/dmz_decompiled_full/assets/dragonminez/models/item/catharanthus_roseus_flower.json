@@ -1,6 +1,3 @@
-{
-  "parent": "minecraft:item/generated",
-  "textures": {
-    "layer0": "dragonminez:item/catharanthus_roseus_flower"
-  }
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:281376833534d2d3498fcfdb5d1a896b6692cbc4a0a0812bfbfaec0bdd797ba3
+size 123

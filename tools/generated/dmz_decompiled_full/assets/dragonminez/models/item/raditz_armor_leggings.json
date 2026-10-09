@@ -1,6 +1,3 @@
-{
-  "parent": "minecraft:item/generated",
-  "textures": {
-    "layer0": "dragonminez:item/armors/raditz_armor_leggings"
-  }
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:46c42adad03fb2ce91f07759f38dc7314e390f3b999735cdb87d76532256891e
+size 125

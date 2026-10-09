@@ -1,6 +1,3 @@
-{
-  "parent": "minecraft:item/generated",
-  "textures": {
-    "layer0": "dragonminez:item/kikono_shard"
-  }
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:1b325aade0a893ae3b31a536384395dc7770925bb368b3a8c60f09026d37e12e
+size 109

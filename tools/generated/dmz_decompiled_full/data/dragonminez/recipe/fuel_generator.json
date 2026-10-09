@@ -1,22 +1,3 @@
-{
-  "type": "minecraft:crafting_shaped",
-  "category": "misc",
-  "group": "dragonminez",
-  "key": {
-    "O": {
-      "item": "minecraft:crying_obsidian"
-    },
-    "T": {
-      "item": "dragonminez:t1_radar_chip"
-    }
-  },
-  "pattern": [
-    "OOO",
-    "OTO",
-    "OOO"
-  ],
-  "result": {
-    "count": 1,
-    "id": "dragonminez:fuel_generator"
-  }
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:f0fa943110eb511884e2bfd01346cfbaac2db0e97bf5bc0dcd91d0d423eebbfe
+size 350

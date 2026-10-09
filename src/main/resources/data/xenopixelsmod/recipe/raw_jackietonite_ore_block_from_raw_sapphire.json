@@ -1,17 +1,3 @@
-{
-  "type": "minecraft:crafting_shaped",
-  "category": "misc",
-  "pattern": [
-    "###",
-    "###",
-    "###"
-  ],
-  "key": {
-    "#": {
-      "item": "xenopixelsmod:raw_sapphire"
-    }
-  },
-  "result": {
-    "id": "xenopixelsmod:raw_jackietonite_ore_block"
-  }
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:515fa8ead66d281710a67e4dca1cb0ad841452a4ffda107b4c5aae03b39a3581
+size 279

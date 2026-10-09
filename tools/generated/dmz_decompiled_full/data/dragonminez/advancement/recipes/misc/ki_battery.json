@@ -1,32 +1,3 @@
-{
-  "parent": "minecraft:recipes/root",
-  "criteria": {
-    "has_gete_ingot": {
-      "conditions": {
-        "items": [
-          {
-            "items": "dragonminez:gete_ingot"
-          }
-        ]
-      },
-      "trigger": "minecraft:inventory_changed"
-    },
-    "has_the_recipe": {
-      "conditions": {
-        "recipe": "dragonminez:ki_battery"
-      },
-      "trigger": "minecraft:recipe_unlocked"
-    }
-  },
-  "requirements": [
-    [
-      "has_the_recipe",
-      "has_gete_ingot"
-    ]
-  ],
-  "rewards": {
-    "recipes": [
-      "dragonminez:ki_battery"
-    ]
-  }
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:a1fdbb39aac36401391a3b8eebe4d4fa47358ea09ef59f53a588a4bd918f6614
+size 576

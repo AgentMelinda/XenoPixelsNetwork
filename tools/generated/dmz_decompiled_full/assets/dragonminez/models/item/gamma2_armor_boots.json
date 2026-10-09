@@ -1,6 +1,3 @@
-{
-  "parent": "minecraft:item/generated",
-  "textures": {
-    "layer0": "dragonminez:item/armors/gamma2_armor_boots"
-  }
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:2da7c518ee4d5385bb33998c0dd780e7ae248129e366bf673289fefbe4da6b67
+size 122

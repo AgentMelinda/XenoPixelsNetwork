@@ -1,0 +1,8 @@
+allprojects {
+    afterEvaluate {
+        if (extensions.findByName('minecraft') != null) {
+            sourceSets.main.java.srcDir 'C:/Users/Admin/AppData/Local/Temp/codex-npc-probe-src'
+            minecraft.runs.client.args '--quickPlaySingleplayer', 'Codex NPC Regression 20260930'
+        }
+    }
+}

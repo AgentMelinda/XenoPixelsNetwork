@@ -1,6 +1,3 @@
-{
-  "parent": "minecraft:item/generated",
-  "textures": {
-    "layer0": "dragonminez:item/armors/beerus_armor_chestplate"
-  }
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:93e69ea9f717ddc1a1f29a5907231f058df7bbffdd1d2c58993e4a56ef434188
+size 127

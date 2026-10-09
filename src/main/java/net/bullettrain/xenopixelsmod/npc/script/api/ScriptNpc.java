@@ -102,6 +102,8 @@ public final class ScriptNpc extends ScriptEntity {
         if (npc == null) throw new IllegalStateException("NPC appearance functions require a live NPC");
         return new net.bullettrain.xenopixelsmod.npc.script.api.xeno.XenoNpcAdapter(npc);
     }
+    /** Typed native API, preserving this wrapper's legacy return contracts. */
+    public xenoapi.npcs.api.entity.ICustomNpc<?> getAPI() { return adapter(); }
     public xenoapi.npcs.api.entity.data.INPCDisplay getDisplay() { return adapter().getDisplay(); }
     public xenoapi.npcs.api.entity.data.INPCStats getStats() { return adapter().getStats(); }
     public xenoapi.npcs.api.entity.data.INPCAi getAi() { return adapter().getAi(); }
@@ -128,7 +130,19 @@ public final class ScriptNpc extends ScriptEntity {
     }
 
     public void setHealth(float health) {
-        npc.setHealth(Math.max(0.0f, Math.min(npc.getMaxHealth(), health)));
+        new net.bullettrain.xenopixelsmod.npc.script.api.xeno.XenoLivingAdapter<>(npc).setHealth(health);
+    }
+
+    /** Changes the live maximum health attribute with the native API's validation. */
+    public void setMaxHealth(float health) {
+        new net.bullettrain.xenopixelsmod.npc.script.api.xeno.XenoLivingAdapter<>(npc).setMaxHealth(health);
+    }
+
+    public boolean isKilled() { return !npc.isAlive() || npc.isRemoved(); }
+
+    /** Removes this instance; configured death/respawn scheduling remains with the NPC entity. */
+    public void despawn() {
+        new net.bullettrain.xenopixelsmod.npc.script.api.xeno.XenoNpcAdapter(npc).despawn();
     }
 
     // ---------------------------------------------------------------- combat

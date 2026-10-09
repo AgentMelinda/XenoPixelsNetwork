@@ -1,6 +1,3 @@
-{
-  "parent": "minecraft:item/generated",
-  "textures": {
-    "layer0": "dragonminez:item/armors/goku_super_armor_leggings"
-  }
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:84694e53b8ec659dfda3d635cdb11a9f9dc68dc10c0aaaa08479239cf897f22a
+size 129

@@ -18,11 +18,11 @@ public final class AuraRimGlow {
         return COLOURS.get(entityId);
     }
 
-    static void set(int entityId, int rgb) {
+    public static void set(int entityId, int rgb) {
         COLOURS.put(entityId, rgb & 0xFFFFFF);
     }
 
-    static void clear(int entityId) {
+    public static void clear(int entityId) {
         COLOURS.remove(entityId);
     }
 

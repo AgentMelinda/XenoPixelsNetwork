@@ -1,15 +1,3 @@
-{
-  "type": "neoforge:add_spawns",
-  "biomes": "#dragonminez:has_sabertooth",
-  "spawners": [{
-    "type": "dragonminez:sabertooth",
-    "weight": 18,
-    "minCount": 1,
-    "maxCount": 3
-  },{
-    "type": "dragonminez:bandit",
-    "weight": 12,
-    "minCount": 1,
-    "maxCount": 3
-  }]
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:a201044ae55359cad59abde707db7b27cbc3ea3325fbca3b19981f4817771575
+size 305

@@ -1,6 +1,3 @@
-{
-  "parent": "minecraft:item/generated",
-  "textures": {
-    "layer0": "dragonminez:item/armors/super_buu_armor_boots"
-  }
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:5cc7fe22a55a7987ebff1fffabbf420279dd942a9c330519b11d4aafc659ea1d
+size 125

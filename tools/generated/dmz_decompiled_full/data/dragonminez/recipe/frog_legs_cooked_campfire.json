@@ -1,14 +1,3 @@
-{
-  "type": "minecraft:campfire_cooking",
-  "category": "food",
-  "cookingtime": 600,
-  "experience": 0.35,
-  "group": "dragonminez",
-  "ingredient": {
-    "item": "dragonminez:frog_legs_raw"
-  },
-  "result": {
-    "count": 1,
-    "id": "dragonminez:frog_legs_cooked"
-  }
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:75cffd62a2851054a8a6bc7d6d1ba6a7d6d19b951d2d5f1236b062f55c9a0d61
+size 273

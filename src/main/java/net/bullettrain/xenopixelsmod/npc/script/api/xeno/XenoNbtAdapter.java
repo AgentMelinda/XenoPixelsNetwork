@@ -17,6 +17,8 @@ import xenoapi.npcs.api.INbt;
 
 import java.util.List;
 import java.util.Objects;
+import java.util.function.Consumer;
+import java.util.function.Supplier;
 
 /**
  * A live compound tag as XenoAPI's {@link INbt}: writes change the wrapped tag. Tags reached
@@ -28,9 +30,32 @@ public final class XenoNbtAdapter implements INbt {
     static final int MAX_ARRAY = 65_536;
 
     final CompoundTag tag;
+    private final Supplier<CompoundTag> reader;
+    private final Consumer<CompoundTag> writer;
 
     public XenoNbtAdapter(CompoundTag tag) {
         this.tag = Objects.requireNonNull(tag);
+        this.reader = null;
+        this.writer = null;
+    }
+
+    private XenoNbtAdapter(Supplier<CompoundTag> reader, Consumer<CompoundTag> writer) {
+        this.tag = null;
+        this.reader = Objects.requireNonNull(reader);
+        this.writer = Objects.requireNonNull(writer);
+    }
+
+    /** Each operation re-reads a component snapshot; successful writes replace it atomically. */
+    static XenoNbtAdapter ofView(Supplier<CompoundTag> reader, Consumer<CompoundTag> writer) {
+        return new XenoNbtAdapter(reader, writer);
+    }
+
+    CompoundTag data() { return reader == null ? tag : Objects.requireNonNull(reader.get()); }
+
+    private void edit(Consumer<CompoundTag> mutation) {
+        CompoundTag current = data();
+        mutation.accept(current);
+        if (writer != null) writer.accept(current);
     }
 
     private static String key(String key) {
@@ -44,27 +69,28 @@ public final class XenoNbtAdapter implements INbt {
         }
     }
 
-    @Override public void remove(String key) { tag.remove(key(key)); }
-    @Override public boolean has(String key) { return key != null && tag.contains(key); }
-    @Override public boolean getBoolean(String key) { return tag.getBoolean(key(key)); }
-    @Override public void setBoolean(String key, boolean value) { tag.putBoolean(key(key), value); }
-    @Override public short getShort(String key) { return tag.getShort(key(key)); }
-    @Override public void setShort(String key, short value) { tag.putShort(key(key), value); }
-    @Override public int getInteger(String key) { return tag.getInt(key(key)); }
-    @Override public void setInteger(String key, int value) { tag.putInt(key(key), value); }
-    @Override public byte getByte(String key) { return tag.getByte(key(key)); }
-    @Override public void setByte(String key, byte value) { tag.putByte(key(key), value); }
-    @Override public long getLong(String key) { return tag.getLong(key(key)); }
-    @Override public void setLong(String key, long value) { tag.putLong(key(key), value); }
-    @Override public double getDouble(String key) { return tag.getDouble(key(key)); }
-    @Override public void setDouble(String key, double value) { tag.putDouble(key(key), value); }
-    @Override public float getFloat(String key) { return tag.getFloat(key(key)); }
-    @Override public void setFloat(String key, float value) { tag.putFloat(key(key), value); }
-    @Override public String getString(String key) { return tag.getString(key(key)); }
+    @Override public void remove(String key) { edit(tag -> tag.remove(key(key))); }
+    @Override public boolean has(String key) { return key != null && data().contains(key); }
+    @Override public boolean getBoolean(String key) { return data().getBoolean(key(key)); }
+    @Override public void setBoolean(String key, boolean value) { edit(tag -> tag.putBoolean(key(key), value)); }
+    @Override public short getShort(String key) { return data().getShort(key(key)); }
+    @Override public void setShort(String key, short value) { edit(tag -> tag.putShort(key(key), value)); }
+    @Override public int getInteger(String key) { return data().getInt(key(key)); }
+    @Override public void setInteger(String key, int value) { edit(tag -> tag.putInt(key(key), value)); }
+    @Override public byte getByte(String key) { return data().getByte(key(key)); }
+    @Override public void setByte(String key, byte value) { edit(tag -> tag.putByte(key(key), value)); }
+    @Override public long getLong(String key) { return data().getLong(key(key)); }
+    @Override public void setLong(String key, long value) { edit(tag -> tag.putLong(key(key), value)); }
+    @Override public double getDouble(String key) { return data().getDouble(key(key)); }
+    @Override public void setDouble(String key, double value) { edit(tag -> tag.putDouble(key(key), value)); }
+    @Override public float getFloat(String key) { return data().getFloat(key(key)); }
+    @Override public void setFloat(String key, float value) { edit(tag -> tag.putFloat(key(key), value)); }
+    @Override public String getString(String key) { return data().getString(key(key)); }
 
     @Override
     public void putString(String key, String value) {
-        tag.putString(key(key), string(value));
+        String name = key(key), checked = string(value);
+        edit(tag -> tag.putString(name, checked));
     }
 
     private static String string(String value) {
@@ -73,34 +99,42 @@ public final class XenoNbtAdapter implements INbt {
         return value;
     }
 
-    @Override public byte[] getByteArray(String key) { return tag.getByteArray(key(key)); }
+    @Override public byte[] getByteArray(String key) { return data().getByteArray(key(key)); }
 
     @Override
     public void setByteArray(String key, byte[] value) {
         requireArray(value == null ? 0 : value.length, value == null, "byte array");
-        tag.putByteArray(key(key), value.clone());
+        edit(tag -> tag.putByteArray(key(key), value.clone()));
     }
 
-    @Override public int[] getIntegerArray(String key) { return tag.getIntArray(key(key)); }
+    @Override public int[] getIntegerArray(String key) { return data().getIntArray(key(key)); }
 
     @Override
     public void setIntegerArray(String key, int[] value) {
         requireArray(value == null ? 0 : value.length, value == null, "int array");
-        tag.putIntArray(key(key), value.clone());
+        edit(tag -> tag.putIntArray(key(key), value.clone()));
     }
 
     /** Elements of the list as Java values: numbers, strings, INbt for compounds, arrays. */
     @Override
     public Object[] getList(String key, int type) {
-        ListTag list = tag.getList(key(key), type);
+        String name = key(key);
+        ListTag list = data().getList(name, type);
         Object[] out = new Object[list.size()];
-        for (int i = 0; i < list.size(); i++) out[i] = toJava(list.get(i));
+        for (int i = 0; i < list.size(); i++) {
+            int index = i;
+            out[i] = writer != null && list.get(i) instanceof CompoundTag
+                    ? ofView(() -> data().getList(name, type).getCompound(index), child -> edit(root -> {
+                        ListTag latest = root.getList(name, type);
+                        if (index < latest.size() && latest.get(index) instanceof CompoundTag) latest.set(index, child);
+                    })) : toJava(list.get(i));
+        }
         return out;
     }
 
     @Override
     public int getListType(String key) {
-        return tag.get(key(key)) instanceof ListTag list ? list.getElementType() : Tag.TAG_END;
+        return data().get(key(key)) instanceof ListTag list ? list.getElementType() : Tag.TAG_END;
     }
 
     /** Every element must share one type; mixing types is refused before the tag changes. */
@@ -116,7 +150,7 @@ public final class XenoNbtAdapter implements INbt {
             }
             list.add(converted);
         }
-        tag.put(name, list);
+        edit(tag -> tag.put(name, list));
     }
 
     private static Object toJava(Tag element) {
@@ -134,7 +168,7 @@ public final class XenoNbtAdapter implements INbt {
     }
 
     private static Tag toTag(Object element) {
-        if (element instanceof XenoNbtAdapter nbt) return nbt.tag.copy();
+        if (element instanceof XenoNbtAdapter nbt) return nbt.data().copy();
         if (element instanceof String string) return StringTag.valueOf(string(string));
         if (element instanceof Byte b) return ByteTag.valueOf(b);
         if (element instanceof Short s) return ShortTag.valueOf(s);
@@ -150,48 +184,58 @@ public final class XenoNbtAdapter implements INbt {
     /** The nested live compound; a missing key reads as a new detached empty compound. */
     @Override
     public INbt getCompound(String key) {
-        return new XenoNbtAdapter(tag.getCompound(key(key)));
+        String name = key(key);
+        CompoundTag current = data();
+        if (writer == null || !current.contains(name, Tag.TAG_COMPOUND)) {
+            return new XenoNbtAdapter(current.getCompound(name));
+        }
+        return ofView(() -> data().getCompound(name), child -> edit(root -> root.put(name, child)));
     }
 
     @Override
     public void setCompound(String key, INbt value) {
         String name = key(key);
-        tag.put(name, XenoApiAdapters.unwrap(value).copy());
+        CompoundTag copy = XenoApiAdapters.unwrap(value).copy();
+        edit(tag -> tag.put(name, copy));
     }
 
-    @Override public String[] getKeys() { return tag.getAllKeys().toArray(String[]::new); }
-    @Override public int getType(String key) { return tag.getTagType(key(key)); }
+    @Override public String[] getKeys() { return data().getAllKeys().toArray(String[]::new); }
+    @Override public int getType(String key) { return data().getTagType(key(key)); }
 
     /** Tags are plain data, so the handle grants nothing beyond this adapter. */
-    @Override public CompoundTag getMCNBT() { return tag; }
-    @Override public String toJsonString() { return tag.toString(); }
+    @Override public CompoundTag getMCNBT() { return data(); }
+    @Override public String toJsonString() { return data().toString(); }
 
     @Override
     public boolean isEqual(INbt nbt) {
-        return nbt != null && XenoApiAdapters.unwrap(nbt).equals(tag);
+        return nbt != null && XenoApiAdapters.unwrap(nbt).equals(data());
     }
 
     @Override
     public void clear() {
-        for (String key : List.copyOf(tag.getAllKeys())) tag.remove(key);
+        edit(tag -> { for (String key : List.copyOf(tag.getAllKeys())) tag.remove(key); });
     }
 
-    @Override public boolean isEmpty() { return tag.isEmpty(); }
-    @Override public void merge(INbt nbt) { tag.merge(XenoApiAdapters.unwrap(nbt).copy()); }
+    @Override public boolean isEmpty() { return data().isEmpty(); }
+    @Override public void merge(INbt nbt) {
+        CompoundTag copy = XenoApiAdapters.unwrap(nbt).copy();
+        edit(tag -> tag.merge(copy));
+    }
 
     @Override
     public void mcSetTag(String key, Tag base) {
         if (base == null) throw new IllegalArgumentException("NBT tag cannot be null");
-        tag.put(key(key), base.copy());
+        edit(tag -> tag.put(key(key), base.copy()));
     }
 
-    @Override public Tag mcGetTag(String key) { return tag.get(key(key)); }
+    @Override public Tag mcGetTag(String key) { return data().get(key(key)); }
 
     @Override
     public boolean equals(Object other) {
-        return other instanceof XenoNbtAdapter that && that.tag == tag;
+        return this == other || reader == null && other instanceof XenoNbtAdapter that
+                && that.reader == null && that.tag == tag;
     }
 
-    @Override public int hashCode() { return System.identityHashCode(tag); }
+    @Override public int hashCode() { return System.identityHashCode(reader == null ? tag : this); }
     @Override public String toString() { return toJsonString(); }
 }

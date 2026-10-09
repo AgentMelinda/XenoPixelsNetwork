@@ -1,6 +1,3 @@
-{
-  "parent": "minecraft:item/generated",
-  "textures": {
-    "layer0": "dragonminez:item/armors/majin21_armor_boots"
-  }
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:5773cf8500f56e612991d09b75ba98c95ef46a45fef0898877178161d735054d
+size 123

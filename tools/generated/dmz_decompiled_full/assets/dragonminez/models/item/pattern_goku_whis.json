@@ -1,6 +1,3 @@
-{
-  "parent": "minecraft:item/generated",
-  "textures": {
-    "layer0": "dragonminez:item/patterns/pattern_goku_whis"
-  }
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:93c52a73bf2616a428e8e1f0136dd99d2c57893aec1d8650e41c2d02447f73ee
+size 123

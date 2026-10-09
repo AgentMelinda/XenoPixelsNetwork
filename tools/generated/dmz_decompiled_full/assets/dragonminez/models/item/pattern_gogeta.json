@@ -1,6 +1,3 @@
-{
-  "parent": "minecraft:item/generated",
-  "textures": {
-    "layer0": "dragonminez:item/patterns/pattern_gogeta"
-  }
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:ed4ae77c954e545886f7642ef731f5bfcfff733dfb1c12c92f01d2e9519195b2
+size 120

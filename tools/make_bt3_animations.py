@@ -37,6 +37,8 @@ import argparse
 import json
 from pathlib import Path
 from zipfile import ZipFile
+from weighted_bt3_strikes import build_weighted_strikes
+from combat_arm_choreography import front_arms
 
 GUARD_R = [-55, 0, 16]      # right arm resting guard
 GUARD_L = [-40, 0, -14]     # left arm resting guard
@@ -452,8 +454,10 @@ def build() -> dict:
         a["combat.xeno_cross_%s_v2" % side] = dmz_punches[side]
     a.update(build_v3())
     a.update(build_v4())
+    a.update(build_weighted_strikes(clip, G4_L, G4_R))
     for profile in RUSH_PROFILES:
         a["combat.xeno_cinematic_rush_" + profile] = cinematic_rush(profile)
+    front_arms(a)
     return {"format_version": "1.8.0", "animations": a}
 
 

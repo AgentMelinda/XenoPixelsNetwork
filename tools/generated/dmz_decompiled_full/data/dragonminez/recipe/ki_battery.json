@@ -1,25 +1,3 @@
-{
-  "type": "minecraft:crafting_shaped",
-  "category": "misc",
-  "group": "dragonminez",
-  "key": {
-    "G": {
-      "item": "dragonminez:gete_ingot"
-    },
-    "L": {
-      "item": "minecraft:lapis_lazuli"
-    },
-    "R": {
-      "item": "minecraft:redstone"
-    }
-  },
-  "pattern": [
-    "RLR",
-    "LGL",
-    "RLR"
-  ],
-  "result": {
-    "count": 1,
-    "id": "dragonminez:ki_battery"
-  }
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:42c494e56e880b01721572bb849b40b80d0ae62d94efe337202df35c142bd461
+size 393

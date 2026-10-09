@@ -3,6 +3,7 @@ package net.bullettrain.xenopixelsmod.command;
 import com.mojang.brigadier.arguments.BoolArgumentType;
 import net.bullettrain.xenopixelsmod.XenoPixelsMod;
 import net.bullettrain.xenopixelsmod.compat.linearreader.LinearConversionPolicy;
+import net.bullettrain.xenopixelsmod.compat.linearreader.LinearReaderCompatibility;
 import net.bullettrain.xenopixelsmod.compat.linearreader.LinearClaimCoverage;
 import net.bullettrain.xenopixelsmod.compat.linearreader.YawpConversionClaims;
 import net.minecraft.commands.CommandSourceStack;
@@ -115,7 +116,8 @@ public final class LinearConversionCommands {
                 + "; default conversion=" + settings.defaultConversionAllowed + "; dimensions=" + settings.dimensions
                 + "; outside local claims=" + settings.allowOutsideYawpClaims + "; outside overrides=" + settings.outsideYawpClaimsDimensions
                 + ". Claim coverage requires YAWP 0.6.3-beta3 and one active cuboid covering the whole file and world height; unavailable coverage keeps MCA"
-                + ". Integration supports 1.3.0. Open regions retain their format until restart; existing linear files remain readable."), false);
+                + ". Integration supports " + LinearReaderCompatibility.SUPPORTED_VERSIONS
+                + ". Open regions retain their format until restart; existing linear files remain readable."), false);
         return 1;
     }
 
@@ -154,8 +156,9 @@ public final class LinearConversionCommands {
         boolean restricted = settings.enabled && (!settings.defaultConversionAllowed || settings.dimensions.containsValue(false)
                 || !settings.allowOutsideYawpClaims || settings.outsideYawpClaimsDimensions.containsValue(false));
         var installed = ModList.get().getModContainerById("linearreader");
-        if (restricted && installed.isPresent() && !installed.get().getModInfo().getVersion().toString().equals("1.3.0")) {
-            throw new IllegalArgumentException("Dimension conversion restrictions require LinearReader 1.3.0; installed "
+        if (restricted && installed.isPresent() && !LinearReaderCompatibility.supports(installed.get().getModInfo().getVersion().toString())) {
+            throw new IllegalArgumentException("Dimension conversion restrictions require LinearReader "
+                    + LinearReaderCompatibility.SUPPORTED_VERSIONS + "; installed "
                     + installed.get().getModInfo().getVersion());
         }
     }

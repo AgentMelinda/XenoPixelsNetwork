@@ -1,6 +1,3 @@
-{
-  "parent": "minecraft:item/generated",
-  "textures": {
-    "layer0": "dragonminez:item/senzu_bean"
-  }
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:0c365304cadef30869caaae4028c49905f4523f3820067723360ea2a75cb2fe1
+size 107

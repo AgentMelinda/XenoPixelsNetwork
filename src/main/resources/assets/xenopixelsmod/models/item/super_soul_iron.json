@@ -1,4 +1,3 @@
-{
-  "parent": "minecraft:item/generated",
-  "textures": { "layer0": "minecraft:item/iron_ingot" }
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:37845aa33a5a7a81b4e7c54f10e9ccc770facbdf02d0323766122c8641b78e41
+size 100

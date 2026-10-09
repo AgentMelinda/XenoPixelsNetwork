@@ -1,6 +1,3 @@
-{
-  "parent": "minecraft:item/generated",
-  "textures": {
-    "layer0": "dragonminez:item/armors/capsule_corp_armor_chestplate"
-  }
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:04c156091ff37761727f232f3b6d4d1e4557ef2efc850fc2b1d8e0ecdd550e15
+size 133

@@ -1,6 +1,3 @@
-{
-  "parent": "minecraft:block/cube_all",
-  "textures": {
-    "all": "dragonminez:block/namek_deepslate_iron_ore"
-  }
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:1b3ccbbde3bb3bd46e36f17a7516946c43124b6001f8b46b52e9ecb19b99b1b6
+size 119

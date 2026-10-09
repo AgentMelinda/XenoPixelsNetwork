@@ -1,14 +1,3 @@
-{
-  "placement": {
-    "type": "dragonminez:fixed_placement",
-    "fixed_x": 0,
-    "fixed_z": 0,
-    "salt": 11223344
-  },
-  "structures": [
-    {
-      "structure": "dragonminez:timechamber",
-      "weight": 1
-    }
-  ]
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:03b50a7976b3f2107a9e8591de2a004ddfda1120f80f6a13d3d4988a39a9de1e
+size 223

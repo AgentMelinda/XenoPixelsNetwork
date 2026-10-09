@@ -1,14 +1,3 @@
-{
-  "type": "minecraft:blasting",
-  "category": "misc",
-  "cookingtime": 100,
-  "experience": 0.1,
-  "group": "coal",
-  "ingredient": {
-    "item": "dragonminez:namek_coal_ore"
-  },
-  "result": {
-    "count": 1,
-    "id": "minecraft:coal"
-  }
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:0ec31bd1da31d6d3fc85ed0a3a3b70d0902a9cd9ec0e150e134b7944d5a24fbf
+size 244

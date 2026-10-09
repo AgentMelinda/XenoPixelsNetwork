@@ -53,11 +53,12 @@ public final class ChargeAttackGlowRenderer {
                 if (Bt3CombatClient.isDragonCharge()) {
                     r = 1.0f; g = 0.75f; b = 0.15f;
                 } else if (Bt3CombatClient.isKickCharge()) {
-                    r = 0.95f; g = 0.25f; b = 0.85f;
+                    r = 1.0f; g = 0.76f; b = 0.12f;
                 } else {
-                    r = 1.0f; g = 0.35f; b = 0.1f;
+                    r = 1.0f; g = 0.76f; b = 0.12f;
                 }
                 drawFeetRing(pose, buffers, cam, player, partial, progress, full, r, g, b);
+                drawGoldenAura(pose, buffers, cam, player, partial, progress, full);
             }
         }
 
@@ -123,5 +124,39 @@ public final class ChargeAttackGlowRenderer {
             vc.addVertex(mat, ix1, 0, iz1).setColor(r, g, b, alpha * 0.35f);
             vc.addVertex(mat, ix0, 0, iz0).setColor(r, g, b, alpha * 0.35f);
         }
+    }
+
+    /** A bounded flame shell around the body, dim at first and bright on full charge. */
+    private static void drawGoldenAura(PoseStack pose, MultiBufferSource.BufferSource buffers,
+                                       Vec3 cam, LocalPlayer player, float partial, float progress, boolean full) {
+        pose.pushPose();
+        pose.translate(Mth.lerp(partial, player.xo, player.getX()) - cam.x,
+                Mth.lerp(partial, player.yo, player.getY()) - cam.y,
+                Mth.lerp(partial, player.zo, player.getZ()) - cam.z);
+        VertexConsumer vc = buffers.getBuffer(RenderType.lightning());
+        Matrix4f mat = pose.last().pose();
+        float time = player.tickCount + partial;
+        float alpha = 0.025f + 0.18f * progress * progress;
+        if (full) alpha *= 1.15f + 0.2f * Mth.sin(time * 0.7f);
+        float radius = 0.42f + progress * 0.18f;
+        for (int i = 0; i < 12; i++) {
+            float angle = (float) (i * Math.PI / 6 + time * 0.035);
+            float next = angle + 0.18f;
+            float height = player.getBbHeight() * (0.9f + progress * 0.35f)
+                    + 0.18f * Mth.sin(time * 0.45f + i * 2f);
+            float x0 = Mth.cos(angle) * radius, z0 = Mth.sin(angle) * radius;
+            float x1 = Mth.cos(next) * radius, z1 = Mth.sin(next) * radius;
+            // Both faces render from first person and from the third-person camera.
+            vc.addVertex(mat, x0, 0.06f, z0).setColor(1f, 0.66f, 0.05f, alpha * 0.4f);
+            vc.addVertex(mat, x1, 0.06f, z1).setColor(1f, 0.66f, 0.05f, alpha * 0.4f);
+            vc.addVertex(mat, x1 * 0.75f, height, z1 * 0.75f).setColor(1f, 0.9f, 0.3f, alpha);
+            vc.addVertex(mat, x0 * 0.75f, height * 0.85f, z0 * 0.75f).setColor(1f, 0.9f, 0.3f, alpha);
+            vc.addVertex(mat, x0 * 0.75f, height * 0.85f, z0 * 0.75f).setColor(1f, 0.9f, 0.3f, alpha);
+            vc.addVertex(mat, x1 * 0.75f, height, z1 * 0.75f).setColor(1f, 0.9f, 0.3f, alpha);
+            vc.addVertex(mat, x1, 0.06f, z1).setColor(1f, 0.66f, 0.05f, alpha * 0.4f);
+            vc.addVertex(mat, x0, 0.06f, z0).setColor(1f, 0.66f, 0.05f, alpha * 0.4f);
+        }
+        buffers.endBatch(RenderType.lightning());
+        pose.popPose();
     }
 }

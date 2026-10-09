@@ -1,6 +1,3 @@
-{
-  "parent": "minecraft:block/cube_all",
-  "textures": {
-    "all": "dragonminez:block/custom/dballblock5"
-  }
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:2d84d3f7f7f4d10c613e78142e47e43233d633479b17958380db266ee22bec9a
+size 113

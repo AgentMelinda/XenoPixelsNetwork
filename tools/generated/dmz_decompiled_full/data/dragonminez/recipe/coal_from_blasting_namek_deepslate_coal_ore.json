@@ -1,14 +1,3 @@
-{
-  "type": "minecraft:blasting",
-  "category": "misc",
-  "cookingtime": 100,
-  "experience": 0.1,
-  "group": "coal",
-  "ingredient": {
-    "item": "dragonminez:namek_deepslate_coal_ore"
-  },
-  "result": {
-    "count": 1,
-    "id": "minecraft:coal"
-  }
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:4436cfaa9d037af0bea0aa0cf77f9a303916a4f4e6c1cc0471597eba63afe601
+size 254

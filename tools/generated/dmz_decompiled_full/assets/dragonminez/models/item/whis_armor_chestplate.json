@@ -1,6 +1,3 @@
-{
-  "parent": "minecraft:item/generated",
-  "textures": {
-    "layer0": "dragonminez:item/armors/whis_armor_chestplate"
-  }
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:9f99785e656f0e443e1f140d6482332cccb27e69bbc25612fc274ccbeabf900f
+size 125

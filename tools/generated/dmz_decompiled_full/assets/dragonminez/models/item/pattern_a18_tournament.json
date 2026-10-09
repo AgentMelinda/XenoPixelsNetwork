@@ -1,6 +1,3 @@
-{
-  "parent": "minecraft:item/generated",
-  "textures": {
-    "layer0": "dragonminez:item/patterns/pattern_a18_tournament"
-  }
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:8f20fe1008f167198462dbaadb3ba0f9f480a815b1872fdce8fde887ea9f0efe
+size 128

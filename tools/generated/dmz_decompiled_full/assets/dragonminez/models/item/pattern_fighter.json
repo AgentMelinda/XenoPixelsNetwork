@@ -1,6 +1,3 @@
-{
-  "parent": "minecraft:item/generated",
-  "textures": {
-    "layer0": "dragonminez:item/patterns/pattern_fighter"
-  }
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:877e7ea69c26fcc40d025d67d066564ac004451fb1e5e952384186f3d5a2a15f
+size 121
