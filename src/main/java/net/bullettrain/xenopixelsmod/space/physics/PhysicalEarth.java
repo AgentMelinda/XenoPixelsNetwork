@@ -3,6 +3,7 @@ package net.bullettrain.xenopixelsmod.space.physics;
 import com.mojang.serialization.Codec;
 import dev.ryanhcode.sable.api.SubLevelAssemblyHelper;
 import dev.ryanhcode.sable.api.sublevel.SubLevelContainer;
+import dev.ryanhcode.sable.api.sublevel.ticket.SubLevelLoadingTicket;
 import dev.ryanhcode.sable.api.sublevel.ticket.SubLevelLoadingTicketType;
 import dev.ryanhcode.sable.companion.math.BoundingBox3i;
 import dev.ryanhcode.sable.physics.config.dimension_physics.DimensionPhysicsData;
@@ -78,6 +79,40 @@ public final class PhysicalEarth implements SpaceTickScheduler.Pass {
     /** Every other charted body shares one ticket type, keyed by its chart id (types must exist before load). */
     static final SubLevelLoadingTicketType<String> PLANET_TICKET = SubLevelLoadingTicketType.create(
             ResourceLocation.fromNamespaceAndPath("xenopixelsmod", "physical_planet"), Codec.STRING);
+
+    /**
+     * Sable 2.0.3 reads a loading ticket through {@code getType()/getKey()}; 2.0.5 made the class a record and renamed
+     * them to {@code type()/key()}. Binding either name statically throws {@code NoSuchMethodError} inside
+     * ServerStartedEvent on the other version, which kills the whole server, so the accessor is resolved against the
+     * Sable that is actually installed. Resolution is deferred to the first read so an unknown future naming is a
+     * {@code RuntimeException} that the per-body initialization handler refuses that one body with, not a class-init
+     * {@code Error} that takes the server down. An unresolvable accessor means the ticket state is unknown, and unknown
+     * is never read as "no duplicate ticket exists".
+     */
+    private static java.lang.reflect.Method ticketAccessor(String recordName, String beanName) {
+        for (String name : new String[] {recordName, beanName}) {
+            try {
+                return SubLevelLoadingTicket.class.getMethod(name);
+            } catch (NoSuchMethodException ignored) {
+                // Try the other Sable naming.
+            }
+        }
+        throw new IllegalStateException("Sable SubLevelLoadingTicket exposes neither " + recordName + "() nor "
+                + beanName + "(); refusing to guess whether a persistent planet ticket already exists");
+    }
+
+    private static java.lang.reflect.Method ticketType, ticketKey;
+
+    /** Whether this Sable loading ticket is one of ours, for this body id. */
+    private static boolean ticketIs(SubLevelLoadingTicket<?> ticket, Spec spec) {
+        try {
+            if (ticketType == null) ticketType = ticketAccessor("type", "getType");
+            if (ticketKey == null) ticketKey = ticketAccessor("key", "getKey");
+            return spec.ticket().equals(ticketType.invoke(ticket)) && spec.id().equals(ticketKey.invoke(ticket));
+        } catch (ReflectiveOperationException | RuntimeException e) {
+            throw new IllegalStateException("cannot read Sable loading ticket: " + e, e);
+        }
+    }
     /**
      * Managed bodies for the current {@link XenoSpaceConfig#physicalPlanets} mode, in creation order: chart
      * order is topological, so a child is always staged after (and relative to) its parent.
@@ -457,8 +492,7 @@ public final class PhysicalEarth implements SpaceTickScheduler.Pass {
         // its replacement; any other persistent ticket for this body id still does.
         if (ledger.attempted || container.getAllTickets().entrySet().stream()
                 .filter(entry -> !entry.getKey().equals(lostId)).map(java.util.Map.Entry::getValue)
-                .anyMatch(info -> info.tickets().stream().anyMatch(ticket -> ticket.getType().equals(spec.ticket())
-                        && spec.id().equals(ticket.getKey()))))
+                .anyMatch(info -> info.tickets().stream().anyMatch(ticket -> ticketIs(ticket, spec))))
             throw new IllegalStateException("an earlier assembly or persistent " + spec.displayName() + " ticket exists; inspect before retrying");
         boolean atomic = XenoSpaceConfig.atomicPlanetAssembly();
         if (!atomic && !level.players().isEmpty()) throw new IllegalStateException("players are present in Voidsea during initialization");
