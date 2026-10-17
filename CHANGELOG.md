@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+## 0.5.16-1.21.1 — 2026-10-17
+
+- Fetch Git LFS objects in CI and release builds so `xenopixelsmod.mixins.json` is packaged as JSON rather than an LFS pointer.
+- Validate the packaged mixin config in the server jar before publishing.
+
 ## 0.5.15-1.21.1 — 2026-10-17
 
 - Render distant chart planets as lightweight cached atlas projections, with the detailed physical Sable sphere taking

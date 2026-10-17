@@ -16,6 +16,8 @@ jobs:
 
     steps:
       - uses: actions/checkout@v5
+        with:
+          lfs: true
 
       - name: Set up JDK 21
         uses: actions/setup-java@v5
@@ -57,6 +59,13 @@ jobs:
           server="build/libs/xenopixelsmod-Server-${VERSION}.jar"
           test -s "$client"
           test -s "$server"
+          python - "$server" <<'PY'
+          import json, sys, zipfile
+          with zipfile.ZipFile(sys.argv[1]) as jar:
+              config = jar.read("xenopixelsmod.mixins.json")
+          json.loads(config)
+          print("Mixin config is valid JSON in the server jar")
+          PY
           jar tf "$client" > /tmp/client-entries.txt
           jar tf "$server" > /tmp/server-entries.txt
           grep -iE '^META-INF/jarjar/modern-ui.*\.jar$' /tmp/client-entries.txt
