@@ -39,6 +39,7 @@ public final class ShipGravityControl {
             long now = System.nanoTime();
             for (var candidate : SubLevelContainer.getContainer(system.getLevel()).getAllSubLevels()) {
                 if (!(candidate instanceof ServerSubLevel subLevel)) continue;
+                if (net.bullettrain.xenopixelsmod.space.physics.PhysicalEarth.isManaged(subLevel)) continue;
                 ShipGravityControl control = get(subLevel);
                 if (control == null) continue;
                 // Alive in this dimension → renew. A suppressed control still belongs to a live

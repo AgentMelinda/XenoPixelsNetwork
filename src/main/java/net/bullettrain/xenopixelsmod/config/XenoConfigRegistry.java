@@ -96,6 +96,16 @@ public final class XenoConfigRegistry {
                 });
         // Server-owned V3 tuning added 2026-10-08. Every key here is validated/clamped by V3Config.Values
         // and synced to clients read-only; none of them is client-writable.
+        v3Int("v3.kiMaxLifetimeTicks","Maximum owned Ki firing lifetime (1-1200 ticks; default120)",
+            () -> V3Config.get().kiMaxLifetimeTicks(),(e,v) -> e.kiMaxLifetimeTicks=v);
+        v3Bool("v3.randomRush.enabled", "Enable combo Super/Ultimate Rush rewards", () -> V3Config.get().randomRush().enabled(), (e,v) -> e.randomRush=e.randomRush.with("enabled",v));
+        v3Bool("v3.randomRush.meterEnabled", "Require SPACE mash meter (false: one physical SPACE press)", () -> V3Config.get().randomRush().meterEnabled(), (e,v) -> e.randomRush=e.randomRush.with("meterEnabled",v));
+        v3Bool("v3.randomRush.deadlineEnabled", "Expire the SPACE prompt after windowTicks", () -> V3Config.get().randomRush().deadlineEnabled(), (e,v) -> e.randomRush=e.randomRush.with("deadlineEnabled",v));
+        v3Bool("v3.randomRush.freezeDuringAttack", "Suppress target controls through random attack and final Ki", () -> V3Config.get().randomRush().freezeDuringAttack(), (e,v) -> e.randomRush=e.randomRush.with("freezeDuringAttack",v));
+        v3Bool("v3.randomRush.freezeAfterAttack", "Enable separate random rush post-attack recovery", () -> V3Config.get().randomRush().freezeAfterAttack(), (e,v) -> e.randomRush=e.randomRush.with("freezeAfterAttack",v));
+        v3Int("v3.randomRush.windowTicks", "SPACE prompt deadline in ticks (1-1200; default80 =4 seconds)", () -> V3Config.get().randomRush().windowTicks(), (e,v) -> e.randomRush=e.randomRush.with("windowTicks",v));
+        v3Int("v3.randomRush.fillPerPress", "SPACE meter fill per accepted press (1-1000; total1000)", () -> V3Config.get().randomRush().fillPerPress(), (e,v) -> e.randomRush=e.randomRush.with("fillPerPress",v));
+        v3Int("v3.randomRush.postFreezeTicks", "Random rush post-attack recovery ticks (0-1200)", () -> V3Config.get().randomRush().postFreezeTicks(), (e,v) -> e.randomRush=e.randomRush.with("postFreezeTicks",v));
         v3Double("v3.dragonDashSpeed", "V3 Dragon Dash flight speed, blocks per tick (0.5-12)",
                 () -> V3Config.get().dragonDashSpeed(), (edit, value) -> edit.dragonDashSpeed = value, "dragonDashSpeed");
         v3Double("v3.dragonDashLaunchDistance", "Blocks the first Dragon Dash hit launches the target (4-64)",
@@ -103,7 +113,7 @@ public final class XenoConfigRegistry {
                 "dragonDashLaunchDistance", "dashLaunch");
         v3Double("v3.dragonDashFollowDistance", "Melee gap left behind the target by a follow-up dash teleport (1.5-8)",
                 () -> V3Config.get().dragonDashFollowDistance(), (edit, value) -> edit.dragonDashFollowDistance = value,
-                "dragonDashFollowDistance", "dashFollowDistance");
+                "dragonDashFollowDistance", "dashFollowDistance", "v3.dragonDashGapDistance");
         v3Int("v3.dragonDashFollowCooldownTicks", "Ticks between follow-up dash teleports (0-200)",
                 () -> V3Config.get().dragonDashFollowCooldownTicks(),
                 (edit, value) -> edit.dragonDashFollowCooldownTicks = value, "dashFollowCooldown");
@@ -114,7 +124,12 @@ public final class XenoConfigRegistry {
                 "Blocks a Strike finishing shove travels (4-64; default 20; Dodoria Head Breaker uses DOWN)",
                 () -> V3Config.get().strikeLaunchDistance(), (edit, value) -> edit.strikeLaunchDistance = value,
                 "strikeLaunchDistance", "strikeLaunch");
-        v3Double("v3.strikeApproachRange", "Max distance a melee/mixed Strike attack may start its fly-in from (4-128)",
+        v3Double("v3.heavyChargeLaunchDistance",
+                "Blocks the fully charged punch launches the target (4-64; default 20)",
+                () -> V3Config.get().heavyChargeLaunchDistance(),
+                (edit, value) -> edit.heavyChargeLaunchDistance = value,
+                "heavyChargeLaunchDistance", "chargedPunchLaunch");
+        v3Double("v3.strikeApproachRange", "Max distance a melee/mixed Strike attack may start its fly-in from (4-999)",
                 () -> V3Config.get().strikeApproachRange(), (edit, value) -> edit.strikeApproachRange = value,
                 "strikeApproachRange");
         v3Bool("v3.strikeCinematicCamera", "Wide cinematic camera on Strike attacks (true/false)",
@@ -144,6 +159,18 @@ public final class XenoConfigRegistry {
                 "Post-END Strike cinematic + freeze ticks after the technique finishes (0-400; default 80 ~4s)",
                 () -> V3Config.get().strikeCameraHoldTicks(), (edit, value) -> edit.strikeCameraHoldTicks = value,
                 "strikeCamHold");
+        v3Int("v3.strikeTargetFreezeTicks",
+                "Victim freeze after cinematic Strike/UltimateFinisher ends (0-1200 ticks; 20 ticks=1s)",
+                () -> V3Config.get().strikeTargetFreezeTicks(), (edit, value) -> edit.strikeTargetFreezeTicks = value,
+                "strikeFreeze");
+        v3Double("v3.rushFlightSpeedMultiplier",
+                "Rush search/reapproach flight speed multiplier (0.1-4; default 1)",
+                () -> V3Config.get().rushFlightSpeedMultiplier(),
+                (edit, value) -> edit.rushFlightSpeedMultiplier = value, "rushFlightSpeed");
+        v3Double("v3.cinematicCameraDistanceScale",
+                "Cinematic camera distance multiplier (0.25-4; 1=authored; wide shots still fit both fighters)",
+                () -> V3Config.get().cinematicCameraDistanceScale(),
+                (edit, value) -> edit.cinematicCameraDistanceScale = value, "cinematicDistance");
         v3Int("v3.strikeCinematicCameraHoldTicks",
                 "Opening close-camera hold for ki/charge Strikes (0-400; 0=authored; skipped on rush/APPROACH)",
                 () -> V3Config.get().strikeCinematicCameraHoldTicks(),

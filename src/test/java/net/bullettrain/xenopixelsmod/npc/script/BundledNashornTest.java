@@ -117,7 +117,7 @@ class BundledNashornTest {
                 NpcScriptScope.builder().put("XenoPixels",
                         net.bullettrain.xenopixelsmod.npc.script.api.NativeXenoScriptApi.INSTANCE).build());
         assertTrue(result.ok(), result.describe());
-        assertEquals("28", result.value());
+        assertEquals("29", result.value());
     }
 
     @Test
@@ -125,10 +125,11 @@ class BundledNashornTest {
         Path folder = Path.of(System.getProperty("xenopixels.projectDir"),
                 "examples", "customnpcs");
         try (var files = Files.list(folder)) {
-            // Existing examples plus the native Lord Slug replacement/regen script.
+            // Existing examples plus the native Lord Slug replacement/regen script and the
+            // v29 appearance borrow.
             var scripts = files.filter(path -> path.toString().endsWith(".js")
                     && path.getFileName().toString().startsWith("xenopixels_")).sorted().toList();
-            assertEquals(23, scripts.size());
+            assertEquals(24, scripts.size());
             for (Path script : scripts) {
                 NpcScriptResult result = NpcScriptEngines.current().compile(
                         Files.readString(script), script.getFileName().toString());

@@ -21,7 +21,6 @@ import net.bullettrain.xenopixelsmod.combat.anim.Bt3AnimationIntent;
 import net.bullettrain.xenopixelsmod.combat.beam.BeamSurgeManager;
 import net.bullettrain.xenopixelsmod.combat.combo.ComboRouteMachine;
 import net.bullettrain.xenopixelsmod.combat.fx.CombatFx;
-import net.bullettrain.xenopixelsmod.combat.technique.KiFixedAim;
 import net.bullettrain.xenopixelsmod.combat.technique.UltimateFinisherTechnique;
 import net.bullettrain.xenopixelsmod.config.XenoServerConfig;
 import net.bullettrain.xenopixelsmod.network.ChaseFlightSystem;
@@ -58,8 +57,9 @@ public final class UltimateFinisher {
     private UltimateFinisher() {}
 
     public static boolean owns(ServerPlayer player) {
+        if (net.bullettrain.xenopixelsmod.combat.v3.technique.V3PostAttackFreeze.isFrozen(player)) return true;
         if (ACTIVE.containsKey(player.getUUID())) return true;
-        return ACTIVE.values().stream().anyMatch(a -> a.target == player && a.phase != UltimateFinisherRules.Phase.BEAM);
+        return ACTIVE.values().stream().anyMatch(a -> a.target == player);
     }
 
     /** Always handled for our selected id, including a refused cast: DMZ must not also strike. */
@@ -73,8 +73,7 @@ public final class UltimateFinisher {
             refusal = "Target is too far away or behind a wall";
         }
         if (refusal == null) refusal = V2Grab.refusal(player, target);
-        if (refusal == null && ACTIVE.values().stream().anyMatch(a -> a.target == target
-                && a.phase != UltimateFinisherRules.Phase.BEAM)) {
+        if (refusal == null && ACTIVE.values().stream().anyMatch(a -> a.target == target)) {
             refusal = "Target is already in UltimateFinisher";
         }
         if (!XenoServerConfig.bt3CombatEnabled || !player.isAlive() || player.isSpectator()
@@ -110,8 +109,10 @@ public final class UltimateFinisher {
         DmzAnimHelper.broadcastBlockStop(player);
         Active a = new Active(player, target, kamehameha, ++nextSequence, V2Support.tick(player));
         ACTIVE.put(player.getUUID(), a);
+        net.bullettrain.xenopixelsmod.combat.v3.ki.CastKiLifetime.begin(player, target, a.recoveryToken, "melee_energy", true);
         lock(player, true);
-        V2Motion.startTravel(player, a.travel, target, V2Fighter.TravelKind.ULTIMATE_FINISHER, 1.8, 2.4, 0);
+        V2Motion.startTravel(player, a.travel, target, V2Fighter.TravelKind.ULTIMATE_FINISHER,
+                1.8 * net.bullettrain.xenopixelsmod.combat.v3.V3Config.get().rushFlightSpeedMultiplier(), 2.4, 0);
         camera(a, UltimateFinisherRules.Phase.APPROACH);
     }
 
@@ -127,7 +128,7 @@ public final class UltimateFinisher {
                 || !target.isAlive() || target.isRemoved() || player.level() != target.level()
                 || player.isPassenger() || target.isPassenger() || target.isVehicle()
                 || player.distanceTo(target) > RANGE + 16 || V2Support.refusal(player, target) != null
-                || !CombatKnockback.canKnockBack(target) || now - a.started > 240) {
+                || !CombatKnockback.canKnockBack(target) || now - a.started > 240 + a.postFreezeTicks) {
             stop(a);
             return;
         }
@@ -143,8 +144,8 @@ public final class UltimateFinisher {
             player.setNoGravity(true);
         }
         int elapsed = now - a.arrived;
-        UltimateFinisherRules.Phase phase = UltimateFinisherRules.phase(elapsed);
-        if (phase == UltimateFinisherRules.Phase.STOP) { stop(a); return; }
+        UltimateFinisherRules.Phase phase = UltimateFinisherRules.phase(elapsed, a.postFreezeTicks);
+        if (phase == UltimateFinisherRules.Phase.STOP) { stop(a, true); return; }
         if (phase != a.phase) {
             if (!enter(a, phase)) { stop(a); return; }
             camera(a, phase);
@@ -159,6 +160,7 @@ public final class UltimateFinisher {
                     String punch = a.punches % 2 == 0 ? DmzAnimHelper.PUNCH_RIGHT : DmzAnimHelper.PUNCH_LEFT;
                     NetworkHandler.sendToTrackingEntityAndSelf(new MeleeAnimationS2C(player.getId(), punch, false, 1.08f), player);
                     if (!V2Damage.strike(player, target, 0.35f)) { stop(a); return; }
+                    net.bullettrain.xenopixelsmod.combat.v3.V3AttackSounds.contact(player, target);
                     if (!a.targetHeld) holdTarget(a);
                     a.punches++;
                     CombatKnockback.set(target, Vec3.ZERO);
@@ -182,6 +184,15 @@ public final class UltimateFinisher {
                 a.wave.setCastSize(0.2f + (elapsed - UltimateFinisherRules.CHARGE_START) / 40f);
             }
             case BEAM -> {
+                if(elapsed>=UltimateFinisherRules.BEAM_WAVE_END && !a.recoveryStarted){
+                    a.recoveryStarted=true;
+                    // The authored wave is over before its recoverable aftermath begins.
+                    if(a.wave!=null && a.wave.isAlive())a.wave.discard();
+                    net.bullettrain.xenopixelsmod.combat.v3.ki.CastKiLifetime.finish(player.getUUID(), a.recoveryToken, false);
+                    if(target instanceof ServerPlayer victim)
+                        net.bullettrain.xenopixelsmod.combat.v3.CombatRecovery.begin(victim,a.recoveryToken,now,a.postFreezeTicks,
+                                net.bullettrain.xenopixelsmod.combat.v3.RecoverySnapshot.Kind.FINISHER,()->stop(a, true));
+                }
                 // Keep the victim frozen for the wave and the post-wave hold (owner: +4s).
                 CombatKnockback.set(target, Vec3.ZERO);
                 pinHeldTarget(a);
@@ -215,8 +226,10 @@ public final class UltimateFinisher {
         } else if (phase == UltimateFinisherRules.Phase.CHARGE) {
             StatsData stats = V2Support.stats(player);
             if (stats == null) return false;
-            a.wave = UltimateFinisherKamehameha.start(player, stats, a.kamehameha);
+            a.wave = net.bullettrain.xenopixelsmod.combat.v3.ki.CastKiLifetime.dispatch(player, a.recoveryToken,
+                    () -> UltimateFinisherKamehameha.start(player, stats, a.kamehameha));
             if (a.wave == null) return false;
+            UltimateFinisherKamehameha.target(a.wave, target);
             animation(player, a.kamehameha.getAnimationPrefix() + "_cast", 1);
         } else if (phase == UltimateFinisherRules.Phase.BEAM) {
             if (a.wave == null || !a.wave.isAlive()) return false;
@@ -237,6 +250,7 @@ public final class UltimateFinisher {
             animation(player, a.kamehameha.getAnimationPrefix() + "_fire", 1);
             // Do not free the victim here — freeze continues through the wave and POST_BEAM_FREEZE_TICKS.
             if (!a.targetHeld) holdTarget(a);
+            a.beamFreezeAt = target.position();
             BeamSurgeManager.reportFeeding(player);
         }
         return true;
@@ -249,6 +263,10 @@ public final class UltimateFinisher {
         a.target.hurtMarked = true;
         a.target.hasImpulse = true;
         a.target.setNoGravity(true);
+        if (a.beamFreezeAt != null && a.target.position().distanceToSqr(a.beamFreezeAt) > 1e-4)
+            a.target.teleportTo(a.beamFreezeAt.x, a.beamFreezeAt.y, a.beamFreezeAt.z);
+        if (a.target instanceof ServerPlayer player)
+            player.connection.send(new ClientboundSetEntityMotionPacket(player));
     }
 
     /** A confirmed first punch commits the victim; refused damage never changes their movement. */
@@ -270,8 +288,11 @@ public final class UltimateFinisher {
         }
         a.targetNoGravity = target.isNoGravity();
         if (target instanceof Mob mob) {
-            a.targetNoAi = mob.isNoAi();
-            mob.setNoAi(true);
+            // Through FreezeOwnership so the pre-freeze value is stamped into the save data. An
+            // unload or a crash before freeTarget ran used to leave NoAI persisted, and the target
+            // came back immobile on every subsequent load with nothing left to release it.
+            net.bullettrain.xenopixelsmod.combat.FreezeOwnership.acquire(
+                    mob, net.bullettrain.xenopixelsmod.combat.FreezeOwnership.Reason.FINISHER);
         }
         a.targetHeld = true;
         target.setNoGravity(true);
@@ -281,6 +302,9 @@ public final class UltimateFinisher {
         player.lookAt(EntityAnchorArgument.Anchor.EYES, target.getBoundingBox().getCenter());
         player.setYHeadRot(player.getYRot());
         player.yBodyRot = player.getYRot();
+        com.dragonminez.common.compat.CameraAimHelper.store(player,
+                net.bullettrain.xenopixelsmod.combat.v3.technique.V3RushGeometry.aim(
+                        player.getEyePosition(), target.getBoundingBox().getCenter(), player.getLookAngle()));
     }
 
     /**
@@ -290,24 +314,7 @@ public final class UltimateFinisher {
      */
     private static void aimWaveAtTarget(Active a) {
         if (a.wave == null || a.target == null || !a.target.isAlive() || a.player == null) return;
-        a.wave.setContinuousFollow(false);
-        a.wave.setCastOffsets(0f, 0f, 0f);
-        Vec3 to = a.target.getBoundingBox().getCenter();
-        Vec3 eye = a.player.getEyePosition();
-        Vec3 line = to.subtract(eye);
-        if (line.lengthSqr() < 1.0E-8) line = a.player.getLookAngle();
-        else line = line.normalize();
-        a.wave.setPos(eye.add(line.scale(1.5)));
-        Vec3 from = a.wave.position();
-        Vec3 d = to.subtract(from);
-        double horiz = Math.sqrt(d.x * d.x + d.z * d.z);
-        if (horiz < 1.0E-8 && Math.abs(d.y) < 1.0E-8) return;
-        float yaw = (float) (Math.toDegrees(Math.atan2(d.z, d.x)) - 90.0);
-        float pitch = horiz < 1.0E-8 ? (d.y > 0 ? -90f : 90f)
-                : (float) (-Math.toDegrees(Math.atan2(d.y, horiz)));
-        a.wave.setYRot(yaw);
-        a.wave.setXRot(pitch);
-        if (a.wave instanceof KiFixedAim fixed) fixed.xenopixels$setFixedAim(yaw, pitch);
+        UltimateFinisherKamehameha.align(a.wave, a.target);
     }
 
     private static void motion(ServerPlayer player, Vec3 velocity) {
@@ -342,7 +349,9 @@ public final class UltimateFinisher {
         }
         if (!a.targetHeld) return;
         a.targetHeld = false;
-        if (a.target instanceof Mob mob) mob.setNoAi(a.targetNoAi);
+        if (a.target instanceof Mob mob)
+            net.bullettrain.xenopixelsmod.combat.FreezeOwnership.release(
+                    mob, net.bullettrain.xenopixelsmod.combat.FreezeOwnership.Reason.FINISHER);
         a.target.setNoGravity(a.targetNoGravity);
         a.target.resetFallDistance();
         if (a.target instanceof ServerPlayer defender) {
@@ -352,7 +361,14 @@ public final class UltimateFinisher {
     }
 
     private static void stop(Active a) {
+        stop(a, false);
+    }
+
+    private static void stop(Active a, boolean completed) {
         if (ACTIVE.remove(a.player.getUUID()) == null) return;
+        net.bullettrain.xenopixelsmod.combat.v3.ki.CastKiLifetime.finish(a.player.getUUID(), a.recoveryToken, true);
+        if(a.target instanceof ServerPlayer victim)
+            net.bullettrain.xenopixelsmod.combat.v3.CombatRecovery.cancel(victim,a.recoveryToken);
         V2Motion.stopTravel(a.player, a.travel);
         a.player.setNoGravity(a.playerNoGravity);
         freeTarget(a);
@@ -363,6 +379,7 @@ public final class UltimateFinisher {
         NetworkHandler.sendToTrackingEntityAndSelf(new TriggerAnimationS2C(a.player.getUUID(),
                 TriggerAnimationS2C.AnimationType.KI_ANIMATION_STOP, 0, -1, ""), a.player);
         camera(a, UltimateFinisherRules.Phase.STOP);
+        if (completed) UltimateFinisherDescent.start(a.player, a.startingHeight, V2Support.tick(a.player));
     }
 
     @SubscribeEvent
@@ -392,6 +409,13 @@ public final class UltimateFinisher {
                 || !(hit instanceof LivingEntity victim) || !victim.getUUID().equals(victimId)
                 || !CombatKnockback.canKnockBack(victim)
                 || (wave.getOwner() instanceof ServerPlayer caster && V2Support.refusal(caster, victim) != null)) return;
+        Active active = wave.getOwner() == null ? null : ACTIVE.get(wave.getOwner().getUUID());
+        if (active != null && active.wave == wave && active.target == victim && active.targetHeld
+                && active.phase == UltimateFinisherRules.Phase.BEAM) {
+            CombatKnockback.set(victim, Vec3.ZERO);
+            KnockbackHelper.apply(victim, Vec3.ZERO);
+            return;
+        }
         Vec3 velocity = Vec3.directionFromRotation(wave.getXRot(), wave.getYRot()).scale(1.1).add(0, 0.25, 0);
         CombatKnockback.set(victim, velocity);
         KnockbackHelper.apply(victim, velocity);
@@ -422,13 +446,17 @@ public final class UltimateFinisher {
         final LivingEntity target;
         final KiAttackData kamehameha;
         final int sequence, started;
+        final int postFreezeTicks;
+        final UUID recoveryToken=UUID.randomUUID();
+        boolean recoveryStarted;
         final boolean playerNoGravity;
+        final double startingHeight;
         boolean targetNoGravity;
         final V2Fighter travel;
         int arrived = -1, punches;
-        boolean targetHeld, targetNoAi, targetLocked;
+        boolean targetHeld, targetLocked;
         UltimateFinisherRules.Phase phase;
-        Vec3 throwOrigin, throwDirection;
+        Vec3 throwOrigin, throwDirection, beamFreezeAt;
         KiWaveEntity wave;
 
         Active(ServerPlayer player, LivingEntity target, KiAttackData kamehameha, int sequence, int started) {
@@ -437,7 +465,9 @@ public final class UltimateFinisher {
             this.kamehameha = kamehameha;
             this.sequence = sequence;
             this.started = started;
+            this.postFreezeTicks = net.bullettrain.xenopixelsmod.combat.v3.V3Config.get().strikeTargetFreezeTicks();
             this.playerNoGravity = player.isNoGravity();
+            this.startingHeight = player.getY();
             this.targetNoGravity = target.isNoGravity();
             this.travel = new V2Fighter(player.getUUID());
         }

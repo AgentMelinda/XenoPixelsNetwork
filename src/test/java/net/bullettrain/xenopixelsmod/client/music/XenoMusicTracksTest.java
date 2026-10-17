@@ -7,14 +7,24 @@ import java.util.List;
 import org.junit.jupiter.api.Test;
 
 class XenoMusicTracksTest {
-    @Test void defaultsAreDragonMineZsOwnThirtyNineMenuTracks() {
+    @Test void ownerSoundtrackThreeIsDefaultAndDmzTracksRemainSelectable() {
         var defaults = XenoMusicTracks.defaults();
-        assertEquals(39, defaults.size());
-        assertEquals("dragonminez:menu_music_1", defaults.getFirst());
+        assertEquals(46, defaults.size());
+        assertEquals("xenopixelsmod:music.dbz_003", defaults.getFirst());
+        assertTrue(defaults.contains("dragonminez:menu_music_1"));
         assertEquals("dragonminez:menu_music_39", defaults.getLast());
         assertEquals("DMZ Menu 7", XenoMusicTracks.displayName("dragonminez:menu_music_7"));
         assertEquals("my_song", XenoMusicTracks.displayName("mypack:music/my_song"));
         assertEquals("Vegeta's Sacrifice", XenoMusicTracks.displayName("dragonminez:menu_music_33"));
+    }
+    @Test void customPlaylistsAndLegacyManualSelectionsSurviveMigration() {
+        var custom = List.of("pack:a", "pack:b");
+        var result = XenoMusicTracks.migrate(custom, 1);
+        assertEquals(custom, result.tracks()); assertEquals(1, result.index());
+        var legacy = java.util.stream.IntStream.rangeClosed(1, 39).mapToObj(i -> "dragonminez:menu_music_" + i).toList();
+        result = XenoMusicTracks.migrate(legacy, 15);
+        assertEquals("dragonminez:menu_music_16", result.tracks().get(result.index()));
+        assertEquals(0, XenoMusicTracks.migrate(legacy, 0).index());
     }
 
     @Test void everyDefaultResolvesToAStreamedAudioAssetInThePinnedDependency() throws Exception {
@@ -25,6 +35,7 @@ class XenoMusicTracksTest {
             try (var reader = new java.io.InputStreamReader(jar.getInputStream(entry), java.nio.charset.StandardCharsets.UTF_8)) {
                 var sounds = com.google.gson.JsonParser.parseReader(reader).getAsJsonObject();
                 for (String id : XenoMusicTracks.defaults()) {
+                    if (!id.startsWith("dragonminez:")) continue;
                     String event = id.substring(id.indexOf(':') + 1);
                     assertTrue(sounds.has(event), id);
                     var sound = sounds.getAsJsonObject(event).getAsJsonArray("sounds").get(0).getAsJsonObject();
@@ -33,6 +44,20 @@ class XenoMusicTracksTest {
                     assertNotNull(jar.getEntry("assets/dragonminez/sounds/" + audio + ".ogg"), id);
                 }
             }
+        }
+    }
+    @Test void localDramaticTracksResolveToStreamedVorbisAssets() throws Exception {
+        var root = java.nio.file.Path.of(System.getProperty("xenopixels.projectDir"))
+                .resolve("src/main/resources/assets/xenopixelsmod");
+        var sounds = com.google.gson.JsonParser.parseString(java.nio.file.Files.readString(root.resolve("sounds.json"))).getAsJsonObject();
+        for (String id : XenoMusicTracks.defaults()) {
+            if (!id.startsWith("xenopixelsmod:")) continue;
+            var sound = sounds.getAsJsonObject(id.substring(id.indexOf(':') + 1)).getAsJsonArray("sounds").get(0).getAsJsonObject();
+            assertTrue(sound.get("stream").getAsBoolean(), id);
+            var file = root.resolve("sounds/" + sound.get("name").getAsString().substring("xenopixelsmod:".length()) + ".ogg");
+            var bytes = java.nio.file.Files.readAllBytes(file);
+            assertEquals("OggS", new String(bytes, 0, 4, java.nio.charset.StandardCharsets.US_ASCII), id);
+            assertTrue(bytes.length > 10000, id);
         }
     }
 
@@ -57,6 +82,8 @@ class XenoMusicTracksTest {
         assertEquals(3, XenoMusicPauseWidget.hitIndex(100, 30), "power, 32 wide");
         assertEquals(-1, XenoMusicPauseWidget.hitIndex(26, 25), "gap between chips");
         assertEquals(-1, XenoMusicPauseWidget.hitIndex(30, 10), "title line");
-        assertEquals(-1, XenoMusicPauseWidget.hitIndex(120, 25), "empty plate area");
+        assertEquals(4, XenoMusicPauseWidget.hitIndex(120, 25), "independent cinematic toggle");
+        assertEquals(-1, XenoMusicPauseWidget.hitIndex(110, 25), "gap before cinematic toggle");
+        assertEquals(-1, XenoMusicPauseWidget.hitIndex(144, 25), "right plate margin");
     }
 }

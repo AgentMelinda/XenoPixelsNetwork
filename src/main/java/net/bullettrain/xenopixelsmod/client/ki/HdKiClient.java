@@ -74,7 +74,7 @@ public final class HdKiClient {
         Minecraft mc = Minecraft.getInstance();
         if (!(entity instanceof AbstractKiProjectile ki) || mc.level == null || mc.player == null
                 || entity.level() != mc.level) return false;
-        if (!allowsHd(ki.getTechniqueId())) return false;
+        if (!allowsHd(ki)) return false;
         KiLook.Kind kind = kind(entity);
         boolean inRange = entity.position().distanceToSqr(mc.player.position()) <= VIEW_RANGE * VIEW_RANGE;
         return canSuppress(active(), inRange, kind != null && assetsReady(required(ki, kind)));
@@ -87,6 +87,14 @@ public final class HdKiClient {
     private static boolean allowsHd(String techniqueId) {
         return allowsHd(net.bullettrain.xenopixelsmod.client.XenoServerClientState.get().effekseerKiAttacks,
                 net.bullettrain.xenopixelsmod.combat.v3.ki.V3NativeKi.owns(techniqueId));
+    }
+
+    private static boolean allowsHd(AbstractKiProjectile ki) {
+        // An owned finisher is drawn from the target ray every render frame. Persistent
+        // HD segments capture a tick's origin/angle and cannot follow that correction.
+        if (ki instanceof KiWaveEntity wave
+                && net.bullettrain.xenopixelsmod.combat.v2.UltimateFinisherKamehameha.owns(wave)) return false;
+        return allowsHd(ki.getTechniqueId());
     }
 
     static boolean allowsHd(boolean ownedHdEnabled, boolean owned) { return ownedHdEnabled || !owned; }
@@ -123,7 +131,7 @@ public final class HdKiClient {
         try {
             for (Entity entity : level.entitiesForRendering()) {
                 if (!(entity instanceof AbstractKiProjectile ki) || ki.isRemoved()) continue;
-                if (!allowsHd(ki.getTechniqueId())) continue;
+                if (!allowsHd(ki)) continue;
                 KiLook.Kind kind = kind(ki);
                 if (kind == null || ki.position().distanceToSqr(eye) > VIEW_RANGE * VIEW_RANGE) continue;
                 List<ResourceLocation> required = required(ki, kind);

@@ -180,7 +180,7 @@ public class ModNetwork {
     // 105 appends server-timed v2 charge inputs and the CHARGE state; packet ids stay stable.
     // 106 appends the Dragon Dash continuation window and target to the existing state packet.
     // 110 appends the 2026-10-08 V3 tuning tail to CombatV3ConfigPacket; packet ids are unchanged.
-    private static final String PROTOCOL = "111";
+    private static final String PROTOCOL = "112";
 
     public static final SimpleChannel CHANNEL = NetworkRegistry.ChannelBuilder
             .named(ResourceLocation.fromNamespaceAndPath(XenoPixelsMod.MOD_ID, "main"))

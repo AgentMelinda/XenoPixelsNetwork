@@ -26,7 +26,8 @@ public final class UltimateFinisherCamera {
     private static CameraType previous;
     private static ClientLevel level;
     private static int expires;
-    private static Vec3 lastPosition;
+    private static Vec3 frozenForward;
+    private static final CinematicCameraMotion MOTION = new CinematicCameraMotion();
     private UltimateFinisherCamera() {}
 
     public static void apply(UltimateFinisherCameraPacket packet) {
@@ -38,14 +39,15 @@ public final class UltimateFinisherCamera {
         if (mc.player == null || mc.level == null || ContraptionControlCamera.active()) return;
         // Release V3's perspective before this camera captures the user's prior view.
         V3TechniqueCamera.clear();
-        if (state == null) {
-            previous = mc.options.getCameraType();
+        if (state == null || state.sequence() != packet.sequence()) {
+            if (previous == null) previous = mc.options.getCameraType();
             mc.options.setCameraType(CameraType.THIRD_PERSON_BACK);
-            lastPosition = null;
+            frozenForward = null; MOTION.reset();
         }
         state = packet;
         level = mc.level;
-        expires = mc.player.tickCount + 260;
+        expires = mc.player.tickCount + Math.max(260,
+                net.bullettrain.xenopixelsmod.client.combat.v3.V3ClientState.config().strikeTargetFreezeTicks() + 80);
     }
 
     public static boolean active() { return state != null; }
@@ -57,9 +59,11 @@ public final class UltimateFinisherCamera {
         if (target == null) return null;
         Vec3 attacker = mc.player.getPosition(partialTick).add(0, mc.player.getBbHeight() * 0.7, 0);
         Vec3 victim = target.getPosition(partialTick).add(0, target.getBbHeight() * 0.5, 0);
-        Vec3 forward = victim.subtract(attacker).multiply(1, 0, 1);
-        if (forward.lengthSqr() < 1e-6) forward = new Vec3(0, 0, 1);
-        forward = forward.normalize();
+        if (frozenForward == null) {
+            Vec3 delta = victim.subtract(attacker).multiply(1, 0, 1);
+            frozenForward = delta.lengthSqr() > 1e-6 ? delta.normalize() : new Vec3(0, 0, 1);
+        }
+        Vec3 forward = frozenForward;
         Vec3 right = forward.cross(new Vec3(0, 1, 0));
         Vec3 focus;
         Vec3 wanted;
@@ -81,11 +85,21 @@ public final class UltimateFinisherCamera {
                 wanted = attacker.subtract(forward.scale(3.5)).add(right.scale(2)).add(0, 1, 0);
             }
         }
-        Vec3 position = lastPosition == null ? wanted : lastPosition.lerp(wanted, 0.22);
-        HitResult wall = mc.level.clip(new ClipContext(attacker, position, ClipContext.Block.VISUAL,
+        double scale = net.bullettrain.xenopixelsmod.client.combat.v3.V3ClientState.config().cinematicCameraDistanceScale();
+        wanted = focus.add(wanted.subtract(focus).scale(scale));
+        if (state.phase() == UltimateFinisherRules.Phase.THROW
+                || state.phase() == UltimateFinisherRules.Phase.CHARGE || state.phase() == UltimateFinisherRules.Phase.BEAM) {
+            var framed = V3CameraFraming.fit(attacker, mc.player.getBbHeight(), victim, target.getBbHeight(),
+                    wanted, focus, Math.min(70, mc.options.fov().get()),
+                    mc.getWindow().getWidth() / (double) Math.max(1, mc.getWindow().getHeight()));
+            wanted = framed.position(); focus = framed.lookAt();
+        }
+        var smoothed = MOTION.update(wanted, focus, mc.player.tickCount + partialTick);
+        Vec3 position = smoothed.position();
+        focus = smoothed.focus();
+        HitResult wall = mc.level.clip(new ClipContext(focus, position, ClipContext.Block.VISUAL,
                 ClipContext.Fluid.NONE, mc.player));
-        if (wall.getType() != HitResult.Type.MISS) position = wall.getLocation().lerp(attacker, 0.1);
-        lastPosition = position;
+        if (wall.getType() != HitResult.Type.MISS) position = wall.getLocation().lerp(focus, 0.1);
         Vec3 look = focus.subtract(position);
         return new Shot(position, (float) (Math.toDegrees(Math.atan2(look.z, look.x)) - 90),
                 (float) -Math.toDegrees(Math.atan2(look.y, Math.hypot(look.x, look.z))));
@@ -117,6 +131,6 @@ public final class UltimateFinisherCamera {
         state = null;
         previous = null;
         level = null;
-        lastPosition = null;
+        frozenForward = null; MOTION.reset();
     }
 }

@@ -43,6 +43,11 @@ public final class V3Motion {
             return owner != null && owner == wanted && wantedSession != null && wantedSession.equals(session);
         }
 
+        /** A committed hold transfer inherits the original pre-hold gravity, only for its exact lease. */
+        public boolean inheritGravity(Owner wanted,UUID token,boolean original){
+            if(!heldBy(wanted,token))return false;noGravityBefore=original;return true;
+        }
+
         /** @return the gravity flag to restore, or null when nothing was held */
         public Boolean release() {
             if (owner == null) return null;
@@ -77,6 +82,11 @@ public final class V3Motion {
         player.setDeltaMovement(Vec3.ZERO);
         player.fallDistance = 0f;
         return true;
+    }
+
+    public static boolean inheritCinematicGravity(ServerPlayer player,UUID token,boolean original){
+        V3Fighter fighter=V3FighterStore.peek(player);
+        return fighter!=null && fighter.motion.inheritGravity(Owner.CINEMATIC,token,original);
     }
 
     /** Cancellation must not release a newer action's lease. */

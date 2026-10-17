@@ -22,6 +22,14 @@ import net.minecraft.world.entity.LivingEntity;
  */
 public final class V3AttackSounds {
     private V3AttackSounds() {}
+    /** Same short teleport cue used by pinned DMZ Instant Transmission. */
+    public static void vanish(ServerPlayer player) {
+        if (!enabled()) return;
+        try {
+            player.level().playSound(null, player.getX(), player.getY(), player.getZ(),
+                    com.dragonminez.common.init.MainSounds.TP_SHORT.get(), SoundSource.PLAYERS, volume(1f), 1f);
+        } catch (RuntimeException | LinkageError unavailable) { /* optional sound */ }
+    }
 
     private static boolean enabled() {
         return V3Config.get().attackSounds() && V3Config.get().attackSoundVolume() > 0;

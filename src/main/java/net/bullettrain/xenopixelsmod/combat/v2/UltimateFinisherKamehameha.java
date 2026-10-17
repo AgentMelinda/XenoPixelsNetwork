@@ -36,7 +36,33 @@ public final class UltimateFinisherKamehameha {
     }
 
     public static boolean owns(KiWaveEntity wave) {
-        return wave.getPersistentData().getBoolean(MARKER);
+        return wave instanceof UltimateFinisherWaveTarget target && target.xenopixels$finisherTarget() >= 0
+                || wave.getPersistentData().getBoolean(MARKER);
+    }
+
+    public static void target(KiWaveEntity wave, LivingEntity target) {
+        if (wave instanceof UltimateFinisherWaveTarget marked) marked.xenopixels$finisherTarget(target.getId());
+    }
+
+    /** Called after DMZ's position update, before it tests beam collisions; applies on both sides. */
+    public static void align(KiWaveEntity wave) {
+        if (!wave.isFiring() || !(wave instanceof UltimateFinisherWaveTarget marked)
+                || marked.xenopixels$finisherTarget() < 0 || !(wave.getOwner() instanceof LivingEntity owner)
+                || !(wave.level().getEntity(marked.xenopixels$finisherTarget()) instanceof LivingEntity target)
+                || !target.isAlive()) return;
+        align(wave, target);
+    }
+
+    public static void align(KiWaveEntity wave, LivingEntity target) {
+        if (wave == null || !wave.isFiring() || target == null || !target.isAlive()
+                || !(wave.getOwner() instanceof LivingEntity owner)) return;
+        var aim = UltimateFinisherBeamAim.toward(owner.getEyePosition(), target.getBoundingBox().getCenter(), owner.getLookAngle());
+        wave.setContinuousFollow(false);
+        wave.setCastOffsets(0, 0, 0);
+        wave.setPos(aim.origin());
+        wave.setYRot(aim.yaw()); wave.setXRot(aim.pitch());
+        if (wave instanceof net.bullettrain.xenopixelsmod.combat.technique.KiFixedAim fixed)
+            fixed.xenopixels$setFixedAim(aim.yaw(), aim.pitch());
     }
 
     private static List<AbstractKiProjectile> charging(LivingEntity player) {

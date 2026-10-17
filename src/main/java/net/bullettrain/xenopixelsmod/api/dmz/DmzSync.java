@@ -4,6 +4,7 @@ import com.dragonminez.common.network.NetworkHandler;
 import com.dragonminez.common.network.S2C.ProgressionSyncS2C;
 import com.dragonminez.common.network.S2C.ResourceSyncS2C;
 import com.dragonminez.common.network.S2C.StatsSyncS2C;
+import net.bullettrain.xenopixelsmod.compat.npc.NpcAppearanceMapping;
 import net.minecraft.server.level.ServerPlayer;
 
 /**
@@ -53,5 +54,20 @@ public final class DmzSync {
 	public static void syncResources(ServerPlayer player) {
 		if (player == null) return;
 		NetworkHandler.sendToTrackingEntityAndSelf(new ResourceSyncS2C(player), player);
+	}
+
+	/**
+	 * Sends the appearance half of the state - race, gender, body, hair, colours, active form.
+	 *
+	 * <p>DragonMineZ keeps this in its own packet, so {@link #syncStats} does not carry it: change a
+	 * look and sync only stats, and the player's own client updates while everyone else keeps
+	 * rendering the old body. DragonMineZ's own hair and tail commands send both packets for exactly
+	 * that reason, so this call sends both too and you only have to remember one of them.
+	 *
+	 * <p>It also refreshes the player's size, which is what makes a race or form change take effect
+	 * on the hitbox rather than only on the model.
+	 */
+	public static void syncAppearance(ServerPlayer player) {
+		net.bullettrain.xenopixelsmod.compat.npc.NpcAppearanceMapping.sync(player);
 	}
 }

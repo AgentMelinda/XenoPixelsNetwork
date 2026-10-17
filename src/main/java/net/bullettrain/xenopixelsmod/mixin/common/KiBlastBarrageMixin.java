@@ -34,7 +34,8 @@ public abstract class KiBlastBarrageMixin {
             target = "Lcom/dragonminez/common/init/entities/ki/KiBlastEntity;setupKiSmall(Lnet/minecraft/world/entity/LivingEntity;FFI)V"))
     private void xenopixels$setupPellet(KiBlastEntity pellet, net.minecraft.world.entity.LivingEntity owner,
                                         float damage, float speed, int color) {
-        pellet.setupKiSmall(owner, damage, speed, color);
+        net.bullettrain.xenopixelsmod.combat.v3.ki.CastKiLifetime.pellet(
+                (KiBlastEntity)(Object)this, () -> pellet.setupKiSmall(owner, damage, speed, color));
         KiGuidance.tagBarragePellet((KiBlastEntity) (Object) this, pellet);
     }
 

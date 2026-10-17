@@ -32,7 +32,7 @@ public abstract class EntityRenderDispatcherHakaiFadeMixin {
                                       MultiBufferSource buffers, int packedLight,
                                       Operation<Void> original) {
         boolean fading = entity instanceof LivingEntity living
-                && HakaiFade.dissolving(living)
+                && (HakaiFade.dissolving(living) || net.bullettrain.xenopixelsmod.client.combat.HakaiSweepFx.active(living))
                 && !CombatBodyFade.isWrapped(buffers)
                 && !EntityPreviewRenderContext.isRendering()
                 && !EntityPreviewRenderContext.isHudPortrait();

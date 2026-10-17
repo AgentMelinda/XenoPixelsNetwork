@@ -63,6 +63,15 @@ public class XenoPlayerData {
     /** Native player timers (XenoAPI IPlayer.getTimers), kept apart from stored script data. */
     private CompoundTag scriptTimers = new CompoundTag();
     public CompoundTag scriptTimers() { return scriptTimers; }
+    /**
+     * Looks this player is borrowing, with the snapshot that gives each one back.
+     *
+     * <p>Persisted rather than remembered in memory so a relog, a death or a server restart cannot
+     * strand someone in another character's body: whoever loads the tag next still owes them their
+     * own look.
+     */
+    private CompoundTag appearanceSteals = new CompoundTag();
+    public CompoundTag appearanceSteals() { return appearanceSteals; }
     private net.bullettrain.xenopixelsmod.features.taotto.TaottoDocument taotto =
             net.bullettrain.xenopixelsmod.features.taotto.TaottoDocument.blank();
 
@@ -392,6 +401,7 @@ public class XenoPlayerData {
         this.quests.loadFrom(carried);
         this.scriptData = other.scriptData.copy();
         this.scriptTimers = other.scriptTimers.copy();
+        this.appearanceSteals = other.appearanceSteals.copy();
         this.viewedDialogues.clear();
         this.viewedDialogues.addAll(other.viewedDialogues);
         this.itemGiverUses.clear();
@@ -431,6 +441,9 @@ public class XenoPlayerData {
         quests.saveTo(tag);
         tag.put("XenoScriptData", scriptData.copy());
         tag.put("XenoScriptTimers", scriptTimers.copy());
+        if (!appearanceSteals.isEmpty()) {
+            tag.put("XenoAppearanceSteals", appearanceSteals.copy());
+        }
         if (!viewedDialogues.isEmpty()) {
             ListTag viewed = new ListTag();
             for (String id : viewedDialogues) viewed.add(StringTag.valueOf(id));
@@ -513,6 +526,7 @@ public class XenoPlayerData {
         }
         quests.loadFrom(tag);
         scriptTimers = tag.getCompound("XenoScriptTimers").copy();
+        appearanceSteals = tag.getCompound("XenoAppearanceSteals").copy();
         scriptData = new CompoundTag();
         if (tag.contains("XenoScriptData", Tag.TAG_COMPOUND)) {
             CompoundTag loaded = tag.getCompound("XenoScriptData");

@@ -4,6 +4,8 @@ package net.bullettrain.xenopixelsmod.compat.npc.mynpcs;
 // The shared, NPC-mod-agnostic half of the integration, which stayed in compat.npc.
 import net.bullettrain.xenopixelsmod.compat.npc.NpcAggroBridge;
 import net.bullettrain.xenopixelsmod.compat.npc.NpcAppearanceFx;
+import net.bullettrain.xenopixelsmod.compat.npc.NpcAppearanceMapping;
+import net.bullettrain.xenopixelsmod.compat.npc.NpcAppearanceSource;
 import net.bullettrain.xenopixelsmod.compat.npc.NpcAuraFx;
 import net.bullettrain.xenopixelsmod.compat.npc.NpcAuraResolver;
 import net.bullettrain.xenopixelsmod.compat.npc.NpcAuraStyle;
@@ -30,6 +32,7 @@ import net.bullettrain.xenopixelsmod.compat.npc.NpcScriptSay;
 import net.bullettrain.xenopixelsmod.compat.npc.NpcScriptSound;
 import net.bullettrain.xenopixelsmod.compat.npc.NpcSkillSet;
 import net.bullettrain.xenopixelsmod.compat.npc.NpcTransformSystem;
+import net.bullettrain.xenopixelsmod.compat.npc.PlayerAppearanceSteals;
 import espi.mynpcs.api.entity.ICustomNpc;
 import espi.mynpcs.api.entity.IEntity;
 import espi.mynpcs.api.entity.IPlayer;
@@ -51,7 +54,7 @@ import java.util.Map;
 /** Explicit, server-side XenoPixels bridge exposed to CustomNPCs scripts as {@code XenoPixels}. */
 public final class NpcXenoScriptApi {
     public static final NpcXenoScriptApi INSTANCE = new NpcXenoScriptApi();
-    private static final String VERSION = "28";
+    private static final String VERSION = "29";
     private static final EquipmentSlot[] ARMOR_SLOTS = {
             EquipmentSlot.HEAD, EquipmentSlot.CHEST, EquipmentSlot.LEGS, EquipmentSlot.FEET };
 
@@ -1157,6 +1160,75 @@ public final class NpcXenoScriptApi {
     /** How many built-in hair styles are available, for a script that wants to cycle them. */
     public int getHairStyleCount() { return NpcHairBridge.presetCount(); }
     public boolean setHairColor(ICustomNpc npc, String color) { return NpcHairBridge.setColor(require(npc), color) == NpcHairBridge.Result.OK; }
+
+    /**
+     * Wears this NPC's DragonMineZ look - race, gender, class, body shape, colours, hair - for 30
+     * seconds, then puts the player's own look back.
+     */
+    public String stealAppearance(IPlayer<?> player, ICustomNpc npc) {
+        return stealAppearance(player, npc, 600);
+    }
+
+    /**
+     * The same borrow with the length in game ticks - 20 a second, capped at a day - remembered on the
+     * player rather than in memory, so a death, a relog or a restart mid-borrow still ends with their
+     * own face. Look only: stats, skills, forms, masteries and quests stay the player's own.
+     *
+     * <p>Returns {@code "ok"}, or why it refused: {@code NO_DATA} (DragonMineZ has not loaded that
+     * player yet, so ask again next tick), {@code NO_SOURCE} (no NPC profile to copy),
+     * {@code INVALID_RACE}, {@code INVALID_CLASS}, {@code INVALID_COLOR}, {@code INVALID_HAIR},
+     * {@code ALREADY_ACTIVE} (still wearing a previous borrow). Every refusal changes nothing, so
+     * echo the answer - a silent no-op is otherwise indistinguishable from a success.
+     */
+    public String stealAppearance(IPlayer<?> player, ICustomNpc npc, int ticks) {
+        if (player == null) return NpcAppearanceMapping.Result.NO_DATA.name();
+        return PlayerAppearanceSteals.start(player.getMCEntity(), entity(npc), Math.max(0, ticks)).name();
+    }
+
+    /** Gives a borrowed look back early. False when this player is not wearing one. */
+    public boolean restoreAppearance(IPlayer<?> player) {
+        return player != null
+                && PlayerAppearanceSteals.stop(player.getMCEntity()) == NpcAppearanceMapping.Result.OK;
+    }
+
+    public boolean isAppearanceStolen(IPlayer<?> player) {
+        return player != null && PlayerAppearanceSteals.isActive(player.getMCEntity());
+    }
+
+    /** Ticks left on the borrow, 0 when there is none. */
+    public int getAppearanceStealTicksLeft(IPlayer<?> player) {
+        if (player == null) return 0;
+        return (int) Math.min(Integer.MAX_VALUE, PlayerAppearanceSteals.remainingTicks(player.getMCEntity()));
+    }
+
+    /** The look this NPC would lend, or an empty map for an entity with no profile. */
+    public Map<String, Object> getNpcAppearance(ICustomNpc npc) {
+        return appearanceMap(NpcAppearanceSource.from(entity(npc)));
+    }
+
+    /** The player's own DragonMineZ look, in the same keys as {@link #getNpcAppearance}. */
+    public Map<String, Object> getPlayerAppearance(IPlayer<?> player) {
+        if (player == null) return new LinkedHashMap<>();
+        return appearanceMap(NpcAppearanceSource.ofCharacter(
+                NpcAppearanceMapping.character(player.getMCEntity())));
+    }
+
+    private static Map<String, Object> appearanceMap(NpcAppearanceSource source) {
+        Map<String, Object> out = new LinkedHashMap<>();
+        if (source == null) return out;
+        out.put("race", source.race()); out.put("gender", source.gender());
+        out.put("class", source.characterClass()); out.put("bodyType", source.bodyType());
+        out.put("eyesType", source.eyesType()); out.put("noseType", source.noseType());
+        out.put("mouthType", source.mouthType()); out.put("tattooType", source.tattooType());
+        out.put("boobScale", source.boobScale()); out.put("bodyColor", source.bodyColor());
+        out.put("bodyColor2", source.bodyColor2()); out.put("bodyColor3", source.bodyColor3());
+        out.put("eyeColor1", source.eye1Color()); out.put("eyeColor2", source.eye2Color());
+        out.put("hairColor", source.hairColor()); out.put("auraColor", source.auraColor());
+        out.put("headBone", source.activeHeadBone()); out.put("saiyanTail", source.saiyanTail());
+        out.put("renderHairBase", source.renderHairBase()); out.put("style", source.hairId());
+        out.put("code", source.hairCode());
+        return out;
+    }
 
     /** Sets the skin by player name (empty name clears it) and re-syncs clients. */
     public boolean setSkinPlayer(ICustomNpc npc, String name) {

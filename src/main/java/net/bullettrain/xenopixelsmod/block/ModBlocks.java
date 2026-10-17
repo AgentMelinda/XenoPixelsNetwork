@@ -5,6 +5,7 @@ import net.bullettrain.xenopixelsmod.block.custom.MissileChunkLoaderBlock;
 import net.bullettrain.xenopixelsmod.block.custom.CopycatGlowstoneBlock;
 import net.bullettrain.xenopixelsmod.block.custom.MissileTubeBlock;
 import net.bullettrain.xenopixelsmod.block.custom.PilotSeatBlock;
+import net.bullettrain.xenopixelsmod.block.custom.PlanetShellBlock;
 import net.bullettrain.xenopixelsmod.block.custom.WingPanelBlock;
 import net.bullettrain.xenopixelsmod.block.custom.WingFlapHorizontalBlock;
 import net.bullettrain.xenopixelsmod.block.custom.WingFlapVerticalBlock;
@@ -263,6 +264,48 @@ public class ModBlocks {
     public static final DeferredHolder<Block, CopycatWingFlapVerticalForkBlock> COPYCAT_WING_FLAP_VERTICAL_LIT_FORK =
             registerBlock("copycat_wing_flap_vertical_lit_fork",
                     () -> new CopycatWingFlapVerticalForkBlock(copycatWingProps(true)));
+
+    /**
+     * Invisible, unbreakable collision voxel for managed physical planets. Registered without an item: it
+     * is placed only by the planet assembly and is never meant to be held or built with.
+     */
+    public static final DeferredHolder<Block, PlanetShellBlock> PLANET_SHELL = BLOCKS.register("planet_shell",
+            () -> new PlanetShellBlock(BlockBehaviour.Properties.of()
+                    .mapColor(MapColor.NONE)
+                    .strength(-1.0F, 3_600_000.0F)
+                    .noLootTable()
+                    .noOcclusion()
+                    .isValidSpawn((state, level, pos, type) -> false)
+                    .pushReaction(net.minecraft.world.level.material.PushReaction.BLOCK)));
+
+    /** Design-doc 16 Super Dragon Balls (CosmicDragonBalls): seven unbreakable, glowing balls; index = stars - 1. */
+    public static final java.util.List<DeferredHolder<Block, net.bullettrain.xenopixelsmod.block.custom.CosmicDragonBallBlock>> COSMIC_DRAGON_BALLS;
+    public static final java.util.List<DeferredHolder<Item, Item>> COSMIC_DRAGON_BALL_ITEMS;
+    static {
+        var balls = new java.util.ArrayList<DeferredHolder<Block, net.bullettrain.xenopixelsmod.block.custom.CosmicDragonBallBlock>>();
+        var items = new java.util.ArrayList<DeferredHolder<Item, Item>>();
+        for (int stars = 1; stars <= 7; stars++) {
+            final int number = stars;
+            String name = "cosmic_dragon_ball_" + stars;
+            var ball = BLOCKS.register(name, () -> new net.bullettrain.xenopixelsmod.block.custom.CosmicDragonBallBlock(number,
+                    BlockBehaviour.Properties.of().mapColor(MapColor.COLOR_ORANGE).strength(-1.0F, 3_600_000.0F).noLootTable()
+                            .noOcclusion().lightLevel(state -> 12).sound(SoundType.AMETHYST)
+                            .pushReaction(net.minecraft.world.level.material.PushReaction.BLOCK)));
+            balls.add(ball);
+            items.add(ModsItems.ITEMS.register(name, () -> new net.bullettrain.xenopixelsmod.item.custom.CosmicDragonBallItem(ball.get(),
+                    new Item.Properties().stacksTo(1).fireResistant().rarity(net.minecraft.world.item.Rarity.EPIC))));
+        }
+        COSMIC_DRAGON_BALLS = java.util.List.copyOf(balls);
+        COSMIC_DRAGON_BALL_ITEMS = java.util.List.copyOf(items);
+    }
+
+    /** Planet-form Super Dragon Ball surface and star inlay (DragonBallPlanets); placed only by the body builder. */
+    public static final DeferredHolder<Block, Block> COSMIC_BALL_SHELL = BLOCKS.register("cosmic_ball_shell",
+            () -> new Block(BlockBehaviour.Properties.of().mapColor(MapColor.COLOR_ORANGE).strength(-1.0F, 3_600_000.0F)
+                    .noLootTable().lightLevel(state -> 10).sound(SoundType.AMETHYST)));
+    public static final DeferredHolder<Block, Block> COSMIC_BALL_STAR = BLOCKS.register("cosmic_ball_star",
+            () -> new Block(BlockBehaviour.Properties.of().mapColor(MapColor.COLOR_RED).strength(-1.0F, 3_600_000.0F)
+                    .noLootTable().lightLevel(state -> 13).sound(SoundType.AMETHYST)));
 
     private static <T extends Block> DeferredHolder<Block, T> registerBlock(String name, Supplier<T> block) {
         DeferredHolder<Block, T> toReturn = BLOCKS.register(name, block);

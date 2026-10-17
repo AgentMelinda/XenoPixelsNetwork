@@ -83,6 +83,17 @@ public final class ModDatapacks {
      */
     private static final String SHIP_MASSES = "xeno_ship_masses";
 
+    /**
+     * Space handoff worlds: {@code xenospace_spike:moon_surface}, {@code orbit} and {@code surface}.
+     *
+     * <p>Copied into the jar from {@code examples/xenospace-handoff-spike} at build time. Selected
+     * automatically, including for existing worlds ({@code MinecraftServer.configurePackRepository}
+     * adds any new auto-add pack not on the world's disabled list). {@code /datapack disable} puts it on
+     * that list and it stays off; the dimensions it adds come and go only across a restart. Existing
+     * terrain is never touched: the dimensions are new, and generate only where someone goes.
+     */
+    private static final String SPACE = "xeno_space";
+
     /** Height overrides require an explicit world-creation choice; keep them discoverable but opt out of auto-selection. */
     private static final PackSource OPTIONAL_BUILT_IN = PackSource.create(PackSource.BUILT_IN::decorate, false);
 
@@ -95,6 +106,7 @@ public final class ModDatapacks {
         register(event, STANDARD_OVERWORLD, "XenoPixels: standard overworld (-64 to 320)", OPTIONAL_BUILT_IN);
         register(event, MAX_OVERWORLD, "XenoPixels: maximum overworld (-2032 to 2032)", OPTIONAL_BUILT_IN);
         register(event, SHIP_MASSES, "XenoPixels: ship block masses (Sable)", PackSource.BUILT_IN);
+        register(event, SPACE, "XenoPixels: space worlds (Moon, orbit, surface)", PackSource.BUILT_IN);
     }
 
     private static void register(AddPackFindersEvent event, String folder, String displayName, PackSource source) {

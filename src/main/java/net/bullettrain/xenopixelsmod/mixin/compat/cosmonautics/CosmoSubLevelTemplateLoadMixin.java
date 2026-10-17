@@ -16,7 +16,8 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
  *         section index is written into an overworld plot chunk.
  * Version: rocketnautics / Cosmonautics 26.08.307. Keys are source indexes;
  *          remap via {@code MoveInfo.oldDimension/newDimension} section Y.
- * Side: server. Gated on rocketnautics.
+ * Side: server. Gated on the rocketnautics or dimensional_sable mod id in the loading list
+ * (ConditionalMixinPlugin), never on class presence: both mods ship {@code dev.egg.*}.
  */
 @Mixin(targets = "dev.egg.SubLevelTemplate", remap = false)
 public abstract class CosmoSubLevelTemplateLoadMixin {

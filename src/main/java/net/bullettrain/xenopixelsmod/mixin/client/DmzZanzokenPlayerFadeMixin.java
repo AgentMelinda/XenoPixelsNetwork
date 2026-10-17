@@ -120,7 +120,7 @@ public abstract class DmzZanzokenPlayerFadeMixin {
         if (mc.level == null || mc.level.getEntity(player.getId()) != player) {
             return buffers;
         }
-        if (HakaiFade.dissolving(player)) {
+        if (HakaiFade.dissolving(player) || net.bullettrain.xenopixelsmod.client.combat.HakaiSweepFx.active(player)) {
             return CombatBodyFade.wrapHakai(buffers, player, partialTick);
         }
         return CombatBodyFade.wrap(buffers, CombatBodyFade.alpha(player, partialTick));

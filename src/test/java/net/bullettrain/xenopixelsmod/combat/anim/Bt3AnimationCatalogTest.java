@@ -285,7 +285,16 @@ class Bt3AnimationCatalogTest {
                 JsonObject chamber = hold.getAsJsonObject(bone).getAsJsonObject("rotation");
                 JsonObject release = fire.getAsJsonObject(bone).getAsJsonObject("rotation");
                 assertEquals(chamber.get("0.55"), release.get("0.0"), kind + " snaps its " + bone + " on release");
-                assertEquals(chamber.get("0.0"), release.get(recovery), kind + " fails to recover its " + bone);
+                if (kind.equals("kick") && bone.equals("root")) {
+                    // Preserve the authored 360-degree winding while returning to the same
+                    // world-facing orientation as the charged stance.
+                    var startRotation = chamber.get("0.0").getAsJsonObject().getAsJsonArray("vector");
+                    var endRotation = release.get(recovery).getAsJsonObject().getAsJsonArray("vector");
+                    assertEquals(startRotation.get(0).getAsDouble(), endRotation.get(0).getAsDouble(), 1e-6);
+                    assertEquals(startRotation.get(2).getAsDouble(), endRotation.get(2).getAsDouble(), 1e-6);
+                    double yawDelta = endRotation.get(1).getAsDouble() - startRotation.get(1).getAsDouble();
+                    assertEquals(0, Math.floorMod((int)Math.round(yawDelta), 360));
+                } else assertEquals(chamber.get("0.0"), release.get(recovery), kind + " fails to recover its " + bone);
                 if (hold.getAsJsonObject(bone).has("position")) {
                     JsonObject heldPosition = hold.getAsJsonObject(bone).getAsJsonObject("position");
                     JsonObject releasedPosition = fire.getAsJsonObject(bone).getAsJsonObject("position");

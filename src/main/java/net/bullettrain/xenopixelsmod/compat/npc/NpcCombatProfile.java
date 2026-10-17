@@ -449,7 +449,7 @@ public final class NpcCombatProfile {
     /** Every DMZ skill this NPC has, by lower-case id. See {@link NpcSkillSet}. */
     public final NpcSkillSet skills = new NpcSkillSet();
     /** Keep the last attacker locked as this NPC's target while DMZ Ki Sense is enabled. */
-    public boolean kiSenseLockOnRetaliator;
+    public boolean kiSenseLockOnRetaliator = true;
     /**
      * Multiplier over CustomNPCs' own stored aggro range. Defaults to 2 because CNPC's aggro
      * range doubles as the <em>retention</em> range, so the stock value makes an NPC give up on
@@ -1282,6 +1282,7 @@ public final class NpcCombatProfile {
     }
 
     public NpcCombatProfile() {
+        skills.set(NpcSkillSet.KI_SENSE, true, 1);
         java.util.Arrays.fill(itemGiverItems,
                 net.bullettrain.xenopixelsmod.npc.inventory.NpcSlotStack.EMPTY);
         itemGiverLines.add("Have these items {player}");
@@ -1690,7 +1691,13 @@ public final class NpcCombatProfile {
         if (tag.contains(TAG_SKILLS, Tag.TAG_LIST)) {
             profile.skills.load(tag.getList(TAG_SKILLS, Tag.TAG_COMPOUND));
         }
-        profile.kiSenseLockOnRetaliator = tag.getBoolean(TAG_KI_SENSE_LOCK_ON);
+        // Profiles that predate these opt-ins inherit the current XenoNPC defaults. An explicit
+        // inactive skill entry or false retaliation flag still wins and remains authorable.
+        if (!profile.skills.entries().containsKey(NpcSkillSet.KI_SENSE)) {
+            profile.skills.set(NpcSkillSet.KI_SENSE, true, 1);
+        }
+        profile.kiSenseLockOnRetaliator = !tag.contains(TAG_KI_SENSE_LOCK_ON)
+                || tag.getBoolean(TAG_KI_SENSE_LOCK_ON);
         // Schema 9 generalized the single fly toggle into a full skill map. Older profiles
         // carry their fly state across so a configured flying NPC keeps flying.
         if (schema < SKILL_MAP_SCHEMA && profile.flySkillOn) {

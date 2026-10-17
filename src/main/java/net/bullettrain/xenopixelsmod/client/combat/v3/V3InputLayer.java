@@ -40,8 +40,27 @@ public final class V3InputLayer {
 
     private static boolean techniqueSlotWas;
 
+    @SubscribeEvent
+    public static void onDashKey(InputEvent.Key event) {
+        Minecraft mc = Minecraft.getInstance();
+        if (!XenoServerClientState.v3Controller() || mc.player == null || mc.screen != null
+                || !net.bullettrain.xenopixelsmod.client.config.XenoClientConfig.bt3CombatClient
+                || !XenoServerClientState.combat()
+                || !mc.player.isAlive() || mc.player.isSpectator()
+                || mc.player.getVehicle() instanceof net.bullettrain.xenopixelsmod.aero.seat.XenoPilotSeatEntity
+                || !Bt3CombatClient.DRAGON_DASH.matches(event.getKey(), event.getScanCode())) return;
+        if (event.getAction() == org.lwjgl.glfw.GLFW.GLFW_RELEASE) { dashWas = false; return; }
+        if (event.getAction() != org.lwjgl.glfw.GLFW.GLFW_PRESS) return;
+        var target = V3ClientState.target();
+        if (target != null) {
+            V3ClientState.send(V3Input.DRAGON_DASH, target.target(), heldDirection(mc));
+            dashWas = true; // Physical polling still serves pads; do not send this key edge twice.
+        }
+    }
+
     public static void tick(Minecraft mc) {
         if (mc == null || mc.player == null) return;
+        net.bullettrain.xenopixelsmod.client.combat.StickyLock.tick(mc);
         var fighterState = V3ClientState.fighterState();
         boolean lightDown = V2Keys.down(V2Keys.LIGHT);
         boolean lightPressed = lightDown && !grabLightWas;
@@ -157,8 +176,8 @@ public final class V3InputLayer {
     private static V3Direction heldDirection(Minecraft mc) {
         // Jump wins for grab throw-up; dash still uses W/S as forward/back for vertical launch.
         if (mc.options.keyJump.isDown()) return V3Direction.UP;
-        if (mc.options.keyUp.isDown()) return V3Direction.FORWARD;
-        if (mc.options.keyDown.isDown()) return V3Direction.BACK;
+        if (mc.options.keyUp.isDown()) return V3Direction.UP;
+        if (mc.options.keyDown.isDown()) return V3Direction.DOWN;
         if (mc.options.keyLeft.isDown()) return V3Direction.LEFT;
         if (mc.options.keyRight.isDown()) return V3Direction.RIGHT;
         return V3Direction.NONE;

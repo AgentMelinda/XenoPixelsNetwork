@@ -19,10 +19,16 @@ public final class XenoHudRegistration {
 
     @SubscribeEvent(priority = EventPriority.LOWEST)
     public static void onRegisterOverlays(RegisterGuiLayersEvent event) {
+        event.registerAbove(DMZ_TOP, ResourceLocation.fromNamespaceAndPath(XenoPixelsMod.MOD_ID, "combat_recovery"),
+                net.bullettrain.xenopixelsmod.client.hud.CombatRecoveryHud::render);
         event.registerAbove(DMZ_TOP, ResourceLocation.fromNamespaceAndPath(XenoPixelsMod.MOD_ID, "xeno_hud"), new XenoHudOverlay()::render);
         event.registerAbove(DMZ_TOP, ResourceLocation.fromNamespaceAndPath(XenoPixelsMod.MOD_ID, "xeno_technique_hotbar"), new XenoTechniqueHotbarOverlay()::render);
         event.registerAbove(DMZ_TOP, ResourceLocation.fromNamespaceAndPath(XenoPixelsMod.MOD_ID, "xeno_party_hud"), new XenoPartyOverlay()::render);
         event.registerAbove(DMZ_TOP, ResourceLocation.fromNamespaceAndPath(XenoPixelsMod.MOD_ID, "xeno_cooldown_hud"), new XenoCooldownHudOverlay()::render);
+        event.registerAbove(DMZ_TOP, ResourceLocation.fromNamespaceAndPath(XenoPixelsMod.MOD_ID, "oxygen_hud"),
+                net.bullettrain.xenopixelsmod.client.hud.OxygenHud::render);
+        event.registerAbove(DMZ_TOP, ResourceLocation.fromNamespaceAndPath(XenoPixelsMod.MOD_ID, "black_hole_hud"),
+                net.bullettrain.xenopixelsmod.client.space.BlackHoleClient::renderHud);
         event.registerAbove(DMZ_TOP, ResourceLocation.fromNamespaceAndPath(XenoPixelsMod.MOD_ID, "xeno_sparking_tint"),
                 new net.bullettrain.xenopixelsmod.client.combat.fx.SparkingTintOverlay()::render);
         event.registerAbove(DMZ_TOP, ResourceLocation.fromNamespaceAndPath(XenoPixelsMod.MOD_ID, "xeno_speed_lines"),

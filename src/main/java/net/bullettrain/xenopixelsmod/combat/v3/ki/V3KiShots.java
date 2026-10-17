@@ -42,6 +42,10 @@ public final class V3KiShots {
     private static final java.util.Map<UUID, Charge> CHARGES = new java.util.LinkedHashMap<>();
 
     private V3KiShots() {}
+    /** Includes queued barrage shots; finishing the emitter alone is insufficient. */
+    public static boolean hasActiveCast(UUID owner, UUID cast) {
+        return SHOTS.stream().anyMatch(shot -> ownedBy(shot.owner, shot.cast, owner, cast));
+    }
 
     private static final class Shot {
         final UUID visual = UUID.randomUUID();

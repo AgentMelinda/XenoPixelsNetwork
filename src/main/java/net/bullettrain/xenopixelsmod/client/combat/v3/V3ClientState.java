@@ -55,7 +55,8 @@ public final class V3ClientState {
             // State/charge updates may reuse the target revision; its motion cannot rewind.
             packet = new CombatV3StatePacket(packet.session(), packet.state(), state.target(),
                     packet.acknowledgedSequence(), packet.chargeTicks(), packet.windowTicksLeft(), packet.windowTicksTotal(),
-                    packet.window());
+                    packet.window(),packet.recovery(),packet.comboHits(),packet.comboTicksLeft(),
+                    packet.rushPromptTicks(),packet.rushUltimate(),packet.rushToken(),packet.rushProgress());
         }
         state = packet;
     }
@@ -69,6 +70,25 @@ public final class V3ClientState {
         return state == null || state.windowTicksLeft() <= 0 ? net.bullettrain.xenopixelsmod.combat.v3.V3Window.NONE : state.window();
     }
     public static V3State fighterState() { return state == null ? V3State.IDLE : state.state(); }
+    public static net.bullettrain.xenopixelsmod.combat.v3.RecoverySnapshot recovery() {
+        return state==null?null:state.recovery();
+    }
+    public static int comboHits(){return state==null?0:state.comboHits();}
+    public static int comboTicksLeft(){return state==null?0:state.comboTicksLeft();}
+    public static int rushPromptTicks(){return state==null?0:state.rushPromptTicks();}
+    public static boolean rushUltimate(){return state!=null&&state.rushUltimate()&&state.rushPromptTicks()>0;}
+    public static float rushProgress(){return state==null?0:state.rushProgress()/1000f;}
+    public static void sendRushMash(){
+        if(state!=null&&state.rushToken()!=null&&rushPromptTicks()>0)
+            send(V3Input.SUPER_RUSH_MASH,state.rushToken(),V3Direction.NONE);
+    }
+    public static boolean sendRecovery() {
+        var recovery=recovery();
+        if(recovery==null || Minecraft.getInstance().getConnection()==null || session()==null)return false;
+        int sequence=nextSequence();if(sequence<0)return false;
+        ModNetwork.sendToServer(new CombatV3InputPacket(V3Input.RECOVERY_MASH,session(),recovery.token(),V3Direction.NONE,sequence));
+        return true;
+    }
     public static boolean kickCharging() { return state != null && state.state() == V3State.CHARGING_KICK; }
     public static float chargeProgress() {
         return charging() ? net.bullettrain.xenopixelsmod.combat.v2.V2ChargeRules.progress(state.chargeTicks()) : 0f;
@@ -126,7 +146,9 @@ public final class V3ClientState {
     /** Same-session teardown preserves both revision watermark and outgoing sequence. */
     public static void clear() {
         if (state != null) state = new CombatV3StatePacket(state.session(), V3State.IDLE, null,
-                state.acknowledgedSequence(), 0, 0, 0);
+                state.acknowledgedSequence(), 0, 0, 0,
+                net.bullettrain.xenopixelsmod.combat.v3.V3Window.NONE,
+                state.recovery(), state.comboHits(), state.comboTicksLeft());
     }
     public static void reset() {
         config = new V3Config.Values(); state = null; targetWatermark = -1; outgoingSequence = 0; RETIRED_SESSIONS.clear();

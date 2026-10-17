@@ -56,7 +56,7 @@ class XenoApiScriptCompatibilityTest {
     void existingFacadeCallsStillResolve() {
         NpcScriptResult result = run("return XenoPixels.getVersion();");
         assertTrue(result.ok(), result.describe());
-        assertEquals("28", result.value());
+        assertEquals("29", result.value());
         assertEquals("false", run("return XenoPixels.isChatCancelled(null);").value());
     }
 

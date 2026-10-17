@@ -149,7 +149,8 @@ public final class NpcDmzAppearance {
         return 0;
     }
 
-    private static int nonNegative(int value) {
+    /** Shared clamp for every texture-index field, so a borrowed look cannot carry a wild value. */
+    public static int nonNegative(int value) {
         return Math.max(0, Math.min(1024, value));
     }
 

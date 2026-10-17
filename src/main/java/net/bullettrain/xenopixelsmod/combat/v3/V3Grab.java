@@ -31,6 +31,7 @@ public final class V3Grab {
     static final double THROW_LIFT = 0.35;
     static final float THROW_DAMAGE_SCALE = 1.2f;
     static final float CONNECT_DAMAGE_SCALE = THROW_DAMAGE_SCALE * 0.25f;
+    private static final String GRAB_HOLD_ANIMATION = "combat.xeno_bt3_v3_grab_hold";
     private static final Map<UUID, UUID> HELD_BY = new HashMap<>();
 
     private V3Grab() {}
@@ -54,6 +55,7 @@ public final class V3Grab {
             case RIGHT -> new Vec3(-fz, 0, fx);
             case LEFT -> new Vec3(fz, 0, -fx);
             case UP -> new Vec3(0, 1, 0);
+            case DOWN -> new Vec3(0, -1, 0);
             case FORWARD, NONE -> new Vec3(fx, 0, fz);
         };
     }
@@ -113,7 +115,8 @@ public final class V3Grab {
             if (heldFighter != null && !V3Motion.acquire((ServerPlayer) target, V3Motion.Owner.GRAB, victimSession)) {
                 return false;
             }
-            return V3Heavy.strike(player, target, CONNECT_DAMAGE_SCALE) > 0f;
+            // A grab is a control connection, not a punch. Its hand pose is played below.
+            return true;
         }, () -> {
             try {
                 releaseGrabLease(player, grabberSession);
@@ -130,6 +133,8 @@ public final class V3Grab {
         fighter.window = V3Window.GRAB;
         fighter.windowTarget = target.getUUID();
         fighter.windowTicksLeft = fighter.windowTicksTotal = HOLD_TICKS;
+        net.bullettrain.xenopixelsmod.compat.npc.NpcDmzAnim.broadcast(player,
+                GRAB_HOLD_ANIMATION, 1.0f, net.bullettrain.xenopixelsmod.compat.npc.NpcDmzAnim.FLAG_HOLD);
         if (target instanceof ServerPlayer held) {
             V3Fighter victim = V3FighterStore.get(held);
             V3Chase.stop(held);
@@ -202,7 +207,8 @@ public final class V3Grab {
         V3Direction direction = fighter.grabDirection;
         // Release the hold before the throw, so nothing pins the victim against its own velocity.
         release(player);
-        float accepted = V3Heavy.strike(player, victim, THROW_DAMAGE_SCALE - CONNECT_DAMAGE_SCALE);
+        // Throw damage and motion are delivered as a throw; do not run the melee punch path here.
+        float accepted = victim.isAlive() && CombatKnockback.canKnockBack(victim) ? THROW_DAMAGE_SCALE : 0f;
         Vec3 look = player.getLookAngle();
         Vec3 dir = throwDirection(direction, look.x, look.z);
         if (dir.lengthSqr() < 1.0e-6) dir = new Vec3(0, 0, 1);
@@ -231,12 +237,20 @@ public final class V3Grab {
         if (fighter == null) return;
         if (fighter.grabVictim == null) {
             if (fighter.motion.owner() == V3Motion.Owner.GRAB) V3Motion.release(player);
+            stopGrabAnimation(player);
             return;
         }
         if (fighter.state == V3State.GRAB_HOLD) fighter.state = V3State.IDLE;
         letGo(player, fighter);
         V3Motion.release(player);
+        stopGrabAnimation(player);
         V3CombatServer.syncState(player);
+    }
+
+    private static void stopGrabAnimation(LivingEntity entity) {
+        net.bullettrain.xenopixelsmod.compat.npc.NpcDmzAnim.broadcast(entity,
+                net.bullettrain.xenopixelsmod.client.compat.npc.NpcAnimationClient.STOP,
+                1.0f, net.bullettrain.xenopixelsmod.compat.npc.NpcDmzAnim.FLAG_STOP);
     }
 
     /** Rollback/logout entry for either side of a grab. */

@@ -102,25 +102,23 @@ class V3TimelineTest {
         assertFalse(V3TechniqueRuntime.controlsVictim(List.of(charge, release)));
     }
 
-    @Test void headBreakerOccurrencesUseHeadContactAndWideCameraWithoutClaimingReferenceParity() {
+    @Test void headBreakerDraftsRetainSourceTimedDiveWithoutInventingUnseenContacts() {
         var entries = V3TechniqueCatalog.loadBundled().stream().filter(t -> t.name().equals("Dodoria Head Breaker")).toList();
         assertEquals(2, entries.size());
         for (var entry : entries) {
-            // Re-authored 2026-10-08 from the local source frames: timed from the video, not yet
-            // compared against a rendered clip, so it stays an explicitly unverified draft.
+            // Reviewed 2026-10-12 at 200 ms source intervals. These recordings do not
+            // confirm a caster contact, so the retarget must not invent a damage beat.
             assertEquals("reference_timed_unverified", entry.animationStatus());
             assertFalse(entry.choreographyComplete());
             var poses = entry.beats().stream().filter(b -> b.kind() == Kind.POSE).map(V3Beat::payload).toList();
-            assertTrue(poses.contains("combat.xeno_bt3_v3_dodoria_head_breaker_dive"), "torpedo dive plays through the fly-in");
-            assertTrue(poses.contains("combat.xeno_bt3_v3_dodoria_head_breaker"), "contact clip plays on arrival");
+            assertEquals(1, poses.size());
+            assertTrue(poses.getFirst().startsWith("combat.xeno_bt3_v3_refthird_"));
             assertEquals(Kind.POSE, entry.beats().getFirst().kind(), "dive pose is sent before the approach starts");
             assertEquals(Kind.APPROACH, entry.beats().get(1).kind());
-            assertEquals(1, entry.beats().stream().filter(b -> b.kind() == Kind.STRIKE).count());
-            assertTrue(V3TechniqueRuntime.freezeTicks(entry.beats()) >= 6);
+            assertEquals(0, entry.beats().stream().filter(b -> b.kind() == Kind.STRIKE).count());
             var camera = V3TechniqueRuntime.cameraFor(entry, true);
-            // Rush shot rides close behind the attacker; the wide shot after the throw frames both fighters.
-            assertEquals(0f, camera.getFirst().focus());
-            assertTrue(camera.getFirst().position().length() < 10);
+            // An unconfirmed-contact recording keeps the safe wide fallback shot.
+            assertEquals(0.5f, camera.getFirst().focus());
             assertEquals(0.5f, camera.getLast().focus());
             assertTrue(camera.getLast().position().x >= 20);
         }

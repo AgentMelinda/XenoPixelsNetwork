@@ -68,6 +68,7 @@ public final class V3Defense {
         player.hurtMarked = true;
         player.hasImpulse = true;
         player.fallDistance = 0f;
+        V3AttackSounds.vanish(player);
         fighter.vanishReadyTick = (long) now + VANISH_COOLDOWN_TICKS;
         if (counter) {
             // The reward for the read: the heavy is ready the moment the fighter reappears.

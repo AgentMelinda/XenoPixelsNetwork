@@ -52,6 +52,13 @@ public final class CombatFxEvents {
 
     @SubscribeEvent
     public static void onCameraAngles(ViewportEvent.ComputeCameraAngles event) {
+        if (net.bullettrain.xenopixelsmod.client.camera.V3TechniqueCamera.active()
+                || net.bullettrain.xenopixelsmod.client.camera.UltimateFinisherCamera.active()) {
+            // Cinematic shots own their angles. Repeated melee/beam hits otherwise add a
+            // second oscillating pitch envelope after Camera.setup has already placed the shot.
+            resetSmoothing();
+            return;
+        }
         float[] target = CombatFxClient.shakeActive()
                 ? CombatFxClient.cameraOffset((float) event.getPartialTick())
                 : ZERO;

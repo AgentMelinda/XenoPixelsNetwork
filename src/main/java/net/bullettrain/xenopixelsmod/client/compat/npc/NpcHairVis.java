@@ -3,29 +3,25 @@ package net.bullettrain.xenopixelsmod.client.compat.npc;
 import com.dragonminez.client.render.hair.HairRenderer;
 import com.dragonminez.common.config.FormConfig;
 import com.dragonminez.common.hair.CustomHair;
-import com.dragonminez.common.hair.HairManager;
 import com.mojang.blaze3d.vertex.PoseStack;
 import net.bullettrain.xenopixelsmod.compat.npc.NpcCombatProfile;
 import net.bullettrain.xenopixelsmod.compat.npc.NpcFormLookup;
+import net.bullettrain.xenopixelsmod.compat.npc.NpcHairSet;
 import net.minecraft.client.renderer.MultiBufferSource;
 import net.minecraft.world.entity.LivingEntity;
 
 import java.util.Locale;
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
 
-/** Client hair spec + parse cache. Source of truth is the appearance packet / profile. */
+/** Client hair spec + render choice. The set itself comes from {@link NpcHairSet}. */
 public final class NpcHairVis {
     private static final float[] WHITE = {1.0f, 1.0f, 1.0f};
-    private static final CustomHair[] INVALID = new CustomHair[0];
-    private static final Map<String, CustomHair[]> CACHE = new ConcurrentHashMap<>();
 
     public record Spec(boolean enabled, String code, String color, int styleId) {}
 
     private NpcHairVis() {}
 
     public static void clearCache() {
-        CACHE.clear();
+        NpcHairSet.clearCache();
     }
 
     public static Spec spec(LivingEntity owner) {
@@ -80,66 +76,17 @@ public final class NpcHairVis {
     /**
      * The four hair slots an NPC wears, from whichever source its profile selects.
      *
-     * <p>The single answer to "what hair does this NPC have", deliberately. The two appearance
-     * modes used to work it out separately — OVERLAY parsed the code here and FULL parsed it again
-     * in {@code NpcFullDmzRenderer} — which is how they came to disagree. Both now ask this.
-     *
-     * <p>{@code styleId} 0 means the custom code; anything else is one of DragonMineZ's
-     * character-creation presets, resolved through {@code HairManager} exactly as DMZ resolves it
-     * for a real player. An id past the end of the preset list falls back to the code rather than
-     * throwing, so a profile written against a larger preset set still renders.
-     *
-     * @return four slots (base, SSJ, SSJ2, SSJ3), or {@code null} when there is nothing to draw
+     * <p>Delegates to {@link NpcHairSet}, which holds the answer because writing an NPC's look onto
+     * a player happens on the server thread and cannot reach a client class. The two render modes
+     * used to work this out separately - OVERLAY parsed the code here and FULL parsed it again in
+     * {@code NpcFullDmzRenderer} - which is how they came to disagree. Both ask this now.
      */
     public static CustomHair[] resolveSet(Spec spec) {
-        if (spec == null) return null;
-        int styleId = spec.styleId();
-        if (styleId > 0 && styleId <= HairManager.getPresetCount()) {
-            String color = spec.color() == null ? "" : spec.color();
-            CustomHair base = HairManager.getPresetHair(styleId, color);
-            if (base != null) {
-                return new CustomHair[]{
-                        base,
-                        orElse(HairManager.getPresetHairSSJ(styleId, color), base),
-                        orElse(HairManager.getPresetHairSSJ2(styleId, color), base),
-                        orElse(HairManager.getPresetHairSSJ3(styleId, color), base)
-                };
-            }
-        }
-        return parseSet(spec.code());
-    }
-
-    private static CustomHair orElse(CustomHair value, CustomHair fallback) {
-        return value == null ? fallback : value;
+        return spec == null ? null : NpcHairSet.resolve(spec.code(), spec.color(), spec.styleId());
     }
 
     public static CustomHair[] parseSet(String code) {
-        if (code == null || code.isBlank()) {
-            return null;
-        }
-        String key = code.trim();
-        CustomHair[] cached = CACHE.get(key);
-        if (cached != null) {
-            return cached.length == 0 ? null : cached;
-        }
-        CustomHair[] parsed = null;
-        try {
-            if (HairManager.isFullSetCode(key)) {
-                if (key.startsWith("DMZF4:") || key.length() >= 64) {
-                    parsed = HairManager.fromFullSetCode(key);
-                }
-            } else {
-                CustomHair base = HairManager.fromCode(key);
-                parsed = base == null ? null : new CustomHair[] {base, base, base, base};
-            }
-            if (parsed != null && (parsed.length == 0 || parsed[0] == null)) {
-                parsed = null;
-            }
-        } catch (Exception ignored) {
-            parsed = null;
-        }
-        CACHE.put(key, parsed == null ? INVALID : parsed);
-        return parsed;
+        return NpcHairSet.parse(code);
     }
 
     private static HairChoice choose(LivingEntity owner, CustomHair[] set, String configuredColor) {

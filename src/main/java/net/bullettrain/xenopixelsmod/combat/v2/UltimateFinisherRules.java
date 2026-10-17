@@ -20,13 +20,17 @@ public final class UltimateFinisherRules {
     private UltimateFinisherRules() {}
 
     public static Phase phase(int elapsed) {
+        return phase(elapsed, POST_BEAM_FREEZE_TICKS);
+    }
+
+    public static Phase phase(int elapsed, int postFreezeTicks) {
         if (elapsed < 0) return Phase.APPROACH;
         if (elapsed < GRAB_START) return Phase.COMBO;
         if (elapsed < THROW_START) return Phase.GRAB;
         if (elapsed < CHARGE_START) return Phase.THROW;
         if (elapsed < BEAM_START) return Phase.CHARGE;
         // BEAM covers both the wave and the post-wave freeze so the victim stays locked.
-        if (elapsed < END) return Phase.BEAM;
+        if (elapsed < BEAM_WAVE_END + Math.clamp(postFreezeTicks, 0, 1200)) return Phase.BEAM;
         return Phase.STOP;
     }
 

@@ -571,6 +571,33 @@ public class XenoNpcEntity extends PathfinderMob
 
     @Override
     public void aiStep() {
+        if (!level().isClientSide()
+                && net.bullettrain.xenopixelsmod.combat.v3.technique.V3PostAttackFreeze.allowsKnockback(this)) {
+            // NoAI stops goal decisions AND Mob's normal travel. Dash recovery
+            // owns only decisions: consume the current impulse exactly once.
+            float yaw = getYRot(), pitch = getXRot(), head = yHeadRot, body = yBodyRot;
+            float yawOld = yRotO, pitchOld = xRotO, headOld = yHeadRotO, bodyOld = yBodyRotO;
+            getNavigation().stop();
+            super.aiStep();
+            if (net.bullettrain.xenopixelsmod.combat.v3.technique.V3PostAttackFreeze.allowsKnockback(this)) {
+                setNoAi(false);
+                try { super.travel(net.minecraft.world.phys.Vec3.ZERO); }
+                finally {
+                    if (net.bullettrain.xenopixelsmod.combat.v3.technique.V3PostAttackFreeze.allowsKnockback(this)) setNoAi(true);
+                }
+                // DMZ/Mob travel updates the head and body independently. Recovery must let the
+                // knockback move the NPC without publishing a one-tick yaw snap to clients.
+            }
+            setYRot(yaw);
+            setXRot(pitch);
+            yHeadRot = head;
+            yBodyRot = body;
+            yRotO = yawOld;
+            xRotO = pitchOld;
+            yHeadRotO = headOld;
+            yBodyRotO = bodyOld;
+            return;
+        }
         boolean controlledVictim = !level().isClientSide()
                 && net.bullettrain.xenopixelsmod.combat.v3.technique.V3TechniqueRuntime
                         .isControlledVictim(getUUID());
@@ -591,12 +618,23 @@ public class XenoNpcEntity extends PathfinderMob
                 super.aiStep();
                 return;
             }
-            setNoAi(true);
+            // Borrow the freeze through FreezeOwnership instead of writing the flag directly. It
+            // stamps the pre-freeze value into persistent data, so a crash between here and the
+            // release is repaired on the next load rather than persisting NoAI forever.
+            //
+            // The release is unconditional now. The old finally only cleared the flag when
+            // isControlledVictim had gone false, which meant a leaked VICTIMS entry — one nothing
+            // ever cleared when the victim unloaded — pinned this NPC in the early-return branch
+            // above with NoAI set and no owner left to restore it. With ownership refcounted by
+            // reason, releasing RECOVERY while a technique still holds TECHNIQUE correctly leaves
+            // the flag set, so the guard is no longer needed to express that.
+            net.bullettrain.xenopixelsmod.combat.FreezeOwnership.acquire(
+                    this, net.bullettrain.xenopixelsmod.combat.FreezeOwnership.Reason.RECOVERY);
             try {
                 super.aiStep();
             } finally {
-                if (!net.bullettrain.xenopixelsmod.combat.v3.technique.V3TechniqueRuntime
-                        .isControlledVictim(getUUID())) setNoAi(false);
+                net.bullettrain.xenopixelsmod.combat.FreezeOwnership.release(
+                        this, net.bullettrain.xenopixelsmod.combat.FreezeOwnership.Reason.RECOVERY);
             }
             if (net.bullettrain.xenopixelsmod.combat.v3.technique.V3TechniqueRuntime
                     .isControlledVictim(getUUID())) return;

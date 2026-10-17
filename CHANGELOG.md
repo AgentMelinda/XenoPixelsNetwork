@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 0.5.13-1.21.1 — 2026-10-17
+
 - Add XenoCombat v2 as an opt-in combat controller: `/xenocombat mode v2` (the existing combat is
   v1 and stays the default; `/xenocombat mode legacy` switches back). v2 rewrites the combo as a
   data-driven graph with light/heavy branches and four-way directional variants, and rewrites
@@ -79,6 +81,24 @@
   changed since 102. Clients and servers must update together.
 - The 2026-10-06 v2 changes are built and unit-tested but have not been run in a game yet;
   `docs/combat-v2.md` lists what is unverified.
+- Script API v29: a player can borrow an NPC's DragonMineZ look and get their own back.
+  `XenoPixels.stealAppearance(player, npc[, ticks])` copies the NPC's race, gender, class, body
+  type, eyes/nose/mouth/tattoo indices, body/hair/eye/aura colours, saiyan tail and hair onto the
+  player after saving what they had; `restoreAppearance(player)` puts it back exactly, and the
+  default 600-tick timer does the same on its own. `isAppearanceStolen`,
+  `getAppearanceStealTicksLeft`, `getNpcAppearance` and `getPlayerAppearance` report the state.
+  Nothing else is touched: health, stats, skills, techniques, cooldowns, quests, forms and
+  masteries stay the player's, and armour is still `getArmor`/`setArmor`. A refusal is a returned
+  name (`NO_DATA`, `NO_SOURCE`, `INVALID_RACE`, `INVALID_CLASS`, `INVALID_COLOR`, `INVALID_HAIR`,
+  `ALREADY_ACTIVE`, `NOT_ACTIVE`, `INTERNAL`), never an exception into the engine.
+  The snapshot lives in the player's own XenoPixels data rather than in memory, so dying, logging
+  out, a server restart, or a crash mid-borrow still ends with the player's look returned; a clean
+  `/stop` restores it before anything is saved. Same capability for addons as
+  `DmzAppearance.stealFromNpc`/`restore`/`capture`, with `NpcAppearanceMapping` shared with the
+  FULL-mode NPC renderer so the stolen look cannot drift from the one standing next to you.
+  `examples/customnpcs/xenopixels_body_steal.js` is the worked example. Built and unit-tested
+  (3888 tests, 0 failures on 2026-10-14); **not yet run in a game** — in-world sync, the revert
+  byte-for-byte, and the death/relog/restart paths are unverified.
 
 ## 0.5.9-1.21.1 — 2026-10-04
 

@@ -70,8 +70,21 @@ public final class V3Config {
                 (int) number(json, "strikeCameraHoldTicks", defaults.strikeCameraHoldTicks()),
                 (int) number(json, "strikeCinematicCameraHoldTicks",
                         defaults.strikeCinematicCameraHoldTicks()),
-                bool(json, "strikeRequireLock", defaults.strikeRequireLock()));
-        apply(loaded);
+                bool(json, "strikeRequireLock", defaults.strikeRequireLock()),
+                (int) number(json, "strikeTargetFreezeTicks", defaults.strikeTargetFreezeTicks()),
+                number(json, "cinematicCameraDistanceScale", defaults.cinematicCameraDistanceScale()),
+                number(json, "rushFlightSpeedMultiplier", defaults.rushFlightSpeedMultiplier()));
+        var edit = new Values.Edit(loaded);
+        if (json.has("randomRush")) {
+            JsonObject rush=json.getAsJsonObject("randomRush");var d=new RandomRushSettings();
+            edit.randomRush=new RandomRushSettings(bool(rush,"enabled",d.enabled()),
+                bool(rush,"meterEnabled",d.meterEnabled()),bool(rush,"deadlineEnabled",d.deadlineEnabled()),
+                (int)number(rush,"windowTicks",d.windowTicks()),(int)number(rush,"fillPerPress",d.fillPerPress()),
+                bool(rush,"freezeDuringAttack",d.freezeDuringAttack()),bool(rush,"freezeAfterAttack",d.freezeAfterAttack()),
+                (int)number(rush,"postFreezeTicks",d.postFreezeTicks()));
+        }
+        edit.kiMaxLifetimeTicks=(int)number(json,"kiMaxLifetimeTicks",120);
+        apply(edit.build());
         save(path);
     }
     static void save(Path path) throws IOException {
@@ -101,6 +114,11 @@ public final class V3Config {
         json.addProperty("strikeCameraHoldTicks", snapshot.strikeCameraHoldTicks());
         json.addProperty("strikeCinematicCameraHoldTicks", snapshot.strikeCinematicCameraHoldTicks());
         json.addProperty("strikeRequireLock", snapshot.strikeRequireLock());
+        json.addProperty("strikeTargetFreezeTicks", snapshot.strikeTargetFreezeTicks());
+        json.addProperty("cinematicCameraDistanceScale", snapshot.cinematicCameraDistanceScale());
+        json.addProperty("rushFlightSpeedMultiplier", snapshot.rushFlightSpeedMultiplier());
+        json.addProperty("kiMaxLifetimeTicks",snapshot.kiMaxLifetimeTicks());
+        json.add("randomRush", GSON.toJsonTree(snapshot.randomRush()));
         Path absolute = path.toAbsolutePath();
         Files.createDirectories(absolute.getParent());
         Path temporary = Files.createTempFile(absolute.getParent(), absolute.getFileName().toString(), ".tmp");
@@ -151,7 +169,58 @@ public final class V3Config {
                          double heavyChargeLaunchDistance, double attackSoundVolume,
                          boolean strikeKiRequireLock, double strikeKiRange, double grabThrowDistance,
                          int strikeCameraHoldTicks, int strikeCinematicCameraHoldTicks,
-                         boolean strikeRequireLock) {
+                         boolean strikeRequireLock, int strikeTargetFreezeTicks,
+                         double cinematicCameraDistanceScale, double rushFlightSpeedMultiplier, RandomRushSettings randomRush, int kiMaxLifetimeTicks) {
+        public Values(double dragonDashRange,double heavyAttackerStaminaCost,double heavyVictimStaminaDrain,
+            double dragonDashSpeed,double dragonDashLaunchDistance,double dragonDashFollowDistance,
+            int dragonDashFollowCooldownTicks,int dragonDashFollowWindowTicks,double strikeLaunchDistance,
+            double strikeApproachRange,boolean strikeCinematicCamera,boolean dashCamera,boolean attackSounds,
+            double heavyChargeLaunchDistance,double attackSoundVolume,boolean strikeKiRequireLock,double strikeKiRange,
+            double grabThrowDistance,int strikeCameraHoldTicks,int strikeCinematicCameraHoldTicks,boolean strikeRequireLock,
+            int strikeTargetFreezeTicks,double cinematicCameraDistanceScale,double rushFlightSpeedMultiplier,RandomRushSettings randomRush){
+            this(dragonDashRange,heavyAttackerStaminaCost,heavyVictimStaminaDrain,dragonDashSpeed,dragonDashLaunchDistance,
+                dragonDashFollowDistance,dragonDashFollowCooldownTicks,dragonDashFollowWindowTicks,strikeLaunchDistance,
+                strikeApproachRange,strikeCinematicCamera,dashCamera,attackSounds,heavyChargeLaunchDistance,attackSoundVolume,
+                strikeKiRequireLock,strikeKiRange,grabThrowDistance,strikeCameraHoldTicks,strikeCinematicCameraHoldTicks,
+                strikeRequireLock,strikeTargetFreezeTicks,cinematicCameraDistanceScale,rushFlightSpeedMultiplier,randomRush,120);
+        }
+        public Values(double dragonDashRange, double heavyAttackerStaminaCost, double heavyVictimStaminaDrain,
+                      double dragonDashSpeed, double dragonDashLaunchDistance, double dragonDashFollowDistance,
+                      int dragonDashFollowCooldownTicks, int dragonDashFollowWindowTicks,
+                      double strikeLaunchDistance, double strikeApproachRange,
+                      boolean strikeCinematicCamera, boolean dashCamera, boolean attackSounds,
+                      double heavyChargeLaunchDistance, double attackSoundVolume,
+                      boolean strikeKiRequireLock, double strikeKiRange, double grabThrowDistance,
+                      int strikeCameraHoldTicks, int strikeCinematicCameraHoldTicks,
+                      boolean strikeRequireLock, int strikeTargetFreezeTicks,
+                      double cinematicCameraDistanceScale, double rushFlightSpeedMultiplier) {
+            this(dragonDashRange,heavyAttackerStaminaCost,heavyVictimStaminaDrain,dragonDashSpeed,
+                 dragonDashLaunchDistance,dragonDashFollowDistance,dragonDashFollowCooldownTicks,
+                 dragonDashFollowWindowTicks,strikeLaunchDistance,strikeApproachRange,strikeCinematicCamera,
+                 dashCamera,attackSounds,heavyChargeLaunchDistance,attackSoundVolume,strikeKiRequireLock,
+                 strikeKiRange,grabThrowDistance,strikeCameraHoldTicks,strikeCinematicCameraHoldTicks,
+                 strikeRequireLock,strikeTargetFreezeTicks,cinematicCameraDistanceScale,rushFlightSpeedMultiplier,
+                 new RandomRushSettings());
+        }
+        public static final double DEFAULT_RUSH_FLIGHT_SPEED_MULTIPLIER = 1;
+        /** Compatibility with snapshots before rush search/reapproach speed was configurable. */
+        public Values(double dragonDashRange, double heavyAttackerStaminaCost, double heavyVictimStaminaDrain,
+                      double dragonDashSpeed, double dragonDashLaunchDistance, double dragonDashFollowDistance,
+                      int dragonDashFollowCooldownTicks, int dragonDashFollowWindowTicks,
+                      double strikeLaunchDistance, double strikeApproachRange,
+                      boolean strikeCinematicCamera, boolean dashCamera, boolean attackSounds,
+                      double heavyChargeLaunchDistance, double attackSoundVolume,
+                      boolean strikeKiRequireLock, double strikeKiRange, double grabThrowDistance,
+                      int strikeCameraHoldTicks, int strikeCinematicCameraHoldTicks,
+                      boolean strikeRequireLock, int strikeTargetFreezeTicks, double cinematicCameraDistanceScale) {
+            this(dragonDashRange, heavyAttackerStaminaCost, heavyVictimStaminaDrain, dragonDashSpeed,
+                    dragonDashLaunchDistance, dragonDashFollowDistance, dragonDashFollowCooldownTicks,
+                    dragonDashFollowWindowTicks, strikeLaunchDistance, strikeApproachRange,
+                    strikeCinematicCamera, dashCamera, attackSounds, heavyChargeLaunchDistance, attackSoundVolume,
+                    strikeKiRequireLock, strikeKiRange, grabThrowDistance, strikeCameraHoldTicks,
+                    strikeCinematicCameraHoldTicks, strikeRequireLock, strikeTargetFreezeTicks,
+                    cinematicCameraDistanceScale, DEFAULT_RUSH_FLIGHT_SPEED_MULTIPLIER);
+        }
         public static final double DEFAULT_DASH_RANGE = 24;
         /** Melee/mixed Strike needs approved lock when true; false allows look-aim without lock. */
         public static final boolean DEFAULT_STRIKE_REQUIRE_LOCK = true;
@@ -170,6 +239,8 @@ public final class V3Config {
         public static final double DEFAULT_GRAB_THROW_DISTANCE = 12;
         /** Post-END cinematic + victim freeze (~4s). Separate from the opening close-angle hold. */
         public static final int DEFAULT_STRIKE_CAMERA_HOLD = 80;
+        public static final int DEFAULT_STRIKE_TARGET_FREEZE = 80;
+        public static final double DEFAULT_CINEMATIC_CAMERA_DISTANCE_SCALE = 1;
         /**
          * Opening close-camera lengthen for ki/charge openers (0 = authored beat length).
          * Not applied to APPROACH/rush timelines — those were thrashing with lock-on.
@@ -177,6 +248,23 @@ public final class V3Config {
         public static final int DEFAULT_STRIKE_CINEMATIC_OPENING_HOLD = 0;
 
         public Values() { this(DEFAULT_DASH_RANGE, 10, 10); }
+        /** Append-only presentation options; retain the prior complete constructor. */
+        public Values(double dragonDashRange, double heavyAttackerStaminaCost, double heavyVictimStaminaDrain,
+                      double dragonDashSpeed, double dragonDashLaunchDistance, double dragonDashFollowDistance,
+                      int dragonDashFollowCooldownTicks, int dragonDashFollowWindowTicks,
+                      double strikeLaunchDistance, double strikeApproachRange,
+                      boolean strikeCinematicCamera, boolean dashCamera, boolean attackSounds,
+                      double heavyChargeLaunchDistance, double attackSoundVolume,
+                      boolean strikeKiRequireLock, double strikeKiRange, double grabThrowDistance,
+                      int strikeCameraHoldTicks, int strikeCinematicCameraHoldTicks, boolean strikeRequireLock) {
+            this(dragonDashRange, heavyAttackerStaminaCost, heavyVictimStaminaDrain, dragonDashSpeed,
+                    dragonDashLaunchDistance, dragonDashFollowDistance, dragonDashFollowCooldownTicks,
+                    dragonDashFollowWindowTicks, strikeLaunchDistance, strikeApproachRange,
+                    strikeCinematicCamera, dashCamera, attackSounds, heavyChargeLaunchDistance, attackSoundVolume,
+                    strikeKiRequireLock, strikeKiRange, grabThrowDistance, strikeCameraHoldTicks,
+                    strikeCinematicCameraHoldTicks, strikeRequireLock, DEFAULT_STRIKE_TARGET_FREEZE,
+                    DEFAULT_CINEMATIC_CAMERA_DISTANCE_SCALE);
+        }
         /** Existing snapshots retain prior grab-throw default and zero opening hold. */
         public Values(double dragonDashRange, double heavyAttackerStaminaCost, double heavyVictimStaminaDrain,
                       double dragonDashSpeed, double dragonDashLaunchDistance, double dragonDashFollowDistance,
@@ -268,6 +356,8 @@ public final class V3Config {
                     strikeCinematicCamera, dashCamera, attackSounds, DEFAULT_HEAVY_CHARGE_LAUNCH);
         }
         public Values {
+            kiMaxLifetimeTicks=Math.clamp(kiMaxLifetimeTicks,1,1200);
+            randomRush = randomRush == null ? new RandomRushSettings() : randomRush;
             dragonDashRange = bounded(dragonDashRange, 2, 999);
             heavyAttackerStaminaCost = bounded(heavyAttackerStaminaCost, 0, 100000);
             heavyVictimStaminaDrain = bounded(heavyVictimStaminaDrain, 0, 100000);
@@ -277,13 +367,16 @@ public final class V3Config {
             dragonDashFollowCooldownTicks = (int) bounded(dragonDashFollowCooldownTicks, 0, 200);
             dragonDashFollowWindowTicks = (int) bounded(dragonDashFollowWindowTicks, 10, 1200);
             strikeLaunchDistance = bounded(strikeLaunchDistance, 4, 64);
-            strikeApproachRange = bounded(strikeApproachRange, 4, 128);
+            strikeApproachRange = bounded(strikeApproachRange, 4, 999);
             heavyChargeLaunchDistance = bounded(heavyChargeLaunchDistance, 4, 64);
             attackSoundVolume = bounded(attackSoundVolume, 0, 2);
             strikeKiRange = bounded(strikeKiRange, 4, 128);
             grabThrowDistance = bounded(grabThrowDistance, 4, 64);
             strikeCameraHoldTicks = (int) bounded(strikeCameraHoldTicks, 0, 400);
             strikeCinematicCameraHoldTicks = (int) bounded(strikeCinematicCameraHoldTicks, 0, 400);
+            strikeTargetFreezeTicks = (int) bounded(strikeTargetFreezeTicks, 0, 1200);
+            cinematicCameraDistanceScale = bounded(cinematicCameraDistanceScale, .25, 4);
+            rushFlightSpeedMultiplier = bounded(rushFlightSpeedMultiplier, .1, 4);
         }
         private static double bounded(double value, double min, double max) {
             if (!Double.isFinite(value)) throw new IllegalArgumentException("V3 config value must be finite");
@@ -294,11 +387,16 @@ public final class V3Config {
         public static final class Edit {
             public double dragonDashRange, heavyAttackerStaminaCost, heavyVictimStaminaDrain, dragonDashSpeed,
                     dragonDashLaunchDistance, dragonDashFollowDistance, strikeLaunchDistance, strikeApproachRange,
-                    heavyChargeLaunchDistance, attackSoundVolume, strikeKiRange, grabThrowDistance;
-            public int strikeCameraHoldTicks, strikeCinematicCameraHoldTicks;
+                    heavyChargeLaunchDistance, attackSoundVolume, strikeKiRange, grabThrowDistance,
+                    cinematicCameraDistanceScale, rushFlightSpeedMultiplier;
+            public int strikeCameraHoldTicks, strikeCinematicCameraHoldTicks, strikeTargetFreezeTicks;
             public int dragonDashFollowCooldownTicks, dragonDashFollowWindowTicks;
             public boolean strikeCinematicCamera, dashCamera, attackSounds, strikeKiRequireLock, strikeRequireLock;
+            public int kiMaxLifetimeTicks;
+            public RandomRushSettings randomRush;
             public Edit(Values from) {
+                randomRush = from.randomRush;
+                kiMaxLifetimeTicks=from.kiMaxLifetimeTicks;
                 dragonDashRange = from.dragonDashRange;
                 heavyAttackerStaminaCost = from.heavyAttackerStaminaCost;
                 heavyVictimStaminaDrain = from.heavyVictimStaminaDrain;
@@ -320,6 +418,9 @@ public final class V3Config {
                 strikeCameraHoldTicks = from.strikeCameraHoldTicks;
                 strikeCinematicCameraHoldTicks = from.strikeCinematicCameraHoldTicks;
                 strikeRequireLock = from.strikeRequireLock;
+                strikeTargetFreezeTicks = from.strikeTargetFreezeTicks;
+                cinematicCameraDistanceScale = from.cinematicCameraDistanceScale;
+                rushFlightSpeedMultiplier = from.rushFlightSpeedMultiplier;
             }
             public Values build() {
                 return new Values(dragonDashRange, heavyAttackerStaminaCost, heavyVictimStaminaDrain, dragonDashSpeed,
@@ -327,7 +428,8 @@ public final class V3Config {
                         dragonDashFollowWindowTicks, strikeLaunchDistance, strikeApproachRange,
                         strikeCinematicCamera, dashCamera, attackSounds, heavyChargeLaunchDistance, attackSoundVolume,
                         strikeKiRequireLock, strikeKiRange, grabThrowDistance, strikeCameraHoldTicks,
-                        strikeCinematicCameraHoldTicks, strikeRequireLock);
+                        strikeCinematicCameraHoldTicks, strikeRequireLock, strikeTargetFreezeTicks,
+                        cinematicCameraDistanceScale, rushFlightSpeedMultiplier, randomRush,kiMaxLifetimeTicks);
             }
         }
     }

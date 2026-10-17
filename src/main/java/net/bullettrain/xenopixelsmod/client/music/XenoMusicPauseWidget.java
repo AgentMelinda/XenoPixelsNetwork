@@ -16,7 +16,7 @@ import net.neoforged.api.distmarker.OnlyIn;
 /**
  * The compact music player drawn bottom-left of the pause menu only.
  *
- * <p>One generated plate ({@code xeno_music_panel}, 150x40, green) and four generated chips, all
+ * <p>One generated plate ({@code xeno_music_panel}, 150x40, green) and five generated chips, all
  * blitted 1:1 per the atlas rule (docs/atlas-ui-doco.md). Hover is the gold palette swap. The
  * mouse wheel over the plate changes the volume. Nothing here is drawn while the pause menu is
  * closed; playback itself continues.
@@ -29,9 +29,9 @@ public final class XenoMusicPauseWidget extends AbstractWidget {
     /** Plate margin from the screen's bottom-left corner. */
     public static final int MARGIN = 6;
     private static final int ROW_Y = 19;
-    private static final int[] CHIP_X = {6, 28, 50, 76};
+    private static final int[] CHIP_X = {6, 28, 50, 76, 112};
 
-    private enum Button { PREVIOUS, PLAY, NEXT, POWER }
+    private enum Button { PREVIOUS, PLAY, NEXT, POWER, CINEMATIC }
 
     public XenoMusicPauseWidget(int x, int y) {
         super(x, y, XenoAtlasSprites.get(PANEL).width(), XenoAtlasSprites.get(PANEL).height(),
@@ -42,7 +42,7 @@ public final class XenoMusicPauseWidget extends AbstractWidget {
     static Button hit(double localX, double localY) {
         if (localY < ROW_Y || localY >= ROW_Y + 18) return null;
         for (int i = 0; i < CHIP_X.length; i++) {
-            int w = i == 3 ? 32 : 20;
+            int w = i >= 3 ? 32 : 20;
             if (localX >= CHIP_X[i] && localX < CHIP_X[i] + w) return Button.values()[i];
         }
         return null;
@@ -74,7 +74,7 @@ public final class XenoMusicPauseWidget extends AbstractWidget {
 
         Button hovered = isHovered() ? hit(mouseX - getX(), mouseY - getY()) : null;
         for (Button button : Button.values()) {
-            String sprite = button == Button.POWER ? WIDE_CHIP : CHIP;
+            String sprite = button.ordinal() >= 3 ? WIDE_CHIP : CHIP;
             int bx = getX() + CHIP_X[button.ordinal()];
             int by = getY() + ROW_Y;
             if (button == hovered) XenoAtlasSprites.blit(graphics, sprite, XenoAtlasSprites.Theme.GOLD, bx, by);
@@ -84,14 +84,18 @@ public final class XenoMusicPauseWidget extends AbstractWidget {
                 case PLAY -> XenoMusicPlayer.playing() ? "||" : ">";
                 case NEXT -> ">>";
                 case POWER -> on ? "ON" : "OFF";
+                case CINEMATIC -> XenoClientConfig.cinematicMusicEnabled ? "C:ON" : "C:OFF";
             };
-            int w = button == Button.POWER ? 32 : 20;
+            int w = button.ordinal() >= 3 ? 32 : 20;
             int color = button == hovered ? 0xFFFFFFFF : on ? 0xFFE0F0FF : 0xFF9AA8B4;
             graphics.drawCenteredString(font, text, bx + w / 2, by + 5, color);
         }
         if (hovered == null && isHovered()) {
             setTooltip(net.minecraft.client.gui.components.Tooltip.create(Component.literal(
                     "Volume " + Math.round(XenoClientConfig.musicVolume * 100) + "%  (scroll to change)")));
+        } else if (hovered == Button.CINEMATIC) {
+            setTooltip(net.minecraft.client.gui.components.Tooltip.create(Component.literal(
+                    "Attack cinematic music: " + (XenoClientConfig.cinematicMusicEnabled ? "on" : "off"))));
         } else {
             setTooltip(null);
         }
@@ -107,6 +111,7 @@ public final class XenoMusicPauseWidget extends AbstractWidget {
             case PLAY -> XenoMusicPlayer.playPause();
             case NEXT -> XenoMusicPlayer.next();
             case POWER -> XenoMusicPlayer.toggle();
+            case CINEMATIC -> XenoMusicPlayer.toggleCinematic();
         }
     }
 

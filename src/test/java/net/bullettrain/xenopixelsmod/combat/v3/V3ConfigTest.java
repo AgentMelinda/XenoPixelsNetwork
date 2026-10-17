@@ -10,6 +10,51 @@ import com.google.gson.JsonParser;
 import static org.junit.jupiter.api.Assertions.*;
 
 class V3ConfigTest {
+    @Test void dashGapAliasAndKiCapUsePersistedNormalizedValues() throws Exception {
+        var original=V3Config.get();var path=Files.createTempFile("dash-gap", ".json");
+        try {
+            Files.writeString(path,"{}");
+            assertTrue(XenoConfigRegistry.set("v3.dragonDashgapdistance","5.25").ok);
+            assertEquals(5.25,V3Config.get().dragonDashFollowDistance());
+            assertTrue(XenoConfigRegistry.set("v3.kiMaxLifetimeTicks","37").ok);
+            assertTrue(XenoConfigRegistry.set("v3.randomRush.windowTicks","120").ok);
+            V3Config.save(path);V3Config.apply(new V3Config.Values());V3Config.load(path);
+            assertEquals(5.25,V3Config.get().dragonDashFollowDistance());assertEquals(37,V3Config.get().kiMaxLifetimeTicks());
+            assertEquals(120,V3Config.get().randomRush().windowTicks());
+        }finally {V3Config.apply(original);Files.deleteIfExists(path);}
+    }
+    @Test void partialRandomRushConfigRetainsDefaultDeadlineAndFreeze() throws Exception {
+        var original=V3Config.get();var path=Files.createTempFile("partial-rush", ".json");
+        try {
+            Files.writeString(path,"{\"randomRush\":{\"fillPerPress\":50}}");V3Config.load(path);
+            var expected=new RandomRushSettings().with("fillPerPress",50);
+            assertEquals(expected,V3Config.get().randomRush());
+        }finally {V3Config.apply(original);Files.deleteIfExists(path);}
+    }
+    @Test void randomRushSettingsPersistWithoutLosingOtherTuning() throws Exception {
+        var original=V3Config.get();var path=java.nio.file.Files.createTempFile("random-rush", ".json");
+        try {
+            java.nio.file.Files.writeString(path,"{}");
+            var edit=new V3Config.Values.Edit(original);
+            edit.randomRush=new RandomRushSettings(true,false,false,147,22,false,true,59);
+            V3Config.apply(edit.build());V3Config.persist(path);V3Config.apply(new V3Config.Values());V3Config.load(path);
+            assertEquals(edit.build(),V3Config.get());
+        } finally {V3Config.apply(original);java.nio.file.Files.deleteIfExists(path);}
+    }
+    @Test void rushSpeedIsNormalizedAndPersistsWithoutChangingDashSpeed() throws Exception {
+        Path path = directory.resolve("rush.json");
+        assertEquals(1, new V3Config.Values().rushFlightSpeedMultiplier());
+        assertTrue(XenoConfigRegistry.set("v3.rushFlightSpeedMultiplier", "8").ok);
+        assertEquals(4, V3Config.get().rushFlightSpeedMultiplier());
+        assertEquals(V3Config.Values.DEFAULT_DASH_SPEED, V3Config.get().dragonDashSpeed());
+        V3Config.save(path);
+        V3Config.apply(new V3Config.Values());
+        V3Config.load(path);
+        assertEquals(4, V3Config.get().rushFlightSpeedMultiplier());
+        assertTrue(XenoConfigRegistry.set("v3.rushFlightSpeedMultiplier", "0").ok);
+        assertEquals(.1, V3Config.get().rushFlightSpeedMultiplier());
+        assertFalse(XenoConfigRegistry.set("v3.rushFlightSpeedMultiplier", "NaN").ok);
+    }
     @TempDir Path directory;
     private final V3Config.Values saved = V3Config.get();
     @AfterEach void restore() { V3Config.apply(saved); }
@@ -100,6 +145,7 @@ class V3ConfigTest {
         assertEquals(10, V3Config.get().dragonDashFollowWindowTicks(), "lower bound");
         assertTrue(XenoConfigRegistry.set("strikeLaunch", "18").ok);
         assertTrue(XenoConfigRegistry.set("v3.strikeApproachRange", "40").ok);
+        assertTrue(XenoConfigRegistry.set("v3.strikeApproachRange", "999").ok);
         assertTrue(XenoConfigRegistry.set("strikeCamera", "off").ok);
         assertTrue(XenoConfigRegistry.set("v3.dashCamera", "on").ok);
         assertTrue(XenoConfigRegistry.set("v3Sounds", "false").ok);
@@ -115,7 +161,7 @@ class V3ConfigTest {
         assertEquals(12, loaded.dragonDashFollowCooldownTicks());
         assertEquals(10, loaded.dragonDashFollowWindowTicks());
         assertEquals(18, loaded.strikeLaunchDistance());
-        assertEquals(40, loaded.strikeApproachRange());
+        assertEquals(999, loaded.strikeApproachRange());
         assertFalse(loaded.strikeCinematicCamera());
         assertTrue(loaded.dashCamera());
         assertFalse(loaded.attackSounds());
@@ -127,6 +173,18 @@ class V3ConfigTest {
         assertEquals(new V3Config.Values().dragonDashSpeed(), legacy.dragonDashSpeed());
         assertEquals(new V3Config.Values().attackSounds(), legacy.attackSounds());
         assertEquals(999, legacy.dragonDashRange());
+    }
+
+    @Test void strikeApproachRangeAcceptsAndCapsAt999() {
+        assertTrue(XenoConfigRegistry.set("v3.strikeApproachRange", "999").ok);
+        assertEquals(999, V3Config.get().strikeApproachRange());
+        assertTrue(XenoConfigRegistry.set("strikeApproachRange", "1200").ok);
+        assertEquals(999, V3Config.get().strikeApproachRange());
+    }
+
+    @Test void chargedPunchLaunchDistanceIsExposedToXenoSet() {
+        assertTrue(XenoConfigRegistry.set("v3.heavyChargeLaunchDistance", "32").ok);
+        assertEquals(32, V3Config.get().heavyChargeLaunchDistance());
     }
 
     @Test void nonFiniteRangeIsRefused() {
@@ -178,6 +236,20 @@ class V3ConfigTest {
         assertFalse(V3Config.get().strikeRequireLock(), "melee lock flag stays independent");
         assertTrue(XenoConfigRegistry.set("strikeLock", "true").ok);
         assertTrue(V3Config.get().strikeRequireLock());
+    }
+
+    @Test void victimFreezeAndCameraDistanceRoundTripIndependently() throws Exception {
+        Path path = directory.resolve("cinematic-presentation.json");
+        assertTrue(XenoConfigRegistry.set("v3.strikeTargetFreezeTicks", "140").ok);
+        assertTrue(XenoConfigRegistry.set("v3.cinematicCameraDistanceScale", "1.75").ok);
+        assertEquals(140, V3Config.get().strikeTargetFreezeTicks());
+        assertEquals(1.75, V3Config.get().cinematicCameraDistanceScale());
+        assertEquals(80, V3Config.get().strikeCameraHoldTicks());
+        V3Config.save(path);
+        V3Config.apply(new V3Config.Values());
+        V3Config.load(path);
+        assertEquals(140, V3Config.get().strikeTargetFreezeTicks());
+        assertEquals(1.75, V3Config.get().cinematicCameraDistanceScale());
     }
 
     @Test void postEndAndOpeningCameraHoldsAreIndependentXenosetKeys() throws Exception {

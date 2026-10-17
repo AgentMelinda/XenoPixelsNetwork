@@ -240,6 +240,10 @@ public final class V3Charge {
                 V2ChargedArc.start(target, away, now);
                 // The one intentional launch in V3, so the one thing a chase can follow.
                 V3Chase.open(player, target);
+            } else if (!kick && charge >= 1f) {
+                // The full charged punch's authored launch setting was serialized but never
+                // consumed. Keep its motion collision-aware like the charged-kick arc.
+                V2ChargedArc.start(target, away, now, config.heavyChargeLaunchDistance(), 4.0);
             } else {
                 CombatKnockback.set(target, V3Heavy.reaction(V3Direction.FORWARD, away.x, 0, away.z), player);
             }

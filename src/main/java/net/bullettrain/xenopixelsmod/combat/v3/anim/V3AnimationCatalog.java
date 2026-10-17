@@ -26,6 +26,12 @@ public final class V3AnimationCatalog {
         return id != null && DURATIONS.containsKey(id);
     }
 
+    /** Active occurrence tracks own these bones instead of DMZ's procedural look/arm sway. */
+    public static boolean preservesBonePose(String id, boolean playing, String bone) {
+        return playing && isPlayable(id) && !CONTROL_RELEASE.equals(id)
+                && ("head".equals(bone) || "left_arm".equals(bone) || "right_arm".equals(bone));
+    }
+
     /** Returns the authored duration rounded up to server ticks, or -1 for an unknown clip. */
     public static int durationTicks(String id) {
         return id == null ? -1 : DURATIONS.getOrDefault(id, -1);

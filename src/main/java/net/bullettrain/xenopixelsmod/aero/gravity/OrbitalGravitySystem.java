@@ -4,7 +4,6 @@ import dev.ryanhcode.sable.api.sublevel.SubLevelContainer;
 import dev.ryanhcode.sable.platform.SableEventPlatform;
 import dev.ryanhcode.sable.sublevel.ServerSubLevel;
 import net.bullettrain.xenopixelsmod.XenoPixelsMod;
-import net.bullettrain.xenopixelsmod.mixin.ConditionalMixinPlugin;
 import net.bullettrain.xenopixelsmod.vs.ShipGravityControl;
 
 import java.util.Map;
@@ -15,15 +14,25 @@ import java.util.concurrent.atomic.AtomicBoolean;
 /**
  * Applies per-dimension gravity to Sable ships.
  *
- * <p>This is our replacement for AeroStar's {@code OrbitGravitySystem}. That class resolved
- * planets through {@code NorthstarDimensions}, so when Northstar Redux 0.6 moved the class it
- * threw {@code NoClassDefFoundError} inside Sable's pre-physics-tick event and killed the
- * server thread every tick a sub-level existed. We read dimension ids from
- * {@link OrbitalGravityConfig} instead and touch no space-mod classes at all, so a Northstar
- * update cannot break ship gravity again.
+ * <p>This system owns ship gravity outright. It used to yield to AeroStar's {@code OrbitGravitySystem}
+ * whenever that mod was installed and its handler had not been suppressed, because two systems both
+ * correcting gravity every physics tick would fight each other and exactly one had to own it. That
+ * compat was removed: AeroStar pinned Northstar Redux 0.5.4 and broke on the 0.6 line, and keeping a
+ * shim class plus a cancel-mixin plus an ownership negotiation alive to support it cost more than it
+ * returned. There is now one owner, which removes a whole class of "whose gravity is this" ambiguity.
  *
- * <p>The actual force is left to {@link ShipGravityControl}, which already runs a Sable
- * physics-tick correction; this system only decides what each ship's target gravity should be.
+ * <p><b>Behaviour change for servers that still run AeroStar:</b> with the negotiation gone, this
+ * system applies its own per-dimension values instead of deferring. Ships will fly differently than
+ * they did under AeroStar's numbers. {@link OrbitalGravityConfig} is the place to tune that, and its
+ * {@code enabled} flag turns this system off entirely for a server that wants no per-dimension
+ * gravity at all.
+ *
+ * <p>Like the system it replaced, this reads dimension ids from {@link OrbitalGravityConfig} and
+ * touches no space-mod classes at all, so a space mod renaming or repackaging anything cannot break
+ * ship gravity again.
+ *
+ * <p>The actual force is left to {@link ShipGravityControl}, which already runs a Sable physics-tick
+ * correction; this system only decides what each ship's target gravity should be.
  */
 public final class OrbitalGravitySystem {
     private static final AtomicBoolean REGISTERED = new AtomicBoolean();
@@ -39,11 +48,6 @@ public final class OrbitalGravitySystem {
      */
     private static final Map<UUID, Double> APPLIED = new ConcurrentHashMap<>();
 
-    /** Resolved once — mod presence cannot change at runtime. */
-    private static final boolean AEROSTAR_PRESENT =
-            ConditionalMixinPlugin.isModLoaded("aerostarcomp");
-    private static final AtomicBoolean YIELD_LOGGED = new AtomicBoolean();
-
     private static int counter;
 
     private OrbitalGravitySystem() {
@@ -58,16 +62,15 @@ public final class OrbitalGravitySystem {
             try {
                 apply(system);
             } catch (Throwable t) {
-                // Never let a gravity pass take down the physics tick — the failure mode we
-                // are replacing did exactly that.
+                // Never let a gravity pass take down the physics tick — the failure mode this system
+                // was written to replace did exactly that, every tick a sub-level existed.
                 XenoPixelsMod.LOGGER.error("Orbital gravity pass failed", t);
             }
         });
-        XenoPixelsMod.LOGGER.info("Registered orbital gravity system (replaces AeroStar OrbitGravitySystem)");
+        XenoPixelsMod.LOGGER.info("Registered orbital gravity system (owns ship gravity per dimension)");
     }
 
     private static void apply(dev.ryanhcode.sable.sublevel.system.SubLevelPhysicsSystem system) {
-        if (aeroStarOwnsGravity()) return;
         var level = system.getLevel();
         if (level == null) return;
         String dimensionId = level.dimension().location().toString();
@@ -76,6 +79,7 @@ public final class OrbitalGravitySystem {
         double target = OrbitalGravityConfig.gravityFor(dimensionId, ShipGravityControl.NORMAL_GRAVITY);
         for (var candidate : SubLevelContainer.getContainer(level).getAllSubLevels()) {
             if (!(candidate instanceof ServerSubLevel subLevel)) continue;
+            if (net.bullettrain.xenopixelsmod.space.physics.PhysicalEarth.isManaged(subLevel)) continue;
             ShipGravityControl control = ShipGravityControl.getOrCreate(subLevel);
             double current = control.getGravitySi();
             if (Math.abs(current - target) < 1.0e-6) continue;
@@ -89,28 +93,6 @@ public final class OrbitalGravitySystem {
             control.setGravitySi(target);
             APPLIED.put(subLevel.getUniqueId(), control.getGravitySi());
         }
-    }
-
-    /**
-     * True when AeroStar is installed and still running its own gravity, so we must stay out.
-     *
-     * <p>With the {@code NorthstarDimensions} shim in place AeroStar no longer crashes, which
-     * means it applies gravity again. If our mixin also cancelled its handler we own gravity;
-     * if the mixin never matched — which has happened, and is not visible from the crash report
-     * — AeroStar owns it and a second set of corrections would fight the first.
-     *
-     * <p>Deciding on an observed cancel rather than on "is the mixin present" is deliberate:
-     * presence proved to be no evidence at all.
-     */
-    private static boolean aeroStarOwnsGravity() {
-        if (!AEROSTAR_PRESENT) return false;
-        if (AeroStarState.hasCancelledHandler()) return false;
-        if (YIELD_LOGGED.compareAndSet(false, true)) {
-            XenoPixelsMod.LOGGER.info(
-                    "AeroStar is installed and its gravity handler was not suppressed; "
-                            + "leaving orbital gravity to AeroStar to avoid double-applying");
-        }
-        return true;
     }
 
     /** Drop tracking for ships that no longer exist. Safe to call on world unload. */

@@ -251,6 +251,8 @@ public final class HakaiAreaSystem {
                     net.bullettrain.xenopixelsmod.fx.effek.EffectSlot.HAKAI_ERASE,
                     channel.centre, UP, areaScale(channel), channel.radius);
             HakaiBlockErasure.queue(level, caster, channel.centre, channel.radius);
+            // Planet Hakai (XenoSpaceConfig.hakaiPlanets, default off): the planet the caster looks at in the Voidsea.
+            net.bullettrain.xenopixelsmod.space.hakai.PlanetHakai.onAreaHakaiFired(caster);
         }
     }
 

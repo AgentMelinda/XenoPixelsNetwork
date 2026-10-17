@@ -6,7 +6,6 @@ import com.dragonminez.client.render.EntityPreviewRenderContext;
 import com.dragonminez.client.render.effects.AuraRenderer;
 import com.dragonminez.client.render.layer.DMZSkinLayer;
 import com.dragonminez.common.config.FormConfig;
-import com.dragonminez.common.hair.CustomHair;
 import com.dragonminez.common.stats.StatsCapability;
 import com.dragonminez.common.stats.StatsData;
 import com.dragonminez.common.stats.StatsProvider;
@@ -17,6 +16,8 @@ import com.mojang.blaze3d.vertex.PoseStack;
 import net.bullettrain.xenopixelsmod.XenoPixelsMod;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
+import net.bullettrain.xenopixelsmod.compat.npc.NpcAppearanceMapping;
+import net.bullettrain.xenopixelsmod.compat.npc.NpcAppearanceSource;
 import net.bullettrain.xenopixelsmod.compat.npc.NpcCombatProfile;
 import net.bullettrain.xenopixelsmod.compat.npc.NpcSkillSet;
 import net.bullettrain.xenopixelsmod.compat.npc.NpcDisplayApply;
@@ -900,50 +901,30 @@ public final class NpcFullDmzRenderer {
     private static void syncCharacter(ProxyPlayer proxy, Character character,
                                       NpcAppearanceClient.State state) {
         NpcDmzAppearance a = state.appearance();
-        character.setRace(state.race().isBlank() ? "human" : state.race());
-        character.setGender(a.gender);
-        character.setCharacterClass(a.characterClass);
-        character.setBodyType(a.bodyType);
-        character.setEyesType(a.eyesType);
-        character.setNoseType(a.noseType);
-        character.setMouthType(a.mouthType);
-        character.setTattooType(a.tattooType);
-        character.setBoobScale(a.boobScale);
-        character.setBodyColor(a.bodyColor);
-        character.setBodyColor2(a.bodyColor2);
-        character.setBodyColor3(a.bodyColor3);
-        character.setEye1Color(a.eye1Color);
-        character.setEye2Color(a.eye2Color);
-        character.setHairColor(state.hairColor().isBlank() ? "#FFFFFF" : state.hairColor());
-        character.setAuraColor(state.auraColor() == 0 ? "#FFFFFF" : NpcCombatProfile.formatHex(state.auraColor()));
-        character.setActiveHeadBone(a.activeHeadBone);
-        character.setHasSaiyanTail(a.saiyanTail);
-        character.setRenderHairBase(a.renderHairBase);
-        character.setArmored(true);
-
-        // DragonMineZ reads the custom hair only when hairId is 0 (HairManager.getEffectiveHair);
-        // any other value resolves a built-in preset instead. Character's constructor seeds hairId
-        // from the race config's defaultHairType, so leaving it alone let a server config silently
-        // override the builder's hair code. Set it deliberately, every time.
-        character.setHairId(Math.max(0, state.hairStyleId()));
-
+        NpcCombatProfile visual = visualProfile(state);
         String hairCode = state.hairCode() == null ? "" : state.hairCode().trim();
         String hairKey = state.hairStyleId() + "|" + hairCode;
-        if (!Objects.equals(proxy.syncedHairCode, hairKey)) {
-            // Same resolver the OVERLAY layers use, so the two modes cannot drift apart again.
-            CustomHair[] hair = NpcHairVis.resolveSet(NpcHairVis.spec(proxy.owner));
-            character.setHairBase(copy(hair, 0));
-            character.setHairSSJ(copy(hair, 1));
-            character.setHairSSJ2(copy(hair, 2));
-            character.setHairSSJ3(copy(hair, 3));
+        boolean hairChanged = !Objects.equals(proxy.syncedHairCode, hairKey);
+        NpcAppearanceSource source = new NpcAppearanceSource(state.race(), a.gender, a.characterClass,
+                a.bodyType, a.eyesType, a.noseType, a.mouthType, a.tattooType, a.boobScale,
+                a.bodyColor, a.bodyColor2, a.bodyColor3, a.eye1Color, a.eye2Color,
+                state.hairColor(), NpcAppearanceSource.auraOf(visual),
+                a.activeHeadBone, a.saiyanTail, a.renderHairBase, state.hairStyleId(), hairCode,
+                hairChanged ? NpcHairVis.resolveSet(NpcHairVis.spec(proxy.owner)) : null);
+        // The same field table the server-side appearance steal writes, so a borrowed look and the
+        // NPC it came from cannot drift apart. Hair stays behind the changed-key guard: the four
+        // slots only move when the code or preset id does, and this runs every sync.
+        NpcAppearanceMapping.applyAppearance(character, source);
+        if (hairChanged) {
+            NpcAppearanceMapping.applyHair(character, source);
             proxy.syncedHairCode = hairKey;
         }
+        character.setArmored(true);
+
         if (state.formGroup().isBlank() || state.form().isBlank()) character.clearActiveForm();
         else character.setActiveForm(state.formGroup(), state.form());
-        NpcCombatProfile visual = visualProfile(state);
         if (visual.stackGroup.isBlank() || visual.stackId.isBlank()) character.clearActiveStackForm();
         else character.setActiveStackForm(visual.stackGroup, visual.stackId);
-        if (!visual.auraColorHex.isBlank()) character.setAuraColor(visual.auraColorHex);
     }
 
     static NpcCombatProfile visualProfile(NpcAppearanceClient.State state) {
@@ -996,11 +977,5 @@ public final class NpcFullDmzRenderer {
             if (!java.lang.Character.isDigit(bone.charAt(i))) return false;
         }
         return true;
-    }
-
-    private static CustomHair copy(CustomHair[] hair, int index) {
-        if (hair == null || hair.length == 0 || hair[0] == null) return new CustomHair();
-        CustomHair selected = index < hair.length && hair[index] != null ? hair[index] : hair[0];
-        return selected == null ? new CustomHair() : selected.copy();
     }
 }

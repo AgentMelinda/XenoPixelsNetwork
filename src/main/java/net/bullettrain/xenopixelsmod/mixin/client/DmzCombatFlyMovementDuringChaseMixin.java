@@ -16,6 +16,7 @@ public abstract class DmzCombatFlyMovementDuringChaseMixin {
     @Inject(method = "handle", at = @At("HEAD"), cancellable = true, require = 0)
     private static void xenopixels$pauseCombatFlightDuringChase(LocalPlayer player, StatsData data,
                                                                 boolean canSprint, CallbackInfo ci) {
-        if (ClientChaseFlightState.isActive() || UltimateFinisherCamera.active()) ci.cancel();
+        if (ClientChaseFlightState.isActive() || UltimateFinisherCamera.active()
+                || net.bullettrain.xenopixelsmod.client.combat.v3.V3ClientState.recovery() != null) ci.cancel();
     }
 }

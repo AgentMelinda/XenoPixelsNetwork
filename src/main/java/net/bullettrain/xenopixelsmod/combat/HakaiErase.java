@@ -23,7 +23,6 @@ final class HakaiErase {
 
         HakaiFx.burst(level, target, true);
         HakaiFx.reveal(target);
-        net.bullettrain.xenopixelsmod.compat.npc.NpcDissolve.clear(target);
         // A native Xeno NPC dies rather than being erased from existence. discard() skips die(),
         // which is what schedules the respawn, so an NPC caught here vanished permanently - the
         // same removal /kill is already guarded against. This is the player-cast path; NpcHakai

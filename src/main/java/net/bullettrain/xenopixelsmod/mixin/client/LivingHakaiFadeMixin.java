@@ -40,7 +40,7 @@ public abstract class LivingHakaiFadeMixin {
         MultiBufferSource faded = buffers;
         boolean fading = entity != null && !(entity instanceof Player)
                 && !(NpcCounterpartSync.isCustomNpc(entity) && NpcFullDmzRenderer.isFull(entity))
-                && HakaiFade.dissolving(entity);
+                && (HakaiFade.dissolving(entity) || net.bullettrain.xenopixelsmod.client.combat.HakaiSweepFx.active(entity));
         if (fading) {
             CombatBodyFade.begin(entity);
             try {
@@ -60,7 +60,8 @@ public abstract class LivingHakaiFadeMixin {
     private void xeno$translucentWhenFading(LivingEntity entity, boolean bodyVisible,
                                             boolean translucent, boolean glowing,
                                             CallbackInfoReturnable<RenderType> cir) {
-        if (!bodyVisible || glowing || !CombatBodyFade.fading(entity)) return;
+        if (!bodyVisible || glowing || !CombatBodyFade.fading(entity)
+                || net.bullettrain.xenopixelsmod.client.combat.HakaiSweepFx.enabled()) return;
         @SuppressWarnings("unchecked")
         ResourceLocation texture = ((LivingEntityRenderer<LivingEntity, ?>) (Object) this)
                 .getTextureLocation(entity);

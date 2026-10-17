@@ -12,6 +12,25 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class NpcCombatProfileKiWeaponTest {
     @Test
+    void kiSenseAndRetaliationLockOnAreEnabledByDefaultButCanBeDisabled() {
+        NpcCombatProfile defaults = new NpcCombatProfile();
+        assertTrue(defaults.skills.isActive(NpcSkillSet.KI_SENSE));
+        assertTrue(defaults.kiSenseLockOnRetaliator);
+
+        defaults.skills.setActive(NpcSkillSet.KI_SENSE, false);
+        defaults.kiSenseLockOnRetaliator = false;
+        NpcCombatProfile restored = NpcCombatProfile.fromTag(defaults.toTag());
+        assertFalse(restored.skills.isActive(NpcSkillSet.KI_SENSE));
+        assertFalse(restored.kiSenseLockOnRetaliator);
+    }
+
+    @Test
+    void profilesWithoutNewKiSenseFieldsReceiveTheNewDefaults() {
+        NpcCombatProfile decoded = NpcCombatProfile.fromTag(new CompoundTag());
+        assertTrue(decoded.skills.isActive(NpcSkillSet.KI_SENSE));
+        assertTrue(decoded.kiSenseLockOnRetaliator);
+    }
+    @Test
     void fullProfileRoundTripCanonicalizesWeaponType() {
         NpcCombatProfile source = new NpcCombatProfile();
         source.kiWeaponOn = true;

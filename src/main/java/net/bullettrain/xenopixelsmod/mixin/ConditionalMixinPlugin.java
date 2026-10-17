@@ -68,6 +68,14 @@ public class ConditionalMixinPlugin implements IMixinConfigPlugin {
             return isModLoaded("controlify");
         }
         if (mixinClassName.contains(".compat.cosmonautics.")) {
+            // dev.egg.* belongs to both rocketnautics and dimensional_sable, so class presence cannot tell the
+            // two mods apart: installing dimensional_sable would otherwise activate the warp-rewriting mixins
+            // under a rocketnautics label, and every one of those injections is require = 0, so a wrong match
+            // is silent. The warp mixins therefore need the mod id in the loading list, explicitly.
+            if (mixinClassName.contains("CosmoSubLevel")) {
+                return isModInLoadingList("rocketnautics") || isModInLoadingList("dimensional_sable");
+            }
+            // The 6DOF mixins target dev.devce.rocketnautics.* — rocketnautics only.
             return isModLoaded("rocketnautics");
         }
         if (mixinClassName.contains(".compat.create.")) {
@@ -75,9 +83,6 @@ public class ConditionalMixinPlugin implements IMixinConfigPlugin {
         }
         if (mixinClassName.contains(".compat.xaero.")) {
             return isModLoaded("xaeroworldmap");
-        }
-        if (mixinClassName.contains(".compat.aerostar.")) {
-            return isModLoaded("aerostarcomp");
         }
         if (mixinClassName.contains(".compat.shared.")) {
             return SharedNpcMixinPolicy.shouldApply(mixinClassName,
@@ -122,6 +127,16 @@ public class ConditionalMixinPlugin implements IMixinConfigPlugin {
     public void postApply(String targetClassName, ClassNode targetClass, String mixinClassName, IMixinInfo mixinInfo) {
     }
 
+    /** Mod-list lookup with no classpath fallback, for ids whose classes are shared by several mods. */
+    private static boolean isModInLoadingList(String modId) {
+        try {
+            return FMLLoader.getLoadingModList() != null
+                    && FMLLoader.getLoadingModList().getModFileById(modId) != null;
+        } catch (Throwable ignored) {
+            return false;
+        }
+    }
+
     public static boolean isModLoaded(String modId) {
         try {
             if (FMLLoader.getLoadingModList() != null
@@ -151,16 +166,15 @@ public class ConditionalMixinPlugin implements IMixinConfigPlugin {
             return isClassPresent("dev.isxander.controlify.api.ControlifyApi");
         }
         if ("rocketnautics".equals(modId)) {
-            return isClassPresent("dev.egg.SubLevelTemplate");
+            // dev.egg.SubLevelTemplate is the wrong probe: dimensional_sable ships that class too. This one
+            // is rocketnautics' own api package, the same class CosmoSixDofPhysics resolves reflectively.
+            return isClassPresent("dev.devce.rocketnautics.api.FreeMotionEntity");
         }
         if ("xaeroworldmap".equals(modId)) {
             return isClassPresent("xaero.map.gui.GuiMap");
         }
         if ("yawp".equals(modId)) {
             return isClassPresent(YAWP_API_CLASS);
-        }
-        if ("aerostarcomp".equals(modId)) {
-            return isClassPresent("com.bega.aerostarcomp.physics.OrbitGravitySystem");
         }
         if ("customnpcs".equals(modId)) {
             return isClassPresent("noppes.npcs.CustomNpcs");

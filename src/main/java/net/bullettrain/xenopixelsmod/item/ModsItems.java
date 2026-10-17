@@ -30,6 +30,18 @@ public class ModsItems {
                     .food(ModFoods.STRAWBERRY_SENZU)
                     .stacksTo(16)));
 
+    /** Design-doc §6: oxygen supply for vacuum (active only when XenoSpaceConfig.oxygenEnabled). */
+    public static final DeferredHolder<Item, Item> BREATHING_CAPSULE = ITEMS.register("breathing_capsule",
+            () -> new net.bullettrain.xenopixelsmod.item.custom.BreathingCapsuleItem(new Item.Properties().stacksTo(16)));
+
+    /** Design-doc 16: pings the nearest Super Dragon Ball (active only when XenoSpaceConfig.cosmicDragonBallsEnabled). */
+    public static final DeferredHolder<Item, Item> COSMIC_BALL_SCANNER = ITEMS.register("cosmic_ball_scanner",
+            () -> new net.bullettrain.xenopixelsmod.item.custom.CosmicBallScannerItem(new Item.Properties().stacksTo(1)));
+
+    /** Operator-only editor for saving a new physical Super Dragon Ball orbit in world SavedData. */
+    public static final DeferredHolder<Item, Item> SDB_ORBIT_WAND = ITEMS.register("sdb_orbit_wand",
+            () -> new net.bullettrain.xenopixelsmod.item.custom.SdbOrbitWandItem(new Item.Properties().stacksTo(1)));
+
     /** Opens the XYZ Target GUI. Used for VS2 ship teleport / waypoint targeting. */
     public static final DeferredHolder<Item, Item> TARGET_TOOL = ITEMS.register("target_tool",
             () -> new TargetToolItem(new Item.Properties().stacksTo(1)));

@@ -162,6 +162,7 @@ public final class Bt3AnimationCatalog {
                 net.bullettrain.xenopixelsmod.combat.v2.V2ChargeRules.PUNCH_FIRE,
                 net.bullettrain.xenopixelsmod.combat.v2.V2ChargeRules.KICK_HOLD,
                 net.bullettrain.xenopixelsmod.combat.v2.V2ChargeRules.KICK_FIRE);
+        register("combat.xeno_bt3_v3_grab_hold");
         Bt3RushResolver.all().forEach(definition -> register(definition.animation()));
     }
 

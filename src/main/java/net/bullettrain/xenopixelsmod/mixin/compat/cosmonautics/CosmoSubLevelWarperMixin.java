@@ -19,7 +19,8 @@ import java.util.List;
  *         {@code TeleportEntity} {@code unRide}s them. Also wrap template
  *         load so one palette/section bug cannot kill the dedicated server.
  * Version: 26.08.307. {@code getEntities(Entity,AABB)} then {@code SubLevelTemplate.load}.
- * Side: server. Gated on rocketnautics.
+ * Side: server. Gated on the rocketnautics or dimensional_sable mod id in the loading list
+ * (ConditionalMixinPlugin), never on class presence: both mods ship {@code dev.egg.*}.
  */
 @Mixin(targets = "dev.egg.SubLevelWarper", remap = false)
 public abstract class CosmoSubLevelWarperMixin {

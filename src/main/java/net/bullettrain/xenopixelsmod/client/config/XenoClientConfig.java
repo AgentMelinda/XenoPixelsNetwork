@@ -24,8 +24,9 @@ import java.nio.file.Path;
 public final class XenoClientConfig {
     private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
     private static final Path PATH = FMLPaths.CONFIGDIR.get().resolve("xenopixelsmod-client.json");
-    /** Version 3 restores Guard while its dedicated key keeps right-click placement vanilla. */
-    private static final int CURRENT_CONFIG_VERSION = 7;
+    /** Version 3 restores Guard while its dedicated key keeps right-click placement vanilla.
+     * Version 8 adds the space sky mode; an older file simply gets the {@code void} default. */
+    private static final int CURRENT_CONFIG_VERSION = 8;
 
     // --- UI ---
     public static boolean xenoHudEnabled = true;
@@ -184,6 +185,8 @@ public final class XenoClientConfig {
      * /xenomusic on|off|next|prev|volume|track.
      */
     public static boolean musicEnabled = true;
+    /** Attack soundtrack overlays; independent of ordinary playlist playback. */
+    public static boolean cinematicMusicEnabled = true;
     public static float musicVolume = 0.45f;
     public static int musicTrack = 0;
     public static java.util.List<String> musicTracks = new java.util.ArrayList<>(
@@ -256,6 +259,11 @@ public final class XenoClientConfig {
      * {@code hasLineOfSight} (androids still keep lock through walls).
      */
     public static boolean lockOnThroughBlocks = true;
+    /**
+     * Seconds a dropped DragonMineZ lock is re-pinned while the target still passes DMZ's own
+     * lock rules (owner request 2026-10-09: a failed attack must not cost the lock). 0 disables.
+     */
+    public static double stickyLockSeconds = 1.5;
     /**
      * Skills delete-X confirm window in milliseconds. 0 deletes on the first click.
      */
@@ -427,6 +435,42 @@ public final class XenoClientConfig {
     /** Fraction of the pilot's current velocity inherited by the visual projectile model. */
     public static float leadAssistShooterVelocityInheritance = 1.0f;
 
+    // ---- Space visuals ----
+    /**
+     * Which sky this client draws in a space dimension: {@code void} (black fading to a little purple,
+     * one cube, no star buffer — the default and the cheapest), {@code stars} (the cached star field on
+     * top of that cube), or {@code off} (draw nothing here and let vanilla's end-style void have the
+     * frame). {@code /xenoset sky}, resolved by {@link net.bullettrain.xenopixelsmod.client.space.SpaceSkyMode}.
+     *
+     * <p>Client-local like every other key here: the server has no opinion about what you can see
+     * comfortably, and a player on a weak GPU should be able to trade the star field for frames
+     * without asking anyone else to restart anything.
+     */
+    public static String spaceSkyMode = "void";
+
+    /** Only replicated Sable bodies may render as planets; chart-only projections are retired. */
+    public static String spacePlanetMode = "bodies";
+
+    /**
+     * How a Hakai'd body disappears on this client: {@code classic} (the proven height fade, default) or {@code sweep}
+     * (owner 2026-10-16: the planet erasure's clean top-to-bottom cut with a glowing rim). {@code /xenoset hakai}.
+     */
+    public static String hakaiEraseStyle = "classic";
+
+    /** Draw bounded, deterministic small planets from afar (SmallPlanetFarRenderer). */
+    public static boolean smallPlanetLod = true;
+
+    /** Debug: log every Hakai sweep packet and per-frame sweep value (not saved; {@code /xenoset hakai debug}). */
+    public static boolean hakaiSweepDebug = false;
+
+    /**
+     * Hides the "Downloading terrain" screen on every entry into or exit from a planet dimension, not
+     * only on Voidsea crossings. Off restores the host-only behaviour, where direct planet-to-planet
+     * travel and ordinary portals into a planet keep the vanilla screen. Read when the screen opens, so
+     * it applies on the next crossing without a restart.
+     */
+    public static boolean spaceHidePlanetLoadScreen = true;
+
     private XenoClientConfig() {}
 
     public static boolean showCombatPrompts(boolean locked) {
@@ -538,6 +582,7 @@ public final class XenoClientConfig {
         d.auraLiveScale = auraLiveScale;
         d.hdKi = hdKi;
         d.musicEnabled = musicEnabled;
+        d.cinematicMusicEnabled = cinematicMusicEnabled;
         d.musicVolume = musicVolume;
         d.musicTrack = musicTrack;
         d.musicTracks = musicTracks.isEmpty() ? null : java.util.List.copyOf(musicTracks);
@@ -562,6 +607,7 @@ public final class XenoClientConfig {
         d.bt3ZBurstClient = bt3ZBurstClient;
         d.bt3LockCycleClient = bt3LockCycleClient;
         d.lockOnThroughBlocks = lockOnThroughBlocks;
+        d.stickyLockSeconds = stickyLockSeconds;
         d.deleteConfirmMs = deleteConfirmMs;
         d.bt3CombatSfx = bt3CombatSfx;
         d.bt3ChargeGlow = bt3ChargeGlow;
@@ -619,6 +665,11 @@ public final class XenoClientConfig {
         d.leadAssistShooterVelocityInheritance = leadAssistShooterVelocityInheritance;
         d.flightThrottleScrollStep = flightThrottleScrollStep;
         d.flightThrottleKeyRatePerSec = flightThrottleKeyRatePerSec;
+        d.spaceSkyMode = spaceSkyMode;
+        d.spacePlanetMode = spacePlanetMode;
+        d.hakaiEraseStyle = hakaiEraseStyle;
+        d.smallPlanetLod = smallPlanetLod;
+        d.spaceHidePlanetLoadScreen = spaceHidePlanetLoadScreen;
         return d;
     }
 
@@ -667,11 +718,12 @@ public final class XenoClientConfig {
         auraLiveScale = d.auraLiveScale == null || d.auraLiveScale;
         hdKi = d.hdKi == null || d.hdKi;
         musicEnabled = d.musicEnabled == null || d.musicEnabled;
+        cinematicMusicEnabled = d.cinematicMusicEnabled == null || d.cinematicMusicEnabled;
         musicVolume = d.musicVolume == null || !Float.isFinite(d.musicVolume) ? 0.45f
                 : Math.max(0.0f, Math.min(1.0f, d.musicVolume));
-        musicTracks = new java.util.ArrayList<>(
-                net.bullettrain.xenopixelsmod.client.music.XenoMusicTracks.sanitize(d.musicTracks));
-        musicTrack = d.musicTrack == null ? 0 : Math.floorMod(d.musicTrack, Math.max(1, musicTracks.size()));
+        var musicSelection = net.bullettrain.xenopixelsmod.client.music.XenoMusicTracks.migrate(d.musicTracks, d.musicTrack);
+        musicTracks = new java.util.ArrayList<>(musicSelection.tracks());
+        musicTrack = musicSelection.index();
         auraOverParticles = d.auraOverParticles == null || d.auraOverParticles;
         auraFirstPerson = d.auraFirstPerson == null || d.auraFirstPerson;
         auraMaxHeight = d.auraMaxHeight == null || !Float.isFinite(d.auraMaxHeight) ? 10.0f
@@ -712,6 +764,8 @@ public final class XenoClientConfig {
         bt3ZBurstClient = d.bt3ZBurstClient;
         bt3LockCycleClient = d.bt3LockCycleClient;
         lockOnThroughBlocks = d.lockOnThroughBlocks == null || d.lockOnThroughBlocks;
+        stickyLockSeconds = d.stickyLockSeconds == null ? 1.5
+                : Math.max(0.0, Math.min(10.0, d.stickyLockSeconds));
         deleteConfirmMs = d.deleteConfirmMs == null ? 3000 : Math.max(0, Math.min(30_000, d.deleteConfirmMs));
         bt3CombatSfx = d.bt3CombatSfx;
         bt3ChargeGlow = d.bt3ChargeGlow;
@@ -786,6 +840,13 @@ public final class XenoClientConfig {
                 : Math.max(0.01f, Math.min(0.5f, d.flightThrottleScrollStep));
         flightThrottleKeyRatePerSec = d.flightThrottleKeyRatePerSec == null ? 0.6f
                 : Math.max(0.05f, Math.min(4.0f, d.flightThrottleKeyRatePerSec));
+        // Resolved through the enum rather than trusted: this file is hand-editable, and the sky has
+        // to pick one of three modes whether the stored value is "stars", "STARS ", or nonsense.
+        spaceSkyMode = net.bullettrain.xenopixelsmod.client.space.SpaceSkyMode.byName(d.spaceSkyMode).id;
+        spacePlanetMode = net.bullettrain.xenopixelsmod.client.space.SpacePlanetMode.byName(d.spacePlanetMode).id;
+        hakaiEraseStyle = "sweep".equals(d.hakaiEraseStyle) ? "sweep" : "classic";
+        smallPlanetLod = d.smallPlanetLod == null || d.smallPlanetLod;
+        spaceHidePlanetLoadScreen = d.spaceHidePlanetLoadScreen == null || d.spaceHidePlanetLoadScreen;
     }
 
     public static class Data {
@@ -837,6 +898,7 @@ public final class XenoClientConfig {
         public Boolean auraLiveScale;
         public Boolean hdKi;
         public Boolean musicEnabled;
+        public Boolean cinematicMusicEnabled;
         public Float musicVolume;
         public Integer musicTrack;
         public java.util.List<String> musicTracks;
@@ -861,6 +923,7 @@ public final class XenoClientConfig {
         public boolean bt3ZBurstClient = true;
         public boolean bt3LockCycleClient = true;
         public Boolean lockOnThroughBlocks;
+        public Double stickyLockSeconds;
         public Integer deleteConfirmMs;
         public boolean bt3CombatSfx = true;
         public boolean bt3ChargeGlow = true;
@@ -918,5 +981,10 @@ public final class XenoClientConfig {
         public Float leadAssistShooterVelocityInheritance;
         public Float flightThrottleScrollStep;
         public Float flightThrottleKeyRatePerSec;
+        public String spaceSkyMode;
+        public String spacePlanetMode;
+        public String hakaiEraseStyle;
+        public Boolean smallPlanetLod;
+        public Boolean spaceHidePlanetLoadScreen;
     }
 }

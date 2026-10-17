@@ -29,13 +29,24 @@ public final class XenoMusicCommands {
     @SubscribeEvent
     public static void onRegister(RegisterClientCommandsEvent event) {
         event.getDispatcher().register(controls("xenomusic"));
-        event.getDispatcher().register(Commands.literal("xenoset").then(controls("music")));
+    }
+
+    /**
+     * The same controls as {@code /xenoset music}. {@link XenoSetCommands} owns that root and contributes
+     * this branch to it, because Brigadier keeps one node per literal name and two registrations of
+     * {@code xenoset} here would silently replace each other.
+     */
+    public static LiteralArgumentBuilder<CommandSourceStack> musicTree() {
+        return controls("music");
     }
 
     private static LiteralArgumentBuilder<CommandSourceStack> controls(String name) {
         return Commands.literal(name).executes(ctx -> status(ctx.getSource()))
                 .then(Commands.literal("on").executes(ctx -> { XenoMusicPlayer.setEnabled(true); return status(ctx.getSource()); }))
                 .then(Commands.literal("off").executes(ctx -> { XenoMusicPlayer.setEnabled(false); return status(ctx.getSource()); }))
+                .then(Commands.literal("cinematic").executes(ctx -> { XenoMusicPlayer.toggleCinematic(); return status(ctx.getSource()); })
+                        .then(Commands.literal("on").executes(ctx -> { XenoMusicPlayer.setCinematicEnabled(true); return status(ctx.getSource()); }))
+                        .then(Commands.literal("off").executes(ctx -> { XenoMusicPlayer.setCinematicEnabled(false); return status(ctx.getSource()); })))
                 .then(Commands.literal("next").executes(ctx -> { XenoMusicPlayer.next(); return status(ctx.getSource()); }))
                 .then(Commands.literal("prev").executes(ctx -> { XenoMusicPlayer.previous(); return status(ctx.getSource()); }))
                 .then(Commands.literal("track").then(Commands.argument("number", IntegerArgumentType.integer(1))
@@ -62,7 +73,8 @@ public final class XenoMusicCommands {
         source.sendSuccess(() -> Component.literal("Music " + (XenoClientConfig.musicEnabled ? "on" : "off")
                 + " | " + XenoMusicPlayer.currentTrackName() + " (" + index + "/" + tracks.size() + ") | volume "
                 + Math.round(XenoClientConfig.musicVolume * 100) + "% | "
-                + (XenoMusicPlayer.playing() ? "playing" : "stopped")), false);
+                + (XenoMusicPlayer.playing() ? "playing" : "stopped")
+                + " | cinematic " + (XenoClientConfig.cinematicMusicEnabled ? "on" : "off")), false);
         return 1;
     }
 

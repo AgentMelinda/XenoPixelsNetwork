@@ -10,6 +10,7 @@ import net.minecraft.sounds.SoundEvent;
 import net.minecraft.sounds.SoundSource;
 
 import java.lang.reflect.Method;
+import java.util.Locale;
 
 /**
  * V3 Solar Flare → DMZ Taiyoken blind.
@@ -27,10 +28,16 @@ public final class V3SolarFlare {
     }
 
     public static boolean isSolarFlare(String techniqueId, String name) {
-        String id = techniqueId == null ? "" : techniqueId.toLowerCase();
-        String n = name == null ? "" : name.toLowerCase();
-        return id.contains("esplosione_solare") || id.contains("solar_flare") || id.contains("solar_explosion")
-                || n.contains("solar flare") || n.contains("taiyoken");
+        // Occurrence IDs can include a preceding video section's name: the
+        // 564s Dragon Claw ID contains solar_flare_551. Its actual attack name
+        // must take precedence, or a flash replaces the authored body pose.
+        if (name != null && !name.isBlank()) {
+            String n = name.toLowerCase(Locale.ROOT);
+            return n.contains("solar flare") || n.contains("taiyoken")
+                    || n.contains("esplosione solare") || n.contains("solar explosion");
+        }
+        String id = techniqueId == null ? "" : techniqueId.toLowerCase(Locale.ROOT);
+        return id.contains("esplosione_solare") || id.contains("solar_flare") || id.contains("solar_explosion");
     }
 
     /** Flash + blind victims looking at the caster (DMZ Taiyoken rules). */

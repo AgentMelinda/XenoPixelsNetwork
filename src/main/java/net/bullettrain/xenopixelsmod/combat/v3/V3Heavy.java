@@ -103,6 +103,7 @@ public final class V3Heavy {
             // A pulled heavy drags the target back toward the attacker, shorter than a shove.
             case BACK -> new Vec3(-fx * SHOVE * 0.5, SHOVE_LIFT, -fz * SHOVE * 0.5);
             case UP -> new Vec3(fx * SHOVE, 0.3, fz * SHOVE);
+            case DOWN -> new Vec3(fx * SHOVE, -0.3, fz * SHOVE);
             case FORWARD, NONE -> new Vec3(fx * SHOVE, SHOVE_LIFT, fz * SHOVE);
         };
     }

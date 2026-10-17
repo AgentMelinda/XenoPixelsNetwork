@@ -46,10 +46,21 @@ public record CombatV3ConfigPacket(V3Config.Values values) {
         int strikeCinematicCameraHoldTicks = buf.isReadable()
                 ? buf.readVarInt() : V3Config.Values.DEFAULT_STRIKE_CINEMATIC_OPENING_HOLD;
         boolean strikeRequireLock = !buf.isReadable() || buf.readBoolean();
+        int strikeTargetFreezeTicks = buf.isReadable() ? buf.readVarInt() : V3Config.Values.DEFAULT_STRIKE_TARGET_FREEZE;
+        double cinematicCameraDistanceScale = buf.isReadable() ? buf.readDouble()
+                : V3Config.Values.DEFAULT_CINEMATIC_CAMERA_DISTANCE_SCALE;
+        double rushFlightSpeedMultiplier = buf.isReadable() ? buf.readDouble()
+                : V3Config.Values.DEFAULT_RUSH_FLIGHT_SPEED_MULTIPLIER;
+        var rush = buf.isReadable() ? new net.bullettrain.xenopixelsmod.combat.v3.RandomRushSettings(
+                buf.readBoolean(),buf.readBoolean(),buf.readBoolean(),buf.readVarInt(),buf.readVarInt(),
+                buf.readBoolean(),buf.readBoolean(),buf.readVarInt())
+                : new net.bullettrain.xenopixelsmod.combat.v3.RandomRushSettings();
+        int kiMaxLifetimeTicks=buf.isReadable()?buf.readVarInt():120;
         return new V3Config.Values(range, attackerCost, victimDrain, dashSpeed, dashLaunch, dashFollow,
                 followCooldown, followWindow, strikeLaunch, strikeApproach, strikeCamera, dashCamera, sounds,
                 chargeLaunch, soundVolume, strikeKiRequireLock, strikeKiRange, grabThrowDistance,
-                strikeCameraHoldTicks, strikeCinematicCameraHoldTicks, strikeRequireLock);
+                strikeCameraHoldTicks, strikeCinematicCameraHoldTicks, strikeRequireLock,
+                strikeTargetFreezeTicks, cinematicCameraDistanceScale, rushFlightSpeedMultiplier, rush,kiMaxLifetimeTicks);
     }
     public void encode(FriendlyByteBuf buf) {
         buf.writeDouble(values.dragonDashRange());
@@ -73,6 +84,14 @@ public record CombatV3ConfigPacket(V3Config.Values values) {
         buf.writeVarInt(values.strikeCameraHoldTicks());
         buf.writeVarInt(values.strikeCinematicCameraHoldTicks());
         buf.writeBoolean(values.strikeRequireLock());
+        buf.writeVarInt(values.strikeTargetFreezeTicks());
+        buf.writeDouble(values.cinematicCameraDistanceScale());
+        buf.writeDouble(values.rushFlightSpeedMultiplier());
+        var r=values.randomRush();
+        buf.writeBoolean(r.enabled());buf.writeBoolean(r.meterEnabled());buf.writeBoolean(r.deadlineEnabled());
+        buf.writeVarInt(r.windowTicks());buf.writeVarInt(r.fillPerPress());
+        buf.writeBoolean(r.freezeDuringAttack());buf.writeBoolean(r.freezeAfterAttack());buf.writeVarInt(r.postFreezeTicks());
+        buf.writeVarInt(values.kiMaxLifetimeTicks());
     }
     public void handle(Supplier<NetworkEvent.Context> context) {
         var ctx = context.get();

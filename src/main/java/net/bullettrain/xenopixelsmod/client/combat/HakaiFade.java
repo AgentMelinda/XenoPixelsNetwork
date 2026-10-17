@@ -37,6 +37,8 @@ public final class HakaiFade {
 
     /** Test hook with an explicit game-time so lerp can be checked without a client. */
     static void set(int entityId, int amplifier, long gameTime) {
+        if (net.bullettrain.xenopixelsmod.client.config.XenoClientConfig.hakaiSweepDebug)
+            net.bullettrain.xenopixelsmod.XenoPixelsMod.LOGGER.info("HAKAI_SWEEP packet id={} amp={} tick={}", entityId, amplifier, gameTime);
         int clamped = Math.max(0, Math.min(255, amplifier));
         Lerp previous = LERPS.get(entityId);
         Integer currentTarget = AMPLIFIERS.get(entityId);

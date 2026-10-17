@@ -13,6 +13,51 @@ import net.bullettrain.xenopixelsmod.client.combat.v3.V3ClientState;
 import static org.junit.jupiter.api.Assertions.*;
 
 class CombatV3PacketTest {
+    @Test void randomRushReadyTokenMeterAndSettingsRoundTrip(){
+        var packet=new CombatV3StatePacket(UUID.randomUUID(),V3State.IDLE,null,7,0,0,0,V3Window.NONE,
+            null,7,79,1200,true,UUID.randomUUID(),875);
+        var buf=new FriendlyByteBuf(Unpooled.buffer());
+        try{
+            packet.encode(buf);assertEquals(packet,new CombatV3StatePacket(buf));
+            V3ClientState.apply(packet);assertEquals(.875f,V3ClientState.rushProgress());
+            var edit=new V3Config.Values.Edit(new V3Config.Values());
+            edit.randomRush=new RandomRushSettings(false,false,false,127,234,false,false,46);edit.kiMaxLifetimeTicks=237;
+            var config=new CombatV3ConfigPacket(edit.build());config.encode(buf);
+            assertEquals(config,new CombatV3ConfigPacket(buf));assertEquals(0,buf.readableBytes());
+        }finally{buf.release();V3ClientState.reset();}
+    }
+    @Test void recoveryAndComboRoundTripWithoutLosingSameRevisionTarget() {
+        var target = new V3TargetSnapshot(UUID.randomUUID(), 12, Vec3.ZERO, Vec3.ZERO, 3);
+        UUID session = UUID.randomUUID();
+        var recovery = new RecoverySnapshot(UUID.randomUUID(), 24, 80, RecoverySnapshot.Kind.DASH);
+        var packet = new CombatV3StatePacket(session, V3State.CINEMATIC, target, 5, 0, 0, 0,
+                V3Window.NONE, recovery, 7, 70);
+        var buf = new FriendlyByteBuf(Unpooled.buffer());
+        try {
+            packet.encode(buf);
+            assertEquals(packet, new CombatV3StatePacket(buf));
+            assertEquals(0, buf.readableBytes());
+            V3ClientState.apply(new CombatV3StatePacket(session, V3State.IDLE, target, 4, 0, 0, 0));
+            V3ClientState.apply(packet);
+            assertEquals(recovery, V3ClientState.recovery());
+            assertEquals(7, V3ClientState.comboHits());
+            V3ClientState.clear();
+            assertNull(V3ClientState.target());
+            assertEquals(recovery, V3ClientState.recovery(), "unlock cannot hide a victim's recovery window");
+        } finally { buf.release(); V3ClientState.reset(); }
+    }
+    @Test void olderStateWithoutRecoveryTailRemainsReadable() {
+        var packet = new CombatV3StatePacket(UUID.randomUUID(), V3State.IDLE, null, 1, 0, 0, 0);
+        var buf = new FriendlyByteBuf(Unpooled.buffer());
+        try {
+            packet.encode(buf);
+            buf.writerIndex(buf.writerIndex() - 3); // optional false + two zero VarInts
+            assertEquals(packet, new CombatV3StatePacket(buf));
+            assertThrows(IllegalArgumentException.class, () -> new RecoverySnapshot(UUID.randomUUID(), 81, 80, RecoverySnapshot.Kind.RUSH));
+            assertThrows(IllegalArgumentException.class, () -> new CombatV3StatePacket(packet.session(), V3State.IDLE,
+                    null, 1, 0, 0, 0, V3Window.NONE, null, 1, 81));
+        } finally { buf.release(); }
+    }
     @Test void inputRoundTripsSessionTargetAndSequenceWithoutChargeAuthority() {
         var packet = new CombatV3InputPacket(V3Input.HEAVY_CHARGE_START, UUID.randomUUID(), UUID.randomUUID(), V3Direction.BACK, 123);
         var buf = new FriendlyByteBuf(Unpooled.buffer());
@@ -66,6 +111,15 @@ class CombatV3PacketTest {
             lockless.encode(buf);
             var decodedLockless = new CombatV3ConfigPacket(buf);
             assertFalse(decodedLockless.values().strikeRequireLock());
+            var edit = new V3Config.Values.Edit(decodedLockless.values());
+            edit.strikeTargetFreezeTicks = 140;
+            edit.cinematicCameraDistanceScale = 1.75;
+            edit.rushFlightSpeedMultiplier = 2.5;
+            new CombatV3ConfigPacket(edit.build()).encode(buf);
+            var presentation = new CombatV3ConfigPacket(buf);
+            assertEquals(140, presentation.values().strikeTargetFreezeTicks());
+            assertEquals(1.75, presentation.values().cinematicCameraDistanceScale());
+            assertEquals(2.5, presentation.values().rushFlightSpeedMultiplier());
             V3ClientState.apply(decoded);
             V3ClientState.apply(packet);
             assertEquals(original, V3Config.get());

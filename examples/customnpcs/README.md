@@ -6,9 +6,14 @@ bundled sandboxed engine; `./gradlew test` checks that (`BundledNashornTest`,
 
 ## Cross-runtime examples (`xenopixels_*.js`)
 
-These 22 scripts run on CustomNPCs, My NPCs and native Xeno NPCs. They use `event.npc`,
+Every `xenopixels_*.js` file runs on CustomNPCs, My NPCs and native Xeno NPCs. They use
+`event.npc`,
 `event.player` and the `XenoPixels` binding only, so they were left unchanged when XenoAPI
 arrived on 2026-09-27: `XenoAPI` is bound only for native Xeno NPCs and player scripts.
+
+| File | Shows |
+| --- | --- |
+| `xenopixels_body_steal.js` | Borrowing a look (script API v29): `stealAppearance(player, npc, ticks)` copies the NPC's race, class, face, colours and hair onto the player, `getAppearanceStealTicksLeft` counts it down, and `restoreAppearance` - or the expiry timer - gives the player back their own. Refusals come back as a name, never an exception. |
 
 ## Native XenoAPI examples (`xenoapi_*.js`)
 

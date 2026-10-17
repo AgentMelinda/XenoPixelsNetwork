@@ -7,6 +7,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 class AddonNetworkTest {
@@ -27,6 +28,16 @@ class AddonNetworkTest {
         register("example:a", FirstPacket.class, AddonPacketDirection.SERVERBOUND);
         register("example:b", SecondPacket.class, AddonPacketDirection.CLIENTBOUND);
         assertEquals(firstOrder, AddonNetwork.protocolVersion());
+    }
+
+    @Test
+    void changingARegisteredPacketVersionChangesTheNegotiatedFingerprint() {
+        register("xenopixelsmod:universe_snapshot_v2", FirstPacket.class, AddonPacketDirection.CLIENTBOUND);
+        String oldSchema = AddonNetwork.protocolVersion();
+        AddonNetwork.resetForTests();
+
+        register("xenopixelsmod:universe_snapshot_v3", FirstPacket.class, AddonPacketDirection.CLIENTBOUND);
+        assertNotEquals(oldSchema, AddonNetwork.protocolVersion());
     }
 
     @Test

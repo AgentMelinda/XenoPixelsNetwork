@@ -4,6 +4,12 @@ import org.junit.jupiter.api.Test;
 import static org.junit.jupiter.api.Assertions.*;
 
 class UltimateFinisherRulesTest {
+    @Test void configurableFreezeStartsAfterTheWaveAndDoesNotChangeTheCombo() {
+        assertEquals(UltimateFinisherRules.Phase.STOP, UltimateFinisherRules.phase(144, 0));
+        assertEquals(UltimateFinisherRules.Phase.BEAM, UltimateFinisherRules.phase(283, 140));
+        assertEquals(UltimateFinisherRules.Phase.STOP, UltimateFinisherRules.phase(284, 140));
+        assertEquals(UltimateFinisherRules.Phase.COMBO, UltimateFinisherRules.phase(24, 140));
+    }
     @Test void sequenceHasSixPunchesBeforeGrabThrowChargeAndBeam() {
         assertEquals(UltimateFinisherRules.Phase.APPROACH, UltimateFinisherRules.phase(-1));
         for (int hit = 0; hit < 6; hit++) {

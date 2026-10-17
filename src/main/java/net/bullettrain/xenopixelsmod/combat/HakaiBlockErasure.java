@@ -49,6 +49,12 @@ public final class HakaiBlockErasure {
     private record Fading(BlockPos pos, int breakerId, int[] elapsed) {
     }
 
+    /** A block waiting for the sweep plane, with its world Y (ship blocks: projected out of the ship). */
+    private record Candidate(BlockPos pos, double worldY) {
+    }
+
+    private static int nextJobId = 1;
+
     /**
      * Ticks between re-plays of the Hakai veil over the sphere while its blocks are erased
      * (2026-09-29 owner: "the hakai effect should stay till everything erased").
@@ -74,6 +80,13 @@ public final class HakaiBlockErasure {
         int refused;
         int solid;
         int structure;
+        /** Sweep style (hakaiBlockSweep): candidates collected first, then erased top to bottom by a plane. */
+        final boolean sweep = XenoServerConfig.hakaiBlockSweep;
+        final List<Candidate> candidates = new ArrayList<>();
+        boolean sweeping;
+        int next, durationTicks, jobId;
+        long startTick;
+        float topY, bottomY;
 
         Job(ServerLevel level, UUID caster, Iterator<BlockPos> source, int limit, Vec3 centre, double radius) {
             this.level = level;
@@ -241,6 +254,7 @@ public final class HakaiBlockErasure {
     private static boolean tick(Job job) {
         ServerPlayer caster = job.level.getServer().getPlayerList().getPlayer(job.caster);
         if (caster == null) return false;
+        if (job.sweep) return tickSweep(job, caster);
         int fadeTicks = XenoServerConfig.hakaiBlockFadeTicks;
         if (job.age++ % VEIL_INTERVAL == 0) {
             // The veil stays over the sphere until the last block is gone.
@@ -301,6 +315,80 @@ public final class HakaiBlockErasure {
         return more;
     }
 
+    /**
+     * Sweep style (owner 2026-10-16: the planet erasure "for players and Sable ships and blocks"). Phase 1 collects the
+     * erasable blocks with the same scan, filters and limit, SCAN_BUDGET per tick. Phase 2 sorts them by world Y and
+     * lowers a plane from the top to the bottom over a duration set by hakaiSweepSpeed (2..20 s, smoothstep); a block is
+     * erased (same permission checks) the moment the plane reaches its top, and sent to nearby clients as a ghost that
+     * they keep cutting until the plane passes below it.
+     */
+    private static boolean tickSweep(Job job, ServerPlayer caster) {
+        job.age++;
+        if (!job.sweeping) {
+            int scanned = 0;
+            while (scanned < SCAN_BUDGET && job.candidates.size() < job.limit && job.source.hasNext()) {
+                BlockPos p = job.source.next().immutable();
+                scanned++;
+                if (!erasableBlock(job.level, p)) continue;
+                job.solid++;
+                if (XenoServerConfig.hakaiSpareDmzStructures && inSparedStructure(job.level, p)) { job.structure++; continue; }
+                job.candidates.add(new Candidate(p, SableHakaiBlocks.worldCentre(job.level, p).y));
+            }
+            if (job.candidates.size() < job.limit && job.source.hasNext()) return true;
+            if (job.candidates.isEmpty()) {
+                say(caster, String.format("\u00a77Hakai: no blocks to erase (%d solid blocks in range, %d in"
+                        + " DragonMineZ structures)", job.solid, job.structure));
+                return false;
+            }
+            job.candidates.sort((a, b) -> Double.compare(b.worldY(), a.worldY()));
+            job.topY = (float) job.candidates.get(0).worldY() + 0.5f;
+            job.bottomY = (float) job.candidates.get(job.candidates.size() - 1).worldY() - 0.5f;
+            float height = Math.max(1f, job.topY - job.bottomY);
+            // Long enough for the speed AND for the per-tick erase budget, so the plane never runs ahead of the
+            // server on a big raze (2026-10-16: radius 100 raze, 70k blocks, "Can't keep up").
+            int bySpeed = Math.round(height / XenoServerConfig.hakaiSweepSpeed * 20f);
+            int byBudget = (int) Math.ceil(job.candidates.size() * 1.25 / XenoServerConfig.hakaiSweepBlocksPerTick);
+            job.durationTicks = Math.max(40, Math.min(1200, Math.max(bySpeed, byBudget)));
+            job.startTick = job.level.getGameTime();
+            job.jobId = nextJobId++;
+            job.sweeping = true;
+        }
+        if (job.age % VEIL_INTERVAL == 0)
+            net.bullettrain.xenopixelsmod.fx.effek.XenoEffects.playWide(job.level,
+                    net.bullettrain.xenopixelsmod.fx.effek.EffectSlot.HAKAI_CHANNEL,
+                    job.centre.subtract(0.0, job.radius, 0.0), new Vec3(0, 1, 0),
+                    net.bullettrain.xenopixelsmod.combat.fx.HakaiEffectRules.areaScale(job.radius,
+                            XenoServerConfig.hakaiAreaFxScale), job.radius * 2.0);
+        float cut = HakaiSweepGhosts.cutY(job.startTick, job.durationTicks, job.topY, job.bottomY, job.level.getGameTime() + 1);
+        List<HakaiSweepGhosts.Ghost> ghosts = new ArrayList<>();
+        int budget = XenoServerConfig.hakaiSweepBlocksPerTick, handled = 0;
+        while (job.next < job.candidates.size() && ghosts.size() < HakaiSweepGhosts.MAX && handled++ < budget) {
+            Candidate c = job.candidates.get(job.next);
+            if (c.worldY() + 0.5 < cut) break;
+            job.next++;
+            BlockState state = job.level.getBlockState(c.pos());
+            if (erase(job.level, caster, c.pos())) {
+                job.erased++;
+                ghosts.add(new HakaiSweepGhosts.Ghost(c.pos(), net.minecraft.world.level.block.Block.getId(state)));
+            } else {
+                job.refused++;
+            }
+        }
+        if (!ghosts.isEmpty()) {
+            var packet = new HakaiSweepGhosts(job.jobId, job.startTick, job.durationTicks, job.topY, job.bottomY, ghosts);
+            double range = Math.max(128, job.radius * 4);
+            for (ServerPlayer player : job.level.players())
+                if (player.distanceToSqr(job.centre) <= range * range)
+                    net.bullettrain.xenopixelsmod.api.network.AddonNetwork.sendToPlayer(player, packet);
+        }
+        if (job.next < job.candidates.size() || job.level.getGameTime() < job.startTick + job.durationTicks) return true;
+        say(caster, String.format("\u00a7dHakai erased %d blocks\u00a77%s%s", job.erased,
+                job.refused > 0 ? ", " + job.refused + " refused (DMZ protection or ki-griefing gamerules,"
+                        + " YAWP, plot, claim, game mode, spawn protection)" : "",
+                job.structure > 0 ? ", " + job.structure + " in DragonMineZ structures spared" : ""));
+        return false;
+    }
+
     /** @return false when something refused it (protection, game mode) or it changed underneath. */
     private static boolean erase(ServerLevel level, ServerPlayer caster, BlockPos pos) {
         BlockState state = level.getBlockState(pos);
@@ -327,7 +415,7 @@ public final class HakaiBlockErasure {
         } catch (IllegalStateException ignored) {
             return false;
         }
-        HakaiFx.blockPuff(level, SableHakaiBlocks.worldCentre(level, pos), false);
+        if (!XenoServerConfig.hakaiBlockSweep) HakaiFx.blockPuff(level, SableHakaiBlocks.worldCentre(level, pos), false);
         return true;
     }
 

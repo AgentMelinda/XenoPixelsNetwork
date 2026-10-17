@@ -62,7 +62,7 @@ public final class V3NativeKi {
         if (technique == null || technique.kiTechnique() == null || technique.kiTechnique().isBlank()) return false;
         for (V3Beat beat : technique.beats()) {
             switch (beat.kind()) {
-                case STRIKE, RADIAL, HOLD_TARGET, APPROACH, SHOVE -> { return false; }
+                case STRIKE, RADIAL, HOLD_TARGET, APPROACH, SHOVE, DASH, VANISH, LAUNCH, REAPPROACH -> { return false; }
                 default -> { }
             }
         }
@@ -125,6 +125,8 @@ public final class V3NativeKi {
             data.setColorInterior(style.core());
             data.setColorExterior(style.edge());
             XenoKiProfileCatalog.resolve(technique).applyTo(data);
+            String authoredPrefix = authoredAnimationPrefix(technique);
+            if (authoredPrefix != null) data.setAnimation(authoredPrefix);
             PredefinedTechniques.REGISTRY.put(id, data);
             if (!IDS.contains(id)) IDS.add(id);
         }
@@ -167,12 +169,55 @@ public final class V3NativeKi {
                     }
                 }
             }
-            if (!techniques.getUnlockedTechniques().containsKey(id)) {
+            if (techniques.getUnlockedTechniques().get(id) instanceof KiAttackData existing) {
+                // Add authored motion to our saved copies without changing their tuning or slots.
+                String prefix = authoredAnimationPrefix(technique);
+                if (owns(id) && prefix != null && !prefix.equals(existing.getAnimationPrefix())) {
+                    existing.setAnimation(prefix);
+                    changed = true;
+                }
+            } else if (!techniques.getUnlockedTechniques().containsKey(id)) {
                 techniques.unlockTechnique(copy(template));
                 changed = true;
             }
         }
         return changed;
+    }
+
+    /** Bind the active full-body release track; placeholder status stays explicit in the audit. */
+    public static String authoredAnimationPrefix(V3TechniqueDefinition technique) {
+        String prefix = releaseAnimationPrefix(technique);
+        return prefix != null && net.bullettrain.xenopixelsmod.combat.v3.anim.V3AnimationCatalog.isPlayable(prefix + "_cast")
+                && net.bullettrain.xenopixelsmod.combat.v3.anim.V3AnimationCatalog.isPlayable(prefix + "_fire") ? prefix : null;
+    }
+    /** Active release pose, including the older _c/_r and _charge/_release schemas. */
+    public static String releaseAnimationPrefix(V3TechniqueDefinition technique) {
+        if (technique == null) return null;
+        String pose = null;
+        for (V3Beat beat : technique.beats()) {
+            if (beat.kind() == V3Beat.Kind.POSE) pose = beat.payload();
+            if (beat.kind() == V3Beat.Kind.KI_RELEASE) {
+                if (pose == null || !pose.startsWith("combat.xeno_bt3_v3_")) return null;
+                for (String suffix : new String[]{"_fire", "_release", "_r"})
+                    if (pose.endsWith(suffix)) return pose.substring(0, pose.length() - suffix.length());
+                return pose;
+            }
+        }
+        return null;
+    }
+
+    /** Presentation-only upgrade of already unlocked owned Ki; retains costs, parameters and slots. */
+    public static void bindAuthoredAnimations(StatsData stats) {
+        if (stats == null || stats.getTechniques() == null) return;
+        ensureRegistered();
+        for (V3TechniqueDefinition technique : V3TechniqueCatalog.all()) {
+            String id = nativeId(technique.id());
+            String prefix = authoredAnimationPrefix(technique);
+            if (prefix != null && owns(id)
+                    && stats.getTechniques().getUnlockedTechniques().get(id) instanceof KiAttackData saved) {
+                saved.setAnimation(prefix);
+            }
+        }
     }
 
     /**
@@ -206,6 +251,45 @@ public final class V3NativeKi {
                 && TechniqueDispatcher.executeKiAttack(player, player.level(), ki, stats, 2.0f);
         if (fired) applyMuzzle(player, profile);
         return fired;
+    }
+
+    /**
+     * Fires the authored strike's original DragonMineZ technique unchanged. The copied template
+     * receives only the authored player animation name; it keeps the original id, tuning, colors,
+     * speed, damage, and projectile behavior, and never routes through a {@code bt3_*} clone or
+     * Xeno Ki profile.
+     */
+    public static boolean fireOriginal(ServerPlayer player, V3TechniqueDefinition technique) {
+        if (player == null || technique == null) return false;
+        String originalId = originalTechniqueId(technique);
+        KiAttackData template = originalId == null ? null : PredefinedTechniques.REGISTRY.get(originalId);
+        StatsData stats = StatsProvider.get(StatsCapability.INSTANCE, player).orElse(null);
+        if (template == null || stats == null) return false;
+        KiAttackData ki = copy(template);
+        String authoredPrefix = authoredAnimationPrefix(technique);
+        if (authoredPrefix != null) ki.setAnimation(authoredPrefix);
+        // KI_CHARGE already created the original DMZ charging projectile. This call advances
+        // that entity into its release phase; spawning a second 0.01 projectile here duplicates it.
+        return TechniqueDispatcher.executeKiAttack(player, player.level(), ki, stats, 2.0f);
+    }
+
+    /** Starts the original DMZ charge entity used by a choreographed attack. */
+    public static boolean chargeOriginal(ServerPlayer player, V3TechniqueDefinition technique) {
+        if (player == null || technique == null) return false;
+        String originalId = originalTechniqueId(technique);
+        KiAttackData template = originalId == null ? null : PredefinedTechniques.REGISTRY.get(originalId);
+        StatsData stats = StatsProvider.get(StatsCapability.INSTANCE, player).orElse(null);
+        if (template == null || stats == null) return false;
+        KiAttackData ki = copy(template);
+        String authoredPrefix = authoredAnimationPrefix(technique);
+        if (authoredPrefix != null) ki.setAnimation(authoredPrefix);
+        return TechniqueDispatcher.executeKiAttack(player, player.level(), ki, stats, 0.01f);
+    }
+
+    /** Exact source-template key for the authored attack, or null when it has none. */
+    public static String originalTechniqueId(V3TechniqueDefinition technique) {
+        if (technique == null || technique.kiTechnique() == null || technique.kiTechnique().isBlank()) return null;
+        return technique.kiTechnique();
     }
 
     /**

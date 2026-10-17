@@ -86,6 +86,7 @@ public final class V2InputLayer {
     public static void tick(Minecraft mc) {
         LocalPlayer player = mc.player;
         if (player == null) return;
+        net.bullettrain.xenopixelsmod.client.combat.StickyLock.tick(mc);
         V2ClientState.tick();
         firstTick(mc);
 

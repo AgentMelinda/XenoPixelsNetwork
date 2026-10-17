@@ -29,6 +29,7 @@ public class XenoPixelsMod {
 
     public XenoPixelsMod(IEventBus modEventBus) {
         net.bullettrain.xenopixelsmod.command.XenoCommandArguments.register(modEventBus);
+        net.bullettrain.xenopixelsmod.space.worldgen.SpaceWorldgen.register(modEventBus);
 
         ModsItems.register(modEventBus); // -- mods item register
         ModBlocks.register(modEventBus);
@@ -40,9 +41,11 @@ public class XenoPixelsMod {
         XenoCapabilities.register(modEventBus);
         net.bullettrain.xenopixelsmod.compat.npc.NpcDmzStats.register(modEventBus);
         ModNetwork.register();
+        net.bullettrain.xenopixelsmod.space.SpaceVisualNetwork.register();
         // XenoAPI (xenoapi.npcs.api) over native NPCs; holds no world, resolves the server per call.
         net.bullettrain.xenopixelsmod.npc.script.api.xeno.NativeNpcApi.register();
         net.bullettrain.xenopixelsmod.npc.script.api.xeno.gui.XenoGuiNetwork.register();
+        net.bullettrain.xenopixelsmod.combat.v3.ki.CastPresentation.register();
         net.bullettrain.xenopixelsmod.network.form.FormEditorNetwork.register();
         net.bullettrain.xenopixelsmod.network.race.RaceLabelNetwork.register();
         net.bullettrain.xenopixelsmod.network.taotto.TaottoNetwork.register();
@@ -68,6 +71,7 @@ public class XenoPixelsMod {
             net.bullettrain.xenopixelsmod.features.progression.MasterPrerequisites.load(
                     net.neoforged.fml.loading.FMLPaths.CONFIGDIR.get());
             net.bullettrain.xenopixelsmod.config.XenoPerfConfig.load();
+            net.bullettrain.xenopixelsmod.config.XenoSpaceConfig.load();
             net.bullettrain.xenopixelsmod.config.XenoPartyConfig.load();
             net.bullettrain.xenopixelsmod.aero.gravity.OrbitalGravityConfig.load();
             net.bullettrain.xenopixelsmod.aero.AeroConfig.load();
@@ -93,7 +97,7 @@ public class XenoPixelsMod {
                 net.bullettrain.xenopixelsmod.vs.XenoThrusterControl.ensureRegistered();
                 net.bullettrain.xenopixelsmod.vs.ShipBallisticController.ensureRegistered();
                 net.bullettrain.xenopixelsmod.vs.ShipGravityControl.ensureRegistered();
-                // Replaces AeroStar's OrbitGravitySystem, which crashes on Northstar Redux 0.6.
+                // Owns ship gravity per dimension from config; touches no space-mod classes.
                 net.bullettrain.xenopixelsmod.aero.gravity.OrbitalGravitySystem.ensureRegistered();
                 net.bullettrain.xenopixelsmod.aero.control.AeroStabilizerSystem.ensureRegistered();
             } catch (Throwable t) {

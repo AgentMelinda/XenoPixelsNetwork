@@ -20,6 +20,25 @@ public final class NativeXenoScriptApi {
         return e.unwrap();
     }
     private static LivingEntity maybe(ScriptEntity e) { return e == null ? null : e.unwrap(); }
+    /** Either shape the engine hands out for an entity: the native wrapper, or a XenoAPI entity. */
+    private static LivingEntity union(Object value) {
+        if (value instanceof ScriptEntity wrapper) return wrapper.unwrap();
+        if (value instanceof xenoapi.npcs.api.entity.IEntity<?> api
+                && net.bullettrain.xenopixelsmod.npc.script.api.xeno.XenoApiAdapters.unwrap(api)
+                        instanceof LivingEntity living) {
+            return living;
+        }
+        return null;
+    }
+    /**
+     * The player behind a hook value, or null. Null is deliberate: every appearance call answers a
+     * missing player the way {@code PlayerAppearanceSteals} does - {@code NO_DATA}, {@code false},
+     * {@code 0}, an empty map - so a stale reference held across hooks fails as a refusal rather
+     * than throwing into the script engine.
+     */
+    private static ServerPlayer scriptPlayer(Object value) {
+        return union(value) instanceof ServerPlayer player ? player : null;
+    }
     private static boolean edit(ScriptNpc n, Consumer<NpcCombatProfile> action) {
         LivingEntity e = entity(n);
         NpcCombatProfile p = NpcCombatProfile.read(e);
@@ -40,7 +59,7 @@ public final class NativeXenoScriptApi {
                 : edit(n, p -> p.kiColor = parsed.getAsInt());
     }
 
-    public String getVersion() { return "28"; }
+    public String getVersion() { return "29"; }
     public boolean say(ScriptNpc n, String message) { return n != null && n.say(message); }
     public boolean say(ScriptNpc n, String message, String palette) { return n != null && n.say(message, palette); }
     public boolean say(ScriptNpc n, String message, String palette, String shape) { return n != null && n.say(message, palette, shape); }
@@ -228,6 +247,63 @@ public final class NativeXenoScriptApi {
     public boolean setPlayerModel(ScriptNpc n, boolean on) {
         return appearance(n, p -> p.appearance.mode = on
                 ? NpcDmzAppearance.Mode.FULL : NpcDmzAppearance.Mode.OFF);
+    }
+    /**
+     * Wears an NPC's DragonMineZ look - race, gender, class, body shape, colours, hair - for 30
+     * seconds, then puts the player's own look back. Takes a ScriptPlayer, a player from a typed
+     * hook, or that player's XenoAPI object, so {@code player} and {@code event.getPlayer()} both work.
+     */
+    public String stealAppearance(Object player, Object npc) { return stealAppearance(player, npc, 600); }
+    /**
+     * The same borrow with the length in game ticks - 20 a second, capped at a day - remembered on the
+     * player rather than in memory, so a death, a relog or a restart mid-borrow still ends with their
+     * own face. Look only: stats, skills, forms, masteries and quests stay the player's own.
+     *
+     * <p>Returns {@code "ok"}, or why it refused: {@code NO_DATA} (DragonMineZ has not loaded that
+     * player yet, so ask again next tick), {@code NO_SOURCE} (that entity is not a Xeno NPC),
+     * {@code INVALID_RACE}, {@code INVALID_CLASS}, {@code INVALID_COLOR}, {@code INVALID_HAIR},
+     * {@code ALREADY_ACTIVE} (still wearing a previous borrow - restore it first). Check the answer:
+     * every refusal changes nothing, and a silent no-op looks like a success.
+     */
+    public String stealAppearance(Object player, Object npc, int ticks) {
+        return PlayerAppearanceSteals.start(scriptPlayer(player), union(npc), Math.max(0, ticks)).name();
+    }
+    /** Gives a borrowed look back early. False when this player is not wearing one. */
+    public boolean restoreAppearance(Object player) {
+        return PlayerAppearanceSteals.stop(scriptPlayer(player)) == NpcAppearanceMapping.Result.OK;
+    }
+    public boolean isAppearanceStolen(Object player) {
+        return PlayerAppearanceSteals.isActive(scriptPlayer(player));
+    }
+    /** Ticks left on the borrow, 0 when there is none. */
+    public int getAppearanceStealTicksLeft(Object player) {
+        return (int) Math.min(Integer.MAX_VALUE,
+                PlayerAppearanceSteals.remainingTicks(scriptPlayer(player)));
+    }
+    /** The player's current DragonMineZ look, in the same keys as {@link #getNpcAppearance}. */
+    public Map<String, Object> getPlayerAppearance(Object player) {
+        return appearanceMap(NpcAppearanceSource.ofCharacter(
+                NpcAppearanceMapping.character(scriptPlayer(player))));
+    }
+    /** The look this NPC would lend, or an empty map for an entity that has no profile. */
+    public Map<String, Object> getNpcAppearance(ScriptNpc n) {
+        return appearanceMap(NpcAppearanceSource.from(entity(n)));
+    }
+    private static Map<String, Object> appearanceMap(NpcAppearanceSource source) {
+        Map<String, Object> out = new LinkedHashMap<>();
+        if (source == null) return out;
+        out.put("race", source.race()); out.put("gender", source.gender());
+        out.put("class", source.characterClass()); out.put("bodyType", source.bodyType());
+        out.put("eyesType", source.eyesType()); out.put("noseType", source.noseType());
+        out.put("mouthType", source.mouthType()); out.put("tattooType", source.tattooType());
+        out.put("boobScale", source.boobScale()); out.put("bodyColor", source.bodyColor());
+        out.put("bodyColor2", source.bodyColor2()); out.put("bodyColor3", source.bodyColor3());
+        out.put("eyeColor1", source.eye1Color()); out.put("eyeColor2", source.eye2Color());
+        out.put("hairColor", source.hairColor()); out.put("auraColor", source.auraColor());
+        out.put("headBone", source.activeHeadBone()); out.put("saiyanTail", source.saiyanTail());
+        out.put("renderHairBase", source.renderHairBase()); out.put("style", source.hairId());
+        out.put("code", source.hairCode());
+        return out;
     }
     public java.util.List<String> listSkills() { return NpcSkillSet.knownIds(); }
     public int getSkillMaxLevel(String id) { return NpcSkillSet.maxLevelOf(id); }

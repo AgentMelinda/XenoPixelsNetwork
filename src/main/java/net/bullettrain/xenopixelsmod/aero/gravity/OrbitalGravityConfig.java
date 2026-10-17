@@ -17,13 +17,13 @@ import java.util.Map;
  * Per-dimension surface gravity for Sable ships, written to
  * {@code config/xenopixelsmod-orbital-gravity.json}.
  *
- * <p>Deliberately keyed by dimension id <b>string</b> rather than by any space mod's classes.
- * This replaces AeroStar's {@code OrbitGravitySystem}, which hard-referenced
- * {@code com.lightning.northstar.world.dimension.NorthstarDimensions} and therefore died with
- * {@code NoClassDefFoundError} the moment Northstar Redux 0.6 moved that class — AeroStar
- * 1.0.1 pins Redux 0.5.4 and was never updated for the 0.6 line. Reading ids from config means
- * a space mod can rename, move or repackage anything without breaking ship gravity, and server
- * owners can add dimensions we have never heard of.
+ * <p>Deliberately keyed by dimension id <b>string</b> rather than by any space mod's classes. AeroStar's
+ * {@code OrbitGravitySystem} hard-referenced {@code com.lightning.northstar.world.dimension.NorthstarDimensions}
+ * and therefore died with {@code NoClassDefFoundError} the moment Northstar Redux 0.6 moved that class.
+ * Reading ids from config means a space mod can rename, move or repackage anything without breaking ship
+ * gravity, and server owners can add dimensions we have never heard of. That reasoning outlives the
+ * AeroStar compat this config used to negotiate with — which is gone, so {@link OrbitalGravitySystem}
+ * now owns ship gravity outright.
  *
  * <p>Values are in m/s², matching {@link net.bullettrain.xenopixelsmod.vs.ShipGravityControl}
  * whose {@code NORMAL_GRAVITY} baseline is 10.0. Unlisted dimensions get the baseline.
@@ -36,24 +36,6 @@ public final class OrbitalGravityConfig {
     /** Master switch; when false ship gravity is left entirely alone. */
     public static boolean enabled = true;
 
-    /**
-     * Cancel AeroStar's own orbital gravity handler when that mod is installed.
-     *
-     * <p>Two systems both correcting gravity every physics tick would fight each other, so
-     * exactly one has to own it. <b>Default is {@code false}: AeroStar owns ship gravity.</b>
-     * The {@code NorthstarDimensions} shim makes AeroStar's handler resolve and run correctly
-     * on Redux 0.6, so there is no longer a crash to avoid and its gravity is the behavior
-     * servers are already tuned around.
-     *
-     * <p>This default is deliberate and was learned the hard way. The mixin that performs the
-     * cancel silently failed to apply for a long time, so gravity was in practice always
-     * AeroStar's regardless of what this flag said. When the mixin was finally fixed, a
-     * {@code true} here flipped ownership to us for the first time and changed how every ship
-     * flew. Defaulting to {@code false} keeps the behavior that servers actually run with;
-     * turn it on to opt into our config-tunable per-dimension gravity instead.
-     */
-    public static boolean overrideAeroStar = false;
-
     /** Dimension id → gravity in m/s². */
     public static Map<String, Double> gravityByDimension = defaults();
 
@@ -61,26 +43,23 @@ public final class OrbitalGravityConfig {
     }
 
     /**
-     * Gravity per body, taken from Northstar Redux's own
-     * {@code data/northstar/dimension_physics/*.json} on the 1.21.1 branch, where each file
-     * carries a {@code base_gravity} vector — moon {@code -1.62}, mars {@code -3.73}, venus
-     * {@code -8.87}, mercury {@code -3.7}, and {@code 0.0} for every orbit dimension. Using
-     * the mod's published numbers keeps ship gravity consistent with player gravity.
+     * Only the vanilla overworld is listed by default now.
      *
-     * <p>Redux 0.6.0 moved planets to a datapack-based system and added orbit dimensions for
-     * Earth, Mars, Mercury and Venus; all four are listed here.
+     * <p>The Northstar Redux entries this used to ship — moon 1.62, mars 3.73, venus 8.87, mercury
+     * 3.70, and 0.0 for each of its four orbit dimensions, taken from Redux's own
+     * {@code data/northstar/dimension_physics/*.json} — were dropped along with the rest of the
+     * Northstar coupling. A server that still runs Redux keeps working, it just gets the 10.0
+     * baseline on those dimensions until the owner adds them back, and the numbers above are the ones
+     * to add if they want Redux's own values.
+     *
+     * <p><b>Upgrade note:</b> {@link #load()} only replaces this map when the file has a non-empty
+     * one, so an existing {@code xenopixelsmod-orbital-gravity.json} keeps whatever dimensions it
+     * already listed, Northstar ones included. Removing the defaults changes fresh installs, not
+     * configured servers.
      */
     private static Map<String, Double> defaults() {
         Map<String, Double> map = new LinkedHashMap<>();
         map.put("minecraft:overworld", 10.0);
-        map.put("northstar:moon", 1.62);
-        map.put("northstar:mars", 3.73);
-        map.put("northstar:venus", 8.87);
-        map.put("northstar:mercury", 3.70);
-        map.put("northstar:earth_orbit", 0.0);
-        map.put("northstar:mars_orbit", 0.0);
-        map.put("northstar:mercury_orbit", 0.0);
-        map.put("northstar:venus_orbit", 0.0);
         return map;
     }
 
@@ -108,7 +87,6 @@ public final class OrbitalGravityConfig {
             Data data = GSON.fromJson(reader, Data.class);
             if (data == null) return;
             enabled = data.enabled;
-            overrideAeroStar = data.overrideAeroStar;
             if (data.gravityByDimension != null && !data.gravityByDimension.isEmpty()) {
                 gravityByDimension = new LinkedHashMap<>(data.gravityByDimension);
             }
@@ -124,7 +102,6 @@ public final class OrbitalGravityConfig {
             try (Writer writer = Files.newBufferedWriter(PATH)) {
                 Data data = new Data();
                 data.enabled = enabled;
-                data.overrideAeroStar = overrideAeroStar;
                 data.gravityByDimension = new LinkedHashMap<>(gravityByDimension);
                 GSON.toJson(data, writer);
             }
@@ -133,10 +110,14 @@ public final class OrbitalGravityConfig {
         }
     }
 
+    /**
+     * The on-disk shape. The old {@code overrideAeroStar} key is simply absent now; Gson ignores
+     * unknown keys on read, so a config file written by an earlier build loads without complaint and
+     * the key is dropped the next time the file is saved. No migration step is needed, and a server
+     * that had it set to either value gets the same result: this mod owns gravity.
+     */
     public static final class Data {
         public boolean enabled = true;
-        /** Must match {@link OrbitalGravityConfig#overrideAeroStar} — see its javadoc. */
-        public boolean overrideAeroStar = false;
         public Map<String, Double> gravityByDimension;
     }
 }

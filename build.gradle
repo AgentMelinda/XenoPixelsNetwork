@@ -3,6 +3,7 @@ plugins {
     id 'idea'
     id 'maven-publish'
     id 'net.neoforged.moddev' version '2.0.143'
+    id 'com.gradleup.shadow' version '8.3.11'
 }
 
 version = mod_version
@@ -88,6 +89,7 @@ neoForge {
 }
 
 configurations {
+    spaceYaml
     // Nashorn classes repackaged into the server/slim jar (ModernUI stays client-only).
     serverJarJar
     // Dev-only mod jars that have to be installed into run/mods rather than put on a run's
@@ -273,6 +275,10 @@ def dragonMineZJar = {
 }()
 
 dependencies {
+    implementation 'org.yaml:snakeyaml:2.2'
+    spaceYaml 'org.yaml:snakeyaml:2.2'
+    // Dev runs use unshaded application classes; expose YAML to NeoForge's game module loader.
+    additionalRuntimeClasspath 'org.yaml:snakeyaml:2.2'
     // The special DMZ 1.21.1 build produced by the parent repository.
     implementation files(dragonMineZJar)
     // AAA Particles (Effekseer loader, MIT, required): local jar like DragonMineZ so offline builds work.
@@ -456,6 +462,12 @@ tasks.named('processResources', ProcessResources).configure {
     filesMatching(['META-INF/neoforge.mods.toml', 'pack.mcmeta']) {
         expand replaceProperties + [project: project]
     }
+    // Space test worlds (Moon, orbit, surface) ship as the built-in pack registered in
+    // data/ModDatapacks; examples/ stays the single source the generator and tests use.
+    from('examples/xenospace-handoff-spike') {
+        into 'datapacks/xeno_space'
+        exclude 'README.md'
+    }
 }
 
 tasks.withType(AbstractArchiveTask).configureEach {
@@ -479,6 +491,31 @@ tasks.named('jar', Jar).configure {
 }
 
 // ModDevGradle jarJar stages ModernUI under META-INF/jarjar/; :jar consumes that output.
+// Relocate only the chart YAML library. Both distributions consume rewritten application
+// bytecode, keeping org.yaml out of the shared mod namespace and adding no nested jar.
+def spaceShadedClasses = tasks.register('spaceShadedClasses', com.github.jengelman.gradle.plugins.shadow.tasks.ShadowJar) {
+    dependsOn tasks.named('compileJava')
+    configurations = [project.configurations.spaceYaml]
+    from sourceSets.main.output.classesDirs
+    relocate 'org.yaml.snakeyaml', 'net.bullettrain.xenopixelsmod.internal.yaml'
+    exclude 'META-INF/**', 'module-info.class'
+    archiveClassifier = 'space-classes'
+    destinationDirectory = layout.buildDirectory.dir('space-shading')
+}
+tasks.matching { it.name in ['jar', 'serverJar'] }.configureEach {
+    dependsOn spaceShadedClasses
+    from({ zipTree(spaceShadedClasses.get().archiveFile.get().asFile) })
+    eachFile { details ->
+        if (details.path.endsWith('.class') && sourceSets.main.output.classesDirs.files.any {
+            details.file.toPath().startsWith(it.toPath())
+        }) details.exclude()
+    }
+    from({ zipTree(configurations.spaceYaml.singleFile) }) {
+        include 'META-INF/LICENSE*', 'META-INF/NOTICE*'
+        into 'META-INF/licenses/snakeyaml'
+    }
+}
+
 // Default client distribution: empty-classifier :jar with ModernUI nested.
 // Server/slim distribution: no ModernUI — use for dedicated servers and CI that
 // must not pull client UI deps. Filename matches:

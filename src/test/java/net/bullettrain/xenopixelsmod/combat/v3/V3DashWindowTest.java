@@ -6,6 +6,26 @@ import java.util.UUID;
 import org.junit.jupiter.api.Test;
 
 class V3DashWindowTest {
+    @Test void serverRoutesNFromLiveChainEvenWhenClientSentStartOrFollowFromAnOldSnapshot() {
+        assertTrue(V3Dash.preferFollow(V3State.TRAVEL, V3Window.DASH_CROSS, 0, true));
+        assertTrue(V3Dash.preferFollow(V3State.IDLE, V3Window.DASH_CROSS, 1, false));
+        assertFalse(V3Dash.preferFollow(V3State.IDLE, V3Window.DASH_CROSS, 0, false));
+        assertFalse(V3Dash.preferFollow(V3State.IDLE, V3Window.CHASE, 40, false));
+        assertFalse(V3Dash.preferFollow(V3State.CINEMATIC, V3Window.DASH_CROSS, 40, false));
+        assertFalse(V3Dash.preferFollow(V3State.TRAVEL, V3Window.DASH_CROSS, 40, false));
+    }
+    @Test void launchUsesActualDamageAndFullConfiguredDistance(){
+        assertEquals(64,V3Dash.acceptedLaunchDistance(true,1,64));
+        assertEquals(13,V3Dash.acceptedLaunchDistance(true,.1f,13));
+        assertEquals(0,V3Dash.acceptedLaunchDistance(false,1,64));
+        assertEquals(0,V3Dash.acceptedLaunchDistance(true,0,64));
+        assertEquals(0,V3Dash.acceptedLaunchDistance(true,Float.NaN,64));
+    }
+    @Test void wAndSChooseVerticalDashRoutes() {
+        assertEquals(6, V3Dash.travelOffset(V3Direction.UP).y);
+        assertEquals(-3, V3Dash.travelOffset(V3Direction.DOWN).y);
+        assertEquals(net.minecraft.world.phys.Vec3.ZERO, V3Dash.travelOffset(V3Direction.FORWARD));
+    }
     private static final UUID TARGET = UUID.randomUUID();
 
     @Test void crossDuringTheApproach() {
@@ -56,22 +76,13 @@ class V3DashWindowTest {
         assertFalse(V3Dash.inDashRange(24.5 * 24.5, 24));
     }
 
-    @Test void initialDashLaunchesAreVerticalAndNeutralReversesWithTheSide() {
-        var away = new net.minecraft.world.phys.Vec3(5, 2, 0);
-        assertEquals(new net.minecraft.world.phys.Vec3(0, 1, 0), V3Dash.launchDirection(V3Direction.FORWARD, away));
-        assertEquals(new net.minecraft.world.phys.Vec3(0, -1, 0), V3Dash.launchDirection(V3Direction.BACK, away));
-        assertEquals(new net.minecraft.world.phys.Vec3(1, 0, 0), V3Dash.launchDirection(V3Direction.NONE, away));
-        var reverse = V3Dash.launchDirection(V3Direction.NONE, away.scale(-1));
-        assertArrayEquals(new double[]{-1, 0, 0}, new double[]{reverse.x, reverse.y, reverse.z}, 1e-6);
-    }
-
-    @Test void launchTravelsAtLeastFifteenBlocksAndOldChargedArcRemainsUnchanged() {
+    @Test void oldChargedArcRulesRemainUnchanged() {
         var old = net.bullettrain.xenopixelsmod.combat.v2.V2ChargeRules.arcOffset(12);
         assertArrayEquals(new double[]{10, 6}, old, 1e-6);
-        var end = net.bullettrain.xenopixelsmod.combat.v2.V2ChargeRules.arcOffset(24, V3Dash.LAUNCH_DISTANCE, 3);
+        var end = net.bullettrain.xenopixelsmod.combat.v2.V2ChargeRules.arcOffset(24, 20, 3);
         assertTrue(end[0] >= 15);
         assertEquals(0, end[1], 1e-6);
-        var vertical = net.bullettrain.xenopixelsmod.combat.v2.V2ChargeRules.arcOffset(12, V3Dash.LAUNCH_DISTANCE, 0);
+        var vertical = net.bullettrain.xenopixelsmod.combat.v2.V2ChargeRules.arcOffset(12, 20, 0);
         assertArrayEquals(new double[]{10, 0}, vertical, 1e-6);
     }
 
@@ -101,7 +112,6 @@ class V3DashWindowTest {
 
     @Test void chainTimingDefaultsComeFromTheServerConfig() {
         assertEquals(V3Config.Values.DEFAULT_DASH_FOLLOW_WINDOW, V3Dash.CONTINUATION_TICKS);
-        assertEquals(V3Config.Values.DEFAULT_DASH_LAUNCH, V3Dash.LAUNCH_DISTANCE);
         var defaults = new V3Config.Values();
         assertEquals(60, defaults.dragonDashFollowWindowTicks());
         assertEquals(8, defaults.dragonDashFollowCooldownTicks());

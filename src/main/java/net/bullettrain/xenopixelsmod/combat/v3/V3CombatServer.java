@@ -27,6 +27,12 @@ public final class V3CombatServer {
     public static void handleInput(ServerPlayer player, V3Input input, UUID session, UUID target,
                                    V3Direction direction, int sequence) {
         if (player == null || input == null || direction == null) return;
+        if(input==V3Input.RECOVERY_MASH){
+            V3Fighter fighter=V3FighterStore.peek(player);
+            if(player.isAlive() && !player.isSpectator() && fighter!=null && fighter.admit(session,sequence))
+                CombatRecovery.mash(player,target,player.getServer().getTickCount());
+            return;
+        }
         // A config write through another path must invalidate its old session before admission.
         if (CombatControllerService.reconcile(player.getServer())) {
             net.bullettrain.xenopixelsmod.command.DmzHudCommands.broadcast();
@@ -43,7 +49,7 @@ public final class V3CombatServer {
                 && input != V3Input.CHASE_START && input != V3Input.VANISH && input != V3Input.COUNTER
                 && input != V3Input.GRAB
                 && input != V3Input.CHARGE_CANCEL && input != V3Input.CHASE_STOP
-                && input != V3Input.TECHNIQUE_RELEASE) return;
+                && input != V3Input.TECHNIQUE_RELEASE && input != V3Input.SUPER_RUSH_MASH) return;
         if (!fighter.admit(session, sequence)) return;
         int tick = player.getServer().getTickCount();
         if (fighter.state == V3State.GRABBED) {
@@ -54,6 +60,9 @@ public final class V3CombatServer {
         }
         // Intentional alias: preserve existing admin grants/denials for rewritten combat.
         if (!XenoPermissions.hasPermission(player, XenoPermissions.COMBAT_V2_USE)) return;
+        if(input==V3Input.SUPER_RUSH_MASH){
+            CombatComboCounter.mash(player,target,tick);syncState(player);return;
+        }
         if (fighter.state == V3State.GRAB_HOLD) {
             if (input == V3Input.GRAB) V3Grab.handle(player, V3Targeting.resolve(player), direction, tick);
             syncState(player);
@@ -82,10 +91,8 @@ public final class V3CombatServer {
         } else if (input == V3Input.CHARGE_RELEASE) {
             // Which strike is being released is the server's memory of what was started.
             V3Charge.release(player, V3Targeting.resolve(player), fighter.chargeKick, player.getServer().getTickCount());
-        } else if (input == V3Input.DRAGON_DASH) {
-            V3Dash.start(player, V3Targeting.resolve(player), direction, player.getServer().getTickCount());
-        } else if (input == V3Input.DASH_CROSS) {
-            if (V3Dash.cross(player, direction, player.getServer().getTickCount())) return;
+        } else if (input == V3Input.DRAGON_DASH || input == V3Input.DASH_CROSS) {
+            V3Dash.press(player, direction, tick);
         } else if (input == V3Input.CHASE_START) {
             V3Chase.start(player, V3Targeting.resolve(player), tick);
         } else if (input == V3Input.CHASE_STOP) {
@@ -111,7 +118,9 @@ public final class V3CombatServer {
     }
     public static boolean freeToAct(ServerPlayer player) {
         V3Fighter fighter = V3FighterStore.peek(player);
-        return fighter != null && fighter.state == V3State.IDLE && !V3Heavy.stunned(player);
+        return fighter != null && fighter.state == V3State.IDLE && !V3Heavy.stunned(player)
+                && !net.bullettrain.xenopixelsmod.combat.v3.technique.V3PostAttackFreeze.isFrozen(player)
+                && !net.bullettrain.xenopixelsmod.combat.v2.UltimateFinisher.owns(player);
     }
     /** Direct technique entry has the same authority requirements as a gesture packet. */
     public static boolean canStartTechnique(ServerPlayer player) {
@@ -119,6 +128,14 @@ public final class V3CombatServer {
                 && !(player.getVehicle() instanceof XenoPilotSeatEntity)
                 && XenoPermissions.hasPermission(player, XenoPermissions.COMBAT_V2_USE)
                 && freeToAct(player);
+    }
+    /** A same-caster DASH hold owns actions only, allowing an admitted random cast to replace it. */
+    public static boolean canTransferDashVictim(ServerPlayer player){
+        return owns(player) && player.isAlive() && !player.isSpectator()
+            && !(player.getVehicle() instanceof XenoPilotSeatEntity)
+            && XenoPermissions.hasPermission(player,XenoPermissions.COMBAT_V2_USE)
+            && inCinematic(player) && !V3Motion.owns(player) && !V3Heavy.stunned(player)
+            && !net.bullettrain.xenopixelsmod.combat.v2.UltimateFinisher.owns(player);
     }
     public static boolean spendKi(ServerPlayer player, float ki) {
         boolean sparking = net.bullettrain.xenopixelsmod.combat.Bt3SparkingSystem.isSparking(player);
@@ -175,6 +192,7 @@ public final class V3CombatServer {
     /** Cancels every V3 subsystem owner while preserving the current session. */
     static void cancelLiveState(ServerPlayer player) {
         if (player == null) return;
+        CombatComboCounter.cancelReady(player);
         net.bullettrain.xenopixelsmod.combat.v3.technique.V3TechniqueRuntime.cancel(player);
         net.bullettrain.xenopixelsmod.combat.v3.ki.V3KiShots.cancelOwner(player.getUUID());
         V3Grab.abort(player);
@@ -216,7 +234,12 @@ public final class V3CombatServer {
         V3Fighter fighter = V3FighterStore.get(player);
         ModNetwork.sendToPlayer(player, new CombatV3StatePacket(fighter.session(), fighter.state, fighter.target,
                 fighter.acknowledgedSequence(), fighter.chargeTicks, fighter.windowTicksLeft, fighter.windowTicksTotal,
-                fighter.window));
+                fighter.window,CombatRecovery.snapshot(player,player.getServer().getTickCount()),
+                CombatComboCounter.hits(player,player.getServer().getTickCount()),
+                CombatComboCounter.left(player,player.getServer().getTickCount()),
+                CombatComboCounter.rushPromptTicks(player,player.getServer().getTickCount()),
+                CombatComboCounter.rushUltimate(player,player.getServer().getTickCount()),
+                CombatComboCounter.rushToken(player),CombatComboCounter.rushProgress(player)));
     }
     public static void syncTo(ServerPlayer player) {
         ModNetwork.sendToPlayer(player, new CombatV3ConfigPacket(V3Config.get()));

@@ -297,6 +297,7 @@ public final class V3TechniqueCatalog {
             return;
         }
         if (data == null || data.getTechniques() == null) return;
+        net.bullettrain.xenopixelsmod.combat.v3.ki.V3NativeKi.bindAuthoredAnimations(data);
         List<String> ids;
         synchronized (V3TechniqueCatalog.class) {
             ids = REGISTERED.stream().filter(DEFINITIONS::containsKey).toList();

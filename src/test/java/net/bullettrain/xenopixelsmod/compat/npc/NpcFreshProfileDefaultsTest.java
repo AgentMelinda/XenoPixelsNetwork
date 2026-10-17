@@ -85,6 +85,8 @@ class NpcFreshProfileDefaultsTest {
         // The release's default brain: V1 in XenoPixels, V9 in XenoNPCs (NpcBrainPolicy).
         assertEquals(NpcBrainPolicy.resolve(NpcCombatBrainVersion.V1),
                 NpcCombatProfile.fromTag(new CompoundTag()).brainVersion);
-        assertTrue(NpcCombatProfile.fromTag(new CompoundTag()).skills.isEmpty());
+        NpcCombatProfile legacy = NpcCombatProfile.fromTag(new CompoundTag());
+        assertTrue(legacy.skills.isActive(NpcSkillSet.KI_SENSE));
+        assertTrue(legacy.kiSenseLockOnRetaliator);
     }
 }

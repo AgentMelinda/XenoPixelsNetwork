@@ -170,21 +170,30 @@ public final class V3TechniqueRuntime {
         final UUID session;
         final UUID target;
         final int targetId;
-        final Vec3 freezeAt;
+        Vec3 freezeAt;
         final LivingEntity victim;
         final List<V3CameraBeat> camera;
         final boolean controlled;
+        final net.bullettrain.xenopixelsmod.combat.v3.RandomRushSettings randomRush;
+        V3PostAttackFreeze.DashTransfer dashTransfer;
         boolean victimGravity;
         boolean victimOwned;
-        boolean victimNoAi;
+        /** True while this cast holds {@code FreezeOwnership.Reason.TECHNIQUE} on its victim. */
         boolean victimAiOwned;
         long approachUntil;
         boolean approaching;
+        boolean rushStarted;
+        boolean launchedVictim, repinOnArrival;
+        Vec3 movementLanding;
+        final int lastStrikeTick;
         double approachSpeed;
+        final double rushFlightSpeedMultiplier;
         net.bullettrain.xenopixelsmod.combat.v2.V2TravelPose.Snapshot travelPose;
         long freezeUntil;
         /** Keep cinematic + freeze after END (owner: like Ultimate Finisher). */
-        final long cameraHoldUntil;
+        long cameraHoldUntil;
+        final int postCameraTicks, postFreezeTicks;
+        boolean ended;
         final long startedAt;
         /** The slot key is still down: the ki release waits and the charge grows. */
         boolean held = true;
@@ -197,19 +206,27 @@ public final class V3TechniqueRuntime {
         /** Solar Flare fires Taiyoken blind once on its flash POSE. */
         boolean solarFlashed;
 
-        Cast(V3TechniqueDefinition technique, LivingEntity victim, UUID session, long now, boolean acceptedContact) {
+        Cast(V3TechniqueDefinition technique, LivingEntity victim, UUID session, long now, boolean acceptedContact,
+             net.bullettrain.xenopixelsmod.combat.v3.RandomRushSettings randomRush) {
+            this.randomRush=randomRush;
             this.technique = technique;
             this.session = session;
             this.target = victim.getUUID();
             this.targetId = victim.getId();
             this.freezeAt = victim.position();
             this.victim = victim;
-            this.controlled = controlsVictim(technique.beats());
+            this.lastStrikeTick = technique.beats().stream().filter(b -> b.kind() == V3Beat.Kind.STRIKE)
+                    .mapToInt(V3Beat::tick).max().orElse(-1);
+            this.controlled = randomRush==null?controlsVictim(technique.beats()):randomRush.freezeDuringAttack();
             var config = net.bullettrain.xenopixelsmod.combat.v3.V3Config.get();
+            this.rushFlightSpeedMultiplier = config.rushFlightSpeedMultiplier();
             // /xenoset v3.strikeCinematicCamera false keeps the player's own view for every Strike.
             // Opening hold (ki/charge) and post-END hold are separate xenoset keys.
             int openingHold = Math.max(0, config.strikeCinematicCameraHoldTicks());
             int postHold = Math.max(0, config.strikeCameraHoldTicks());
+            this.postCameraTicks = postHold;
+            this.postFreezeTicks = randomRush==null?config.strikeTargetFreezeTicks():
+                randomRush.freezeAfterAttack()?randomRush.postFreezeTicks():0;
             this.camera = config.strikeCinematicCamera()
                     ? cameraFor(technique, controlled, openingHold) : List.of();
             this.startedAt = now;
@@ -313,7 +330,10 @@ public final class V3TechniqueRuntime {
 
     /** No ki shot outlives this, whatever happens to its target: nothing stays in the world. */
     public static boolean kiExpired(long releasedAt, long now) {
-        return now < releasedAt || now - releasedAt >= KI_LIFETIME_TICKS;
+        return kiExpired(releasedAt,now,KI_LIFETIME_TICKS);
+    }
+    public static boolean kiExpired(long releasedAt,long now,int capTicks){
+        return now < releasedAt || now-releasedAt>=Math.clamp(capTicks,1,1200);
     }
 
     /** Techniques that move or directly control a victim must start inside the approach envelope. */
@@ -347,6 +367,11 @@ public final class V3TechniqueRuntime {
         return player != null && CASTS.containsKey(player.getUUID());
     }
 
+    /** Combo reward damage must not arm another reward while its own timeline is running. */
+    public static boolean ownsRandomRush(ServerPlayer player){
+        Cast c=player==null?null:CASTS.get(player.getUUID());return c!=null&&c.randomRush!=null;
+    }
+
     /** Scripted throws release physics but retain the victim's combat exclusion until END. */
     public static boolean isControlledVictim(UUID victim) {
         return victim != null && VICTIMS.containsKey(victim);
@@ -360,6 +385,14 @@ public final class V3TechniqueRuntime {
      * @return false when nothing started; nothing was spent in that case
      */
     public static boolean cast(ServerPlayer player, V3TechniqueDefinition technique, UUID target) {
+        return cast(player,technique,target,null,false);
+    }
+    /** A combo reward has no held technique-slot key; its charge/release timing remains authored. */
+    public static boolean castRandomRush(ServerPlayer player,V3TechniqueDefinition technique,UUID target,boolean ultimate){
+        return cast(player,technique,target,net.bullettrain.xenopixelsmod.combat.v3.V3Config.get().randomRush(),ultimate);
+    }
+    private static boolean cast(ServerPlayer player,V3TechniqueDefinition technique,UUID target,
+                               net.bullettrain.xenopixelsmod.combat.v3.RandomRushSettings randomRush,boolean ultimate) {
         if (player == null || technique == null) return false;
         if (!V3CombatServer.owns(player)) {
             hint(player, technique.name() + " needs the V3 combat controller");
@@ -395,12 +428,17 @@ public final class V3TechniqueRuntime {
             hint(player, technique.name() + " is out of range");
             return false;
         }
+        Vec3 ultimateOpening=ultimate?V3RushGeometry.ultimateOpening(player.position(),locked.position(),player.getLookAngle()):null;
+        if(ultimate && !safeOpening(locked,ultimateOpening))return false;
         boolean controlOnly = controlOnly(technique.beats());
-        boolean controlled = controlsVictim(technique.beats());
-        if ((closeControl || controlOnly || controlled) && !CombatKnockback.canKnockBack(locked)) return false;
-        if (controlled && (VICTIMS.containsKey(locked.getUUID())
-                || locked instanceof ServerPlayer victim && !V3CombatServer.canStartTechnique(victim))) return false;
-        if ((controlOnly || controlled) && net.neoforged.neoforge.common.NeoForge.EVENT_BUS.post(
+        boolean controlled = randomRush==null?controlsVictim(technique.beats()):randomRush.freezeDuringAttack();
+        if ((closeControl || controlOnly || controlled || ultimate) && !CombatKnockback.canKnockBack(locked)) return false;
+        var dashTransfer=controlled && randomRush!=null?V3PostAttackFreeze.captureDash(player,locked):null;
+        if (controlled && (V3PostAttackFreeze.isFrozen(locked) && dashTransfer==null || VICTIMS.containsKey(locked.getUUID())
+                || locked instanceof ServerPlayer victim && !(V3CombatServer.canStartTechnique(victim)
+                    || dashTransfer!=null && V3PostAttackFreeze.matchesDash(player,locked,dashTransfer)
+                        && V3CombatServer.canTransferDashVictim(victim)))) return false;
+        if ((controlOnly || controlled || ultimate) && net.neoforged.neoforge.common.NeoForge.EVENT_BUS.post(
                 new net.bullettrain.xenopixelsmod.api.event.TechniqueControlEvent(player, locked, technique.id())).isCanceled()) {
             return false;
         }
@@ -412,14 +450,18 @@ public final class V3TechniqueRuntime {
                 || (needLock && approved != locked)
                 || controlled && (VICTIMS.containsKey(locked.getUUID())
                 || !CombatKnockback.canKnockBack(locked)
-                || locked instanceof ServerPlayer victim && !V3CombatServer.canStartTechnique(victim))) return false;
+                || locked instanceof ServerPlayer victim && !(V3CombatServer.canStartTechnique(victim)
+                    || dashTransfer!=null && V3PostAttackFreeze.matchesDash(player,locked,dashTransfer)
+                        && V3CombatServer.canTransferDashVictim(victim)))) return false;
         long now = player.getServer().getTickCount();
         CastGate gate = GATES.computeIfAbsent(player.getUUID(), id -> new CastGate());
         if (!gate.admit(technique.id(), now, technique.cooldownTicks(), owns(player))) {
             hint(player, technique.name() + " is not ready");
             return false;
         }
-        Cast cast = new Cast(technique, locked, session, now, controlOnly);
+        Cast cast = new Cast(technique, locked, session, now, controlOnly,randomRush);
+        cast.dashTransfer=dashTransfer;
+        if(randomRush!=null)cast.held=false;
         boolean committed = false;
         // Provisional scoped registration: from here until commit, this fighter "owns" a cast, so a
         // reentrant cast() reached from any callback below is refused by the gate and cannot be
@@ -437,9 +479,11 @@ public final class V3TechniqueRuntime {
                 cast.victimOwned = true;
                 VICTIMS.put(locked.getUUID(), cast);
                 if (locked instanceof Mob mob) {
-                    cast.victimNoAi = mob.isNoAi();
-                    cast.victimAiOwned = true;
-                    mob.setNoAi(true);
+                    // FreezeOwnership captures the real pre-freeze value and stamps it into the
+                    // entity's save data, so a chunk unload or a crash between here and the restore
+                    // is repaired on the next join instead of persisting NoAI forever.
+                    cast.victimAiOwned = net.bullettrain.xenopixelsmod.combat.FreezeOwnership.acquire(
+                            mob, net.bullettrain.xenopixelsmod.combat.FreezeOwnership.Reason.TECHNIQUE);
                     net.bullettrain.xenopixelsmod.compat.npc.NpcCombatBrain.disengage(locked);
                 }
                 locked.setNoGravity(true);
@@ -462,7 +506,34 @@ public final class V3TechniqueRuntime {
             // Resource writes can also fire listeners; re-check before the fighter is committed.
             if (!stillAdmissible(player, cast, locked, controlled, needLock)) return false;
             net.bullettrain.xenopixelsmod.combat.v3.V3DashCamera.stop(player);
+            if(ultimateOpening!=null){
+                // Commit only after admission/payment; the entire swept body path must stay clear.
+                if(!CombatKnockback.canKnockBack(locked) || !safeOpening(locked,ultimateOpening))return false;
+                CombatKnockback.set(locked,Vec3.ZERO);
+                if(locked instanceof ServerPlayer victim)
+                    victim.connection.teleport(ultimateOpening.x,ultimateOpening.y,ultimateOpening.z,victim.getYRot(),victim.getXRot());
+                else locked.teleportTo(ultimateOpening.x,ultimateOpening.y,ultimateOpening.z);
+                cast.freezeAt=locked.position();
+            }
+            if(cast.dashTransfer!=null){
+                if(!V3PostAttackFreeze.transferDash(player,locked,cast.dashTransfer))return false;
+                cast.victimGravity=cast.dashTransfer.noGravity();
+                // transferDash above already finished the cinematic hold, which released
+                // Reason.CINEMATIC and put the real pre-freeze value back — so this acquire
+                // re-captures that original rather than inheriting the frozen state. The dash
+                // transfer's own recorded noAi is therefore no longer needed to restore anything.
+                if(locked instanceof Mob mob)
+                    cast.victimAiOwned = net.bullettrain.xenopixelsmod.combat.FreezeOwnership.acquire(
+                            mob, net.bullettrain.xenopixelsmod.combat.FreezeOwnership.Reason.TECHNIQUE);
+                locked.setNoGravity(true);
+                if(locked instanceof ServerPlayer victim){
+                    V3Motion.inheritCinematicGravity(victim,cast.id,cast.victimGravity);
+                    V3CombatServer.setCinematic(victim,true);
+                }
+                cast.dashTransfer=null;
+            }
             cast.started = true;
+            net.bullettrain.xenopixelsmod.combat.v3.ki.CastKiLifetime.begin(player, locked, cast.id, technique.type(), false);
             if (net.bullettrain.xenopixelsmod.combat.v3.V3KaiokenBurst.isKaiokenTechnique(
                     technique.id(), technique.name())) {
                 net.bullettrain.xenopixelsmod.combat.v3.V3KaiokenBurst.begin(player,
@@ -479,6 +550,17 @@ public final class V3TechniqueRuntime {
                 end(player, cast, true, true);
             }
         }
+    }
+
+    private static boolean safeOpening(LivingEntity target,Vec3 landing){
+        if(landing==null || !net.bullettrain.xenopixelsmod.combat.v3.V3TargetingRules.finite(landing))return false;
+        Vec3 move=landing.subtract(target.position());
+        var path=target.getBoundingBox().expandTowards(move);
+        // Every crossed chunk is checked before the collision query, which must not load terrain.
+        int minX=net.minecraft.util.Mth.floor(path.minX)>>4,maxX=net.minecraft.util.Mth.floor(path.maxX)>>4;
+        int minZ=net.minecraft.util.Mth.floor(path.minZ)>>4,maxZ=net.minecraft.util.Mth.floor(path.maxZ)>>4;
+        for(int x=minX;x<=maxX;x++)for(int z=minZ;z<=maxZ;z++)if(!target.level().hasChunk(x,z))return false;
+        return target.level().getWorldBorder().isWithinBounds(path) && target.level().noCollision(target,path);
     }
 
     /** Nearest living entity along the eye ray within {@code range}, or null. */
@@ -522,6 +604,7 @@ public final class V3TechniqueRuntime {
     private static boolean stillAdmissible(ServerPlayer player, Cast cast, LivingEntity locked, boolean controlled,
                                            boolean needLock) {
         if (CASTS.get(player.getUUID()) != cast) return false;
+        if(cast.dashTransfer!=null && !V3PostAttackFreeze.matchesDash(player,locked,cast.dashTransfer))return false;
         if (!V3CombatServer.canStartTechnique(player)) return false;
         if (!cast.session.equals(V3CombatServer.session(player))) return false;
         if (!locked.isAlive() || locked.isRemoved() || locked.level() != player.level()) return false;
@@ -570,13 +653,32 @@ public final class V3TechniqueRuntime {
             end(player, cast, true, true); return;
         }
         // The victim of a technique stays exactly where the technique caught them.
-        if ((cast.victimOwned || !cast.controlled && cast.acceptedContact) && now < cast.freezeUntil) {
+        if(cast.randomRush!=null && cast.randomRush.freezeDuringAttack() && cast.launchedVictim
+                && !net.bullettrain.xenopixelsmod.combat.v2.V2ChargedArc.active(target)){
+            cast.freezeAt=target.position();cast.launchedVictim=false;
+        }
+        if (!cast.ended && (cast.randomRush==null?(cast.victimOwned || !cast.controlled && cast.acceptedContact) && now < cast.freezeUntil
+                :cast.randomRush.freezeDuringAttack() && cast.victimOwned && !cast.launchedVictim)) {
             if (!CombatKnockback.canKnockBack(target)) { end(player, cast, true, true); return; }
             V3CombatServer.techniqueFreeze(player, target, cast.freezeAt);
         }
         if (CASTS.get(player.getUUID()) != cast) return;
+        if (cast.rushStarted && !cast.ended) faceTarget(player, target);
         if (cast.approaching) {
             if (!approach(player, target, cast, now)) return;
+        } else if (cast.rushStarted && !cast.launchedVictim && cast.timeline.elapsed(now) <= cast.lastStrikeTick) {
+            // Continue tracking the same admitted victim throughout the melee
+            // phase, including after intermediate launches. Bone reach is not
+            // a substitute for correct world height and actual contact range.
+            if (!followRush(player, target, cast)) return;
+        }
+        // Held radial techniques can reach END without a KI_RELEASE beat. Apply the same
+        // projectile-lifetime gate here before the held loop can consume END.
+        if (cast.timeline.due(V3Beat.Kind.END, now)
+                && net.bullettrain.xenopixelsmod.combat.v3.ki.CastKiLifetime.active(player.getUUID(), cast.id)) {
+            cast.timeline.delay(1);
+            cast.freezeUntil++;
+            return;
         }
         if (cast.held) {
             V3Beat beat;
@@ -609,18 +711,29 @@ public final class V3TechniqueRuntime {
             cast.cameraPaused = false;
         }
         V3Beat beat;
-        while ((beat = cast.timeline.take(now, null)) != null) {
+        // Wait at END before consuming it. Queued barrage shots and live native
+        // projectiles keep their pose and victim ownership until actual completion.
+        if (cast.timeline.due(V3Beat.Kind.END, now)
+                && net.bullettrain.xenopixelsmod.combat.v3.ki.CastKiLifetime.active(player.getUUID(), cast.id)) {
+            cast.timeline.delay(1);
+            cast.freezeUntil++;
+            return;
+        }
+        while ((beat = cast.timeline.take(now, V3Beat.Kind.END)) != null) {
             run(player, target, cast, beat, now);
             if (CASTS.get(player.getUUID()) != cast) return;
             if (cast.approaching) return;
+        }
+        if (cast.timeline.due(V3Beat.Kind.END, now)) {
+            if (net.bullettrain.xenopixelsmod.combat.v3.ki.CastKiLifetime.active(player.getUUID(), cast.id)) {
+                cast.timeline.delay(1); cast.freezeUntil++; return;
+            }
+            run(player, target, cast, cast.timeline.take(now, null), now);
         }
         if (cast.timeline.finished()) {
             // Owner: hold camera + freeze after END like Ultimate Finisher
             // (/xenoset v3.strikeCinematicCameraHoldTicks).
             if (now < cast.cameraHoldUntil) {
-                if ((cast.victimOwned || cast.acceptedContact) && CombatKnockback.canKnockBack(target)) {
-                    V3CombatServer.techniqueFreeze(player, target, cast.freezeAt);
-                }
                 if (!cast.camera.isEmpty() && !cast.cameraPaused) {
                     camera(player, cast, cast.startedAt + cast.technique.durationTicks(), true);
                     cast.cameraPaused = true;
@@ -657,6 +770,26 @@ public final class V3TechniqueRuntime {
         GATES.remove(player.getUUID());
     }
 
+    /**
+     * The victim left the level or died: drop its control entry and restore what holding it took.
+     *
+     * <p>{@link #forget} is keyed by caster, so nothing used to clear {@code VICTIMS} when the
+     * <i>victim</i> went away. The entry then outlived the entity, {@link #isControlledVictim} stayed
+     * true forever, and {@code XenoNpcEntity#aiStep} kept taking its controlled-victim early return
+     * without ever clearing {@code NoAI} — which vanilla persists, so the NPC came back frozen after
+     * a reload. Called from {@code FreezeLifecycle} on leave and on death.
+     *
+     * <p>{@code finishVictim} runs first, while the mapping still matches the cast it guards on; the
+     * unconditional remove afterwards is what guarantees the entry cannot survive even if that
+     * guard bailed because a newer cast had already taken the victim over.
+     */
+    public static void forgetVictim(UUID victim) {
+        if (victim == null) return;
+        Cast cast = VICTIMS.get(victim);
+        if (cast != null) finishVictim(cast);
+        VICTIMS.remove(victim);
+    }
+
     /** Process teardown: no cast or cooldown memory survives a server restart in the same JVM. */
     public static void clearAll() {
         for (Map.Entry<UUID, Cast> entry : List.copyOf(CASTS.entrySet())) {
@@ -672,6 +805,8 @@ public final class V3TechniqueRuntime {
 
     private static void end(ServerPlayer player, Cast cast, boolean resetState, boolean cancelShots) {
         cast.timeline.cancel();
+        if(cast.randomRush!=null && cast.randomRush.freezeDuringAttack())
+            net.bullettrain.xenopixelsmod.combat.v2.V2ChargedArc.cancel(cast.victim);
         boolean removed = CASTS.remove(player.getUUID(), cast);
         if (removed && cast.started
                 && net.bullettrain.xenopixelsmod.combat.v3.V3KaiokenBurst.isKaiokenTechnique(
@@ -703,6 +838,7 @@ public final class V3TechniqueRuntime {
                     }
                 } finally {
                     if (cancelShots) V3KiShots.cancelCast(player.getUUID(), cast.id);
+                    net.bullettrain.xenopixelsmod.combat.v3.ki.CastKiLifetime.finish(player.getUUID(), cast.id, cancelShots);
                     if (cast.started && !cast.camera.isEmpty()) {
                         ModNetwork.sendToPlayer(player, CombatV3CameraPacket.stop(cast.session, cast.id, cast.target, cast.targetId));
                     }
@@ -727,8 +863,12 @@ public final class V3TechniqueRuntime {
         switch (beat.kind()) {
             case POSE -> {
                 try {
-                    NetworkHandler.sendToTrackingEntityAndSelf(
-                            new MeleeAnimationS2C(player.getId(), beat.payload(), false, 1.0f), player);
+                    // Phased Ki owns its own controller. Letting attack_controller
+                    // also replay the old full fire clip blends a premature guard over it.
+                    String prefix = net.bullettrain.xenopixelsmod.combat.v3.ki.V3NativeKi.authoredAnimationPrefix(cast.technique);
+                    if (prefix == null || !beat.payload().equals(prefix + "_fire"))
+                        NetworkHandler.sendToTrackingEntityAndSelf(
+                                new MeleeAnimationS2C(player.getId(), beat.payload(), false, 1.0f), player);
                 } catch (RuntimeException | LinkageError unavailable) {
                     // Presentation only.
                 }
@@ -740,17 +880,46 @@ public final class V3TechniqueRuntime {
                     net.bullettrain.xenopixelsmod.combat.v3.V3SolarFlare.flash(player);
                 }
             }
-            case APPROACH -> {
-                if (player.distanceTo(target) > 2.4) {
+            case APPROACH, REAPPROACH, DASH -> {
+                cast.rushStarted = true;
+                cast.repinOnArrival = beat.kind() == V3Beat.Kind.REAPPROACH
+                        && (!cast.victimOwned || cast.randomRush!=null && cast.launchedVictim);
+                cast.movementLanding = beat.kind() == V3Beat.Kind.DASH
+                        ? net.bullettrain.xenopixelsmod.combat.Bt3Landing.vanishLanding(player, target, 0) : null;
+                if (beat.kind() == V3Beat.Kind.DASH && cast.movementLanding == null) { end(player, cast, true, true); return; }
+                faceTarget(player, target);
+                Vec3 contact = cast.movementLanding == null ? rushContact(player, target) : cast.movementLanding;
+                if (cast.repinOnArrival || contact.distanceToSqr(player.position()) > .15 * .15) {
                     cast.approaching = true;
                     cast.travelPose = net.bullettrain.xenopixelsmod.combat.v2.V2TravelPose.begin(player, true, true);
-                    cast.approachSpeed = Math.clamp((player.distanceTo(target) - 2) / Math.max(1, beat.duration()), 0.15, 3);
+                    cast.approachSpeed = Math.clamp(contact.distanceTo(player.position()) / Math.max(1, beat.duration()), 0.15, 3)
+                            * cast.rushFlightSpeedMultiplier;
                     cast.approachUntil = now + Math.max(beat.duration(), (int) Math.ceil(player.distanceTo(target) / cast.approachSpeed) + 20);
                     camera(player, cast, now, true);
                     cast.cameraPaused = true;
                 }
             }
+            case VANISH -> {
+                Vec3 landing = net.bullettrain.xenopixelsmod.combat.Bt3Landing.vanishLanding(player, target, 0);
+                if (landing == null || !player.level().hasChunkAt(net.minecraft.core.BlockPos.containing(landing))) {
+                    end(player, cast, true, true); return;
+                }
+                player.connection.teleport(landing.x, landing.y, landing.z, player.getYRot(), player.getXRot());
+                player.setDeltaMovement(Vec3.ZERO); faceTarget(player, target);
+                net.bullettrain.xenopixelsmod.combat.v3.V3AttackSounds.vanish(player);
+            }
+            case LAUNCH -> {
+                cast.freezeUntil = now; if(cast.randomRush==null)releaseVictim(cast); cast.launchedVictim = true;
+                if (cast.acceptedContact) {
+                    Vec3 away = target.position().subtract(player.position()).multiply(1, 0, 1);
+                    if (away.lengthSqr() < 1e-6) away = player.getLookAngle().multiply(1, 0, 1);
+                    Vec3 launch = shoveDirection(beat.payload(), away);
+                    net.bullettrain.xenopixelsmod.combat.v2.V2ChargedArc.start(target, launch, now,
+                            beat.value(), Math.abs(launch.y) > .99 ? 0 : 3, Math.max(1, beat.duration()));
+                }
+            }
             case STRIKE -> {
+                if (cast.rushStarted) faceTarget(player, target);
                 float accepted = V3CombatServer.techniqueStrike(player, target, beat.value());
                 if (CASTS.get(player.getUUID()) == cast && V3CombatServer.canContinueTechnique(player, cast.session, cast.target)
                         && resolveCastVictim(player, cast) == target && accepted > 0f) {
@@ -761,7 +930,8 @@ public final class V3TechniqueRuntime {
             }
             case SHOVE -> {
                 cast.freezeUntil = now;
-                releaseVictim(cast);
+                if(cast.randomRush==null)releaseVictim(cast);
+                cast.launchedVictim=true;
                 if (cast.acceptedContact) {
                     Vec3 away = target.position().subtract(player.position()).multiply(1, 0, 1);
                     if (away.lengthSqr() < 1e-6) away = player.getLookAngle().multiply(1, 0, 1);
@@ -788,37 +958,52 @@ public final class V3TechniqueRuntime {
                         == net.bullettrain.xenopixelsmod.combat.v3.ki.KiAttackVisualMode.DMZ) {
                     String radialKi = cast.technique.kiTechnique();
                     if (radialKi == null || radialKi.isBlank()) radialKi = "final_explosion";
-                    net.bullettrain.xenopixelsmod.combat.v3.ki.V3NativeKi.fire(player, radialKi);
+                    final String dispatchRadial = radialKi;
+                    net.bullettrain.xenopixelsmod.combat.v3.ki.CastKiLifetime.dispatch(player, cast.id,
+                            () -> net.bullettrain.xenopixelsmod.combat.v3.ki.V3NativeKi.fire(player, dispatchRadial));
                 }
             }
             case HOLD_TARGET -> {
-                if (cast.acceptedContact) V3CombatServer.techniqueHold(player, target, Math.max(1, beat.duration()));
+                if (cast.acceptedContact && (cast.randomRush==null || cast.randomRush.freezeDuringAttack())) V3CombatServer.techniqueHold(player, target, Math.max(1, beat.duration()));
             }
             case KI_CHARGE -> {
-                if (net.bullettrain.xenopixelsmod.config.XenoServerConfig.kiAttackVisual().usesOwnedHdVisuals()) {
-                    V3KiShots.charge(player, target, style(cast.technique), cast.id);
-                }
-                // DMZ mode charges via the dispatcher on release; charge pose still plays.
+                net.bullettrain.xenopixelsmod.combat.v3.ki.CastKiLifetime.dispatch(player, cast.id,
+                        () -> net.bullettrain.xenopixelsmod.combat.v3.ki.V3NativeKi.chargeOriginal(player, cast.technique));
             }
             case KI_RELEASE -> {
-                if (net.bullettrain.xenopixelsmod.config.XenoServerConfig.kiAttackVisual()
-                        == net.bullettrain.xenopixelsmod.combat.v3.ki.KiAttackVisualMode.DMZ) {
-                    String nativeId = cast.technique.kiTechnique();
-                    if (nativeId == null || nativeId.isBlank()) {
-                        nativeId = net.bullettrain.xenopixelsmod.combat.v3.ki.V3NativeKi.nativeId(cast.technique.id());
-                    }
-                    if (!net.bullettrain.xenopixelsmod.combat.v3.ki.V3NativeKi.fire(player, nativeId, cast.technique)) {
-                        // Fall back to owned shots if the DMZ template is missing.
-                        V3KiShots.fire(player, target, cast.id, cast.session,
-                                style(cast.technique).charged(chargePower(cast.chargeTicks)), now);
-                    }
-                } else {
-                    V3KiShots.fire(player, target, cast.id, cast.session,
-                            style(cast.technique).charged(chargePower(cast.chargeTicks)), now);
-                }
+                String posePrefix = net.bullettrain.xenopixelsmod.combat.v3.ki.V3NativeKi.authoredAnimationPrefix(cast.technique);
+                net.bullettrain.xenopixelsmod.combat.v3.ki.CastKiLifetime.firePose(player, cast.id,
+                        posePrefix);
+                if (posePrefix != null) NetworkHandler.sendToTrackingEntityAndSelf(
+                        new com.dragonminez.common.network.S2C.TriggerAnimationS2C(player.getUUID(),
+                                com.dragonminez.common.network.S2C.TriggerAnimationS2C.AnimationType.KI_ANIMATION,
+                                0, -1, posePrefix + "_fire"), player);
+                // DMZ resolves CameraAimHelper, which may hold the cinematic
+                // camera's floor-facing ray. Override it immediately before
+                // dispatch with the current admitted target's body center.
+                faceTarget(player, target);
+                net.bullettrain.xenopixelsmod.combat.v3.ki.CastKiLifetime.dispatch(player, cast.id,
+                        () -> net.bullettrain.xenopixelsmod.combat.v3.ki.V3NativeKi.fireOriginal(player, cast.technique));
             }
             case KI_HOLD -> { }
-            case END -> { }
+            case END -> {
+                if (!cast.ended) {
+                    cast.ended = true;
+                    net.bullettrain.xenopixelsmod.combat.v3.ki.CastKiLifetime.finish(player.getUUID(), cast.id, false);
+                    cast.cameraHoldUntil = now + cast.postCameraTicks;
+                    // Restore the old cast's movement before capturing the
+                    // independent hold. Pin at the actual finishing position,
+                    // never teleport a launched victim back to cast-start feet.
+                    if(cast.randomRush!=null && cast.randomRush.freezeDuringAttack())
+                        net.bullettrain.xenopixelsmod.combat.v2.V2ChargedArc.cancel(target);
+                    finishVictim(cast);
+                    V3PostAttackFreeze.start(player, target, cast.technique.id(), now, cast.postFreezeTicks);
+                    // The sequence is over. Keep the authored camera hold, but hand movement
+                    // back to the caster immediately; only the target receives post-freeze.
+                    V3Motion.releaseCinematic(player, cast.id);
+                    V3CombatServer.setCinematic(player, false);
+                }
+            }
         }
     }
 
@@ -827,9 +1012,21 @@ public final class V3TechniqueRuntime {
     }
 
     private static boolean approach(ServerPlayer player, LivingEntity target, Cast cast, int now) {
-        Vec3 to = target.position().subtract(player.position());
-        if (to.lengthSqr() <= 2.4 * 2.4) {
+        Vec3 to = (cast.movementLanding == null ? rushContact(player, target) : cast.movementLanding).subtract(player.position());
+        faceTarget(player, target);
+        if (to.lengthSqr() <= .15 * .15) {
             cast.approaching = false;
+            cast.movementLanding = null;
+            if (cast.repinOnArrival && (cast.randomRush==null || cast.randomRush.freezeDuringAttack())) {
+                net.bullettrain.xenopixelsmod.combat.v2.V2ChargedArc.cancel(target);
+                if (target instanceof ServerPlayer victim && !V3Motion.acquire(victim, V3Motion.Owner.CINEMATIC, cast.id)) {
+                    end(player, cast, true, true); return false;
+                }
+                cast.victimOwned = true; cast.freezeAt = target.position(); target.setNoGravity(true);
+                cast.freezeUntil = now + Math.max(0, cast.technique.durationTicks() - cast.timeline.elapsed(now));
+                if (target instanceof ServerPlayer victim) V3CombatServer.setCinematic(victim, true);
+                cast.launchedVictim = false; cast.repinOnArrival = false;
+            }
             net.bullettrain.xenopixelsmod.combat.v2.V2TravelPose.end(player, cast.travelPose);
             cast.travelPose = null;
             player.setDeltaMovement(Vec3.ZERO);
@@ -841,19 +1038,14 @@ public final class V3TechniqueRuntime {
         if (net.bullettrain.xenopixelsmod.combat.v2.V2TravelPose.flightLost(player, cast.travelPose)) {
             end(player, cast, true, true); return false;
         }
-        if (now > cast.approachUntil || to.length() > approachRange()) { end(player, cast, true, true); return false; }
-        Vec3 movement = to.normalize().scale(Math.min(cast.approachSpeed, Math.max(0.05, to.length() - 2)));
+        if (now > cast.approachUntil || player.distanceTo(target) > approachRange()) { end(player, cast, true, true); return false; }
+        Vec3 movement = to.normalize().scale(Math.min(cast.approachSpeed, to.length()));
         Vec3 next = player.position().add(movement);
         if (!V3CombatServer.loaded(player, next)
                 || !player.level().getWorldBorder().isWithinBounds(player.getBoundingBox().move(movement))
                 || !player.level().noCollision(player, player.getBoundingBox().expandTowards(movement))) {
             end(player, cast, true, true); return false;
         }
-        float yaw = (float) (Math.toDegrees(Math.atan2(to.z, to.x)) - 90);
-        player.setYRot(yaw);
-        player.setXRot((float) -Math.toDegrees(Math.atan2(to.y, Math.hypot(to.x, to.z))));
-        player.setYHeadRot(yaw);
-        player.yBodyRot = yaw;
         player.setDeltaMovement(movement);
         player.hurtMarked = true;
         player.hasImpulse = true;
@@ -864,6 +1056,50 @@ public final class V3TechniqueRuntime {
         return false;
     }
 
+    private static Vec3 rushContact(ServerPlayer player, LivingEntity target) {
+        return V3RushGeometry.contactPosition(player.position(), player.getBbHeight(),
+                target.position(), target.getBbHeight(), player.getLookAngle());
+    }
+
+    private static void faceTarget(ServerPlayer player, LivingEntity target) {
+        Vec3 aim = V3RushGeometry.aim(player.getEyePosition(), target.getBoundingBox().getCenter(), player.getLookAngle());
+        float yaw = com.dragonminez.common.compat.CameraAimHelper.yaw(player, aim);
+        player.setYRot(yaw);
+        player.setXRot(com.dragonminez.common.compat.CameraAimHelper.pitch(aim));
+        player.setYHeadRot(yaw);
+        player.yBodyRot = yaw;
+        com.dragonminez.common.compat.CameraAimHelper.store(player, aim);
+    }
+
+    private static boolean followRush(ServerPlayer player, LivingEntity target, Cast cast) {
+        if (player.distanceTo(target) > approachRange()) { end(player, cast, true, true); return false; }
+        Vec3 to = rushContact(player, target).subtract(player.position());
+        if (to.lengthSqr() < .05 * .05) {
+            player.setDeltaMovement(Vec3.ZERO);
+            player.connection.send(new ClientboundSetEntityMotionPacket(player));
+            return true;
+        }
+        Vec3 movement = to.normalize().scale(Math.min(.8 * cast.rushFlightSpeedMultiplier, to.length()));
+        Vec3 next = player.position().add(movement);
+        // Keep movement collision checked. A body-level anchor inside solid
+        // terrain cannot authorize teleporting or punching through that terrain.
+        if (!V3CombatServer.loaded(player, next)
+                || !player.level().getWorldBorder().isWithinBounds(player.getBoundingBox().move(movement))) {
+            end(player, cast, true, true); return false;
+        }
+        if (!player.level().noCollision(player, player.getBoundingBox().expandTowards(movement))) {
+            player.setDeltaMovement(Vec3.ZERO);
+            player.connection.send(new ClientboundSetEntityMotionPacket(player));
+            return true;
+        }
+        player.setDeltaMovement(movement);
+        player.hurtMarked = true;
+        player.hasImpulse = true;
+        player.fallDistance = 0f;
+        player.connection.send(new ClientboundSetEntityMotionPacket(player));
+        return true;
+    }
+
     private static void releaseVictim(Cast cast) {
         if (!cast.victimOwned || VICTIMS.get(cast.target) != cast) return;
         cast.victimOwned = false;
@@ -872,7 +1108,7 @@ public final class V3TechniqueRuntime {
                 try {
                     V3Motion.releaseCinematic(victim, cast.id);
                 } finally {
-                    V3CombatServer.setCinematic(victim, false);
+                    V3CombatServer.setCinematic(victim, V3PostAttackFreeze.isFrozen(victim));
                 }
             }
         } else cast.victim.setNoGravity(cast.victimGravity);
@@ -882,10 +1118,23 @@ public final class V3TechniqueRuntime {
         try {
             releaseVictim(cast);
         } finally {
-            if (VICTIMS.remove(cast.target, cast) && cast.victimAiOwned && cast.victim instanceof Mob mob) {
+            // The restore no longer rides on the two-arg VICTIMS.remove. That guard made the release
+            // conditional on this cast still being the mapped one, so a victim taken over by a newer
+            // cast — or any path that dropped the mapping first — skipped it while leaving
+            // victimAiOwned set, and nothing else ever released the freeze. NoAI is persisted by
+            // vanilla, so the NPC stayed frozen through every subsequent reload.
+            //
+            // FreezeOwnership.release is reason-scoped and idempotent, so releasing here is safe even
+            // when the mapping is already gone, and clearing victimAiOwned first means this cast can
+            // never release twice.
+            if (cast.victimAiOwned) {
                 cast.victimAiOwned = false;
-                mob.setNoAi(cast.victimNoAi);
+                if (cast.victim instanceof Mob mob) {
+                    net.bullettrain.xenopixelsmod.combat.FreezeOwnership.release(
+                            mob, net.bullettrain.xenopixelsmod.combat.FreezeOwnership.Reason.TECHNIQUE);
+                }
             }
+            VICTIMS.remove(cast.target, cast);
         }
     }
 
@@ -899,6 +1148,7 @@ public final class V3TechniqueRuntime {
             case RIGHT -> new Vec3(-flat.z, 0, flat.x);
             case BACK -> flat.scale(-1);
             case UP -> new Vec3(0, 1, 0);
+            case DOWN -> new Vec3(0, -1, 0);
             case NONE, FORWARD -> flat;
         };
     }

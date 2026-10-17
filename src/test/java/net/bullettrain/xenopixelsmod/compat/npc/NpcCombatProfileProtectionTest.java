@@ -25,14 +25,20 @@ class NpcCombatProfileProtectionTest {
     }
 
     @Test
-    void kiSenseRetaliationLockRoundTripsAndDefaultsOff() {
+    void kiSenseRetaliationLockRoundTripsAndDefaultsOn() {
         NpcCombatProfile profile = NpcCombatProfile.fromTag(new CompoundTag());
-        assertFalse(profile.kiSenseLockOnRetaliator);
+        assertTrue(profile.kiSenseLockOnRetaliator);
+        assertTrue(profile.skills.isActive(NpcSkillSet.KI_SENSE));
 
         profile.skills.set(NpcSkillSet.KI_SENSE, true, 1);
         profile.kiSenseLockOnRetaliator = true;
         NpcCombatProfile decoded = NpcCombatProfile.fromTag(profile.toTag());
         assertTrue(decoded.skills.isActive(NpcSkillSet.KI_SENSE));
         assertTrue(decoded.kiSenseLockOnRetaliator);
+        decoded.kiSenseLockOnRetaliator = false;
+        decoded.skills.setActive(NpcSkillSet.KI_SENSE, false);
+        NpcCombatProfile disabled = NpcCombatProfile.fromTag(decoded.toTag());
+        assertFalse(disabled.kiSenseLockOnRetaliator);
+        assertFalse(disabled.skills.isActive(NpcSkillSet.KI_SENSE));
     }
 }

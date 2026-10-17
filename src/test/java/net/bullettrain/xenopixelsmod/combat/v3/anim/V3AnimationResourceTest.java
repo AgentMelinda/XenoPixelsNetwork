@@ -17,6 +17,20 @@ class V3AnimationResourceTest {
     private static final Set<String> BONES = Set.of(
             "root", "waist", "head", "left_arm", "right_arm", "left_leg", "right_leg");
 
+    @Test void activeOccurrenceOwnsHeadAndArmsAgainstProceduralLookAndWalking() {
+        String clip = "combat.xeno_bt3_v3_batch2_meteor_163";
+        for (String bone : Set.of("head", "left_arm", "right_arm")) {
+            assertTrue(V3AnimationCatalog.preservesBonePose(clip, true, bone));
+            assertFalse(V3AnimationCatalog.preservesBonePose(clip, false, bone));
+            assertFalse(V3AnimationCatalog.preservesBonePose("combat.one_handed_punch_right", true, bone));
+            assertFalse(V3AnimationCatalog.preservesBonePose(V3AnimationCatalog.PREFIX + "missing", true, bone));
+            assertFalse(V3AnimationCatalog.preservesBonePose(V3AnimationCatalog.CONTROL_RELEASE, true, bone));
+        }
+        assertFalse(V3AnimationCatalog.preservesBonePose(clip, true, "tail"));
+        assertFalse(V3AnimationCatalog.preservesBonePose(null, true, "head"));
+        assertFalse(V3AnimationCatalog.preservesBonePose(clip, true, null));
+    }
+
     @Test void namesAndDurationsComeFromAuthoredResourceWithoutGenericFallback() {
         var parsed = V3AnimationCatalog.parse(new StringReader("""
                 {"animations":{"%s":{"animation_length":0.31}}}

@@ -20,7 +20,11 @@ import net.neoforged.api.distmarker.OnlyIn;
  */
 @OnlyIn(Dist.CLIENT)
 public final class XenoMusicPlayer {
-    private static SoundInstance current;
+    private static FadingMusicSound current;
+    private static FadingMusicSound cinematic;
+    private static java.util.UUID playingCast;
+    private static final java.util.Set<java.util.UUID> startedCasts = new java.util.HashSet<>();
+    private static String cinematicId;
     private static String currentId;
     /** Ticks to wait after a track ends before the next starts, so tracks do not run together. */
     private static int gapTicks;
@@ -32,7 +36,8 @@ public final class XenoMusicPlayer {
     private XenoMusicPlayer() {}
 
     public static boolean playing() {
-        return current != null && Minecraft.getInstance().getSoundManager().isActive(current);
+        return cinematic != null && Minecraft.getInstance().getSoundManager().isActive(cinematic)
+                || current != null && Minecraft.getInstance().getSoundManager().isActive(current);
     }
 
     public static String currentTrackId() {
@@ -42,7 +47,7 @@ public final class XenoMusicPlayer {
     }
 
     public static String currentTrackName() {
-        return XenoMusicTracks.displayName(currentTrackId());
+        return XenoMusicTracks.displayName(cinematic != null ? cinematicId : currentTrackId());
     }
 
     /** Called every client tick; nothing happens without a world or with music disabled. */
@@ -50,9 +55,11 @@ public final class XenoMusicPlayer {
         Minecraft mc = Minecraft.getInstance();
         if (!XenoClientConfig.musicEnabled || mc.level == null || XenoClientConfig.musicTracks.isEmpty()) {
             stop();
+            stopCinematic();
             return;
         }
         if (paused) return;
+        updateCinematic();
         if (current != null) {
             if (mc.getSoundManager().isActive(current)) {
                 // Vanilla would otherwise start its own biome music over ours.
@@ -82,9 +89,8 @@ public final class XenoMusicPlayer {
             return;
         }
         mc.getMusicManager().stopPlaying();
-        SoundInstance instance = new SimpleSoundInstance(location, SoundSource.MUSIC,
-                Math.max(0f, Math.min(1f, XenoClientConfig.musicVolume)), 1.0f,
-                SoundInstance.createUnseededRandom(), false, 0, SoundInstance.Attenuation.NONE, 0, 0, 0, true);
+        FadingMusicSound instance = new FadingMusicSound(location, false);
+        instance.duck(cinematic != null);
         mc.getSoundManager().play(instance);
         current = instance;
         currentId = id;
@@ -114,17 +120,55 @@ public final class XenoMusicPlayer {
             currentId = null;
         }
     }
+    private static void updateCinematic() {
+        Minecraft mc = Minecraft.getInstance();
+        if (!XenoClientConfig.cinematicMusicEnabled) {
+            stopCinematic();
+            if (current != null) current.duck(false);
+            return;
+        }
+        var desired = net.bullettrain.xenopixelsmod.client.combat.v3.ClientCastPresentation.musicCast();
+        if (cinematic != null) {
+            if (desired == null || !desired.cast().equals(playingCast)) cinematic.fadeOut();
+            if (!mc.getSoundManager().isActive(cinematic) || cinematic.isStopped()) stopCinematic();
+        }
+        if (cinematic == null && desired != null && startedCasts.add(desired.cast())) {
+            ResourceLocation id = ResourceLocation.tryParse(desired.music());
+            if (id != null && mc.getSoundManager().getSoundEvent(id) != null) {
+                cinematic = new FadingMusicSound(id, true, true);
+                playingCast = desired.cast(); cinematicId = desired.music();
+                mc.getSoundManager().play(cinematic);
+            }
+        }
+        if (current != null) current.duck(cinematic != null);
+        if (cinematic != null) mc.getMusicManager().stopPlaying();
+    }
+    private static void stopCinematic() {
+        if (cinematic != null) Minecraft.getInstance().getSoundManager().stop(cinematic);
+        cinematic = null; cinematicId = null; playingCast = null;
+    }
 
     /** Pause-menu / command controls. All of them persist the client config. */
     public static void setEnabled(boolean enabled) {
         XenoClientConfig.musicEnabled = enabled;
         paused = false;
-        if (!enabled) stop();
+        if (!enabled) { stop(); stopCinematic(); }
         else gapTicks = 0;
         XenoClientConfig.save();
     }
 
     public static void toggle() { setEnabled(!XenoClientConfig.musicEnabled); }
+
+    public static void setCinematicEnabled(boolean enabled) {
+        XenoClientConfig.cinematicMusicEnabled = enabled;
+        if (!enabled) {
+            stopCinematic();
+            if (current != null) current.duck(false);
+        }
+        XenoClientConfig.save();
+    }
+
+    public static void toggleCinematic() { setCinematicEnabled(!XenoClientConfig.cinematicMusicEnabled); }
 
     public static void next() { skip(1); }
 
@@ -157,17 +201,12 @@ public final class XenoMusicPlayer {
         if (!Float.isFinite(volume)) return;
         XenoClientConfig.musicVolume = Math.max(0f, Math.min(1f, volume));
         XenoClientConfig.save();
-        if (current != null && XenoClientConfig.musicEnabled) {
-            // Restart the same track at the new volume rather than leaving a stale level.
-            stop();
-            gapTicks = 0;
-            if (Minecraft.getInstance().level != null) start();
-        }
+        // Both streamed channels read the new volume on their next sound tick.
     }
 
     /** Pause/resume; pressing Play while powered off also enables playback. */
     public static void playPause() {
-        if (playing()) { stop(); paused = true; }
+        if (playing()) { stop(); stopCinematic(); paused = true; }
         else {
             paused = false;
             if (!XenoClientConfig.musicEnabled) setEnabled(true);
@@ -183,6 +222,8 @@ public final class XenoMusicPlayer {
     /** Leaving the world: let go of the sound handle; the config keeps the position. */
     public static void onLogout() {
         stop();
+        stopCinematic(); playingCast = null; startedCasts.clear();
+        net.bullettrain.xenopixelsmod.client.combat.v3.ClientCastPresentation.clear();
         paused = false;
         failedTracks = 0;
         gapTicks = 0;

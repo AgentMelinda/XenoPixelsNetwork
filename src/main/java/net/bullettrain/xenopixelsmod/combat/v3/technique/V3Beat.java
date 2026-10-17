@@ -10,13 +10,15 @@ package net.bullettrain.xenopixelsmod.combat.v3.technique;
  * @param value    a damage scale for STRIKE and RADIAL; otherwise 0
  */
 public record V3Beat(Kind kind, int tick, int duration, String payload, float value) {
-    public enum Kind { POSE, APPROACH, STRIKE, SHOVE, RADIAL, HOLD_TARGET, KI_CHARGE, KI_RELEASE, END, KI_HOLD }
+    public enum Kind { POSE, APPROACH, STRIKE, SHOVE, RADIAL, HOLD_TARGET, KI_CHARGE, KI_RELEASE, END, KI_HOLD,
+        DASH, VANISH, LAUNCH, REAPPROACH }
 
     public static final int MAX_TICK = 1200;
 
     public V3Beat {
         if (kind == null || tick < 0 || tick > MAX_TICK || duration < 0 || duration > MAX_TICK
-                || payload == null || payload.length() > 64 || !Float.isFinite(value) || value < 0f || value > 10f) {
+                || payload == null || payload.length() > 64 || !Float.isFinite(value) || value < 0f
+                || value > (kind == Kind.LAUNCH ? 128f : 10f)) {
             throw new IllegalArgumentException("Invalid V3 beat");
         }
     }

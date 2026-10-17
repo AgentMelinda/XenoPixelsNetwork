@@ -47,12 +47,12 @@ public final class V2Keys {
 
     private static final String CATEGORY = "key.categories.xenopixelsmod.v2";
     /** Bumped when a default moves, so profiles saved with the old default are moved once. */
-    private static final int LAYOUT = 3;
+    private static final int LAYOUT = 4;
 
     public static final KeyMapping LIGHT = mouse("v2_light", GLFW.GLFW_MOUSE_BUTTON_LEFT);
     public static final KeyMapping HEAVY = mouse("v2_heavy", GLFW.GLFW_MOUSE_BUTTON_RIGHT);
     public static final KeyMapping GUARD = key("v2_guard", GLFW.GLFW_KEY_R);
-    public static final KeyMapping VANISH = key("v2_vanish", GLFW.GLFW_KEY_B);
+    public static final KeyMapping VANISH = key("v2_vanish", GLFW.GLFW_KEY_A);
     public static final KeyMapping KI_BLAST = key("v2_ki_blast", GLFW.GLFW_KEY_Q);
     public static final KeyMapping LOCK = mouse("v2_lock", GLFW.GLFW_MOUSE_BUTTON_MIDDLE);
 
@@ -102,6 +102,10 @@ public final class V2Keys {
         boolean changed = false;
         if (XenoClientConfig.v2KeyLayout < 2 && on(VANISH, GLFW.GLFW_KEY_V)) {
             VANISH.setKeyModifierAndCode(KeyModifier.NONE, InputConstants.Type.KEYSYM.getOrCreate(GLFW.GLFW_KEY_B));
+            changed = true;
+        }
+        if (XenoClientConfig.v2KeyLayout < 4 && on(VANISH, GLFW.GLFW_KEY_B)) {
+            VANISH.setKeyModifierAndCode(KeyModifier.NONE, InputConstants.Type.KEYSYM.getOrCreate(GLFW.GLFW_KEY_A));
             changed = true;
         }
         if (on(GUARD, GLFW.GLFW_KEY_E) && GUARD.getKeyModifier() == KeyModifier.NONE) {

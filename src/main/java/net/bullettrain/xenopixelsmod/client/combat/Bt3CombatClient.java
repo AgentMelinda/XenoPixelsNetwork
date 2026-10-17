@@ -413,18 +413,23 @@ public final class Bt3CombatClient {
     }
 
     public static int getComboStep() {
+        if(XenoServerClientState.v3Controller())return net.bullettrain.xenopixelsmod.client.combat.v3.V3ClientState.comboHits();
         return comboStep;
     }
 
     public static int getComboTicksLeft() {
+        if(XenoServerClientState.v3Controller())return net.bullettrain.xenopixelsmod.client.combat.v3.V3ClientState.comboTicksLeft();
         return Math.max(0, comboTicksLeft);
     }
 
     public static int getComboWindowMaxTicks() {
+        if(XenoServerClientState.v3Controller())return net.bullettrain.xenopixelsmod.combat.v3.CombatComboCounter.WINDOW;
         return COMBO_WINDOW_TICKS;
     }
 
     public static float getComboWindowFraction() {
+        if(XenoServerClientState.v3Controller())return net.bullettrain.xenopixelsmod.client.combat.v3.V3ClientState.comboTicksLeft()
+                /(float)net.bullettrain.xenopixelsmod.combat.v3.CombatComboCounter.WINDOW;
         if (comboTicksLeft <= 0) return 0f;
         return Math.min(1f, comboTicksLeft / (float) COMBO_WINDOW_TICKS);
     }

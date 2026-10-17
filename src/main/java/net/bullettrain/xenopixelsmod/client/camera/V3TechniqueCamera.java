@@ -32,6 +32,8 @@ public final class V3TechniqueCamera {
     private static int expires;
     /** Frozen attacker→victim horizontal basis so rush APPROACH cannot thrash the cinematic. */
     private static Vec3 frozenForward;
+    private static Vec3 wideFallbackDirection;
+    private static final CinematicCameraMotion MOTION = new CinematicCameraMotion();
     private V3TechniqueCamera() {}
 
     public static void apply(CombatV3CameraPacket packet) {
@@ -39,6 +41,7 @@ public final class V3TechniqueCamera {
         var target = V3ClientState.target();
         boolean allowed = mc.player != null && mc.level != null && XenoServerClientState.v3Controller()
                 && !ContraptionControlCamera.active() && !UltimateFinisherCamera.active();
+        boolean newCast = SESSION.active() == null;
         if (!SESSION.apply(packet, V3ClientState.session(), target == null ? null : target.target(),
                 allowed && cameraState())) return;
         if (SESSION.active() == null) { clear(); return; }
@@ -48,9 +51,13 @@ public final class V3TechniqueCamera {
         }
         level = mc.level;
         receivedTick = mc.player.tickCount;
-        expires = receivedTick + packet.durationTicks() - packet.elapsedTicks() + 120;
+        expires = receivedTick + packet.durationTicks() - packet.elapsedTicks()
+                + Math.max(120, V3ClientState.config().strikeCameraHoldTicks() + 20);
         // Capture a stable basis once per cast; updating every frame during rush flickered with lock-on.
+        if (!newCast) return;
+        MOTION.reset();
         frozenForward = null;
+        wideFallbackDirection = null;
         if (mc.player != null && target != null) {
             Entity entity = mc.level.getEntity(packet.targetId());
             if (entity != null) {
@@ -72,7 +79,10 @@ public final class V3TechniqueCamera {
             clear(); return null;
         }
         double elapsed = packet.elapsedTicks() + (packet.paused() ? 0 : mc.player.tickCount - receivedTick + partialTick);
-        if (elapsed >= packet.durationTicks()) { clear(); return null; }
+        if (elapsed >= packet.durationTicks()) {
+            if (!packet.paused()) { clear(); return null; }
+            elapsed = packet.durationTicks() - .001;
+        }
         V3CameraBeat current = null, prior = null;
         for (V3CameraBeat beat : packet.beats()) {
             if (elapsed < beat.tick()) break;
@@ -82,37 +92,75 @@ public final class V3TechniqueCamera {
         if (current == null) return null;
         double t = current.progress(elapsed);
         Vec3 offset = prior == null ? current.position() : prior.position().lerp(current.position(), t);
+        offset = offset.scale(V3ClientState.config().cinematicCameraDistanceScale());
         Vec3 lookOffset = prior == null ? current.look() : prior.look().lerp(current.look(), t);
         double focusWeight = prior == null ? current.focus() : prior.focus() + (current.focus() - prior.focus()) * t;
         Vec3 attacker = mc.player.getPosition(partialTick).add(0, mc.player.getBbHeight() * 0.65, 0);
         Vec3 victim = target.getPosition(partialTick).add(0, target.getBbHeight() * 0.5, 0);
-        Vec3 live = victim.subtract(attacker).multiply(1, 0, 1);
-        // Prefer the cast-start forward once distance collapses during rush (lock-on thrash).
-        Vec3 forward;
-        if (frozenForward != null && live.lengthSqr() < 2.25) {
-            forward = frozenForward;
-        } else if (live.lengthSqr() >= 1e-4) {
-            forward = live.normalize();
-            if (frozenForward == null) frozenForward = forward;
-            else frozenForward = frozenForward.lerp(forward, 0.15).normalize();
-            forward = frozenForward;
-        } else if (frozenForward != null) {
-            forward = frozenForward;
-        } else {
-            forward = mc.player.getLookAngle().multiply(1, 0, 1);
-            if (forward.lengthSqr() < 1e-6) forward = new Vec3(0, 0, 1);
-            forward = forward.normalize();
-            frozenForward = forward;
+        // The cast basis stays fixed across actor crossings and pause/resume packets.
+        if (frozenForward == null) {
+            Vec3 delta = victim.subtract(attacker).multiply(1, 0, 1);
+            frozenForward = delta.lengthSqr() > 1e-6 ? delta.normalize() : new Vec3(0, 0, 1);
         }
+        Vec3 forward = frozenForward;
         Vec3 right = forward.cross(new Vec3(0, 1, 0));
         if (right.lengthSqr() < 1e-6) right = new Vec3(1, 0, 0);
         else right = right.normalize();
         Vec3 focus = attacker.lerp(victim, focusWeight);
         Vec3 position = focus.add(transform(offset, forward, right));
         Vec3 lookAt = focus.add(transform(lookOffset, forward, right));
-        HitResult wall = mc.level.clip(new ClipContext(focus, position, ClipContext.Block.VISUAL,
+        // Wide action/launch shots must contain both actors even when a shove
+        // changes their horizontal separation or height. Opening closeups keep
+        // their authored focus. UltimateFinisher uses its own camera controller.
+        boolean firing = net.bullettrain.xenopixelsmod.client.combat.v3.ClientCastPresentation
+                .firing(mc.player.getUUID(), packet.cast());
+        // Focus interpolation describes the look point, not whether the shot is an action
+        // wide. Evil Flames was already releasing while its blended focus was only .35.
+        boolean wide = V3CameraFraming.shouldFitBoth(current.focus(), attacker.distanceTo(victim), firing);
+        if (wide) {
+            if (wideFallbackDirection != null)
+                position = lookAt.add(wideFallbackDirection.scale(position.distanceTo(lookAt)));
+            var framed = V3CameraFraming.fit(attacker, mc.player.getBbHeight(), victim, target.getBbHeight(),
+                    position, lookAt, Math.min(70, mc.options.fov().get()),
+                    mc.getWindow().getWidth() / (double) Math.max(1, mc.getWindow().getHeight()));
+            position = framed.position();
+            focus = framed.lookAt();
+            lookAt = framed.lookAt();
+        }
+        var smoothed = MOTION.update(position, lookAt, mc.player.tickCount + partialTick);
+        position = smoothed.position();
+        lookAt = smoothed.focus();
+        if (wide) {
+            // Damping can move the rendered position inside the required distance after a
+            // launch; enforce framing on the final smoothed shot as well.
+            var framed = V3CameraFraming.fit(attacker, mc.player.getBbHeight(), victim, target.getBbHeight(),
+                    position, lookAt, Math.min(70, mc.options.fov().get()),
+                    mc.getWindow().getWidth() / (double) Math.max(1, mc.getWindow().getHeight()));
+            position = framed.position(); lookAt = framed.lookAt();
+        }
+        // Clip the damped shot once. Switching to an elevated alternative every frame caused
+        // the reported up/down jumping at terrain edges.
+        HitResult wall = mc.level.clip(new ClipContext(lookAt, position, ClipContext.Block.VISUAL,
                 ClipContext.Fluid.NONE, mc.player));
-        if (wall.getType() != HitResult.Type.MISS) position = wall.getLocation().lerp(focus, 0.1);
+        if (wall.getType() != HitResult.Type.MISS && wide) {
+            // Choose a horizontal alternative once per cast rather than oscillating up/down
+            // at terrain edges. Only accept a ray-clear shot that still fits both fighters.
+            Vec3[] alternatives = {right.add(0,.25,0), right.scale(-1).add(0,.25,0),
+                    forward.add(0,.25,0), forward.scale(-1).add(0,.25,0)};
+            for (Vec3 direction : alternatives) {
+                var frame = V3CameraFraming.fit(attacker, mc.player.getBbHeight(), victim, target.getBbHeight(),
+                        lookAt.add(direction.normalize().scale(position.distanceTo(lookAt))), lookAt,
+                        Math.min(70, mc.options.fov().get()),
+                        mc.getWindow().getWidth() / (double) Math.max(1, mc.getWindow().getHeight()));
+                HitResult alternative = mc.level.clip(new ClipContext(frame.lookAt(), frame.position(),
+                        ClipContext.Block.VISUAL, ClipContext.Fluid.NONE, mc.player));
+                if (alternative.getType() == HitResult.Type.MISS) {
+                    wideFallbackDirection = direction.normalize(); position = frame.position();
+                    lookAt = frame.lookAt(); wall = alternative; break;
+                }
+            }
+        }
+        if (wall.getType() != HitResult.Type.MISS) position = wall.getLocation().lerp(lookAt, 0.1);
         Vec3 look = lookAt.subtract(position);
         return new Shot(position, (float) (Math.toDegrees(Math.atan2(look.z, look.x)) - 90),
                 (float) -Math.toDegrees(Math.atan2(look.y, Math.hypot(look.x, look.z))));
@@ -154,6 +202,6 @@ public final class V3TechniqueCamera {
         if (previous != null && mc.options.getCameraType() == CameraType.THIRD_PERSON_BACK) {
             mc.options.setCameraType(previous);
         }
-        SESSION.clear(); previous = null; level = null; frozenForward = null;
+        SESSION.clear(); previous = null; level = null; frozenForward = null; wideFallbackDirection = null; MOTION.reset();
     }
 }

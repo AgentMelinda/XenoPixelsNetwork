@@ -131,6 +131,18 @@ public final class XenoServerConfigKeys {
                 () -> XenoServerConfig.hakaiBlockFadeTicks,
                 v -> XenoServerConfig.hakaiBlockFadeTicks = Math.max(0, Math.min(100, v)),
                 "hakaiblockfade");
+        bool("hakaiBlockSweep", "Area Hakai erases blocks and ship blocks with a top-to-bottom sweep",
+                () -> XenoServerConfig.hakaiBlockSweep,
+                v -> XenoServerConfig.hakaiBlockSweep = v,
+                "hakaisweep");
+        integer("hakaiSweepBlocksPerTick", "Most blocks the Hakai sweep erases per tick",
+                () -> XenoServerConfig.hakaiSweepBlocksPerTick,
+                v -> XenoServerConfig.hakaiSweepBlocksPerTick = Math.max(32, Math.min(16384, v)),
+                "hakaisweepbudget");
+        flt("hakaiSweepSpeed", "Hakai block sweep speed (blocks per second)",
+                () -> XenoServerConfig.hakaiSweepSpeed,
+                v -> XenoServerConfig.hakaiSweepSpeed = Math.max(0.5f, Math.min(64f, v)),
+                "hakaisweepspeed");
         bool("hakaiBlocksUnbreakable", "Area Hakai erases unbreakable blocks too (never bedrock)",
                 () -> XenoServerConfig.hakaiBlocksUnbreakable,
                 v -> XenoServerConfig.hakaiBlocksUnbreakable = v,

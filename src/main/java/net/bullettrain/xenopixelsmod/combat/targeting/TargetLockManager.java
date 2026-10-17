@@ -82,6 +82,8 @@ public final class TargetLockManager {
         }
 
         LockOnState state = new LockOnState(targetEntityId);
+        state.progress = initialProgress(LockOnConfig.lockTimeSeconds);
+        state.graceTicksLeft = graceTicks();
         STATES.put(locker.getUUID(), state);
         sync(locker, state, target);
     }
@@ -114,6 +116,8 @@ public final class TargetLockManager {
         ServerPlayer best = findNearestEligible(locker, exclude);
         if (best == null) return;
         LockOnState state = new LockOnState(best.getId());
+        state.progress = initialProgress(LockOnConfig.lockTimeSeconds);
+        state.graceTicksLeft = graceTicks();
         STATES.put(locker.getUUID(), state);
         sync(locker, state, best);
     }
@@ -184,6 +188,8 @@ public final class TargetLockManager {
             sync(locker, state, target);
         }
     }
+
+    static double initialProgress(double seconds) { return seconds <= 0 ? 1.0 : 0.0; }
 
     private static int graceTicks() {
         return Math.max(0, (int) Math.round(LockOnConfig.graceSeconds * 20.0));

@@ -190,7 +190,8 @@ public final class NpcCombatBrain {
         if (npc == null || profile == null || !profile.combatBrain) {
             return;
         }
-        if (net.bullettrain.xenopixelsmod.combat.v3.technique.V3TechniqueRuntime.isControlledVictim(npc.getUUID())) return;
+        if (net.bullettrain.xenopixelsmod.combat.v3.technique.V3TechniqueRuntime.isControlledVictim(npc.getUUID())
+                || net.bullettrain.xenopixelsmod.combat.v3.technique.V3PostAttackFreeze.isFrozen(npc)) return;
         // Just knocked back: let the push play out before steering again (NpcKnockbackGrace).
         if (NpcKnockbackGrace.active(npc)) return;
         // Ki projectile still in the world: stand still until it despawns.
@@ -281,7 +282,8 @@ public final class NpcCombatBrain {
         if (npc == null || profile == null || !profile.combatBrain) {
             return;
         }
-        if (net.bullettrain.xenopixelsmod.combat.v3.technique.V3TechniqueRuntime.isControlledVictim(npc.getUUID())) return;
+        if (net.bullettrain.xenopixelsmod.combat.v3.technique.V3TechniqueRuntime.isControlledVictim(npc.getUUID())
+                || net.bullettrain.xenopixelsmod.combat.v3.technique.V3PostAttackFreeze.isFrozen(npc)) return;
         if (NpcKnockbackGrace.active(npc)) return;
         if (!mayStartFlyingFist(profile)) {
             COMBOS.remove(npc.getUUID());
@@ -344,7 +346,8 @@ public final class NpcCombatBrain {
         if (npc == null || profile == null || !profile.combatBrain) {
             return;
         }
-        if (net.bullettrain.xenopixelsmod.combat.v3.technique.V3TechniqueRuntime.isControlledVictim(npc.getUUID())) return;
+        if (net.bullettrain.xenopixelsmod.combat.v3.technique.V3TechniqueRuntime.isControlledVictim(npc.getUUID())
+                || net.bullettrain.xenopixelsmod.combat.v3.technique.V3PostAttackFreeze.isFrozen(npc)) return;
         if (NpcKnockbackGrace.active(npc)) return;
         if (victim == null || !victim.isAlive() || victim == npc) {
             if (isActing(npc) || COMBOS.containsKey(npc.getUUID())
@@ -822,6 +825,7 @@ public final class NpcCombatBrain {
     }
 
     private static boolean tryKi(LivingEntity npc, NpcCombatProfile profile, LivingEntity victim) {
+        if (npc.distanceToSqr(victim) < 16.0) return false;
         double horiz = NpcBrainKiRotation.horizontal(victim.getX() - npc.getX(),
                 victim.getZ() - npc.getZ());
         double dy = victim.getY() - npc.getY();

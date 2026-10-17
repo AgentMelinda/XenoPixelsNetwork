@@ -220,6 +220,13 @@ public final class KiGuidance {
      */
     public static void aimAnchoredBeam(ServerPlayer player, AbstractKiProjectile beam) {
         if (player == null || beam == null || beam.level().isClientSide) return;
+        if (beam instanceof KiWaveEntity wave
+                && net.bullettrain.xenopixelsmod.combat.v2.UltimateFinisherKamehameha.owns(wave)) {
+            // The cinematic owns this wave's exact target; camera/manual guide
+            // interpolation must not steer it left/right of that victim.
+            net.bullettrain.xenopixelsmod.combat.v2.UltimateFinisherKamehameha.align(wave);
+            return;
+        }
         if (!canSteerLive(beam)) return;
         if (beam.isClashLocked()) return;
         if (!(beam instanceof KiWaveEntity) && !(beam instanceof KiLaserEntity)) return;

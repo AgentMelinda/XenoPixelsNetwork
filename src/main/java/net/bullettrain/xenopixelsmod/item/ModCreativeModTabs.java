@@ -21,6 +21,10 @@ public class ModCreativeModTabs {
                         pOutput.accept(ModsItems.SAPPHIRE.get());
                         pOutput.accept(ModsItems.RAW_SAPPHIRE.get());
                         pOutput.accept(ModsItems.STRAWBERRY_SENZU.get());
+                        pOutput.accept(ModsItems.BREATHING_CAPSULE.get());
+                        pOutput.accept(ModsItems.COSMIC_BALL_SCANNER.get());
+                        pOutput.accept(ModsItems.SDB_ORBIT_WAND.get());
+                        for (var ball : net.bullettrain.xenopixelsmod.block.ModBlocks.COSMIC_DRAGON_BALL_ITEMS) pOutput.accept(ball.get());
                         pOutput.accept(ModsItems.METAL_DETECTOR.get());
                         pOutput.accept(ModsItems.TARGET_TOOL.get());
                         pOutput.accept(ModsItems.TARGET_TOOL_FORK.get());

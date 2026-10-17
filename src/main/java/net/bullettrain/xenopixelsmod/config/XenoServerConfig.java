@@ -670,6 +670,12 @@ public final class XenoServerConfig {
     public static int hakaiBlockFadeTicks = 20;
     /** Everything but bedrock can be erased; false spares every unbreakable block (the first rule). */
     public static boolean hakaiBlocksUnbreakable = true;
+    /** Area Hakai erases blocks (and Sable ship blocks) with a plane sweeping top to bottom instead of the crack fade. */
+    public static boolean hakaiBlockSweep = false;
+    /** Sweep speed in blocks per second (the whole sweep is still clamped to 2..20 s). */
+    public static float hakaiSweepSpeed = 6.0f;
+    /** Most blocks the sweep erases in one tick; the sweep's duration stretches to fit big razes. */
+    public static int hakaiSweepBlocksPerTick = 1024;
     /** Size of the area Hakai's own effect, on top of the sphere's size. */
     public static float hakaiAreaFxScale = 1.0f;
     /** Area Hakai never erases blocks of a DragonMineZ structure (Kami's Lookout, Goku's house...). */
@@ -1441,6 +1447,9 @@ public final class XenoServerConfig {
         d.hakaiBlocksPerTick = hakaiBlocksPerTick;
         d.hakaiBlockFadeTicks = hakaiBlockFadeTicks;
         d.hakaiBlocksUnbreakable = hakaiBlocksUnbreakable;
+        d.hakaiBlockSweep = hakaiBlockSweep;
+        d.hakaiSweepSpeed = hakaiSweepSpeed;
+        d.hakaiSweepBlocksPerTick = hakaiSweepBlocksPerTick;
         d.hakaiAreaFxScale = hakaiAreaFxScale;
         d.hakaiSpareDmzStructures = hakaiSpareDmzStructures;
         d.hakaiBlockShape = hakaiBlockShape;
@@ -1955,6 +1964,9 @@ public final class XenoServerConfig {
         hakaiBlocksPerTick = Math.max(1, Math.min(512, d.hakaiBlocksPerTick));
         hakaiBlockFadeTicks = Math.max(0, Math.min(100, d.hakaiBlockFadeTicks));
         hakaiBlocksUnbreakable = d.hakaiBlocksUnbreakable;
+        hakaiBlockSweep = d.hakaiBlockSweep;
+        hakaiSweepSpeed = d.hakaiSweepSpeed > 0f ? Math.max(0.5f, Math.min(64f, d.hakaiSweepSpeed)) : 6.0f;
+        hakaiSweepBlocksPerTick = d.hakaiSweepBlocksPerTick > 0 ? Math.max(32, Math.min(16384, d.hakaiSweepBlocksPerTick)) : 1024;
         hakaiSpareDmzStructures = d.hakaiSpareDmzStructures;
         hakaiBlockShape = normaliseHakaiBlockShape(d.hakaiBlockShape);
         formPassives = d.formPassives;
@@ -3357,6 +3369,9 @@ public final class XenoServerConfig {
         public int hakaiBlocksPerTick = 48;
         public int hakaiBlockFadeTicks = 20;
         public boolean hakaiBlocksUnbreakable = true;
+        public boolean hakaiBlockSweep = false;
+        public float hakaiSweepSpeed = 6.0f;
+        public int hakaiSweepBlocksPerTick = 1024;
         public float hakaiAreaFxScale = 1.0f;
         public boolean hakaiSpareDmzStructures = true;
         public String hakaiBlockShape = "sphere";
