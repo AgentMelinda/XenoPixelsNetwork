@@ -3,6 +3,7 @@ package net.bullettrain.xenopixelsmod.client.combat;
 import com.mojang.blaze3d.vertex.VertexConsumer;
 import com.mojang.blaze3d.vertex.VertexFormat;
 import net.minecraft.client.renderer.MultiBufferSource;
+import net.minecraft.client.renderer.OutlineBufferSource;
 import net.minecraft.client.renderer.RenderType;
 
 /**
@@ -14,12 +15,12 @@ import net.minecraft.client.renderer.RenderType;
  * <p>Model vertices arrive in camera-rotated space; {@link HakaiFade#worldYFromCameraSpace} turns them into world Y, the
  * same conversion the classic height fade uses, and that map is linear so interpolating along an edge stays exact.
  *
- * <p>Clipping buffers a whole quad before re-emitting it, so under Iris/Sodium batched entity rendering the delegate's
- * builder can already be ended when the flush lands, and the deferred write throws {@code IllegalStateException: Not
- * building!}. An exception escaping here unwinds {@code EntityRenderDispatcher#render} mid-frame and the level renderer
- * dies on {@code Pose stack not empty}, so the flush is fail-open: the first rejected write closes this clipper and every
- * later quad for that buffer is dropped. The delegate is finished for that batch either way, so the vertex would not be
- * drawn regardless - a missing sweep for one frame, never a crash.
+ * <p>Clipping buffers a whole quad before re-emitting it, so a flush can land after the builder behind it was closed - the
+ * proven case is {@code OutlineBufferSource}'s glow/target fan-out, handled in {@link #getBuffer} - and the deferred write
+ * then throws {@code IllegalStateException: Not building!}. An exception escaping here unwinds
+ * {@code EntityRenderDispatcher#render} mid-frame and the level renderer dies on {@code Pose stack not empty}, so the flush
+ * is also fail-open: the first rejected write closes this clipper and every later quad for that buffer is dropped. That
+ * builder is finished either way, so the vertex would not be drawn regardless - a missing sweep for one frame, never a crash.
  */
 final class HakaiClipMultiBufferSource implements MultiBufferSource {
     private final MultiBufferSource delegate;
@@ -46,11 +47,18 @@ final class HakaiClipMultiBufferSource implements MultiBufferSource {
 
     @Override
     public VertexConsumer getBuffer(RenderType renderType) {
-        VertexConsumer inner = delegate.getBuffer(renderType);
-        // Vanilla's glow/target pass fans the entity buffer out through VertexMultiConsumer. Those nested classes
-        // implement VertexConsumer without extending it, so no instanceof test can name them, and the fan-out's
-        // second member is closed by OutlineBufferSource#endOutlineBatch while a clipped quad is still buffered
-        // here. That late write is the logged "Not building!" crash: leave fan-out consumers unclipped.
+        // A glowing or selected entity is drawn through OutlineBufferSource, which fans the body out together with an
+        // EntityOutlineGenerator. That generator's builder is closed by endOutlineBatch while a clipped quad is still
+        // buffered here, so the deferred write lands on a finished builder - the logged "Not building!" crash. Clip the
+        // inner body consumer instead and leave the outline pass to vanilla, exactly as the classic fade does in
+        // AlphaMultiBufferSource#fadeOutlineBodyOnly, so the sweep still cuts glowing bodies.
+        MultiBufferSource body = delegate instanceof OutlineBufferSource outline && !renderType.isOutline()
+                ? AlphaMultiBufferSource.innerBufferSource(outline)
+                : null;
+        VertexConsumer inner = body != null ? body.getBuffer(renderType) : delegate.getBuffer(renderType);
+        // Last resort for wrapper chains we do not know (Iris, Sable, mods): a fan-out consumer's second member can be
+        // closed at any time, and those nested classes implement VertexConsumer without extending VertexMultiConsumer,
+        // so no instanceof test can name them. Draw such a buffer unclipped rather than risk the frame.
         if (inner.getClass().getName().startsWith("com.mojang.blaze3d.vertex.VertexMultiConsumer")) return inner;
         // Quads whose format ends in a normal (every entity format): the clipper flushes a quad on its 4th normal.
         boolean clippable = renderType.mode() == VertexFormat.Mode.QUADS

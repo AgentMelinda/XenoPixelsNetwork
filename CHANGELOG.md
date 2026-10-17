@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+## 0.5.21-1.21.1 — 2026-10-17
+
+- Keep the sweep cutting glowing and crosshair-selected bodies. 0.5.20 stopped the crash by declining to clip vanilla's
+  outline fan-out, which also removed the cut from exactly those entities. The clipper now takes the body consumer out of
+  `OutlineBufferSource` and clips that, the same way the classic height fade already does, so the outline pass is left to
+  Minecraft and every entity gets its sweep; an unknown wrapper chain still falls back to unclipped plus the fail-open
+  backstop rather than throwing.
+
 ## 0.5.20-1.21.1 — 2026-10-17
 
 - Stop the Hakai sweep client crash (`IllegalStateException: Not building!` followed by `Pose stack not empty` in
