@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+## 0.5.18-1.21.1 — 2026-10-17
+
+- Make the Sable plot-construction timing mixin's constructor hooks static-safe at `HEAD`, avoiding
+  Mixin's pre-super constructor injection rejection while retaining opt-in timing.
+
 ## 0.5.17-1.21.1 — 2026-10-17
 
 - Keep Hakai sweep clipping off Minecraft's special outline buffers, avoiding the logged `Not building!` failure

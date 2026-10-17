@@ -10,18 +10,21 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 /** Measures the Sable plot constructor only inside PlotBodyBuilder's opt-in allocation trace. */
 @Mixin(targets = "dev.ryanhcode.sable.sublevel.plot.ServerLevelPlot", remap = false)
 public abstract class SablePlotConstructionTimingMixin {
-    @Unique private long xenopixels$plotConstructionStarted;
+    /** Constructors cannot access instance state at HEAD before their superclass constructor returns. */
+    @Unique private static final ThreadLocal<Long> xenopixels$plotConstructionStarted = new ThreadLocal<>();
 
     @Inject(method = "<init>(Ldev/ryanhcode/sable/api/sublevel/SubLevelContainer;IIILdev/ryanhcode/sable/sublevel/ServerSubLevel;)V",
             at = @At("HEAD"), require = 1, remap = false)
-    private void xenopixels$startPlotConstruction(CallbackInfo callback) {
-        xenopixels$plotConstructionStarted = SableAllocationTiming.isActive() ? System.nanoTime() : 0L;
+    private static void xenopixels$startPlotConstruction(CallbackInfo callback) {
+        if (SableAllocationTiming.isActive()) xenopixels$plotConstructionStarted.set(System.nanoTime());
+        else xenopixels$plotConstructionStarted.remove();
     }
 
     @Inject(method = "<init>(Ldev/ryanhcode/sable/api/sublevel/SubLevelContainer;IIILdev/ryanhcode/sable/sublevel/ServerSubLevel;)V",
             at = @At("RETURN"), require = 1, remap = false)
-    private void xenopixels$finishPlotConstruction(CallbackInfo callback) {
-        long started = xenopixels$plotConstructionStarted;
-        if (started != 0L) SableAllocationTiming.recordPlotConstruction(System.nanoTime() - started);
+    private static void xenopixels$finishPlotConstruction(CallbackInfo callback) {
+        Long started = xenopixels$plotConstructionStarted.get();
+        xenopixels$plotConstructionStarted.remove();
+        if (started != null && started != 0L) SableAllocationTiming.recordPlotConstruction(System.nanoTime() - started);
     }
 }
