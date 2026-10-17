@@ -10,7 +10,7 @@ import java.lang.invoke.MethodType;
  * exposes {@code getInstance()}, {@code isShaderPackInUse()} and {@code isRenderingShadowPass()}.
  * Any failure reads as "no pack", which keeps the vanilla rendering path.
  */
-final class IrisShaderState {
+public final class IrisShaderState {
     private static final MethodHandle INSTANCE, PACK_IN_USE, SHADOW_PASS;
     static {
         MethodHandle instance = null, pack = null, shadow = null;
@@ -29,8 +29,8 @@ final class IrisShaderState {
     }
     private IrisShaderState() {}
 
-    static boolean packInUse() { return call(PACK_IN_USE); }
-    static boolean renderingShadows() { return call(SHADOW_PASS); }
+    public static boolean packInUse() { return call(PACK_IN_USE); }
+    public static boolean renderingShadows() { return call(SHADOW_PASS); }
 
     private static boolean call(MethodHandle method) {
         if (INSTANCE == null || method == null) return false;

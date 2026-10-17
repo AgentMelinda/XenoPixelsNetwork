@@ -11,6 +11,7 @@ import com.mojang.blaze3d.vertex.VertexFormat;
 import dev.ryanhcode.sable.Sable;
 import dev.ryanhcode.sable.sublevel.ClientSubLevel;
 import net.bullettrain.xenopixelsmod.combat.HakaiSweepGhosts;
+import net.bullettrain.xenopixelsmod.client.space.IrisShaderState;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.GameRenderer;
 import net.minecraft.client.renderer.LevelRenderer;
@@ -72,6 +73,8 @@ public final class HakaiSweepGhostRenderer {
 
     @SubscribeEvent public static void render(RenderLevelStageEvent event) {
         if (event.getStage() != RenderLevelStageEvent.Stage.AFTER_ENTITIES || SWEEPS.isEmpty()) return;
+        // Ghost blocks are drawn into the level pass; Iris's shadow-map re-render must not receive them twice.
+        if (IrisShaderState.packInUse() && IrisShaderState.renderingShadows()) return;
         var mc = Minecraft.getInstance();
         if (mc.level == null) return;
         float partial = event.getPartialTick().getGameTimeDeltaPartialTick(false);

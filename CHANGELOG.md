@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+## 0.5.19-1.21.1 — 2026-10-17
+
+- Skip the Hakai sweep rim and ghost-block passes while Iris is drawing its shadow map, using the same optional-Iris
+  guard the space renderers already apply, so the additive unlit pass is emitted once in the main pass when a shader
+  pack is active. No behavior change when Iris or a shader pack is absent.
+
 ## 0.5.18-1.21.1 — 2026-10-17
 
 - Make the Sable plot-construction timing mixin's constructor hooks static-safe at `HEAD`, avoiding

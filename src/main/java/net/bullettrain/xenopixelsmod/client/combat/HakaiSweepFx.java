@@ -8,6 +8,7 @@ import com.mojang.blaze3d.vertex.ByteBufferBuilder;
 import com.mojang.blaze3d.vertex.DefaultVertexFormat;
 import com.mojang.blaze3d.vertex.VertexFormat;
 import net.bullettrain.xenopixelsmod.client.config.XenoClientConfig;
+import net.bullettrain.xenopixelsmod.client.space.IrisShaderState;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.FogRenderer;
 import net.minecraft.client.renderer.GameRenderer;
@@ -334,6 +335,9 @@ public final class HakaiSweepFx {
 
     @SubscribeEvent public static void render(RenderLevelStageEvent event) {
         if (event.getStage() != RenderLevelStageEvent.Stage.AFTER_ENTITIES || !enabled()) return;
+        // Iris re-renders the level for its shadow map. This rim is unlit additive glow that mutates blend and
+        // depth state directly, so it belongs to the main pass only - the same guard the space renderers use.
+        if (IrisShaderState.packInUse() && IrisShaderState.renderingShadows()) return;
         var mc = Minecraft.getInstance();
         if (mc.level == null) { releaseAllocators(); return; }
         float partial = event.getPartialTick().getGameTimeDeltaPartialTick(false);
