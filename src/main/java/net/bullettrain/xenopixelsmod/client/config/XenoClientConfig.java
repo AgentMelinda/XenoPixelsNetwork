@@ -448,8 +448,9 @@ public final class XenoClientConfig {
      */
     public static String spaceSkyMode = "void";
 
-    /** Only replicated Sable bodies may render as planets; chart-only projections are retired. */
+    /** Draw low-cost chart planet projections when no replicated Sable body is available. */
     public static String spacePlanetMode = "bodies";
+    public static boolean spacePlanetProjections = true;
 
     /**
      * How a Hakai'd body disappears on this client: {@code classic} (the proven height fade, default) or {@code sweep}
@@ -667,6 +668,7 @@ public final class XenoClientConfig {
         d.flightThrottleKeyRatePerSec = flightThrottleKeyRatePerSec;
         d.spaceSkyMode = spaceSkyMode;
         d.spacePlanetMode = spacePlanetMode;
+        d.spacePlanetProjections = spacePlanetProjections;
         d.hakaiEraseStyle = hakaiEraseStyle;
         d.smallPlanetLod = smallPlanetLod;
         d.spaceHidePlanetLoadScreen = spaceHidePlanetLoadScreen;
@@ -844,6 +846,7 @@ public final class XenoClientConfig {
         // to pick one of three modes whether the stored value is "stars", "STARS ", or nonsense.
         spaceSkyMode = net.bullettrain.xenopixelsmod.client.space.SpaceSkyMode.byName(d.spaceSkyMode).id;
         spacePlanetMode = net.bullettrain.xenopixelsmod.client.space.SpacePlanetMode.byName(d.spacePlanetMode).id;
+        spacePlanetProjections = d.spacePlanetProjections == null || d.spacePlanetProjections;
         hakaiEraseStyle = "sweep".equals(d.hakaiEraseStyle) ? "sweep" : "classic";
         smallPlanetLod = d.smallPlanetLod == null || d.smallPlanetLod;
         spaceHidePlanetLoadScreen = d.spaceHidePlanetLoadScreen == null || d.spaceHidePlanetLoadScreen;
@@ -983,6 +986,7 @@ public final class XenoClientConfig {
         public Float flightThrottleKeyRatePerSec;
         public String spaceSkyMode;
         public String spacePlanetMode;
+        public Boolean spacePlanetProjections;
         public String hakaiEraseStyle;
         public Boolean smallPlanetLod;
         public Boolean spaceHidePlanetLoadScreen;

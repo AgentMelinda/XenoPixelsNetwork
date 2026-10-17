@@ -3,6 +3,7 @@ package net.bullettrain.xenopixelsmod.combat.beam;
 import com.dragonminez.common.compat.SableCompat;
 import com.dragonminez.common.init.entities.ki.AbstractKiProjectile;
 import com.dragonminez.common.init.entities.ki.KiLaserEntity;
+import net.bullettrain.xenopixelsmod.compat.sable.KiPlanetShellDestruction;
 import net.bullettrain.xenopixelsmod.compat.sable.SableKiClip;
 import net.bullettrain.xenopixelsmod.mixin.common.KiLaserAccess;
 import net.bullettrain.xenopixelsmod.mixin.common.KiProjectileGriefAccess;
@@ -45,7 +46,9 @@ public final class KiBeamBore {
                     if (x * x + y * y + z * z > eatRadius * eatRadius) continue;
                     BlockPos target = center.offset(x, y, z);
                     if (level.getBlockState(target).isAir()) continue;
-                    if (level.getBlockState(target).getExplosionResistance(level, target, null) >= 1000) continue;
+                    var state = level.getBlockState(target);
+                    if (state.getExplosionResistance(level, target, null) >= 1000
+                            && !KiPlanetShellDestruction.allowResistanceBypass(beam, state, target)) continue;
                     if (!access.xenopixels$destroyKiBlock(target, false)) continue;
                     if (level.random.nextFloat() < 0.25F) {
                         level.sendParticles(ParticleTypes.CAMPFIRE_COSY_SMOKE,

@@ -142,9 +142,11 @@ public final class PhysicalPlanetRenderer {
     private static void draw(RenderLevelStageEvent event,String id,ResourceLocation location,double x,double y,double z,
                              Quaternionfc orientation,float radius,boolean pack) {
         var camera=event.getCamera().getPosition();
-        // One sphere draw per body is cheap, so distance never hides a planet or the Sun; the bail only
-        // guards float precision in the camera-relative translation.
+        // The bail guards float precision in the camera-relative translation.
         if(!(radius>0)||camera.distanceToSqr(x,y,z)>MAX_DRAW*MAX_DRAW) return;
+        // Hand far chart bodies to the cached lightweight disc renderer. Their Sable bodies keep simulating;
+        // this only avoids drawing a full HD sphere when it is a tiny distant point anyway.
+        if(!LEGACY.equals(id) && camera.distanceToSqr(x,y,z)>OrbitPlanetProxies.PHYSICAL_HANDOFF_DISTANCE_SQR) return;
         ensureTexture(location);
         RenderSystem.setShaderTexture(0,location);
         MODEL.set(event.getModelViewMatrix()).translate((float)(x-camera.x),(float)(y-camera.y),(float)(z-camera.z))

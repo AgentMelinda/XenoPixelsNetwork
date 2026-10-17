@@ -890,6 +890,8 @@ public final class XenoServerConfig {
     /** Independent caps for DMZ's synchronous cubic block scans. */
     public static float kiDestructionMaxRadius = 32.0f;
     public static int kiDestructionBlocksPerTick = 4096;
+    /** Allow DMZ Ki attacks to break invisible planet shells in Sable sub-levels. */
+    public static boolean kiPlanetShellDestructionEnabled = false;
     /**
      * Hard cap on {@code KiExplosionEntity} max radius after overcharge / charge scaling.
      * {@code 0} leaves it uncapped. Block work still uses {@link #kiDestructionMaxRadius}.
@@ -1651,6 +1653,7 @@ public final class XenoServerConfig {
         d.kiFullGameplayScaling = kiFullGameplayScaling;
         d.kiDestructionMaxRadius = kiDestructionMaxRadius;
         d.kiDestructionBlocksPerTick = kiDestructionBlocksPerTick;
+        d.kiPlanetShellDestructionEnabled = kiPlanetShellDestructionEnabled;
         d.kiExplosionMaxRadius = kiExplosionMaxRadius;
         d.vanishMaxRange = vanishMaxRange;
         d.chaseMaxRange = chaseMaxRange;
@@ -2053,6 +2056,7 @@ public final class XenoServerConfig {
         kiFullGameplayScaling = d.kiFullGameplayScaling;
         kiDestructionMaxRadius = positiveFinite(d.kiDestructionMaxRadius, 32f);
         kiDestructionBlocksPerTick = Math.max(64, d.kiDestructionBlocksPerTick);
+        kiPlanetShellDestructionEnabled = d.kiPlanetShellDestructionEnabled;
         kiExplosionMaxRadius = nonNegativeFinite(d.kiExplosionMaxRadius, 64f);
         vanishMaxRange = d.vanishMaxRange > 0 ? d.vanishMaxRange : 7.0;
         chaseMaxRange = d.chaseMaxRange < 0 ? 0.0 : d.chaseMaxRange;
@@ -3458,6 +3462,7 @@ public final class XenoServerConfig {
         public boolean kiFullGameplayScaling = false;
         public float kiDestructionMaxRadius = 32.0f;
         public int kiDestructionBlocksPerTick = 4096;
+        public boolean kiPlanetShellDestructionEnabled = false;
         public float kiExplosionMaxRadius = 64.0f;
         public double vanishMaxRange = 7.0;
         public double chaseMaxRange = 0.0;

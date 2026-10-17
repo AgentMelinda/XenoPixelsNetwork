@@ -1,6 +1,6 @@
 package net.bullettrain.xenopixelsmod.client.space;
 
-/** Client presentation policy for the approved stars-only sky and physical Sable planets. */
+/** Client presentation policy for physical Sable planets and optional far chart projections. */
 public enum SpacePlanetMode {
     /** Draw HD surfaces only from replicated Sable bodies. */
     BODIES("bodies"),
@@ -24,9 +24,9 @@ public enum SpacePlanetMode {
         return BODIES;
     }
 
-    /** Retained for the legacy chart-snapshot renderer; chart-only globes are retired and never drawn. */
+    /** Chart projections can be independently toggled by the client config/command. */
     public boolean drawsProxies() {
-        return false;
+        return this == BODIES;
     }
 
     /** True only when the corresponding Sable body is replicated on this client. */

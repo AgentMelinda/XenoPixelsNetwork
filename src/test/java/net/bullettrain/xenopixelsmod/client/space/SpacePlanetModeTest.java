@@ -4,7 +4,7 @@ import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-/** Planet presentation remains tied to a replicated Sable body. No render thread needed. */
+/** Planet presentation defaults to physical bodies with optional projections. No render thread needed. */
 class SpacePlanetModeTest {
     @Test void oldProjectionSettingsMigrateToPhysicalBodies() {
         assertEquals(SpacePlanetMode.BODIES, SpacePlanetMode.byName("proxies"));
@@ -21,8 +21,8 @@ class SpacePlanetModeTest {
         assertEquals(2, SpacePlanetMode.values().length);
     }
 
-    @Test void chartProjectionIsNeverEnabled() {
-        assertFalse(SpacePlanetMode.BODIES.drawsProxies());
+    @Test void chartProjectionsAreAvailableAlongsidePhysicalBodies() {
+        assertTrue(SpacePlanetMode.BODIES.drawsProxies());
         assertTrue(SpacePlanetMode.BODIES.drawsBodies());
         assertFalse(SpacePlanetMode.OFF.drawsProxies());
         assertFalse(SpacePlanetMode.OFF.drawsBodies());

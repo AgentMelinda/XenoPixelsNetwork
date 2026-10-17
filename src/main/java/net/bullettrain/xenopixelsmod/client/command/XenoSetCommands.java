@@ -69,10 +69,8 @@ public final class XenoSetCommands {
     }
 
     /**
-     * {@code /xenoset space planets <bodies|off>} — whether this client draws replicated physical planets.
-     *
-     * <p>Chart-only planet projections are retired. This client preference only hides or shows surfaces
-     * attached to replicated Sable bodies.
+     * {@code /xenoset space planets <bodies|off>} controls physical planet surfaces.
+     * {@code /xenoset space planets projections <on|off>} independently toggles distant chart projections.
      */
     private static LiteralArgumentBuilder<CommandSourceStack> spaceTree() {
         LiteralArgumentBuilder<CommandSourceStack> space = Commands.literal("space")
@@ -82,6 +80,11 @@ public final class XenoSetCommands {
         for (SpacePlanetMode mode : SpacePlanetMode.values()) {
             planets.then(Commands.literal(mode.id).executes(ctx -> setPlanets(ctx.getSource(), mode)));
         }
+        planets.then(Commands.literal("projections")
+                .executes(ctx -> projectionStatus(ctx.getSource()))
+                .then(Commands.literal("on").executes(ctx -> setProjections(ctx.getSource(), true)))
+                .then(Commands.literal("off").executes(ctx -> setProjections(ctx.getSource(), false)))
+                .then(Commands.literal("status").executes(ctx -> projectionStatus(ctx.getSource()))));
         return space.then(planets.then(Commands.literal("status").executes(ctx -> planetStatus(ctx.getSource()))));
     }
 
@@ -114,9 +117,25 @@ public final class XenoSetCommands {
         return 1;
     }
 
+    private static int setProjections(CommandSourceStack source, boolean enabled) {
+        XenoClientConfig.spacePlanetProjections = enabled;
+        XenoClientConfig.save();
+        source.sendSuccess(() -> Component.literal("Distant planet projections: "
+                + (enabled ? "ON" : "OFF") + " (saved, applied this frame)"), false);
+        return 1;
+    }
+
+    private static int projectionStatus(CommandSourceStack source) {
+        boolean enabled = XenoClientConfig.spacePlanetProjections;
+        source.sendSuccess(() -> Component.literal("Distant planet projections: "
+                + (enabled ? "ON" : "OFF")), false);
+        return 1;
+    }
+
     private static String describe(SpacePlanetMode mode) {
         return switch (mode) {
-            case BODIES -> "HD surfaces on replicated Sable bodies only";
+            case BODIES -> "HD surfaces on replicated Sable bodies, with distant projections "
+                    + (XenoClientConfig.spacePlanetProjections ? "on" : "off");
             case OFF -> "no planets drawn";
         };
     }

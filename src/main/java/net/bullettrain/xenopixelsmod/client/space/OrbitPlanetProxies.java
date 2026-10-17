@@ -23,12 +23,13 @@ import org.lwjgl.opengl.GL14;
 import java.io.IOException;
 
 /**
- * Retired chart-projection renderer. Its packet handler remains as a compatibility sink, but the active
- * presentation policy never enables drawing: planets must come from replicated Sable bodies.
+ * Far-distance chart projections. These visual-only fallback discs complement nearby/replicated Sable
+ * bodies, which retain their full physics and HD sphere rendering. Geometry is a tiny fixed set of cached quads.
  */
 @EventBusSubscriber(modid=XenoPixelsMod.MOD_ID, value=Dist.CLIENT)
 public final class OrbitPlanetProxies {
     private static final ResourceLocation ORBIT=ResourceLocation.fromNamespaceAndPath("xenospace_spike","orbit");
+    private static final ResourceLocation VOIDSEA=net.bullettrain.xenopixelsmod.space.physics.PhysicalEarth.HOST;
     private record Body(String id,double x,double y,double z,float radius,int style) {
         Body(SpaceSnapshot.Body body) {
             this(body.id(),body.x(),body.y(),body.z(),(float)body.radius(),body.style());
@@ -45,9 +46,10 @@ public final class OrbitPlanetProxies {
      * whole PROXY stage the server's LOD ladder selects.
      */
     private static final double DRAW_REACH=100_000.0;
-    private static double reach(Vec3 camera,Body body) {
+    static final double PHYSICAL_HANDOFF_DISTANCE_SQR=512.0*512.0;
+    private static double distanceSquared(Vec3 camera,Body body) {
         double dx=body.x-camera.x(),dy=body.y-camera.y(),dz=body.z-camera.z();
-        return Math.sqrt(dx*dx+dy*dy+dz*dz);
+        return dx*dx+dy*dy+dz*dz;
     }
     /** One static quad per proxy atlas cell, so a body's {@code style} picks a buffer rather than a build. */
     private static final VertexBuffer[] BUFFERS=new VertexBuffer[CelestialBody.MAX_VISUAL_STYLES];
@@ -88,30 +90,43 @@ public final class OrbitPlanetProxies {
     @SubscribeEvent
     public static void render(RenderLevelStageEvent event) {
         if(!SpacePlanetMode.byName(XenoClientConfig.spacePlanetMode).drawsProxies()) return;
-        if(event.getStage()!=RenderLevelStageEvent.Stage.AFTER_ENTITIES) return;
+        if(!XenoClientConfig.spacePlanetProjections) return;
+        boolean pack=IrisShaderState.packInUse();
+        var wanted=pack?RenderLevelStageEvent.Stage.AFTER_LEVEL:RenderLevelStageEvent.Stage.AFTER_ENTITIES;
+        if(event.getStage()!=wanted || (pack&&IrisShaderState.renderingShadows())) return;
         var mc=Minecraft.getInstance();
-        if(mc.level==null || !ORBIT.equals(mc.level.dimension().location())) return;
+        if(mc.level==null) return;
+        var dimension=mc.level.dimension().location();
+        if(!VOIDSEA.equals(dimension) && !ORBIT.equals(dimension)) return;
         var camera=event.getCamera().getPosition();
         boolean visible=false;
-        for(var body:bodies) if(reach(camera,body)<=DRAW_REACH) {visible=true;break;}
+        for(var body:bodies) {
+            double d2=distanceSquared(camera,body);
+            if(d2<=DRAW_REACH*DRAW_REACH && d2>PHYSICAL_HANDOFF_DISTANCE_SQR) {visible=true;break;}
+        }
         if(!visible) return;
+        if(pack) mc.getMainRenderTarget().bindWrite(false);
         boolean depth=GL11.glIsEnabled(GL11.GL_DEPTH_TEST),cull=GL11.glIsEnabled(GL11.GL_CULL_FACE);
+        boolean depthClamp=GL11.glIsEnabled(org.lwjgl.opengl.GL32.GL_DEPTH_CLAMP);
         boolean blend=GL11.glIsEnabled(GL11.GL_BLEND),write=GL11.glGetBoolean(GL11.GL_DEPTH_WRITEMASK);
         int src=GL11.glGetInteger(GL14.GL_BLEND_SRC_RGB),dst=GL11.glGetInteger(GL14.GL_BLEND_DST_RGB);
         int srcA=GL11.glGetInteger(GL14.GL_BLEND_SRC_ALPHA),dstA=GL11.glGetInteger(GL14.GL_BLEND_DST_ALPHA);
+        int depthFunction=GL11.glGetInteger(GL11.GL_DEPTH_FUNC);
         int texture=RenderSystem.getShaderTexture(0);
         float fogStart=RenderSystem.getShaderFogStart(),fogEnd=RenderSystem.getShaderFogEnd();
         var shader=RenderSystem.getShader();var color=RenderSystem.getShaderColor();
         float r=color[0],g=color[1],b=color[2],a=color[3];
         try {
             ensureBuffers();
-            FogRenderer.setupNoFog();RenderSystem.enableDepthTest();RenderSystem.depthMask(false);
+            FogRenderer.setupNoFog();RenderSystem.enableDepthTest();RenderSystem.depthFunc(GL11.GL_LEQUAL);RenderSystem.depthMask(false);
+            GL11.glEnable(org.lwjgl.opengl.GL32.GL_DEPTH_CLAMP);
             RenderSystem.disableCull();RenderSystem.enableBlend();RenderSystem.defaultBlendFunc();
             RenderSystem.setShaderColor(1,1,1,1);
             RenderSystem.setShader(GameRenderer::getPositionTexColorShader);
             RenderSystem.setShaderTexture(0,PlanetSkyTexture.LOCATION);
             for(var body:bodies) {
-                if(reach(camera,body)>DRAW_REACH) continue;
+                double d2=distanceSquared(camera,body);
+                if(d2>DRAW_REACH*DRAW_REACH || d2<=PHYSICAL_HANDOFF_DISTANCE_SQR) continue;
                 MODEL.set(event.getModelViewMatrix()).translate((float)(body.x-camera.x),
                         (float)(body.y-camera.y),(float)(body.z-camera.z));
                 float radius=body.radius;
@@ -121,8 +136,10 @@ public final class OrbitPlanetProxies {
         } finally {
             VertexBuffer.unbind();RenderSystem.depthMask(write);
             if(depth)RenderSystem.enableDepthTest();else RenderSystem.disableDepthTest();
+            if(depthClamp)GL11.glEnable(org.lwjgl.opengl.GL32.GL_DEPTH_CLAMP);else GL11.glDisable(org.lwjgl.opengl.GL32.GL_DEPTH_CLAMP);
             if(cull)RenderSystem.enableCull();else RenderSystem.disableCull();
             if(blend)RenderSystem.enableBlend();else RenderSystem.disableBlend();
+            RenderSystem.depthFunc(depthFunction);
             RenderSystem.blendFuncSeparate(src,dst,srcA,dstA);RenderSystem.setShaderTexture(0,texture);
             RenderSystem.setShaderColor(r,g,b,a);if(shader!=null)RenderSystem.setShader(()->shader);
             RenderSystem.setShaderFogStart(fogStart);RenderSystem.setShaderFogEnd(fogEnd);
@@ -155,7 +172,7 @@ public final class OrbitPlanetProxies {
                 buffer.bind();buffer.upload(builder.buildOrThrow());
             }
             ready=true;
-            XenoPixelsMod.LOGGER.info("Retired chart-projection resources initialized: {} styles; render gate remains disabled",
+            XenoPixelsMod.LOGGER.info("Distant planet projection resources initialized: {} cached styles",
                     BUFFERS.length);
         } catch(RuntimeException|Error|IOException failure) {closeBuffers();throw new RuntimeException(failure);}
         finally {VertexBuffer.unbind();}

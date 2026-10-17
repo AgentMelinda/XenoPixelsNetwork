@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+## 0.5.15-1.21.1 — 2026-10-17
+
+- Render distant chart planets as lightweight cached atlas projections, with the detailed physical Sable sphere taking
+  over within 512 blocks. Toggle projections per client with `/xenoset space planets projections on|off`.
+- Add the server config key `kiPlanetShellDestructionEnabled` (default `false`) to let DMZ Ki blasts, waves, beams, and
+  explosion crater scans break Sable planet shell voxels while retaining DMZ Ki-griefing gamerules.
+
 ## 0.5.14-1.21.1 — 2026-10-17
 
 - Raise DragonMineZ's per-player unlocked-technique ceiling to a bounded 1,024 so Combat V3's

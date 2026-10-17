@@ -974,6 +974,9 @@ public final class XenoServerConfigKeys {
         integer("kiDestructionBlocksPerTick", "Synchronous cube-check budget",
                 () -> XenoServerConfig.kiDestructionBlocksPerTick,
                 v -> XenoServerConfig.kiDestructionBlocksPerTick = Math.max(64, v));
+        bool("kiPlanetShellDestructionEnabled", "Allow DMZ Ki attacks to break planet shells in Sable bodies",
+                () -> XenoServerConfig.kiPlanetShellDestructionEnabled,
+                v -> XenoServerConfig.kiPlanetShellDestructionEnabled = v);
 
         integer("kiDurationTicks", "All-type fire window (0 = stock)",
                 () -> XenoServerConfig.kiDurationTicks,
