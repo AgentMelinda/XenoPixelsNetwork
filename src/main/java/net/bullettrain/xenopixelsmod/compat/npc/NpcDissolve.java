@@ -88,12 +88,18 @@ public final class NpcDissolve {
         clearNow(target);
     }
 
+    /** The progress slope per server tick measured over the real gap since the last accepted write. */
+    static float measuredRate(float previous, long previousTick, float progress, long now) {
+        return previousTick == Long.MIN_VALUE ? 0f : (progress - previous) / Math.max(1L, now - previousTick);
+    }
+
     /**
-     * Server ticks are exact, so the rate is simply this tick's value minus the previous tick's. A new line goes to
-     * clients only when the real value leaves the line already sent (first tick, cancel, restore, another source).
+     * Server ticks are exact, but an accepted write is not always on the next tick: the live-channel guard in
+     * {@link #apply} returns before reaching here, so a restore ramp is recorded with gaps. A new line goes to clients
+     * only when the real value leaves the line already sent (first tick, cancel, restore, another source).
      */
     private static void sendTiming(LivingEntity target, Owner owner, float progress, long now) {
-        float rate = owner.prevTick == now - 1 ? progress - owner.prev : 0f;
+        float rate = measuredRate(owner.prev, owner.prevTick, progress, now);
         owner.prev = progress;
         owner.prevTick = now;
         boolean fresh = owner.sentTick == Long.MIN_VALUE;

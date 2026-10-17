@@ -21,6 +21,26 @@ final class HakaiSweepRenderPolicy {
         return exists && Double.isFinite(now) && Double.isFinite(expiresAt) && now < expiresAt;
     }
 
+    /** How far ahead of the server, in ticks of the line's own slope, the client's projection may run before a
+     * correction is obeyed instead of re-anchored. Covers packet latency plus the one-tick lead on screen. */
+    private static final float REANCHOR_LEAD_TICKS = 4.0f;
+
+    /**
+     * Re-anchor a correction line at the value already on screen instead of at the packet's value. The packet's value is
+     * used when nothing is on screen, when the server has run past the projection, or when the body is being restored
+     * (negative rate). Otherwise the projection is kept for at most one packet interval plus latency of lead, so a
+     * monotonic erase can never have its cut snapped back upwards by a correction - the multiplayer staircase.
+     *
+     * @param sentRate    slope of the line currently on screen
+     * @param projected   that line's value at this frame
+     * @param packetValue the server's authoritative value at its own tick
+     * @param fresh       true when no line is on screen for this entity yet
+     */
+    static float reanchorProgress(float sentRate, float projected, float packetValue, boolean fresh) {
+        if (fresh || sentRate < 0.0f || packetValue >= projected) return packetValue;
+        return projected - packetValue <= Math.max(0.02f, sentRate * REANCHOR_LEAD_TICKS) ? projected : packetValue;
+    }
+
     /**
      * Smooth a model-width change without allowing the moving cut ring to collapse below the mob's stable minimum.
      * The caller keeps this value per entity and prunes it with the entity lifecycle.

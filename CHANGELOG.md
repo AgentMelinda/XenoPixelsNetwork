@@ -2,6 +2,24 @@
 
 ## Unreleased
 
+## 0.5.22-1.21.1 — 2026-10-18
+
+- Fix a dedicated-server startup crash against Sable 2.0.5. `PhysicalEarth` statically called
+  `SubLevelLoadingTicket.getType()/getKey()`; Sable 2.0.5 made that class a record and renamed them to `type()/key()`,
+  so a server running 2.0.5 died with `NoSuchMethodError` inside the `ServerStartedEvent` consumer and took the whole
+  tick loop with it. The accessor name is now resolved against the Sable that is actually installed, on first read, so
+  an unknown future naming refuses that one body with a named diagnostic instead of failing class initialization, and
+  an unreadable ticket is never read as "no duplicate planet ticket exists". One jar now serves 2.0.3 and 2.0.5.
+- Make the Hakai sweep cut advance evenly on a multiplayer server. The server measured the progress rate as
+  `progress - previous` only when the two accepted writes landed on consecutive ticks and reported 0 otherwise, and the
+  live-channel guard guarantees a restore ramp is never consecutive, so clients were repeatedly handed a flat line. Each
+  correction packet then re-anchored the client's line at the server's older value, dragging the cut back upwards. The
+  rate is now measured over the real tick gap, and a monotonic correction re-anchors at the progress already on screen;
+  the packet's own value is still obeyed for the first line, when the server has run past the projection, when the body
+  is genuinely restoring, or when the client has run further ahead than a packet interval plus latency. Singleplayer is
+  unchanged, which is why the sweep looked right there. Unit-verified (18 render-policy and 4 dissolve tests); no
+  in-game capture has been made, so the visual result is not runtime-proven.
+
 ## 0.5.21-1.21.1 — 2026-10-17
 
 - Keep the sweep cutting glowing and crosshair-selected bodies. 0.5.20 stopped the crash by declining to clip vanilla's

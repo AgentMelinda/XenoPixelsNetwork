@@ -111,8 +111,13 @@ public final class HakaiSweepFx {
         // an alternate source of progress when the timing stream terminates.
         CLOCKS.remove(packet.entityId());
         END_RINGS.remove(packet.entityId());
-        TIMINGS.put(packet.entityId(), new Timing(level.getGameTime() + Minecraft.getInstance().getTimer().getGameTimeDeltaPartialTick(false),
-                packet.progress(), packet.ratePerTick()));
+        double now = level.getGameTime() + Minecraft.getInstance().getTimer().getGameTimeDeltaPartialTick(false);
+        Timing line = TIMINGS.get(packet.entityId());
+        float projected = line == null ? Float.NaN : net.bullettrain.xenopixelsmod.combat.HakaiSweepTiming.at(
+                line.progress(), line.rate(), now - line.anchor() + (line.rate() > 0f ? LEAD_TICKS : 0.0));
+        TIMINGS.put(packet.entityId(), new Timing(now,
+                HakaiSweepRenderPolicy.reanchorProgress(line == null ? 0f : line.rate(), projected,
+                        packet.progress(), line == null), packet.ratePerTick()));
         if (XenoClientConfig.hakaiSweepDebug)
             net.bullettrain.xenopixelsmod.XenoPixelsMod.LOGGER.info("HAKAI_SWEEP timing id={} progress={} rate={} at={}", packet.entityId(),
                     packet.progress(), packet.ratePerTick(), level.getGameTime());

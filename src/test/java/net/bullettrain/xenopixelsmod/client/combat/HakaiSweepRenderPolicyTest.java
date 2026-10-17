@@ -136,4 +136,21 @@ class HakaiSweepRenderPolicyTest {
         assertEquals(-0.75f, HakaiSweepRenderPolicy.contourYOffset(12.25f, 13.0f), 1.0e-6f);
         assertEquals(0.0f, HakaiSweepRenderPolicy.contourYOffset(Float.NaN, 13.0f), 1.0e-6f);
     }
+
+    @Test void correctionKeepsTheScreenValueSoTheCutNeverSnapsBackUp() {
+        assertEquals(0.34f, HakaiSweepRenderPolicy.reanchorProgress(0.02f, 0.34f, 0.30f, false), 1.0e-6f);
+    }
+
+    @Test void serverAuthorityAheadOfTheProjectionIsTaken() {
+        assertEquals(0.5f, HakaiSweepRenderPolicy.reanchorProgress(0.02f, 0.34f, 0.5f, false), 1.0e-6f);
+        // The first line for this entity has nothing on screen to preserve.
+        assertEquals(0.05f, HakaiSweepRenderPolicy.reanchorProgress(0.02f, 0.9f, 0.05f, true), 1.0e-6f);
+    }
+
+    @Test void restoreAndGrossOverrunObeyTheServer() {
+        // A negative slope is a real cancel: the body must visibly regrow to the server's value.
+        assertEquals(0.2f, HakaiSweepRenderPolicy.reanchorProgress(-0.05f, 0.8f, 0.2f, false), 1.0e-6f);
+        // Past the latency the client is allowed to lead by, the projection is wrong and gets corrected.
+        assertEquals(0.1f, HakaiSweepRenderPolicy.reanchorProgress(0.02f, 0.9f, 0.1f, false), 1.0e-6f);
+    }
 }
