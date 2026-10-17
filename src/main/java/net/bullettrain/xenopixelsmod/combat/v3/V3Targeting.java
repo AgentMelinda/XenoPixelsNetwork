@@ -37,7 +37,7 @@ public final class V3Targeting {
         LivingEntity nearest = null;
         double nearestHit = range * range;
         for (LivingEntity entity : candidates) {
-            if (!valid(player, entity, stats)) continue;
+            if (!validForLock(player, entity, stats)) continue;
             AABB box = entity.getBoundingBox();
             if (V3Protection.npc(entity) && box.getXsize() < 0.2) box = box.inflate(0.4, 0, 0.4);
             box = box.inflate(entity.getPickRadius());
@@ -65,7 +65,7 @@ public final class V3Targeting {
         boolean currentValid = resolve(player) != null;
         var raw = requested == null ? null : player.serverLevel().getEntity(requested);
         boolean candidateValid = raw instanceof LivingEntity target
-                && valid(player, target, V3Protection.sensingStats(player));
+                && validForLock(player, target, V3Protection.sensingStats(player));
         if (!V3TargetingRules.cycleAllowed(fighter.approvedTarget, requested, currentValid, candidateValid)) {
             if (currentValid) fighter.targetRefusal = "Cycle candidate refused; current lock retained";
             return false;
@@ -80,6 +80,13 @@ public final class V3Targeting {
     }
     private static boolean valid(ServerPlayer player, LivingEntity target, com.dragonminez.common.stats.StatsData stats) {
         return V3Protection.eligible(player, target, stats)
+                && V3TargetingRules.inRange(player.distanceToSqr(target), V3TargetingRules.LOCK_RANGE)
+                && V3TargetingRules.finite(target.position()) && V3TargetingRules.finite(target.getDeltaMovement())
+                && (XenoServerConfig.lockOnThroughBlocks || V3LoadedVisibility.visible(player, target));
+    }
+    private static boolean validForLock(ServerPlayer player, LivingEntity target,
+                                        com.dragonminez.common.stats.StatsData stats) {
+        return V3Protection.lockEligible(player, target, stats)
                 && V3TargetingRules.inRange(player.distanceToSqr(target), V3TargetingRules.LOCK_RANGE)
                 && V3TargetingRules.finite(target.position()) && V3TargetingRules.finite(target.getDeltaMovement())
                 && (XenoServerConfig.lockOnThroughBlocks || V3LoadedVisibility.visible(player, target));
@@ -117,7 +124,7 @@ public final class V3Targeting {
         V3Fighter fighter = V3FighterStore.peek(player);
         return fighter == null ? null : fighter.target;
     }
-    public static void clear(ServerPlayer player) { refuse(player, "Lock cleared", true); }
+    public static void clear(ServerPlayer player) { refuse(player, "Lock cleared", true, true); }
     public static String refusal(ServerPlayer player) {
         V3Fighter fighter = V3FighterStore.peek(player);
         return fighter == null ? null : fighter.targetRefusal;
@@ -130,6 +137,9 @@ public final class V3Targeting {
      * unlock or a target that is actually gone.
      */
     private static boolean refuse(ServerPlayer player, String reason, boolean dropLock) {
+        return refuse(player, reason, dropLock, false);
+    }
+    private static boolean refuse(ServerPlayer player, String reason, boolean dropLock, boolean alwaysSync) {
         V3Fighter fighter = V3FighterStore.get(player);
         boolean hadLock = fighter.approvedTarget != null;
         boolean changed = hadLock || fighter.state != V3State.IDLE
@@ -137,7 +147,7 @@ public final class V3Targeting {
         V3CombatServer.cancelLiveState(player);
         if (dropLock) fighter.clearApprovedLock();
         fighter.targetRefusal = reason;
-        if (changed || (dropLock && hadLock)) V3CombatServer.syncState(player);
+        if (changed || (dropLock && hadLock) || alwaysSync) V3CombatServer.syncState(player);
         return false;
     }
     private static void update(V3Fighter fighter, LivingEntity target, long now) {
@@ -147,7 +157,13 @@ public final class V3Targeting {
     static void tick(ServerPlayer player, int now) {
         V3Fighter fighter = V3FighterStore.peek(player);
         if (fighter == null || fighter.approvedTarget == null) return;
-        LivingEntity target = resolve(player);
+        var raw = player.serverLevel().getEntity(fighter.approvedTarget);
+        if (!(raw instanceof LivingEntity target) || !target.isAlive() || target.isRemoved()
+                || target.level() != player.level()) {
+            resolve(player);
+            return;
+        }
+        if (!validForLock(player, target, V3Protection.sensingStats(player))) return;
         if (target != null && (fighter.target.entityId() != target.getId()
                 || V3TargetingRules.motionDue(fighter.target, target.position(), target.getDeltaMovement(), now, fighter.targetSentTick))) {
             update(fighter, target, now);

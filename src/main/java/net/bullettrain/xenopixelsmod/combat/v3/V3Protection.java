@@ -5,6 +5,7 @@ import com.dragonminez.common.stats.StatsData;
 import com.dragonminez.common.stats.StatsProvider;
 import com.dragonminez.common.util.TransformationsHelper;
 import com.dragonminez.server.world.data.PartySavedData;
+import net.bullettrain.xenopixelsmod.combat.targeting.LockOnConfig;
 import net.bullettrain.xenopixelsmod.event.DmzMasterProtection;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.LivingEntity;
@@ -21,6 +22,24 @@ final class V3Protection {
         } catch (RuntimeException | LinkageError unavailable) { return null; }
     }
     static boolean eligible(ServerPlayer player, LivingEntity target, StatsData sensing) {
+        if (!lockEligible(player, target, sensing)) return false;
+        if (target instanceof Player other) {
+            try {
+                if (!(other instanceof ServerPlayer) || other.isCreative() || other.isSpectator()
+                        || other.isInvulnerable() || player.getServer() == null || !player.getServer().isPvpAllowed()
+                        || !player.canHarmPlayer(other)) return false;
+                PartySavedData parties = PartySavedData.get(player.getServer());
+                if (parties == null) return false;
+                var ours = parties.getPartyOf(player.getUUID());
+                var theirs = parties.getPartyOf(other.getUUID());
+                if (ours != null && theirs != null && ours.getPartyId().equals(theirs.getPartyId())
+                        && !ours.isPvpEnabled()) return false;
+            } catch (RuntimeException | LinkageError unavailable) { return false; }
+        }
+        return true;
+    }
+    /** Lock-marker admission follows the user's lock settings; attacks still pass {@link #eligible}. */
+    static boolean lockEligible(ServerPlayer player, LivingEntity target, StatsData sensing) {
         if (sensing == null || target == null || target == player || !target.isAlive() || target.isRemoved()
                 || target.level() != player.level()) return false;
         try {
@@ -28,9 +47,10 @@ final class V3Protection {
             boolean npc = npc(target);
             if ((!target.isPickable() && !npc) || (!npc && target.isInvisible()) || target.isInvisibleTo(player)) return false;
             if (target instanceof Player other) {
-                if (!(other instanceof ServerPlayer serverTarget) || other.isCreative() || other.isSpectator()
-                        || other.isInvulnerable() || player.getServer() == null || !player.getServer().isPvpAllowed()
-                        || !player.canHarmPlayer(other)) return false;
+                if (!(other instanceof ServerPlayer serverTarget)
+                        || (!LockOnConfig.lockCreativePlayers && other.isCreative())
+                        || (!LockOnConfig.lockSpectators && other.isSpectator())
+                        || (!LockOnConfig.lockInvulnerablePlayers && other.isInvulnerable())) return false;
                 StatsData targetStats = StatsProvider.get(StatsCapability.INSTANCE, other).orElse(null);
                 if (targetStats == null || TransformationsHelper.hasAntiKiCloak(other)
                         || (TransformationsHelper.hasGodFormActive(targetStats)
@@ -39,7 +59,8 @@ final class V3Protection {
                 if (parties == null) return false;
                 var ours = parties.getPartyOf(player.getUUID());
                 var theirs = parties.getPartyOf(serverTarget.getUUID());
-                if (ours != null && theirs != null && ours.getPartyId().equals(theirs.getPartyId()) && !ours.isPvpEnabled()) return false;
+                if (LockOnConfig.respectPartyFriendlyFire && ours != null && theirs != null
+                        && ours.getPartyId().equals(theirs.getPartyId()) && !ours.isPvpEnabled()) return false;
             }
             return true;
         } catch (RuntimeException | LinkageError unavailable) { return false; }

@@ -2,6 +2,15 @@
 
 ## Unreleased
 
+## 0.5.14-1.21.1 — 2026-10-17
+
+- Raise DragonMineZ's per-player unlocked-technique ceiling to a bounded 1,024 so Combat V3's
+  registered strike catalog no longer fills DMZ's 256-entry limit and blocks Ki/custom techniques.
+- Make V3 lock acquisition honor the configured creative, spectator, invulnerable, and party-lock
+  settings while keeping actual attack target validation subject to PvP and party protection.
+- Send an authoritative state packet on every explicit V3 lock clear so a stale client marker can
+  clear on the first press.
+
 ## 0.5.13-1.21.1 — 2026-10-17
 
 - Add XenoCombat v2 as an opt-in combat controller: `/xenocombat mode v2` (the existing combat is
