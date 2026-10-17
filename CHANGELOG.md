@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+## 0.5.17-1.21.1 — 2026-10-17
+
+- Keep Hakai sweep clipping off Minecraft's special outline buffers, avoiding the logged `Not building!` failure
+  during NPC rendering and preserving the normal outline pass.
+- Give the Hakai sweep's moving and retained endpoint rings a three-band violet glow.
+
 ## 0.5.16-1.21.1 — 2026-10-17
 
 - Fetch Git LFS objects in CI and release builds so `xenopixelsmod.mixins.json` is packaged as JSON rather than an LFS pointer.

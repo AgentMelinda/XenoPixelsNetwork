@@ -387,8 +387,7 @@ public final class HakaiSweepFx {
             // different largest contour each animated frame used to move/shrink the ring independently of the mob.
             float cx = (float) (renderPosition.x - camera.x);
             float cz = (float) (renderPosition.z - camera.z);
-            ring(builder, cx, y, cz, band[0], band[1],
-                    argb((int) (220 * pulse), 236, 170, 255), argb(0, 140, 40, 255));
+            ring(builder, cx, y, cz, band[0], band[1], pulse);
         }
         double now = mc.level.getGameTime() + partial;
         for (var entry : END_RINGS.entrySet()) {
@@ -405,8 +404,7 @@ public final class HakaiSweepFx {
             float pulse = 0.75f + 0.25f * (float) Math.sin(now * 0.7);
             float[] band = HakaiSweepRenderPolicy.visibleRingBand(width * 0.5f);
             ring(builder, (float) (endRing.x() - camera.x), (float) (endRing.y() - camera.y),
-                    (float) (endRing.z() - camera.z), band[0], band[1],
-                    argb((int) (220 * pulse), 236, 170, 255), argb(0, 140, 40, 255));
+                    (float) (endRing.z() - camera.z), band[0], band[1], pulse);
         }
         // Caps first, with normal blending: a solid dark violet cross-section, so a cut horizontal body (cows, pigs)
         // never shows a hollow box or pops its whole back away (owner 2026-10-16: not smooth on 4-foot walkers).
@@ -552,16 +550,33 @@ public final class HakaiSweepFx {
         }
     }
 
-    private static void ring(BufferBuilder b, float cx, float y, float cz, float inner, float outer, int core, int fade) {
+    /**
+     * Texture-free purple energy rim. Three nested gradients give the moving and retained endpoint rings a crisp
+     * violet-white core, a denser purple band, and a soft additive halo without changing their geometry or lifetime.
+     */
+    private static void ring(BufferBuilder b, float cx, float y, float cz, float inner, float outer, float pulse) {
+        float span = Math.max(0.001f, outer - inner);
+        float coreEdge = inner + span * 0.20f;
+        float bandEdge = inner + span * 0.62f;
+        ringBand(b, cx, y, cz, inner, coreEdge,
+                argb((int) (220 * pulse), 244, 222, 255), argb((int) (178 * pulse), 190, 112, 255));
+        ringBand(b, cx, y, cz, coreEdge, bandEdge,
+                argb((int) (142 * pulse), 152, 60, 255), argb((int) (84 * pulse), 98, 28, 220));
+        ringBand(b, cx, y, cz, bandEdge, outer,
+                argb((int) (54 * pulse), 112, 46, 255), argb(0, 80, 24, 200));
+    }
+
+    private static void ringBand(BufferBuilder b, float cx, float y, float cz, float inner, float outer,
+                                 int innerColor, int outerColor) {
         for (int i = 0; i < SEGMENTS; i++) {
             double a0 = Math.PI * 2 * i / SEGMENTS, a1 = Math.PI * 2 * (i + 1) / SEGMENTS;
             float c0 = (float) Math.cos(a0), s0 = (float) Math.sin(a0), c1 = (float) Math.cos(a1), s1 = (float) Math.sin(a1);
-            b.addVertex(cx + c0 * inner, y, cz + s0 * inner).setColor(core);
-            b.addVertex(cx + c0 * outer, y, cz + s0 * outer).setColor(fade);
-            b.addVertex(cx + c1 * outer, y, cz + s1 * outer).setColor(fade);
-            b.addVertex(cx + c0 * inner, y, cz + s0 * inner).setColor(core);
-            b.addVertex(cx + c1 * outer, y, cz + s1 * outer).setColor(fade);
-            b.addVertex(cx + c1 * inner, y, cz + s1 * inner).setColor(core);
+            b.addVertex(cx + c0 * inner, y, cz + s0 * inner).setColor(innerColor);
+            b.addVertex(cx + c0 * outer, y, cz + s0 * outer).setColor(outerColor);
+            b.addVertex(cx + c1 * outer, y, cz + s1 * outer).setColor(outerColor);
+            b.addVertex(cx + c0 * inner, y, cz + s0 * inner).setColor(innerColor);
+            b.addVertex(cx + c1 * outer, y, cz + s1 * outer).setColor(outerColor);
+            b.addVertex(cx + c1 * inner, y, cz + s1 * inner).setColor(innerColor);
         }
     }
 

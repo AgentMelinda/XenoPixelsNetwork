@@ -42,7 +42,11 @@ public final class CombatBodyFade {
 
     public static MultiBufferSource wrapHakai(MultiBufferSource buffers, Entity entity,
                                               float partialTick) {
-        if (buffers == null || isWrapped(buffers) || entity == null) return buffers;
+        // OutlineBufferSource has special consumers that do not behave like ordinary entity vertex
+        // buffers. Clipping their quads can emit vertices after the outline builder has ended
+        // (Not building!), aborting the entity renderer mid-pose and leaving LevelRenderer's stack
+        // unbalanced. Keep Minecraft's glow/selection pass intact and clip only the normal pass.
+        if (buffers == null || isWrapped(buffers) || entity == null || outlinePass(buffers)) return buffers;
         if (HakaiSweepFx.enabled()) {
             // The sweep has its own smooth clock (and keeps the body cut through the final clear packet).
             float sweep = HakaiSweepFx.sweepProgress(entity, partialTick);
