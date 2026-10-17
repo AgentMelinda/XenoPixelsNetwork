@@ -9,11 +9,17 @@ import net.minecraft.client.renderer.RenderType;
  * Hakai "sweep" for entities (owner 2026-10-16: the planet's top-to-bottom erasure "for players and Sable ships and
  * blocks"). Every quad the model emits is clipped against a horizontal plane at world Y {@code cutY}: what is above is
  * gone, polygons crossing it are cut exactly (interpolated position, colour, UV, overlay, light and normal), so the body
- * disappears with a clean edge instead of fading. Works with any render type and shader pack, because only the
- * geometry changes. Non-quad or normal-less buffers (lines, debug) pass through untouched.
+ * disappears with a clean edge instead of fading. Non-quad or normal-less buffers (lines, debug) pass through untouched.
  *
  * <p>Model vertices arrive in camera-rotated space; {@link HakaiFade#worldYFromCameraSpace} turns them into world Y, the
  * same conversion the classic height fade uses, and that map is linear so interpolating along an edge stays exact.
+ *
+ * <p>Clipping buffers a whole quad before re-emitting it, so under Iris/Sodium batched entity rendering the delegate's
+ * builder can already be ended when the flush lands, and the deferred write throws {@code IllegalStateException: Not
+ * building!}. An exception escaping here unwinds {@code EntityRenderDispatcher#render} mid-frame and the level renderer
+ * dies on {@code Pose stack not empty}, so the flush is fail-open: the first rejected write closes this clipper and every
+ * later quad for that buffer is dropped. The delegate is finished for that batch either way, so the vertex would not be
+ * drawn regardless - a missing sweep for one frame, never a crash.
  */
 final class HakaiClipMultiBufferSource implements MultiBufferSource {
     private final MultiBufferSource delegate;
@@ -41,6 +47,11 @@ final class HakaiClipMultiBufferSource implements MultiBufferSource {
     @Override
     public VertexConsumer getBuffer(RenderType renderType) {
         VertexConsumer inner = delegate.getBuffer(renderType);
+        // Vanilla's glow/target pass fans the entity buffer out through VertexMultiConsumer. Those nested classes
+        // implement VertexConsumer without extending it, so no instanceof test can name them, and the fan-out's
+        // second member is closed by OutlineBufferSource#endOutlineBatch while a clipped quad is still buffered
+        // here. That late write is the logged "Not building!" crash: leave fan-out consumers unclipped.
+        if (inner.getClass().getName().startsWith("com.mojang.blaze3d.vertex.VertexMultiConsumer")) return inner;
         // Quads whose format ends in a normal (every entity format): the clipper flushes a quad on its 4th normal.
         boolean clippable = renderType.mode() == VertexFormat.Mode.QUADS
                 && renderType.format().contains(com.mojang.blaze3d.vertex.VertexFormatElement.NORMAL);
@@ -62,6 +73,8 @@ final class HakaiClipMultiBufferSource implements MultiBufferSource {
         private final int[] r = new int[4], g = new int[4], b = new int[4], a = new int[4];
         private final int[] ou = new int[4], ov = new int[4], lu = new int[4], lv = new int[4];
         private boolean hasColor, hasUv, hasOverlay, hasLight, hasNormal;
+        /** The delegate's builder was already ended by a shader-pack batch flush; stop writing, never propagate. */
+        private boolean dead;
         private int count = -1;
 
         private final String typeName;
@@ -152,12 +165,21 @@ final class HakaiClipMultiBufferSource implements MultiBufferSource {
         }
 
         private void emit(int i, int j, float t) {
-            out.addVertex(lerp(x[i], x[j], t), lerp(y[i], y[j], t), lerp(z[i], z[j], t));
-            if (hasColor) out.setColor(lerpI(r[i], r[j], t), lerpI(g[i], g[j], t), lerpI(b[i], b[j], t), lerpI(a[i], a[j], t));
-            if (hasUv) out.setUv(lerp(u[i], u[j], t), lerp(v[i], v[j], t));
-            if (hasOverlay) out.setUv1(t < 0.5f ? ou[i] : ou[j], t < 0.5f ? ov[i] : ov[j]);
-            if (hasLight) out.setUv2(t < 0.5f ? lu[i] : lu[j], t < 0.5f ? lv[i] : lv[j]);
-            if (hasNormal) out.setNormal(lerp(nx[i], nx[j], t), lerp(ny[i], ny[j], t), lerp(nz[i], nz[j], t));
+            if (dead) return;
+            try {
+                out.addVertex(lerp(x[i], x[j], t), lerp(y[i], y[j], t), lerp(z[i], z[j], t));
+                if (hasColor) out.setColor(lerpI(r[i], r[j], t), lerpI(g[i], g[j], t), lerpI(b[i], b[j], t), lerpI(a[i], a[j], t));
+                if (hasUv) out.setUv(lerp(u[i], u[j], t), lerp(v[i], v[j], t));
+                if (hasOverlay) out.setUv1(t < 0.5f ? ou[i] : ou[j], t < 0.5f ? ov[i] : ov[j]);
+                if (hasLight) out.setUv2(t < 0.5f ? lu[i] : lu[j], t < 0.5f ? lv[i] : lv[j]);
+                if (hasNormal) out.setNormal(lerp(nx[i], nx[j], t), lerp(ny[i], ny[j], t), lerp(nz[i], nz[j], t));
+            } catch (IllegalStateException ended) {
+                // The builder behind this consumer is closed; a swept-then-dropped quad beats a dead client.
+                dead = true;
+                if (net.bullettrain.xenopixelsmod.client.config.XenoClientConfig.hakaiSweepDebug)
+                    net.bullettrain.xenopixelsmod.XenoPixelsMod.LOGGER.info("HAKAI_SWEEP clipper closed type={} msg={}",
+                            typeName.length() > 90 ? typeName.substring(0, 90) : typeName, ended.getMessage());
+            }
         }
 
         private float lerp(float p, float q, float s) { return p + (q - p) * s; }

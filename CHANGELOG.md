@@ -2,6 +2,17 @@
 
 ## Unreleased
 
+## 0.5.20-1.21.1 — 2026-10-17
+
+- Stop the Hakai sweep client crash (`IllegalStateException: Not building!` followed by `Pose stack not empty` in
+  `LevelRenderer#checkPoseStack`). The sweep clipper buffers a whole quad before re-emitting it, and vanilla's entity
+  glow/target pass fans that buffer out through `VertexMultiConsumer` to an outline builder that `endOutlineBatch`
+  closes first, so the deferred write landed on a finished builder and unwound the entity renderer mid-pose.
+  Fan-out consumers are now left unclipped, which supersedes the 0.5.17 guard — that one tested for
+  `OutlineBufferSource`, and the nested fan-out classes implement `VertexConsumer` without extending
+  `VertexMultiConsumer`, so no type test on the incoming source could ever see them. Any other late write is absorbed
+  fail-open instead of propagating: one frame without a sweep, never a crash.
+
 ## 0.5.19-1.21.1 — 2026-10-17
 
 - Skip the Hakai sweep rim and ghost-block passes while Iris is drawing its shadow map, using the same optional-Iris
