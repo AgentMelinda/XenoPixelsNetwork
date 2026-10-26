@@ -6,6 +6,9 @@ import dev.ryanhcode.sable.api.sublevel.ticket.SubLevelLoadingTicketType;
 import dev.ryanhcode.sable.sublevel.ServerSubLevel;
 import dev.ryanhcode.sable.sublevel.SubLevel;
 import dev.ryanhcode.sable.sublevel.storage.SubLevelRemovalReason;
+import dev.ryanhcode.sable.sublevel.storage.holding.GlobalSavedSubLevelPointer;
+import dev.ryanhcode.sable.sublevel.storage.serialization.SubLevelData;
+import dev.ryanhcode.sable.sublevel.storage.serialization.SubLevelSerializer;
 import dev.ryanhcode.sable.companion.math.BoundingBox3i;
 import net.bullettrain.xenopixelsmod.XenoPixelsMod;
 import net.bullettrain.xenopixelsmod.api.network.AddonNetwork;
@@ -420,7 +423,7 @@ public final class AsteroidPhysicalizer {
      * the sub-level (ServerSubLevel is not a LevelAccessor; javap, Sable 2.0.3). The body is found through the plot that
      * owns the position: SubLevelContainer.getPlot(ChunkPos) -> LevelPlot.getSubLevel().
      */
-    private static boolean markTouched(LevelAccessor level, net.minecraft.core.BlockPos pos) {
+    static boolean markTouched(LevelAccessor level, net.minecraft.core.BlockPos pos) {
         if (!(level instanceof ServerLevel serverLevel)) return false;
         var plot = SubLevelContainer.getContainer(serverLevel).getPlot(new net.minecraft.world.level.ChunkPos(pos));
         if (plot == null || !(plot.getSubLevel() instanceof ServerSubLevel body)) return false;
@@ -505,6 +508,8 @@ public final class AsteroidPhysicalizer {
                 XenoPixelsMod.LOGGER.warn("Discarded incomplete asteroid build {} left by an unclean shutdown", body.getUniqueId());
                 continue;
             }
+            if (clearStaleRuntimeMarkers(asteroidTag))
+                XenoPixelsMod.LOGGER.warn("Asteroid {}: cleared fracture markers left by an unclean shutdown", body.getUniqueId());
             var id = idOf(asteroidTag);
             if (id == null) continue;
             if (runtime.active.containsKey(id)) {
@@ -524,6 +529,31 @@ public final class AsteroidPhysicalizer {
         }
     }
 
+    /**
+     * Clears markers that describe in-memory work only. A queued slab cut and a heat-map bootstrap live in the
+     * Runtime and never survive a restart, but their markers are saved with the body. A clean stop clears them
+     * ({@link #stopping}); after an unclean shutdown they would block impact sampling ({@code fractureCutActive})
+     * and every block edit ({@code fractureHeatMapBootstrapping}) on this asteroid forever. A stale bootstrap also
+     * drops its attempted flag so the heat map is bootstrapped once more; a genuinely failed attempt (attempted
+     * without bootstrapping) is left alone so it does not retry every restart.
+     *
+     * @return whether anything was cleared
+     */
+    static boolean clearStaleRuntimeMarkers(CompoundTag asteroidTag) {
+        if (asteroidTag == null) return false;
+        boolean changed = false;
+        if (asteroidTag.contains("fractureCutActive")) {
+            asteroidTag.remove("fractureCutActive");
+            changed = true;
+        }
+        if (asteroidTag.getBoolean("fractureHeatMapBootstrapping")) {
+            asteroidTag.remove("fractureHeatMapBootstrapping");
+            asteroidTag.remove("fractureHeatMapAttempted");
+            changed = true;
+        }
+        return changed;
+    }
+
     private static void stepBuild(ServerLevel level, Runtime runtime) {
         if (runtime.job == null) return;
         var candidate = runtime.building;
@@ -533,7 +563,9 @@ public final class AsteroidPhysicalizer {
             if (runtime.job.body() == null && !net.bullettrain.xenopixelsmod.space.physics.SpaceBuildWorkBudget.mayPrepare(
                     level.getServer(), tick, net.bullettrain.xenopixelsmod.space.physics.SpaceBuildWorkBudget.Owner.ASTEROID,
                     XenoSpaceConfig.asteroidBuildVoxelsPerTick())) return;
-            if (!runtime.job.prepare()) {
+            if (!net.bullettrain.xenopixelsmod.space.physics.SpaceBuildWorkBudget.prepare(
+                    level.getServer(), tick, net.bullettrain.xenopixelsmod.space.physics.SpaceBuildWorkBudget.Owner.ASTEROID,
+                    runtime.job)) {
                 if (runtime.job.failed()) {
                     XenoPixelsMod.LOGGER.warn("Asteroid {} build failed: no free plot", candidate.id());
                     abandonBuild(container, runtime);
@@ -552,16 +584,12 @@ public final class AsteroidPhysicalizer {
             if (stepBudget <= 0) return;
             double millisBudget = net.bullettrain.xenopixelsmod.space.physics.SpaceBuildWorkBudget.remainingMillis(
                     level.getServer(), tick, net.bullettrain.xenopixelsmod.space.physics.SpaceBuildWorkBudget.Owner.ASTEROID);
-            if (XenoSpaceConfig.generatedBodyBuildMillisPerTick() > 0.0 && millisBudget <= 0.0) return;
-            int before = runtime.job.installed();
-            long sliceStarted = System.nanoTime();
-            boolean complete = runtime.job.step(stepBudget, millisBudget);
-            net.bullettrain.xenopixelsmod.space.physics.SpaceBuildWorkBudget.record(level.getServer(), tick,
+            if (XenoSpaceConfig.generatedBodyBuildMillisPerTick() > 0.0
+                    && millisBudget <= 0.0 && runtime.job.installed() > 0) return;
+            boolean complete = net.bullettrain.xenopixelsmod.space.physics.SpaceBuildWorkBudget.step(
+                    level.getServer(), tick,
                     net.bullettrain.xenopixelsmod.space.physics.SpaceBuildWorkBudget.Owner.ASTEROID,
-                    runtime.job.installed() - before);
-            net.bullettrain.xenopixelsmod.space.physics.SpaceBuildWorkBudget.recordMillis(level.getServer(), tick,
-                    net.bullettrain.xenopixelsmod.space.physics.SpaceBuildWorkBudget.Owner.ASTEROID,
-                    (System.nanoTime() - sliceStarted) / 1e6);
+                    runtime.job, stepBudget, millisBudget);
             if (!complete) {
                 if (runtime.job.failed()) {
                     XenoPixelsMod.LOGGER.warn("Asteroid {} build failed (no free plot)", candidate.id());
@@ -1127,6 +1155,7 @@ public final class AsteroidPhysicalizer {
     private static void computeWanted(MinecraftServer server, ServerLevel level, Runtime runtime, List<double[]> players,
                                       OtherLiveBodies otherBodies) {
         long scanStarted = System.nanoTime();
+        var container = SubLevelContainer.getContainer(level);
         runtime.wanted.clear();
         runtime.fieldCellCacheHits = 0;
         runtime.fieldCellCacheMisses = 0;
@@ -1220,6 +1249,18 @@ public final class AsteroidPhysicalizer {
             runtime.scanTaskStart = taskIndex;
         }
         runtime.scanCellsLast = work;
+        if (perPlayerLimit > 0) for (int viewerIndex = 0; viewerIndex < players.size(); viewerIndex++) {
+            double[] viewer = players.get(viewerIndex);
+            for (AsteroidSavedData.StoredBody stored : detached.nearbyStored(
+                    viewer[0], viewer[1], viewer[2], range, perPlayerLimit)) {
+                if (container.getSubLevel(stored.bodyId()) instanceof ServerSubLevel live && !live.isRemoved()) continue;
+                var candidate = new AsteroidField.Candidate(stored.id(), stored.seed(), stored.x(), stored.y(),
+                        stored.z(), stored.radius(), stored.icy());
+                double distanceSquared = AsteroidCandidateSelector.distanceSquared(viewer[0], viewer[1], viewer[2],
+                        candidate.x(), candidate.y(), candidate.z());
+                perPlayerNearest.get(viewerIndex).offer(candidate, distanceSquared);
+            }
+        }
         for (var nearest : perPlayerNearest)
             nearest.offerAllTo(globalNearest, ranked -> !runtime.active.containsKey(ranked.candidate().id())
                     && (runtime.building == null || !runtime.building.id().equals(ranked.candidate().id())));
@@ -1275,6 +1316,11 @@ public final class AsteroidPhysicalizer {
             if (!net.bullettrain.xenopixelsmod.space.physics.SpaceBuildActivationGate.tryAcquire(
                     level.getServer(), net.bullettrain.xenopixelsmod.space.physics.SpaceActivationBudget.Owner.ASTEROID,
                     level.getServer().overworld().getGameTime())) return StartNextResult.BUDGET_DENIED;
+            if (AsteroidSavedData.get(level).isDetached(candidate.id())) {
+                AsteroidSavedData.StoredBody stored = AsteroidSavedData.get(level).storedBody(candidate.id());
+                if (restoreDetachedBody(level, runtime, candidate, stored)) runtime.wanted.remove(candidate);
+                return StartNextResult.NORMAL_INTERVAL;
+            }
             runtime.building = candidate;
             CompoundTag buildTag = new CompoundTag();
             buildTag.putLongArray("id", new long[]{candidate.id().cellX(), candidate.id().cellY(), candidate.id().cellZ(), candidate.id().slot()});
@@ -1291,6 +1337,57 @@ public final class AsteroidPhysicalizer {
             return StartNextResult.NORMAL_INTERVAL;
         }
         return StartNextResult.NORMAL_INTERVAL;
+    }
+
+    /** Loads the previously edited Sable body from its exact pointer; it never falls back to pristine regeneration. */
+    private static boolean restoreDetachedBody(ServerLevel level, Runtime runtime, AsteroidField.Candidate candidate,
+                                                AsteroidSavedData.StoredBody stored) {
+        if (stored == null || stored.pointer() == null || !stored.id().equals(candidate.id())
+                || runtime.active.containsKey(candidate.id())) return false;
+        var container = SubLevelContainer.getContainer(level);
+        if (container.getSubLevel(stored.bodyId()) != null) return false;
+        var holding = container.getHoldingChunkMap();
+        ServerSubLevel body = null;
+        CompoundTag originalUserData = null;
+        boolean ticketAdded = false;
+        try {
+            SubLevelData data = holding.getStorage().attemptLoadSubLevel(stored.pointer().chunkPos(), stored.pointer().local());
+            if (data == null || !stored.bodyId().equals(data.uuid()))
+                throw new IllegalStateException("stored pointer is missing or names a different Sable UUID");
+            body = SubLevelSerializer.fullyLoad(level, data);
+            if (body == null || !stored.bodyId().equals(body.getUniqueId()))
+                throw new IllegalStateException("Sable refused the detached body load or returned a different UUID");
+            body.setLastSerializationPointer(stored.pointer());
+            originalUserData = body.getUserDataTag() == null ? null : body.getUserDataTag().copy();
+            CompoundTag userData = originalUserData == null ? new CompoundTag() : originalUserData.copy();
+            CompoundTag asteroid = new CompoundTag();
+            asteroid.putLongArray("id", new long[]{candidate.id().cellX(), candidate.id().cellY(),
+                    candidate.id().cellZ(), candidate.id().slot()});
+            asteroid.putDouble("mass", body.getMassTracker().getMass());
+            asteroid.putBoolean(TOUCHED_TAG, true);
+            userData.put(TAG, asteroid);
+            body.setUserDataTag(userData);
+            container.addForceLoadTicket(body, TICKET, candidate.id().toString());
+            ticketAdded = true;
+            Active active = new Active(candidate, body.getUniqueId());
+            active.originalMass = body.getMassTracker().getMass();
+            runtime.active.put(candidate.id(), active);
+            if (XenoSpaceConfig.asteroidFracture()) queueFractureHeatMap(runtime, body, candidate);
+            runtime.presenceDirty = true;
+            runtime.capacityBodiesSnapshot = null;
+            XenoPixelsMod.LOGGER.info("Detached asteroid {} restored from Sable pointer {} with stable UUID {}",
+                    candidate.id(), stored.pointer(), body.getUniqueId());
+            return true;
+        } catch (RuntimeException failure) {
+            if (body != null && !body.isRemoved()) {
+                if (ticketAdded) container.removeForceLoadTicket(body, TICKET, candidate.id().toString());
+                body.setUserDataTag(originalUserData);
+                container.removeSubLevel(body, SubLevelRemovalReason.UNLOADED);
+            }
+            XenoPixelsMod.LOGGER.error("Could not restore detached asteroid {} from its exact Sable pointer {}; pristine regeneration remains suppressed",
+                    candidate.id(), stored.pointer(), failure);
+            return false;
+        }
     }
 
     private static boolean fitsCurrentActivationCaps(Runtime runtime, AsteroidField.Candidate candidate,
@@ -1334,7 +1431,8 @@ public final class AsteroidPhysicalizer {
         double mass = body.getMassTracker().getMass();
         boolean touched = isTouched(body.getUserDataTag(), active.originalMass, mass);
         if (touched) {
-            if (!AsteroidSavedData.get(level).detach(id, body.getUniqueId())) {
+            AsteroidSavedData saved = AsteroidSavedData.get(level);
+            if (!saved.detach(id, body.getUniqueId())) {
                 // A modified body has to remain alive and ticketed when its stable field id cannot
                 // be recorded. Removing it here would silently delete player edits and allow the
                 // deterministic field to spawn a duplicate. Keeping it in runtime.active also
@@ -1346,9 +1444,17 @@ public final class AsteroidPhysicalizer {
                 }
                 return false;
             }
+            if (!persistDetachedBody(level, saved, id, active.candidate, body)) {
+                if (!active.detachBlockedLogged) {
+                    XenoPixelsMod.LOGGER.error("Asteroid {} could not be released ({}): exact Sable storage write/read-back failed; retaining the live body",
+                            id, why);
+                    active.detachBlockedLogged = true;
+                }
+                return false;
+            }
             runtime.presenceDirty = true;
             container.removeForceLoadTicket(body, TICKET, id.toString());
-            if (body.getUserDataTag() != null) body.getUserDataTag().remove(TAG);
+            container.removeSubLevel(body, SubLevelRemovalReason.UNLOADED);
             runtime.detached++;
             net.bullettrain.xenopixelsmod.space.SpaceChartService.state(level.getServer()).runtime.activationMetrics.recordRelease(
                     net.bullettrain.xenopixelsmod.space.SpaceActivationMetrics.Owner.ASTEROID, System.nanoTime());
@@ -1363,6 +1469,61 @@ public final class AsteroidPhysicalizer {
                 net.bullettrain.xenopixelsmod.space.SpaceActivationMetrics.Owner.ASTEROID, System.nanoTime());
         XenoPixelsMod.LOGGER.info("Asteroid {} released ({})", id, why);
         return true;
+    }
+
+    /** Serializes a touched asteroid to an exact Sable slot before releasing its live physics incarnation. */
+    private static boolean persistDetachedBody(ServerLevel level, AsteroidSavedData saved, AsteroidField.ObjectId id,
+                                               AsteroidField.Candidate candidate, ServerSubLevel body) {
+        CompoundTag priorUserData = body.getUserDataTag() == null ? null : body.getUserDataTag().copy();
+        var container = SubLevelContainer.getContainer(level);
+        var storage = container.getHoldingChunkMap().getStorage();
+        GlobalSavedSubLevelPointer priorPointer = body.getLastSerializationPointer();
+        GlobalSavedSubLevelPointer pointer = priorPointer;
+        try {
+            if (body.getUserDataTag() != null) body.getUserDataTag().remove(TAG);
+            SubLevelData data = SubLevelSerializer.toData(body, List.of());
+            if (pointer == null) {
+                var position = body.logicalPose().position();
+                ChunkPos storageChunk = new ChunkPos(BlockPos.containing(position.x, position.y, position.z));
+                pointer = storage.attemptSaveSubLevel(storageChunk, data);
+            } else {
+                storage.attemptSaveSubLevel(pointer, data);
+            }
+            if (pointer == null) throw new IllegalStateException("Sable did not allocate a storage pointer");
+            SubLevelData readBack = storage.attemptLoadSubLevel(pointer.chunkPos(), pointer.local());
+            if (readBack == null || !body.getUniqueId().equals(readBack.uuid())
+                    || !readBack.fullTag().getCompound("plot").equals(data.fullTag().getCompound("plot")))
+                throw new IllegalStateException("Sable pointer did not read back the expected UUID and voxel plot");
+            var position = body.logicalPose().position();
+            if (!saved.storeBody(id, body.getUniqueId(), pointer, position.x, position.y, position.z,
+                    candidate.seed(), candidate.radius(), candidate.icy()))
+                throw new IllegalStateException("detached pointer could not be added to the bounded identity ledger");
+            body.setLastSerializationPointer(pointer);
+            return true;
+        } catch (RuntimeException failure) {
+            body.setUserDataTag(priorUserData);
+            if (pointer != null) {
+                try {
+                    if (priorPointer == null) storage.attemptSaveSubLevel(pointer, null);
+                    else storage.attemptSaveSubLevel(priorPointer, SubLevelSerializer.toData(body, List.of()));
+                } catch (RuntimeException rollbackFailure) {
+                    failure.addSuppressed(rollbackFailure);
+                }
+            }
+            XenoPixelsMod.LOGGER.error("Could not persist detached asteroid {} at its Sable storage pointer", id, failure);
+            return false;
+        }
+    }
+
+    /** Routes the manual persistence GameTest through the same release implementation used by proximity cleanup. */
+    static boolean releaseForGameTest(ServerLevel level, AsteroidField.ObjectId id, ServerSubLevel body) {
+        var position = body.logicalPose().position();
+        var candidate = new AsteroidField.Candidate(id, 0L, position.x, position.y, position.z,
+                AsteroidField.MIN_RADIUS, false);
+        Active active = new Active(candidate, body.getUniqueId());
+        CompoundTag asteroid = body.getUserDataTag() == null ? null : body.getUserDataTag().getCompound(TAG);
+        active.originalMass = asteroid == null ? Double.NaN : asteroid.getDouble("mass");
+        return release(level, new Runtime(), id, active, "GameTest persistence verification");
     }
 
     private static void abortFractureBootstrap(Runtime runtime, ServerSubLevel body) {

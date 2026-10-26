@@ -70,7 +70,7 @@ public final class DialogueBubbleChoice {
                 // dialogue that points nowhere ends rather than freezing on its last line.
                 return DialogueBubbleSession.active() == null ? Result.CLOSED : Result.CONTINUE;
             }
-            case QUEST, COMMAND -> {
+            case QUEST, DMZ_QUEST, COMMAND -> {
                 int optionIndex = serverOptionIndex(session, index);
                 if (optionIndex < 0) {
                     return Result.IGNORED;

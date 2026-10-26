@@ -12,9 +12,9 @@ class SpaceSkyModeTest {
         assertEquals(SpaceSkyMode.STARS, SpaceSkyMode.byName("  STARS "));
         assertEquals(SpaceSkyMode.VOID, SpaceSkyMode.byName("void"));
         assertEquals(SpaceSkyMode.OFF, SpaceSkyMode.byName("off"));
-        // A hand-edited config or an old file has no valid value; the sky must still come out black.
-        assertEquals(SpaceSkyMode.VOID, SpaceSkyMode.byName(null));
-        assertEquals(SpaceSkyMode.VOID, SpaceSkyMode.byName("galaxy"));
+        // Missing/invalid values use the intended default black star field.
+        assertEquals(SpaceSkyMode.STARS, SpaceSkyMode.byName(null));
+        assertEquals(SpaceSkyMode.STARS, SpaceSkyMode.byName("galaxy"));
     }
 
     @Test void modeIdsAreTheCommandLiterals() {

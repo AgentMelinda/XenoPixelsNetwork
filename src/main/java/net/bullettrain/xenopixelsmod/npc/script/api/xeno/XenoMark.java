@@ -23,7 +23,7 @@ final class XenoMark implements IMark {
     }
 
     /** Marks show to everyone natively. */
-    @Override public IAvailability getAvailability() { return XenoDialogAvailability.INSTANCE; }
+    @Override public IAvailability getAvailability() { return XenoMarkAvailability.INSTANCE; }
     @Override public int getColor() { return NpcCombatProfile.readCached(npc).markColor; }
 
     @Override

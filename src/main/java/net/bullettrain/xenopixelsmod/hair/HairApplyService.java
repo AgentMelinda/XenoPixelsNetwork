@@ -2,16 +2,14 @@ package net.bullettrain.xenopixelsmod.hair;
 
 import com.dragonminez.common.hair.CustomHair;
 import com.dragonminez.common.hair.HairStrand;
+import com.dragonminez.common.hair.HairStyleSlot;
 import com.dragonminez.common.network.C2S.UpdateCustomHairC2S;
 import com.dragonminez.common.network.NetworkHandler;
 import com.dragonminez.common.stats.StatsCapability;
 import com.dragonminez.common.stats.StatsData;
 import com.dragonminez.common.stats.StatsProvider;
 import com.dragonminez.common.stats.character.Character;
-import com.dragonminez.compat.util.LazyOptional;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.player.LocalPlayer;
-import net.minecraft.nbt.CompoundTag;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -106,21 +104,30 @@ public final class HairApplyService {
                 if (target == null) {
                     continue;
                 }
-                copyStrand(models.get(i), target);
+                hair.setStrand(face, i, HairStrandCompatibility.toNative(models.get(i), face, i));
             }
         }
         return hair;
     }
 
-    /**
-     * Client Apply: mirror onto local {@link Character} (DMZ editor parity) then send
-     * {@link UpdateCustomHairC2S} for the current style index only.
-     */
+    public static final String APPLY_REQUIREMENTS =
+            "Server approval requires character creation, a pending recustomization wish, or nearby Popo.";
+    public static final String APPLY_UNAVAILABLE = "Join a world and wait for DragonMineZ character data.";
+
+    /** The server owns wish state and proximity validation; the client only checks loaded data. */
+    public static boolean canApplyClient() {
+        Minecraft mc = Minecraft.getInstance();
+        if (mc == null || mc.player == null || mc.getConnection() == null) return false;
+        StatsData data = StatsProvider.get(StatsCapability.INSTANCE, mc.player).orElse(null);
+        return data != null && data.getCharacter() != null;
+    }
+
+    /** Request a server-authorized replacement. Local appearance changes arrive through server sync. */
     public static void applyClient(HairMakerDocument document) {
+        if (!canApplyClient()) throw new IllegalStateException(APPLY_UNAVAILABLE);
         ApplyPlan planned = plan(document);
         CustomHair hair = toCustomHair(planned);
-        mirrorLocal(planned.hairIndex(), hair);
-        NetworkHandler.sendToServer(new UpdateCustomHairC2S(planned.hairIndex(), hair));
+        NetworkHandler.sendToServer(new UpdateCustomHairC2S(HairStyleSlot.byIndex(planned.hairIndex()), hair));
     }
 
     /**
@@ -131,31 +138,6 @@ public final class HairApplyService {
         Objects.requireNonNull(transport, "transport");
         ApplyPlan planned = plan(document);
         transport.send(planned.hairIndex(), toCustomHair(planned));
-    }
-
-    private static void mirrorLocal(int hairIndex, CustomHair hair) {
-        Minecraft mc = Minecraft.getInstance();
-        LocalPlayer player = mc != null ? mc.player : null;
-        if (player == null) {
-            return;
-        }
-        LazyOptional<StatsData> opt = StatsProvider.get(StatsCapability.INSTANCE, player);
-        StatsData data = opt.orElse(null);
-        if (data == null) {
-            return;
-        }
-        Character character = data.getCharacter();
-        if (character == null) {
-            return;
-        }
-        CustomHair copy = hair.copy();
-        switch (hairIndex) {
-            case 1 -> character.setHairSSJ(copy);
-            case 2 -> character.setHairSSJ2(copy);
-            case 3 -> character.setHairSSJ3(copy);
-            default -> character.setHairBase(copy);
-        }
-        character.setHairId(0);
     }
 
     private static CustomHair.HairFace parseFace(String faceName) {
@@ -169,30 +151,4 @@ public final class HairApplyService {
         }
     }
 
-    private static void copyStrand(HairStrandModel model, HairStrand target) {
-        target.setLength(model.length());
-        target.setLengthScale(model.lengthScale());
-        target.setRotation(model.rotationX(), model.rotationY(), model.rotationZ());
-        target.setScale(model.scaleX(), model.scaleY(), model.scaleZ());
-        target.setCurve(model.curveX(), model.curveY(), model.curveZ());
-        if (model.color() != null) {
-            target.setColor(model.color());
-        } else {
-            target.setColor(null);
-        }
-        // HairStrand has no public cube setters — verified load path only (cw/ch/cd).
-        CompoundTag tag = target.save();
-        if (model.cubeWidth() != 2f) {
-            tag.putFloat("cw", model.cubeWidth());
-        }
-        if (model.cubeHeight() != 2f) {
-            tag.putFloat("ch", model.cubeHeight());
-        }
-        if (model.cubeDepth() != 2f) {
-            tag.putFloat("cd", model.cubeDepth());
-        }
-        if (tag.contains("cw") || tag.contains("ch") || tag.contains("cd")) {
-            target.load(tag);
-        }
-    }
 }

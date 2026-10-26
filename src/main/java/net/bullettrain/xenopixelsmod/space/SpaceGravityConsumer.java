@@ -45,9 +45,14 @@ public final class SpaceGravityConsumer implements SpaceTickScheduler.Pass {
 
     private SpaceGravityConsumer() {}
 
-    /** Gated like {@code SpaceLodDriver}: with space off this pass is never scheduled at all. */
-    @SubscribeEvent public static void starting(ServerStartingEvent event) {
+    /** Keep the pass absent from the physics callback while disabled, including live config reloads. */
+    public static void syncRegistrationToConfig() {
         if (XenoSpaceConfig.enabled()) SpaceTickScheduler.register(PASS);
+        else SpaceTickScheduler.unregister(PASS);
+    }
+
+    @SubscribeEvent public static void starting(ServerStartingEvent event) {
+        syncRegistrationToConfig();
     }
     @SubscribeEvent public static void stopped(ServerStoppedEvent event) { SpaceTickScheduler.unregister(PASS); }
 
@@ -79,7 +84,14 @@ public final class SpaceGravityConsumer implements SpaceTickScheduler.Pass {
         int touched = 0;
         for (var candidate : SubLevelContainer.getContainer(level).getAllSubLevels()) {
             if (!(candidate instanceof ServerSubLevel ship)) continue;
-            if (net.bullettrain.xenopixelsmod.space.physics.PhysicalEarth.isManaged(ship)) continue;
+            var userData = ship.getUserDataTag();
+            boolean generatedSmallPlanet = userData != null
+                    && userData.contains(net.bullettrain.xenopixelsmod.space.smallplanet.SmallPlanetPhysicalizer.TAG);
+            boolean dragonBallBodyTagged = userData != null
+                    && userData.contains(net.bullettrain.xenopixelsmod.space.dragonball.DragonBallBodyScan.TAG);
+            if (!SpaceGravityBodyPolicy.receivesChartGravity(
+                    net.bullettrain.xenopixelsmod.space.physics.PhysicalEarth.isManaged(ship), generatedSmallPlanet,
+                    dragonBallBodyTagged)) continue;
             var pose = ship.logicalPose();
             var pos = pose.position();
             chart.simulatingGravityAt(pos.x(), pos.y(), pos.z(), accel);

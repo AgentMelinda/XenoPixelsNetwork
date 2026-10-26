@@ -16,6 +16,8 @@ class DragonBallPlanetPersistenceSchemaTest {
         UUID bodyId = UUID.fromString("55e7f903-7a67-4e25-a38a-632f469086ce");
         CompoundTag source = new CompoundTag();
         source.putInt("DataVersion", 2);
+        source.putLong("Cycle", 0);
+        source.putLong("DormantUntilDay", 0);
         ListTag balls = new ListTag();
         CompoundTag first = new CompoundTag();
         first.putString("Status", "SCATTERED");
@@ -26,6 +28,7 @@ class DragonBallPlanetPersistenceSchemaTest {
         first.putString("HostChartId", "xenopixelsmod:jupiter");
         first.putUUID("PlanetBodyUUID", bodyId);
         balls.add(first);
+        for (int slot = 2; slot <= CosmicDragonBalls.COUNT; slot++) balls.add(validBall(slot));
         source.put("Balls", balls);
 
         CompoundTag saved = DragonBallSavedData.load(source, null).save(new CompoundTag(), null);
@@ -47,11 +50,14 @@ class DragonBallPlanetPersistenceSchemaTest {
         ListTag balls = new ListTag();
         CompoundTag first = new CompoundTag();
         first.putString("Status", "SCATTERED");
+        first.putString("Dimension", "minecraft:overworld");
+        first.putInt("X", 900); first.putInt("Y", 80); first.putInt("Z", -900);
         first.putString("HostChartId", "xenopixelsmod:maw_9");
         first.putBoolean("HasPlanetOrbit", true);
         first.putDouble("PlanetOrbitRadiusBlocks", 900.0);
         first.putDouble("PlanetOrbitPhaseRadians", 0.75);
         balls.add(first);
+        for (int slot = 2; slot <= CosmicDragonBalls.COUNT; slot++) balls.add(validBall(slot));
         source.put("Balls", balls);
 
         DragonBallSavedData loaded = DragonBallSavedData.load(source, null);
@@ -86,5 +92,13 @@ class DragonBallPlanetPersistenceSchemaTest {
         assertEquals(1800.0, override.periodSeconds());
         assertEquals("xenopixelsmod:jupiter", restored.ball(1).hostChartId);
         assertEquals(320.0, restored.ball(1).planetOrbitRadiusBlocks);
+    }
+
+    private static CompoundTag validBall(int slot) {
+        CompoundTag ball = new CompoundTag();
+        ball.putString("Status", "SCATTERED");
+        ball.putString("Dimension", "minecraft:overworld");
+        ball.putInt("X", slot * 100); ball.putInt("Y", 80); ball.putInt("Z", -slot * 100);
+        return ball;
     }
 }

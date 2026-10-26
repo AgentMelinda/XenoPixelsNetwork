@@ -27,4 +27,12 @@ class SpacePlanetModeTest {
         assertFalse(SpacePlanetMode.OFF.drawsProxies());
         assertFalse(SpacePlanetMode.OFF.drawsBodies());
     }
+
+    @Test void chartProjectionsOnlyRenderInTheCanonicalVoidsea() {
+        assertTrue(SpacePlanetMode.BODIES.drawsProxiesIn("xenopixelsmod:voidsea"));
+        assertFalse(SpacePlanetMode.BODIES.drawsProxiesIn("xenospace_spike:orbit"));
+        assertFalse(SpacePlanetMode.BODIES.drawsProxiesIn("minecraft:overworld"));
+        assertFalse(SpacePlanetMode.OFF.drawsProxiesIn("xenopixelsmod:voidsea"));
+        assertFalse(SpacePlanetMode.BODIES.drawsProxiesIn(null));
+    }
 }

@@ -3,6 +3,7 @@ package net.bullettrain.xenopixelsmod.config;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.gson.JsonObject;
+import com.google.gson.JsonParser;
 import net.bullettrain.xenopixelsmod.space.chart.ChartDefinition;
 import net.bullettrain.xenopixelsmod.XenoPixelsMod;
 import net.bullettrain.xenopixelsmod.space.math.BodyLod;
@@ -10,7 +11,6 @@ import net.minecraft.resources.ResourceLocation;
 import net.neoforged.fml.loading.FMLPaths;
 
 import java.io.IOException;
-import java.io.Reader;
 import java.io.Writer;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -53,7 +53,14 @@ public final class XenoSpaceConfig {
      * a shared per-tick generated-body voxel budget; version 14 caps asteroid candidate-scan cell work per pass;
      * version 15 separates deterministic small-planet field visibility from physicalization; version 16 adds
      * an opt-in shared build-step time allowance; version 17 adds a default-off Sable allocation phase probe;
-     * version 19 makes the shared generated-body voxel ceiling default-on with an explicit toggle. */
+     * version 19 makes the shared generated-body voxel ceiling default-on with an explicit toggle; version 20
+     * adds a default shared best-effort millisecond budget, preserving explicit legacy values including zero;
+     * version 21 caps concurrent chart-planet builds and per-pass proximity releases; version 23 adds the
+     * server master switch for §23.2 fallen stars; version 24 adds the §23.1 scripted chart-star lifecycle toggle and ramp;
+     * version 25 adds a separate hard cap for edited small planets kept physically active and orbit-managed; version 27
+     * separates the supernova front lifetime from the multi-day stellar-stage ramp; version 28 adds configurable
+     * outbound surface-handoff clearance hysteresis; version 29 adds configurable pod cruise/boost speed and
+     * acceleration; version 30 adds the configurable Ctrl-boost ki drain. */
     private static final int CURRENT_VERSION = GeneratedBodyBuildPolicy.CONFIG_VERSION;
 
     /**
@@ -61,6 +68,16 @@ public final class XenoSpaceConfig {
      * enabling; other physics passes still require space enabled at startup.
      */
     private static boolean enabled = false;
+    /** §25 master gate; does not disable ship physics or other space systems. */
+    private static boolean spacePodsEnabled = true;
+    /** §25.4 pilot-direction cruise target and acceleration; all units are blocks/s and blocks/s². */
+    private static double podCruiseSpeed = 16.0, podCruiseAcceleration = 4.0;
+    /** §25.4 Ctrl boost target and acceleration; P15 only, with Ctrl+C overdrive deferred to P17. */
+    private static double podBoostSpeed = 48.0, podBoostAcceleration = 12.0;
+    /** Velocity-servo response rate, in inverse seconds, shared by cruise and boost. */
+    private static double podFlightResponsePerSecond = 2.0;
+    /** Ctrl boost cost in DragonMineZ ki per second; zero disables the cost. */
+    private static double podBoostKiPerSecond = 5.0;
 
     // --- Physics pass budget ---
     /**
@@ -77,11 +94,8 @@ public final class XenoSpaceConfig {
     private static double fieldRange = 100_000.0;
 
     // --- Orbital motion ---
-    /**
-     * §20's {@code space.gravity.real_orbits}. Ships off until the Q11 precision spike passes, because
-     * until then a handoff landing on a body that has moved since the client drew it is possible.
-     */
-    private static boolean realOrbits = false;
+    /** §20's {@code space.gravity.real_orbits}; analytical Kepler tracks and Sable station-keeping default on. */
+    private static boolean realOrbits = true;
     /**
      * §20 time warp: {@code /xenospace orbits warp <seconds>} adds to this persisted epoch shift, which the chart adds to
      * game time before solving Kepler's equation. Every server and client evaluates the same formula, so a warp moves the
@@ -102,8 +116,10 @@ public final class XenoSpaceConfig {
     private static boolean blackHolesEnabled = false;
     /** Oxygen is used this many times faster inside a black hole tidal band (new, unvalidated default). */
     private static int blackHoleOxygenFactor = 3;
-    /** Design-doc 16 Super Dragon Balls v1 (CosmicDragonBalls): scatter, radar, wish. Default off. */
+    /** Master toggle for the legacy collectible scatter/radar/wish loop; planetary SDB bodies use cosmicDragonBallMode. */
     private static boolean cosmicDragonBallsEnabled = false;
+    /** Exclusive SDB gameplay authority: planetary Sable bodies by default, legacy collectible mode only by opt-in. */
+    private static String cosmicDragonBallMode = "planetary";
     /** Dimensions the seven balls scatter across (around each dimension's spawn). */
     private static java.util.List<String> cosmicDragonBallHosts = java.util.List.of("minecraft:overworld");
     /** Scatter radius around the host spawn, in blocks (balls land between 20% and 100% of it). */
@@ -124,10 +140,16 @@ public final class XenoSpaceConfig {
     private static double hakaiPlanetReach = 20_000;
     /** Ticks the planet burns in Hakai before it is gone. */
     private static int hakaiPlanetEraseTicks = 100;
-    /** Minutes until an erased planet returns by itself; 0 = only by admin restore (or a wish, later). */
+    /** Minutes until a Hakai-erased planet returns; integrity cracks require explicit restore (or future wish wiring). */
     private static int hakaiPlanetRestoreMinutes = 0;
     /** Players inside an erased planet's dimension are thrown out into the Voidsea where it was. */
     private static boolean hakaiPlanetEjectOccupants = true;
+    /** §22 global destructibility ceiling for per-dimension/planet policies; fail-closed by default. */
+    private static String destructibleDefault = "gated";
+    /** Free-mode damage per accepted impact; both player/body and global per-body cooldowns are enforced. */
+    private static double planetIntegrityImpactDamage = 5.0, planetIntegrityDiminishingFloor = 0.2;
+    private static double planetIntegrityScarredAt = 50.0, planetIntegrityCriticalAt = 20.0;
+    private static int planetIntegrityImpactCooldownTicks = 20, planetIntegrityBodyCooldownTicks = 20;
     public static final double VOIDSEA_HEIGHT_LIMIT = 30_000_000.0;
     /**
      * Growing universe (space/universe, default "off"): "timer" reveals one more star system per game day along the frontier
@@ -138,8 +160,33 @@ public final class XenoSpaceConfig {
      */
     private static String universeGrowth = "off";
     private static int universeMaxRevealed = 512, universeDiscoveriesPerDay = 8;
+    /**
+     * Star-proximity discovery reach in blocks (0..157,286; default one cell, 131,072). 0 restores the original rule:
+     * only flying into a system's cell discovers it. Above 0, a player also discovers an unrevealed neighbouring
+     * system whose star is within this distance. It only acts when universeGrowth includes discovery, and the daily
+     * and total discovery caps apply unchanged.
+     */
+    private static int universeDiscoveryRange = net.bullettrain.xenopixelsmod.space.universe.UniverseGrowth.DEFAULT_DISCOVERY_RANGE;
     private static boolean universeWarp = false;
     private static boolean logicalUniverseEnabled = false;
+    /** §19.1/§23.2 server master switch for ambient and future fallen-star features. */
+    private static boolean fallenStarsEnabled = true;
+    /** §23.1 switch for scripted chart-star lifecycle visuals; lifecycle save data is retained while disabled. */
+    private static boolean supernovaEnabled = true;
+    /** Game days used to smoothly blend each operator-selected stellar stage transition. */
+    private static int stellarStageRampDays = 3;
+    /** Independent maximum lifetime of an expanding nova front; older configs without this key keep their prior ramp-derived window. */
+    // 124,000 ticks at 0.25 blocks/tick covers 31,000 chart blocks: beyond Neptune's
+    // authored maximum orbital distance (~30,328 blocks) with a small margin.
+    private static int stellarWaveDurationTicks = 124_000;
+    /** Analytic supernova front speed in Voidsea blocks per game tick. */
+    private static double stellarWaveSpeedBlocksPerTick = 0.25;
+    /** Game ticks a player remains exposed after the analytic wave front crosses them. */
+    private static int stellarWaveExposureTicks = 100;
+    /** Whether an unshadowed nova crossing can remove bounded hull voxels from identified ship sub-levels. */
+    private static boolean stellarHullDamageEnabled = true;
+    /** Minimum game-tick interval between hull voxels removed from the same ship by the same wave. */
+    private static int stellarHullDamageIntervalTicks = 20;
     private static double orbitEpochOffsetSeconds = 0.0;
 
     // --- Physical planets: station keeping ---
@@ -187,6 +234,10 @@ public final class XenoSpaceConfig {
     private static double proximityActivateRange = 1500.0;
     private static double proximityReleaseRange = 2200.0;
     private static int proximityIntervalTicks = 20;
+    /** Hard cap for simultaneously assembling charted Sable bodies; queued activations remain pending. */
+    private static int planetBuildMaxConcurrent = PlanetBuildConcurrencyPolicy.DEFAULT_MAX_CONCURRENT;
+    /** Limit body removals in one proximity pass so leaving a cluster cannot synchronously unload many plots at once. */
+    private static int planetReleaseMaxPerPass = 1;
     /**
      * On-demand planet builds install at most about this many voxels per server tick (whole chunk columns, so
      * one column may exceed it). 0 builds each body in a single tick. Logged: one-call installs took up to
@@ -206,8 +257,8 @@ public final class XenoSpaceConfig {
     private static boolean planetBuildFinalize = false;
     /** Remove unmanaged Voidsea sub-levels made only of planet_shell blocks (orphaned planet fragments). */
     private static boolean planetOrphanCleanup = true;
-    /** Fix Sable 2.0.3's unload ticket lookup key (SableTicketUnloadKeyMixin). Off until proven at runtime. */
-    private static boolean sableTicketUnloadKeyFix = false;
+    /** Fix Sable 2.0.3's UUID-keyed unload ticket lookup (SableTicketUnloadKeyMixin). Runtime-tested on Sable 2.0.3. */
+    private static boolean sableTicketUnloadKeyFix = true;
     /** Skip Sable's split heat-map for planet shells and planets under a batched build (SablePlanetHeatMapSkipMixin). */
     private static boolean planetSkipSplitHeatMap = false;
     /** Skip Sable's per-tick world chunk sweep for planet bodies only (SablePlanetChunkTicketSkipMixin). */
@@ -221,6 +272,8 @@ public final class XenoSpaceConfig {
     private static boolean planetBuildCoalesceChunkBounds = false;
     /** Before a batched planet build completes, move other bodies out of its shell band (they would be embedded). */
     private static boolean planetBuildEvictIntruders = false;
+    /** During generated-body collision registration, skip redundant Sable voxel metadata lookups for vanilla air cells. */
+    private static boolean planetBuildSparseAirCollisionEncoding = false;
     /** S11 B1: send the deterministic asteroid field (seed + xenospace/belt belts) to Voidsea clients. */
     private static boolean asteroidBelts = false;
     /** S11 B3: build belt asteroids as shared Sable bodies near Voidsea players (needs asteroidBelts). */
@@ -231,16 +284,21 @@ public final class XenoSpaceConfig {
     /** S11 C2/C3 physicalization gate and hard operator caps. Kept off until runtime/save-load proof passes. */
     private static boolean smallPlanetPhysical = false;
     private static boolean smallPlanetRadialGravity = true;
+    /** P4 eclipse event markers (announce + Atlas only, no PvP or gamerule change); gated by {@link #enabled}. */
+    private static boolean eclipseEventsEnabled = true;
+    /** Minimum apparent solar-disc area a moon must hide, in percent (1..100). */
+    private static double eclipseCoverageThresholdPercent = 30.0;
     /** Bounded deterministic small-planet far field; independent of expensive near-player Sable body construction. */
     private static boolean smallPlanetFieldEnabled = true;
     private static double smallPlanetActivateRange = 420.0, smallPlanetReleaseRange = 650.0;
-    private static int smallPlanetMaxPerPlayer = 2, smallPlanetMaxGlobal = 8, smallPlanetSpawnIntervalTicks = 40,
+    private static int smallPlanetMaxPerPlayer = 2, smallPlanetMaxGlobal = 8, smallPlanetMaxEditedGlobal = 4,
+            smallPlanetSpawnIntervalTicks = 40,
             smallPlanetBuildVoxelsPerTick = 512;
     /** Shared exact voxel-count ceiling across all generated-body owners; turned off only by its explicit operator toggle. */
     private static boolean generatedBodyBuildBudgetEnabled = true;
     private static int generatedBodyBuildVoxelsPerTick = 2_000;
-    /** Optional total milliseconds per server tick spent in generated-body install steps; 0 disables this secondary budget. */
-    private static double generatedBodyBuildMillisPerTick = 0.0;
+    /** Best-effort total milliseconds per tick for generated-body prepare/install work; 0 disables the time cap. */
+    private static double generatedBodyBuildMillisPerTick = GeneratedBodyBuildPolicy.DEFAULT_MILLIS_PER_TICK;
     /** Temporary diagnostics for Sable's allocation observer calls; no timings are taken while false. */
     private static boolean sableAllocationPhaseProbe = false;
     private static boolean smallPlanetBuildIncrementalSections = false;
@@ -257,10 +315,13 @@ public final class XenoSpaceConfig {
      * Design-doc §6 oxygen (default off). In vacuum (the Voidsea host, a listed space dimension, a charted body whose JSON
      * says "breathable": false, or above a body's exit altitude) a player first uses Breathing Capsule supply, then holds
      * their breath for oxygenBreathSeconds, then pays ki each second, and only when ki runs out takes damage each second
-     * (a soft fail, never a one-hit kill). Inside a ship sub-level counts as pressurized when oxygenShipsPressurized is on.
+     * (a soft fail, never a one-hit kill). The optional DMZ-aura substitute is controlled by oxygenAuraSubstitute and
+     * charges the same configured oxygenKiPerSecond rate, prorated per active oxygen sample; form-tier discounts are
+     * not implemented. A zero rate explicitly grants free aura oxygen. Inside a ship sub-level counts as pressurized
+     * when oxygenShipsPressurized is on.
      * All numbers are new, unvalidated gameplay defaults; the 30 s first phase comes from §6 ("Phase 1 (0-30 s)").
      */
-    private static boolean oxygenEnabled = false, oxygenShipsPressurized = true;
+    private static boolean oxygenEnabled = false, oxygenShipsPressurized = true, oxygenAuraSubstitute = true;
     private static int oxygenBreathSeconds = 30, oxygenCapsuleSeconds = 300, oxygenReserveCapSeconds = 900;
     private static double oxygenKiPerSecond = 5.0, oxygenDamagePerSecond = 1.0, oxygenRefillPerSecond = 10.0;
     /** Change of an asteroid's linear speed within one tick that counts as an impact, in blocks/second (new default). */
@@ -302,6 +363,8 @@ public final class XenoSpaceConfig {
      */
     private static String handoffEntry = "surface";
     private static double handoffSurfaceMargin = 2.0;
+    /** Extra radial travel beyond the contact margin required before the same planet may be re-entered; 0 disables it. */
+    private static double handoffOutboundClearanceBlocks = 16.0;
 
     /**
      * §5's live chart-gravity consumer switch. Off by default and deliberately separate from
@@ -444,6 +507,13 @@ public final class XenoSpaceConfig {
     private XenoSpaceConfig() {}
 
     public static boolean enabled() { return enabled; }
+    public static boolean spacePodsEnabled() { return spacePodsEnabled; }
+    public static double podCruiseSpeed() { return podCruiseSpeed; }
+    public static double podCruiseAcceleration() { return podCruiseAcceleration; }
+    public static double podBoostSpeed() { return podBoostSpeed; }
+    public static double podBoostAcceleration() { return podBoostAcceleration; }
+    public static double podFlightResponsePerSecond() { return podFlightResponsePerSecond; }
+    public static double podBoostKiPerSecond() { return podBoostKiPerSecond; }
     public static int workPerPhysicsTick() { return workPerPhysicsTick; }
     public static int gravityIntervalTicks() { return gravityIntervalTicks; }
     public static int gravityContributors() { return gravityContributors; }
@@ -454,6 +524,7 @@ public final class XenoSpaceConfig {
     public static boolean blackHolesEnabled() { return blackHolesEnabled; }
     public static int blackHoleOxygenFactor() { return blackHoleOxygenFactor; }
     public static boolean cosmicDragonBallsEnabled() { return cosmicDragonBallsEnabled; }
+    public static String cosmicDragonBallMode() { return cosmicDragonBallMode; }
     public static java.util.List<String> cosmicDragonBallHosts() { return cosmicDragonBallHosts; }
     public static int cosmicDragonBallRadius() { return cosmicDragonBallRadius; }
     public static int cosmicDragonBallDormantDays() { return cosmicDragonBallDormantDays; }
@@ -464,14 +535,23 @@ public final class XenoSpaceConfig {
     public static int hakaiPlanetEraseTicks() { return hakaiPlanetEraseTicks; }
     public static int hakaiPlanetRestoreMinutes() { return hakaiPlanetRestoreMinutes; }
     public static boolean hakaiPlanetEjectOccupants() { return hakaiPlanetEjectOccupants; }
-    /** {@code /xenospace hakai protect|unprotect}; persisted. Returns false when nothing changed. */
-    public static boolean setHakaiPlanetProtected(String id, boolean protect) {
-        var next = new java.util.ArrayList<>(hakaiPlanetProtected);
-        boolean changed = protect ? !next.contains(id) && next.add(id) : next.remove(id);
-        if (!changed) return false;
-        hakaiPlanetProtected = java.util.List.copyOf(next);
+    public static String destructibleDefault() { return destructibleDefault; }
+    /** Nominal §22 loss per accepted impact; zero disables free-mode structural damage. */
+    public static double planetIntegrityImpactDamage() { return planetIntegrityImpactDamage; }
+    public static double planetIntegrityDiminishingFloor() { return planetIntegrityDiminishingFloor; }
+    public static int planetIntegrityImpactCooldownTicks() { return planetIntegrityImpactCooldownTicks; }
+    public static int planetIntegrityBodyCooldownTicks() { return planetIntegrityBodyCooldownTicks; }
+    public static double planetIntegrityScarredAt() { return planetIntegrityScarredAt; }
+    public static double planetIntegrityCriticalAt() { return planetIntegrityCriticalAt; }
+    /** {@code /xenospace hakai protect|unprotect}; persisted and normalized to canonical resource IDs. */
+    public static net.bullettrain.xenopixelsmod.space.hakai.PlanetProtectionList.UpdateResult
+    setHakaiPlanetProtected(String id, boolean protect) {
+        var update = net.bullettrain.xenopixelsmod.space.hakai.PlanetProtectionList.update(hakaiPlanetProtected, id, protect);
+        if (update.result() != net.bullettrain.xenopixelsmod.space.hakai.PlanetProtectionList.UpdateResult.UPDATED)
+            return update.result();
+        hakaiPlanetProtected = update.ids();
         save();
-        return true;
+        return update.result();
     }
     /** Live switch for {@code /xenospace hakai mode}; persisted. */
     public static void setHakaiPlanets(String mode) {
@@ -481,8 +561,30 @@ public final class XenoSpaceConfig {
     public static String universeGrowth() { return universeGrowth; }
     public static int universeMaxRevealed() { return universeMaxRevealed; }
     public static int universeDiscoveriesPerDay() { return universeDiscoveriesPerDay; }
+    public static int universeDiscoveryRange() { return universeDiscoveryRange; }
     public static boolean universeWarp() { return universeWarp; }
     public static boolean logicalUniverseEnabled() { return logicalUniverseEnabled; }
+    public static boolean fallenStarsEnabled() { return fallenStarsEnabled; }
+    /** Live persisted server master switch; clients retain their own density preference. */
+    public static void setFallenStarsEnabled(boolean value) { fallenStarsEnabled = value; save(); }
+    public static boolean supernovaEnabled() { return supernovaEnabled; }
+    public static int stellarStageRampDays() { return stellarStageRampDays; }
+    public static long stellarStageRampTicks() { return (long) stellarStageRampDays * 24_000L; }
+    public static int stellarWaveDurationTicks() { return stellarWaveDurationTicks; }
+    public static double stellarWaveSpeedBlocksPerTick() { return stellarWaveSpeedBlocksPerTick; }
+    public static int stellarWaveExposureTicks() { return stellarWaveExposureTicks; }
+    public static boolean stellarHullDamageEnabled() { return stellarHullDamageEnabled; }
+    public static int stellarHullDamageIntervalTicks() { return stellarHullDamageIntervalTicks; }
+    public static void setSupernovaEnabled(boolean value) { supernovaEnabled = value; save(); }
+    public static void setStellarStageRampDays(int days) {
+        stellarStageRampDays = Math.max(1, Math.min(365, days));
+        save();
+    }
+    public static void setStellarWaveDurationTicks(int ticks) {
+        stellarWaveDurationTicks = Math.max(1,
+                Math.min(net.bullettrain.xenopixelsmod.space.event.StellarStageSnapshot.MAX_RAMP_TICKS, ticks));
+        save();
+    }
     /** Persisted master switch for generating and recording full-width logical star-system coordinates. */
     public static void setLogicalUniverseEnabled(boolean enabled) { logicalUniverseEnabled = enabled; save(); }
     /** Live switch for {@code /xenospace universe growth <mode>}; persisted. */
@@ -531,6 +633,8 @@ public final class XenoSpaceConfig {
     public static double proximityActivateRange() { return proximityActivateRange; }
     public static double proximityReleaseRange() { return proximityReleaseRange; }
     public static int proximityIntervalTicks() { return proximityIntervalTicks; }
+    public static int planetBuildMaxConcurrent() { return planetBuildMaxConcurrent; }
+    public static int planetReleaseMaxPerPass() { return planetReleaseMaxPerPass; }
     public static int planetBuildVoxelsPerTick() { return planetBuildVoxelsPerTick; }
     /** S11 batched-build test (debug only, not saved): changes the per-tick voxel budget for this server run. */
     public static void debugSetPlanetBuildVoxelsPerTick(int voxels) { planetBuildVoxelsPerTick = Math.max(0, Math.min(10_000_000, voxels)); }
@@ -546,6 +650,7 @@ public final class XenoSpaceConfig {
     public static void setPlanetBuildDeferFinalize(boolean active) { planetBuildDeferFinalize = active; save(); }
     public static boolean planetBuildCoalesceChunkBounds() { return planetBuildCoalesceChunkBounds; }
     public static boolean planetBuildEvictIntruders() { return planetBuildEvictIntruders; }
+    public static boolean planetBuildSparseAirCollisionEncoding() { return planetBuildSparseAirCollisionEncoding; }
     public static boolean asteroidBelts() { return asteroidBelts; }
     public static boolean asteroidPhysical() { return asteroidPhysical; }
     public static double asteroidActivateRange() { return asteroidActivateRange; }
@@ -558,6 +663,8 @@ public final class XenoSpaceConfig {
     public static boolean asteroidBuildIncrementalSections() { return asteroidBuildIncrementalSections; }
     public static boolean smallPlanetPhysical() { return smallPlanetPhysical; }
     public static boolean smallPlanetRadialGravity() { return smallPlanetRadialGravity; }
+    public static boolean eclipseEventsEnabled() { return enabled && eclipseEventsEnabled; }
+    public static double eclipseCoverageThresholdPercent() { return eclipseCoverageThresholdPercent; }
     public static boolean smallPlanetGravityEnabled() {
         return enabled && smallPlanetPhysical && smallPlanetRadialGravity;
     }
@@ -566,6 +673,7 @@ public final class XenoSpaceConfig {
     public static double smallPlanetReleaseRange() { return smallPlanetReleaseRange; }
     public static int smallPlanetMaxPerPlayer() { return smallPlanetMaxPerPlayer; }
     public static int smallPlanetMaxGlobal() { return smallPlanetMaxGlobal; }
+    public static int smallPlanetMaxEditedGlobal() { return smallPlanetMaxEditedGlobal; }
     public static int smallPlanetSpawnIntervalTicks() { return smallPlanetSpawnIntervalTicks; }
     public static int smallPlanetBuildVoxelsPerTick() { return smallPlanetBuildVoxelsPerTick; }
     public static boolean smallPlanetBuildIncrementalSections() { return smallPlanetBuildIncrementalSections; }
@@ -585,6 +693,7 @@ public final class XenoSpaceConfig {
     public static void setSmallPlanetBuildIncrementalSections(boolean active) { smallPlanetBuildIncrementalSections = active; save(); }
     public static boolean asteroidFracture() { return asteroidFracture; }
     public static boolean oxygenEnabled() { return oxygenEnabled; }
+    public static boolean oxygenAuraSubstitute() { return oxygenAuraSubstitute; }
     public static boolean oxygenShipsPressurized() { return oxygenShipsPressurized; }
     public static int oxygenBreathSeconds() { return oxygenBreathSeconds; }
     public static int oxygenCapsuleSeconds() { return oxygenCapsuleSeconds; }
@@ -609,6 +718,7 @@ public final class XenoSpaceConfig {
     }
     public static boolean surfaceEntry() { return !"altitude".equals(handoffEntry); }
     public static double handoffSurfaceMargin() { return handoffSurfaceMargin; }
+    public static double handoffOutboundClearanceBlocks() { return handoffOutboundClearanceBlocks; }
     public static boolean fieldGravity() { return fieldGravity; }
     public static boolean voidDamage() { return voidDamage; }
     public static Set<ResourceLocation> spaceDimensions() { return spaceDimensions; }
@@ -722,14 +832,33 @@ public final class XenoSpaceConfig {
             save();
             return;
         }
-        try (Reader reader = Files.newBufferedReader(PATH)) {
-            Data data = GSON.fromJson(reader, Data.class);
-            if (data != null) apply(data);
+        try {
+            String json = Files.readString(PATH);
+            JsonObject raw = JsonParser.parseString(json).getAsJsonObject();
+            apply(decode(raw));
         } catch (IOException | RuntimeException e) {
             // A malformed file must not stop the server booting; keep the defaults, as every other
             // config in this mod does.
             XenoPixelsMod.LOGGER.warn("Failed to load space config; using defaults", e);
         }
+    }
+
+    static boolean hasGeneratedBodyBuildMillisSetting(JsonObject raw) {
+        return raw != null && raw.has("generatedBodyBuildMillisPerTick");
+    }
+
+    static boolean hasStellarWaveDurationSetting(JsonObject raw) {
+        return raw != null && raw.has("stellarWaveDurationTicks");
+    }
+
+    static Data decode(JsonObject raw) {
+        if (raw == null) return null;
+        Data data = GSON.fromJson(raw, Data.class);
+        if (data != null) {
+            data.generatedBodyBuildMillisSettingPresent = hasGeneratedBodyBuildMillisSetting(raw);
+            data.stellarWaveDurationSettingPresent = hasStellarWaveDurationSetting(raw);
+        }
+        return data;
     }
 
     public static void save() {
@@ -747,6 +876,13 @@ public final class XenoSpaceConfig {
         Data d = new Data();
         d.version = CURRENT_VERSION;
         d.enabled = enabled;
+        d.spacePodsEnabled = spacePodsEnabled;
+        d.podCruiseSpeed = podCruiseSpeed;
+        d.podCruiseAcceleration = podCruiseAcceleration;
+        d.podBoostSpeed = podBoostSpeed;
+        d.podBoostAcceleration = podBoostAcceleration;
+        d.podFlightResponsePerSecond = podFlightResponsePerSecond;
+        d.podBoostKiPerSecond = podBoostKiPerSecond;
         d.workPerPhysicsTick = workPerPhysicsTick;
         d.gravityIntervalTicks = gravityIntervalTicks;
         d.gravityContributors = gravityContributors;
@@ -755,15 +891,31 @@ public final class XenoSpaceConfig {
         d.orbitWarpAllowed = orbitWarpAllowed; d.orbitEpochOffsetSeconds = orbitEpochOffsetSeconds;
         d.voidseaUnboundedHeight = voidseaUnboundedHeight;
         d.blackHolesEnabled = blackHolesEnabled; d.blackHoleOxygenFactor = blackHoleOxygenFactor;
-        d.cosmicDragonBallsEnabled = cosmicDragonBallsEnabled; d.cosmicDragonBallHosts = new java.util.ArrayList<>(cosmicDragonBallHosts);
+        d.cosmicDragonBallsEnabled = cosmicDragonBallsEnabled; d.cosmicDragonBallMode = cosmicDragonBallMode;
+        d.cosmicDragonBallHosts = new java.util.ArrayList<>(cosmicDragonBallHosts);
         d.cosmicDragonBallRadius = cosmicDragonBallRadius; d.cosmicDragonBallDormantDays = cosmicDragonBallDormantDays;
         d.hakaiPlanets = hakaiPlanets; d.hakaiPlanetProtected = new java.util.ArrayList<>(hakaiPlanetProtected);
         d.hakaiPlanetPermissionLevel = hakaiPlanetPermissionLevel; d.hakaiPlanetReach = hakaiPlanetReach;
         d.hakaiPlanetEraseTicks = hakaiPlanetEraseTicks; d.hakaiPlanetRestoreMinutes = hakaiPlanetRestoreMinutes;
         d.hakaiPlanetEjectOccupants = hakaiPlanetEjectOccupants;
+        d.destructibleDefault = destructibleDefault;
+        d.planetIntegrityImpactDamage = planetIntegrityImpactDamage;
+        d.planetIntegrityDiminishingFloor = planetIntegrityDiminishingFloor;
+        d.planetIntegrityImpactCooldownTicks = planetIntegrityImpactCooldownTicks;
+        d.planetIntegrityBodyCooldownTicks = planetIntegrityBodyCooldownTicks;
+        d.planetIntegrityScarredAt = planetIntegrityScarredAt; d.planetIntegrityCriticalAt = planetIntegrityCriticalAt;
         d.universeGrowth = universeGrowth; d.universeMaxRevealed = universeMaxRevealed;
         d.universeDiscoveriesPerDay = universeDiscoveriesPerDay; d.universeWarp = universeWarp;
+        d.universeDiscoveryRange = universeDiscoveryRange;
         d.logicalUniverseEnabled = logicalUniverseEnabled;
+        d.fallenStarsEnabled = fallenStarsEnabled;
+        d.supernovaEnabled = supernovaEnabled;
+        d.stellarStageRampDays = stellarStageRampDays;
+        d.stellarWaveDurationTicks = stellarWaveDurationTicks;
+        d.stellarWaveSpeedBlocksPerTick = stellarWaveSpeedBlocksPerTick;
+        d.stellarWaveExposureTicks = stellarWaveExposureTicks;
+        d.stellarHullDamageEnabled = stellarHullDamageEnabled;
+        d.stellarHullDamageIntervalTicks = stellarHullDamageIntervalTicks;
         d.orbitHoldStiffness = orbitHoldStiffness;
         d.orbitHoldDamping = orbitHoldDamping;
         d.orbitHoldMaxAccel = orbitHoldMaxAccel;
@@ -781,6 +933,8 @@ public final class XenoSpaceConfig {
         d.proximityActivateRange = proximityActivateRange;
         d.proximityReleaseRange = proximityReleaseRange;
         d.proximityIntervalTicks = proximityIntervalTicks;
+        d.planetBuildMaxConcurrent = planetBuildMaxConcurrent;
+        d.planetReleaseMaxPerPass = planetReleaseMaxPerPass;
         d.planetBuildVoxelsPerTick = planetBuildVoxelsPerTick;
         d.planetBuildPoseFix = planetBuildPoseFix;
         d.planetBuildFinalize = planetBuildFinalize;
@@ -792,6 +946,7 @@ public final class XenoSpaceConfig {
         d.planetBuildDeferFinalize = planetBuildDeferFinalize;
         d.planetBuildCoalesceChunkBounds = planetBuildCoalesceChunkBounds;
         d.planetBuildEvictIntruders = planetBuildEvictIntruders;
+        d.planetBuildSparseAirCollisionEncoding = planetBuildSparseAirCollisionEncoding;
         d.asteroidBelts = asteroidBelts;
         d.asteroidPhysical = asteroidPhysical;
         d.asteroidActivateRange = asteroidActivateRange; d.asteroidReleaseRange = asteroidReleaseRange;
@@ -801,9 +956,12 @@ public final class XenoSpaceConfig {
         d.asteroidBuildIncrementalSections = asteroidBuildIncrementalSections;
         d.smallPlanetPhysical = smallPlanetPhysical;
         d.smallPlanetRadialGravity = smallPlanetRadialGravity;
+        d.eclipseEventsEnabled = eclipseEventsEnabled;
+        d.eclipseCoverageThresholdPercent = eclipseCoverageThresholdPercent;
         d.smallPlanetFieldEnabled = smallPlanetFieldEnabled;
         d.smallPlanetActivateRange = smallPlanetActivateRange; d.smallPlanetReleaseRange = smallPlanetReleaseRange;
         d.smallPlanetMaxPerPlayer = smallPlanetMaxPerPlayer; d.smallPlanetMaxGlobal = smallPlanetMaxGlobal;
+        d.smallPlanetMaxEditedGlobal = smallPlanetMaxEditedGlobal;
         d.smallPlanetSpawnIntervalTicks = smallPlanetSpawnIntervalTicks;
         d.smallPlanetBuildVoxelsPerTick = smallPlanetBuildVoxelsPerTick;
         d.smallPlanetBuildIncrementalSections = smallPlanetBuildIncrementalSections;
@@ -813,6 +971,7 @@ public final class XenoSpaceConfig {
         d.sableAllocationPhaseProbe = sableAllocationPhaseProbe;
         d.asteroidFracture = asteroidFracture; d.asteroidFractureDeltaV = asteroidFractureDeltaV;
         d.oxygenEnabled = oxygenEnabled; d.oxygenShipsPressurized = oxygenShipsPressurized;
+        d.oxygenAuraSubstitute = oxygenAuraSubstitute;
         d.oxygenBreathSeconds = oxygenBreathSeconds; d.oxygenCapsuleSeconds = oxygenCapsuleSeconds;
         d.oxygenReserveCapSeconds = oxygenReserveCapSeconds; d.oxygenKiPerSecond = oxygenKiPerSecond;
         d.oxygenDamagePerSecond = oxygenDamagePerSecond; d.oxygenRefillPerSecond = oxygenRefillPerSecond;
@@ -834,6 +993,7 @@ public final class XenoSpaceConfig {
         d.handoffEnabled = handoffEnabled;
         d.handoffExitOverrides = new HashMap<>(handoffExitOverrides);
         d.handoffHost = handoffHost.toString();
+        d.handoffOutboundClearanceBlocks = handoffOutboundClearanceBlocks;
         d.handoffBandThickness = handoffBandThickness;
         d.handoffReach = handoffReach;
         d.handoffIntervalTicks = handoffIntervalTicks;
@@ -867,6 +1027,13 @@ public final class XenoSpaceConfig {
         ChartDefinition.parse("xenopixelsmod:defaults", defaults);
         bodyDefaults = defaults.deepCopy();
         enabled = d.enabled;
+        spacePodsEnabled = d.spacePodsEnabled == null || d.spacePodsEnabled;
+        podCruiseSpeed = boundedFinite(d.podCruiseSpeed, 16.0, 0.0, 10_000.0);
+        podCruiseAcceleration = boundedFinite(d.podCruiseAcceleration, 4.0, 0.0, 1_000.0);
+        podBoostSpeed = boundedFinite(d.podBoostSpeed, 48.0, podCruiseSpeed, 10_000.0);
+        podBoostAcceleration = boundedFinite(d.podBoostAcceleration, 12.0, 0.0, 1_000.0);
+        podFlightResponsePerSecond = boundedFinite(d.podFlightResponsePerSecond, 2.0, 0.0, 100.0);
+        podBoostKiPerSecond = boundedFinite(d.podBoostKiPerSecond, 5.0, 0.0, 100_000.0);
         // 0 = unbudgeted; otherwise a real ceiling. Capped so a typo cannot make the pass unbounded
         // in the other direction and starve Sable's own work.
         workPerPhysicsTick = d.workPerPhysicsTick <= 0 ? 0 : Math.min(d.workPerPhysicsTick, 1_000_000);
@@ -880,6 +1047,8 @@ public final class XenoSpaceConfig {
         blackHolesEnabled = d.blackHolesEnabled;
         blackHoleOxygenFactor = Math.max(1, Math.min(100, d.blackHoleOxygenFactor));
         cosmicDragonBallsEnabled = d.cosmicDragonBallsEnabled;
+        cosmicDragonBallMode = net.bullettrain.xenopixelsmod.space.dragonball.DragonBallModePolicy.parse(
+                d.cosmicDragonBallMode).key();
         var hosts = new java.util.ArrayList<String>();
         if (d.cosmicDragonBallHosts != null) for (String host : d.cosmicDragonBallHosts)
             if (host != null && net.minecraft.resources.ResourceLocation.tryParse(host) != null && hosts.size() < 16) hosts.add(host);
@@ -887,23 +1056,52 @@ public final class XenoSpaceConfig {
         cosmicDragonBallRadius = Math.max(64, Math.min(1_000_000, d.cosmicDragonBallRadius));
         cosmicDragonBallDormantDays = Math.max(0, Math.min(3650, d.cosmicDragonBallDormantDays));
         hakaiPlanets = net.bullettrain.xenopixelsmod.space.hakai.PlanetHakaiRules.Mode.parse(d.hakaiPlanets).key();
-        var protectedIds = new java.util.ArrayList<String>();
-        if (d.hakaiPlanetProtected != null) for (String id : d.hakaiPlanetProtected) {
-            String key = id == null ? null : (id.contains(":") ? id : "xenopixelsmod:" + id);
-            if (key != null && net.minecraft.resources.ResourceLocation.tryParse(key) != null && !protectedIds.contains(key) && protectedIds.size() < 256)
-                protectedIds.add(key);
-        }
-        hakaiPlanetProtected = java.util.List.copyOf(protectedIds);
+        var protectedLoad = net.bullettrain.xenopixelsmod.space.hakai.PlanetProtectionList.load(d.hakaiPlanetProtected);
+        if (protectedLoad.invalidIds() > 0 || protectedLoad.duplicateIds() > 0 || protectedLoad.excessIds() > 0)
+            net.bullettrain.xenopixelsmod.XenoPixelsMod.LOGGER.warn(
+                    "Hakai protection config ignored {} invalid IDs, {} duplicate IDs, and {} unique IDs beyond the {}-body cap",
+                    protectedLoad.invalidIds(), protectedLoad.duplicateIds(), protectedLoad.excessIds(),
+                    net.bullettrain.xenopixelsmod.space.hakai.PlanetProtectionList.MAX_ENTRIES);
+        hakaiPlanetProtected = protectedLoad.ids();
         hakaiPlanetPermissionLevel = Math.max(0, Math.min(4, d.hakaiPlanetPermissionLevel));
         hakaiPlanetReach = Double.isFinite(d.hakaiPlanetReach) ? Math.max(16, Math.min(1_000_000, d.hakaiPlanetReach)) : 20_000;
         hakaiPlanetEraseTicks = Math.max(1, Math.min(20 * 60, d.hakaiPlanetEraseTicks));
         hakaiPlanetRestoreMinutes = Math.max(0, Math.min(60 * 24 * 365, d.hakaiPlanetRestoreMinutes));
         hakaiPlanetEjectOccupants = d.hakaiPlanetEjectOccupants;
+        destructibleDefault = net.bullettrain.xenopixelsmod.space.hakai.PlanetHakaiRules.Destructibility
+                .parse(d.destructibleDefault).key();
+        planetIntegrityImpactDamage = clampOrdered(d.planetIntegrityImpactDamage, 0.0, 100.0, 5.0);
+        planetIntegrityDiminishingFloor = clampOrdered(d.planetIntegrityDiminishingFloor, 0.01, 1.0, 0.2);
+        planetIntegrityImpactCooldownTicks = clampCooldownTicks(d.planetIntegrityImpactCooldownTicks);
+        planetIntegrityBodyCooldownTicks = clampCooldownTicks(d.planetIntegrityBodyCooldownTicks);
+        planetIntegrityScarredAt = clampOrdered(d.planetIntegrityScarredAt, 1.0, 99.99, 50.0);
+        planetIntegrityCriticalAt = clampOrdered(d.planetIntegrityCriticalAt, 0.01, planetIntegrityScarredAt,
+                Math.min(20.0, planetIntegrityScarredAt));
         universeGrowth = net.bullettrain.xenopixelsmod.space.universe.UniverseGrowth.Mode.parse(d.universeGrowth).name().toLowerCase(java.util.Locale.ROOT);
         universeMaxRevealed = Math.max(1, Math.min(200_000, d.universeMaxRevealed));
         universeDiscoveriesPerDay = Math.max(0, Math.min(1000, d.universeDiscoveriesPerDay));
+        universeDiscoveryRange = universeDiscoveryRangeBlocks(d.universeDiscoveryRange);
         universeWarp = d.universeWarp;
         logicalUniverseEnabled = d.logicalUniverseEnabled;
+        fallenStarsEnabled = d.fallenStarsEnabled;
+        supernovaEnabled = d.supernovaEnabled;
+        stellarStageRampDays = Math.max(1, Math.min(365, d.stellarStageRampDays));
+        int waveDuration = d.stellarWaveDurationTicks;
+        // v26 and earlier derived the front lifetime from the stage ramp. Preserve customized old
+        // installations when the new v27 key is absent; new files use the wider solar-system default.
+        if ((d.version == null || d.version < CURRENT_VERSION) && !d.stellarWaveDurationSettingPresent) {
+            int legacyRampDays = Math.max(1, Math.min(365, d.stellarStageRampDays));
+            waveDuration = legacyRampDays * 24_000;
+        }
+        stellarWaveDurationTicks = Math.max(1, Math.min(
+                net.bullettrain.xenopixelsmod.space.event.StellarStageSnapshot.MAX_RAMP_TICKS,
+                waveDuration));
+        stellarWaveSpeedBlocksPerTick = clampOrdered(d.stellarWaveSpeedBlocksPerTick, 0.001, 1_000.0, 0.25);
+        stellarWaveExposureTicks = Math.max(1,
+                Math.min(net.bullettrain.xenopixelsmod.space.event.StellarBlastWaveMath.MAX_EXPOSURE_TICKS,
+                        d.stellarWaveExposureTicks));
+        stellarHullDamageEnabled = d.stellarHullDamageEnabled;
+        stellarHullDamageIntervalTicks = Math.max(1, Math.min(1200, d.stellarHullDamageIntervalTicks));
         orbitEpochOffsetSeconds = Double.isFinite(d.orbitEpochOffsetSeconds) && Math.abs(d.orbitEpochOffsetSeconds) <= 1e12
                 ? d.orbitEpochOffsetSeconds : 0.0;
         orbitHoldStiffness = clampOrdered(d.orbitHoldStiffness, 0.0, 10.0, 0.02);
@@ -927,6 +1125,8 @@ public final class XenoSpaceConfig {
         proximityReleaseRange = Math.max(proximityActivateRange + 64.0,
                 clampOrdered(d.proximityReleaseRange, 64.0, 1_000_000.0, 2200.0));
         proximityIntervalTicks = Math.max(1, Math.min(1200, d.proximityIntervalTicks));
+        planetBuildMaxConcurrent = PlanetBuildConcurrencyPolicy.clamp(d.planetBuildMaxConcurrent);
+        planetReleaseMaxPerPass = PlanetBuildConcurrencyPolicy.clamp(d.planetReleaseMaxPerPass);
         planetBuildVoxelsPerTick = Math.max(0, Math.min(10_000_000, d.planetBuildVoxelsPerTick));
         planetBuildPoseFix = d.planetBuildPoseFix;
         planetBuildFinalize = d.planetBuildFinalize;
@@ -938,6 +1138,7 @@ public final class XenoSpaceConfig {
         planetBuildDeferFinalize = d.planetBuildDeferFinalize;
         planetBuildCoalesceChunkBounds = d.planetBuildCoalesceChunkBounds;
         planetBuildEvictIntruders = d.planetBuildEvictIntruders;
+        planetBuildSparseAirCollisionEncoding = d.planetBuildSparseAirCollisionEncoding;
         asteroidBelts = d.asteroidBelts;
         asteroidPhysical = d.asteroidPhysical;
         asteroidActivateRange = clampOrdered(d.asteroidActivateRange, 32.0, 4096.0, 420.0);
@@ -952,17 +1153,21 @@ public final class XenoSpaceConfig {
         asteroidBuildIncrementalSections = d.asteroidBuildIncrementalSections;
         smallPlanetPhysical = d.smallPlanetPhysical;
         smallPlanetRadialGravity = d.smallPlanetRadialGravity;
+        eclipseEventsEnabled = d.eclipseEventsEnabled;
+        eclipseCoverageThresholdPercent = eclipseThresholdPercent(d.eclipseCoverageThresholdPercent);
         smallPlanetFieldEnabled = d.smallPlanetFieldEnabled;
         smallPlanetActivateRange = clampOrdered(d.smallPlanetActivateRange, 32.0, 4_096.0, 420.0);
         smallPlanetReleaseRange = Math.max(smallPlanetActivateRange + 32.0,
                 clampOrdered(d.smallPlanetReleaseRange, 64.0, 8_192.0, 650.0));
         smallPlanetMaxPerPlayer = Math.max(0, Math.min(16, d.smallPlanetMaxPerPlayer));
         smallPlanetMaxGlobal = Math.max(0, Math.min(32, d.smallPlanetMaxGlobal));
+        smallPlanetMaxEditedGlobal = Math.max(0, Math.min(32, d.smallPlanetMaxEditedGlobal));
         smallPlanetSpawnIntervalTicks = Math.max(1, Math.min(1_200, d.smallPlanetSpawnIntervalTicks));
         smallPlanetBuildVoxelsPerTick = Math.max(1, Math.min(2_000, d.smallPlanetBuildVoxelsPerTick));
         smallPlanetBuildIncrementalSections = d.smallPlanetBuildIncrementalSections;
         asteroidFracture = d.asteroidFracture;
         oxygenEnabled = d.oxygenEnabled; oxygenShipsPressurized = d.oxygenShipsPressurized;
+        oxygenAuraSubstitute = d.oxygenAuraSubstitute;
         oxygenBreathSeconds = Math.max(1, Math.min(3600, d.oxygenBreathSeconds));
         oxygenCapsuleSeconds = Math.max(1, Math.min(36_000, d.oxygenCapsuleSeconds));
         oxygenReserveCapSeconds = Math.max(oxygenCapsuleSeconds, Math.min(360_000, d.oxygenReserveCapSeconds));
@@ -988,15 +1193,17 @@ public final class XenoSpaceConfig {
         // 0 explicitly restores the pre-shared-cap local manager behavior. Positive caps may be as low as 1;
         // indivisible plot.load groups switch to the exact voxel writer when they cannot fit.
         var buildPolicy = GeneratedBodyBuildPolicy.resolve(d.version, d.generatedBodyBuildVoxelsPerTick,
-                d.generatedBodyBuildBudgetEnabled);
+                d.generatedBodyBuildBudgetEnabled, d.generatedBodyBuildMillisPerTick,
+                d.generatedBodyBuildMillisSettingPresent);
         generatedBodyBuildBudgetEnabled = buildPolicy.enabled();
         generatedBodyBuildVoxelsPerTick = buildPolicy.voxelsPerTick();
-        generatedBodyBuildMillisPerTick = Double.isFinite(d.generatedBodyBuildMillisPerTick)
-                ? Math.max(0.0, Math.min(20.0, d.generatedBodyBuildMillisPerTick)) : 0.0;
+        generatedBodyBuildMillisPerTick = buildPolicy.millisPerTick();
         sableAllocationPhaseProbe = d.sableAllocationPhaseProbe;
         planetAssembly = "blocks".equalsIgnoreCase(String.valueOf(d.planetAssembly).trim()) ? "blocks" : "atomic";
         handoffEntry = "altitude".equalsIgnoreCase(String.valueOf(d.handoffEntry).trim()) ? "altitude" : "surface";
         handoffSurfaceMargin = clampOrdered(d.handoffSurfaceMargin, 0.0, 64.0, 2.0);
+        handoffOutboundClearanceBlocks = !Double.isFinite(d.handoffOutboundClearanceBlocks)
+                ? 16.0 : Math.max(0.0, Math.min(1024.0, d.handoffOutboundClearanceBlocks));
         fieldGravity = d.fieldGravity;
         proxyBudget = Math.max(0, Math.min(256, d.proxyBudget));
         // Version 6 charts the whole solar system and the DMZ worlds (about 15 bodies): a file still on the
@@ -1042,6 +1249,11 @@ public final class XenoSpaceConfig {
         spaceDimensions = withHost(safeDimensions(d.spaceDimensions));
         // 1..32 voxels: the r³ cost is the reason this is clamped rather than trusted.
         maxSpikeRadius = Math.max(1, Math.min(32, d.maxSpikeRadius));
+    }
+
+    private static double boundedFinite(double value, double fallback, double min, double max) {
+        return Double.isFinite(value) ? Math.max(min, Math.min(max, value))
+                : Math.max(min, Math.min(max, fallback));
     }
 
     /**
@@ -1094,27 +1306,54 @@ public final class XenoSpaceConfig {
     }
 
     /** Clamps to {@code [min, max]}, substituting {@code fallback} for a non-finite or below-min value. */
+    /** Discovery range validation: clamped to 0..UniverseGrowth.MAX_DISCOVERY_RANGE (the 3x3-complete bound). */
+    static int universeDiscoveryRangeBlocks(int value) {
+        return Math.max(0, Math.min(net.bullettrain.xenopixelsmod.space.universe.UniverseGrowth.MAX_DISCOVERY_RANGE, value));
+    }
+
+    /** Eclipse threshold validation: non-finite falls back to 30, otherwise clamped to 1..100 percent. */
+    static double eclipseThresholdPercent(double value) {
+        if (!Double.isFinite(value)) return 30.0;
+        return Math.max(1.0, Math.min(100.0, value));
+    }
+
     private static double clampOrdered(double value, double min, double max, double fallback) {
         if (!Double.isFinite(value) || value < min) return fallback;
         return Math.min(value, max);
     }
 
+    /** Invalid non-positive cooldowns use the documented default; valid positive values keep a one-tick floor. */
+    private static int clampCooldownTicks(int value) {
+        return value <= 0 ? 20 : Math.min(1200, value);
+    }
+
     public static String statusLine() {
         return "space=" + (enabled ? "on" : "off")
+                + " fallenStars=" + (fallenStarsEnabled ? "on" : "off")
+                + " supernova=" + (supernovaEnabled ? "on" : "off")
+                + " stellarRampDays=" + stellarStageRampDays
+                + " stellarWaveDurationTicks=" + stellarWaveDurationTicks
+                + " stellarWave=" + stellarWaveSpeedBlocksPerTick + "blocks/tick/" + stellarWaveExposureTicks + "ticks"
+                + " hullDamage=" + (stellarHullDamageEnabled ? "on" : "off") + "/" + stellarHullDamageIntervalTicks + "ticks"
                 + " realOrbits=" + realOrbits
                 + " orbitHold=" + orbitHoldStiffness + "/" + orbitHoldDamping + "/" + orbitHoldMaxAccel
                 + " return=" + (orbitReturnBoost ? orbitReturnStiffness + "/" + orbitReturnDamping + "/"
                         + orbitReturnMaxAccel + "@" + orbitReturnMaxSpeed : "off")
                 + " recover=" + (long) orbitRecoverDistance
                 + " physical=" + physicalPlanets
+                + " planetBuildMaxConcurrent=" + planetBuildMaxConcurrent
+                + " planetReleaseMaxPerPass=" + planetReleaseMaxPerPass
                 + " smallPlanetField=" + (smallPlanetFieldEnabled ? "on" : "off")
                 + " smallPlanets=" + (smallPlanetPhysical ? "on" : "off") + "/" + smallPlanetMaxGlobal
+                + " editedSmallPlanets=" + smallPlanetMaxEditedGlobal
                 + " smallPlanetRadialGravity=" + smallPlanetRadialGravity
                 + " smallPlanetIncremental=" + smallPlanetBuildIncrementalSections
                 + " bodyVoxelsPerTick=" + (generatedBodyBuildBudgetEnabled ? generatedBodyBuildVoxelsPerTick : "off")
                 + " bodyBuildMsPerTick=" + (generatedBodyBuildMillisPerTick <= 0.0 ? "unbudgeted" : generatedBodyBuildMillisPerTick)
                 + " sableAllocationProbe=" + (sableAllocationPhaseProbe ? "on" : "off")
                 + " entry=" + handoffEntry
+                + " surfaceMargin=" + handoffSurfaceMargin
+                + " outboundClearance=" + handoffOutboundClearanceBlocks
                 + " fieldGravity=" + fieldGravity
                 + " work/tick=" + (workPerPhysicsTick <= 0 ? "unbudgeted" : workPerPhysicsTick)
                 + " gravityEvery=" + gravityIntervalTicks + "t"
@@ -1129,6 +1368,8 @@ public final class XenoSpaceConfig {
                 + " handoffEvery=" + handoffIntervalTicks + "t"
                 + " velocity=" + (velocityCarryover ? "carry" : "zero")
                 + " flightGrant=" + (flightGrant ? "on" : "off")
+                + " podCruise=" + podCruiseSpeed + "/" + podCruiseAcceleration
+                + " podBoost=" + podBoostSpeed + "/" + podBoostAcceleration
                 + " maxSpikeRadius=" + maxSpikeRadius
                 + " probe=" + perfProbeEnabled;
     }
@@ -1136,16 +1377,22 @@ public final class XenoSpaceConfig {
     public static class Data {
         public Integer version;
         public boolean enabled = false;
+        public Boolean spacePodsEnabled = true;
+        public double podCruiseSpeed = 16.0, podCruiseAcceleration = 4.0;
+        public double podBoostSpeed = 48.0, podBoostAcceleration = 12.0;
+        public double podFlightResponsePerSecond = 2.0;
+        public double podBoostKiPerSecond = 5.0;
         public int workPerPhysicsTick = 0;
         public int gravityIntervalTicks = 20;
         public int gravityContributors = 3;
         public double fieldRange = 100_000.0;
-        public boolean realOrbits = false;
+        public boolean realOrbits = true;
         public boolean orbitWarpAllowed = false;
         public boolean voidseaUnboundedHeight = false;
         public boolean blackHolesEnabled = false;
         public int blackHoleOxygenFactor = 3;
         public boolean cosmicDragonBallsEnabled = false;
+        public String cosmicDragonBallMode = "planetary";
         public java.util.List<String> cosmicDragonBallHosts = new java.util.ArrayList<>(java.util.List.of("minecraft:overworld"));
         public int cosmicDragonBallRadius = 3000, cosmicDragonBallDormantDays = 3;
         public String hakaiPlanets = "off";
@@ -1154,10 +1401,23 @@ public final class XenoSpaceConfig {
         public double hakaiPlanetReach = 20_000;
         public int hakaiPlanetEraseTicks = 100, hakaiPlanetRestoreMinutes = 0;
         public boolean hakaiPlanetEjectOccupants = true;
+        public String destructibleDefault = "gated";
+        public double planetIntegrityImpactDamage = 5.0, planetIntegrityDiminishingFloor = 0.2;
+        public int planetIntegrityImpactCooldownTicks = 20, planetIntegrityBodyCooldownTicks = 20;
+        public double planetIntegrityScarredAt = 50.0, planetIntegrityCriticalAt = 20.0;
         public String universeGrowth = "off";
         public int universeMaxRevealed = 512, universeDiscoveriesPerDay = 8;
+        public int universeDiscoveryRange = net.bullettrain.xenopixelsmod.space.universe.UniverseGrowth.DEFAULT_DISCOVERY_RANGE;
         public boolean universeWarp = false;
         public boolean logicalUniverseEnabled = false;
+        public boolean fallenStarsEnabled = true;
+        public boolean supernovaEnabled = true;
+        public int stellarStageRampDays = 3;
+        public int stellarWaveDurationTicks = 124_000;
+        public double stellarWaveSpeedBlocksPerTick = 0.25;
+        public int stellarWaveExposureTicks = 100;
+        public boolean stellarHullDamageEnabled = true;
+        public int stellarHullDamageIntervalTicks = 20;
         public double orbitEpochOffsetSeconds = 0.0;
         public double orbitHoldStiffness = 0.02;
         public double orbitHoldDamping = 0.28;
@@ -1176,17 +1436,20 @@ public final class XenoSpaceConfig {
         public double proximityActivateRange = 1500.0;
         public double proximityReleaseRange = 2200.0;
         public int proximityIntervalTicks = 20;
+        public int planetBuildMaxConcurrent = PlanetBuildConcurrencyPolicy.DEFAULT_MAX_CONCURRENT;
+        public int planetReleaseMaxPerPass = 1;
         public int planetBuildVoxelsPerTick = 5000;
         public boolean planetBuildPoseFix = true;
         public boolean planetBuildFinalize = false;
         public boolean planetOrphanCleanup = true;
-        public boolean sableTicketUnloadKeyFix = false;
+        public boolean sableTicketUnloadKeyFix = true;
         public boolean planetSkipSplitHeatMap = false;
         public boolean planetSkipChunkTickets = false;
         public boolean planetBuildFrameFirst = false;
         public boolean planetBuildDeferFinalize = false;
         public boolean planetBuildCoalesceChunkBounds = false;
         public boolean planetBuildEvictIntruders = false;
+        public boolean planetBuildSparseAirCollisionEncoding = false;
         public boolean asteroidBelts = false;
         public boolean asteroidPhysical = false;
         public double asteroidActivateRange = 420.0, asteroidReleaseRange = 650.0;
@@ -1195,17 +1458,24 @@ public final class XenoSpaceConfig {
         public boolean asteroidBuildIncrementalSections = false;
         public boolean smallPlanetPhysical = false;
         public boolean smallPlanetRadialGravity = true;
+        public boolean eclipseEventsEnabled = true;
+        public double eclipseCoverageThresholdPercent = 30.0;
         public boolean smallPlanetFieldEnabled = true;
         public double smallPlanetActivateRange = 420.0, smallPlanetReleaseRange = 650.0;
-        public int smallPlanetMaxPerPlayer = 2, smallPlanetMaxGlobal = 8, smallPlanetSpawnIntervalTicks = 40,
+        public int smallPlanetMaxPerPlayer = 2, smallPlanetMaxGlobal = 8, smallPlanetMaxEditedGlobal = 4,
+                smallPlanetSpawnIntervalTicks = 40,
                 smallPlanetBuildVoxelsPerTick = 512;
         public boolean smallPlanetBuildIncrementalSections = false;
         public boolean generatedBodyBuildBudgetEnabled = true;
         public int generatedBodyBuildVoxelsPerTick = 2_000;
-        public double generatedBodyBuildMillisPerTick = 0.0;
+        public double generatedBodyBuildMillisPerTick = GeneratedBodyBuildPolicy.DEFAULT_MILLIS_PER_TICK;
+        /** Presence is captured from the raw JSON during load; transient so it never becomes a config key. */
+        public transient boolean generatedBodyBuildMillisSettingPresent = true;
+        /** Presence is captured from the raw JSON so v26 can preserve its prior ramp-derived duration. */
+        public transient boolean stellarWaveDurationSettingPresent = true;
         public boolean sableAllocationPhaseProbe = false;
         public boolean asteroidFracture = false;
-        public boolean oxygenEnabled = false, oxygenShipsPressurized = true;
+        public boolean oxygenEnabled = false, oxygenShipsPressurized = true, oxygenAuraSubstitute = true;
         public int oxygenBreathSeconds = 30, oxygenCapsuleSeconds = 300, oxygenReserveCapSeconds = 900;
         public double oxygenKiPerSecond = 5.0, oxygenDamagePerSecond = 1.0, oxygenRefillPerSecond = 10.0;
         public double asteroidFractureDeltaV = 6.0;
@@ -1220,6 +1490,7 @@ public final class XenoSpaceConfig {
         public String planetAssembly = "atomic";
         public String handoffEntry = "surface";
         public double handoffSurfaceMargin = 2.0;
+        public double handoffOutboundClearanceBlocks = 16.0;
         public boolean fieldGravity = false;
         public boolean voidDamage = false;
         public List<String> spaceDimensions =

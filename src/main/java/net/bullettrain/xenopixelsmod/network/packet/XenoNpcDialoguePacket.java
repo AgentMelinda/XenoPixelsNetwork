@@ -72,7 +72,22 @@ public record XenoNpcDialoguePacket(int entityId, String nodeId, int optionIndex
             if (node == null || optionIndex < 0 || optionIndex >= node.options().size()) {
                 return;
             }
+            var data = net.bullettrain.xenopixelsmod.capability.XenoCapabilities.get(player).orElse(null);
+            if (!net.bullettrain.xenopixelsmod.features.progression.QuestRuntime.available(player, data, node.availability())) {
+                // Reported rather than dropped: the option was on screen, and a click that produces
+                // nothing is the failure this screen exists to avoid.
+                player.sendSystemMessage(Component.literal("That conversation has moved on."));
+                return;
+            }
             XenoDialogue.Option option = node.options().get(optionIndex);
+            if (option.type() == XenoDialogue.OptionType.TEXT) {
+                XenoDialogue.Node target = dialogue.nodes().get(option.target());
+                if (target == null || !net.bullettrain.xenopixelsmod.features.progression.QuestRuntime.available(player, data, target.availability())) {
+                    player.sendSystemMessage(Component.literal("That conversation has moved on."));
+                    return;
+                }
+                if (data != null) data.recordViewedDialogue(target.sourceRef());
+            }
             if (npc != null) {
                 net.bullettrain.xenopixelsmod.npc.script.NpcScriptHost.fire(npc, "dialogOption", player, null, null, optionIndex);
             }
@@ -80,6 +95,8 @@ public record XenoNpcDialoguePacket(int entityId, String nodeId, int optionIndex
             switch (option.type()) {
                 case COMMAND -> runCommand(player, host, option.command());
                 case QUEST -> offerQuest(player, npc, option.quest());
+                case DMZ_QUEST -> net.bullettrain.xenopixelsmod.npc.dialog.DmzNpcQuestBridge
+                        .open(player, host, option.quest());
                 case TEXT -> net.bullettrain.xenopixelsmod.features.progression.ProgressionEvents
                         .onDialogOption(player, option.target());
                 default -> {

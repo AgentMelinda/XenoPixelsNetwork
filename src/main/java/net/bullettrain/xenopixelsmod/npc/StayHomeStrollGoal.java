@@ -35,7 +35,9 @@ public final class StayHomeStrollGoal extends WaterAvoidingRandomStrollGoal {
      * effect on the next wander attempt instead of on the next reload.
      */
     private boolean anchored() {
-        return NpcCombatProfile.readCached(mob).stayHome;
+        NpcCombatProfile profile = NpcCombatProfile.readCached(mob);
+        return profile.stayHome || mob.getTarget() != null
+                && net.bullettrain.xenopixelsmod.compat.npc.NpcNativePursuit.owns(mob, profile);
     }
 
     @Override

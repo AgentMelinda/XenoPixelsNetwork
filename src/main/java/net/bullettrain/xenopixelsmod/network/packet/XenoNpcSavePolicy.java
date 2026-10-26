@@ -48,6 +48,8 @@ final class XenoNpcSavePolicy {
 
     private static CompoundTag buildShape() {
         NpcCombatProfile sample = new NpcCombatProfile();
+        sample.importedMoveSpeed = 5;
+        sample.aiCanSprint = false;
         // Every key below is written only when something is assigned. A whitelisted key missing
         // here passes the whitelist and is then refused at the type check, which reads to an
         // operator as a save that silently does nothing.
@@ -143,7 +145,7 @@ final class XenoNpcSavePolicy {
             // AI controls are admitted only with their goal, targeting or riding consumers.
             "AiCanSwim", "AiAvoidsWater", "AiDoorInteract", "AiLeapAtTarget", "AiReturnToStart",
             "AiOnFoundEnemy", "AiShelterFrom", "AiMustSeeTarget", "AiAttackInvisible",
-            "AiMountControl",
+            "AiMountControl", "ImportedMoveSpeed", "AiCanSprint",
             // Stats > regen. XenoNpcBehaviour.tickRegen heals against both, so they go in with
             // their consumer rather than ahead of it.
             "HealthRegen", "CombatRegen",
@@ -245,6 +247,11 @@ final class XenoNpcSavePolicy {
         for (String key : tag.getAllKeys()) {
             if (!EDITABLE_KEYS.contains(key)) {
                 return Validation.reject("field is not editor-owned: " + key);
+            }
+            if (key.equals("ImportedMoveSpeed")) {
+                if (!tag.contains(key, Tag.TAG_INT) || tag.getInt(key) < -1 || tag.getInt(key) > 100)
+                    return Validation.reject("invalid imported movement speed");
+                continue;
             }
             if (key.equals("DisplayShowName") || key.equals("BossBarMode")) {
                 int minimum = key.equals("BossBarMode") ? 1 : 0;

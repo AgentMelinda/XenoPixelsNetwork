@@ -70,7 +70,7 @@ public abstract class DmzLockOnNpcMixin {
     }
 
     @Redirect(
-            method = "lambda$findTargetInFront$4",
+            method = "lambda$findTargetInFront$5",
             at = @At(
                     value = "INVOKE",
                     target = "Lnet/minecraft/world/entity/LivingEntity;isPickable()Z",
@@ -103,7 +103,7 @@ public abstract class DmzLockOnNpcMixin {
     }
 
     @ModifyConstant(
-            method = {"lambda$toggleLock$2", "lambda$onClientTick$3"},
+            method = {"lambda$toggleLock$2", "isLockValid"},
             constant = @Constant(doubleValue = 15.0)
     )
     private static double xenopixels$lockRangeBase(double original) {

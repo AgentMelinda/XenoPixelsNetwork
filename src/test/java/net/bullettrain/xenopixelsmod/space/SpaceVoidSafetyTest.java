@@ -64,6 +64,29 @@ class SpaceVoidSafetyTest {
         assertEquals(200.0, SpaceVoidSafety.ruleFor(chartWith(null), DEMO_ORBIT, false, Set.of()).anchorY());
     }
 
+    @Test void sharedSurfaceVoidRuleUsesThePlayersCellIdentity() {
+        var chart = new ChartRegistry();
+        chart.rebuild(List.of(
+                sharedSurfaceBody("xenopixelsmod:moon", 200),
+                sharedSurfaceBody("xenopixelsmod:phobos", 700)));
+        var moon = net.bullettrain.xenopixelsmod.space.smallplanet.PlanetSurfaceCells
+                .forChartBody("xenopixelsmod:moon");
+        var phobos = net.bullettrain.xenopixelsmod.space.smallplanet.PlanetSurfaceCells
+                .forChartBody("xenopixelsmod:phobos");
+        var dimension = ResourceLocation.parse("xenopixelsmod:planet_surfaces");
+        assertEquals(200.0, SpaceVoidSafety.ruleFor(chart, dimension, false, Set.of(),
+                (int) moon.centerBlockX(), (int) moon.centerBlockZ()).anchorY());
+        assertEquals(700.0, SpaceVoidSafety.ruleFor(chart, dimension, false, Set.of(),
+                (int) phobos.centerBlockX(), (int) phobos.centerBlockZ()).anchorY());
+        assertTrue(Double.isNaN(SpaceVoidSafety.ruleFor(chart, dimension, false, Set.of(), 0, 0).anchorY()));
+    }
+
+    private static CelestialBody sharedSurfaceBody(String id, double anchorY) {
+        return new CelestialBody(id, CelestialBody.BodyKind.MOON, id, null,
+                0, 0, 0, null, 8, 0.0, null, "xenopixelsmod:planet_surfaces",
+                anchorY, 700, false, false, 0, null, 0);
+    }
+
     private static ChartRegistry chartWith(Boolean voidDamage) {
         ChartRegistry chart = new ChartRegistry();
         chart.rebuild(List.of(new CelestialBody("demo:orbit", CelestialBody.BodyKind.PLANET, "Orbit", null,

@@ -140,12 +140,13 @@ public final class NpcAppearanceMapping {
         target.setHairId(source.hairId());
     }
 
-    /** The four hair slots, deep-copied so the target owns them and cannot alias the source. */
+    /** All DMZ hair slots, deep-copied so the target owns them and cannot alias the source. */
     public static void applyHair(Character target, NpcAppearanceSource source) {
-        target.setHairBase(source.hairSlot(0));
-        target.setHairSSJ(source.hairSlot(1));
-        target.setHairSSJ2(source.hairSlot(2));
-        target.setHairSSJ3(source.hairSlot(3));
+        target.setHairStyle(com.dragonminez.common.hair.HairStyleSlot.BASE, source.hairSlot(0));
+        target.setHairStyle(com.dragonminez.common.hair.HairStyleSlot.SSJ, source.hairSlot(1));
+        target.setHairStyle(com.dragonminez.common.hair.HairStyleSlot.SSJ2, source.hairSlot(2));
+        target.setHairStyle(com.dragonminez.common.hair.HairStyleSlot.SSJ3, source.hairSlot(3));
+        target.setHairStyle(com.dragonminez.common.hair.HairStyleSlot.SSJ4, source.hairSlot(4));
     }
 
     /** The whole look in one call. */

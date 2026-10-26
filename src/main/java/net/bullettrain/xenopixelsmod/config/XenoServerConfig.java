@@ -707,6 +707,12 @@ public final class XenoServerConfig {
     /** Fade the Hakai victim's body as the channel charges. */
     public static boolean hakaiFadeEnabled = true;
     /**
+     * One origin per target while a sweep is actively erasing it: the source that captured the crosshair point keeps
+     * it until nothing has raised that target for three ticks, so a second channel cannot teleport the dissolve line
+     * mid-sweep. Off restores the pre-0.5.23 behaviour, where every cast rewrites the point.
+     */
+    public static boolean hakaiOriginArbitration = true;
+    /**
      * Lowest alpha the fade may reach. 0 lets the body disappear entirely; the 0.02 default
      * leaves a faint silhouette so the target is still readable at full charge.
      */
@@ -1470,6 +1476,7 @@ public final class XenoServerConfig {
         d.hakaiSparedBlocks = hakaiSparedBlocks;
         d.hakaiRazeHeight = hakaiRazeHeight;
         d.hakaiFadeEnabled = hakaiFadeEnabled;
+        d.hakaiOriginArbitration = hakaiOriginArbitration;
         d.hakaiFadeMinAlpha = hakaiFadeMinAlpha;
         d.hakaiFadeCurve = hakaiFadeCurve;
         d.hakaiFadeRestoreTicks = hakaiFadeRestoreTicks;
@@ -1817,6 +1824,7 @@ public final class XenoServerConfig {
         hakaiEnabled = d.hakaiEnabled;
         hakaiTargetGlow = d.hakaiTargetGlow;
         hakaiFadeEnabled = d.hakaiFadeEnabled;
+        hakaiOriginArbitration = d.hakaiOriginArbitration;
         bt3TransformImpactEnabled = d.bt3TransformImpactEnabled;
         trainingDummyEnabled = d.trainingDummyEnabled;
         parallelQuestEnabled = d.parallelQuestEnabled;
@@ -3394,6 +3402,7 @@ public final class XenoServerConfig {
         public String hakaiSparedDimensions = "dragonminez:otherworld,dragonminez:time_chamber,dragonminez:sacredkaiplanet";
         public int hakaiRazeHeight = 48;
         public boolean hakaiFadeEnabled = true;
+        public boolean hakaiOriginArbitration = true;
         public float hakaiFadeMinAlpha = 0.02f;
         public float hakaiFadeCurve = 1.0f;
         public int hakaiFadeRestoreTicks = 40;

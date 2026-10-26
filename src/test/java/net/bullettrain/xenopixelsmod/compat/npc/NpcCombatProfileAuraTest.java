@@ -36,6 +36,8 @@ class NpcCombatProfileAuraTest {
 
         NpcAuraStyle stack = source.auraStyle(true, "kaioken", "x20", true);
         stack.enabled = true;
+        stack.smooth = NpcAuraStyle.Toggle.OFF;
+        stack.threeD = NpcAuraStyle.Toggle.ON;
         stack.primaryColor = "#CC0000";
         stack.extraConfigured = true;
         stack.extraEnabled = true;
@@ -55,6 +57,8 @@ class NpcCombatProfileAuraTest {
         assertNotNull(restored);
         assertEquals("#CC0000", restored.primaryColor);
         assertTrue(restored.extraEnabled);
+        assertEquals(NpcAuraStyle.Toggle.OFF, restored.smooth);
+        assertEquals(NpcAuraStyle.Toggle.ON, restored.threeD);
     }
 
     @Test

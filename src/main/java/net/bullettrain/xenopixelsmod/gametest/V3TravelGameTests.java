@@ -36,6 +36,24 @@ import net.neoforged.neoforge.gametest.PrefixGameTestTemplate;
 public final class V3TravelGameTests {
     private V3TravelGameTests() {}
 
+    @GameTest(template = "empty", batch = "dmz22_native_melee", timeoutTicks = 60)
+    public static void normalLockedTapDamagesThroughDmzApprovedScope(GameTestHelper helper) {
+        run(helper, fixture -> {
+            var target = fixture.npc();
+            fixture.face(target, 2);
+            fixture.acquire(target.getUUID());
+            helper.assertTrue(V3Targeting.resolve(fixture.player) == target, "Server approved this lock");
+            float healthBefore = target.getHealth();
+            fixture.player.resetAttackStrengthTicker();
+            // Use the normal admitted intent, including all V3 guards and native DMZ events.
+            V3CombatServer.handleInput(fixture.player, V3Input.LIGHT_TAP,
+                    V3FighterStore.get(fixture.player).session(), null, V3Direction.NONE, fixture.sequence++);
+            helper.assertTrue(target.getHealth() < healthBefore, "Normal locked tap must actually damage the target");
+            helper.assertTrue(!com.dragonminez.common.combat.logic.player.TargetHelper.isApprovedMeleeTarget(target),
+                    "DMZ approval scope must be cleared after the hit");
+        });
+    }
+
     @GameTest(template = "empty", batch = "v3_cycle_targeting", timeoutTicks = 60)
     public static void explicitCycleUsesValidatedUuidAndPreservesLockOnRefusal(GameTestHelper helper) {
         var fixture = new Fixture(helper);

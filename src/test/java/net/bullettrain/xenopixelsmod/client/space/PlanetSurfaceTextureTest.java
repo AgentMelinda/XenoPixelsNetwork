@@ -9,18 +9,20 @@ import javax.imageio.ImageIO;
 import java.io.IOException;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class PlanetSurfaceTextureTest {
     private static final ResourceLocation SDB_SURFACE = ResourceLocation.fromNamespaceAndPath(
             "xenopixelsmod", "textures/space/sdb_planet_surface_hd_v1.png");
 
     @Test
-    void allPhysicalSuperDragonBallsResolveToTheShippedHdSurface() throws IOException {
+    void genericFallbackResolverStillHasTheSharedHdSurface() throws IOException {
         for (int slot = 1; slot <= CosmicDragonBalls.COUNT; slot++) {
             var identity = DragonBallIdentity.forSlot(slot);
             assertEquals(SDB_SURFACE, PlanetSurfaceTexture.forBody(identity.planetKey()),
-                    "SDB slot " + slot + " should use the physical planet surface map");
+                    "SDB slot " + slot + " fallback should use the shared surface map");
         }
 
         try (var stream = getClass().getResourceAsStream("/assets/xenopixelsmod/textures/space/sdb_planet_surface_hd_v1.png")) {
@@ -30,5 +32,12 @@ class PlanetSurfaceTextureTest {
             assertEquals(2048, image.getWidth());
             assertEquals(1024, image.getHeight());
         }
+    }
+
+    @Test
+    void productionSdbDynamicTexturesStayOwnedByTheirGenerator() {
+        var generated = ResourceLocation.fromNamespaceAndPath("xenopixelsmod", "dynamic/dragon_ball_planet_1");
+        assertTrue(DragonBallPlanetClient.ownsTexture(generated));
+        assertFalse(DragonBallPlanetClient.ownsTexture(SDB_SURFACE));
     }
 }

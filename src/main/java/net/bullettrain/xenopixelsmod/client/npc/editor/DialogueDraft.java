@@ -35,6 +35,8 @@ public final class DialogueDraft {
         public String quest = "";
         public String command = "";
         public String palette = "";
+        /** The slot the imported source authored this answer in, or -1 for a hand-made option. */
+        public int sourceIndex = -1;
     }
 
     /** One node: a line the NPC says, and what the player can answer. */
@@ -42,6 +44,14 @@ public final class DialogueDraft {
         public String id;
         public String text = "";
         public String palette = "";
+        /**
+         * Carried through untouched. The importer converts an author's availability rules into this
+         * gate, and the editor has no controls for it yet; rebuilding a node without it would let
+         * opening the GUI and saving quietly delete a condition the server is enforcing.
+         */
+        public net.bullettrain.xenopixelsmod.features.progression.QuestAvailability availability =
+                net.bullettrain.xenopixelsmod.features.progression.QuestAvailability.NONE;
+        public String sourceRef = "";
         public final List<Option> options = new ArrayList<>();
 
         Node(String id) {
@@ -71,6 +81,8 @@ public final class DialogueDraft {
             Node node = new Node(entry.getKey());
             node.text = entry.getValue().text();
             node.palette = entry.getValue().palette();
+            node.availability = entry.getValue().availability();
+            node.sourceRef = entry.getValue().sourceRef();
             for (XenoDialogue.Option option : entry.getValue().options()) {
                 Option copy = new Option();
                 copy.text = option.text();
@@ -79,6 +91,7 @@ public final class DialogueDraft {
                 copy.quest = option.quest();
                 copy.command = option.command();
                 copy.palette = option.palette();
+                copy.sourceIndex = option.sourceIndex();
                 node.options.add(copy);
             }
             draft.nodes.add(node);
@@ -206,10 +219,10 @@ public final class DialogueDraft {
             List<XenoDialogue.Option> options = new ArrayList<>(node.options.size());
             for (Option option : node.options) {
                 options.add(new XenoDialogue.Option(option.text, option.type, option.target,
-                        option.quest, option.command, -1, option.palette));
+                        option.quest, option.command, option.sourceIndex, option.palette));
             }
             built.put(node.id, new XenoDialogue.Node(node.text, List.copyOf(options),
-                    node.palette));
+                    node.palette, node.availability, node.sourceRef));
         }
         // The record's canonical constructor validates nothing - only fromJson does - so a draft
         // whose start does not resolve yet still converts. That is deliberate: an unfinished edit
@@ -264,6 +277,11 @@ public final class DialogueDraft {
                     case QUEST -> {
                         if (option.quest.isBlank()) {
                             problems.add(where + " names no quest.");
+                        }
+                    }
+                    case DMZ_QUEST -> {
+                        if (!net.bullettrain.xenopixelsmod.npc.dialog.DmzNpcQuestPolicy.validNpcId(option.quest)) {
+                            problems.add(where + " needs a native DMZ NPC id (not a Xeno quest id).");
                         }
                     }
                     case COMMAND -> {

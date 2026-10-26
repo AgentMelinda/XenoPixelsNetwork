@@ -110,7 +110,7 @@ public final class HakaiAreaSystem {
         }
         LivingEntity body = HakaiChannelSystem.findLookTarget(player, range, false);
         if (body != null) {
-            Vec3 at = body.position().add(0.0, body.getBbHeight() * 0.5, 0.0);
+            Vec3 at = HakaiChannelSystem.impactPoint(player, body);
             if (eye.distanceToSqr(at) < eye.distanceToSqr(best)) best = at;
         }
         return best;
@@ -144,6 +144,10 @@ public final class HakaiAreaSystem {
         for (LivingEntity e : HakaiAreaRules.capTargets(found, t -> t.distanceToSqr(channel.centre), room)) {
             channel.targets.put(e.getId(), new GlowLease(e::hasGlowingTag, e::setGlowingTag,
                     XenoServerConfig.hakaiTargetGlow));
+            NpcDissolve.setImpactOrigin(e,
+                    net.bullettrain.xenopixelsmod.combat.HakaiImpactGeometry.closestPoint(
+                            e.getBoundingBox(), channel.centre),
+                    caster.getUUID(), NpcDissolve.SweepKind.AREA);
         }
     }
 
@@ -223,7 +227,8 @@ public final class HakaiAreaSystem {
         }
         for (int i = 0; i < live.size(); i++) {
             LivingEntity target = live.get(i);
-            NpcDissolve.apply(target, progress);
+            NpcDissolve.apply(target, progress,
+                    net.bullettrain.xenopixelsmod.combat.HakaiImpactGeometry.closestPoint(target.getBoundingBox(), channel.centre));
             if (i < FX_TARGETS && channel.ticksElapsed % 2 == 0) {
                 // Only the first gets the caster's palm effect; one hand, not eight.
                 HakaiFx.tick(level, i == 0 ? caster : null, target, progress);

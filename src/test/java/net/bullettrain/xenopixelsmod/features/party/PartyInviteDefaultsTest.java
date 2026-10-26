@@ -7,7 +7,7 @@ import static org.junit.jupiter.api.Assertions.*;
 class PartyInviteDefaultsTest {
     @Test void laterInvitesPreserveLeaderSettingOnNativeParty() {
         UUID leader = UUID.randomUUID();
-        var party = new PartySavedData.PartyInstance(UUID.randomUUID(), leader, List.of(leader), true);
+        var party = new PartySavedData.PartyInstance(UUID.randomUUID(), leader, leader, List.of(leader), true);
         assertTrue(PartyManager.applyCreationDefaults(party, true, false));
         assertFalse(party.isPvpEnabled());
         party.setPvpEnabled(true);

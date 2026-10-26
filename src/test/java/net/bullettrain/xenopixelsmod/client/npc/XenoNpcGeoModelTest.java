@@ -39,7 +39,7 @@ class XenoNpcGeoModelTest {
     @Test
     void sagaAliasesResolveRealPinnedGeometryAndSaibamanKeepsItsOwnAnimations() throws Exception {
         var project = java.nio.file.Path.of(System.getProperty("xenopixels.projectDir"));
-        try (var jar = new java.util.zip.ZipFile(project.resolve("libs/dragonminez-2.1.3.jar").toFile())) {
+        try (var jar = new java.util.zip.ZipFile(project.resolve("libs/dragonminez-2.2.jar").toFile())) {
             var exists = (java.util.function.Predicate<ResourceLocation>) id -> jar.getEntry("assets/"
                     + id.getNamespace() + "/" + id.getPath()) != null;
             for (String skin : new String[]{"saga_goku_early", "saga_goku_end_ssj3", "saga_vegeta_end_base",

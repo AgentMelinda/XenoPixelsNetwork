@@ -2,6 +2,9 @@ package net.bullettrain.xenopixelsmod.command;
 
 import com.dragonminez.common.hair.CustomHair;
 import com.dragonminez.common.hair.HairManager;
+import com.dragonminez.common.hair.HairCodec;
+import com.dragonminez.common.hair.HairStyleSlot;
+import java.util.EnumMap;
 import com.dragonminez.common.stats.StatsCapability;
 import com.dragonminez.common.stats.StatsData;
 import com.dragonminez.common.stats.StatsProvider;
@@ -180,19 +183,11 @@ public final class HairCodeCommands {
         if (character == null) {
             return null;
         }
-        CustomHair base = nz(character.getHairBase());
-        CustomHair ssj = nz(character.getHairSSJ());
-        CustomHair ssj2 = nz(character.getHairSSJ2());
-        CustomHair ssj3 = nz(character.getHairSSJ3());
-        if (!base.isEmpty() || !ssj.isEmpty() || !ssj2.isEmpty() || !ssj3.isEmpty()) {
-            String code = HairManager.toFullSetCode(base, ssj, ssj2, ssj3);
-            if (code != null && !code.isBlank()) {
-                return new Encoded(code, "from your DMZ hair");
-            }
-            String single = HairManager.toCode(base.isEmpty() ? firstNonEmpty(ssj, ssj2, ssj3) : base);
-            if (single != null && !single.isBlank()) {
-                return new Encoded(single, "from your DMZ hair (single)");
-            }
+        EnumMap<HairStyleSlot, CustomHair> styles = new EnumMap<>(HairStyleSlot.class);
+        for (HairStyleSlot slot : HairStyleSlot.values()) styles.put(slot, nz(character.getHairStyle(slot)));
+        if (styles.values().stream().anyMatch(hair -> !hair.isEmpty())) {
+            String code = HairCodec.toFullSetCode(styles);
+            if (code != null && !code.isBlank()) return new Encoded(code, "from your DMZ hair");
         }
         int hairId = character.getHairId();
         if (hairId > 0) {
@@ -205,37 +200,16 @@ public final class HairCodeCommands {
     }
 
     private static Encoded fromPreset(int id) {
-        CustomHair base = HairManager.getPresetHair(id, "");
-        if (base == null || base.isEmpty()) {
-            return null;
-        }
-        if (HairManager.isPresetFullSet(id)) {
-            CustomHair ssj = nz(HairManager.getPresetHairSSJ(id, ""));
-            CustomHair ssj2 = nz(HairManager.getPresetHairSSJ2(id, ""));
-            CustomHair ssj3 = nz(HairManager.getPresetHairSSJ3(id, ""));
-            String code = HairManager.toFullSetCode(base, ssj, ssj2, ssj3);
-            if (code != null && !code.isBlank()) {
-                return new Encoded(code, "preset #" + id + " full set");
-            }
-        }
-        String single = HairManager.toCode(base);
-        if (single == null || single.isBlank()) {
-            return null;
-        }
-        return new Encoded(single, "preset #" + id);
+        CustomHair base = HairManager.getPresetStyle(id, HairStyleSlot.BASE);
+        if (base == null || base.isEmpty()) return null;
+        EnumMap<HairStyleSlot, CustomHair> styles = new EnumMap<>(HairStyleSlot.class);
+        for (HairStyleSlot slot : HairStyleSlot.values()) styles.put(slot, nz(HairManager.getPresetStyle(id, slot)));
+        String code = HairCodec.toFullSetCode(styles);
+        return code == null || code.isBlank() ? null : new Encoded(code, "preset #" + id + " full set");
     }
 
     private static CustomHair nz(CustomHair hair) {
         return hair == null ? new CustomHair() : hair;
-    }
-
-    private static CustomHair firstNonEmpty(CustomHair... hairs) {
-        for (CustomHair hair : hairs) {
-            if (hair != null && !hair.isEmpty()) {
-                return hair;
-            }
-        }
-        return new CustomHair();
     }
 
     private static Path writeFile(CommandSourceStack source, String hex, String code) {

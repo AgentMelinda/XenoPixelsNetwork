@@ -48,6 +48,8 @@ public class XenoCloneEntity extends LivingEntity {
             SynchedEntityData.defineId(XenoCloneEntity.class, EntityDataSerializers.FLOAT);
     private static final EntityDataAccessor<Integer> LIFETIME =
             SynchedEntityData.defineId(XenoCloneEntity.class, EntityDataSerializers.INT);
+    private static final EntityDataAccessor<Boolean> TRAIL =
+            SynchedEntityData.defineId(XenoCloneEntity.class, EntityDataSerializers.BOOLEAN);
 
     /** A Zanzoken image: it does not follow, it stays exactly where it was placed. */
     public static final int SLOT_STATIONARY = -1;
@@ -102,6 +104,24 @@ public class XenoCloneEntity extends LivingEntity {
     private float healthCapacity;
     private Vec3 travelOrigin = Vec3.ZERO;
     private Vec3 recallOrigin = Vec3.ZERO;
+    private boolean disappearancePlayed;
+
+    public boolean isTrailImage() {
+        return this.entityData.get(TRAIL);
+    }
+
+    /** Freeze the departure pose; later owner movement must not animate an old image. */
+    public void configureTrail(Player owner) {
+        this.entityData.set(TRAIL, true);
+        setPose(owner.getPose());
+        setShiftKeyDown(owner.isShiftKeyDown());
+        setSprinting(owner.isSprinting());
+        setSwimming(owner.isSwimming());
+        this.yBodyRot = this.yBodyRotO = owner.yBodyRot;
+        this.yHeadRot = this.yHeadRotO = owner.yHeadRot;
+        this.noPhysics = true;
+        this.setNoGravity(true);
+    }
 
     public XenoCloneEntity(EntityType<? extends XenoCloneEntity> type, Level level) {
         super(type, level);
@@ -261,6 +281,7 @@ public class XenoCloneEntity extends LivingEntity {
             return;
         }
         if (slot == SLOT_STATIONARY) {
+            if (isTrailImage()) return;
             mimicOwner(owner);
             aimRingCopy(owner);
             return;
@@ -427,6 +448,14 @@ public class XenoCloneEntity extends LivingEntity {
 
     @Override
     public void remove(RemovalReason reason) {
+        if (!disappearancePlayed && isTrailImage()
+                && (reason == RemovalReason.DISCARDED || reason == RemovalReason.KILLED)
+                && level() instanceof net.minecraft.server.level.ServerLevel serverLevel) {
+            disappearancePlayed = true;
+            serverLevel.sendParticles(net.minecraft.core.particles.ParticleTypes.POOF,
+                    getX(), getY() + getBbHeight() * 0.5, getZ(), 6,
+                    getBbWidth() * 0.3, getBbHeight() * 0.3, getBbWidth() * 0.3, 0.01);
+        }
         combat.cancel(this);
         multiFormBrain.forget();
         net.bullettrain.xenopixelsmod.compat.npc.NpcCombatBrain.forget(getUUID());
@@ -483,6 +512,7 @@ public class XenoCloneEntity extends LivingEntity {
         builder.define(SLOT, SLOT_STATIONARY);
         builder.define(TRAVEL, 1.0f);
         builder.define(LIFETIME, 20);
+        builder.define(TRAIL, false);
     }
 
     @Override
@@ -490,6 +520,8 @@ public class XenoCloneEntity extends LivingEntity {
         super.readAdditionalSaveData(tag);
         this.lifetime = Math.max(1, tag.getInt("XenoCloneLifetime"));
         this.age = tag.getInt("XenoCloneAge");
+        this.entityData.set(TRAIL, tag.getBoolean("XenoCloneTrail"));
+        this.entityData.set(LIFETIME, this.lifetime);
         if (tag.hasUUID("XenoCloneOwner")) this.ownerUuid = tag.getUUID("XenoCloneOwner");
         if (tag.contains("XenoCloneSlot")) this.entityData.set(SLOT, tag.getInt("XenoCloneSlot"));
         if (slot() == SLOT_TRAINING) {
@@ -503,6 +535,7 @@ public class XenoCloneEntity extends LivingEntity {
         super.addAdditionalSaveData(tag);
         tag.putInt("XenoCloneLifetime", this.lifetime);
         tag.putInt("XenoCloneAge", this.age);
+        tag.putBoolean("XenoCloneTrail", isTrailImage());
         if (ownerUuid != null) tag.putUUID("XenoCloneOwner", ownerUuid);
         tag.putInt("XenoCloneSlot", slot());
     }

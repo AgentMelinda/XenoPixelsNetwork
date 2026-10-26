@@ -40,6 +40,17 @@ class PlanetTravelMemoryTest {
         assertNull(PlanetTravelMemory.arrival(new CompoundTag(), "xenopixelsmod:moon", 700, -1024,
                 Double.NaN, -16384.5));
     }
+    @Test void authoredSurfaceAnchorIsUsedOnlyWhenNoPlayerPositionWasRemembered() {
+        CompoundTag data = new CompoundTag();
+        Vec3 authored = new Vec3(12.5, 64.0, -8.0);
+        assertEquals(authored, PlanetTravelMemory.arrival(data, "demo:namek", 700, -64, 384,
+                0.0, 0.0, authored));
+        PlanetTravelMemory.leaving(data, "demo:namek", new Vec3(30, 211, 40));
+        assertEquals(new Vec3(30, 675, 40), PlanetTravelMemory.arrival(data, "demo:namek", 700, -64, 384,
+                0.0, 0.0, authored), "remembered horizontal location retains the existing exit-minus-25 policy");
+        assertNull(PlanetTravelMemory.arrival(new CompoundTag(), "demo:namek", 700, -64, 384,
+                0.0, 0.0, new Vec3(0, 384, 0)), "anchor Y must be inside the dimension build range");
+    }
     @Test void invalidInputDoesNotOverwriteAnExistingPosition() {
         CompoundTag data = new CompoundTag();
         var point = new Vec3(4, 241, 9);

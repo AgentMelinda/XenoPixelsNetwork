@@ -27,8 +27,19 @@ class DragonBallIdentityTest {
     }
 
     @Test
+    void productionPlanetKeysResolveToTheirStarCountWithoutAcceptingLookalikes() {
+        for (int slot = 1; slot <= CosmicDragonBalls.COUNT; slot++)
+            assertEquals(slot, DragonBallIdentity.slotFromPlanetKey(DragonBallIdentity.forSlot(slot).planetKey()));
+        assertEquals(0, DragonBallIdentity.slotFromPlanetKey(null));
+        assertEquals(0, DragonBallIdentity.slotFromPlanetKey("xenopixelsmod:sdb/planet/slot-8"));
+        assertEquals(0, DragonBallIdentity.slotFromPlanetKey("xenopixelsmod:sdb/planet/slot-1-extra"));
+        assertEquals(0, DragonBallIdentity.slotFromPlanetKey("other:sdb/planet/slot-1"));
+    }
+
+    @Test
     void legacySavedDataMigratesIdentityMetadataWithoutChangingBallState() {
         CompoundTag legacy = new CompoundTag();
+        legacy.putLong("DormantUntilDay", 0);
         legacy.putLong("Cycle", 12);
         ListTag balls = new ListTag();
         CompoundTag first = new CompoundTag();
@@ -36,6 +47,7 @@ class DragonBallIdentityTest {
         first.putString("Dimension", "minecraft:overworld");
         first.putInt("X", 12); first.putInt("Y", 80); first.putInt("Z", -4);
         balls.add(first);
+        for (int slot = 2; slot <= CosmicDragonBalls.COUNT; slot++) balls.add(validBall(slot));
         legacy.put("Balls", balls);
 
         DragonBallSavedData migrated = DragonBallSavedData.load(legacy, null);
@@ -52,7 +64,7 @@ class DragonBallIdentityTest {
     }
 
     @Test
-    void unknownIdentitySchemaFallsBackToDeterministicSlotKeys() {
+    void unknownFutureSchemaIsPreservedWithoutDowngrading() {
         CompoundTag future = new CompoundTag();
         future.putInt("DataVersion", 999);
         ListTag balls = new ListTag();
@@ -62,10 +74,9 @@ class DragonBallIdentityTest {
         balls.add(first);
         future.put("Balls", balls);
 
-        CompoundTag savedFirst = DragonBallSavedData.load(future, null).save(new CompoundTag(), null)
-                .getList("Balls", Tag.TAG_COMPOUND).getCompound(0);
-        assertEquals(DragonBallIdentity.forSlot(1).planetKey(), savedFirst.getString("PlanetKey"));
-        assertEquals(DragonBallIdentity.forSlot(1).surfaceCellKey(), savedFirst.getString("SurfaceCellKey"));
+        DragonBallSavedData loaded = DragonBallSavedData.load(future, null);
+        assertFalse(loaded.isGameplayStateValid());
+        assertEquals(future, loaded.save(new CompoundTag(), null));
     }
 
     @Test
@@ -105,9 +116,12 @@ class DragonBallIdentityTest {
     void duplicateBodyUuidsInExistingSaveAreDetectedAndPreservedForManualReconciliation() {
         UUID duplicate = UUID.fromString("10000000-0000-0000-0000-000000000001");
         CompoundTag root = new CompoundTag();
+        root.putLong("Cycle", 0);
+        root.putLong("DormantUntilDay", 0);
         ListTag balls = new ListTag();
-        for (int i = 0; i < 2; i++) {
-            CompoundTag ball = new CompoundTag();
+        for (int i = 0; i < CosmicDragonBalls.COUNT; i++) {
+            CompoundTag ball = validBall(i + 1);
+            if (i < 2)
             ball.putUUID("PlanetBodyUUID", duplicate);
             balls.add(ball);
         }
@@ -119,5 +133,13 @@ class DragonBallIdentityTest {
         assertEquals(duplicate, loaded.planetBodyUuid(1));
         assertEquals(duplicate, loaded.planetBodyUuid(2));
         assertThrows(IllegalStateException.class, () -> loaded.bindPlanetBody(3, duplicate));
+    }
+
+    private static CompoundTag validBall(int slot) {
+        CompoundTag ball = new CompoundTag();
+        ball.putString("Status", "SCATTERED");
+        ball.putString("Dimension", "minecraft:overworld");
+        ball.putInt("X", slot * 100); ball.putInt("Y", 80); ball.putInt("Z", -slot * 100);
+        return ball;
     }
 }

@@ -90,6 +90,19 @@ public final class SpaceVoidSafety {
     public static Rule ruleFor(ChartRegistry chart, ResourceLocation dimension, boolean globalSwitch,
                                Set<ResourceLocation> listedSpace) {
         int slot = chart == null || dimension == null ? -1 : chart.slotFor(dimension);
+        return ruleForSlot(chart, dimension, globalSwitch, listedSpace, slot);
+    }
+
+    /** Cell-aware rule used by players in the shared planet-surface dimension. */
+    public static Rule ruleFor(ChartRegistry chart, ResourceLocation dimension, boolean globalSwitch,
+                               Set<ResourceLocation> listedSpace, int blockX, int blockZ) {
+        int slot = chart == null || dimension == null ? -1
+                : ChartSurfaceBodyResolver.slotAt(chart, dimension.toString(), blockX, blockZ);
+        return ruleForSlot(chart, dimension, globalSwitch, listedSpace, slot);
+    }
+
+    private static Rule ruleForSlot(ChartRegistry chart, ResourceLocation dimension, boolean globalSwitch,
+                                    Set<ResourceLocation> listedSpace, int slot) {
         Boolean authored = slot < 0 ? null : chart.body(slot).voidDamage();
         double anchor = slot < 0 ? Double.NaN : chart.body(slot).handoffAnchorY();
         boolean space = SpaceDimensions.isSpace(chart, dimension, listedSpace);
@@ -100,6 +113,11 @@ public final class SpaceVoidSafety {
     public static Rule currentRule(MinecraftServer server, ResourceLocation dimension) {
         return ruleFor(SpaceChartService.state(server).runtime.chart, dimension,
                 XenoSpaceConfig.voidDamage(), XenoSpaceConfig.spaceDimensions());
+    }
+
+    private static Rule currentRule(MinecraftServer server, ResourceLocation dimension, int blockX, int blockZ) {
+        return ruleFor(SpaceChartService.state(server).runtime.chart, dimension,
+                XenoSpaceConfig.voidDamage(), XenoSpaceConfig.spaceDimensions(), blockX, blockZ);
     }
 
     /**
@@ -131,7 +149,8 @@ public final class SpaceVoidSafety {
         if (!(victim.level() instanceof ServerLevel level)) return;
         DamageSource source = event.getSource();
         if (!source.is(DamageTypes.FELL_OUT_OF_WORLD)) return;
-        Rule rule = currentRule(level.getServer(), level.dimension().location());
+        var position = victim.blockPosition();
+        Rule rule = currentRule(level.getServer(), level.dimension().location(), position.getX(), position.getZ());
         if (rule.verdict() != Verdict.PROTECTED) return;
         event.setCanceled(true);
         // Unbounded Voidsea (switch voidseaUnboundedHeight): no floor - keep flying/falling freely; the old rescue is
@@ -172,6 +191,17 @@ public final class SpaceVoidSafety {
     /** Echoed by {@code /xenospace voiddamage status}; reports what would happen, changing nothing. */
     public static String status(MinecraftServer server, ResourceLocation dimension) {
         Rule rule = currentRule(server, dimension);
+        return statusText(dimension, rule);
+    }
+
+    /** Cell-aware status for a command issued by a player inside planet_surfaces. */
+    public static String status(MinecraftServer server, ResourceLocation dimension, int blockX, int blockZ) {
+        Rule rule = ruleFor(SpaceChartService.state(server).runtime.chart, dimension,
+                XenoSpaceConfig.voidDamage(), XenoSpaceConfig.spaceDimensions(), blockX, blockZ);
+        return statusText(dimension, rule);
+    }
+
+    private static String statusText(ResourceLocation dimension, Rule rule) {
         return "void damage " + (XenoSpaceConfig.voidDamage() ? "on" : "off") + " globally, "
                 + describe(rule.verdict()) + " in " + dimension
                 + " (space dims=" + XenoSpaceConfig.spaceDimensions() + ")"

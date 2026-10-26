@@ -41,6 +41,8 @@ public final class SpaceChartService {
         public List<String> errors = List.of();
         public List<String> resourceErrors = List.of();
         public Set<String> sidecarDimensions = Set.of();
+        /** Validated admin YAML settings, keyed by dimension id; values absent from the sidecar inherit. */
+        public Map<String, DimensionSpaceSettings> sidecarSettings = Map.of();
         /** S11 B1 asteroid belts from the last published resources; parents resolve against {@link ChartRuntime#chart}. */
         public Map<String, net.bullettrain.xenopixelsmod.space.asteroid.BeltDefinition> belts = Map.of();
         /** Bumped whenever {@link #belts} is replaced, so the asteroid field sync re-sends. */
@@ -72,7 +74,7 @@ public final class SpaceChartService {
         State state = state(server);
         refreshResources(server, state);
         net.bullettrain.xenopixelsmod.space.physics.PhysicalEarth.publishPosition(server, state.runtime.chart);
-        state.runtime.tick(server.overworld().getGameTime(), XenoSpaceConfig.enabled(),
+        state.runtime.tick(SpaceOrbitClock.gameTick(server), XenoSpaceConfig.enabled(),
                 XenoSpaceConfig.gravityIntervalTicks(), XenoSpaceConfig.perfProbeEnabled());
         SpaceVisualSync.tick(server,state);
         SpaceVisualSync.tickChartVisuals(server,state);
@@ -82,7 +84,7 @@ public final class SpaceChartService {
         // Zero guards a Post without a matching Pre (cannot happen in a normal loop; must not record
         // a nonsense span if event ordering ever changes).
         if (start != 0L) {
-            state.runtime.recordServerTickSpan(System.nanoTime() - start);
+            state.runtime.recordServerTickSpan(System.nanoTime() - start, SpaceOrbitClock.gameTick(server));
             state.tickStartNanos = 0L;
         }
     }
@@ -117,7 +119,7 @@ public final class SpaceChartService {
         configure(chart);
         chart.copyManualPositionsFrom(state.runtime.chart);
         long now = server.overworld().getGameTime();
-        int solved = chart.evaluate(now / 20.0 + net.bullettrain.xenopixelsmod.config.XenoSpaceConfig.orbitEpochOffsetSeconds());
+        int solved = chart.evaluate(SpaceOrbitClock.seconds(now));
         // Resolve every chart-dependent sidecar before the commit point. An unavailable host is
         // diagnosed and omitted; an unexpected resolver failure aborts before the active chart changes.
         var resolvedDragonBallPlanets = net.bullettrain.xenopixelsmod.space.dragonball.DragonBallPlanetAssignments
@@ -133,6 +135,7 @@ public final class SpaceChartService {
             errors.add(belt.id() + ": unavailable belt parent " + belt.parentId() + " (belt skipped)");
         List<String> publishedErrors = List.copyOf(errors);
         Set<String> publishedDimensions = sidecars.dimensions();
+        Map<String, DimensionSpaceSettings> publishedSidecarSettings = sidecars.settings();
         long nextEvaluation = now + XenoSpaceConfig.gravityIntervalTicks();
         int nextRevision = state.runtime.revision + 1;
         state.runtime.probe.setEnabled(XenoSpaceConfig.perfProbeEnabled());
@@ -152,6 +155,7 @@ public final class SpaceChartService {
         state.dragonBallPlanetDefinitions = input.dragonBallPlanets();
         state.dragonBallPlanets = resolvedDragonBallPlanets;
         state.errors = publishedErrors; state.sidecarDimensions = publishedDimensions;
+        state.sidecarSettings = publishedSidecarSettings;
         // Commit last; the candidate and its diagnostics have been fully computed above.
         state.runtime.chart = chart;
     }
@@ -169,7 +173,9 @@ public final class SpaceChartService {
                     state.dragonBallPlanetDefinitions), true);
         }
         catch (Exception e) { failure(state, e); return false; }
-        return persistDragonBallPlanetHosts(server, state);
+        boolean persisted = persistDragonBallPlanetHosts(server, state);
+        SpaceAtmosphereSync.sendAll(server);
+        return persisted;
     }
 
     private static boolean persistDragonBallPlanetHosts(MinecraftServer server, State state) {

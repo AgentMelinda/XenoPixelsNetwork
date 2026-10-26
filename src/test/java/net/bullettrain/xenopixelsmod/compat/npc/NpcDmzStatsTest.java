@@ -2,95 +2,154 @@ package net.bullettrain.xenopixelsmod.compat.npc;
 
 import net.bullettrain.xenopixelsmod.RepoRoot;
 import org.junit.jupiter.api.Test;
+import org.objectweb.asm.ClassReader;
+import org.objectweb.asm.Opcodes;
+import org.objectweb.asm.tree.AbstractInsnNode;
+import org.objectweb.asm.tree.ClassNode;
+import org.objectweb.asm.tree.FieldInsnNode;
+import org.objectweb.asm.tree.InsnNode;
+import org.objectweb.asm.tree.MethodInsnNode;
+import org.objectweb.asm.tree.MethodNode;
 
 import java.io.IOException;
 import java.nio.file.Files;
-import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
+import java.util.TreeMap;
 import java.util.TreeSet;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
+import java.util.zip.ZipFile;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * The assumption the NPC stats blob is built on, checked against DragonMineZ's own source.
+ * The assumption the NPC stats blob is built on, checked against DragonMineZ's own bytecode.
  *
  * <p>{@link NpcDmzStats} hands DMZ a {@code StatsData} with no player behind it. That is only safe
  * because DMZ null-checks its player nearly everywhere, and the handful of methods that do not are
- * ones an NPC has no business calling — armour, armour enchantments, gravity training and the
- * Hyperbolic Time Chamber. If a DMZ update moves a method across that line, nothing at compile time
- * would say so and the first sign would be an NPC throwing mid-fight.
+ * ones an NPC has no business calling - armour enchantments, gravity training and the Hyperbolic
+ * Time Chamber. If a DMZ update moves a method across that line, nothing at compile time would say
+ * so and the first sign would be an NPC throwing mid-fight.
  *
- * <p>So the list is not trusted: it is re-derived here from the decompiled 2.1.3 source that ships
- * in the repository and compared with what {@link NpcDmzStats#safeForNpc} claims.
+ * <p>So the list is not trusted: it is re-derived here from the pinned jar the game actually loads.
+ * It used to be derived from {@code tools/generated/dmz_decompiled_full}, which is a 2.1.3 snapshot,
+ * and 2.2 added {@code getFlatDefense} and {@code getMaxFlatDefense} on top of that. The stale copy
+ * could not see them, so the equality below passed while the list was wrong.
  */
 class NpcDmzStatsTest {
 
-    private static final Path STATS_DATA = RepoRoot.of(
-            "tools/generated/dmz_decompiled_full/com/dragonminez/common/stats/StatsData.java");
+    private static final String STATS_DATA_ENTRY = "com/dragonminez/common/stats/StatsData.class";
+    private static final String PLAYER = "net/minecraft/world/entity/player/Player";
+    private static final String PLAYER_DESCRIPTOR = "L" + PLAYER + ";";
+
+    /** What the pinned {@code StatsData} needs a player for. */
+    private record PlayerBound(Set<String> unguarded, Map<String, Set<String>> uses, Set<String> all) {}
 
     /**
-     * {@code this.player} used as a value, rather than {@code this.playerQuestData} — the field
-     * whose name starts with the same eleven characters and which is null-safe.
+     * Every use of {@code this.player} that the method does not first compare against null.
+     *
+     * <p>Recorded as {@code armor} for {@code Player.getArmorValue()} - the one dereference
+     * {@code StatsDataNpcHostMixin} redirects onto the NPC - and otherwise as the call the field is
+     * fed into, which nothing outside DMZ's own player-bound code can neutralize.
+     *
+     * <p>A method that checks the player anywhere counts as checked for all of its uses, which is
+     * what DMZ's own shape relies on: {@code if (this.player == null) return fallback;} then read.
+     * The approximation is deliberate - the alternative is dominance analysis in a test - and it
+     * errs in the direction that only ever over-refuses an NPC read, never under.
      */
-    private static final Pattern DEREFERENCE = Pattern.compile("this\\.player(?![A-Za-z0-9_])");
-    private static final Pattern NULL_CHECK =
-            Pattern.compile("this\\.player\\s*(==|!=)\\s*null|this\\.player\\s+instanceof");
-    private static final Pattern METHOD =
-            Pattern.compile("^ {3}(?:public|private|protected)\\s+[\\w<>\\[\\],. ]+\\s+(\\w+)\\(");
-
-    /** Methods that read the player without first checking it is there. */
-    private static Set<String> unguardedMethods() throws IOException {
-        List<String> lines = Files.readAllLines(STATS_DATA);
-        Set<String> touched = new TreeSet<>();
-        Set<String> guarded = new TreeSet<>();
-        String method = "<constructor>";
-        for (String line : lines) {
-            Matcher declaration = METHOD.matcher(line);
-            if (declaration.find()) {
-                method = declaration.group(1);
-            }
-            if (!DEREFERENCE.matcher(line).find()) continue;
-            if (NULL_CHECK.matcher(line).find()) {
-                guarded.add(method);
-            } else {
-                touched.add(method);
+    private static PlayerBound needsAPlayer() throws IOException {
+        Map<String, Set<String>> uses = new TreeMap<>();
+        Set<String> checked = new TreeSet<>();
+        Set<String> all = new TreeSet<>();
+        try (var jar = new ZipFile(RepoRoot.of("libs/dragonminez-2.2.jar").toFile());
+             var input = jar.getInputStream(jar.getEntry(STATS_DATA_ENTRY))) {
+            ClassNode node = new ClassNode();
+            new ClassReader(input).accept(node, 0);
+            for (MethodNode method : node.methods) {
+                if ("<init>".equals(method.name)) continue;
+                all.add(method.name);
+                List<AbstractInsnNode> code = new ArrayList<>();
+                for (AbstractInsnNode insn = method.instructions.getFirst(); insn != null; insn = insn.getNext())
+                    if (insn.getOpcode() >= 0) code.add(insn);
+                for (int i = 0; i + 1 < code.size(); i++) {
+                    if (!(code.get(i) instanceof FieldInsnNode read) || !"player".equals(read.name)
+                            || !PLAYER_DESCRIPTOR.equals(read.desc)) continue;
+                    AbstractInsnNode next = code.get(i + 1);
+                    if (branchesOnNull(next.getOpcode()) || next.getOpcode() == Opcodes.INSTANCEOF
+                            || next instanceof InsnNode pushedNull && pushedNull.getOpcode() == Opcodes.ACONST_NULL
+                                    && i + 2 < code.size() && branchesOnNull(code.get(i + 2).getOpcode())) {
+                        checked.add(method.name); // this.player == null / != null / instanceof
+                        continue;
+                    }
+                    uses.computeIfAbsent(method.name, ignored -> new TreeSet<>()).add(describe(next));
+                }
             }
         }
-        touched.removeAll(guarded);
-        // The constructor's own assignment is not a dereference, and a getter that hands the field
-        // out cannot NPE by itself; both are excluded from the callable surface this is about.
-        touched.remove("<constructor>");
-        return touched;
+        uses.keySet().removeAll(checked);
+        return new PlayerBound(uses.keySet(), uses, all);
     }
 
-    @Test
-    void theDecompiledSourceIsWhereItIsExpectedToBe() {
-        assertTrue(Files.exists(STATS_DATA),
-                "the decompiled DragonMineZ source this check reads is missing: " + STATS_DATA);
+    /** What the player field is used for, from the instruction that consumes it. */
+    private static String describe(AbstractInsnNode next) {
+        if (!(next instanceof MethodInsnNode call)) return "handed out";
+        if (PLAYER.equals(call.owner) && "getArmorValue".equals(call.name)) return "armor";
+        return call.owner.substring(call.owner.lastIndexOf('/') + 1) + "#" + call.name;
+    }
+
+    private static boolean branchesOnNull(int opcode) {
+        return opcode == Opcodes.IFNULL || opcode == Opcodes.IFNONNULL
+                || opcode == Opcodes.IF_ACMPEQ || opcode == Opcodes.IF_ACMPNE;
+    }
+
+    /** The methods {@code StatsDataNpcHostMixin}'s {@code @Redirect} answers for an NPC. */
+    private static Set<String> redirectedToTheHost() throws IOException {
+        try (var input = NpcDmzStatsTest.class.getClassLoader().getResourceAsStream(
+                "net/bullettrain/xenopixelsmod/mixin/common/StatsDataNpcHostMixin.class")) {
+            assertNotNull(input, "the host mixin is not on the test classpath");
+            ClassNode node = new ClassNode();
+            new ClassReader(input).accept(node, 0);
+            for (MethodNode method : node.methods)
+                if (method.visibleAnnotations != null)
+                    for (var annotation : method.visibleAnnotations)
+                        if (annotation.desc.endsWith("/Redirect;") && annotation.values != null)
+                            for (int i = 0; i < annotation.values.size(); i += 2)
+                                if ("method".equals(annotation.values.get(i)))
+                                    return new TreeSet<>(asStrings(annotation.values.get(i + 1)));
+        }
+        throw new IllegalStateException("StatsDataNpcHostMixin has no @Redirect for the armor read");
+    }
+
+    @SuppressWarnings("unchecked")
+    private static List<String> asStrings(Object value) {
+        return value instanceof List<?> list ? (List<String>) list : List.of((String) value);
     }
 
     /**
-     * Every method DMZ leaves unguarded is one this refuses for an NPC, and vice versa.
+     * Every method DMZ uses the player for without checking it is refused for an NPC, except the
+     * ones the host redirect answers - and nothing else is refused.
      *
      * <p>An equality rather than a subset on purpose. Too few entries means an NPC can reach a
      * method that will throw; too many means we are refusing a method that would have worked, and
      * the NPC quietly loses a stat it could have had.
      */
     @Test
-    void theRefusedMethodsAreExactlyTheOnesDragonMineZLeavesUnguarded() throws IOException {
-        Set<String> unguarded = unguardedMethods();
+    void theRefusedMethodsAreExactlyTheOnesDragonMineZNeedsAPlayerFor() throws IOException {
+        PlayerBound bound = needsAPlayer();
+        Set<String> covered = redirectedToTheHost();
+        for (String method : covered)
+            assertEquals(Set.of("armor"), bound.uses().get(method),
+                    method + " is redirected for its armor read, but DMZ uses the player there too");
+        Set<String> expected = new TreeSet<>(bound.unguarded());
+        expected.removeAll(covered);
         Set<String> refused = new TreeSet<>();
-        for (String method : unguarded) {
+        for (String method : bound.all())
             if (!NpcDmzStats.safeForNpc(method)) refused.add(method);
-        }
-        assertEquals(unguarded, refused,
-                "NpcDmzStats.safeForNpc disagrees with DragonMineZ's source. Unguarded there: "
-                        + unguarded + "; refused here: " + refused);
+        assertEquals(expected, refused, "NpcDmzStats.safeForNpc disagrees with the pinned DragonMineZ 2.2 jar."
+                + " Needs a player: " + bound.uses() + "; redirected onto the NPC host: " + covered);
     }
 
     @Test
@@ -103,12 +162,18 @@ class NpcDmzStatsTest {
         }
     }
 
+    /**
+     * The formulas an NPC's combat numbers come from still exist, and an NPC can still be asked.
+     */
     @Test
     void npcCombatReadsDmzsOwnPlayerStatCalculations() throws IOException {
-        String statsData = Files.readString(STATS_DATA);
-        assertTrue(statsData.contains("public float getHealthBonus()"));
-        assertTrue(statsData.contains("public double getMeleeDamage()"));
-        assertTrue(statsData.contains("public double getStrikeDamage()"));
+        PlayerBound bound = needsAPlayer();
+        for (String formula : List.of("getHealthBonus", "getMeleeDamage", "getStrikeDamage")) {
+            assertTrue(bound.all().contains(formula),
+                    "DragonMineZ 2.2 no longer has " + formula + ", which NPC combat reads through");
+            assertFalse(bound.uses().containsKey(formula),
+                    formula + " now needs a player, so an NPC blob cannot answer it");
+        }
 
         String npcStats = Files.readString(RepoRoot.of(
                 "src/main/java/net/bullettrain/xenopixelsmod/compat/npc", "NpcDmzStats.java"));
@@ -148,11 +213,11 @@ class NpcDmzStatsTest {
      */
     @Test
     void persistenceDoesNotNeedAPlayer() throws IOException {
-        Set<String> unguarded = unguardedMethods();
-        assertFalse(unguarded.contains("save"),
-                "StatsData.save() now needs a player; the NPC attachment cannot serialise");
-        assertFalse(unguarded.contains("load"),
-                "StatsData.load() now needs a player; the NPC attachment cannot deserialise");
+        Map<String, Set<String>> uses = needsAPlayer().uses();
+        assertFalse(uses.containsKey("save"),
+                "StatsData.save() now needs a player; the NPC attachment cannot serialise: " + uses.get("save"));
+        assertFalse(uses.containsKey("load"),
+                "StatsData.load() now needs a player; the NPC attachment cannot deserialise: " + uses.get("load"));
     }
 
     /**

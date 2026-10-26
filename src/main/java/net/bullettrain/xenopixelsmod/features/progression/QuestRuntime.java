@@ -96,12 +96,16 @@ public final class QuestRuntime {
             }
         }
         for (QuestAvailability.FactionGate faction : gate.factions()) {
+            // A gate naming no faction is an empty slot, not a test against a faction called "":
+            // the same rule questGate applies, and what the script API stores when a slot is cleared.
+            if (faction.factionId().isEmpty()) continue;
             int standing = data == null ? 0 : data.getFactionStanding(faction.factionId());
             boolean isStance = stance(standing) == faction.stance();
             if (isStance != faction.matches()) return false;
         }
         Scoreboard board = player.getScoreboard();
         for (QuestAvailability.ScoreGate score : gate.scores()) {
+            if (score.objective().isBlank()) continue;
             Objective objective = board.getObjective(score.objective());
             if (objective == null) return false;
             int value = board.getOrCreatePlayerScore(ScoreHolder.forNameOnly(player.getScoreboardName()),

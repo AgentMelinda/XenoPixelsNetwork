@@ -1,10 +1,180 @@
 # Combat V3 animation and camera review
 
+## Cinematic targeting, framing and post-attack freeze — 2026-10-12
+
+After the offline GT pass, the owner explicitly requested fixes to Pulverizing Breaker
+framing/target alignment and UltimateFinisher's beam aim, plus configurable camera
+distance and victim freeze. This expands the earlier completed-finisher exclusion only
+for those corrections. The owner confirmed freeze scope: cinematic Strikes and
+UltimateFinisher, excluding ordinary punches and standalone DMZ Ki.
+
+- Rush movement now uses body-centered contact anchors, keeps facing the admitted
+  victim and follows its height during the melee phase. Collision/loaded-area/world-border
+  checks remain enforced; reaching limbs cannot authorize damage outside actual reach.
+- Before native Ki release, `CameraAimHelper.store` receives eye-to-target-body aim.
+  This prevents the cinematic camera's downward ray from selecting the floor.
+- Wide V3 shots fit both complete fighters using live separation, height, aspect and
+  FOV, with an elevated terrain alternative before camera collision clamping. Breaker
+  527s has explicit launch/orb/throw shots at 130/169/213 ticks. Solid walls can still
+  restrict framing; this is not a promise that every obstructed scene contains both actors.
+- `v3.cinematicCameraDistanceScale` (0.25–4, default 1) scales cinematic offsets for
+  both Strike and UltimateFinisher cameras. Wide-shot fitting sets a safe minimum distance.
+- `v3.strikeTargetFreezeTicks` (0–1200, default 80 = 4 seconds) controls post-attack
+  victim freeze. Strike freeze begins at actual END, holds the finishing position and
+  runs independently of the caster's existing `strikeCameraHoldTicks`. UltimateFinisher
+  uses this duration after its existing wave-end landmark. Gravity/AI and owned movement
+  are restored; cancellation, disconnect, death and dimension changes clean up holds.
+- Finisher waves synchronize a target entity ID through native entity metadata. The
+  earlier persistent marker alone was not client metadata. Centered aim is applied before
+  native collision checks and after DMZ's position/hand-offset writes, and manual Guidance
+  cannot steer that owned wave away from its locked target. Beam knockback no longer moves
+  its victim during the held beam phase. Native stock waves retain their own behavior.
+
+Commands: `/xenoset v3.strikeTargetFreezeTicks 140` gives a seven-second victim hold;
+`/xenoset v3.cinematicCameraDistanceScale 1.5` scales authored camera distance by 50%.
+The V3 config snapshot adds optional trailing fields, preserving legacy defaults and
+main-channel registration order. Both endpoints need the updated mod for the synced
+finisher-wave metadata; no API or addon registry schema was changed.
+
+Validation is offline. Geometry/config/timeline tests and distribution builds establish
+code/resource behavior only. No game process was opened, and rendered target alignment,
+multiplayer synchronization, wall-constrained framing and full 1:1 fidelity remain unverified.
+
+## Coverage audit and Meteor Attack continuation — 2026-10-12
+
+The current per-occurrence audit is [choreography-coverage.md](choreography-coverage.md)
+and its machine-readable companion. Run `python tools/audit_combat_v3_choreography.py`
+after regenerating the catalog. All 302 entries are unaccepted drafts. The starting
+audit found 278 bulk archetype occurrences; the offline continuation below reduced
+that to 274 after the GT Dragon Claw pass. Named hand clips also reuse motion;
+their names alone do not establish occurrence-specific choreography.
+
+The two Meteor Attack occurrences at 163 and 213 seconds previously shared an identical
+three-hit, 48-tick clip. `tools/author_v3_meteor_attack_reference.py` replaces them with
+separate complete seven-bone rotation/position tracks, contact-aligned bone timestamps,
+and timelines of 212 and 200 ticks. Root translation remains zero because the server
+owns world travel. Limb translations extend the reach beyond the bind pose.
+
+The 163-second footage has nine direct contacts and a final terrain impact taking the
+counter to ten. The 213-second footage has twelve direct contacts and a terrain impact
+taking it to thirteen. The last counter event is recorded as terrain collision, not
+an invented extra close-range punch. These bone passes end in the existing downward
+launch; repeated victim launches/chases and terrain-impact damage remain incomplete.
+No claim of full gameplay parity is made.
+
+Source frames and source-video SHA-256 manifests are preserved in
+`video-pipeline-302/meteor-attack-163/` and `video-pipeline-302/meteor-attack-213/`.
+Dense samples are 12 fps; quick contact sheets are 4 fps. Bone angles, limb identity
+where obscured, and contact locations remain retargeting estimates until game comparison.
+
+DMZ 2.1.3 writes head look and arm aim/sway after the authored pose. The existing
+`DmzMeleeHeadLookMixin` now gates those X/Y writes for an active registered V3 occurrence.
+It reads GeckoLib's `attack_controller`; DMZ's `getCurrentPlayingAnimation()` reads the
+movement controller and cannot identify an occurrence played by `MeleeAnimationS2C`.
+This preserves authored head/arm rotations for local and remote player models;
+stock animations, inactive clips, and the control-release clip retain procedural motion.
+The UltimateFinisher implementation and its camera were not edited.
+
+Authoring order: batch2/bulk scripts first, then
+`python tools/author_v3_meteor_attack_reference.py`, then
+`python tools/gen_combat_v3_techniques.py` and the coverage audit. Rerunning batch2 after
+the reference author would restore its old template, so reapply this author last.
+
+All entries remain `reference_timed_unverified`. Fresh render checks do not substitute
+for a recorded combat comparison of every pose, contact, and victim trajectory.
+
+The default bulk pipeline now preserves registered hand-authored occurrences with matching
+source timestamps, regardless of whether evidence metadata is a string, list, or object.
+The 278 bulk evidence references had a spurious `s` before `.jpg`; those references and
+the generator were corrected to the actual extracted filenames. No bulk motion was promoted
+by repairing its evidence link.
+
+The diagnostic client played both raw clips and captured 14 frames on 2026-10-12.
+Ground-level playback clips through the floor during body tilts; these are airborne source
+sequences, and bone authoring alone does not supply their world-space staging. Those captures
+used the preliminary controller gate and are retained as failed comparison evidence, not
+acceptance of the corrected gate or full choreography.
+
+## Offline placeholder replacement — 2026-10-12
+
+Owner direction: continue from the local MP4 without opening Minecraft again. Further
+validation is offline unless the owner changes that instruction. UltimateFinisher and
+its camera remain outside this continuation.
+
+`tools/author_v3_strike_reference_359_527.py` replaces two hashed bulk placeholders:
+
+- Dragon Claw at 359s: standing preparation, low rush, one rising direct contact,
+  central two-hand energy gather, twisting wind-up, raised right-fist thrust, and
+  recovery. Two seven-bone clips span 302 ticks, with a continuous held/release boundary.
+- Pulverizing Breaker at 527s: seven measured contacts, successive hand/elbow actions,
+  rotating airborne kicks with unwrapped body yaw through 360 degrees, upward launch,
+  overhead orb posture, forward throw, and recovery. Three seven-bone clips span 275
+  ticks. The source energy impact raises the counter beyond the seven physical hits;
+  those extra increments are not represented as invented punches.
+
+Both provide complete XYZ rotation and position channels for every bone, including
+limb offsets beyond the bind pose. Root translation remains zero. Their timestamps,
+body angles, guarded opposite arm, and distinct phases replace the short family template.
+The orb occurrence is corrected to `melee_energy` with DMZ `soul_punisher`; its saved
+25 Ki cost and 160-tick cooldown are preserved. Native Ki mapping remains an approximation
+for source-specific visual effects; the dragon mesh and source-specific orb VFX are absent.
+
+136 overview frames and 60 close-contact frames are preserved under
+`video-pipeline-302/strike-reference-359/` and `strike-reference-527/`, with source hashes.
+After that batch the audit reported 276 bulk archetype occurrences, 9 named occurrences reusing
+the same bone track sequences, and 17 distinct track drafts. Changing a POSE start offset
+does not count as unique bone choreography. No occurrence is promoted to `reference_compared`.
+
+Run the new reference author after the bulk scripts, then regenerate the catalog and
+coverage report. Its charge/release boundary and clip duration checks are in
+`tools/test_placeholder_strike_reference.py`. Full visual parity and complete victim
+travel remain unverified; no game run was performed for these two replacements.
+
 Evidence date: 2026-10-08.
 
 The source is the owner's local 720p MP4 in `C:/Users/Admin/Downloads/`:
 `Dragon Ball Budokai Tenkaichi 3 - All Attacks And Transformations [Part 1] - simorollo91 simorollo91 (720p).mp4`.
 No browser or YouTube playback is required for this work.
+
+## GT Dragon Claw continuation — 2026-10-12
+
+`tools/author_v3_gt_dragon_reference.py` replaces the bulk clips at 564s and 631s
+after inspecting their complete sequences at 4 fps and contact/action details at 12 fps.
+Both use explicit rotations and translations for all seven existing rig bones. The
+shared GT poses correspond to visible shared actions; camera orbits are not invented
+body revolutions. No hash jitter supplies supposed uniqueness.
+
+- 564s: crouched preparation, rising strike, recoil, jump/raised fist, chest power-up,
+  aerial rush, extended dragon fist, and recovery. One 215-tick clip has contact
+  phases at ticks 23 and 154. Ordinary Ki shots after 575s are excluded.
+- 631s: upright preparation precedes the GT crouch/rising strike and dragon rush;
+  a separate two-hand gather and beam release follows. Three clips span 285 ticks,
+  with contact phases at 54 and 185 and beam release at 229. Both clip boundaries
+  preserve every bone channel exactly, including the held charge/release boundary.
+
+The 631s occurrence alone is mapped to `melee_energy` and the existing DMZ `kamehameha`
+native for its beam. Both occurrences retain 25 Ki cost, 160-tick cooldown, IDs and
+compatibility aliases. The source HUD increments during the beam and terrain collision
+are not authored as extra melee punches. Dragon visuals and full world-space staging
+remain unfinished; the 564s sequence does not substitute an unrelated native projectile
+for the missing dragon mesh.
+
+Evidence folders `video-pipeline-302/strike-reference-564/` and `strike-reference-631/`
+contain 160 overview samples, 204 dense samples, timestamped sheets and source-hash
+manifests. Contact timing has approximately 84 ms sampling uncertainty; numeric bone
+angles and occluded limb identity remain estimates. Neither occurrence is accepted as
+1:1. No game was launched during this continuation.
+
+The current static audit reports 274 bulk archetypes, 9 shared-motion entries and 19
+distinct drafts, with zero accepted comparisons. The new author and catalog generator
+rerun byte-stably. Existing clips and the other 300 occurrence records are preserved.
+
+The 564s saved ID includes `solar_flare_551`, an earlier video section name. The
+runtime's substring classifier previously treated it as Solar Flare and would send
+the native flash animation during a Dragon Claw POSE. `V3SolarFlare` now classifies
+the actual attack name first, with ID fallback only when the name is absent. The
+saved ID remains stable. A failing regression reproduced the misclassification
+before the fix; runtime playback is still unverified under the no-launch direction.
 
 ## Current coverage
 
@@ -253,3 +423,18 @@ The source video establishes sequence, rough timing, and visible hit counts at t
 rate. Bone angles and contact points are artistic retargeting estimates; none of these clips has
 been accepted as one-to-one in a fresh game comparison. The other 299 occurrences retain their
 previous animation review status.
+
+
+## 2026-10-12: next 40 offline occurrence drafts and recovery
+
+The exact selected batch is `video-pipeline-302/offline-batch40/manifest.json`; actual source boundaries, clip names and observations are in `offline-batch40/authored-review.json`. `tools/author_v3_offline40_reference.py` reproduces these drafts. The old 19 individual drafts and all unselected rows were preserved. 733/738 are fragments of one Supreme Impact; 778/783 are fragments of one Bakuretsu Ranma. IDs and nominal sourceStartsMs remain stable, with corrected actual animationStartMs in the evidence.
+
+Current static audit: 59 individual drafts, 241 bulk archetypes, 2 shared-motion entries, 302 catalog occurrences, zero accepted reference comparisons. This count does not mean 59 finished 1:1 animations. Instant Kamehameha teleport, complete paired world travel/victim reactions, dragon mesh and occluded Supreme Impact contacts remain unfinished; numeric 3D angles are estimates. Root translation stays server-owned.
+
+Native owned Ki uses the registered ref40 cast/fire prefixes; DMZ's procedural head/arm writes respect both attack_controller and ki_controller. Big Bang Kamehameha occurrences 505/728/751 use a native wave rather than a ball; Ranma uses Masenko after its melee segment. Native free charge timing remains player-controlled.
+
+Recovery uses the existing RED combat_prompt_alert_w120 atlas from tools, 120x32, centered 36 GUI pixels below the crosshair. Only the held victim receives the recovery token/state. Distinct movement/combat key or LMB/RMB presses add four server ticks of progress, rate limited to one accepted press per two ticks; held keyboard auto-repeat does not count. Rush/UltimateFinisher recovery begins after the authored attack/wave ends. Dash recovery begins on accepted approach, uses min(strikeTargetFreezeTicks, dragonDashFollowWindowTicks), and repeat N never resets an active meter. Escape gives ten ticks of dash re-freeze protection. A successful follow N attempts one normal native light hit with normal cooldown/guard/range checks; HUD combo count reads actual positive server damage.
+
+Cinematic cameras retain their cast direction across actor crossings and camera packets, damp position/focus with simulation time, clip once without per-frame elevated alternates, and suppress extra impact pitch shake. Wide framing still depends on unobstructed terrain. Configs: `/xenoset v3.cinematicCameraDistanceScale 1.5` and `/xenoset v3.strikeTargetFreezeTicks 80`. Zero `lockon.lockTimeSeconds` now initializes pilot lock progress at 100% in its request handler; V3 on-foot ray acquisition already has no timed lock charge. Existing explicit unlock, death, unload and dimension-change rules still apply.
+
+Owned finisher waves remain centered on the eye→target ray for server collision. They use the native continuous renderer with a render-time origin/rotation correction; persistent HD segments are bypassed for this wave because their captured tick ray cannot follow that correction. No client/server launched; visual aim, smoothness, HUD placement, multiplayer recovery and attack parity are not runtime verified.

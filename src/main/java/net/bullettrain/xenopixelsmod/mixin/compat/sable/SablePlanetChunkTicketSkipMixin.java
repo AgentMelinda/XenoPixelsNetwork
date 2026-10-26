@@ -9,12 +9,12 @@ import org.spongepowered.asm.mixin.injection.Redirect;
 /**
  * Per-body alternative to ignore_chunks (Qwen's C3 proposal). Sable 2.0.3 PhysicsChunkTicketManager.update loops
  * over every sub-level and, per tick, sweeps every 16^3 section of its predicted world AABB twice (addTicket for world
- * colliders, inhabitChunk to force-load world chunks under force-loaded bodies, moveToUnloaded otherwise). For the
- * Sun that is ~8,000 section probes per loop per tick. The loop's only skip is `if (sub.isRemoved()) continue`
- * (javap: update offsets 496-502, the only isRemoved call in the method), so reporting managed planets as removed
- * there skips exactly that body's sweep while ships keep world-block collision. A planet sits in empty space, has no
- * world blocks to hit, and stays loaded through its own force-load ticket. Switch:
- * XenoSpaceConfig.planetSkipChunkTickets (off until proven at runtime).
+ * colliders, inhabitChunk to force-load world chunks under force-loaded bodies, moveToUnloaded otherwise). The loop's
+ * only skip is `if (sub.isRemoved()) continue` (javap: update offsets 496-502, the only isRemoved call in the method).
+ * The redirect adds a configured skip for managed chart planets, tagged SDB bodies, and incremental plot builds, while
+ * asteroid-managed bodies retain their existing unconditional skip. A body still stays loaded through its own Sable
+ * force-load ticket; this skips only its parent-world chunk sweep. The switch's runtime safety/performance effect still
+ * requires a controlled profile.
  */
 @Mixin(targets = "dev.ryanhcode.sable.sublevel.system.ticket.PhysicsChunkTicketManager", remap = false)
 public abstract class SablePlanetChunkTicketSkipMixin {

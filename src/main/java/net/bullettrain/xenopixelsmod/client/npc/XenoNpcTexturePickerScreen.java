@@ -24,8 +24,8 @@ public final class XenoNpcTexturePickerScreen extends ScaledScreen {
 
     /** Drawn at the vanilla GUI Scale; see {@link NpcGuiScale}. */
     @Override
-    protected float computeDynamicScale(float available) {
-        return NpcGuiScale.dynamicScale(super.computeDynamicScale(available));
+    protected float computeDynamicScale(int width, int height) {
+        return NpcGuiScale.dynamicScale(super.computeDynamicScale(width, height));
     }
     private static final String FRAME = "xeno_editor_panel";
     private static final int WHITE = 0xFFE7EDF3;

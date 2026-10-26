@@ -16,6 +16,7 @@ public final class XenoMusicTracks {
     /** DragonMineZ registers exactly this many menu tracks ({@code MainSounds.MENU_MUSIC_1..39}). */
     public static final int DMZ_MENU_TRACKS = 39;
     private static final String DMZ_PREFIX = "dragonminez:menu_music_";
+    public static final String MAIN_MENU_TRACK = "xenopixelsmod:music.dbz_003";
 
     private XenoMusicTracks() {}
 

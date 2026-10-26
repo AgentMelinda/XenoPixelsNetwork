@@ -150,8 +150,10 @@ class QuestImportTest {
         factionPoints.putBoolean("DecreaseFaction2Points", true);
         source.put("QuestFactionPoints", factionPoints);
 
+        NpcImportReport report = new NpcImportReport();
+        report.mapFaction("mynpcs", 4, "heroes");
         QuestImport.Imported imported = QuestImport.convert(1, "quest_parity", "mynpcs_main",
-                source, new NpcImportReport());
+                source, report);
 
         assertEquals(net.bullettrain.xenopixelsmod.features.progression.QuestRepeat.MCWEEKLY,
                 imported.quest().repeat());
@@ -164,7 +166,7 @@ class QuestImportTest {
         assertEquals("minecraft:diamond", imported.quest().reward().items().get(0).id());
         assertEquals(2, imported.quest().reward().items().get(0).count());
         assertEquals(2, imported.quest().reward().factionPoints().size());
-        assertEquals("faction_4", imported.quest().reward().factionPoints().get(0).factionId());
+        assertEquals("heroes", imported.quest().reward().factionPoints().get(0).factionId());
         assertEquals(15, imported.quest().reward().factionPoints().get(0).points());
         assertEquals(-10, imported.quest().reward().factionPoints().get(1).points());
     }

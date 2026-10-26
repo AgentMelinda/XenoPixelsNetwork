@@ -84,6 +84,11 @@ public final class ForgeScriptHost {
                 if (built.size() >= NpcScriptContainer.MAX_TABS) break;
                 var script = XenoNpcScripts.Script.of(entry.id(), entry.tag());
                 if (!script.enabled() || script.script().isBlank()) continue;
+                String source = XenoNpcScripts.sourceText(entry.tag());
+                if (source == null) {
+                    XenoPixelsMod.LOGGER.warn("Forge script {} has unavailable or excessive loaded libraries", entry.id());
+                    continue;
+                }
                 NpcScriptScope scope = NpcScriptScope.builder()
                         .put("world", new ScriptWorld(server.overworld()))
                         .put("XenoPixels", NativeXenoScriptApi.INSTANCE)
@@ -93,7 +98,7 @@ public final class ForgeScriptHost {
                         .putString("script", entry.id())
                         .putString("scriptName", entry.id())
                         .build();
-                var instance = NpcScriptEngines.forLanguage(script.language()).instantiate(script.script(), scope);
+                var instance = NpcScriptEngines.forLanguage(script.language()).instantiate(source, scope);
                 if (!instance.ok()) {
                     XenoPixelsMod.LOGGER.error("Forge script {} load: {}", entry.id(), instance.loadResult().describe());
                     continue;

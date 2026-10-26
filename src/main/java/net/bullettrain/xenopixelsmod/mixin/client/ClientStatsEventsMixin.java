@@ -15,7 +15,7 @@ public abstract class ClientStatsEventsMixin {
     private static int xenopixelsmod$kiBlastRepeatTicks;
 
     @ModifyExpressionValue(
-            method = "lambda$onClientTick$3",
+            method = "lambda$onClientTick$4(Lnet/minecraft/client/Minecraft;Lnet/minecraft/client/player/LocalPlayer;Lcom/dragonminez/common/stats/StatsData;)V",
             at = @At(
                     value = "FIELD",
                     target = "Lcom/dragonminez/client/events/ClientStatsEvents;wasRightClickDown:Z",

@@ -1,6 +1,8 @@
 package net.bullettrain.xenopixelsmod.mixin.compat.dmz;
 
 import com.dragonminez.client.gui.character.SkillsMenuScreen;
+import com.dragonminez.client.util.ScrollbarState;
+import org.spongepowered.asm.mixin.Final;
 import com.dragonminez.client.gui.character.util.ScaledScreen;
 import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
 import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
@@ -25,7 +27,7 @@ import java.util.Objects;
 public abstract class DmzSkillsInteractionMixin extends ScaledScreen {
 
     @Shadow private int currentLeftX;
-    @Shadow private float currentScroll;
+    @Shadow @Final private ScrollbarState skillsScroll;
     @Shadow private String selectedSkill;
     @Shadow
     private List<String> getVisibleSkillNames() {
@@ -91,7 +93,7 @@ public abstract class DmzSkillsInteractionMixin extends ScaledScreen {
             method = "renderSkillsList",
             at = @At(
                     value = "INVOKE",
-                    target = "Lnet/minecraft/client/gui/GuiGraphics;enableScissor(IIII)V",
+                    target = "Lcom/dragonminez/client/util/ScrollbarState;beginClip(Lnet/minecraft/client/gui/GuiGraphics;)V",
                     shift = At.Shift.AFTER
             )
     )
@@ -104,12 +106,15 @@ public abstract class DmzSkillsInteractionMixin extends ScaledScreen {
         int left = panelX + DmzSkillsHitboxes.ROW_LEFT;
         int right = panelX + DmzSkillsHitboxes.ROW_RIGHT_THEMED;
         for (int index = 0; index < skills.size(); index++) {
-            int top = Math.round(startY + index * 20 - currentScroll);
+            // beginClip already translated the graphics pose by -scroll; only hit testing
+            // and visibility use screen coordinates. Drawing stays in content coordinates.
+            int top = startY + index * 20;
             int bottom = top + 20;
-            if (bottom <= startY || top >= viewBottom) continue;
+            float screenTop = top - skillsScroll.scroll();
+            if (screenTop + 20 <= startY || screenTop >= viewBottom) continue;
             boolean selected = Objects.equals(skills.get(index), selectedSkill);
             boolean hovered = DmzSkillsHitboxes.insideRowX(mouseX, panelX)
-                    && mouseY >= top && mouseY < bottom;
+                    && mouseY >= screenTop && mouseY < screenTop + 20;
             if (selected) {
                 graphics.fill(left, top + 1, right, bottom - 1, 0x553B2C00);
                 graphics.fill(left, top + 1, left + 2, bottom - 1, 0xFFFECC22);

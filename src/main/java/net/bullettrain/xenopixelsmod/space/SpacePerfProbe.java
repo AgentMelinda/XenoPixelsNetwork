@@ -24,6 +24,8 @@ public final class SpacePerfProbe {
     private final long[] emaNanos;
     private final long[] lastNanos;
     private final long[] peakNanos;
+    private final long[] peakSampleTick;
+    private final long[] peakSampleEpochMillis;
     private final long[] runs;
     private final long[] totalNanos;
     private final long[][] samples;
@@ -36,6 +38,8 @@ public final class SpacePerfProbe {
         this.emaNanos = new long[count];
         this.lastNanos = new long[count];
         this.peakNanos = new long[count];
+        this.peakSampleTick = new long[count];
+        this.peakSampleEpochMillis = new long[count];
         this.runs = new long[count];
         this.totalNanos = new long[count];
         this.samples = new long[count][2048];
@@ -50,12 +54,25 @@ public final class SpacePerfProbe {
      * tick, against a pass that just did real work.
      */
     public void record(int slot, long nanos) {
+        record(slot, nanos, Long.MIN_VALUE, 0L);
+    }
+
+    /** Records a sample with a wall-clock/game-tick stamp for correlation to profiler events. */
+    public void recordTimed(int slot, long nanos, long gameTick, long epochMillis) {
+        record(slot, nanos, gameTick, epochMillis);
+    }
+
+    private void record(int slot, long nanos, long gameTick, long epochMillis) {
         if (!enabled || slot < 0 || slot >= runs.length || nanos < 0) return;
         lastNanos[slot] = nanos;
         totalNanos[slot] += nanos;
         samples[slot][(int) (runs[slot] % samples[slot].length)] = nanos;
         runs[slot]++;
-        if (nanos > peakNanos[slot]) peakNanos[slot] = nanos;
+        if (nanos > peakNanos[slot]) {
+            peakNanos[slot] = nanos;
+            peakSampleTick[slot] = gameTick;
+            peakSampleEpochMillis[slot] = epochMillis;
+        }
         long previous = emaNanos[slot];
         emaNanos[slot] = previous == 0
                 ? nanos
@@ -74,6 +91,8 @@ public final class SpacePerfProbe {
         java.util.Arrays.fill(emaNanos, 0L);
         java.util.Arrays.fill(lastNanos, 0L);
         java.util.Arrays.fill(peakNanos, 0L);
+        java.util.Arrays.fill(peakSampleTick, Long.MIN_VALUE);
+        java.util.Arrays.fill(peakSampleEpochMillis, 0L);
         java.util.Arrays.fill(runs, 0L);
         java.util.Arrays.fill(totalNanos, 0L);
         for (long[] sample : samples) java.util.Arrays.fill(sample, 0L);
@@ -86,6 +105,14 @@ public final class SpacePerfProbe {
 
     public double peakMicros(int slot) {
         return slot >= 0 && slot < peakNanos.length ? peakNanos[slot] / 1000.0 : 0.0;
+    }
+
+    public long peakSampleTick(int slot) {
+        return slot >= 0 && slot < peakSampleTick.length ? peakSampleTick[slot] : Long.MIN_VALUE;
+    }
+
+    public long peakSampleEpochMillis(int slot) {
+        return slot >= 0 && slot < peakSampleEpochMillis.length ? peakSampleEpochMillis[slot] : 0L;
     }
 
     /** Percentile of the last 2048 raw samples. Allocates only when explicitly queried. */
@@ -123,6 +150,10 @@ public final class SpacePerfProbe {
                     .append(" p95=").append(format(percentileMicros(i, .95))).append("us")
                     .append(" p99=").append(format(percentileMicros(i, .99))).append("us")
                     .append(" runs=").append(runs[i]);
+            if (peakSampleEpochMillis[i] > 0L) {
+                out.append(" peakTick=").append(peakSampleTick[i])
+                        .append(" peakEpochMs=").append(peakSampleEpochMillis[i]);
+            }
         }
         return out.toString();
     }

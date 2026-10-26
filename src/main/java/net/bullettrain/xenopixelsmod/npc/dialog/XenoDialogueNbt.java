@@ -83,6 +83,10 @@ public final class XenoDialogueNbt {
             CompoundTag node = new CompoundTag();
             node.putString(ID, clamp(entry.getKey(), MAX_NODE_ID));
             node.putString(TEXT, clamp(entry.getValue().text(), MAX_TEXT));
+            if (!entry.getValue().availability().equals(net.bullettrain.xenopixelsmod.features.progression.QuestAvailability.NONE))
+                node.putString("AvailabilityJson", entry.getValue().availability().toJson().toString());
+            if (!entry.getValue().sourceRef().isBlank())
+                node.putString("SourceRef", clamp(entry.getValue().sourceRef(), MAX_NODE_ID));
             // Written only when set, so a dialogue that uses the NPC's palette stays byte-identical
             // to what it was before the field existed.
             if (!entry.getValue().palette().isEmpty()) {
@@ -147,8 +151,16 @@ public final class XenoDialogueNbt {
                         clamp(option.getString(COMMAND), MAX_COMMAND), -1,
                         clamp(option.getString(OPTION_PALETTE), MAX_NODE_ID)));
             }
+            var availability = net.bullettrain.xenopixelsmod.features.progression.QuestAvailability.NONE;
+            if (node.contains("AvailabilityJson")) {
+                try {
+                    availability = net.bullettrain.xenopixelsmod.features.progression.QuestAvailability.fromJson(
+                            com.google.gson.JsonParser.parseString(node.getString("AvailabilityJson")));
+                } catch (RuntimeException malformed) { return null; }
+            }
             nodes.put(id, new XenoDialogue.Node(clamp(node.getString(TEXT), MAX_TEXT),
-                    List.copyOf(options), clamp(node.getString(PALETTE), MAX_NODE_ID)));
+                    List.copyOf(options), clamp(node.getString(PALETTE), MAX_NODE_ID), availability,
+                    clamp(node.getString("SourceRef"), MAX_NODE_ID)));
         }
         if (nodes.isEmpty()) {
             return null;

@@ -33,7 +33,10 @@ public final class CombatRecoveryHud {
         Minecraft mc=Minecraft.getInstance();
         if(!playerActive() || mc.options.hideGui)return;
         if(V3ClientState.rushPromptTicks()>0){
-            int x=(gui.guiWidth()-120)/2,y=gui.guiHeight()/2-30;
+            // Vanilla hunger occupies the right half of the hotbar. NeoForge's rightHeight
+            // includes any stacked right-hand HUD rows at the current GUI scale.
+            int x=gui.guiWidth()/2+91-120;
+            int y=gui.guiHeight()-Math.max(39,mc.gui.rightHeight)-4-43;
             XenoAtlasSprites.blit(gui,"combat_prompt_rush_w120",XenoAtlasSprites.Theme.BLUE,x,y);
             String label=V3ClientState.rushUltimate()?"ULTIMATE RUSH":"SUPER RUSH";
             gui.pose().pushPose();gui.pose().translate(x+60,y+5,0);gui.pose().scale(.75f,.75f,1);

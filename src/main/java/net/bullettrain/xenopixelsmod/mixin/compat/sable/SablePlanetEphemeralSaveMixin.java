@@ -1,15 +1,23 @@
 package net.bullettrain.xenopixelsmod.mixin.compat.sable;
 
 import dev.ryanhcode.sable.sublevel.ServerSubLevel;
+import dev.ryanhcode.sable.sublevel.storage.HoldingSubLevel;
+import dev.ryanhcode.sable.sublevel.storage.holding.GlobalSavedSubLevelPointer;
+import dev.ryanhcode.sable.sublevel.storage.holding.SubLevelHoldingChunk;
+import dev.ryanhcode.sable.sublevel.storage.serialization.SubLevelData;
+import it.unimi.dsi.fastutil.objects.Object2ObjectMap;
 import net.bullettrain.xenopixelsmod.space.physics.PhysicalEarth;
+import net.bullettrain.xenopixelsmod.space.smallplanet.SmallPlanetPhysicalizer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.ChunkPos;
 import org.spongepowered.asm.mixin.Final;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.injection.At;
+import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.ModifyArg;
 import org.spongepowered.asm.mixin.injection.Redirect;
+import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
 import java.util.List;
 import java.util.UUID;
@@ -25,10 +33,15 @@ import java.util.UUID;
  *     names a planet that will not be stored (a missing dependency drops the ship at load, Qwen Q-045). Sable's in-memory
  *     dependency chain, force-load closure and grouping are untouched (Codex C-045).</li>
  * </ul>
+ * <p>It also refreshes Sable's cached holding-chunk snapshot after the shared move/save helper writes its serialized
+ * data. Sable 2.0.3's same-host-chunk path overwrites the storage slot but leaves the in-memory HoldingSubLevel stale;
+ * saveAll later writes that stale cache back over the current slot. Reusing the SubLevelData argument avoids a second
+ * full-planet serialization and keeps the final saved slot consistent with the body just serialized.
  */
 @Mixin(targets = "dev.ryanhcode.sable.sublevel.storage.holding.SubLevelHoldingChunkMap", remap = false)
 public abstract class SablePlanetEphemeralSaveMixin {
     @Shadow @Final private ServerLevel level;
+    @Shadow @Final private Object2ObjectMap<UUID, HoldingSubLevel> allHoldingSubLevels;
 
     @Redirect(method = "saveAll()V", at = @At(value = "INVOKE",
             target = "Ldev/ryanhcode/sable/sublevel/storage/holding/SubLevelHoldingChunkMap;moveAndSaveSubLevel(Ldev/ryanhcode/sable/sublevel/ServerSubLevel;Lnet/minecraft/world/level/ChunkPos;Ljava/util/List;)V"),
@@ -48,6 +61,31 @@ public abstract class SablePlanetEphemeralSaveMixin {
     @Shadow private void moveAndSaveSubLevel(ServerSubLevel body, ChunkPos chunk, List<UUID> dependencies) {}
 
     @Shadow private dev.ryanhcode.sable.sublevel.storage.holding.SubLevelHoldingChunk getOrLoadHoldingChunk(ChunkPos chunk, boolean create) { return null; }
+
+    @Inject(method = "moveAndSaveSubLevel(Ldev/ryanhcode/sable/sublevel/ServerSubLevel;Ldev/ryanhcode/sable/sublevel/storage/serialization/SubLevelData;Ldev/ryanhcode/sable/sublevel/storage/holding/GlobalSavedSubLevelPointer;Lnet/minecraft/world/level/ChunkPos;)Ldev/ryanhcode/sable/sublevel/storage/holding/GlobalSavedSubLevelPointer;",
+            at = @At("RETURN"), require = 1)
+    private void xenopixels$refreshSavedHoldingSnapshot(ServerSubLevel body, SubLevelData data,
+                                                        GlobalSavedSubLevelPointer oldPointer, ChunkPos hostChunk,
+                                                        CallbackInfoReturnable<GlobalSavedSubLevelPointer> cir) {
+        GlobalSavedSubLevelPointer savedPointer = cir.getReturnValue();
+        // Sable also invokes this shared save helper for empty/null placeholders during shutdown.
+        // The handler is only relevant to a real body whose cached edited-planet snapshot is stale.
+        if (body == null || savedPointer == null || data == null) return;
+        var userData = body.getUserDataTag();
+        if (userData == null || !userData.contains(SmallPlanetPhysicalizer.TAG)
+                || !userData.getCompound(SmallPlanetPhysicalizer.TAG).getBoolean("touched")) return;
+        SubLevelHoldingChunk holdingChunk = getOrLoadHoldingChunk(hostChunk, false);
+        if (holdingChunk == null) return;
+        for (HoldingSubLevel cached : holdingChunk.getLoadedHoldingSubLevels()) {
+            if (cached.data().uuid().equals(body.getUniqueId())) {
+                HoldingSubLevel refreshed = new HoldingSubLevel(data, savedPointer);
+                holdingChunk.acceptHoldingSubLevel(refreshed);
+                // Sable also indexes this object in the map used by getHoldingSubLevel/saveAll.
+                allHoldingSubLevels.put(body.getUniqueId(), refreshed);
+                return;
+            }
+        }
+    }
 
     @ModifyArg(method = {"processUnload", "moveAndSaveSubLevel(Ldev/ryanhcode/sable/sublevel/ServerSubLevel;Lnet/minecraft/world/level/ChunkPos;Ljava/util/List;)V", "moveToUnloaded"},
             at = @At(value = "INVOKE",

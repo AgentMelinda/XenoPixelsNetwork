@@ -51,4 +51,40 @@ class ReferencedMixinsRegisteredTest {
         }
         assertTrue(missing.isEmpty(), "Mixins used by code but absent from every mixin config: " + missing);
     }
+
+    /**
+     * The stronger rule: no mixin source is allowed to be unregistered at all, whether or not
+     * ordinary code imports it.
+     *
+     * <p>An unregistered mixin is not a crash and not a warning. It is a class of behaviour that
+     * silently never happens. {@code StatsDataNpcHostMixin} sat unapplied since 2026-09-30 while
+     * {@code NpcDmzStats#bindHost} documented itself as "the call that arms it" - the arming call
+     * was an instanceof that could never hold, and every unit test still passed.
+     */
+    @Test void noMixinSourceIsLeftOutOfEveryConfig() throws IOException {
+        String configs = configEntries();
+        List<String> orphaned = new ArrayList<>();
+        try (Stream<Path> files = Files.walk(MIXINS)) {
+            for (Path file : (Iterable<Path>) files.filter(p -> p.toString().endsWith(".java"))::iterator) {
+                String text = Files.readString(file);
+                if (!text.contains("@Mixin(")) continue;
+                String name = MIXINS.relativize(file).toString()
+                        .replace(java.io.File.separatorChar, '.')
+                        .replaceAll("\\.java$", "");
+                if (!configs.contains("\"" + name + "\"")) orphaned.add(name);
+            }
+        }
+        assertTrue(orphaned.isEmpty(),
+                "Mixin classes that exist but are in no mixin config (they never apply): " + orphaned);
+    }
+
+    private static String configEntries() throws IOException {
+        StringBuilder all = new StringBuilder();
+        try (Stream<Path> files = Files.walk(ROOT.resolve("src/main/resources"), 1)) {
+            for (Path file : (Iterable<Path>) files.filter(p -> p.toString().endsWith(".json"))::iterator) {
+                all.append(Files.readString(file));
+            }
+        }
+        return all.toString();
+    }
 }

@@ -165,7 +165,7 @@ public final class HdAuraClient {
         for (var entry : SEEN.entrySet()) {
             AbstractClientPlayer source = entry.getValue().player().get();
             StatsData stats = source == null ? null : DmzAccess.stats(source).orElse(null);
-            if (stats != null) LIVE_STRETCH.put(entry.getKey(), kiAuraStretch(stats));
+            if (stats != null) LIVE_STRETCH.put(entry.getKey(), kiAuraStretch(source, stats));
         }
         if (SEEN.isEmpty()) return;
         for (var it = SEEN.entrySet().iterator(); it.hasNext(); ) {
@@ -279,13 +279,13 @@ public final class HdAuraClient {
      * gets them ({@code AuraRenderer.getAuraScale}, with {@link XenoAuraScaling} applied to it).
      * The HD aura is drawn at the same size. {width, height}.
      */
-    private static float[] kiAuraStretch(StatsData stats) {
+    private static float[] kiAuraStretch(AbstractClientPlayer source, StatsData stats) {
         float[] dims;
         float npcFactor = net.bullettrain.xenopixelsmod.client.compat.npc.NpcFullDmzRenderer.auraFactor(stats);
         if (!Float.isFinite(npcFactor) || npcFactor <= 0.0f) npcFactor = 1.0f;
         try {
-            dims = HdAuraPlan.relativeToRest(DmzAuraLayersInvoker.xenopixels$auraScale(stats,
-                    DmzAuraLayersInvoker.xenopixels$modelScale(stats)));
+            dims = HdAuraPlan.relativeToRest(DmzAuraLayersInvoker.xenopixels$auraScale(source, stats));
+            if (!net.bullettrain.xenopixelsmod.client.config.XenoAuraConfig.enabled) return dims;
             // getModelScale already includes the NPC factor. Cap power/charge growth first,
             // then restore the owner's chosen size so the player cap cannot flatten large NPCs.
             dims = new float[] {dims[0] / npcFactor, dims[1] / npcFactor};
@@ -295,6 +295,8 @@ public final class HdAuraClient {
             dims = scaled == null || scaled.length < 2 ? new float[] {1.0f, 1.0f}
                     : new float[] {scaled[0], scaled[1]};
         }
+        if (!net.bullettrain.xenopixelsmod.client.config.XenoAuraConfig.enabled)
+            return new float[] {dims[0] * npcFactor, dims[1] * npcFactor};
         return HdAuraPlan.capNpcStretch(dims[0], dims[1], XenoClientConfig.auraMaxHeight, npcFactor);
     }
 
@@ -307,9 +309,10 @@ public final class HdAuraClient {
 
     private static void emit(ClientLevel level, Entity entity, List<HdAuraPlan.Layer> plan, Set<Integer> extras,
                              float[] stretch) {
+        if (HakaiEnergyAura.active(entity)) return;
         // The stretch already carries the body: DMZ's model scale for a player, body height for an
         // NPC.
-        float size = XenoClientConfig.auraSize;
+        float size = XenoAuraScaling.sizeMultiplier(XenoClientConfig.auraSize);
         float[] raw = stretch;
         boolean silhouette = HdAuraPlan.playsSilhouette(XenoClientConfig.auraVariant);
         float[] shape = HdAuraPlan.shape(silhouette);
@@ -399,6 +402,7 @@ public final class HdAuraClient {
             boolean auraOn = seen != null && auraClock - seen.tick() <= FORGET_TICKS && plays(level, id);
             StatsData stats = DmzAccess.stats(player).orElse(null);
             if (stats == null || stats.getCharacter() == null) continue;
+            if (HakaiEnergyAura.active(player, stats)) continue;
             boolean inForm = stats.getCharacter().hasActiveForm() || stats.getCharacter().hasActiveStackForm();
             // In a form, or with the aura on: the body shines with the aura either way.
             if (!inForm && !auraOn) continue;
@@ -432,7 +436,7 @@ public final class HdAuraClient {
 
     private static List<AuraRenderer.AuraLayer> layers(AbstractClientPlayer source, StatsData stats) {
         List<AuraRenderer.AuraLayer> layers = new ArrayList<>(
-                DmzAuraLayersInvoker.xenopixels$auraLayers(source, stats, 1.0f));
+                DmzAuraLayersInvoker.xenopixels$auraLayers(source, stats, 1.0f, false));
         layers.removeIf(l -> l == null || l.color == null || l.color.length < 3);
         layers.sort(Comparator.comparingInt(l -> l.layerId));
         return layers;
@@ -449,7 +453,7 @@ public final class HdAuraClient {
         for (AuraRenderer.AuraLayer layer : layers) {
             plan.add(new HdAuraPlan.Layer(layer.layerId, AuraPalette.rgb(layer.color), layer.alpha));
         }
-        float size = HakaiEffectRules.bodyScale(entity.getBbHeight()) * XenoClientConfig.auraSize;
+        float size = HakaiEffectRules.bodyScale(entity.getBbHeight()) * XenoAuraScaling.sizeMultiplier(XenoClientConfig.auraSize);
         if (debug) {
             long ms = System.currentTimeMillis();
             Long before = DEBUG_LAST_MS.put(id, ms);
@@ -457,7 +461,7 @@ public final class HdAuraClient {
                     id, level.getGameTime(), before == null ? -1 : ms - before, mc.getFps(),
                     entity.getBbHeight(), size, plan, entity.position());
         }
-        emit(level, entity, plan, extraColours(stats), kiAuraStretch(stats));
+        emit(level, entity, plan, extraColours(stats), kiAuraStretch(source, stats));
     }
 
     /** The extra aura colours of the active form and stack form: outer flames, not auras of their own. */
@@ -489,6 +493,23 @@ public final class HdAuraClient {
      * again in PreDraw so fast flight does not leave the column a frame behind.
      */
     private static final List<LiveAura> LIVE_AURAS = new ArrayList<>();
+    private static volatile int sizingGeneration;
+
+    /** Retire this renderer's emitters and let the next pulse use the newly selected dimensions. */
+    public static void refreshSizing() {
+        synchronized (LIVE_AURAS) {
+            sizingGeneration++;
+            for (LiveAura live : LIVE_AURAS) {
+                live.stopped[0] = true;
+                if (live.emitter != null && live.emitter.exists()) live.emitter.stop();
+            }
+            LIVE_AURAS.clear();
+        }
+        LIVE_STRETCH.clear();
+        LAST_PULSE.clear();
+        RIM_PULSE.clear();
+        AuraRimGlow.clearAll();
+    }
 
     private record LiveAura(
             WeakReference<Entity> entity,
@@ -555,6 +576,7 @@ public final class HdAuraClient {
 
     private static void spawnLive(Entity entity, ResourceLocation effect, float size, float[] initial,
                                   float sink) {
+        int requestedGeneration = sizingGeneration;
         boolean silhouette = HdAuraPlan.silhouetteEffect(effect.getPath());
         float[] shape = HdAuraPlan.shape(silhouette);
         float drop = HdAuraPlan.drop(silhouette);
@@ -568,6 +590,10 @@ public final class HdAuraClient {
                             LiveAura live = new LiveAura(bound, emitter, size, shape, drop, silhouette, initial,
                                     stopped);
                             synchronized (LIVE_AURAS) {
+                                if (requestedGeneration != sizingGeneration) {
+                                    emitter.stop();
+                                    return;
+                                }
                                 LIVE_AURAS.add(live);
                             }
                             mod.chloeprime.aaaparticles.api.client.effekseer.ParticleEmitter.PreDrawCallback follow =
@@ -598,7 +624,8 @@ public final class HdAuraClient {
         if (live.stopped[0]) return false;
         Entity target = live.entity.get();
         mod.chloeprime.aaaparticles.api.client.effekseer.ParticleEmitter playing = live.emitter;
-        if (target == null || target.isRemoved() || playing == null || !playing.exists()) {
+        if (target == null || target.isRemoved() || HakaiEnergyAura.active(target)
+                || playing == null || !playing.exists()) {
             if (!live.stopped[0]) {
                 live.stopped[0] = true;
                 if (playing != null) {

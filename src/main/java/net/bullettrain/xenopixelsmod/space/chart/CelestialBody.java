@@ -80,7 +80,60 @@ public record CelestialBody(
         Boolean voidDamage,
         int skyStyle,
         double spatialAnchorX,
-        double spatialAnchorZ) {
+        double spatialAnchorZ,
+        SurfaceAnchor surfaceAnchor,
+        Double rotationPeriodSeconds) {
+
+    /** A dimension-local arrival point and cardinal facing authored by §24 chart entries. */
+    public record SurfaceAnchor(double x, double y, double z, String facing) {
+        private static final java.util.Set<String> FACINGS = java.util.Set.of(
+                "up", "down", "north", "south", "east", "west");
+        public SurfaceAnchor {
+            if (!supported(x) || !supported(y) || !supported(z))
+                throw new IllegalArgumentException("surface_anchor coordinates must be finite and within +/-30000000");
+            facing = facing == null ? "up" : facing.toLowerCase(java.util.Locale.ROOT);
+            if (!FACINGS.contains(facing))
+                throw new IllegalArgumentException("surface_anchor facing must be up, down, north, south, east, or west");
+        }
+        private static boolean supported(double value) {
+            return Double.isFinite(value) && Math.abs(value) < 30_000_000;
+        }
+        /** Minecraft yaw for horizontal facings; vertical facing keeps the player's current view. */
+        public Float yawDegrees() {
+            return switch (facing) {
+                case "south" -> 0.0f;
+                case "west" -> 90.0f;
+                case "north" -> 180.0f;
+                case "east" -> -90.0f;
+                default -> null;
+            };
+        }
+    }
+
+    /** Source-compatible constructor for chart definitions with §24 anchors but no authored spin period. */
+    public CelestialBody(String id, BodyKind kind, String displayName, OrbitalElements orbit,
+                         double pinnedX, double pinnedY, double pinnedZ, String parentId,
+                         double radiusBlocks, double mu, GravityField.Falloff falloff, String dimensionId,
+                         double handoffAnchorY, double exitAltitude, double warmUpAltitude,
+                         boolean orbitalMotion, boolean erasable, int dangerRating,
+                         Boolean voidDamage, int skyStyle, double spatialAnchorX, double spatialAnchorZ,
+                         SurfaceAnchor surfaceAnchor) {
+        this(id, kind, displayName, orbit, pinnedX, pinnedY, pinnedZ, parentId, radiusBlocks, mu,
+                falloff, dimensionId, handoffAnchorY, exitAltitude, warmUpAltitude, orbitalMotion,
+                erasable, dangerRating, voidDamage, skyStyle, spatialAnchorX, spatialAnchorZ, surfaceAnchor, null);
+    }
+
+    /** Source-compatible constructor for chart definitions predating §24 surface anchors. */
+    public CelestialBody(String id, BodyKind kind, String displayName, OrbitalElements orbit,
+                         double pinnedX, double pinnedY, double pinnedZ, String parentId,
+                         double radiusBlocks, double mu, GravityField.Falloff falloff, String dimensionId,
+                         double handoffAnchorY, double exitAltitude, double warmUpAltitude,
+                         boolean orbitalMotion, boolean erasable, int dangerRating,
+                         Boolean voidDamage, int skyStyle, double spatialAnchorX, double spatialAnchorZ) {
+        this(id, kind, displayName, orbit, pinnedX, pinnedY, pinnedZ, parentId, radiusBlocks, mu,
+                falloff, dimensionId, handoffAnchorY, exitAltitude, warmUpAltitude, orbitalMotion,
+                erasable, dangerRating, voidDamage, skyStyle, spatialAnchorX, spatialAnchorZ, null, null);
+    }
 
     /** Source-compatible constructor for chart definitions without a configured spatial anchor. */
     public CelestialBody(String id, BodyKind kind, String displayName, OrbitalElements orbit,
@@ -120,6 +173,10 @@ public record CelestialBody(
         }
         if (!Double.isFinite(spatialAnchorX) || !Double.isFinite(spatialAnchorZ)) {
             throw new IllegalArgumentException("spatial_anchor x/z must be finite for " + id);
+        }
+        if (rotationPeriodSeconds != null && (!Double.isFinite(rotationPeriodSeconds)
+                || Math.abs(rotationPeriodSeconds) < 0.05 || Math.abs(rotationPeriodSeconds) > 1.0e12)) {
+            throw new IllegalArgumentException("rotation_period_seconds magnitude must be in [0.05, 1e12] for " + id);
         }
         if (skyStyle < 0 || skyStyle >= MAX_VISUAL_STYLES) {
             throw new IllegalArgumentException("sky_style must be a proxy atlas cell in [0, "

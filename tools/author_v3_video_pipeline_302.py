@@ -23,6 +23,7 @@ import hashlib
 import json
 import math
 import os
+import re
 import subprocess
 import sys
 from pathlib import Path
@@ -39,6 +40,22 @@ MP4_DEFAULT = Path(
 )
 PREFIX = "combat.xeno_bt3_v3_"
 BONES = ["root", "waist", "head", "right_arm", "left_arm", "right_leg", "left_leg"]
+
+
+def evidence_frame(source_ms):
+    """Use the same stem as extract_frames, without the old spurious 's' suffix."""
+    return f"docs/combat-v3/video-pipeline-302/frames/frame_t{int(source_ms):06d}.jpg"
+
+
+def preserves_authored_occurrence(entry, resource, expected_starts):
+    """Never replace a current hand-authored occurrence during the default bulk pass."""
+    if not entry or entry.get("sourceStartsMs") != expected_starts:
+        return False
+    if entry.get("animationStatus") not in {"reference_timed_unverified", "reference_compared"}:
+        return False
+    poses = [beat.get("payload") for beat in entry.get("beats", []) if beat.get("kind") == "POSE"]
+    return bool(poses) and all(name in resource.get("animations", {}) for name in poses) and any(
+        not re.fullmatch(r"combat\.xeno_bt3_v3_a[0-9a-f]{10}_[a-z]+", name) for name in poses)
 
 
 def v(x, y, z):
@@ -472,16 +489,8 @@ def main():
     for tech in techs:
         tid = tech["id"]
         existing = by_id.get(tid)
-        # Preserve only hand batch1/2 evidence entries unless --force rewrites everything.
-        if (
-            not force
-            and existing
-            and existing.get("animationStatus") == "reference_timed_unverified"
-            and any(
-                str(x).startswith("docs/combat-v3/video-batch")
-                for x in (existing.get("evidence") or [])
-            )
-        ):
+        # Preserve current hand-authored clips regardless of evidence metadata shape.
+        if not force and preserves_authored_occurrence(existing, resource, tech.get("sourceStartsMs") or [0]):
             poses = [b.get("payload") for b in existing.get("beats", []) if b.get("kind") == "POSE"]
             if poses and all(
                 (not p) or p in resource.get("animations", {}) for p in poses
@@ -515,7 +524,7 @@ def main():
             "durationTicks": duration,
             "beats": beats,
             "camera": camera,
-            "evidence": [f"docs/combat-v3/video-pipeline-302/frames/frame_t{int((tech.get('sourceStartsMs') or [0])[0]):06d}s.jpg"],
+            "evidence": [evidence_frame((tech.get("sourceStartsMs") or [0])[0])],
             "unverified": [
                 "Full-302 pipeline: unique full-body XYZ per occurrence (author_v3_video_pipeline_302.py).",
                 "Frames extracted from local Part 1 MP4 for chunked review; not yet in-game accepted.",

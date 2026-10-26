@@ -27,6 +27,16 @@ public record DragonBallIdentity(int slot, UUID planetId, String planetKey, Stri
                 "xenopixelsmod:planet_surfaces/sdb/" + suffix);
     }
 
+    /** Returns the star count encoded by an exact production planet key, or zero for any other body id. */
+    public static int slotFromPlanetKey(String planetKey) {
+        if (planetKey == null) return 0;
+        String prefix = "xenopixelsmod:sdb/planet/slot-";
+        if (!planetKey.startsWith(prefix) || planetKey.length() != prefix.length() + 1) return 0;
+        char digit = planetKey.charAt(prefix.length());
+        if (digit < '1' || digit > '0' + CosmicDragonBalls.COUNT) return 0;
+        return digit - '0';
+    }
+
     public static boolean hasUniquePlanetIds(List<DragonBallIdentity> identities) {
         Set<UUID> ids = new HashSet<>();
         Set<Integer> slots = new HashSet<>();

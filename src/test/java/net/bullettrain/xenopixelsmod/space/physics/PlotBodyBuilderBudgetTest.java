@@ -6,6 +6,8 @@ import org.junit.jupiter.api.Test;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.CancellationException;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -31,6 +33,19 @@ class PlotBodyBuilderBudgetTest {
         assertTrue(PlotBodyBuilder.shouldStopTimeSlicedStep(1.0, 4.0, 1));
         assertFalse(PlotBodyBuilder.shouldStopTimeSlicedStep(0.0, 100.0, 1));
         assertFalse(PlotBodyBuilder.shouldStopTimeSlicedStep(1.0, 0.5, 1));
+    }
+
+    @Test void finishWaitsUntilTheSharedTimeAllowanceRemains() {
+        assertFalse(PlotBodyBuilder.shouldDeferFinish(0.0, 0.0, 100.0, 1), "disabled wall-time cap stays unbudgeted");
+        assertTrue(PlotBodyBuilder.shouldDeferFinish(8.0, 0.0, 0.0, 0), "exhausted allowance defers finish");
+        assertTrue(PlotBodyBuilder.shouldDeferFinish(8.0, 0.001, 0.002, 1), "voxel work that consumed the slice defers finish");
+        assertFalse(PlotBodyBuilder.shouldDeferFinish(8.0, 0.5, 0.2, 1), "finish may start with time left");
+        assertEquals(Double.MAX_VALUE, PlotBodyBuilder.UNBOUNDED_MILLIS_BUDGET,
+                "the no-budget step overload must keep its finite sentinel");
+        assertFalse(PlotBodyBuilder.shouldDeferFinish(8.0, PlotBodyBuilder.UNBOUNDED_MILLIS_BUDGET, 1_000_000.0, 1),
+                "the legacy step overload's explicit unbounded sentinel must retain its synchronous finish behavior");
+        assertFalse(PlotBodyBuilder.shouldStopTimeSlicedStep(PlotBodyBuilder.UNBOUNDED_MILLIS_BUDGET, 1_000_000.0, 1),
+                "the legacy step overload's sentinel must not stop between voxel callbacks");
     }
 
     @Test void maximumChartShellSelectsExactWriterWhenItsGroupExceedsOwnerShare() {
@@ -63,12 +78,25 @@ class PlotBodyBuilderBudgetTest {
         assertEquals(totalVoxels, cursor);
         assertEquals(7, ranges.size());
         assertEquals(1_622, ranges.getLast().size());
+        assertEquals(totalVoxels, PlotBodyBuilder.nextVoxelRange(1, totalVoxels, Integer.MAX_VALUE).toExclusive(),
+                "a very large later slice must not overflow a progressed cursor");
     }
 
     @Test void directVoxelBatchRejectsInvalidCursorAndBudget() {
         assertThrows(IllegalArgumentException.class, () -> PlotBodyBuilder.nextVoxelRange(-1, 5, 2));
         assertThrows(IllegalArgumentException.class, () -> PlotBodyBuilder.nextVoxelRange(0, 5, 0));
         assertThrows(IllegalArgumentException.class, () -> PlotBodyBuilder.nextVoxelRange(6, 5, 1));
+    }
+
+    @Test void cancelledVoxelFillStopsBeforeEvaluatingTheNextRow() {
+        AtomicInteger rowsChecked = new AtomicInteger();
+        AtomicInteger voxelCalls = new AtomicInteger();
+        assertThrows(CancellationException.class, () -> PlotBodyBuilder.fill(2, (x, y, z) -> {
+            voxelCalls.incrementAndGet();
+            return Blocks.AIR.defaultBlockState();
+        }, () -> rowsChecked.incrementAndGet() > 2));
+        assertEquals(3, rowsChecked.get());
+        assertEquals(10, voxelCalls.get(), "two X/Z rows complete, and the third row is never evaluated");
     }
 
     @Test void wholeColumnScheduleUsesExactWriterWheneverAnyBatchWouldExceedItsVoxelBudget() {

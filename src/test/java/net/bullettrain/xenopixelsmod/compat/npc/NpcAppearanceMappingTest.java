@@ -9,6 +9,7 @@ import org.junit.jupiter.api.Test;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
+import static org.junit.jupiter.api.Assertions.assertNotSame;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -222,11 +223,30 @@ class NpcAppearanceMappingTest {
         return false;
     }
 
+    @Test void copiesAndRestoresTheFifthHairStyleWithoutAliasing() {
+        var slot = com.dragonminez.common.hair.HairStyleSlot.SSJ4;
+        Character original = new Character();
+        original.setHairId(0);
+        CustomHair fifth = new CustomHair();
+        fifth.setName("Own SSJ4");
+        fifth.getStrands(CustomHair.HairFace.TOP)[0].makeVisibleWithDefaults();
+        original.setHairStyle(slot, fifth);
+        var snapshot = net.bullettrain.xenopixelsmod.api.dmz.DmzAppearance.snapshot(original);
+
+        Character target = new Character();
+        NpcAppearanceMapping.apply(target, NpcAppearanceSource.ofCharacter(original));
+        assertEquals(fifth.save(), target.getOwnHairStyle(slot).save());
+        assertNotSame(fifth, target.getOwnHairStyle(slot));
+        target.setHairStyle(slot, new CustomHair());
+        assertTrue(net.bullettrain.xenopixelsmod.api.dmz.DmzAppearance.restore(target, snapshot));
+        assertEquals(fifth.save(), target.getOwnHairStyle(slot).save());
+    }
+
     private static NpcAppearanceSource look() {
         CustomHair[] hair = new CustomHair[4];
         for (int i = 0; i < hair.length; i++) {
             hair[i] = new CustomHair();
-            hair[i].getStrands(CustomHair.HairFace.FRONT)[0].addCube();
+            hair[i].getStrands(CustomHair.HairFace.FRONT)[0].makeVisibleWithDefaults();
         }
         return new NpcAppearanceSource("saiyan", "female", "martialartist",
                 3, 4, 2, 1, 5, 1.15f,

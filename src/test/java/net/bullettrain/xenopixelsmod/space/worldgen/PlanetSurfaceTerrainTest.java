@@ -1,6 +1,7 @@
 package net.bullettrain.xenopixelsmod.space.worldgen;
 
 import net.bullettrain.xenopixelsmod.space.smallplanet.SmallPlanetField;
+import net.bullettrain.xenopixelsmod.space.smallplanet.PlanetSurfaceCells;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -8,6 +9,44 @@ import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class PlanetSurfaceTerrainTest {
+    @Test void everyReservedChartBodyCellHasAStableDistinctSeedIncludingSlotsBeyondProceduralLimit() {
+        String[] bodyIds = {"xenopixelsmod:moon", "xenopixelsmod:phobos", "xenopixelsmod:deimos",
+                "xenopixelsmod:io", "xenopixelsmod:europa", "xenopixelsmod:ganymede",
+                "xenopixelsmod:callisto", "xenopixelsmod:triton", "xenopixelsmod:namek_moon_1",
+                "xenopixelsmod:namek_moon_2", "xenopixelsmod:namek_moon_3"};
+        long[] seeds = new long[bodyIds.length];
+        for (int i = 0; i < bodyIds.length; i++) {
+            var address = PlanetSurfaceCells.addressAt(PlanetSurfaceCells.forChartBody(bodyIds[i]));
+            assertEquals(bodyIds[i], address.chartBodyId());
+            seeds[i] = PlanetSurfaceTerrain.addressSeed(address, 0x1234_5678L);
+            assertEquals(seeds[i], PlanetSurfaceTerrain.addressSeed(address, 0x1234_5678L));
+        }
+        for (int i = 0; i < seeds.length; i++) for (int j = i + 1; j < seeds.length; j++)
+            assertNotEquals(seeds[i], seeds[j], bodyIds[i] + " and " + bodyIds[j]);
+    }
+
+    @Test void existingMoonCellKeepsItsLegacyTerrainSeedAcrossSaveUpgrades() {
+        var moon = PlanetSurfaceCells.addressAt(PlanetSurfaceCells.moonSurfaceCell());
+        for (long sample : new long[]{0L, 1L, 0x1234_5678L, -1L})
+            assertEquals(PlanetSurfaceTerrain.cellSeed(0, 0, 0, sample),
+                    PlanetSurfaceTerrain.addressSeed(moon, sample), "Moon terrain seed sample=" + sample);
+    }
+
+    @Test void sdbSurfaceSeedsDoNotCollideWithOriginSystemProceduralPlanetSlots() {
+        long worldSeedSample = 0x1020_3040L;
+        for (int slot = 0; slot < 7; slot++) {
+            var address = PlanetSurfaceCells.addressAt(PlanetSurfaceCells.forDragonBall(slot));
+            long seed = PlanetSurfaceTerrain.addressSeed(address, worldSeedSample);
+            assertNotEquals(PlanetSurfaceTerrain.cellSeed(0, 0, slot, worldSeedSample), seed,
+                    "SDB surface slot " + slot + " must not share the origin system's procedural identity");
+            for (int other = slot + 1; other < 7; other++) {
+                var otherAddress = PlanetSurfaceCells.addressAt(PlanetSurfaceCells.forDragonBall(other));
+                assertNotEquals(seed, PlanetSurfaceTerrain.addressSeed(otherAddress, worldSeedSample),
+                        "SDB surfaces must have distinct deterministic seeds");
+            }
+        }
+    }
+
     @Test void profilesHaveSeededRepeatableAndDistinctLandforms() {
         int x = 12_345, z = -6_789;
         long seed = 0xBADC0FFEE0DDF00DL;

@@ -30,9 +30,17 @@ public final class DialogTreeImport {
 
     public static Conversion convert(Map<Integer, CompoundTag> source,
                                      NpcImportReport report, String group, String sourceMod) {
+        return convert(source, source, report, group, sourceMod);
+    }
+
+    public static Conversion convert(Map<Integer, CompoundTag> source, Map<Integer, CompoundTag> library,
+                                     NpcImportReport report, String group, String sourceMod) {
         if (source == null || source.isEmpty()) return new Conversion(List.of(), Map.of());
         Map<Integer, String> nodeIds = new LinkedHashMap<>();
+        library.keySet().stream().sorted().forEach(slot -> nodeIds.put(slot, "n" + slot));
         source.keySet().stream().sorted().forEach(slot -> nodeIds.put(slot, "n" + slot));
+        Map<Integer, CompoundTag> reachable = new LinkedHashMap<>(library);
+        reachable.putAll(source);
 
         List<Imported> out = new ArrayList<>();
         Map<Integer, Ref> sourceRefs = new LinkedHashMap<>();
@@ -42,7 +50,7 @@ public final class DialogTreeImport {
         for (int root : source.keySet().stream().sorted().toList()) {
             Map<String, XenoDialogue.Node> nodes = new LinkedHashMap<>();
             Set<Integer> emitted = new LinkedHashSet<>();
-            collect(root, source, nodeIds, nodes, emitted, report, group, sourceMod);
+            collect(root, reachable, nodeIds, nodes, emitted, report, group, sourceMod);
             if (!nodes.isEmpty()) {
                 if (nodes.size() > XenoDialogueNbt.MAX_NODES) {
                     report.failed("dialogs", group + "/" + root,
@@ -76,10 +84,6 @@ public final class DialogTreeImport {
         if (raw.contains("DialogCommand") && !raw.getString("DialogCommand").isBlank()) {
             report.note("dialog " + group + "/" + slot
                     + " has a source command; it was omitted for server-command safety");
-        }
-        if (hasActiveAvailability(raw)) {
-            report.note("dialog " + group + "/" + slot
-                    + " has source availability conditions; Xeno dialogue does not currently gate trees by those rules");
         }
         List<XenoDialogue.Option> options = new ArrayList<>();
         ListTag rawOptions = raw.getList("Options", Tag.TAG_COMPOUND);
@@ -137,7 +141,11 @@ public final class DialogTreeImport {
                         + " source quest action became an explicit Accept quest choice");
             }
         }
-        nodes.put(nodeIds.get(slot), new XenoDialogue.Node(text, List.copyOf(options)));
+        Ref ref = report.dialog(sourceMod, slot);
+        String sourceRef = ref == null ? group + "/dialog_" + slot : ref.group() + "/" + ref.id();
+        nodes.put(nodeIds.get(slot), new XenoDialogue.Node(text, List.copyOf(options), "",
+                AvailabilityImport.convert(raw, sourceMod, report,
+                        "dialogs/" + group + "#" + nodeIds.get(slot)), sourceRef));
     }
 
     private static boolean hasActiveAvailability(CompoundTag raw) {

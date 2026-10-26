@@ -13,10 +13,12 @@ import net.bullettrain.xenopixelsmod.XenoPixelsMod;
 import net.bullettrain.xenopixelsmod.block.ModBlocks;
 import net.bullettrain.xenopixelsmod.config.XenoSpaceConfig;
 import net.bullettrain.xenopixelsmod.space.SpaceChartService;
+import net.bullettrain.xenopixelsmod.space.SpaceHomeOrbitalFrame;
 import net.bullettrain.xenopixelsmod.space.SpaceTickScheduler;
 import net.bullettrain.xenopixelsmod.space.chart.CelestialBody;
 import net.bullettrain.xenopixelsmod.space.chart.ChartRegistry;
 import net.bullettrain.xenopixelsmod.space.math.KeplerSolver;
+import net.bullettrain.xenopixelsmod.space.math.PlanetRotationMath;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.HolderLookup;
 import net.minecraft.core.registries.Registries;
@@ -45,6 +47,7 @@ import java.util.IdentityHashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 
 /**
@@ -59,7 +62,10 @@ import java.util.UUID;
 @EventBusSubscriber(modid = XenoPixelsMod.MOD_ID)
 public final class PhysicalEarth implements SpaceTickScheduler.Pass {
     public static final String BODY_ID = "xenopixelsmod:earth";
-    public static final String MOON_ID = "xenospace_spike:moon_surface";
+    /** The live chart identity used by the HD sphere, handoff, and orbital hierarchy. */
+    public static final String MOON_ID = "xenopixelsmod:moon";
+    /** Persistent identity from the earlier disposable spike-world implementation. */
+    public static final String LEGACY_MOON_ID = "xenospace_spike:moon_surface";
     public static final int RADIUS = 100;
     public static final ResourceLocation HOST = ResourceLocation.fromNamespaceAndPath("xenopixelsmod", "voidsea");
     /** Shared "managed planet" marker. Earth's saved bodies carry it, so it is never renamed. */
@@ -119,24 +125,43 @@ public final class PhysicalEarth implements SpaceTickScheduler.Pass {
      */
     private static volatile List<Spec> SPECS = List.of(EARTH, MOON);
 
+    /**
+     * The one rule that turns a chart row into a physical body under a mode, or says in plain words why that row
+     * will never be one. Both outcomes come from the same place so the reason an operator is shown cannot drift
+     * from the decision actually taken. {@code (null, null)} is the Earth row, which {@link #specsFor} adds above
+     * the loop rather than here.
+     */
+    record Placement(Spec spec, String rejection) {
+        static Placement of(CelestialBody row, String mode, int maxRadius, java.util.Set<String> excluded) {
+            boolean all = "all".equals(mode) || "proximity".equals(mode);
+            String id = row.id();
+            if (id.equals(BODY_ID)) return new Placement(null, null);
+            if (excluded.contains(id)) return new Placement(null, "space.physicalPlanetExclude lists it");
+            if (id.equals(MOON_ID)) return new Placement(MOON, null);
+            if (id.equals(LEGACY_MOON_ID))
+                return new Placement(null, "legacy spike Moon is superseded by " + MOON_ID);
+            if (!(all || "planets".equals(mode))) return new Placement(null, "mode " + mode + " keeps it visual-only");
+            if (row.kind() == CelestialBody.BodyKind.STAR && !all) return new Placement(null, "stars are physical only in all/proximity mode");
+            int radius = (int) Math.round(row.radiusBlocks());
+            if (radius < 4) return new Placement(null, "radius " + radius + " is below the 4 block floor");
+            if (radius > maxRadius) return new Placement(null, "radius " + radius + " exceeds space.physicalPlanetMaxRadius " + maxRadius);
+            return new Placement(new Spec(id, radius, ledgerName(id), PLANET_TICKET, row.displayName()), null);
+        }
+    }
+
     /** The managed set a mode asks for. Earth is always physical; {@code earth_moon} is the S9 behaviour. */
     static List<Spec> specsFor(ChartRegistry chart, String mode) {
+        return specsFor(chart, mode, XenoSpaceConfig.physicalPlanetMaxRadius(), XenoSpaceConfig.physicalPlanetExclude());
+    }
+
+    /** The rule with its two config inputs passed in, so the accept/reject decision is checkable without a booted FML. */
+    static List<Spec> specsFor(ChartRegistry chart, String mode, int maxRadius, java.util.Set<String> excluded) {
         var out = new ArrayList<Spec>();
         // Earth is always physical unless planet Hakai erased it (owner 2026-10-16: "hakai earth").
-        if (!net.bullettrain.xenopixelsmod.space.hakai.PlanetHakai.isErased(BODY_ID)) out.add(EARTH);
-        boolean all = "all".equals(mode) || "proximity".equals(mode), planets = all || "planets".equals(mode);
-        var excluded = XenoSpaceConfig.physicalPlanetExclude();
+        if (!net.bullettrain.xenopixelsmod.space.hakai.PlanetHakai.isUnavailable(BODY_ID)) out.add(EARTH);
         for (int slot = 0; slot < chart.size(); slot++) {
-            CelestialBody row = chart.body(slot);
-            String id = row.id();
-            if (id.equals(BODY_ID)) continue;
-            if (id.equals(MOON_ID)) { if (!excluded.contains(id)) out.add(MOON); continue; }
-            if (!planets || excluded.contains(id)) continue;
-            if (row.kind() == CelestialBody.BodyKind.STAR && !all) continue;
-            int radius = (int) Math.round(row.radiusBlocks());
-            if (radius < 4 || radius > XenoSpaceConfig.physicalPlanetMaxRadius()) continue;
-            out.add(new Spec(id, radius, "xenopixelsmod_physical_" + id.replace(':', '_').replace('/', '_'),
-                    PLANET_TICKET, row.displayName()));
+            var placed = Placement.of(chart.body(slot), mode, maxRadius, excluded);
+            if (placed.spec() != null) out.add(placed.spec());
         }
         return List.copyOf(out);
     }
@@ -164,9 +189,10 @@ public final class PhysicalEarth implements SpaceTickScheduler.Pass {
     }
     private final Map<UUID, Track> tracks = new HashMap<>();
     private final Vector3d impulse = new Vector3d(), gravity = new Vector3d(), teleportTarget = new Vector3d(),
-            linear = new Vector3d(), angular = new Vector3d();
+            linear = new Vector3d(), angular = new Vector3d(), angularTarget = new Vector3d(), angularDelta = new Vector3d();
     private final double[] position = new double[3], target = new double[3], targetVelocity = new double[3],
             feedForward = new double[3], offset = new double[3], offsetVelocity = new double[3];
+    private final double[] chartParentPosition = new double[3], chartParentVelocity = new double[3];
     private final java.util.Set<UUID> reportedPhysics = new java.util.HashSet<>();
     private PhysicalEarth() {}
 
@@ -177,14 +203,58 @@ public final class PhysicalEarth implements SpaceTickScheduler.Pass {
         MinecraftServer server = event.getServer();
         ServerLevel level = server.getLevel(ResourceKey.create(Registries.DIMENSION, HOST));
         if (level == null) { refuse(server, EARTH, "Voidsea dimension is missing; Earth was not created."); return; }
+        createManaged(server, level);
+    }
+
+    /**
+     * Replays the startup planet pass against the config that is loaded right now. {@link #started} reads
+     * {@code space.enabled} once, and the enabled flag is only re-read by {@code /xenospace reload}, so an
+     * operator who turns space on mid-session — the remedy {@code /xenospace handoff on} itself tells them to
+     * use — otherwise gets a chart that lists coordinates with nothing ever built at them. Idempotent: loaded
+     * bodies take the reuse path in {@link #initialize}, and a mode change only re-derives the managed set.
+     * Returns a one-line account for the command source.
+     */
+    public static String reconcile(MinecraftServer server) {
+        if (!XenoSpaceConfig.enabled()) return "space is off: no physical planets until it is enabled";
+        ServerLevel level = server.getLevel(ResourceKey.create(Registries.DIMENSION, HOST));
+        if (level == null) { refuse(server, EARTH, "Voidsea dimension is missing; Earth was not created."); return "Voidsea dimension is missing"; }
+        createManaged(server, level);
+        var unchartable = unphysical(server);
+        var retrying = PENDING.get(server);
+        // A positive build budget means loaded==0 right after enabling is normal, not a failure: the shells are
+        // queued jobs stepping one budget slice at a time. Say so instead of letting the operator read "0 loaded"
+        // as "nothing happened".
+        return "physical planets=" + XenoSpaceConfig.physicalPlanets() + ": " + SPECS.size() + " managed, "
+                + bodies(level).size() + " loaded, " + BUILDS.getOrDefault(server, Map.of()).size()
+                + " assembling, " + (retrying == null ? 0 : retrying.size()) + " waiting to start"
+                + (unchartable.isEmpty() ? "" : ", not physical: " + unchartable);
+    }
+
+    /** Derives the managed set from the current config and creates it, exactly as a restart would. */
+    private static void createManaged(MinecraftServer server, ServerLevel level) {
         var chart = SpaceChartService.state(server).runtime.chart;
         SPECS = specsFor(chart, XenoSpaceConfig.physicalPlanets());
         prune(level);
+        var pending = PENDING.get(server);
+        if (pending != null) discardUnmanagedPending(pending, SPECS);
+        // prune() only scans loaded bodies. A mode change also has to stop the jobs it dropped, or a second
+        // reload would leave an unmanaged planet's job stepping toward an install nobody asked for.
+        cancelUnmanagedBuilds(server, SPECS, "mode " + XenoSpaceConfig.physicalPlanets() + " no longer manages it");
         removeOrphanShellFragments(level);
         long began = System.nanoTime();
         for (Spec spec : SPECS) {
             if (spec != EARTH && chart.slotOf(spec.id()) < 0) {
                 diagnose(server, spec, spec.displayName() + " is not charted (space pack disabled?); not created");
+                continue;
+            }
+            // Same guard the retry loop uses: initialize() would replace an in-flight batched job with a new
+            // one instead of leaving it alone, orphaning the work already spent on the shell.
+            if (getBody(level, spec.id()) != null || building(server, spec)) continue;
+            if (PlotBodyBuilder.shouldBatchAssembly(XenoSpaceConfig.atomicPlanetAssembly(),
+                    XenoSpaceConfig.planetBuildVoxelsPerTick())
+                    && !net.bullettrain.xenopixelsmod.config.PlanetBuildConcurrencyPolicy.hasCapacity(
+                            BUILDS.getOrDefault(server, Map.of()).size(), XenoSpaceConfig.planetBuildMaxConcurrent())) {
+                PENDING.computeIfAbsent(server, ignored -> new java.util.LinkedHashSet<>()).add(spec);
                 continue;
             }
             try { initialize(level, spec, !onDemand(spec)); }
@@ -205,6 +275,49 @@ public final class PhysicalEarth implements SpaceTickScheduler.Pass {
         XenoPixelsMod.LOGGER.info("Physical planets ready: mode={}, managed={}, loaded={}, startup ms={}",
                 XenoSpaceConfig.physicalPlanets(), SPECS.size(), bodies(level).size(),
                 String.format("%.0f", (System.nanoTime() - began) / 1_000_000.0));
+        // A restart has nobody online yet, but reconcile() runs this pass mid-session, and the synchronous
+        // create above is the one path that does not push bindings itself: without this, a player already in
+        // the Voidsea keeps a stale planet map until they change dimension. Skipped when the Voidsea is empty
+        // so a startup cannot gain a new failure mode on a path that has never run there.
+        if (!level.players().isEmpty()) net.bullettrain.xenopixelsmod.space.SpaceVisualSync.resendPlanetBindings(level);
+    }
+
+    static int discardUnmanagedPending(Set<Spec> pending, List<Spec> managed) {
+        int before = pending.size();
+        pending.removeIf(spec -> !managed.contains(spec));
+        return before - pending.size();
+    }
+
+    private static int cancelUnmanagedBuilds(MinecraftServer server, List<Spec> managed, String reason) {
+        int cancelled = 0;
+        for (Build build : new ArrayList<>(BUILDS.getOrDefault(server, Map.of()).values()))
+            if (!managed.contains(build.spec()) && cancelBuild(server, build.spec(), reason)) cancelled++;
+        return cancelled;
+    }
+
+    /**
+     * Chart rows that are not {@link #SPECS}, each with the reason from the same rule that built the managed set.
+     * A row listed by {@code /xenospace list bodies} whose name appears here has coordinates but will never have a
+     * body at them, which used to be invisible: the drops in {@link #specsFor} were silent {@code continue}s.
+     */
+    private static String unphysical(MinecraftServer server) {
+        var chart = SpaceChartService.state(server).runtime.chart;
+        var managed = new java.util.HashSet<String>();
+        for (Spec spec : SPECS) managed.add(spec.id());
+        var excluded = XenoSpaceConfig.physicalPlanetExclude();
+        int maxRadius = XenoSpaceConfig.physicalPlanetMaxRadius();
+        String mode = XenoSpaceConfig.physicalPlanets();
+        StringBuilder out = new StringBuilder();
+        for (int slot = 0; slot < chart.size(); slot++) {
+            CelestialBody row = chart.body(slot);
+            if (managed.contains(row.id())) continue;
+            var placement = Placement.of(row, mode, maxRadius, excluded);
+            if (out.length() > 0) out.append(", ");
+            out.append(row.id()).append('=')
+                    .append(placement.rejection() != null ? placement.rejection()
+                            : row.id().equals(BODY_ID) ? "erased by planet Hakai" : "not physical");
+        }
+        return out.toString();
     }
 
     /**
@@ -218,12 +331,15 @@ public final class PhysicalEarth implements SpaceTickScheduler.Pass {
         var chart = SpaceChartService.state(server).runtime.chart;
         SPECS = specsFor(chart, XenoSpaceConfig.physicalPlanets());
         int removed = prune(level);
-        int queued = 0;
         var pending = PENDING.computeIfAbsent(server, ignored -> new java.util.LinkedHashSet<>());
-        pending.removeIf(spec -> !SPECS.contains(spec));
+        discardUnmanagedPending(pending, SPECS);
+        int cancelled = cancelUnmanagedBuilds(server, SPECS,
+                "mode " + XenoSpaceConfig.physicalPlanets() + " no longer manages it");
+        int queued = 0;
         for (Spec spec : SPECS) if (getBody(level, spec.id()) == null && pending.add(spec)) queued++;
         return "physical planets=" + XenoSpaceConfig.physicalPlanets() + ": " + SPECS.size() + " managed, "
-                + removed + " removed, " + queued + " queued (built one at a time while no player is in the Voidsea)";
+                + removed + " removed, " + cancelled + " builds cancelled, " + queued
+                + " queued (built one at a time while no player is in the Voidsea)";
     }
 
     /** Deletes managed bodies the current mode no longer lists, and frees their ledger for a later rebuild. */
@@ -235,11 +351,11 @@ public final class PhysicalEarth implements SpaceTickScheduler.Pass {
         for (var body : new ArrayList<>(container.getAllSubLevels())) {
             if (!isManaged(body) || body.isRemoved()) continue;
             String id = bodyIdOf(body);
-            if (keep.contains(id) || (id.equals(BODY_ID) && !net.bullettrain.xenopixelsmod.space.hakai.PlanetHakai.isErased(BODY_ID))) continue;
-            Spec own = id.equals(BODY_ID) ? EARTH : id.equals(MOON_ID) ? MOON : null;
-            release(level, id, own != null ? own.ticket() : PLANET_TICKET,
-                    own != null ? own.ledgerName() : ledgerName(id), body, "mode " + XenoSpaceConfig.physicalPlanets());
-            removed++;
+            if (keep.contains(id) || (id.equals(BODY_ID) && !net.bullettrain.xenopixelsmod.space.hakai.PlanetHakai.isUnavailable(BODY_ID))) continue;
+            Spec own = ownSpec(id);
+            if (release(level, id, own != null ? own.ticket() : PLANET_TICKET,
+                    own != null ? own.ledgerName() : ledgerName(id), body, "mode " + XenoSpaceConfig.physicalPlanets()))
+                removed++;
         }
         if (removed > 0) net.bullettrain.xenopixelsmod.space.SpaceVisualSync.resendPlanetBindings(level);
         return removed;
@@ -247,13 +363,25 @@ public final class PhysicalEarth implements SpaceTickScheduler.Pass {
 
     static String ledgerName(String id) { return "xenopixelsmod_physical_" + id.replace(':', '_').replace('/', '_'); }
 
+    private static Spec ownSpec(String id) {
+        if (BODY_ID.equals(id)) return EARTH;
+        if (MOON_ID.equals(id) || LEGACY_MOON_ID.equals(id)) return MOON;
+        return null;
+    }
+
     /**
      * Removes one managed body from the world and frees its ledger so it can be built again. Shells cannot be
      * modified (breaking is cancelled), so a rebuild is identical: nothing needs saving.
      */
-    private static void release(ServerLevel level, String id, SubLevelLoadingTicketType<String> ticket, String ledgerName,
-                                ServerSubLevel body, String why) {
+    private static boolean release(ServerLevel level, String id, SubLevelLoadingTicketType<String> ticket, String ledgerName,
+                                   ServerSubLevel body, String why) {
         var container = SubLevelContainer.getContainer(level);
+        var current = container.getSubLevel(body.getUniqueId());
+        if (!PlanetReleaseIdentityPolicy.isCurrent(body, current)) {
+            XenoPixelsMod.LOGGER.error("Refusing stale physical planet release ({}): body={}, UUID={}, current={}",
+                    why, id, body.getUniqueId(), current == null ? "missing" : current.getUniqueId());
+            return false;
+        }
         container.removeForceLoadTicket(body, ticket, id);
         container.removeSubLevel(body, dev.ryanhcode.sable.sublevel.storage.SubLevelRemovalReason.REMOVED);
         ids(level).remove(id);
@@ -263,6 +391,7 @@ public final class PhysicalEarth implements SpaceTickScheduler.Pass {
         net.bullettrain.xenopixelsmod.space.SpaceChartService.state(level.getServer()).runtime.activationMetrics.recordRelease(
                 net.bullettrain.xenopixelsmod.space.SpaceActivationMetrics.Owner.CHART_PLANET, System.nanoTime());
         XenoPixelsMod.LOGGER.info("Physical planet released ({}): body={}, UUID={}", why, id, body.getUniqueId());
+        return true;
     }
 
     /** True for a body that {@code proximity} mode builds only when a player comes near. Earth never is. */
@@ -280,6 +409,9 @@ public final class PhysicalEarth implements SpaceTickScheduler.Pass {
     }
 
     private static final Map<MinecraftServer, int[]> PROXIMITY_STATS = new IdentityHashMap<>();
+    /** Process-wide sequence lets logs from several dimensions/server instances identify an exact release pass. */
+    private static final java.util.concurrent.atomic.AtomicLong PROXIMITY_PASS_SEQUENCE =
+            new java.util.concurrent.atomic.AtomicLong();
 
     /** S11 batched-build test (debug only): bodies the proximity pass treats as if a player stood at them. */
     private static final java.util.Set<String> DEBUG_NEAR = java.util.concurrent.ConcurrentHashMap.newKeySet();
@@ -295,12 +427,18 @@ public final class PhysicalEarth implements SpaceTickScheduler.Pass {
     /**
      * One proximity pass: each on-demand body is compared with the nearest Voidsea player (chart position
      * for unbuilt bodies, which keep moving on their analytic orbit; live pose for built ones). Far bodies
-     * are released at once; near ones are queued, and the queue builds one per pass.
+     * are released up to the configured per-pass cap; near ones are queued, and the queue builds one per pass.
      */
-    private static void proximityPass(MinecraftServer server, ServerLevel level) {
+    private static void proximityPass(MinecraftServer server, ServerLevel level, int serverTickCount) {
+        long passId = PROXIMITY_PASS_SEQUENCE.incrementAndGet();
+        long passStartedNanos = System.nanoTime();
+        long releaseWorkNanos = 0L;
+        long bindingResendNanos = 0L;
         var chart = SpaceChartService.state(server).runtime.chart;
+        var homeFocus = SpaceHomeOrbitalFrame.resolve(level, chart);
         var players = level.players();
         int released = 0;
+        int releaseAttempts = 0;
         for (Spec spec : SPECS) {
             if (!onDemand(spec)) continue;
             int slot = chart.slotOf(spec.id());
@@ -308,7 +446,11 @@ public final class PhysicalEarth implements SpaceTickScheduler.Pass {
             ServerSubLevel body = getBody(level, spec.id());
             double x, y, z;
             if (body != null) { var p = body.logicalPose().position(); x = p.x(); y = p.y(); z = p.z(); }
-            else { x = chart.x(slot); y = chart.y(slot); z = chart.z(slot); }
+            else {
+                x = chart.x(slot);
+                y = SpaceHomeOrbitalFrame.chartY(chart, slot, homeFocus == null ? Double.NaN : homeFocus.y());
+                z = chart.z(slot);
+            }
             double nearest = DEBUG_NEAR.contains(spec.id()) ? 0 : Double.POSITIVE_INFINITY;
             for (var player : players) {
                 // For unbuilt bodies, chart Y is still their current analytic orbit plane and belongs
@@ -322,15 +464,40 @@ public final class PhysicalEarth implements SpaceTickScheduler.Pass {
             if (decision < 0 && underway) { cancelBuild(server, spec); continue; }
             if (decision > 0) pending.add(spec);
             else if (decision < 0) {
-                release(level, spec.id(), spec.ticket(), spec.ledgerName(), body, "no player within "
+                // Removing a Sable plot synchronously can drain a large chunk-holder/ticket backlog.
+                // Spread a cluster exit over later proximity passes instead of dropping every nearby
+                // body in this one server tick (one six-body release coincided with a 3.66s tick).
+                if (!net.bullettrain.xenopixelsmod.config.PlanetBuildConcurrencyPolicy.hasCapacity(
+                        releaseAttempts, XenoSpaceConfig.planetReleaseMaxPerPass())) continue;
+                long releaseStartedNanos = System.nanoTime();
+                boolean removed = release(level, spec.id(), spec.ticket(), spec.ledgerName(), body, "proximity pass " + passId
+                        + ": no player within "
                         + (long) (XenoSpaceConfig.proximityReleaseRange() + spec.radius()));
-                released++;
+                releaseWorkNanos += System.nanoTime() - releaseStartedNanos;
+                releaseAttempts++;
+                if (removed) released++;
             } else if (body == null && nearest > XenoSpaceConfig.proximityActivateRange() + spec.radius()) {
                 pending.remove(spec);
             }
         }
-        if (released > 0) net.bullettrain.xenopixelsmod.space.SpaceVisualSync.resendPlanetBindings(level);
+        if (released > 0) {
+            long bindingStartedNanos = System.nanoTime();
+            net.bullettrain.xenopixelsmod.space.SpaceVisualSync.resendPlanetBindings(level);
+            bindingResendNanos = System.nanoTime() - bindingStartedNanos;
+        }
         PROXIMITY_STATS.computeIfAbsent(server, ignored -> new int[2])[1] += released;
+        long passElapsedNanos = System.nanoTime() - passStartedNanos;
+        net.bullettrain.xenopixelsmod.space.SpaceChartService.state(server).runtime
+                .recordProximityPass(passElapsedNanos,
+                        net.bullettrain.xenopixelsmod.space.SpaceOrbitClock.gameTick(server));
+        if (releaseAttempts > 0) {
+            long overworldGameTime = server.overworld().getGameTime();
+            XenoPixelsMod.LOGGER.info("Physical planet proximity release pass: id={}, tickCount={}, overworldGameTime={}, attempts={}, released={}, refused={}, cap={}, voidseaPlayers={}, passMs={}, releaseCallMs={}, bindingResendMs={}",
+                    passId, serverTickCount, overworldGameTime, releaseAttempts, released, releaseAttempts - released,
+                    XenoSpaceConfig.planetReleaseMaxPerPass(), players.size(),
+                    passElapsedNanos / 1_000_000.0,
+                    releaseWorkNanos / 1_000_000.0, bindingResendNanos / 1_000_000.0);
+        }
     }
 
     private static final Map<MinecraftServer, java.util.Set<Spec>> PENDING = new IdentityHashMap<>();
@@ -345,20 +512,20 @@ public final class PhysicalEarth implements SpaceTickScheduler.Pass {
     @SubscribeEvent public static void serverTick(net.neoforged.neoforge.event.tick.ServerTickEvent.Post event) {
         if (!XenoSpaceConfig.enabled()) return;
         MinecraftServer server = event.getServer();
-        int tick = server.getTickCount();
+        int tickCount = server.getTickCount();
         ServerLevel level = server.getLevel(ResourceKey.create(Registries.DIMENSION, HOST));
         if (level == null) return;
         stepBuilds(server, level);
-        if (tick % 200 == 0) removeOrphanShellFragments(level);
-        if (tick % 200 == 0 && XenoSpaceConfig.planetRecoverLost()) removeLateDuplicates(level);
-        if (tick % 10 != 0) return;
+        if (tickCount % 200 == 0) removeOrphanShellFragments(level);
+        if (tickCount % 200 == 0 && XenoSpaceConfig.planetRecoverLost()) removeLateDuplicates(level);
+        if (tickCount % 10 != 0) return;
         if (XenoSpaceConfig.planetReleaseStaffLock())
             for (var entry : bodies(level).entrySet())
                 if (StaffLocks.release(level, entry.getValue()))
                     XenoPixelsMod.LOGGER.info("Physics staff lock removed from managed planet {}; it returns to its orbit",
                             entry.getKey());
         int interval = XenoSpaceConfig.proximityPlanets() ? XenoSpaceConfig.proximityIntervalTicks() : RETRY_TICKS;
-        if (XenoSpaceConfig.proximityPlanets() && tick % interval == 0) proximityPass(server, level);
+        if (XenoSpaceConfig.proximityPlanets() && tickCount % interval == 0) proximityPass(server, level, tickCount);
         var pending = PENDING.get(server);
         if (pending == null || pending.isEmpty()) {
             PENDING_BUDGET_RETRY_TICK.remove(server);
@@ -372,6 +539,11 @@ public final class PhysicalEarth implements SpaceTickScheduler.Pass {
             Spec spec = iterator.next();
             try {
                 if (getBody(level, spec.id()) != null || building(server, spec)) { iterator.remove(); continue; }
+                if (PlotBodyBuilder.shouldBatchAssembly(XenoSpaceConfig.atomicPlanetAssembly(),
+                        XenoSpaceConfig.planetBuildVoxelsPerTick())
+                        && !net.bullettrain.xenopixelsmod.config.PlanetBuildConcurrencyPolicy.hasCapacity(
+                                BUILDS.getOrDefault(server, Map.of()).size(), XenoSpaceConfig.planetBuildMaxConcurrent()))
+                    return;
                 if (!SpaceBuildActivationGate.tryAcquire(server, SpaceActivationBudget.Owner.CHART_PLANET,
                         gameTime)) {
                     PENDING_BUDGET_RETRY_TICK.put(server, nextPendingBudgetRetry(gameTime));
@@ -500,7 +672,9 @@ public final class PhysicalEarth implements SpaceTickScheduler.Pass {
         int radius = spec.radius();
         int pad = radius + 1;
         if (center.getY() - pad < level.getMinBuildHeight() || center.getY() + pad >= level.getMaxBuildHeight())
-            throw new IllegalStateException("Voidsea build volume cannot contain the " + spec.displayName() + " shell");
+            throw new IllegalStateException("Voidsea build volume cannot contain the " + spec.displayName()
+                    + " shell: centerY=" + center.getY() + ", radius=" + radius + ", buildY=["
+                    + level.getMinBuildHeight() + "," + level.getMaxBuildHeight() + ")");
         AABB area = new AABB(center.getX()-pad,center.getY()-pad,center.getZ()-pad,
                 center.getX()+pad+1,center.getY()+pad+1,center.getZ()+pad+1);
         // A body spawned inside another one is flung apart by the solver, on either path. A batched build with
@@ -524,6 +698,7 @@ public final class PhysicalEarth implements SpaceTickScheduler.Pass {
                                     XenoSpaceConfig.planetBuildDeferFinalize())
                                     .withoutFrameFirst(),
                             requested.y, started));
+            diagnose(level.getServer(), spec, "Build queued at " + requested + "; waiting for off-thread voxel fill");
             return;
         }
         if (atomic) {
@@ -668,11 +843,21 @@ public final class PhysicalEarth implements SpaceTickScheduler.Pass {
         return false;
     }
 
-    /** For SablePlanetChunkTicketSkipMixin: true for managed planet shells and bodies of an in-progress batched build. */
+    /** For SablePlanetChunkTicketSkipMixin: true for managed planets and all in-flight plot builds. */
     public static boolean skipsChunkTickets(ServerSubLevel body) {
-        if (net.bullettrain.xenopixelsmod.space.asteroid.AsteroidPhysicalizer.manages(body)) return true;
-        if (!XenoSpaceConfig.planetSkipChunkTickets() || body == null) return false;
-        if (isManaged(body)) return true;
+        boolean asteroid = net.bullettrain.xenopixelsmod.space.asteroid.AsteroidPhysicalizer.manages(body);
+        boolean enabled = XenoSpaceConfig.planetSkipChunkTickets();
+        if (PlanetChunkTicketPolicy.shouldSkip(enabled, asteroid, false)) return true;
+        if (body == null || !enabled) return false;
+        boolean marked = isManaged(body)
+                || PlotBodyBuildRegistry.isInFlight(body.getUniqueId(), body.getLevel().getServer())
+                || skipsChartBuildChunkTickets(body)
+                || PlanetChunkTicketPolicy.isTaggedDragonBall(body.getUserDataTag());
+        return PlanetChunkTicketPolicy.shouldSkip(enabled, false, marked);
+    }
+
+    /* Retain the existing chart-build check for builds not registered by PlotBodyBuilder. */
+    private static boolean skipsChartBuildChunkTickets(ServerSubLevel body) {
         var builds = BUILDS.get(body.getLevel().getServer());
         if (builds == null) return false;
         for (Build build : builds.values()) if (build.job().body() == body) return true;
@@ -841,9 +1026,11 @@ public final class PhysicalEarth implements SpaceTickScheduler.Pass {
                 long tick = server.overworld().getGameTime();
                 if (build.job().body() == null && !SpaceBuildWorkBudget.mayPrepare(server, tick,
                         SpaceBuildWorkBudget.Owner.CHART_PLANET, budget)) continue;
-                if (!build.job().prepare()) {
+                if (!SpaceBuildWorkBudget.prepare(server, tick, SpaceBuildWorkBudget.Owner.CHART_PLANET, build.job())) {
                     if (build.job().failed()) {
                         iterator.remove();
+                        build.job().cancel();
+                        diagnose(server, build.spec(), "Build failed: no free Sable plot; queued voxels=" + build.job().total());
                         XenoPixelsMod.LOGGER.warn("Physical {} batched build stopped: no free Sable plot", build.spec().displayName());
                     }
                     continue;
@@ -857,11 +1044,10 @@ public final class PhysicalEarth implements SpaceTickScheduler.Pass {
                         SpaceBuildWorkBudget.Owner.CHART_PLANET, build.job(), budget);
                 if (stepBudget <= 0) continue;
                 double millisBudget = SpaceBuildWorkBudget.remainingMillis(server, tick, SpaceBuildWorkBudget.Owner.CHART_PLANET);
-                if (XenoSpaceConfig.generatedBodyBuildMillisPerTick() > 0.0 && millisBudget <= 0.0) continue;
-                long sliceStarted = System.nanoTime();
-                boolean complete = build.job().step(stepBudget, millisBudget);
-                SpaceBuildWorkBudget.recordMillis(server, tick, SpaceBuildWorkBudget.Owner.CHART_PLANET,
-                        (System.nanoTime() - sliceStarted) / 1e6);
+                if (XenoSpaceConfig.generatedBodyBuildMillisPerTick() > 0.0
+                        && millisBudget <= 0.0 && build.job().installed() > 0) continue;
+                boolean complete = SpaceBuildWorkBudget.step(server, tick, SpaceBuildWorkBudget.Owner.CHART_PLANET,
+                        build.job(), stepBudget, millisBudget);
                 if (complete) {
                     iterator.remove();
                     var result = build.job().result();
@@ -878,22 +1064,31 @@ public final class PhysicalEarth implements SpaceTickScheduler.Pass {
                     net.bullettrain.xenopixelsmod.space.SpaceVisualSync.resendPlanetBindings(level);
                 } else if (build.job().failed()) {
                     iterator.remove();
+                    diagnose(server, build.spec(), "Build failed after " + build.job().installed() + "/"
+                            + build.job().total() + " voxels; body=" + (build.job().body() == null
+                            ? "<unallocated>" : build.job().body().getUniqueId()));
                     XenoPixelsMod.LOGGER.warn("Physical {} batched build stopped: no free Sable plot", build.spec().displayName());
                 }
             } catch (RuntimeException error) {
                 iterator.remove();
+                ServerSubLevel failedBody = build.job().body();
+                String failure = build.spec().displayName() + " build failed: " + error.getMessage()
+                        + "; bodyUuid=" + (failedBody == null ? "<unallocated>" : failedBody.getUniqueId())
+                        + ", progress=" + build.job().installed() + "/" + build.job().total();
+                diagnose(server, build.spec(), failure);
                 build.job().cancel();
-                XenoPixelsMod.LOGGER.error("Physical {} batched build failed; partial body removed", build.spec().displayName(), error);
+                XenoPixelsMod.LOGGER.error("{}; partial body removed", failure, error);
             }
             int installed = build.job().installed() - before;
-            SpaceBuildWorkBudget.record(server, server.overworld().getGameTime(),
-                    SpaceBuildWorkBudget.Owner.CHART_PLANET, installed);
             budget -= installed;
         }
     }
 
     /** Stops a batched build whose players left; the half-built plot is removed. */
     private static boolean cancelBuild(MinecraftServer server, Spec spec) {
+        return cancelBuild(server, spec, "no player near any more");
+    }
+    private static boolean cancelBuild(MinecraftServer server, Spec spec, String why) {
         var builds = BUILDS.get(server);
         Build build = builds == null ? null : builds.remove(spec.id());
         if (build == null) return false;
@@ -901,7 +1096,7 @@ public final class PhysicalEarth implements SpaceTickScheduler.Pass {
         if (partial != null && !partial.isRemoved())
             SubLevelContainer.getContainer(partial.getLevel()).removeForceLoadTicket(partial, spec.ticket(), spec.id());
         build.job().cancel();
-        XenoPixelsMod.LOGGER.info("Physical {} build cancelled: no player near any more", spec.displayName());
+        XenoPixelsMod.LOGGER.info("Physical {} build cancelled: {}", spec.displayName(), why);
         return true;
     }
     private static boolean building(MinecraftServer server, Spec spec) {
@@ -950,8 +1145,24 @@ public final class PhysicalEarth implements SpaceTickScheduler.Pass {
         // A moon is staged on its loaded physical parent. A planet whose parent (the Sun) is not physical, or
         // not built, starts at its chart position and the orbit controller handles the rest.
         Vector3dc parent = row.parentId() == null ? null : liveCenter(level, row.parentId());
-        if (parent != null && row.kind() == CelestialBody.BodyKind.MOON)
-            return BlockPos.containing(parent.x() + row.pinnedX(), parent.y() + row.pinnedY(), parent.z() + row.pinnedZ());
+        if (parent != null && row.kind() == CelestialBody.BodyKind.MOON) {
+            // The evaluated chart already composes the Moon's Kepler offset around its live physical
+            // parent. pinnedY is only the authored fallback offset and can be below the Voidsea floor
+            // (the shipped Moon chart uses y=0), so staging from parent + pinned offset can reject a
+            // perfectly valid current orbit position. Sample the same shared orbit clock used by the
+            // controller and build at that resolved position instead.
+            double[] position = new double[3];
+            double[] velocity = new double[3];
+            double now = net.bullettrain.xenopixelsmod.space.SpaceOrbitClock.seconds(level.getServer());
+            // Reconcile can run directly after a datapack/chart reload, before the next scheduled chart
+            // evaluation. Refresh live physical observations and solve this one small chart synchronously
+            // so stateAt cannot return the prior chart's stale parent pose (or unevaluated zero arrays).
+            publishPosition(level.getServer(), chart);
+            chart.evaluate(now);
+            chart.stateAt(chart.slotOf(spec.id()), now,
+                    net.bullettrain.xenopixelsmod.space.SpaceOrbitClock.maxChartBridgeSeconds(), position, velocity);
+            return BlockPos.containing(position[0], position[1], position[2]);
+        }
         if (parent == null && row.kind() == CelestialBody.BodyKind.MOON
                 && SPECS.stream().anyMatch(other -> other.id().equals(row.parentId())))
             throw new IllegalStateException(spec.displayName() + " needs its physical parent loaded first");
@@ -968,12 +1179,18 @@ public final class PhysicalEarth implements SpaceTickScheduler.Pass {
 
     private static void requireNoBody(dev.ryanhcode.sable.api.sublevel.ServerSubLevelContainer container, AABB area, Spec spec,
                                       String which, boolean planetsOnly) {
+        List<String> blockers = new ArrayList<>();
         for (var other : container.getAllSubLevels()) {
             if (planetsOnly && !isManaged(other)) continue;
             var box = other.boundingBox();
-            if (area.intersects(box.minX(),box.minY(),box.minZ(),box.maxX(),box.maxY(),box.maxZ()))
-                throw new IllegalStateException(which + " Sable body occupies " + spec.displayName() + " staging volume");
+            if (!area.intersects(box.minX(),box.minY(),box.minZ(),box.maxX(),box.maxY(),box.maxZ())) continue;
+            var tag = other.getUserDataTag();
+            String bodyId = tag != null && tag.contains(TAG + "_body") ? tag.getString(TAG + "_body") : "unmanaged";
+            blockers.add("{body=" + bodyId + ", uuid=" + other.getUniqueId() + ", bounds=" + box + "}");
         }
+        if (!blockers.isEmpty())
+            throw new IllegalStateException(which + " Sable body blocker(s) " + String.join(", ", blockers)
+                    + " occupy " + spec.displayName() + " staging volume");
     }
 
     /**
@@ -1009,6 +1226,13 @@ public final class PhysicalEarth implements SpaceTickScheduler.Pass {
                 body.getUniqueId(),body.getLastSerializationPointer());
     }
 
+    /**
+     * Chart id this body's own persisted tag claims, or null if it is not a managed planet. A managed body with no
+     * id key is the legacy single-Earth body (same default as the adoption path).
+     */
+    public static String taggedBodyId(ServerSubLevel body) {
+        return body != null && isManaged(body) ? bodyIdOf(body) : null;
+    }
     public static boolean isManaged(ServerSubLevel body) {
         return body.getUserDataTag()!=null && body.getUserDataTag().getBoolean(TAG);
     }
@@ -1018,6 +1242,14 @@ public final class PhysicalEarth implements SpaceTickScheduler.Pass {
         if(id==null) return null;
         var body=SubLevelContainer.getContainer(level).getSubLevel(id);
         return body instanceof ServerSubLevel serverBody && !serverBody.isRemoved() && isManaged(serverBody) ? serverBody:null;
+    }
+    /** Persisted root orbital-plane Y for the chart body, or NaN when no loaded managed body provides one. */
+    public static double persistedPlaneY(ServerLevel level, String bodyId) {
+        ServerSubLevel body = getBody(level, bodyId);
+        if (body == null || body.getUserDataTag() == null || !body.getUserDataTag().contains(TAG + "_plane_y"))
+            return Double.NaN;
+        double y = body.getUserDataTag().getDouble(TAG + "_plane_y");
+        return Double.isFinite(y) ? y : Double.NaN;
     }
     public static ServerSubLevel getBody(ServerLevel level) { return getBody(level, BODY_ID); }
     /** Loaded managed bodies in this level by chart id, in creation order. */
@@ -1043,12 +1275,12 @@ public final class PhysicalEarth implements SpaceTickScheduler.Pass {
     }
     public static double liveRadius(ServerLevel level) { return liveRadius(level, BODY_ID); }
 
-    /** The exact Sable tracking caller passes the body's pose.position object, not a copied vector. */
+    /** Sable's tracking pass supplies each body's pose centre; compare coordinates to tolerate copied vectors. */
     public static boolean extendsNativeTracking(ServerLevel level,net.minecraft.world.entity.player.Player player,
                                                 Vector3dc candidateCentre) {
         if(player.level()!=level || !HOST.equals(level.dimension().location())) return false;
         for (var body : bodies(level).values()) {
-            if (body.logicalPose().position() == candidateCentre)
+            if (PlanetTrackingRange.sameCentre(body.logicalPose().position(), candidateCentre))
                 return PlanetTrackingRange.contains(player.getX(),player.getY(),player.getZ(),
                         candidateCentre.x(),candidateCentre.y(),candidateCentre.z());
         }
@@ -1073,7 +1305,20 @@ public final class PhysicalEarth implements SpaceTickScheduler.Pass {
                 Track track=PASS.tracks.get(body.getUniqueId());
                 out.append(" position=").append(body.logicalPose().position())
                         .append(" mass=").append(body.getMassTracker().getMass())
-                        .append(" shellV2=").append(body.getUserDataTag().getBoolean(SHELL_V2));
+                        .append(" shellV2=").append(body.getUserDataTag().getBoolean(SHELL_V2))
+                        .append(" trackingPlayers=").append(body.getTrackingPlayers().size());
+                var handle = SubLevelContainer.getContainer(level).physicsSystem().getPhysicsHandle(body);
+                var chart = SpaceChartService.state(server).runtime.chart;
+                int chartSlot = chart.slotOf(spec.id());
+                Double rotationPeriod = chartSlot < 0 ? null
+                        : chart.body(chartSlot).rotationPeriodSeconds();
+                if (handle != null && handle.isValid()) {
+                    Vector3d actualSpin = handle.getAngularVelocity(new Vector3d());
+                    out.append(' ').append(PlanetSpinStatus.format(actualSpin, rotationPeriod,
+                            body.logicalPose().orientation(), XenoSpaceConfig.realOrbits()));
+                } else {
+                    out.append(" angularVelocity=unavailable");
+                }
                 if(track!=null) out.append(String.format(" velocity=(%.3f %.3f %.3f) holdError=%.2f correction=%.3f %s outside=%.3f",
                         track.velocity[0],track.velocity[1],track.velocity[2],track.lastError,track.lastCorrection,
                         track.held?"held":"released",track.release.outside()));
@@ -1104,11 +1349,16 @@ public final class PhysicalEarth implements SpaceTickScheduler.Pass {
     public static void publishPosition(MinecraftServer server, ChartRegistry chart) {
         ServerLevel level=server.getLevel(ResourceKey.create(Registries.DIMENSION,HOST));
         if(level==null) return;
+        double sampleTime = net.bullettrain.xenopixelsmod.space.SpaceOrbitClock.seconds(server);
+        chart.clearObservedBodies();
         for (var entry : bodies(level).entrySet()) {
             if(chart.slotOf(entry.getKey())<0) continue;
             var pos=entry.getValue().logicalPose().position();
-            if(Double.isFinite(pos.x())&&Double.isFinite(pos.y())&&Double.isFinite(pos.z()))
-                chart.moveBody(entry.getKey(),pos.x(),pos.y(),pos.z());
+            if(!Double.isFinite(pos.x())||!Double.isFinite(pos.y())||!Double.isFinite(pos.z())) continue;
+            Track track=PASS.tracks.get(entry.getValue().getUniqueId());
+            if(track!=null&&track.hasVelocity)
+                chart.observeBody(entry.getKey(),pos.x(),pos.y(),pos.z(),track.velocity[0],track.velocity[1],track.velocity[2],sampleTime);
+            else chart.observeBody(entry.getKey(),pos.x(),pos.y(),pos.z(),Double.NaN,Double.NaN,Double.NaN,sampleTime);
         }
     }
 
@@ -1197,8 +1447,18 @@ public final class PhysicalEarth implements SpaceTickScheduler.Pass {
             impulse.add(track.command[0],track.command[1],track.command[2]);
             track.lastCorrection=correction;
         }
-        if(!track.held && XenoSpaceConfig.planetSpinDamping()>0) {
-            // A released planet stops tumbling. Removing a fraction of its own spin is frame-independent.
+        int chartSlot=chart.slotOf(bodyId);
+        Double rotationPeriod=chartSlot<0?null:chart.body(chartSlot).rotationPeriodSeconds();
+        if(XenoSpaceConfig.realOrbits() && rotationPeriod!=null) {
+            // Keep an authored sidereal spin in world space while the body's pose changes. The chart's signed period
+            // gives retrograde direction; absent data retains the old station-keeping spin damping below.
+            PlanetRotationMath.angularVelocity(rotationPeriod,body.logicalPose().orientation(),angularTarget);
+            handle.getAngularVelocity(angular);
+            angularDelta.set(angularTarget).sub(angular);
+            if(angularDelta.isFinite() && angularDelta.lengthSquared()>1e-16)
+                handle.addLinearAndAngularVelocity(linear.zero(),angularDelta);
+        } else if(!track.held && XenoSpaceConfig.planetSpinDamping()>0) {
+            // Bodies without authored sidereal spin retain the previous free-tumble damping behavior.
             double fraction=Math.min(1.0,XenoSpaceConfig.planetSpinDamping()*step);
             handle.getAngularVelocity(angular);
             if(angular.lengthSquared()>1e-10) handle.addLinearAndAngularVelocity(linear.zero(),angular.mul(-fraction));
@@ -1229,26 +1489,52 @@ public final class PhysicalEarth implements SpaceTickScheduler.Pass {
         double px,py,pz,pvx=0,pvy=0,pvz=0;
         String parentId=row.parentId();
         ServerSubLevel parentBody=parentId==null?null:getBody(level,parentId);
-        if(parentBody!=null) {
+        if(net.bullettrain.xenopixelsmod.space.SpaceHomeOrbitalFrame.SOL_ID.equals(parentId)) {
+            int parent=chart.slotOf(parentId);
+            double now=net.bullettrain.xenopixelsmod.space.SpaceOrbitClock.seconds(level.getServer());
+            var focus=net.bullettrain.xenopixelsmod.space.SpaceHomeOrbitalFrame.resolve(level,chart);
+            if(parent<0 || focus==null) return false;
+            chart.stateAt(parent, now,
+                    net.bullettrain.xenopixelsmod.space.SpaceOrbitClock.maxChartBridgeSeconds(),
+                    chartParentPosition, chartParentVelocity);
+            px=chartParentPosition[0]; py=focus.y(); pz=chartParentPosition[2];
+            pvx=chartParentVelocity[0]; pvy=chartParentVelocity[1]; pvz=chartParentVelocity[2];
+        } else if(parentBody!=null) {
             var p=parentBody.logicalPose().position();
-            // Each body keeps the orbital plane it was staged on; the Sun's centre sits higher than 128 to
-            // fit its shell, and Earth must not climb to it.
-            px=p.x();py=tag.contains(TAG+"_plane_y")?planeY:p.y();pz=p.z();
+            // A physical child's orbit is centred on the parent's live centre on every axis. In particular,
+            // an inclined Earth track moves vertically, so the Moon must follow Earth's live Y rather than
+            // the Moon's original staging plane. The staging plane remains the fallback for a nonphysical parent.
+            px=p.x();py=p.y();pz=p.z();
             Track parentTrack=tracks.get(parentBody.getUniqueId());
             if(parentTrack!=null){pvx=parentTrack.velocity[0];pvy=parentTrack.velocity[1];pvz=parentTrack.velocity[2];}
         } else {
             int parent=parentId==null?-1:chart.slotOf(parentId);
-            px=parent<0?0:chart.x(parent);
-            pz=parent<0?0:chart.z(parent);
-            py=planeY;
-            if(parent>=0){pvx=chart.velocityX(parent);pvz=chart.velocityZ(parent);}
+            if(parent>=0) {
+                chart.stateAt(parent, net.bullettrain.xenopixelsmod.space.SpaceOrbitClock.seconds(level.getServer()),
+                        net.bullettrain.xenopixelsmod.space.SpaceOrbitClock.maxChartBridgeSeconds(),
+                        chartParentPosition, chartParentVelocity);
+                px=chartParentPosition[0];py=planeY;pz=chartParentPosition[2];
+                // Preserve the saved orbital plane for a body whose parent is chart-only (especially Earth
+                // around chart-only Sol). Its horizontal origin/velocity still follows the shared clock.
+                pvx=chartParentVelocity[0];pvz=chartParentVelocity[2];
+            } else {
+                px=0;py=planeY;pz=0;
+            }
         }
         var orbit=row.orbit();
         if(XenoSpaceConfig.realOrbits() && row.moves() && orbit!=null) {
             double mu=PlanetShell.orbitMu(orbit.semiMajorAxis(),orbit.periodSeconds());
-            double now=tick/20.0;
-            if(!tag.contains(TAG+"_orbit_shift")) tag.putDouble(TAG+"_orbit_shift",
-                    phaseShift(orbit, now, position[0]-px, position[2]-pz));
+            double now=net.bullettrain.xenopixelsmod.space.SpaceOrbitClock.seconds(level.getServer());
+            String signature=orbitSignature(orbit);
+            // The old phase offset was derived from the orbital elements that existed when the body
+            // was first managed. Re-anchor from its current position after an element change, including
+            // legacy saves that have an offset but no signature. This preserves continuity while
+            // preventing old period/phase data from leaving a body permanently out of sync.
+            if(!tag.contains(TAG+"_orbit_shift") || orbitNeedsReanchor(tag.getString(TAG+"_orbit_signature"),orbit)) {
+                tag.putDouble(TAG+"_orbit_shift", phaseShift(orbit, now,
+                        position[0]-px, position[1]-py, position[2]-pz));
+                tag.putString(TAG+"_orbit_signature",signature);
+            }
             PlanetOrbitHold.orbitTrack(orbit,mu,now+tag.getDouble(TAG+"_orbit_shift"),offset,offsetVelocity,feedForward);
         } else {
             offset[0]=row.pinnedX();offset[1]=row.pinnedY();offset[2]=row.pinnedZ();
@@ -1278,17 +1564,80 @@ public final class PhysicalEarth implements SpaceTickScheduler.Pass {
     }
 
     /**
-     * Time shift that puts the orbit's track at the planet's current bearing around its parent. Exact for a
-     * circular orbit; for an eccentric one the mean motion is used, which the controller then corrects.
+     * Time shift that places the new orbital track at its closest point to the body's current position.
+     * The minimization includes all three world axes, so inclined or eccentric elements do not introduce
+     * an avoidable position discontinuity when an old saved orbit is re-anchored.
      */
-    static double phaseShift(net.bullettrain.xenopixelsmod.space.math.OrbitalElements orbit, double now, double dx, double dz) {
-        double[] p=KeplerSolver.position(orbit,now,new double[3]);
-        // Kepler XY maps to world XZ.
-        double current=Math.atan2(dz,dx), track=Math.atan2(p[1],p[0]);
-        double delta=current-track;
-        delta=Math.atan2(Math.sin(delta),Math.cos(delta));
-        double n=2*Math.PI/orbit.periodSeconds();
-        return Double.isFinite(delta/n)?delta/n:0;
+    static double phaseShift(net.bullettrain.xenopixelsmod.space.math.OrbitalElements orbit,
+                             double now, double dx, double dy, double dz) {
+        if (orbit == null || !Double.isFinite(now) || !Double.isFinite(dx)
+                || !Double.isFinite(dy) || !Double.isFinite(dz)) return 0;
+
+        // KeplerSolver uses reference coordinates [x,y,z], while the physical world maps them to
+        // [x,z,y] (Kepler's XY plane is Minecraft's horizontal XZ plane).
+        double targetX=dx, targetY=dz, targetZ=dy;
+        double period=orbit.periodSeconds();
+        final int samples=256;
+        double step=period/samples;
+        double start=-period*0.5;
+        double bestShift=0, bestDistance=Double.POSITIVE_INFINITY;
+        double[] candidate=new double[3];
+        for(int i=0;i<samples;i++) {
+            double shift=start+i*step;
+            KeplerSolver.position(orbit,now+shift,candidate);
+            double ex=candidate[0]-targetX, ey=candidate[1]-targetY, ez=candidate[2]-targetZ;
+            double distance=ex*ex+ey*ey+ez*ez;
+            if(distance<bestDistance) { bestDistance=distance; bestShift=shift; }
+        }
+
+        // The coarse phase scan locates the global basin. A bounded golden-section refinement then
+        // resolves it to substantially finer than a Minecraft collision unit without an iterative
+        // solver in the per-tick path (this method runs only when an orbit signature changes).
+        double low=bestShift-step, high=bestShift+step;
+        final double ratio=0.6180339887498949;
+        double left=high-ratio*(high-low), right=low+ratio*(high-low);
+        double leftDistance=phaseDistance(orbit,now,left,targetX,targetY,targetZ,candidate);
+        double rightDistance=phaseDistance(orbit,now,right,targetX,targetY,targetZ,candidate);
+        for(int i=0;i<32;i++) {
+            if(leftDistance<=rightDistance) {
+                high=right; right=left; rightDistance=leftDistance;
+                left=high-ratio*(high-low);
+                leftDistance=phaseDistance(orbit,now,left,targetX,targetY,targetZ,candidate);
+            } else {
+                low=left; left=right; leftDistance=rightDistance;
+                right=low+ratio*(high-low);
+                rightDistance=phaseDistance(orbit,now,right,targetX,targetY,targetZ,candidate);
+            }
+        }
+        double refined=0.5*(low+high);
+        return Double.isFinite(refined)?refined:bestShift;
+    }
+
+    /** Compatibility overload for callers/tests that only specify a horizontal point. */
+    static double phaseShift(net.bullettrain.xenopixelsmod.space.math.OrbitalElements orbit,
+                             double now, double dx, double dz) {
+        return phaseShift(orbit,now,dx,0,dz);
+    }
+
+    private static double phaseDistance(net.bullettrain.xenopixelsmod.space.math.OrbitalElements orbit,
+                                        double now, double shift, double targetX, double targetY, double targetZ,
+                                        double[] candidate) {
+        KeplerSolver.position(orbit,now+shift,candidate);
+        double ex=candidate[0]-targetX, ey=candidate[1]-targetY, ez=candidate[2]-targetZ;
+        return ex*ex+ey*ey+ez*ez;
+    }
+
+    /** Stable persisted fingerprint for every value that defines an orbit's analytical track. */
+    static String orbitSignature(net.bullettrain.xenopixelsmod.space.math.OrbitalElements orbit) {
+        return Double.toHexString(orbit.semiMajorAxis())+":"+Double.toHexString(orbit.eccentricity())+":"+
+                Double.toHexString(orbit.inclination())+":"+Double.toHexString(orbit.ascendingNode())+":"+
+                Double.toHexString(orbit.argumentOfPeriapsis())+":"+Double.toHexString(orbit.meanAnomalyAtEpoch())+":"+
+                Double.toHexString(orbit.periodSeconds())+":"+Double.toHexString(orbit.epochSeconds());
+    }
+
+    static boolean orbitNeedsReanchor(String savedSignature,
+                                      net.bullettrain.xenopixelsmod.space.math.OrbitalElements orbit) {
+        return savedSignature.isEmpty() || !orbitSignature(orbit).equals(savedSignature);
     }
 
     private static boolean protectedBlock(ServerLevel level,BlockPos pos) {

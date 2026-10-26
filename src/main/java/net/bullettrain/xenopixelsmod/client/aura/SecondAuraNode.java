@@ -9,12 +9,13 @@ import net.minecraft.resources.ResourceLocation;
 /**
  * "Toggle Second Aura" under Ki Actions in DragonMineZ's X menu (2026-10-02 owner): switches
  * your own second aura, the HD aura, on and off for everyone who sees you. In the Hakaishin form
- * the same entry reads "Toggle Hakai no Energy". It sends {@code /secondaura on|off}; the state
+ * the same entry reads "Toggle Hakai no Energy" and selects DMZ's native purple body border.
+ * It sends {@code /secondaura on|off}; the state
  * shown is the one the server sent back ({@link SecondAuraClientState}).
  */
 public final class SecondAuraNode extends AbstractRadialNode {
     /** The form group of xenopixels_hakaishin.json. */
-    static final String HAKAISHIN_GROUP = "xenopixels_hakaishin";
+    static final String HAKAISHIN_GROUP = HakaiEnergyAuraPolicy.FORM_GROUP;
 
     @Override
     public Component label(StatsData stats) {

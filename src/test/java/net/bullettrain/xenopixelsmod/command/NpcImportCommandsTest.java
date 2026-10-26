@@ -26,15 +26,34 @@ class NpcImportCommandsTest {
     @Test
     void dryRunIsTheDefaultAndWritingNeedsConfirm() throws IOException {
         // A migration that has overwritten the destination before the operator has seen its plan
-        // is a migration with no undo.
+        // is a migration with no undo. Each subcommand is checked on its own branch, so adding
+        // another one cannot slip a write in ahead of a preview.
         String command = code("src/main/java/net/bullettrain/xenopixelsmod/command",
                 "NpcImportCommands.java");
-        int bare = command.indexOf(".executes(context -> run(context.getSource(), true, false))");
-        int confirm = command.indexOf("Commands.literal(\"confirm\")");
-        assertTrue(bare >= 0, "the bare command must be the dry run");
-        assertTrue(confirm > bare, "and writing must sit behind an explicit confirm");
-        assertTrue(command.contains("run(context.getSource(), false, false)"),
-                "only the confirm branch writes");
+        String[] branches = {"playerdata", "factions", "all"};
+        for (String branch : branches) {
+            int start = command.indexOf("Commands.literal(\"" + branch + "\")");
+            assertTrue(start >= 0, branch + " must be registered");
+            int end = command.length();
+            for (String other : branches) {
+                if (other.equals(branch)) {
+                    continue;
+                }
+                int at = command.indexOf("Commands.literal(\"" + other + "\")");
+                if (at > start) {
+                    end = Math.min(end, at);
+                }
+            }
+            String span = command.substring(start, end);
+            int bare = span.indexOf(".executes(");
+            int confirm = span.indexOf("Commands.literal(\"confirm\")");
+            assertTrue(bare >= 0, branch + " needs a branch that runs without confirm");
+            assertTrue(confirm > bare, branch + " needs confirm nested inside it");
+            assertTrue(span.substring(bare, confirm).contains(", true"),
+                    branch + ": the bare branch must be the dry run");
+            assertTrue(span.substring(confirm).contains(", false"),
+                    branch + ": confirm is the one that writes");
+        }
         assertTrue(command.contains("Commands.literal(\"all\")"),
                 "one command covers shared data and placed NPCs");
     }

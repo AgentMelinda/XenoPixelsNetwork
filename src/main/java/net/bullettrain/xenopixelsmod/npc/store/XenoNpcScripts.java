@@ -106,7 +106,24 @@ public final class XenoNpcScripts {
         if (tag.getString("Script").length() > MAX_SCRIPT_CHARS) {
             return "script is longer than " + MAX_SCRIPT_CHARS + " characters";
         }
+        if (tag.contains("Loaded")) {
+            if (!(tag.get("Loaded") instanceof net.minecraft.nbt.ListTag loaded)
+                    || (!loaded.isEmpty() && loaded.getElementType() != net.minecraft.nbt.Tag.TAG_STRING))
+                return "loaded scripts must be a list of ids";
+            if (loaded.size() > net.bullettrain.xenopixelsmod.npc.script.NpcScriptContainer.MAX_LOADED)
+                return "too many loaded scripts";
+            for (int i = 0; i < loaded.size(); i++)
+                if (XenoNpcStorePaths.reject(loaded.getString(i)) != null) return "invalid loaded script id";
+        }
         return null;
+    }
+
+    /** Editor saves replace authored fields, while import ownership remains attached to the entry. */
+    public static void carryImportMetadata(@Nullable CompoundTag existing, CompoundTag payload) {
+        if (existing == null) return;
+        for (String key : List.of("SourceMod", "SourceNpc", "SourcePath", "SourceTabIndex", "SourceTab")) {
+            if (existing.contains(key)) payload.put(key, existing.get(key).copy());
+        }
     }
 
     /** One stored script, or null when the id is unknown or the entry is unusable. */
@@ -139,6 +156,28 @@ public final class XenoNpcScripts {
     public static String playerScriptText(@Nullable String id) {
         Script script = load(XenoNpcStoreCategory.PLAYER_SCRIPTS, id);
         return script == null || !script.enabled() ? null : script.script();
+    }
+
+    /** Shared library text precedes a global tab's own text, as for an NPC script tab. */
+    @Nullable
+    public static String sourceText(CompoundTag payload) {
+        return composeSource(payload, XenoNpcScripts::scriptText);
+    }
+
+    /** Refuses partial execution when a loaded library was removed, disabled, or exceeds bounds. */
+    @Nullable
+    public static String composeSource(CompoundTag payload, java.util.function.Function<String, String> libraryText) {
+        StringBuilder text = new StringBuilder();
+        var loaded = payload.getList("Loaded", net.minecraft.nbt.Tag.TAG_STRING);
+        if (loaded.size() > net.bullettrain.xenopixelsmod.npc.script.NpcScriptContainer.MAX_LOADED) return null;
+        for (int i = 0; i < loaded.size(); i++) {
+            String library = libraryText.apply(loaded.getString(i));
+            if (library == null || text.length() + library.length() + 1 > MAX_SCRIPT_CHARS) return null;
+            text.append(library).append('\n');
+        }
+        String own = payload.getString("Script");
+        if (text.length() + own.length() > MAX_SCRIPT_CHARS) return null;
+        return text.append(own).toString();
     }
 
     /** Every stored script id, sorted, including disabled ones. */

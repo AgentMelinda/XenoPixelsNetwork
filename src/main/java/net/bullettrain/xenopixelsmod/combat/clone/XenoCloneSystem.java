@@ -347,6 +347,36 @@ public final class XenoCloneSystem {
         return clone;
     }
 
+    /** Real decoys, placed in travel order without occupying the fighter's landing position. */
+    public static List<XenoCloneEntity> trail(ServerPlayer owner, Vec3 from, Vec3 to,
+                                             int configuredCount, int lifetimeTicks) {
+        if (owner == null || from == null || to == null
+                || !(owner.level() instanceof ServerLevel level)) return List.of();
+        disperseRing(owner.getUUID());
+        List<XenoCloneEntity> placed = new ArrayList<>();
+        int count = net.bullettrain.xenopixelsmod.combat.ZanzokenTrail.count(configuredCount);
+        Vec3 displacement = to.subtract(from);
+        for (int index = 0; index < count; index++) {
+            Vec3 at = from.add(displacement.scale(
+                    net.bullettrain.xenopixelsmod.combat.ZanzokenTrail.fraction(index, count)));
+            // Never put a decoy into solid geometry or force-load a chunk for a visual trail.
+            if (!level.hasChunkAt(net.minecraft.core.BlockPos.containing(at))
+                    || !level.noCollision(owner, owner.getBoundingBox().move(at.subtract(owner.position())))) continue;
+            XenoCloneEntity clone = ModEntities.CLONE.get().create(level);
+            if (clone == null) continue;
+            clone.moveTo(at.x, at.y, at.z, owner.getYRot(), owner.getXRot());
+            clone.configure(owner, XenoCloneEntity.SLOT_STATIONARY,
+                    net.bullettrain.xenopixelsmod.combat.ZanzokenTrail.lifetime(lifetimeTicks, index, count), 1.0f);
+            clone.configureTrail(owner);
+            if (level.addFreshEntity(clone)) {
+                track(clone);
+                placed.add(clone);
+            }
+        }
+        if (!placed.isEmpty()) RINGS.put(owner.getUUID(), new ArrayList<>(placed));
+        return List.copyOf(placed);
+    }
+
     /**
      * Surrounds a target with a closed ring of copies, for Zanzoken.
      *

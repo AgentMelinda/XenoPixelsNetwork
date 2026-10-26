@@ -38,8 +38,8 @@ public final class DmzFormMakerScreen extends ScaledScreen {
 
     /** Drawn at the vanilla GUI Scale; see {@link NpcGuiScale}. */
     @Override
-    protected float computeDynamicScale(float available) {
-        return NpcGuiScale.dynamicScale(super.computeDynamicScale(available));
+    protected float computeDynamicScale(int width, int height) {
+        return NpcGuiScale.dynamicScale(super.computeDynamicScale(width, height));
     }
     /** Inline colour picker shared by every colour row on this screen; opens over it. */
     private final net.bullettrain.xenopixelsmod.client.ui.atlas.InlineColorPicker colorPicker = new net.bullettrain.xenopixelsmod.client.ui.atlas.InlineColorPicker();

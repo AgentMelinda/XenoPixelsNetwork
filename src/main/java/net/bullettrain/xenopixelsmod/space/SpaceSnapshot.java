@@ -7,6 +7,8 @@ import net.minecraft.network.FriendlyByteBuf;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
+import org.joml.Vector3dc;
 
 /**
  * Bounded visual snapshot, not client authority or a physics/terrain payload.
@@ -27,7 +29,7 @@ public record SpaceSnapshot(int revision,List<Body> bodies) {
      */
     public static final int MAX_BODIES=32;
     /**
-     * @param id     the chart body's id, for logs and for a client that wants to key per-body art later
+     * @param id     the body's stable id, for logs and for per-body art lookup
      * @param style  the proxy atlas cell, {@code 0} to {@link CelestialBody#MAX_VISUAL_STYLES}-1
      * @param x      chart-space position, which is also the world position the proxy draws at
      * @param radius the body's own radius in blocks; the drawn quad is sized from it
@@ -50,21 +52,52 @@ public record SpaceSnapshot(int revision,List<Body> bodies) {
     private static boolean coordinate(double v) {return Double.isFinite(v)&&Math.abs(v)<=30_000_000;}
 
     /**
-     * The bodies a client should draw right now, in slot order — which is the chart's topological order,
-     * so the list is stable across revisions and cannot flicker between two frames.
+     * The bodies a client should draw right now. Live physical extras are first in their supplied stable
+     * order; charted bodies follow in topological slot order. Reserving room for extras prevents a full
+     * chart from making persistent uncharted physical bodies disappear from far LOD.
      *
      * <p>Reads only the ladder stage and the evaluated position, so it is safe to call from the visual
      * pass; it allocates the list, which is why the caller builds it on a change rather than per tick.
      */
     public static SpaceSnapshot fromChart(ChartRegistry chart,int revision) {
-        var bodies=new ArrayList<Body>(Math.min(MAX_BODIES,chart.size()));
+        return fromChart(chart, revision, Map.of(), List.of(), Double.NaN);
+    }
+    /**
+     * The same bounded LOD snapshot, with live Sable centres substituted for loaded physical bodies. A far LOD then
+     * follows the real simulated body instead of drawing a second stale globe at its authored chart coordinate.
+     */
+    public static SpaceSnapshot fromChart(ChartRegistry chart,int revision,Map<String,? extends Vector3dc> liveCentres) {
+        return fromChart(chart, revision, liveCentres, List.of(), Double.NaN);
+    }
+
+    /** Adds bounded live physical bodies that do not have chart rows, such as persistent SDB planets. */
+    public static SpaceSnapshot fromChart(ChartRegistry chart,int revision,
+                                           Map<String,? extends Vector3dc> liveCentres,List<Body> liveExtras) {
+        return fromChart(chart, revision, liveCentres, liveExtras, Double.NaN);
+    }
+
+    /** Adds the persisted home-system Y frame for chart-only bodies; live physical centres still win. */
+    public static SpaceSnapshot fromChart(ChartRegistry chart,int revision,
+                                           Map<String,? extends Vector3dc> liveCentres,List<Body> liveExtras,
+                                           double homeFrameY) {
+        int extraCapacity=liveExtras==null?0:liveExtras.size();
+        var bodies=new ArrayList<Body>(Math.min(MAX_BODIES,chart.size()+extraCapacity));
+        if(liveExtras!=null) for(Body extra:liveExtras) {
+            if(bodies.size()==MAX_BODIES) break;
+            if(extra!=null && !containsId(bodies,extra.id())) bodies.add(extra);
+        }
         for(int slot=0;slot<chart.size() && bodies.size()<MAX_BODIES;slot++) {
             BodyLod stage=chart.lodOf(slot);
             if(stage.ordinal()<BodyLod.PROXY.ordinal() || stage.ordinal()>BodyLod.ANCHOR.ordinal()) continue;
             if(chart.body(slot).kind()==CelestialBody.BodyKind.BLACK_HOLE) continue; // drawn by BlackHoleClient
             if(!coordinate(chart.x(slot))||!coordinate(chart.y(slot))||!coordinate(chart.z(slot)))continue;
             var body=chart.body(slot);
-            bodies.add(new Body(body.id(),body.skyStyle(),chart.x(slot),chart.y(slot),chart.z(slot),
+            if(containsId(bodies,body.id())) continue;
+            Vector3dc centre=liveCentres.get(body.id());
+            double x=centre!=null&&coordinate(centre.x())?centre.x():chart.x(slot);
+            double y=centre!=null&&coordinate(centre.y())?centre.y():SpaceHomeOrbitalFrame.chartY(chart,slot,homeFrameY);
+            double z=centre!=null&&coordinate(centre.z())?centre.z():chart.z(slot);
+            bodies.add(new Body(body.id(),body.skyStyle(),x,y,z,
                     body.radiusBlocks()));
         }
         return new SpaceSnapshot(revision,bodies);
@@ -78,15 +111,64 @@ public record SpaceSnapshot(int revision,List<Body> bodies) {
      * <p>Allocation-free by design — this runs on the server tick path §5 of the perf work cleaned up.
      */
     public static long signature(ChartRegistry chart,int revision) {
+        return signature(chart, revision, Map.of(), List.of(), Double.NaN);
+    }
+    public static long signature(ChartRegistry chart,int revision,Map<String,? extends Vector3dc> liveCentres) {
+        return signature(chart, revision, liveCentres, List.of(), Double.NaN);
+    }
+    public static long signature(ChartRegistry chart,int revision,
+                                Map<String,? extends Vector3dc> liveCentres,List<Body> liveExtras) {
+        return signature(chart, revision, liveCentres, liveExtras, Double.NaN);
+    }
+
+    public static long signature(ChartRegistry chart,int revision,
+                                Map<String,? extends Vector3dc> liveCentres,List<Body> liveExtras,
+                                double homeFrameY) {
         long hash=1_469_598_103_934_665_603L*31+revision;
+        int count=0;
+        if(liveExtras!=null) for(int i=0;i<liveExtras.size() && count<MAX_BODIES;i++) {
+            Body body=liveExtras.get(i);
+            if(body==null || containsId(liveExtras,i,body.id())) continue;
+            hash=mixBody(hash,body,BodyLod.PROXY.ordinal());
+            count++;
+        }
         for(int slot=0;slot<chart.size();slot++) {
+            if(count>=MAX_BODIES) break;
             BodyLod stage=chart.lodOf(slot);
             if(stage.ordinal()<BodyLod.PROXY.ordinal() || stage.ordinal()>BodyLod.ANCHOR.ordinal()) continue;
             if(chart.body(slot).kind()==CelestialBody.BodyKind.BLACK_HOLE) continue;
+            if(containsId(liveExtras,chart.body(slot).id())) continue;
             hash=mix(hash,stage.ordinal()); hash=mix(hash,chart.body(slot).skyStyle());
-            hash=mix(hash,round(chart.x(slot))); hash=mix(hash,round(chart.y(slot)));
-            hash=mix(hash,round(chart.z(slot))); hash=mix(hash,Math.round(chart.body(slot).radiusBlocks()));
+            hash=mixString(hash,chart.body(slot).id());
+            Vector3dc centre=liveCentres.get(chart.body(slot).id());
+            hash=mix(hash,round(centre!=null&&coordinate(centre.x())?centre.x():chart.x(slot)));
+            hash=mix(hash,round(centre!=null&&coordinate(centre.y())?centre.y():SpaceHomeOrbitalFrame.chartY(chart,slot,homeFrameY)));
+            hash=mix(hash,round(centre!=null&&coordinate(centre.z())?centre.z():chart.z(slot)));
+            hash=mix(hash,Math.round(chart.body(slot).radiusBlocks()));
+            count++;
         }
+        return hash;
+    }
+    private static boolean containsId(List<Body> bodies,String id) {
+        if(bodies==null) return false;
+        for(Body body:bodies) if(body!=null && body.id().equals(id)) return true;
+        return false;
+    }
+    private static boolean containsId(List<Body> bodies,int before,String id) {
+        for(int i=0;i<before;i++) {
+            Body body=bodies.get(i);
+            if(body!=null && body.id().equals(id)) return true;
+        }
+        return false;
+    }
+    private static long mixBody(long hash,Body body,int stage) {
+        hash=mix(hash,stage); hash=mix(hash,body.style()); hash=mixString(hash,body.id());
+        hash=mix(hash,round(body.x())); hash=mix(hash,round(body.y())); hash=mix(hash,round(body.z()));
+        return mix(hash,Math.round(body.radius()));
+    }
+    private static long mixString(long hash,String value) {
+        hash=mix(hash,value.length());
+        for(int i=0;i<value.length();i++) hash=mix(hash,value.charAt(i));
         return hash;
     }
     private static long round(double v) {return Double.isFinite(v)?(long)Math.floor(v+0.5):Long.MIN_VALUE;}

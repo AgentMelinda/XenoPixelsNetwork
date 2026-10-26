@@ -5,6 +5,7 @@ import com.mojang.blaze3d.vertex.VertexFormat;
 import net.minecraft.client.renderer.MultiBufferSource;
 import net.minecraft.client.renderer.OutlineBufferSource;
 import net.minecraft.client.renderer.RenderType;
+import net.minecraft.world.phys.Vec3;
 
 /**
  * Hakai "sweep" for entities (owner 2026-10-16: the planet's top-to-bottom erasure "for players and Sable ships and
@@ -28,12 +29,15 @@ final class HakaiClipMultiBufferSource implements MultiBufferSource {
     private final float cameraX, cameraZ;
     /** When set, every vertex's world position is recorded here before clipping (HakaiSweepFx model fit). */
     private final HakaiSweepFx.Extent extent;
+    private final Vec3 impactOrigin;
+    private final float impactRadius;
 
     HakaiClipMultiBufferSource(MultiBufferSource delegate, float cutY, float cameraY, float qx, float qy, float qz, float qw) {
         this.delegate = delegate;
         this.cutY = cutY; this.cameraY = cameraY;
         this.qx = qx; this.qy = qy; this.qz = qz; this.qw = qw;
         this.cameraX = 0f; this.cameraZ = 0f; this.extent = null;
+        this.impactOrigin = null; this.impactRadius = 0f;
     }
 
     /** Entity sweep: unrotated camera-relative vertices, measuring the model while cutting it. */
@@ -43,6 +47,17 @@ final class HakaiClipMultiBufferSource implements MultiBufferSource {
         this.cutY = cutY; this.cameraY = cameraY;
         this.qx = 0f; this.qy = 0f; this.qz = 0f; this.qw = 1f;
         this.cameraX = cameraX; this.cameraZ = cameraZ; this.extent = extent;
+        this.impactOrigin = null; this.impactRadius = 0f;
+    }
+
+    /** Impact-origin dissolve: erase the model surface inside an expanding sphere centred on its crosshair point. */
+    HakaiClipMultiBufferSource(MultiBufferSource delegate, float cameraX, float cameraY, float cameraZ,
+                              HakaiSweepFx.Extent extent, Vec3 impactOrigin, float impactRadius) {
+        this.delegate = delegate;
+        this.cutY = 0f; this.cameraY = cameraY;
+        this.qx = 0f; this.qy = 0f; this.qz = 0f; this.qw = 1f;
+        this.cameraX = cameraX; this.cameraZ = cameraZ; this.extent = extent;
+        this.impactOrigin = impactOrigin; this.impactRadius = Math.max(0f, impactRadius);
     }
 
     @Override
@@ -56,17 +71,19 @@ final class HakaiClipMultiBufferSource implements MultiBufferSource {
                 ? AlphaMultiBufferSource.innerBufferSource(outline)
                 : null;
         VertexConsumer inner = body != null ? body.getBuffer(renderType) : delegate.getBuffer(renderType);
-        // Last resort for wrapper chains we do not know (Iris, Sable, mods): a fan-out consumer's second member can be
-        // closed at any time, and those nested classes implement VertexConsumer without extending VertexMultiConsumer,
-        // so no instanceof test can name them. Draw such a buffer unclipped rather than risk the frame.
-        if (inner.getClass().getName().startsWith("com.mojang.blaze3d.vertex.VertexMultiConsumer")) return inner;
-        // Quads whose format ends in a normal (every entity format): the clipper flushes a quad on its 4th normal.
+        boolean fanOut = inner.getClass().getName().startsWith("com.mojang.blaze3d.vertex.VertexMultiConsumer");
         boolean clippable = renderType.mode() == VertexFormat.Mode.QUADS
                 && renderType.format().contains(com.mojang.blaze3d.vertex.VertexFormatElement.NORMAL);
         if (extent != null && net.bullettrain.xenopixelsmod.client.config.XenoClientConfig.hakaiSweepDebug)
-            net.bullettrain.xenopixelsmod.XenoPixelsMod.LOGGER.info("HAKAI_SWEEP type {} clippable={} consumer={}", renderType, clippable,
-                    inner.getClass().getSimpleName());
-        return clippable ? new Clip(inner, renderType.toString()) : inner;
+            net.bullettrain.xenopixelsmod.XenoPixelsMod.LOGGER.info("HAKAI_SWEEP type={} clippable={} consumer={} bypass={}",
+                    renderType, clippable, inner.getClass().getName(), fanOut ? "multi_consumer" : clippable ? "none" : "format_or_mode");
+        // Last resort for wrapper chains we do not know (Iris, Sable, mods): a fan-out consumer's second member can be
+        // closed at any time, and those nested classes implement VertexConsumer without extending VertexMultiConsumer,
+        // so no instanceof test can name them. Draw such a buffer unclipped rather than risk the frame.
+        if (fanOut) return inner;
+        // Quads whose format ends in a normal (every entity format): the clipper flushes a quad on its 4th normal.
+        return clippable ? new Clip(inner, renderType.toString(),
+                renderType.format().contains(com.mojang.blaze3d.vertex.VertexFormatElement.COLOR)) : inner;
     }
 
     float worldY(float x, float y, float z) {
@@ -86,9 +103,13 @@ final class HakaiClipMultiBufferSource implements MultiBufferSource {
         private int count = -1;
 
         private final String typeName;
+        private final boolean colorable;
         private float typeMinY = Float.POSITIVE_INFINITY, typeMaxY = Float.NEGATIVE_INFINITY;
         private final boolean shadow;
-        Clip(VertexConsumer out, String typeName) { this.out = out; this.typeName = typeName; this.shadow = typeName.contains("entity_shadow"); }
+        Clip(VertexConsumer out, String typeName, boolean colorable) {
+            this.out = out; this.typeName = typeName; this.colorable = colorable;
+            this.shadow = typeName.contains("entity_shadow");
+        }
 
         @Override public VertexConsumer addVertex(float px, float py, float pz) {
             if (count == 3) flushQuad();
@@ -140,7 +161,14 @@ final class HakaiClipMultiBufferSource implements MultiBufferSource {
                     if (extent != null && net.bullettrain.xenopixelsmod.client.config.XenoClientConfig.hakaiSweepDebug)
                         net.bullettrain.xenopixelsmod.XenoPixelsMod.LOGGER.info("HAKAI_SWEEP vtop type={} y={} minY={} cut={}", typeName.length() > 90 ? typeName.substring(0, 90) : typeName, wy, typeMinY, cutY);
                 }
-                d[i] = cutY - wy;
+                if (impactOrigin == null) d[i] = cutY - wy;
+                else {
+                    double dx = x[i] + cameraX - impactOrigin.x;
+                    double dy = wy - impactOrigin.y;
+                    double dz = z[i] + cameraZ - impactOrigin.z;
+                    // Keep the exterior; the growing sphere removes the mob from the captured hit point outward.
+                    d[i] = (float) (Math.sqrt(dx * dx + dy * dy + dz * dz) - impactRadius);
+                }
                 if (d[i] < 0) above++;
             }
             if (above == 4) return;
@@ -153,7 +181,7 @@ final class HakaiClipMultiBufferSource implements MultiBufferSource {
                 if (d[i] >= 0) { ia[n] = i; ib[n] = i; t[n] = 0; n++; }
                 if ((d[i] >= 0) != (d[j] >= 0)) { ia[n] = i; ib[n] = j; t[n] = d[i] / (d[i] - d[j]); n++; }
             }
-            if (extent != null && !shadow) {
+            if (extent != null && impactOrigin == null && !shadow) {
                 // The two points where this face crosses the cut plane: one edge of the cut part's cross-section (cap).
                 float sx0 = 0, sy0 = 0, sz0 = 0;
                 int found = 0;
@@ -175,8 +203,35 @@ final class HakaiClipMultiBufferSource implements MultiBufferSource {
         private void emit(int i, int j, float t) {
             if (dead) return;
             try {
-                out.addVertex(lerp(x[i], x[j], t), lerp(y[i], y[j], t), lerp(z[i], z[j], t));
-                if (hasColor) out.setColor(lerpI(r[i], r[j], t), lerpI(g[i], g[j], t), lerpI(b[i], b[j], t), lerpI(a[i], a[j], t));
+                float vx = lerp(x[i], x[j], t), vy = lerp(y[i], y[j], t), vz = lerp(z[i], z[j], t);
+                out.addVertex(vx, vy, vz);
+                if (hasColor || (colorable && (impactOrigin != null || Float.isFinite(cutY)))) {
+                    int red = hasColor ? lerpI(r[i], r[j], t) : 255;
+                    int green = hasColor ? lerpI(g[i], g[j], t) : 255;
+                    int blue = hasColor ? lerpI(b[i], b[j], t) : 255;
+                    int alpha = hasColor ? lerpI(a[i], a[j], t) : 255;
+                    if (colorable && (impactOrigin != null || Float.isFinite(cutY))) {
+                        double wy = worldY(vx, vy, vz);
+                        double distance, radius, width;
+                        if (impactOrigin != null) {
+                            double wx = vx + cameraX, wz = vz + cameraZ;
+                            distance = Math.sqrt(impactOrigin.distanceToSqr(wx, wy, wz));
+                            radius = impactRadius;
+                            width = Math.max(0.04, Math.min(0.28, impactRadius * 0.08));
+                        } else {
+                            // The original top-down sweep uses the same violet boundary tint, centered on its moving cut plane.
+                            distance = Math.abs(cutY - wy);
+                            radius = 0.0;
+                            width = 0.12;
+                        }
+                        float glow = net.bullettrain.xenopixelsmod.combat.HakaiImpactGeometry.boundaryGlow(
+                                distance, radius, width) * 0.92f;
+                        red = lerpI(red, 224, glow);
+                        green = lerpI(green, 92, glow);
+                        blue = lerpI(blue, 255, glow);
+                    }
+                    out.setColor(red, green, blue, alpha);
+                }
                 if (hasUv) out.setUv(lerp(u[i], u[j], t), lerp(v[i], v[j], t));
                 if (hasOverlay) out.setUv1(t < 0.5f ? ou[i] : ou[j], t < 0.5f ? ov[i] : ov[j]);
                 if (hasLight) out.setUv2(t < 0.5f ? lu[i] : lu[j], t < 0.5f ? lv[i] : lv[j]);

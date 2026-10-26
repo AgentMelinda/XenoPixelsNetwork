@@ -41,6 +41,30 @@ public final class V3InputLayer {
     private static boolean techniqueSlotWas;
 
     @SubscribeEvent
+    public static void onMouseButton(InputEvent.MouseButton.Pre event) {
+        if (!XenoServerClientState.v3Controller()) return;
+        Minecraft mc = Minecraft.getInstance();
+        boolean light = V2Keys.LIGHT.matchesMouse(event.getButton());
+        boolean heavy = V2Keys.HEAVY.matchesMouse(event.getButton());
+        if (!light && !heavy) return;
+        if (mc.player == null || mc.screen != null) {
+            pause();
+            return;
+        }
+        boolean allowed = net.bullettrain.xenopixelsmod.client.config.XenoClientConfig.bt3CombatClient
+                && XenoServerClientState.combat() && mc.player.isAlive() && !mc.player.isSpectator()
+                && V3ClientState.target() != null && Bt3CombatClient.fistsActive(mc)
+                && !V2Keys.down(V2Keys.GUARD)
+                && V3ClientState.fighterState() != net.bullettrain.xenopixelsmod.combat.v3.V3State.GRABBED
+                && V3ClientState.fighterState() != net.bullettrain.xenopixelsmod.combat.v3.V3State.GRAB_HOLD;
+        boolean down = event.getAction() == org.lwjgl.glfw.GLFW.GLFW_PRESS;
+        var actions = MOUSE.edge(light ? down : V2Keys.down(V2Keys.LIGHT),
+                heavy ? down : V2Keys.down(V2Keys.HEAVY), allowed);
+        var target = V3ClientState.target();
+        sendMouseActions(actions, target == null ? null : target.target(), mc);
+    }
+
+    @SubscribeEvent
     public static void onDashKey(InputEvent.Key event) {
         Minecraft mc = Minecraft.getInstance();
         if (!XenoServerClientState.v3Controller() || mc.player == null || mc.screen != null
@@ -150,6 +174,10 @@ public final class V3InputLayer {
             VANISH_LEFT.clear();
             VANISH_RIGHT.clear();
         }
+        sendMouseActions(actions, id, mc);
+    }
+
+    private static void sendMouseActions(MouseCombatGesture.Pair.Actions actions, UUID id, Minecraft mc) {
         switch (actions.left()) {
             case TAP -> V3ClientState.send(V3Input.LIGHT_TAP, id, V3Direction.NONE);
             case START -> V3ClientState.send(V3Input.LIGHT_CHARGE_START, id, V3Direction.NONE);

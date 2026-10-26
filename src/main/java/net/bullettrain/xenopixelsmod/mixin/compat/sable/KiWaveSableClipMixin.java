@@ -7,6 +7,7 @@ import net.bullettrain.xenopixelsmod.compat.sable.SableKiClip;
 import net.minecraft.world.level.ClipContext;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.phys.BlockHitResult;
+import net.minecraft.world.phys.HitResult;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 
@@ -28,6 +29,11 @@ public abstract class KiWaveSableClipMixin {
             require = 0)
     private BlockHitResult xenopixels$clipShipHull(Level level, ClipContext context,
                                                    Operation<BlockHitResult> original) {
-        return SableKiClip.clip(level, context);
+        BlockHitResult result = SableKiClip.clip(level, context);
+        if (result.getType() == HitResult.Type.BLOCK) {
+            net.bullettrain.xenopixelsmod.space.hakai.PlanetHakai.onKiAttackImpact(
+                    (KiWaveEntity) (Object) this, SableKiClip.worldHit(level, result));
+        }
+        return result;
     }
 }

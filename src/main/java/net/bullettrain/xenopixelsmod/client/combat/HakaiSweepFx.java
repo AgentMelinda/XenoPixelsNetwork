@@ -13,6 +13,7 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.FogRenderer;
 import net.minecraft.client.renderer.GameRenderer;
 import net.minecraft.world.entity.Entity;
+import net.minecraft.world.phys.Vec3;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
@@ -35,7 +36,9 @@ public final class HakaiSweepFx {
 
     private HakaiSweepFx() {}
 
-    public static boolean enabled() { return "sweep".equals(XenoClientConfig.hakaiEraseStyle); }
+    public static boolean enabled() { return "sweep".equals(XenoClientConfig.hakaiEraseStyle)
+            || "impact".equals(XenoClientConfig.hakaiEraseStyle); }
+    public static boolean impactMode() { return "impact".equals(XenoClientConfig.hakaiEraseStyle); }
 
     private static BufferBuilder beginRim() {
         if (rimAllocator == null) rimAllocator = new ByteBufferBuilder(MESH_BUFFER_BYTES);
@@ -71,15 +74,61 @@ public final class HakaiSweepFx {
     private static final double END_GRACE_TICKS = 15;
 
     /** Server timing lines (HakaiSweepTiming), anchored at this client's game time on receipt. */
-    private record Timing(double anchor, float progress, float rate) {}
+    private record Timing(HakaiSweepTimeline timeline, boolean completed, float impactX, float impactY, float impactZ) {}
     private static final java.util.Map<Integer, Timing> TIMINGS = new java.util.concurrent.ConcurrentHashMap<>();
+    private static final java.util.Map<Integer, net.bullettrain.xenopixelsmod.combat.HakaiSweepSync> IDENTITIES = new java.util.concurrent.ConcurrentHashMap<>();
+    private static final HakaiSweepSyncHistory SYNC_HISTORY = new HakaiSweepSyncHistory();
+    private static Object identityLevel;
+
+    private static void checkWorld() {
+        Object level = Minecraft.getInstance().level;
+        if (identityLevel != level) {
+            IDENTITIES.clear(); TIMINGS.clear(); CLOCKS.clear(); END_RINGS.clear(); FITS.clear(); RING_RADII.clear();
+            HakaiFade.clear();
+            identityLevel = level;
+        }
+    }
+
+    public static void apply(net.bullettrain.xenopixelsmod.combat.HakaiSweepSync packet) {
+        checkWorld();
+        var level = Minecraft.getInstance().level;
+        if (level == null || !packet.dimension().equals(level.dimension().location())) return;
+        var previous = IDENTITIES.get(packet.timing().entityId());
+        if (!packet.newerThan(previous)) return;
+        Entity target = level.getEntity(packet.timing().entityId());
+        if (target != null && !packet.matches(level.dimension().location(), target.getUUID())) return;
+        if (!SYNC_HISTORY.accept(packet)) return;
+        if (packet.resetsSweep(previous)) {
+            TIMINGS.remove(packet.timing().entityId()); CLOCKS.remove(packet.timing().entityId());
+            END_RINGS.remove(packet.timing().entityId()); FITS.remove(packet.timing().entityId());
+            RING_RADII.remove(packet.timing().entityId());
+        }
+        IDENTITIES.put(packet.timing().entityId(), packet);
+        var timing = packet.timing();
+        double now = level.getGameTime() + Minecraft.getInstance().getTimer().getGameTimeDeltaPartialTick(false);
+        // Client game time is the vanilla server clock; late samples advance along the server line.
+        float progress = packet.terminal() ? 0f : packet.progressAt(now);
+        apply(new net.bullettrain.xenopixelsmod.combat.HakaiSweepTiming(timing.entityId(), progress,
+                timing.ratePerTick(), timing.impactX(), timing.impactY(), timing.impactZ()));
+    }
+
+    /** Shared by alpha, target outlines and the clipped mesh; null permits the legacy fallback. */
+    public static Float synchronizedProgress(Entity entity, float partialTick) {
+        checkWorld();
+        var packet = IDENTITIES.get(entity.getId());
+        if (packet == null) return null;
+        if (!packet.matches(entity.level().dimension().location(), entity.getUUID())) return 0f;
+        Timing timing = TIMINGS.get(entity.getId());
+        if (timing != null) return timing.timeline().at(entity.level().getGameTime() + partialTick);
+        EndRing ring = END_RINGS.get(entity.getId());
+        return ring != null && entity.level().getGameTime() + partialTick < ring.expiresAt() ? 1f : 0f;
+    }
     /** A short-lived world-space endpoint ring, independent of the mob that the server removes at sweep completion. */
     private record EndRing(double x, double y, double z, float width, double expiresAt) {}
     private static final java.util.Map<Integer, EndRing> END_RINGS = new java.util.concurrent.ConcurrentHashMap<>();
-    /** One tick of lead so the cut is not a packet's latency behind the server's erase. */
-    private static final double LEAD_TICKS = 1.0;
 
     public static void apply(net.bullettrain.xenopixelsmod.combat.HakaiSweepTiming packet) {
+        checkWorld();
         var level = Minecraft.getInstance().level;
         if (level == null) return;
         if (packet.progress() <= 0f && packet.ratePerTick() <= 0f) {
@@ -89,11 +138,10 @@ public final class HakaiSweepFx {
             CLOCKS.remove(packet.entityId());
             double now = level.getGameTime() + Minecraft.getInstance().getTimer().getGameTimeDeltaPartialTick(false);
             if (previous != null) {
-                double elapsed = now - previous.anchor() + (previous.rate() > 0f ? LEAD_TICKS : 0.0);
-                float projected = net.bullettrain.xenopixelsmod.combat.HakaiSweepTiming.at(
-                        previous.progress(), previous.rate(), elapsed);
-                if (HakaiSweepRenderPolicy.shouldHoldEndRing(projected)) {
-                    EndRing endRing = captureEndRing(packet.entityId(), now);
+                float projected = previous.timeline().at(now);
+                if (previous.completed() || HakaiSweepRenderPolicy.shouldHoldEndRing(projected)) {
+                    EndRing endRing = captureEndRing(packet.entityId(), now,
+                            packet.impactX(), packet.impactY(), packet.impactZ());
                     if (endRing != null) END_RINGS.put(packet.entityId(), endRing);
                 } else {
                     END_RINGS.remove(packet.entityId());
@@ -113,11 +161,11 @@ public final class HakaiSweepFx {
         END_RINGS.remove(packet.entityId());
         double now = level.getGameTime() + Minecraft.getInstance().getTimer().getGameTimeDeltaPartialTick(false);
         Timing line = TIMINGS.get(packet.entityId());
-        float projected = line == null ? Float.NaN : net.bullettrain.xenopixelsmod.combat.HakaiSweepTiming.at(
-                line.progress(), line.rate(), now - line.anchor() + (line.rate() > 0f ? LEAD_TICKS : 0.0));
-        TIMINGS.put(packet.entityId(), new Timing(now,
-                HakaiSweepRenderPolicy.reanchorProgress(line == null ? 0f : line.rate(), projected,
-                        packet.progress(), line == null), packet.ratePerTick()));
+        HakaiSweepTimeline timeline = line == null
+                ? HakaiSweepTimeline.start(now, packet.progress(), packet.ratePerTick())
+                : line.timeline().correct(now, packet.progress(), packet.ratePerTick());
+        TIMINGS.put(packet.entityId(), new Timing(timeline, packet.progress() >= 1f,
+                packet.impactX(), packet.impactY(), packet.impactZ()));
         if (XenoClientConfig.hakaiSweepDebug)
             net.bullettrain.xenopixelsmod.XenoPixelsMod.LOGGER.info("HAKAI_SWEEP timing id={} progress={} rate={} at={}", packet.entityId(),
                     packet.progress(), packet.ratePerTick(), level.getGameTime());
@@ -125,15 +173,18 @@ public final class HakaiSweepFx {
 
     /** Smooth sweep progress 0..1 for this frame, or -1 when the entity is not being erased. */
     public static float sweepProgress(Entity entity, float partialTick) {
+        Float synchronizedValue = synchronizedProgress(entity, partialTick);
+        if (synchronizedValue != null) return synchronizedValue > 0f ? synchronizedValue : -1f;
+        var level = Minecraft.getInstance().level;
+        if (level == null) return -1f;
         Timing timing = TIMINGS.get(entity.getId());
         if (timing != null) {
-            var level = Minecraft.getInstance().level;
-            if (level == null) return -1f;
             double now = level.getGameTime() + partialTick;
-            // A straight line computed every frame: exact, smooth, and it holds at 1 until the entity is removed.
-            return net.bullettrain.xenopixelsmod.combat.HakaiSweepTiming.at(timing.progress(), timing.rate(),
-                    now - timing.anchor() + (timing.rate() > 0f ? LEAD_TICKS : 0.0));
+            // The cut mesh and rim sample the same continuous clock, as the planet renderer does.
+            return timing.timeline().at(now);
         }
+        EndRing completed = END_RINGS.get(entity.getId());
+        if (completed != null && level.getGameTime() + partialTick < completed.expiresAt()) return 1f;
         return legacyProgress(entity, partialTick);
     }
 
@@ -193,15 +244,24 @@ public final class HakaiSweepFx {
         return clock.shown;
     }
 
-    public static void forget() { CLOCKS.clear(); FITS.clear(); TIMINGS.clear(); END_RINGS.clear(); RING_RADII.clear(); releaseAllocators(); }
+    public static void forget() { IDENTITIES.clear(); CLOCKS.clear(); FITS.clear(); TIMINGS.clear(); END_RINGS.clear(); RING_RADII.clear(); releaseAllocators(); }
 
-    private static EndRing captureEndRing(int entityId, double now) {
+    private static EndRing captureEndRing(int entityId, double now, float impactX, float impactY, float impactZ) {
         var level = Minecraft.getInstance().level;
         if (level == null) return null;
         Entity entity = level.getEntity(entityId);
         if (entity != null) {
             float partial = (float) (now - level.getGameTime());
             float[] fitted = bounds(entity, partial);
+            if (impactMode()) {
+                var p = entity.getPosition(partial);
+                double x = p.x + (impactX - 0.5) * entity.getBbWidth();
+                double y = p.y + impactY * entity.getBbHeight() + RING_CUT_BIAS;
+                double z = p.z + (impactZ - 0.5) * entity.getBbWidth();
+                float terminalRadius = impactRadius(entity, 1.0f, partial);
+                return new EndRing(x, y, z, Math.max(0.3f, terminalRadius * 2.0f),
+                        now + END_GRACE_TICKS);
+            }
             double y = cutY(entity, 1.0f, partial) + RING_CUT_BIAS;
             return new EndRing(fitted[2], y, fitted[3], Math.max(0.3f, fitted[4] * 2.0f), now + END_GRACE_TICKS);
         }
@@ -216,11 +276,14 @@ public final class HakaiSweepFx {
     }
 
     @SubscribeEvent public static void prune(net.neoforged.neoforge.client.event.ClientTickEvent.Post event) {
+        checkWorld();
         var level = Minecraft.getInstance().level;
         if (level == null) { CLOCKS.clear(); FITS.clear(); TIMINGS.clear(); END_RINGS.clear(); RING_RADII.clear(); releaseAllocators(); return; }
-        if (level.getGameTime() % 100 != 0 || (CLOCKS.isEmpty() && FITS.isEmpty() && TIMINGS.isEmpty()
+        if (level.getGameTime() % 100 != 0 || (IDENTITIES.isEmpty() && CLOCKS.isEmpty() && FITS.isEmpty() && TIMINGS.isEmpty()
                 && END_RINGS.isEmpty() && RING_RADII.isEmpty())) return;
         CLOCKS.keySet().removeIf(id -> level.getEntity(id) == null);
+        IDENTITIES.entrySet().removeIf(entry -> level.getEntity(entry.getKey()) == null
+                && level.getGameTime() - entry.getValue().sampledTick() > 1200);
         FITS.keySet().removeIf(id -> level.getEntity(id) == null);
         TIMINGS.keySet().removeIf(id -> level.getEntity(id) == null);
         RING_RADII.keySet().removeIf(id -> level.getEntity(id) == null);
@@ -228,12 +291,18 @@ public final class HakaiSweepFx {
     }
 
     @SubscribeEvent public static void logout(net.neoforged.neoforge.client.event.ClientPlayerNetworkEvent.LoggingOut event) {
+        SYNC_HISTORY.clear();
+        IDENTITIES.clear(); identityLevel = null;
         CLOCKS.clear(); FITS.clear(); TIMINGS.clear(); END_RINGS.clear(); RING_RADII.clear(); releaseAllocators();
     }
 
     /** True while the sweep is erasing this entity (including the grace after the final clear packet). */
     public static boolean active(Entity entity) {
+        if (entity == null) return false;
+        Float synchronizedValue = synchronizedProgress(entity, 0f);
+        if (synchronizedValue != null) return enabled() && synchronizedValue > 0f;
         return enabled() && entity != null && (TIMINGS.containsKey(entity.getId()) || CLOCKS.containsKey(entity.getId())
+                || END_RINGS.containsKey(entity.getId())
                 || HakaiFade.dissolving(entity));
     }
 
@@ -331,6 +400,28 @@ public final class HakaiSweepFx {
         return cutY(b, progress);
     }
 
+    /** World-space crosshair point, stored as a normalized point in the target's bounding box. */
+    static net.minecraft.world.phys.Vec3 impactPoint(Entity entity, float partialTick) {
+        Timing timing = TIMINGS.get(entity.getId());
+        if (timing == null) return entity.getPosition(partialTick).add(0, entity.getBbHeight() * 0.5, 0);
+        var p = entity.getPosition(partialTick);
+        return new net.minecraft.world.phys.Vec3(p.x + (timing.impactX - 0.5) * entity.getBbWidth(),
+                p.y + timing.impactY * entity.getBbHeight(),
+                p.z + (timing.impactZ - 0.5) * entity.getBbWidth());
+    }
+
+    /** Maximum model-space distance from the impact point, used to finish exactly at the model bounds. */
+    static float impactRadius(Entity entity, float progress, float partialTick) {
+        float[] b = bounds(entity, partialTick);
+        var c = impactPoint(entity, partialTick);
+        double far = 0;
+        for (double x : new double[]{b[2] - b[4], b[2] + b[4]})
+            for (double y : new double[]{b[0], b[1]})
+                for (double z : new double[]{b[3] - b[4], b[3] + b[4]})
+                    far = Math.max(far, c.distanceToSqr(x, y, z));
+        return net.bullettrain.xenopixelsmod.combat.HakaiImpactGeometry.radius((float) Math.sqrt(far), progress);
+    }
+
     private static float cutY(float[] b, float progress) {
         double p = Math.max(0, Math.min(1, progress));
         double eased = p * p * (3 - 2 * p);
@@ -355,7 +446,8 @@ public final class HakaiSweepFx {
             if (builder == null) builder = beginRim();
             var renderPosition = entity.getPosition(partial);
             float[] fittedBounds = bounds(entity, renderPosition);
-            float cutY = cutY(fittedBounds, progress);
+            Vec3 hitPoint = impactMode() ? impactPoint(entity, partial) : null;
+            float cutY = impactMode() ? (float) hitPoint.y : cutY(fittedBounds, progress);
             // The clipped model ends exactly at cutY. Drawing the rim on that same depth plane lets
             // the body's depth buffer intermittently hide sections of it; lift it a few centimetres
             // into the already-erased side while keeping the measured sweep height.
@@ -364,7 +456,7 @@ public final class HakaiSweepFx {
                 net.bullettrain.xenopixelsmod.XenoPixelsMod.LOGGER.info("HAKAI_SWEEP ring id={} progress={} cutY={}", entity.getId(), progress, y + camera.y);
             float pulse = 0.75f + 0.25f * (float) Math.sin((mc.level.getGameTime() + partial) * 0.7);
             Fit fit = FITS.get(entity.getId());
-            if (fit != null) {
+            if (!impactMode() && fit != null) {
                 boolean currentContour = fit.building.segmentCount > 0;
                 Extent contour = currentContour ? fit.building : fit.last;
                 if (contour != null && contour.segmentCount > 0) {
@@ -386,17 +478,27 @@ public final class HakaiSweepFx {
                             argb((int) (255 * pulse), 236, 170, 255));
                 }
             }
-            float fallbackRadius = Math.max(0.15f, fittedBounds[4]);
+            float fallbackRadius = impactMode() ? impactRadius(entity, progress, partial)
+                    : Math.max(0.15f, fittedBounds[4]);
             float minimumRadius = Math.max(0.15f, entity.getBbWidth() * 0.55f);
-            float radius = HakaiSweepRenderPolicy.stableRingRadius(
+            // Impact mode shares the exact expanding sphere radius with the model clip. Smoothing it against a
+            // mob-width minimum made the visual wave lag the dissolve and start away from the crosshair point.
+            float radius = impactMode() ? fallbackRadius : HakaiSweepRenderPolicy.stableRingRadius(
                     RING_RADII.getOrDefault(entity.getId(), Float.NaN), fallbackRadius, minimumRadius);
-            RING_RADII.put(entity.getId(), radius);
-            float[] band = HakaiSweepRenderPolicy.visibleRingBand(radius);
+            if (!impactMode()) RING_RADII.put(entity.getId(), radius);
+            float[] band = impactMode() ? HakaiSweepRenderPolicy.impactRingBand(radius)
+                    : HakaiSweepRenderPolicy.visibleRingBand(radius);
             // The cap follows the model's cut contours; the outer ring follows the entity anchor. Choosing a
             // different largest contour each animated frame used to move/shrink the ring independently of the mob.
-            float cx = (float) (renderPosition.x - camera.x);
-            float cz = (float) (renderPosition.z - camera.z);
-            ring(builder, cx, y, cz, band[0], band[1], pulse);
+            if (impactMode()) {
+                Vec3 center = hitPoint.subtract(camera);
+                Vec3 right = HakaiSweepRenderPolicy.verticalImpactRingRight(hitPoint, camera);
+                verticalRing(builder, center, right, band[0], band[1], pulse);
+            } else {
+                float cx = (float) (renderPosition.x - camera.x);
+                float cz = (float) (renderPosition.z - camera.z);
+                ring(builder, cx, y, cz, band[0], band[1], pulse);
+            }
         }
         double now = mc.level.getGameTime() + partial;
         for (var entry : END_RINGS.entrySet()) {
@@ -411,9 +513,16 @@ public final class HakaiSweepFx {
             if (builder == null) builder = beginRim();
             float width = Math.max(0.3f, endRing.width());
             float pulse = 0.75f + 0.25f * (float) Math.sin(now * 0.7);
-            float[] band = HakaiSweepRenderPolicy.visibleRingBand(width * 0.5f);
-            ring(builder, (float) (endRing.x() - camera.x), (float) (endRing.y() - camera.y),
-                    (float) (endRing.z() - camera.z), band[0], band[1], pulse);
+            if (impactMode()) {
+                Vec3 center = new Vec3(endRing.x(), endRing.y(), endRing.z());
+                float[] band = HakaiSweepRenderPolicy.impactRingBand(width * 0.5f);
+                verticalRing(builder, center.subtract(camera),
+                        HakaiSweepRenderPolicy.verticalImpactRingRight(center, camera), band[0], band[1], pulse);
+            } else {
+                float[] band = HakaiSweepRenderPolicy.visibleRingBand(width * 0.5f);
+                ring(builder, (float) (endRing.x() - camera.x), (float) (endRing.y() - camera.y),
+                        (float) (endRing.z() - camera.z), band[0], band[1], pulse);
+            }
         }
         // Caps first, with normal blending: a solid dark violet cross-section, so a cut horizontal body (cows, pigs)
         // never shows a hollow box or pops its whole back away (owner 2026-10-16: not smooth on 4-foot walkers).
@@ -573,6 +682,45 @@ public final class HakaiSweepFx {
                 argb((int) (142 * pulse), 152, 60, 255), argb((int) (84 * pulse), 98, 28, 220));
         ringBand(b, cx, y, cz, bandEdge, outer,
                 argb((int) (54 * pulse), 112, 46, 255), argb(0, 80, 24, 200));
+    }
+
+    /** Upright, camera-facing purple wave centred on the authoritative crosshair impact point. */
+    private static void verticalRing(BufferBuilder b, Vec3 center, Vec3 right, float inner, float outer, float pulse) {
+        float span = Math.max(0.001f, outer - inner);
+        float coreEdge = inner + span * 0.20f;
+        float bandEdge = inner + span * 0.62f;
+        verticalRingBand(b, center, right, inner, coreEdge,
+                argb((int) (220 * pulse), 244, 222, 255), argb((int) (178 * pulse), 190, 112, 255));
+        verticalRingBand(b, center, right, coreEdge, bandEdge,
+                argb((int) (142 * pulse), 152, 60, 255), argb((int) (84 * pulse), 98, 28, 220));
+        verticalRingBand(b, center, right, bandEdge, outer,
+                argb((int) (54 * pulse), 112, 46, 255), argb(0, 80, 24, 200));
+    }
+
+    private static void verticalRingBand(BufferBuilder b, Vec3 c, Vec3 right, float inner, float outer,
+                                         int innerColor, int outerColor) {
+        for (int i = 0; i < SEGMENTS; i++) {
+            double a0 = Math.PI * 2 * i / SEGMENTS, a1 = Math.PI * 2 * (i + 1) / SEGMENTS;
+            float c0 = (float) Math.cos(a0), s0 = (float) Math.sin(a0);
+            float c1 = (float) Math.cos(a1), s1 = (float) Math.sin(a1);
+            ringQuad(b, c, right, inner, outer, c0, s0, c1, s1, innerColor, outerColor);
+        }
+    }
+
+    private static void ringQuad(BufferBuilder b, Vec3 c, Vec3 right, float inner, float outer,
+                                 float c0, float s0, float c1, float s1, int innerColor, int outerColor) {
+        vertex(b, c, right, inner, c0, s0, innerColor);
+        vertex(b, c, right, outer, c0, s0, outerColor);
+        vertex(b, c, right, outer, c1, s1, outerColor);
+        vertex(b, c, right, inner, c0, s0, innerColor);
+        vertex(b, c, right, outer, c1, s1, outerColor);
+        vertex(b, c, right, inner, c1, s1, innerColor);
+    }
+
+    private static void vertex(BufferBuilder b, Vec3 c, Vec3 right, float radius, float horizontal, float vertical, int color) {
+        b.addVertex((float) (c.x + right.x * horizontal * radius),
+                (float) (c.y + vertical * radius),
+                (float) (c.z + right.z * horizontal * radius)).setColor(color);
     }
 
     private static void ringBand(BufferBuilder b, float cx, float y, float cz, float inner, float outer,

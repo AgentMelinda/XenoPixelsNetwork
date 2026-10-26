@@ -8,16 +8,18 @@ import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
-import org.spongepowered.asm.mixin.injection.ModifyVariable;
+import org.spongepowered.asm.mixin.injection.ModifyArg;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 /**
- * Target: {@code KiBlastEntity#onHitBlock} and {@code KiBlastEntity#explodeAndDie}
- * Reason: on a Sable ship a clip result is in plot-local coordinates while the entity is in world
- *         coordinates, so DMZ's entity-centred destruction edits blocks in the wrong place. DMZ
- *         exposes no hook for "where should this blast edit blocks", and Sable is not a DMZ
- *         dependency, so the correction belongs here rather than in DMZ.
- * Version: NeoForge 1.21.1, DragonMineZ 2.1.3, Sable 2.0.x
+ * Target: {@code KiBlastEntity#onHitBlock}, {@code explodeAndDie},
+ *         {@code destroyBlocksInPath}, and {@code processDetonation}.
+ * Reason: a Sable-aware clip returns a plot-local impact while the projectile remains in world
+ *         coordinates. DMZ's entity-centred destruction loops must use that impact for every
+ *         impact-driven path, or later ticks erase Voidsea coordinates instead of the Sable plot.
+ *         DMZ 2.2 projects visual clip endpoints through SableCompat, but its destruction helpers
+ *         still receive entity-world centres; only those block-edit arguments are corrected here.
+ * Version: NeoForge 1.21.1, DragonMineZ 2.2, Sable 2.0.x
  * Side: common; the destruction branch it feeds is server-only.
  * Notes: no-ops entirely without Sable — {@link SableBlastCenter} returns null when the blast is not
  *        on a sub-level, so ordinary hits keep DMZ's own behaviour untouched. Runs once per
@@ -33,22 +35,47 @@ public abstract class KiBlastSableCenterMixin {
 	 * holds no world reference beyond the projectile's own lifetime.
 	 */
 	@Unique
-	private BlockPos xenopixels$shipHitCenter;
+	private BlockPos xenopixels$sableImpactCenter;
 
 	@Inject(method = "onHitBlock", at = @At("HEAD"), require = 1)
 	private void xenopixels$captureShipHit(BlockHitResult result, CallbackInfo ci) {
-		this.xenopixels$shipHitCenter = SableBlastCenter.resolve((KiBlastEntity) (Object) this, result);
+		this.xenopixels$sableImpactCenter = SableBlastCenter.resolve((KiBlastEntity) (Object) this, result);
+		net.bullettrain.xenopixelsmod.space.hakai.PlanetHakai.onKiAttackImpact(
+				(KiBlastEntity) (Object) this,
+				net.bullettrain.xenopixelsmod.compat.sable.SableKiClip.worldHit(((KiBlastEntity) (Object) this).level(), result));
 	}
 
 	/**
-	 * Swap the destruction centre for the ship-local one, but only when there is one.
+	 * Swap DMZ's world-space destruction centre for the Sable plot hit, when the ray hit a plot.
 	 *
-	 * <p>{@code @ModifyVariable} rather than capturing the local: it is the least invasive injector
-	 * that can do this, and it cannot disturb anything else in the method.
+	 * <p>DMZ 2.2 passes centres directly into the shared sphere helpers, so there is no local
+	 * STORE in the path and detonation methods. Modify only argument zero at each exact call;
+	 * entity position, damage, particles, and the destruction radii keep DMZ's own values.
 	 */
-	@ModifyVariable(method = "explodeAndDie", at = @At("STORE"), require = 1)
-	private BlockPos xenopixels$shipDestructionCenter(BlockPos center) {
-		BlockPos shipCenter = this.xenopixels$shipHitCenter;
-		return shipCenter != null ? shipCenter : center;
+	@ModifyArg(method = "explodeAndDie", at = @At(value = "INVOKE", target =
+			"Lcom/dragonminez/common/init/entities/ki/KiBlastEntity;carveKiSphere(Lnet/minecraft/core/BlockPos;FI)V"),
+			index = 0, require = 1)
+	private BlockPos xenopixels$sableExplosionCenter(BlockPos center) {
+		return xenopixels$useSableImpact(center);
+	}
+
+	@ModifyArg(method = "destroyBlocksInPath", at = @At(value = "INVOKE", target =
+			"Lcom/dragonminez/common/init/entities/ki/KiBlastEntity;eatKiSphere(Lnet/minecraft/core/BlockPos;F)Z"),
+			index = 0, require = 1)
+	private BlockPos xenopixels$sablePathCenter(BlockPos center) {
+		return xenopixels$useSableImpact(center);
+	}
+
+	@ModifyArg(method = "processDetonation", at = @At(value = "INVOKE", target =
+			"Lcom/dragonminez/common/init/entities/ki/KiBlastEntity;carveKiSphere(Lnet/minecraft/core/BlockPos;FFI)V"),
+			index = 0, require = 1)
+	private BlockPos xenopixels$sableDetonationCenter(BlockPos center) {
+		return xenopixels$useSableImpact(center);
+	}
+
+	@Unique
+	private BlockPos xenopixels$useSableImpact(BlockPos fallback) {
+		BlockPos impact = this.xenopixels$sableImpactCenter;
+		return impact != null ? impact : fallback;
 	}
 }

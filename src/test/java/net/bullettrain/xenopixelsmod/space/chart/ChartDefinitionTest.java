@@ -26,6 +26,15 @@ class ChartDefinitionTest {
         assertThrows(IllegalArgumentException.class, () -> ChartDefinition.parse("demo:earth",
                 JsonParser.parseString("{\"exit_altitude\":700,\"warm_up_altitude\":700}").getAsJsonObject()));
     }
+    @Test void signedSiderealRotationPeriodSupportsRetrogradeAndTidalLocking() {
+        var retrograde = ChartDefinition.parse("demo:venus", JsonParser.parseString(
+                "{\"rotation_period_seconds\":-2394.9}").getAsJsonObject());
+        assertEquals(-2394.9, retrograde.rotationPeriodSeconds());
+        assertNull(ChartDefinition.parse("demo:moon", JsonParser.parseString("{}").getAsJsonObject())
+                .rotationPeriodSeconds(), "rotation remains opt-in for bodies without authored data");
+        assertThrows(IllegalArgumentException.class, () -> ChartDefinition.parse("demo:zero",
+                JsonParser.parseString("{\"rotation_period_seconds\":0}").getAsJsonObject()));
+    }
     @Test void spatialAnchorDefaultsToOriginAndAcceptsFiniteHorizontalCoordinates() {
         var defaults = ChartDefinition.parse("demo:earth", JsonParser.parseString("{}").getAsJsonObject());
         assertEquals(0.0, defaults.spatialAnchorX());
@@ -36,6 +45,29 @@ class ChartDefinitionTest {
         assertEquals(-35.0, anchored.spatialAnchorZ());
         assertThrows(IllegalArgumentException.class, () -> ChartDefinition.parse("demo:earth",
                 JsonParser.parseString("{\"spatial_anchor\":{\"y\":4}}").getAsJsonObject()));
+    }
+    @Test void surfaceAnchorReadsPositionAndFacingForDimensionChartEntries() {
+        var body = ChartDefinition.parse("demo:namek", JsonParser.parseString("""
+                {"dimension":"dragonmines:namek_overworld","orbit":{"parent":"demo:star",
+                 "semi_major":420,"period_seconds":1200},"surface_anchor":{"pos":[12.5,64,-8],"facing":"north"}}
+                """).getAsJsonObject());
+        assertNotNull(body.surfaceAnchor());
+        assertEquals(12.5, body.surfaceAnchor().x());
+        assertEquals(64.0, body.surfaceAnchor().y());
+        assertEquals(-8.0, body.surfaceAnchor().z());
+        assertEquals("north", body.surfaceAnchor().facing());
+        assertEquals(180.0f, body.surfaceAnchor().yawDegrees());
+        assertNull(ChartDefinition.parse("demo:earth", JsonParser.parseString(
+                "{\"surface_anchor\":{\"pos\":[0,64,0],\"facing\":\"up\"}}").getAsJsonObject())
+                .surfaceAnchor().yawDegrees(), "vertical facing preserves the player's current view");
+    }
+    @Test void malformedSurfaceAnchorsAreRejected() {
+        assertThrows(IllegalArgumentException.class, () -> ChartDefinition.parse("demo:planet",
+                JsonParser.parseString("{\"surface_anchor\":{\"pos\":[0,64]}}").getAsJsonObject()));
+        assertThrows(IllegalArgumentException.class, () -> ChartDefinition.parse("demo:planet",
+                JsonParser.parseString("{\"surface_anchor\":{\"pos\":[0,64,0],\"facing\":\"sideways\"}}").getAsJsonObject()));
+        assertThrows(IllegalArgumentException.class, () -> ChartDefinition.parse("demo:planet",
+                JsonParser.parseString("{\"surface_anchor\":{\"pos\":[0,30000001,0]}}").getAsJsonObject()));
     }
     @Test void breathableFlagIsAcceptedAndTypeChecked() {
         assertDoesNotThrow(() -> ChartDefinition.parse("demo:mars",

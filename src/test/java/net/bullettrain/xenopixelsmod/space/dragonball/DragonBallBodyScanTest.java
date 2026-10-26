@@ -9,6 +9,7 @@ import java.util.Map;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -67,6 +68,15 @@ class DragonBallBodyScanTest {
         assertEquals(BodyRead.FOREIGN, DragonBallBodyScan.attribute(true, true, false),
                 "opened and proven not ours by the absent binding tag key");
         assertEquals(BodyRead.OURS, DragonBallBodyScan.attribute(true, true, true));
+    }
+
+    @Test void unreadableBodyDiagnosticNamesTheExactListingEntryAndUuid() {
+        UUID bodyId = UUID.fromString("f3c61762-9a3b-4a7c-9d55-7d27d28a5d1c");
+        assertEquals("SDB body scan aborted: listing entry 2/3 uuid=f3c61762-9a3b-4a7c-9d55-7d27d28a5d1c"
+                        + " is body-with-no-user-data rather than a body that can be asked what it claims,"
+                        + " so no slot is reported free this cycle",
+                DragonBallBodyScan.unreadableBodyMessage(2, 3, "body-with-no-user-data", bodyId));
+        assertTrue(DragonBallBodyScan.unreadableBodyMessage(0, 1, "absent", null).contains("uuid=unavailable"));
     }
 
     @Test void aFoldedClaimLandsOnlyOnTheSlotItsTagNames() {

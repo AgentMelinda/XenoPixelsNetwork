@@ -64,6 +64,10 @@ public final class DragonBallPlanetOrbitPass implements SpaceTickScheduler.Pass 
     /** Refreshes at most seven cached orbit records from the manager's safe identity census. */
     static void sync(MinecraftServer server, Map<Integer, UUID> identities,
                      Map<Integer, DragonBallPlanetDefinition> assignments) {
+        if (!DragonBallModeGuard.planetaryEnabled(server)) {
+            TRACKS.remove(server);
+            return;
+        }
         ChartRegistry chart = SpaceChartService.state(server).runtime.chart;
         DragonBallSavedData saved = DragonBallSavedData.get(server);
         Map<UUID, Track> previous = TRACKS.getOrDefault(server, Map.of());
@@ -101,6 +105,10 @@ public final class DragonBallPlanetOrbitPass implements SpaceTickScheduler.Pass 
     /** Rebuild the small cached controller set immediately after a server-side orbit edit. */
     public static void refreshFromSaved(MinecraftServer server) {
         if (server == null) return;
+        if (!DragonBallModeGuard.planetaryEnabled(server)) {
+            TRACKS.remove(server);
+            return;
+        }
         DragonBallSavedData saved = DragonBallSavedData.get(server);
         Map<Integer, UUID> identities = new HashMap<>();
         for (int slot = 1; slot <= CosmicDragonBalls.COUNT; slot++) {
@@ -122,6 +130,8 @@ public final class DragonBallPlanetOrbitPass implements SpaceTickScheduler.Pass 
         ServerLevel level = system.getLevel();
         if (level == null) return 0;
         MinecraftServer server = level.getServer();
+        if (!DragonBallModeGuard.planetaryEnabled(server)) return 0;
+        if (!DragonBallSavedData.get(server).isGameplayStateValid()) return 0;
         Map<UUID, Track> tracks = TRACKS.get(server);
         if (tracks == null || tracks.isEmpty()) return 0;
         ChartRegistry chart = SpaceChartService.state(server).runtime.chart;
@@ -137,7 +147,7 @@ public final class DragonBallPlanetOrbitPass implements SpaceTickScheduler.Pass 
             double mass = body.getMassTracker().getMass();
             if (handle == null || !handle.isValid() || !(mass > 0.0) || !Double.isFinite(mass)) continue;
             Track track = entry.getValue();
-            if (!target(chart, track, tick / 20.0 + XenoSpaceConfig.orbitEpochOffsetSeconds())) continue;
+            if (!target(chart, track, net.bullettrain.xenopixelsmod.space.SpaceOrbitClock.seconds(server))) continue;
             var pose = body.logicalPose();
             var position = pose.position();
             track.position[0] = position.x(); track.position[1] = position.y(); track.position[2] = position.z();
@@ -197,12 +207,8 @@ public final class DragonBallPlanetOrbitPass implements SpaceTickScheduler.Pass 
                                   double[] position, double[] velocity, double[] acceleration) {
         int hostSlot = chart.slotOf(definition.hostChartId());
         if (hostSlot < 0) return false;
-        hostPosition[0] = chart.x(hostSlot);
-        hostPosition[1] = chart.y(hostSlot);
-        hostPosition[2] = chart.z(hostSlot);
-        hostVelocity[0] = chart.velocityX(hostSlot);
-        hostVelocity[1] = chart.velocityY(hostSlot);
-        hostVelocity[2] = chart.velocityZ(hostSlot);
+        chart.stateAt(hostSlot, timeSeconds, net.bullettrain.xenopixelsmod.space.SpaceOrbitClock.maxChartBridgeSeconds(),
+                hostPosition, hostVelocity);
         orbit.evaluate(hostPosition, hostVelocity, ZERO, timeSeconds, position, velocity, acceleration);
         return true;
     }

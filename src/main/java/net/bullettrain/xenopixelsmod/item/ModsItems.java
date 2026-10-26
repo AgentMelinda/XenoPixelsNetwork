@@ -34,6 +34,10 @@ public class ModsItems {
     public static final DeferredHolder<Item, Item> BREATHING_CAPSULE = ITEMS.register("breathing_capsule",
             () -> new net.bullettrain.xenopixelsmod.item.custom.BreathingCapsuleItem(new Item.Properties().stacksTo(16)));
 
+    /** P15 reusable launcher for the fixed Classic Egg Sable pod. */
+    public static final DeferredHolder<Item, Item> SPACE_POD_CAPSULE = ITEMS.register("space_pod_capsule",
+            () -> new net.bullettrain.xenopixelsmod.item.custom.SpacePodCapsuleItem(new Item.Properties().stacksTo(1)));
+
     /** Design-doc 16: pings the nearest Super Dragon Ball (active only when XenoSpaceConfig.cosmicDragonBallsEnabled). */
     public static final DeferredHolder<Item, Item> COSMIC_BALL_SCANNER = ITEMS.register("cosmic_ball_scanner",
             () -> new net.bullettrain.xenopixelsmod.item.custom.CosmicBallScannerItem(new Item.Properties().stacksTo(1)));

@@ -47,9 +47,16 @@ public final class ChartResources extends SimplePreparableReloadListener<ChartRe
                     var json = JsonParser.parseString(new String(bytes, StandardCharsets.UTF_8));
                     if (!json.isJsonObject()) throw new IllegalArgumentException("definition must be an object");
                     JsonObject definition = json.getAsJsonObject();
-                    ChartDefinition.parse(id, definition);
-                    if (folder.endsWith("chart_entry") && ChartDefinition.string(definition, "dimension", null) == null)
-                        throw new IllegalArgumentException("chart_entry requires dimension");
+                    CelestialBody body = ChartDefinition.parse(id, definition);
+                    if ("xenopixelsmod:planet_surfaces".equals(body.dimensionId())
+                            && !net.bullettrain.xenopixelsmod.space.ChartSurfaceBodyResolver.anchorMatchesCell(body))
+                        throw new IllegalArgumentException("planet_surfaces spatial_anchor must land inside this body's reserved identity cell");
+                    if (folder.endsWith("chart_entry")) {
+                        if (body.dimensionId() == null)
+                            throw new IllegalArgumentException("chart_entry requires dimension");
+                        if (body.orbit() == null)
+                            throw new IllegalArgumentException("chart_entry requires orbit");
+                    }
                     definitions.put(id, definition);
                 } catch (Exception e) {
                     errors.add(location + ": " + e.getMessage());

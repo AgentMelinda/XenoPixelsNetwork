@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import json
 import math
+import argparse
 from pathlib import Path
 
 from PIL import Image, ImageDraw, ImageFont
@@ -104,17 +105,23 @@ def note(value: int) -> Image.Image:
     return image
 
 
-def main() -> None:
-    TEXTURES.mkdir(parents=True, exist_ok=True)
-    MODELS.mkdir(parents=True, exist_ok=True)
+def main(argv: list[str] | None = None) -> None:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--out", default=str(ASSETS), help="asset root; defaults to the existing generated-resource location")
+    args = parser.parse_args(argv)
+    asset_root = Path(args.out)
+    textures = asset_root / "textures" / "item"
+    models = asset_root / "models" / "item"
+    textures.mkdir(parents=True, exist_ok=True)
+    models.mkdir(parents=True, exist_ok=True)
     for value in COINS + NOTES:
         name = f"zeni_{value}" if value in COINS else f"zeni_note_{value}"
         art = coin(value) if value in COINS else note(value)
-        art.save(TEXTURES / f"{name}.png", optimize=True)
+        art.save(textures / f"{name}.png", optimize=True)
         model = {"parent": "minecraft:item/generated",
                  "textures": {"layer0": f"xenopixelsmod:item/{name}"}}
-        (MODELS / f"{name}.json").write_text(json.dumps(model, indent=2) + "\n",
-                                               encoding="utf-8")
+        (models / f"{name}.json").write_text(json.dumps(model, indent=2) + "\n",
+                                              encoding="utf-8")
 
 
 if __name__ == "__main__":

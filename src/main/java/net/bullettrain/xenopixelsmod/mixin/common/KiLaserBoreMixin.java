@@ -20,6 +20,7 @@ public abstract class KiLaserBoreMixin {
     @Redirect(method = "tick", at = @At(value = "INVOKE",
             target = "Lcom/dragonminez/common/init/entities/ki/KiLaserEntity;explodeAndDie(Lnet/minecraft/world/phys/Vec3;)V"))
     private void xenopixels$boreInsteadOfDetonate(KiLaserEntity self, Vec3 worldHit) {
+        net.bullettrain.xenopixelsmod.space.hakai.PlanetHakai.onKiAttackImpact(self, worldHit);
         KiBeamBore.boreLaser(self, worldHit);
     }
 }

@@ -12,7 +12,9 @@ import java.util.Map;
 
 /** Resolves NPC aura state with the same normal/extra/stack layer precedence as DMZ players. */
 public final class NpcAuraResolver {
-    public record Layer(String type, int index, int rgb) {}
+    public record Layer(String type, int index, int rgb, boolean threeD) {
+        public Layer(String type, int index, int rgb) { this(type, index, rgb, false); }
+    }
     public record Resolved(List<Layer> layers, boolean lightning, int lightningRgb,
                            boolean rocks, boolean sparking, boolean groundRing) {
         public int particleRgb() {
@@ -28,8 +30,8 @@ public final class NpcAuraResolver {
         String raceType = raceAuraType(profile.raceId);
         int baseRgb = baseRgb(profile);
         NpcAuraStyle baseStyle = profile.baseAuraStyle;
-        put(layers, layer(raceType, 0, baseRgb, baseStyle));
-        addExtra(layers, null, baseStyle);
+        put(layers, layer(raceType, raceAura3DType(profile.raceId), 0, baseRgb, baseStyle, null));
+        addExtra(layers, null, baseStyle, null);
 
         FormConfig.FormData normal = NpcFormLookup.activeForm(profile);
         NpcAuraStyle normalStyle = profile.auraStyle(false, profile.formGroup, profile.formId, false);
@@ -37,8 +39,8 @@ public final class NpcAuraResolver {
             int rgb = color(normal.getAuraColor(), baseRgb);
             String type = nonBlank(normal.getAuraType(), raceType);
             int index = normal.getAuraLayer() == null ? 0 : normal.getAuraLayer();
-            put(layers, layer(type, index, rgb, normalStyle));
-            addExtra(layers, normal, normalStyle);
+            put(layers, layer(type, normal.getAuraType3D(), index, rgb, normalStyle, baseStyle));
+            addExtra(layers, normal, normalStyle, baseStyle);
         }
 
         FormConfig.FormData stack = NpcFormLookup.activeStackForm(profile);
@@ -47,8 +49,8 @@ public final class NpcAuraResolver {
             int rgb = color(stack.getAuraColor(), 0xFFFFFF);
             String type = nonBlank(stack.getAuraType(), "kakarot");
             int index = stack.getAuraLayer() == null ? 1 : stack.getAuraLayer();
-            put(layers, layer(type, index, rgb, stackStyle));
-            addExtra(layers, stack, stackStyle);
+            put(layers, layer(type, stack.getAuraType3D(), index, rgb, stackStyle, baseStyle));
+            addExtra(layers, stack, stackStyle, baseStyle);
         }
 
         List<Layer> ordered = new ArrayList<>(layers.values());
@@ -72,16 +74,20 @@ public final class NpcAuraResolver {
         return 0xFFFFFF;
     }
 
-    private static Layer layer(String type, int index, int rgb, NpcAuraStyle override) {
+    private static Layer layer(String type, String type3D, int index, int rgb, NpcAuraStyle override, NpcAuraStyle inherited) {
         if (override != null && override.enabled) {
             type = nonBlank(override.primaryType, type);
             if (override.primaryLayer >= 0) index = override.primaryLayer;
             if (!override.primaryColor.isBlank()) rgb = color(override.primaryColor, rgb);
         }
-        return new Layer(nonBlank(type, "kakarot"), clamp(index), rgb & 0xFFFFFF);
+        boolean threeD = mode(override == null ? NpcAuraStyle.Toggle.INHERIT : override.threeD,
+                inherited == null ? NpcAuraStyle.Toggle.INHERIT : inherited.threeD, false);
+        if (threeD) type = spatialType(type3D, override == null ? "" : override.primaryType,
+                override, inherited);
+        return new Layer(nonBlank(type, "kakarot"), clamp(index), rgb & 0xFFFFFF, threeD);
     }
 
-    private static void addExtra(Map<Integer, Layer> layers, FormConfig.FormData data, NpcAuraStyle override) {
+    private static void addExtra(Map<Integer, Layer> layers, FormConfig.FormData data, NpcAuraStyle override, NpcAuraStyle inherited) {
         boolean configured = override != null && override.enabled && override.extraConfigured;
         boolean enabled = configured ? override.extraEnabled : data != null && data.hasExtraAura();
         if (!enabled) return;
@@ -93,7 +99,29 @@ public final class NpcAuraResolver {
             if (override.extraLayer >= 0) index = override.extraLayer;
             if (!override.extraColor.isBlank()) rgb = color(override.extraColor, rgb);
         }
-        put(layers, new Layer(type, clamp(index), rgb));
+        boolean threeD = mode(override == null ? NpcAuraStyle.Toggle.INHERIT : override.threeD,
+                inherited == null ? NpcAuraStyle.Toggle.INHERIT : inherited.threeD, false);
+        if (threeD) {
+            type = spatialType(data == null ? "smooth" : data.getExtraAuraType3D(),
+                    override == null ? "" : override.extraType, override, inherited);
+        }
+        put(layers, new Layer(type, clamp(index), rgb, threeD));
+    }
+
+    private static String spatialType(String dmzType, String selected, NpcAuraStyle style, NpcAuraStyle inherited) {
+        String type = nonBlank(dmzType, "smooth");
+        if (style != null && style.enabled && ("smooth".equals(selected)
+                || "sparking".equals(selected) || "god".equals(selected))) type = selected;
+        NpcAuraStyle.Toggle smooth = style == null ? NpcAuraStyle.Toggle.INHERIT : style.smooth;
+        NpcAuraStyle.Toggle baseSmooth = inherited == null ? NpcAuraStyle.Toggle.INHERIT : inherited.smooth;
+        if (smooth == NpcAuraStyle.Toggle.INHERIT) smooth = baseSmooth;
+        if (smooth == NpcAuraStyle.Toggle.ON) return "smooth";
+        if (smooth == NpcAuraStyle.Toggle.OFF && "smooth".equals(type)) return "sparking";
+        return type;
+    }
+
+    static boolean mode(NpcAuraStyle.Toggle mode, NpcAuraStyle.Toggle inherited, boolean dmzDefault) {
+        return mode.resolve(inherited.resolve(dmzDefault));
     }
 
     private static Lightning resolveLightning(NpcCombatProfile profile,
@@ -120,6 +148,18 @@ public final class NpcAuraResolver {
 
     private static void put(Map<Integer, Layer> layers, Layer layer) {
         if (layer != null) layers.put(layer.index(), layer);
+    }
+
+    private static String raceAura3DType(String raceId) {
+        try {
+            RaceCharacterConfig race = ConfigManager.getRaceCharacter(
+                    raceId == null || raceId.isBlank() ? "human" : raceId);
+            return race == null ? "smooth" : nonBlank(race.getAuraType3D(), "smooth");
+        } catch (Throwable ignored) {
+            // Same fallback as raceAuraType: this runs on the render path for every NPC, and DMZ's
+            // race table is not guaranteed to be populated when the first aura is resolved.
+        }
+        return "smooth";
     }
 
     private static String raceAuraType(String raceId) {

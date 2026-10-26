@@ -261,21 +261,20 @@ public final class XenoHudCommands {
                 .then(Commands.literal("aura")
                         .requires(XenoPermissions.require(XenoPermissions.XENOHUD_RENDERER))
                         .then(Commands.literal("on").executes(ctx -> {
-                            XenoAuraConfig.enabled = true;
-                            XenoAuraConfig.save();
+                            net.bullettrain.xenopixelsmod.client.combat.aura.XenoAuraScaling.setCustomSizing(true);
                             ctx.getSource().sendSuccess(
                                     () -> Component.literal("Aura scaling: on"), false);
                             return 1;
                         }))
                         .then(Commands.literal("off").executes(ctx -> {
-                            XenoAuraConfig.enabled = false;
-                            XenoAuraConfig.save();
+                            net.bullettrain.xenopixelsmod.client.combat.aura.XenoAuraScaling.setCustomSizing(false);
                             ctx.getSource().sendSuccess(() -> Component.literal(
                                     "Aura scaling: off (DragonMineZ's own sizing)"), false);
                             return 1;
                         }))
                         .then(Commands.literal("reset").executes(ctx -> {
                             XenoAuraConfig.reset();
+                            net.bullettrain.xenopixelsmod.client.combat.aura.XenoAuraScaling.refreshSizing();
                             ctx.getSource().sendSuccess(
                                     () -> Component.literal("Aura scaling reset"), false);
                             return 1;

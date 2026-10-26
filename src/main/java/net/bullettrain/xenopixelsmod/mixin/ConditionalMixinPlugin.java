@@ -49,6 +49,13 @@ public class ConditionalMixinPlugin implements IMixinConfigPlugin {
         }
         // Package-based gates under mixin.compat.*
         if (mixinClassName.contains(".compat.sable.")) {
+            if (mixinClassName.contains("SableSparseSectionAirEncodingMixin")) {
+                var mods = FMLLoader.getLoadingModList();
+                var file = mods == null ? null : mods.getModFileById("sable");
+                boolean supportedVersion = file != null && file.getMods().stream().anyMatch(mod ->
+                        mod.getModId().equals("sable") && mod.getVersion().toString().equals("2.0.3"));
+                return supportedVersion && isClassPresent("dev.ryanhcode.sable.physics.impl.rapier.RapierPhysicsPipeline");
+            }
             // Contraption collider is a Create type; skip apply if Create is absent.
             if (mixinClassName.contains("Contraption")) {
                 return isModLoaded("sable") && isModLoaded("create");

@@ -240,8 +240,9 @@ public final class Bt3SparkingSystem {
     /**
      * Raises the player's release ceiling for the duration of Sparking.
      *
-     * <p>DragonMineZ caps release at {@code 50 + potentialunlock_level * 5}, so even a maxed player
-     * sits at 115. Only the ceiling is raised here: DMZ's own tick handler ramps power release
+     * <p>DragonMineZ 2.2 derives its native cap from Potential Unlock and racial modifiers.
+     * The Sparking mixin lifts that cap; this method lifts the player's separate throttle.
+     * Only the ceiling is raised here: DMZ's own tick handler ramps power release
      * toward whatever the limit is, so the climb still costs the player the time it normally does.
      *
      * <p>The previous values are parked rather than recomputed, because the ceiling is a stored

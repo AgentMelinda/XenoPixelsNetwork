@@ -52,6 +52,11 @@ public final class PlayerScriptHost {
                 if (tabs.size() >= NpcScriptContainer.MAX_TABS) break;
                 var script = XenoNpcScripts.Script.of(entry.id(), entry.tag());
                 if (!script.enabled() || script.script().isBlank()) continue;
+                String source = XenoNpcScripts.sourceText(entry.tag());
+                if (source == null) {
+                    XenoPixelsMod.LOGGER.warn("Player script {} has unavailable or excessive loaded libraries", entry.id());
+                    continue;
+                }
                 NpcScriptScope scope = NpcScriptScope.builder()
                         .put("player", ScriptEntity.of(player))
                         .put("world", new ScriptWorld(player.serverLevel()))
@@ -63,7 +68,7 @@ public final class PlayerScriptHost {
                         .putString("scriptName", entry.id())
                         .build();
                 var instance = NpcScriptEngines.forLanguage(script.language())
-                        .instantiate(script.script(), scope);
+                        .instantiate(source, scope);
                 if (!instance.ok()) {
                     XenoPixelsMod.LOGGER.error("Player script {} load: {}", entry.id(),
                             instance.loadResult().describe());

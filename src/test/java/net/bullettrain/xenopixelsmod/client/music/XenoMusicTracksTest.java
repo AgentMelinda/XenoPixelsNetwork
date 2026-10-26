@@ -29,7 +29,7 @@ class XenoMusicTracksTest {
 
     @Test void everyDefaultResolvesToAStreamedAudioAssetInThePinnedDependency() throws Exception {
         var project = java.nio.file.Path.of(System.getProperty("xenopixels.projectDir"));
-        try (var jar = new java.util.zip.ZipFile(project.resolve("libs/dragonminez-2.1.3.jar").toFile())) {
+        try (var jar = new java.util.zip.ZipFile(project.resolve("libs/dragonminez-2.2.jar").toFile())) {
             var entry = jar.getEntry("assets/dragonminez/sounds.json");
             assertNotNull(entry);
             try (var reader = new java.io.InputStreamReader(jar.getInputStream(entry), java.nio.charset.StandardCharsets.UTF_8)) {

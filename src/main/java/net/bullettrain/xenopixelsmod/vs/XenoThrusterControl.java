@@ -6,6 +6,9 @@ import dev.ryanhcode.sable.platform.SableEventPlatform;
 import dev.ryanhcode.sable.sublevel.ServerSubLevel;
 import net.bullettrain.xenopixelsmod.XenoPixelsMod;
 import net.bullettrain.xenopixelsmod.config.XenoServerConfig;
+import net.bullettrain.xenopixelsmod.space.event.StellarBlastWaveService;
+import net.bullettrain.xenopixelsmod.space.physics.PhysicalEarth;
+import net.minecraft.server.level.ServerLevel;
 import org.joml.Vector3d;
 
 import java.util.Map;
@@ -17,6 +20,7 @@ import java.util.concurrent.atomic.AtomicLong;
 /** Runtime thruster controller for Sable moving sub-levels. */
 public final class XenoThrusterControl {
     private static final AtomicBoolean REGISTERED = new AtomicBoolean();
+    private static final AtomicBoolean HOST_THREAD_CHECK_LOGGED = new AtomicBoolean();
     private static final Map<UUID, XenoThrusterControl> CONTROLS = new ConcurrentHashMap<>();
     /**
      * Stale-sweep cadence for {@link #CONTROLS}. A control is kept while its ship is seen alive in
@@ -38,8 +42,14 @@ public final class XenoThrusterControl {
     public static void ensureRegistered() {
         if (!REGISTERED.compareAndSet(false, true)) return;
         SableEventPlatform.INSTANCE.onPhysicsTick((system, deltaSeconds) -> {
+            ServerLevel level = system.getLevel();
+            if (level != null && level.getServer() != null
+                    && PhysicalEarth.HOST.equals(level.dimension().location())
+                    && HOST_THREAD_CHECK_LOGGED.compareAndSet(false, true))
+                XenoPixelsMod.LOGGER.info("Sable physics callback thread check: serverSameThread={}, dimension={}",
+                        level.getServer().isSameThread(), level.dimension().location());
             long now = System.nanoTime();
-            for (var candidate : SubLevelContainer.getContainer(system.getLevel()).getAllSubLevels()) {
+            for (var candidate : SubLevelContainer.getContainer(level).getAllSubLevels()) {
                 if (!(candidate instanceof ServerSubLevel subLevel)) continue;
                 XenoThrusterControl control = get(subLevel);
                 if (control == null) continue;
@@ -47,6 +57,16 @@ public final class XenoThrusterControl {
                 // mark it seen before the isEmpty short-circuit (or an idle hull would go stale).
                 control.lastSeenNanos = now;
                 if (control.isEmpty()) continue;
+                // A supernova shell temporarily cuts thruster impulses for ships it is crossing.
+                // The wave sample is cached once per server tick and shared with oxygen processing.
+                if (level != null && PhysicalEarth.HOST.equals(level.dimension().location())) {
+                    try {
+                        if (StellarBlastWaveService.suppressShipThrust(level, subLevel)) continue;
+                    } catch (RuntimeException waveFailure) {
+                        // A bad chart/SavedData read must not take this ship's normal controller out of the tick.
+                        control.warnSupernovaLookupOnce(subLevel, waveFailure);
+                    }
+                }
                 RigidBodyHandle handle = system.getPhysicsHandle(subLevel);
                 if (handle != null && handle.isValid()) control.physicsTick(subLevel, handle, deltaSeconds);
             }
@@ -170,8 +190,16 @@ public final class XenoThrusterControl {
         XenoPixelsMod.LOGGER.warn("[ship " + VsShipHelper.getShipId(subLevel) + "] " + message, args);
     }
 
+    private void warnSupernovaLookupOnce(ServerSubLevel subLevel, RuntimeException failure) {
+        if (!supernovaLookupWarnedShips.add(subLevel.getUniqueId())) return;
+        XenoPixelsMod.LOGGER.warn("[ship {}] supernova thrust-suppression lookup failed; retaining normal thrust",
+                VsShipHelper.getShipId(subLevel), failure);
+    }
+
     /** Ships already warned about, so the physics tick never spams the log. */
     private final java.util.Set<java.util.UUID> warnedShips = java.util.concurrent.ConcurrentHashMap.newKeySet();
+    /** Kept separate from impulse warnings so a prior impulse warning cannot hide a wave-lookup failure. */
+    private final java.util.Set<java.util.UUID> supernovaLookupWarnedShips = java.util.concurrent.ConcurrentHashMap.newKeySet();
 
     private static final class ThrusterForce {
         private volatile ForceState state;

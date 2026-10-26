@@ -23,9 +23,9 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 public abstract class DmzAuraStatScaleMixin {
 
     @Inject(
-            method = "getAuraScale(Lcom/dragonminez/common/stats/StatsData;[F)[F",
+            method = "getAuraScale(Lnet/minecraft/world/entity/player/Player;Lcom/dragonminez/common/stats/StatsData;)[F",
             at = @At("RETURN"), cancellable = true, require = 0)
-    private static void xenopixels$scaleWithPower(StatsData stats, float[] modelScale,
+    private static void xenopixels$scaleWithPower(net.minecraft.world.entity.player.Player player, StatsData stats,
                                                   CallbackInfoReturnable<float[]> cir) {
         float[] scaled = XenoAuraScaling.apply(cir.getReturnValue(), stats);
         if (scaled != cir.getReturnValue()) {

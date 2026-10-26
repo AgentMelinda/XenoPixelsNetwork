@@ -7,6 +7,7 @@ import net.bullettrain.xenopixelsmod.server.WorldSaveFlush;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
 import net.minecraft.network.chat.Component;
+import net.minecraft.gametest.framework.GameTestServer;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerBossEvent;
 import net.minecraft.server.level.ServerPlayer;
@@ -79,7 +80,9 @@ public final class XenoSaveCommands {
 
     @SubscribeEvent(priority = EventPriority.HIGH)
     public static void onStopping(ServerStoppingEvent event) {
-        WorldSaveFlush.flush(event.getServer());
+        // GameTestServer is disposable and performs its own shutdown save. Running the extra blocking
+        // LinearReader flush there can spin through the test world's unload queue for minutes after tests finish.
+        if (!(event.getServer() instanceof GameTestServer)) WorldSaveFlush.flush(event.getServer());
         clearBar();
     }
 

@@ -6,8 +6,8 @@ import subprocess
 import zipfile
 
 ROOT = Path(__file__).resolve().parents[1]
-JAR = ROOT / "libs/dragonminez-2.1.3.jar"
-EXPECTED = "5a6e33ef5b992e64fccccaed895b105318b2ce1ab8039d8193107d40d203b581"
+JAR = ROOT / "libs/dragonminez-2.2.jar"
+EXPECTED = "97fd50b80d8a9afdc0406202e276f4de43bfbcd7bb1c802d16cefadbc40c9949"
 assert hashlib.sha256(JAR.read_bytes()).hexdigest() == EXPECTED
 REFERENCE = ROOT / "tools/generated/dmz_decompiled_full/com/dragonminez/common/init"
 classes = {}
@@ -58,10 +58,10 @@ for cls, model in declaring.items():
     section = bytecode.split("public class " + marker, 1)[1].split("Compiled from", 1)[0]
     method = section.split("public java.lang.String getGeckolibModelName();", 1)[1].split("\n\n", 1)[0]
     assert "// String " + model in method, (cls, model)
-saibaman = subprocess.run(["javap", "-classpath", str(JAR), "-c",
+saibaman = subprocess.run(["javap", "-classpath", str(JAR), "-v",
     "com.dragonminez.client.init.entities.model.sagas.DBSaibamanModel"],
     check=True, capture_output=True, text=True).stdout
-assert "// String geo/entity/sagas/saga_saibaman.geo.json" in saibaman
+assert "geo/entity/sagas/\\u0001.geo.json" in saibaman
 assert "// String animations/entity/sagas/saga_saibaman.animation.json" in saibaman
 
 target = ROOT / "src/main/java/net/bullettrain/xenopixelsmod/client/npc/DmzSagaModelAssets.java"
@@ -70,7 +70,7 @@ target.write_text('''package net.bullettrain.xenopixelsmod.client.npc;
 
 import java.util.Map;
 
-/** Pinned DragonMineZ 2.1.3 Saga texture aliases; verified by tools/verify_dmz_saga_model_assets.py. */
+/** Pinned DragonMineZ 2.2 Saga texture aliases; verified by tools/verify_dmz_saga_model_assets.py. */
 final class DmzSagaModelAssets {
     private DmzSagaModelAssets() {}
     private static final Map<String, String> RIGS = Map.ofEntries(

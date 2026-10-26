@@ -102,12 +102,18 @@ public final class PartyManager {
             sendState(target);
             return null;
         }
+        return inviteResultMessage(result, target.getName().getString());
+    }
+
+    static String inviteResultMessage(InviteRequestResult result, String targetName) {
         return switch (result) {
             case SUGGESTED, NO_PERMISSION -> "Only the party leader can invite players";
             case PARTY_FULL -> "That party is full";
-            case ALREADY_IN_PARTY -> target.getName().getString() + " is already in a party";
+            case ALREADY_IN_PARTY -> targetName + " is already in a party";
             case LEVEL_GAP -> "DragonMineZ party level-gap rules reject that invite";
             case CANNOT_INVITE_SELF -> "You cannot invite yourself";
+            case TOURNAMENT_ACTIVE -> "Party invites are unavailable during an active tournament";
+            case DIFFICULTY_TOO_LOW -> "Your quest difficulty is too high for that party";
             case INVITED -> null;
         };
     }
@@ -137,6 +143,10 @@ public final class PartyManager {
             syncParty(player.getServer(), partyId);
             return null;
         }
+        return acceptResultMessage(result);
+    }
+
+    static String acceptResultMessage(InviteAcceptResult result) {
         return switch (result) {
             case EXPIRED -> "That invite expired";
             case PARTY_FULL -> "That party is full";
@@ -144,6 +154,9 @@ public final class PartyManager {
             case DIFFICULTY_TOO_LOW -> "Your quest difficulty is too high for that party";
             case DIFFICULTY_CONFIRM_REQUIRED -> "Run /xenoparty accept confirm to match the party difficulty";
             case INVALID -> "You have no valid pending invite";
+            case TOURNAMENT_ACTIVE -> "You cannot join a party during an active tournament";
+            case LEADER_OFFLINE -> "That party's leader is offline";
+            case PARTY_DISBANDED -> "That party has disbanded";
             case SUCCESS -> null;
         };
     }

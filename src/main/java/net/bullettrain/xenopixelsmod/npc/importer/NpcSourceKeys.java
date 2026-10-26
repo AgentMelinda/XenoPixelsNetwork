@@ -38,6 +38,8 @@ public final class NpcSourceKeys {
             "id", "Name", "Role", "NpcSchema", "SourceMod", "SourceUuid",
             "FactionID", "NPCDialogOptions",
             "Scripts", "ScriptLanguage", "ScriptEnabled",
+            "NpcInv", "Armor", "Weapons", "DropChance", "MinExp", "MaxExp", "LootMode",
+            "MoveSpeed", "CanSprint",
             "NpcLines", "NpcInteractLines", "NpcAttackLines", "NpcKillLines", "NpcKilledLines",
             "Resistances", "ImmuneToFire", "PotionImmune", "NoFallDamage", "CanDrown",
             "IgnoreCobweb", "BossBar", "NpcJob",
@@ -47,6 +49,8 @@ public final class NpcSourceKeys {
             // CNPC DataStats/DataDisplay health, regen and family knobs.
             "BurnInSun", "MaxHealth", "HealthRegen", "CombatRegen", "CreatureType",
             "BossColor", "NpcVisible",
+            // CNPC DataDisplay booleans that name the native switch they became.
+            "ShowLayers", "OverlayGlowing", "HideBodyWhenKilled",
             // CNPC DataMelee/DataRanged attack model.
             "AttackStrenght", "AttackRange", "AttackSpeed", "KnockBack",
             "Accuracy", "MaxFiringRange", "DistanceToMelee", "minDelay", "maxDelay", "ShotCount",
@@ -133,17 +137,15 @@ public final class NpcSourceKeys {
         map.put("native links are stored as UUIDs, and a source link is a display name that cannot be"
                         + " resolved without the whole roster",
                 List.of("LinkedNpcName", "LinkedNpcSlot"));
-        map.put("native combat has no field for these: move speed and sprinting are the vanilla"
-                        + " movement attributes, faction attack/defend toggles and points belong to the"
-                        + " faction store, the loot and experience knobs are vanilla or CNPC runtime"
-                        + " bookkeeping, and VisibleAvailability is one of CNPC's availability gates",
-                List.of("MoveSpeed", "CanSprint", "AttackOtherFactions", "DefendFaction",
-                        "FactionPoints", "LootMode", "DropChance", "MaxExp", "MinExp",
+        map.put("faction attack/defend toggles and points belong to the faction store;"
+                        + " KilledTime is runtime state and VisibleAvailability is a source availability gate",
+                List.of("AttackOtherFactions", "DefendFaction",
+                        "FactionPoints",
                         "KilledTime", "VisibleAvailability"));
-        map.put("CNPC's held-weapon items and melee potion effect have no verified native mapping:"
-                        + " Weapons stores item stacks, and the Potion* keys store an index into"
+        map.put("CNPC's melee potion effect has no verified native mapping:"
+                        + " the Potion* keys store an index into"
                         + " CNPC's editor dropdown with no checked-over path to registry ids",
-                List.of("Weapons", "PotionAmp", "PotionDuration", "PotionEffect"));
+                List.of("PotionAmp", "PotionDuration", "PotionEffect"));
         map.put("movement is native pathing and the profile's stay-home/path settings; CNPC's"
                         + " wander/aggro pattern knobs do not carry over",
                 List.of("ActiveRange", "AggroRange", "WalkingRange", "MovingPatern", "MovingPause",
@@ -158,22 +160,23 @@ public final class NpcSourceKeys {
                 List.of("TransformIsActive", "TransformEditingModus", "TransformHasAI",
                         "TransformHasAdvanced", "TransformHasDisplay", "TransformHasInv",
                         "TransformHasJob", "TransformHasRole", "TransformHasStats"));
+        map.put("the native profile has the matching field, but the source value is one of CNPC's own"
+                        + " editor choices - a cape or overlay picked from its texture list, and a"
+                        + " name-visibility ordinal whose option order no tracked fixture pins - so"
+                        + " copying it would guess at the encoding",
+                List.of("CloakTexture", "GlowTexture", "ShowName"));
         map.put("the native appearance surface is the profile's model, skin, hair and colour fields;"
                         + " CNPC's extra render layers have no equivalent",
-                List.of("CloakTexture", "GlowTexture", "OverlayGlowing", "ShowLayers", "ShowName",
-                        "NoLivingAnimation", "SkinColor",
-                        "NpcModelData", "MarkovGender", "MarkovGeneratorId", "EntityScale",
-                        "HideBodyWhenKilled", "PositionOffsetX", "PositionOffsetY", "PositionOffsetZ"));
+                List.of("NoLivingAnimation", "SkinColor",
+                        "MarkovGender", "MarkovGeneratorId", "EntityScale",
+                        "PositionOffsetX", "PositionOffsetY", "PositionOffsetZ"));
         map.put("CNPC's own particle block is a per-NPC effect emitter the native renderer does not"
                         + " carry; the settings are preserved in the source snapshot",
                 List.of("pArea", "pDamage", "pDur", "pEffAmp", "pEffect", "pGlows", "pImpact",
                         "pPhysics", "pRender3D", "pSize", "pSpeed", "pSpin", "pStick", "pTrail",
                         "pXlr8"));
-        map.put("CNPC's NPC inventory and scene sequences are per-server runtime data (item stacks,"
-                        + " keyframed sequences) rather than NPC definition; the native equivalents -"
-                        + " trades and drops, the SCENES store - are authored in the Xeno stores, and"
-                        + " no verified mapping from these shapes exists",
-                List.of("NpcInv", "NpcScenes"));
+        map.put("CNPC's keyframed scene sequences have no verified mapping to the native SCENES store",
+                List.of("NpcScenes"));
         map.put("CNPC's bank, transport and controller keys are integer references to server-side"
                         + " records that live outside the NPC tag; those blobs have never been"
                         + " sampled in a tracked fixture (no bank/transport/market data exists in any"
@@ -208,6 +211,28 @@ public final class NpcSourceKeys {
             return;
         }
         Set<String> present = new LinkedHashSet<>(source.getAllKeys());
+        for (var raw : source.getList("NpcInv", net.minecraft.nbt.Tag.TAG_COMPOUND)) {
+            var item = (CompoundTag) raw;
+            int slot = item.getByte("Slot");
+            if (slot < 0 || slot >= net.bullettrain.xenopixelsmod.npc.inventory.NpcDropList.MAX_DROPS)
+                report.noteGrouped("source NpcInv slot " + slot + " exceeds native drop slots; retained in source snapshot", npcKey);
+        }
+        for (var raw : source.getList("Weapons", net.minecraft.nbt.Tag.TAG_COMPOUND)) {
+            var item = (CompoundTag) raw;
+            if (item.getByte("Slot") == 1 && item.contains("id"))
+                report.noteGrouped("source Weapons projectile slot has no native stack consumer; retained in source snapshot", npcKey);
+        }
+        if (source.contains("NpcModelData", net.minecraft.nbt.Tag.TAG_COMPOUND)) {
+            var model = source.getCompound("NpcModelData");
+            for (String key : model.getAllKeys()) {
+                if (!java.util.Set.of("EntityName", "CustomSkinUrl").contains(key))
+                    report.noteGrouped("source model field NpcModelData." + key
+                            + " retained in source snapshot; native model counterpart does not represent it", npcKey);
+            }
+            String entity = model.getString("EntityName");
+            if (!entity.isBlank()) report.noteGrouped("imported entity model reference " + entity
+                    + "; unavailable entity renderers use the native humanoid fallback", npcKey);
+        }
         for (Map.Entry<String, List<String>> family : UNMAPPED.entrySet()) {
             List<String> hits = new java.util.ArrayList<>();
             for (String key : family.getValue()) {
@@ -222,7 +247,7 @@ public final class NpcSourceKeys {
                     + family.getKey(), npcKey);
         }
         for (String key : present) {
-            if (CONSUMED.contains(key) || STATE.contains(key) || ALL_UNMAPPED.contains(key)) {
+            if (key.equals("NpcModelData") || CONSUMED.contains(key) || STATE.contains(key) || ALL_UNMAPPED.contains(key)) {
                 continue;
             }
             if (isForeignRuntimeState(key)) {

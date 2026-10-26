@@ -87,7 +87,8 @@ public final class XenoDialogAdapter implements IDialog {
         if (options.size() > XenoDialogueNbt.MAX_OPTIONS) {
             throw new IllegalArgumentException("A dialog node holds at most " + XenoDialogueNbt.MAX_OPTIONS + " options");
         }
-        replace(new XenoDialogue.Node(node.text(), List.copyOf(options), node.palette()));
+        replace(new XenoDialogue.Node(node.text(), List.copyOf(options), node.palette(),
+                node.availability(), node.sourceRef()));
     }
 
     /** The CustomNPCs number: the tree's for its start node, a node's own for an imported node. */
@@ -118,7 +119,7 @@ public final class XenoDialogAdapter implements IDialog {
     public void setText(String text) {
         XenoDialogue.Node node = current();
         replace(new XenoDialogue.Node(XenoApiAdapters.boundedText("IDialog.setText", text, XenoDialogueNbt.MAX_TEXT),
-                node.options(), node.palette()));
+                node.options(), node.palette(), node.availability(), node.sourceRef()));
     }
 
     /** The quest this node offers: its first quest option. */
@@ -201,7 +202,8 @@ public final class XenoDialogAdapter implements IDialog {
         return slot >= 0 && slot < current().options().size() ? new XenoDialogOption(this, slot) : null;
     }
 
-    @Override public IAvailability getAvailability() { return XenoDialogAvailability.INSTANCE; }
+    /** This node's conditions, read and written through this view. */
+    @Override public IAvailability getAvailability() { return new XenoNodeAvailability(this); }
     @Override public IDialogCategory getCategory() { return new XenoDialogCategory(group); }
 
     @Override

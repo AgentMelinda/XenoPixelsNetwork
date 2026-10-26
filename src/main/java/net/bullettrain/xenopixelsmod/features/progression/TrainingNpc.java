@@ -155,17 +155,16 @@ public final class TrainingNpc {
     }
 
     private static String hairCode(com.dragonminez.common.stats.character.Character character) {
-        var base = character.getHairBase();
-        var ssj = character.getHairSSJ();
-        var ssj2 = character.getHairSSJ2();
-        var ssj3 = character.getHairSSJ3();
+        var styles = new java.util.EnumMap<com.dragonminez.common.hair.HairStyleSlot,
+                com.dragonminez.common.hair.CustomHair>(com.dragonminez.common.hair.HairStyleSlot.class);
         boolean any = false;
-        for (var hair : new com.dragonminez.common.hair.CustomHair[] {base, ssj, ssj2, ssj3}) {
+        for (var slot : com.dragonminez.common.hair.HairStyleSlot.values()) {
+            var hair = character.getHairStyle(slot);
+            styles.put(slot, nz(hair));
             if (hair != null && !hair.isEmpty()) any = true;
         }
         if (!any) return "";
-        String code = com.dragonminez.common.hair.HairManager.toFullSetCode(
-                nz(base), nz(ssj), nz(ssj2), nz(ssj3));
+        String code = com.dragonminez.common.hair.HairCodec.toFullSetCode(styles);
         return code == null ? "" : code.trim();
     }
 

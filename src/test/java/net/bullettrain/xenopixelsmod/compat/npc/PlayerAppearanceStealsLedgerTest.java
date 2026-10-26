@@ -151,7 +151,7 @@ class PlayerAppearanceStealsLedgerTest {
 
     private static NpcAppearanceSource look() {
         CustomHair hair = new CustomHair();
-        hair.getStrands(CustomHair.HairFace.TOP)[0].addCube();
+        hair.getStrands(CustomHair.HairFace.TOP)[0].makeVisibleWithDefaults();
         CustomHair[] slots = {hair, hair, hair, hair};
         return new NpcAppearanceSource("saiyan", "female", "warrior",
                 1, 2, 3, 4, 5, 1.0f,

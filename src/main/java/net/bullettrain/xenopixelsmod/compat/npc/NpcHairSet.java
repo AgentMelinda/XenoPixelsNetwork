@@ -2,12 +2,15 @@ package net.bullettrain.xenopixelsmod.compat.npc;
 
 import com.dragonminez.common.hair.CustomHair;
 import com.dragonminez.common.hair.HairManager;
+import com.dragonminez.common.hair.HairCodec;
+import com.dragonminez.common.hair.HairStyleSlot;
+import java.util.EnumMap;
 
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
- * The one answer to "which four hair slots does this look wear", resolved from DragonMineZ's own
+ * The one answer to "which hair slots does this look wear", resolved from DragonMineZ's own
  * codec so server and client cannot disagree about it.
  *
  * <p>{@code styleId} 0 means the NPC's custom hair code; anything else is one of DMZ's
@@ -31,25 +34,23 @@ public final class NpcHairSet {
     }
 
     /**
-     * @return four slots (base, SSJ, SSJ2, SSJ3), or null when there is nothing to resolve
+     * @return five slots (base, SSJ, SSJ2, SSJ3, SSJ4), or null when there is nothing to resolve
      */
     public static CustomHair[] resolve(String code, String color, int styleId) {
         if (styleId > 0 && styleId <= presetCount()) {
-            String tint = color == null ? "" : color;
-            CustomHair base = HairManager.getPresetHair(styleId, tint);
+            CustomHair base = HairManager.getPresetStyle(styleId, HairStyleSlot.BASE);
             if (base != null) {
-                return new CustomHair[]{
-                        base,
-                        orElse(HairManager.getPresetHairSSJ(styleId, tint), base),
-                        orElse(HairManager.getPresetHairSSJ2(styleId, tint), base),
-                        orElse(HairManager.getPresetHairSSJ3(styleId, tint), base)
-                };
+                CustomHair[] styles = new CustomHair[HairStyleSlot.count()];
+                for (HairStyleSlot slot : HairStyleSlot.values()) {
+                    styles[slot.index()] = orElse(HairManager.getPresetStyle(styleId, slot), base);
+                }
+                return styles;
             }
         }
         return parse(code);
     }
 
-    /** The same four slots from a stored code alone, without a preset id. */
+    /** The same five slots from a stored code alone, without a preset id. */
     public static CustomHair[] parse(String code) {
         if (code == null || code.isBlank()) {
             return null;
@@ -61,13 +62,15 @@ public final class NpcHairSet {
         }
         CustomHair[] parsed = null;
         try {
-            if (HairManager.isFullSetCode(key)) {
-                if (key.startsWith("DMZF4:") || key.length() >= 64) {
-                    parsed = HairManager.fromFullSetCode(key);
+            if (HairCodec.isFullSetCode(key)) {
+                EnumMap<HairStyleSlot, CustomHair> styles = HairCodec.fromFullSetCode(key);
+                if (styles != null) {
+                    parsed = new CustomHair[HairStyleSlot.count()];
+                    for (HairStyleSlot slot : HairStyleSlot.values()) parsed[slot.index()] = styles.get(slot);
                 }
             } else {
-                CustomHair base = HairManager.fromCode(key);
-                parsed = base == null ? null : new CustomHair[]{base, base, base, base};
+                CustomHair base = HairCodec.fromCode(key);
+                parsed = base == null ? null : new CustomHair[]{base, base, base, base, base};
             }
             if (parsed != null && (parsed.length == 0 || parsed[0] == null)) {
                 parsed = null;
@@ -85,7 +88,7 @@ public final class NpcHairSet {
      */
     public static CustomHair slot(CustomHair[] hair, int index) {
         if (hair == null || hair.length == 0 || hair[0] == null) return new CustomHair();
-        CustomHair selected = index < hair.length && hair[index] != null ? hair[index] : hair[0];
+        CustomHair selected = index >= 0 && index < hair.length && hair[index] != null ? hair[index] : hair[0];
         return selected == null ? new CustomHair() : selected.copy();
     }
 
@@ -106,9 +109,8 @@ public final class NpcHairSet {
         String value = code == null ? "" : code.trim();
         if (value.isEmpty()) return true;
         try {
-            return value.isEmpty() ? false
-                    : HairManager.isFullSetCode(value) ? HairManager.fromFullSetCode(value) != null
-                    : HairManager.fromCode(value) != null;
+            return HairCodec.isFullSetCode(value) ? HairCodec.fromFullSetCode(value) != null
+                    : HairCodec.fromCode(value) != null;
         } catch (RuntimeException garbage) {
             return false;
         }

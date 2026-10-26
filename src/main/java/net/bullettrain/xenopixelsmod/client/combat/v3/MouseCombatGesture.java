@@ -18,6 +18,16 @@ public final class MouseCombatGesture {
     private int held;
 
     public Action update(boolean down, boolean allowed) {
+        return update(down, allowed, true);
+    }
+
+    /** Physical transitions do not advance charge time; even a press/release between ticks is a tap. */
+    public Action edge(boolean down, boolean allowed) {
+        return update(down, allowed, false);
+    }
+
+    private Action update(boolean down, boolean allowed, boolean advanceTick) {
+        boolean released = wasDown && !down;
         if (down && !wasDown) {
             held = 0;
             blocked = !allowed;
@@ -34,7 +44,7 @@ public final class MouseCombatGesture {
         }
         if (down) {
             if (blocked) return Action.NONE;
-            held++;
+            if (advanceTick) held++;
             if (!charging && held >= HOLD_TICKS) {
                 charging = true;
                 return Action.START;
@@ -46,7 +56,7 @@ public final class MouseCombatGesture {
             held = 0;
             return Action.RELEASE;
         }
-        boolean tap = held > 0 && !blocked;
+        boolean tap = (held > 0 || released) && !blocked;
         held = 0;
         blocked = false;
         return tap ? Action.TAP : Action.NONE;
@@ -73,9 +83,17 @@ public final class MouseCombatGesture {
         private Owner owner = Owner.NONE;
 
         public Actions update(boolean leftDown, boolean rightDown, boolean allowed) {
+            return update(leftDown, rightDown, allowed, true);
+        }
+
+        public Actions edge(boolean leftDown, boolean rightDown, boolean allowed) {
+            return update(leftDown, rightDown, allowed, false);
+        }
+
+        private Actions update(boolean leftDown, boolean rightDown, boolean allowed, boolean advanceTick) {
             if (owner == Owner.NONE) owner = leftDown ? Owner.LEFT : rightDown ? Owner.RIGHT : Owner.NONE;
-            Action l = left.update(leftDown, allowed && owner != Owner.RIGHT);
-            Action r = right.update(rightDown, allowed && owner != Owner.LEFT);
+            Action l = left.update(leftDown, allowed && owner != Owner.RIGHT, advanceTick);
+            Action r = right.update(rightDown, allowed && owner != Owner.LEFT, advanceTick);
             if ((owner == Owner.LEFT && !leftDown) || (owner == Owner.RIGHT && !rightDown)) owner = Owner.NONE;
             return new Actions(l, r);
         }

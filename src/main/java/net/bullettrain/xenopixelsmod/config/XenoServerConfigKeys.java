@@ -84,7 +84,7 @@ public final class XenoServerConfigKeys {
                 () -> XenoServerConfig.hakaiEnabled,
                 v -> XenoServerConfig.hakaiEnabled = v,
                 "hakai");
-        bool("hakaiTargetGlow", "Outline the Hakai target while the channel runs",
+        bool("hakaiTargetGlow", "Glow the Hakai target during channels and at planet impact",
                 () -> XenoServerConfig.hakaiTargetGlow,
                 v -> XenoServerConfig.hakaiTargetGlow = v,
                 "hakaiglow");
@@ -215,6 +215,10 @@ public final class XenoServerConfigKeys {
                 () -> XenoServerConfig.hakaiFadeEnabled,
                 v -> XenoServerConfig.hakaiFadeEnabled = v,
                 "hakaifade");
+        bool("hakaiOriginArbitration", "Keep one Hakai dissolve origin per target while a sweep is erasing it",
+                () -> XenoServerConfig.hakaiOriginArbitration,
+                v -> XenoServerConfig.hakaiOriginArbitration = v,
+                "hakaiorigin");
         flt("hakaiFadeMinAlpha", "Lowest alpha a fading Hakai body may reach (0 = invisible)",
                 () -> XenoServerConfig.hakaiFadeMinAlpha,
                 v -> XenoServerConfig.hakaiFadeMinAlpha = Math.max(0f, Math.min(1f, v)),
@@ -351,7 +355,7 @@ public final class XenoServerConfigKeys {
                 () -> XenoServerConfig.hakaiSilhouetteColor,
                 v -> XenoServerConfig.hakaiSilhouetteColor = v & 0xFFFFFF,
                 "hakaisilhouettecolor");
-        rgb("hakaiGlowColor", "Packed RGB for the Hakai target outline",
+        rgb("hakaiGlowColor", "Packed RGB for the Hakai target and planet impact glow",
                 () -> XenoServerConfig.hakaiGlowColor,
                 v -> XenoServerConfig.hakaiGlowColor = v & 0xFFFFFF,
                 "hakaiglowcolor");

@@ -35,6 +35,8 @@ public final class GuiNpcDmzAuraEditor extends GuiNPCInterface2 implements IText
     private static final int LIGHTNING_CONFIGURED = 30;
     private static final int LIGHTNING_ENABLED = 31;
     private static final int LIGHTNING_COLOR = 32;
+    private static final int SMOOTH = 33;
+    private static final int THREE_D = 34;
     private static final int APPLY = 40;
     private static final int CANCEL = 41;
 
@@ -85,6 +87,8 @@ public final class GuiNpcDmzAuraEditor extends GuiNPCInterface2 implements IText
         yesNo(LIGHTNING_ENABLED, "Visible", left + 100, y + 126, style.lightningEnabled);
         field(LIGHTNING_COLOR, "Color", left, y + 146, style.lightningColor);
 
+        addButton(new GuiButtonNop(this, SMOOTH, right, y + 126, 188, 16, "Smooth: " + style.smooth.name()));
+        addButton(new GuiButtonNop(this, THREE_D, right, y + 146, 188, 16, "3D: " + style.threeD.name()));
         addButton(new GuiButtonNop(this, APPLY, guiLeft + 300, guiTop + 174, 52, 18, "Apply"));
         addButton(new GuiButtonNop(this, CANCEL, guiLeft + 356, guiTop + 174, 56, 18, "Cancel"));
     }
@@ -112,7 +116,9 @@ public final class GuiNpcDmzAuraEditor extends GuiNPCInterface2 implements IText
             return;
         }
         NpcAuraStyle style = style(true);
-        if (button.id == OVERRIDE && button instanceof GuiButtonYesNo yes) style.enabled = yes.getBoolean();
+        if (button.id == SMOOTH) style.smooth = style.smooth.next();
+        else if (button.id == THREE_D) style.threeD = style.threeD.next();
+        else if (button.id == OVERRIDE && button instanceof GuiButtonYesNo yes) style.enabled = yes.getBoolean();
         else if (button.id == EXTRA_CONFIGURED && button instanceof GuiButtonYesNo yes) style.extraConfigured = yes.getBoolean();
         else if (button.id == EXTRA_ENABLED && button instanceof GuiButtonYesNo yes) style.extraEnabled = yes.getBoolean();
         else if (button.id == LIGHTNING_CONFIGURED && button instanceof GuiButtonYesNo yes) style.lightningConfigured = yes.getBoolean();

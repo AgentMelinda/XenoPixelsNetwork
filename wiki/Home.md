@@ -119,7 +119,7 @@
 
 | Page | What it covers |
 |---|---|
-| [XenoAPI — native Xeno NPC scripting](XenoAPI) | NPC, player and Forge scripts; hooks; `XenoAPI` and `XenoPixels` v28; bubbles, settings by key, Ki Sense, colored names; script errors; Java addons |
+| [XenoAPI — native Xeno NPC scripting](XenoAPI) | NPC, player and Forge scripts; hooks; `XenoAPI` and `XenoPixels` v29; bubbles, settings by key, Ki Sense, colored names, borrowing a look; script errors; Java addons |
 | [CustomNPCs / MyNPCs scripting (co-owner)](CustomNPCs-XenoPixels-Scripting-CoOwner) | The `XenoPixels` global in CustomNPCs and MyNPCs scripts |
 
 </div>

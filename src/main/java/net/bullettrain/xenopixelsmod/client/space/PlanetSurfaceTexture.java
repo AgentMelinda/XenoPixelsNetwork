@@ -23,6 +23,8 @@ final class PlanetSurfaceTexture extends AbstractTexture {
     private final ResourceLocation source;
     /** ABGR, as {@link NativeImage} stores pixels. */
     private final int fallbackAbgr;
+    /** True once {@link #load} decoded {@link #source}; false while unloaded or drawing the flat fallback. */
+    private volatile boolean decoded;
 
     PlanetSurfaceTexture(ResourceLocation source,int fallbackAbgr) {
         this.source=source;
@@ -53,6 +55,10 @@ final class PlanetSurfaceTexture extends AbstractTexture {
         return 0xFF000000|((0x60+(hash&0x7F))<<16)|((0x60+((hash>>8)&0x7F))<<8)|(0x60+((hash>>16)&0x7F));
     }
 
+    /** The map this texture was built from, for the identity check. */
+    ResourceLocation source() { return source; }
+    boolean decoded() { return decoded; }
+
     @Override public void load(ResourceManager resources) throws IOException {
         NativeImage[] levels=null;
         try {
@@ -62,7 +68,9 @@ final class PlanetSurfaceTexture extends AbstractTexture {
                 try(var stream=resource.get().open();var image=NativeImage.read(stream)) {
                     image.resizeSubRectTo(0,0,image.getWidth(),image.getHeight(),base);
                 }
+                decoded=true;
             } else {
+                decoded=false;
                 base.fillRect(0,0,2048,1024,fallbackAbgr);
                 XenoPixelsMod.LOGGER.warn("Planet surface map {} is missing; drawing a flat fallback colour",source);
             }

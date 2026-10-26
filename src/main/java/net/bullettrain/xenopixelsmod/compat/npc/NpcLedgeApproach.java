@@ -53,6 +53,14 @@ public final class NpcLedgeApproach {
 
     /** Applies {@link #decide} to a live NPC; returns what it did. */
     public static Move apply(LivingEntity npc, LivingEntity target, double speed) {
+        if (npc != null && NpcNativePursuit.owns(npc, NpcCombatProfile.readCached(npc))) {
+            NpcNativePursuit.tick(npc, NpcCombatProfile.readCached(npc), target);
+            return Move.NONE;
+        }
+        return applyDirect(npc, target, speed);
+    }
+
+    static Move applyDirect(LivingEntity npc, LivingEntity target, double speed) {
         if (!(npc instanceof Mob mob) || target == null || npc.level().isClientSide()) return Move.NONE;
         boolean inReach = NpcCombatRanges.withinMelee(npc, target);
         if (inReach) return Move.NONE;

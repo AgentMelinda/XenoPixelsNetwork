@@ -69,7 +69,7 @@ public final class ZanzokenFade {
         if (!clone.level().isClientSide) return;
         // Only the standing images disguise anyone. A Shi Shin No Ken body fights on its own and
         // its owner is meant to be visible.
-        if (clone.slot() != XenoCloneEntity.SLOT_STATIONARY) return;
+        if (clone.slot() != XenoCloneEntity.SLOT_STATIONARY || clone.isTrailImage()) return;
         RINGS.put(clone.ownerId(), clone);
     }
 
@@ -158,6 +158,7 @@ public final class ZanzokenFade {
 
     private static boolean isStanding(XenoCloneEntity clone, int ownerId) {
         return clone != null
+                && !clone.isTrailImage()
                 && imageStillStanding(clone.tickCount, clone.lifetimeTicks(),
                         clone.isAlive(), clone.isRemoved())
                 && clone.slot() == XenoCloneEntity.SLOT_STATIONARY

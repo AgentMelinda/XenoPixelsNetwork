@@ -93,6 +93,8 @@ public final class HakaiFade {
     }
 
     private static Float progressOf(LivingEntity living, float partialTick) {
+        Float synchronizedValue = HakaiSweepFx.synchronizedProgress(living, partialTick);
+        if (synchronizedValue != null) return synchronizedValue;
         Lerp lerp = LERPS.get(living.getId());
         if (lerp != null) {
             return lerpedAmplifier(living.getId(), partialTick, nowTick()) / 255.0f;
@@ -270,6 +272,8 @@ public final class HakaiFade {
     /** True while this entity is a Hakai victim, even if the body fade itself is off. */
     public static boolean targeted(Entity entity) {
         if (!(entity instanceof LivingEntity living)) return false;
+        Float synchronizedValue = HakaiSweepFx.synchronizedProgress(living, 0f);
+        if (synchronizedValue != null) return synchronizedValue > 0f;
         return AMPLIFIERS.containsKey(living.getId())
                 || living.getEffect(ModEffects.HAKAI_DISSOLVE) != null;
     }

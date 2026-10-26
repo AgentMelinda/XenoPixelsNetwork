@@ -1,8 +1,7 @@
 package net.bullettrain.xenopixelsmod.mixin.compat.sable;
 
 import dev.ryanhcode.sable.sublevel.ServerSubLevel;
-import net.bullettrain.xenopixelsmod.config.XenoSpaceConfig;
-import net.bullettrain.xenopixelsmod.space.physics.PhysicalEarth;
+import net.bullettrain.xenopixelsmod.space.physics.SableRemovalBand;
 import net.neoforged.neoforge.common.ModConfigSpec;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
@@ -21,18 +20,16 @@ public abstract class SableVoidseaHeightMixin {
     @Redirect(method = "tick()V", at = @At(value = "INVOKE",
             target = "Lnet/neoforged/neoforge/common/ModConfigSpec$DoubleValue;getAsDouble()D", ordinal = 0), require = 1)
     private double xenopixels$voidseaRemoveMin(ModConfigSpec.DoubleValue value) {
-        return unbounded() ? -XenoSpaceConfig.VOIDSEA_HEIGHT_LIMIT : value.getAsDouble();
+        var level = ((ServerSubLevel) (Object) this).getLevel();
+        return level == null ? value.getAsDouble()
+                : SableRemovalBand.minimumForDimension(level.dimension().location(), value.getAsDouble());
     }
 
     @Redirect(method = "tick()V", at = @At(value = "INVOKE",
             target = "Lnet/neoforged/neoforge/common/ModConfigSpec$DoubleValue;getAsDouble()D", ordinal = 1), require = 1)
     private double xenopixels$voidseaRemoveMax(ModConfigSpec.DoubleValue value) {
-        return unbounded() ? XenoSpaceConfig.VOIDSEA_HEIGHT_LIMIT : value.getAsDouble();
-    }
-
-    private boolean unbounded() {
-        if (!XenoSpaceConfig.voidseaUnboundedHeight()) return false;
         var level = ((ServerSubLevel) (Object) this).getLevel();
-        return level != null && PhysicalEarth.HOST.equals(level.dimension().location());
+        return level == null ? value.getAsDouble()
+                : SableRemovalBand.maximumForDimension(level.dimension().location(), value.getAsDouble());
     }
 }

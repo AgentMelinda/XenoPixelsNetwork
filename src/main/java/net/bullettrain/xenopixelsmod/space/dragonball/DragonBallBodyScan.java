@@ -4,6 +4,7 @@ import dev.ryanhcode.sable.api.sublevel.ServerSubLevelContainer;
 import dev.ryanhcode.sable.api.sublevel.SubLevelContainer;
 import dev.ryanhcode.sable.sublevel.ServerSubLevel;
 import net.bullettrain.xenopixelsmod.XenoPixelsMod;
+import net.bullettrain.xenopixelsmod.space.physics.PlotBodyBuildRegistry;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
@@ -81,6 +82,19 @@ public final class DragonBallBodyScan {
      * @param identityVersion the tagged {@link DragonBallIdentity#VERSION}, or zero when absent
      * @param slots           the ledger's slot count, which the caller takes from its own data
      */
+    /**
+     * SDB planet key this body's own persisted tag claims, or null when untagged, out of range, or of another
+     * identity version: the same acceptance rule the scan applies through {@link #classify}.
+     */
+    public static String taggedPlanetKey(ServerSubLevel body, int slots) {
+        CompoundTag user = body == null ? null : body.getUserDataTag();
+        if (user == null || !user.contains(TAG)) return null;
+        CompoundTag tag = user.getCompound(TAG);
+        Integer slot = tag.contains(SLOT_KEY) ? tag.getInt(SLOT_KEY) : null;
+        if (classify(slot, tag.getInt(IDENTITY_VERSION_KEY), slots) != Read.CLAIM) return null;
+        return DragonBallIdentity.forSlot(slot).planetKey();
+    }
+
     public static Read classify(Integer slot, int identityVersion, int slots) {
         if (slot == null || slot < 1 || slot > slots || identityVersion != DragonBallIdentity.VERSION)
             return Read.UNATTRIBUTABLE;
@@ -98,6 +112,7 @@ public final class DragonBallBodyScan {
     public static Map<Integer, List<UUID>> tagged(ServerLevel level, int slots) {
         if (level == null || slots < 1) return null;
         MinecraftServer server = level.getServer();
+        if (server == null) return null;
         long started = System.nanoTime();
         ScanProgress progress = new ScanProgress();
         boolean complete = false;
@@ -109,7 +124,7 @@ public final class DragonBallBodyScan {
             long elapsed = Math.max(0L, System.nanoTime() - started);
             synchronized (SCAN_METRICS) {
                 SCAN_METRICS.computeIfAbsent(server, ignored -> new DragonBallBodyScanMetrics())
-                        .record(progress.listedBodies, progress.visitedBodies, elapsed, complete);
+                        .record(progress.listedBodies, progress.visitedBodies, progress.skippedInFlight, elapsed, complete);
             }
         }
     }
@@ -141,11 +156,23 @@ public final class DragonBallBodyScan {
         }
         if (bodies == null) return null;
         progress.listedBodies = bodies.size();
+        PlotBodyBuildRegistry.pruneMissingOrRemoved(level, container);
 
         var claims = freshSlotMap(slots);
         for (int index = 0; index < bodies.size(); index++) {
             progress.visitedBodies++;
             ServerSubLevel body = bodies.get(index);
+            UUID bodyId = readableId(body);
+            if (body != null && bodyId == null) {
+                reportScanFailure(level, "body-identity:" + index,
+                        "SDB body scan aborted: the listing entry at index " + index
+                                + " has no readable identity, so no slot is reported free this cycle", null);
+                return null;
+            }
+            if (bodyId != null && PlotBodyBuildRegistry.isInFlight(bodyId, level.getServer())) {
+                progress.skippedInFlight++;
+                continue;
+            }
             CompoundTag user = null;
             boolean removed;
             try {
@@ -161,16 +188,15 @@ public final class DragonBallBodyScan {
             BodyRead read = attribute(body != null, user != null, user != null && user.contains(TAG));
             if (read == BodyRead.UNREADABLE) {
                 String reason = body == null ? "absent" : "body-with-no-user-data";
-                reportScanFailure(level, "body-unreadable:" + index + ":" + reason,
-                        "SDB body scan aborted: listing entry " + index + " is " + reason
-                                + " rather than a body that can be asked what it claims,"
-                                + " so no slot is reported free this cycle", null);
+                String signature = "body-unreadable:" + index + ":" + reason + ":" + bodyId;
+                reportScanFailure(level, signature,
+                        unreadableBodyMessage(index, progress.listedBodies, reason, bodyId), null);
                 return null;
             }
             if (read == BodyRead.FOREIGN) continue;
             CompoundTag tag = user.getCompound(TAG);
             Integer slot = tag.contains(SLOT_KEY) ? tag.getInt(SLOT_KEY) : null;
-            fold(claims, slot, tag.getInt(IDENTITY_VERSION_KEY), slots, body.getUniqueId());
+            fold(claims, slot, tag.getInt(IDENTITY_VERSION_KEY), slots, bodyId);
         }
         // Sorting makes a duplicate-claim conflict report the same body on every pass and every restart.
         var resolved = new TreeMap<Integer, List<UUID>>();
@@ -182,6 +208,21 @@ public final class DragonBallBodyScan {
         return Collections.unmodifiableMap(resolved);
     }
 
+    static String unreadableBodyMessage(int index, int listedBodies, String reason, UUID bodyId) {
+        String identity = bodyId == null ? "unavailable" : bodyId.toString();
+        return "SDB body scan aborted: listing entry " + index + "/" + listedBodies + " uuid=" + identity
+                + " is " + reason + " rather than a body that can be asked what it claims,"
+                + " so no slot is reported free this cycle";
+    }
+
+    private static UUID readableId(ServerSubLevel body) {
+        try {
+            return body == null ? null : body.getUniqueId();
+        } catch (RuntimeException unreadable) {
+            return null;
+        }
+    }
+
     /** Called when a scan becomes readable again; the manager emits the single recovery summary. */
     static void forget(MinecraftServer server) {
         synchronized (SCAN_DIAGNOSTICS) { SCAN_DIAGNOSTICS.remove(server); }
@@ -191,6 +232,7 @@ public final class DragonBallBodyScan {
     private static final class ScanProgress {
         int listedBodies = -1;
         int visitedBodies;
+        int skippedInFlight;
     }
 
     private static void reportScanFailure(ServerLevel level, String signature, String message, Throwable cause) {

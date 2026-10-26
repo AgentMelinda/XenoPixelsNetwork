@@ -1547,7 +1547,9 @@ public class XenoNpcEntity extends PathfinderMob
 
     private boolean brainFlying() {
         return !level().isClientSide()
-                && net.bullettrain.xenopixelsmod.compat.npc.NpcFlightOwnership.brainDirectsFlight(getUUID());
+                && (net.bullettrain.xenopixelsmod.compat.npc.NpcFlightOwnership.brainDirectsFlight(getUUID())
+                || getTarget() != null && net.bullettrain.xenopixelsmod.compat.npc.NpcNativePursuit.owns(
+                        this, NpcCombatProfile.readCached(this)));
     }
 
     /** Called by the client model each time it resolves this NPC's animation file. */

@@ -6,11 +6,11 @@ import net.minecraft.world.entity.LivingEntity;
 /**
  * The one definition of how far away an NPC's target is, and what that distance means.
  *
- * <p>The numbers are DragonMineZ's own, read from the decompiled
- * {@code com.dragonminez.common.init.entities.sagas.ai.SagasCombatBrain}: {@code MELEE_RANGE = 4.5},
- * {@code MID_RANGE = 12.0}, {@code OUT_RANGE = 28.0}, and {@code CombatContext.APPROACH_THRESHOLD =
- * 0.05}. They are not invented, and they are not tuned here - a saga mob and a Xeno NPC should read
- * the same distance the same way.
+ * <p>The shared 4.5/12/28 bands originated in DMZ 2.1.3's SagasCombatBrain. In DMZ 2.2,
+ * {@code com.dragonminez.common.init.entities.ai.EnemyBrain} retains MID_RANGE = 12,
+ * OUT_RANGE = 28 and APPROACH_THRESHOLD = 0.05, but derives melee range from each mob's
+ * getMeleeReach plus half the target width. Keep the historical 4.5 band for existing Xeno brains;
+ * actual hit reach remains the configurable, size-aware {@link #meleeReach}.
  *
  * <p>Before this existed, {@link NpcCombatBrain} used bands of its own ({@code MELEE_BAND = 4.0},
  * {@code KI_BAND = 32.0}) while {@code brain.v2.NpcSagaCombatContext} used DMZ's, so the two brains
@@ -21,13 +21,13 @@ import net.minecraft.world.entity.LivingEntity;
  * only when it is close), and a per-NPC "Melee Range" still overrides it per attacker.
  */
 public final class NpcCombatRanges {
-    /** Inside this, melee strikes and small ki blasts. DMZ {@code SagasCombatBrain.MELEE_RANGE}. */
+    /** Inside this, melee strikes and small ki blasts. Historical DMZ 2.1.3 melee band. */
     public static final double MELEE = 4.5;
-    /** Out to this, ki blasts and close deflection. DMZ {@code SagasCombatBrain.MID_RANGE}. */
+    /** Out to this, ki blasts and close deflection. DMZ 2.2 {@code EnemyBrain.MID_RANGE}. */
     public static final double MID = 12.0;
-    /** Out to this, ki waves and big blasts. Beyond it, close the distance. DMZ {@code OUT_RANGE}. */
+    /** Out to this, ki waves and big blasts. Beyond it, close the distance. DMZ 2.2 {@code EnemyBrain.OUT_RANGE}. */
     public static final double OUT = 28.0;
-    /** Closing speed above which a target counts as approaching. DMZ {@code APPROACH_THRESHOLD}. */
+    /** Closing speed above which a target counts as approaching. DMZ 2.2 {@code EnemyBrain.APPROACH_THRESHOLD}. */
     public static final double APPROACH_THRESHOLD = 0.05;
 
     private NpcCombatRanges() {

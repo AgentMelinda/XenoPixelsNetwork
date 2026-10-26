@@ -7,8 +7,8 @@ package net.bullettrain.xenopixelsmod.client.space;
  * <p>The three are ordered by cost, which is the point of the switch: {@link #VOID} draws one
  * gradient cube and allocates nothing else, {@link #STARS} adds the cached 1000-star buffer on top
  * of the cube, and {@link #OFF} draws nothing here at all so the dimension's own {@code SkyType.END}
- * rendering handles the frame. {@link #VOID} is the default because the star field is a nicety and a
- * space dimension is where a player is most likely to be watching a frame counter.
+ * rendering handles the frame. {@link #STARS} is the default so a new space client gets the requested
+ * black star field; players can choose {@link #VOID} when they need the lowest rendering cost.
  *
  * <p>No Minecraft types: this is the stored setting's vocabulary, so {@link #byName} is testable
  * without a client, exactly like {@code MouseResponseCurve.byName}.
@@ -34,6 +34,6 @@ public enum SpaceSkyMode {
                 if (mode.id.equalsIgnoreCase(name.trim())) return mode;
             }
         }
-        return VOID;
+        return STARS;
     }
 }

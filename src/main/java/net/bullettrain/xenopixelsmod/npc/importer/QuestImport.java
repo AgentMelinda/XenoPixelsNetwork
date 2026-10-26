@@ -88,6 +88,11 @@ public final class QuestImport {
 
     public static Imported convert(int slot, String id, String group, CompoundTag source,
                                    NpcImportReport report) {
+        return convert(slot, id, group, source, report, "mynpcs");
+    }
+
+    public static Imported convert(int slot, String id, String group, CompoundTag source,
+                                   NpcImportReport report, String sourceMod) {
         String title = source.getString("Title");
         if (title.isBlank()) title = "Quest " + slot;
         String description = source.getString("Text");
@@ -146,28 +151,36 @@ public final class QuestImport {
                 new net.bullettrain.xenopixelsmod.features.progression.QuestMail(
                         mailTag.getString("Sender"), mailTag.getString("Subject"),
                         mailTag.getString("Text"), List.of());
-        String next = source.getInt("NextQuestId") >= 0
-                ? group + "_" + source.getInt("NextQuestId") : "";
+        String next = source.contains("NextQuestId") && source.getInt("NextQuestId") >= 0
+                ? report.quest(sourceMod, source.getInt("NextQuestId")) : "";
+        if (next == null) {
+            report.note("quest " + id + " unresolved NextQuestId=" + source.getInt("NextQuestId"));
+            next = "";
+        }
         CompoundTag factionPoints = source.getCompound("QuestFactionPoints");
         java.util.List<QuestReward.FactionGrant> factions = new java.util.ArrayList<>();
-        addFaction(factions, factionPoints, 1);
-        addFaction(factions, factionPoints, 2);
+        addFaction(factions, factionPoints, 1, sourceMod, report);
+        addFaction(factions, factionPoints, 2, sourceMod, report);
         QuestReward reward = new QuestReward(0, exp, items, commands, factions);
         ParallelQuests.QuestDef quest = new ParallelQuests.QuestDef(id, title, description,
                 Math.max(1, Math.min(32767, target)), new QuestObjective.Goal(objective, parameter),
                 reward, group, description, source.getString("CompleteText"), mode, completer,
                 repeat, steps, next, source.getBoolean("RandomReward"), mail,
-                net.bullettrain.xenopixelsmod.features.progression.QuestAvailability.NONE);
+                AvailabilityImport.convert(source, sourceMod, report, "quests/" + id));
         return new Imported(id, quest);
     }
 
     private static void addFaction(java.util.List<QuestReward.FactionGrant> factions,
-                                   CompoundTag tag, int slot) {
+                                   CompoundTag tag, int slot, String sourceMod, NpcImportReport report) {
         int points = tag.getInt("OptionFaction" + slot + "Points");
         if (tag.getBoolean("DecreaseFaction" + slot + "Points")) points = -Math.abs(points);
         String faction = tag.getString("Faction" + slot);
         if (faction.isBlank() && tag.getInt("OptionFactions" + slot) >= 0 && points != 0) {
-            faction = "faction_" + tag.getInt("OptionFactions" + slot);
+            faction = report.faction(sourceMod, tag.getInt("OptionFactions" + slot));
+            if (faction == null) {
+                report.note("unresolved quest reward faction slot " + tag.getInt("OptionFactions" + slot));
+                faction = "";
+            }
         }
         if (!faction.isBlank() && points != 0) {
             factions.add(new QuestReward.FactionGrant(faction, points));

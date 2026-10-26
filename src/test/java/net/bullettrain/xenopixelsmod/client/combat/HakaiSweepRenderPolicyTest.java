@@ -61,6 +61,27 @@ class HakaiSweepRenderPolicyTest {
         assertTrue(fallback[0] > 0.15f);
     }
 
+    @Test void impactRingPointsStayInVerticalPlaneAndExpandAroundCrosshairCenter() {
+        Vec3 center = new Vec3(4, 5, 6);
+        Vec3 camera = new Vec3(4, 5, 0);
+        Vec3 right = HakaiSweepRenderPolicy.verticalImpactRingRight(center, camera);
+        Vec3 point = HakaiSweepRenderPolicy.verticalImpactRingPoint(center, right, 2.0, Math.PI / 2);
+
+        assertEquals(4.0, point.x, 1.0e-6);
+        assertEquals(7.0, point.y, 1.0e-6);
+        assertEquals(6.0, point.z, 1.0e-6);
+        assertEquals(2.0, point.distanceTo(center), 1.0e-6);
+        assertTrue(HakaiSweepRenderPolicy.verticalImpactRingPoint(center, right, 3.0, 0).distanceTo(center)
+                > point.distanceTo(center));
+    }
+
+    @Test void impactRingBandTracksTheDissolveRadiusWithoutUsingMobWidth() {
+        float[] band = HakaiSweepRenderPolicy.impactRingBand(4.0f);
+        assertEquals(3.82f, band[0], 1.0e-6f);
+        assertEquals(4.18f, band[1], 1.0e-6f);
+        assertTrue(HakaiSweepRenderPolicy.impactRingBand(8.0f)[1] > band[1]);
+    }
+
     @Test void contourSegmentIdentityDoesNotUseCollisionProneArithmeticPairing() {
         var first = HakaiSweepFx.SegmentKey.of(0L, 33L);
         var collidingUnderOldPairFormula = HakaiSweepFx.SegmentKey.of(1L, 2L);
@@ -141,16 +162,16 @@ class HakaiSweepRenderPolicyTest {
         assertEquals(0.34f, HakaiSweepRenderPolicy.reanchorProgress(0.02f, 0.34f, 0.30f, false), 1.0e-6f);
     }
 
-    @Test void serverAuthorityAheadOfTheProjectionIsTaken() {
-        assertEquals(0.5f, HakaiSweepRenderPolicy.reanchorProgress(0.02f, 0.34f, 0.5f, false), 1.0e-6f);
+    @Test void correctionAheadAlsoStartsAtTheDisplayedValue() {
+        assertEquals(0.34f, HakaiSweepRenderPolicy.reanchorProgress(0.02f, 0.34f, 0.5f, false), 1.0e-6f);
         // The first line for this entity has nothing on screen to preserve.
         assertEquals(0.05f, HakaiSweepRenderPolicy.reanchorProgress(0.02f, 0.9f, 0.05f, true), 1.0e-6f);
     }
 
-    @Test void restoreAndGrossOverrunObeyTheServer() {
+    @Test void restoreAndLargeCorrectionsStartWithoutAPositionJump() {
         // A negative slope is a real cancel: the body must visibly regrow to the server's value.
-        assertEquals(0.2f, HakaiSweepRenderPolicy.reanchorProgress(-0.05f, 0.8f, 0.2f, false), 1.0e-6f);
+        assertEquals(0.8f, HakaiSweepRenderPolicy.reanchorProgress(-0.05f, 0.8f, 0.2f, false), 1.0e-6f);
         // Past the latency the client is allowed to lead by, the projection is wrong and gets corrected.
-        assertEquals(0.1f, HakaiSweepRenderPolicy.reanchorProgress(0.02f, 0.9f, 0.1f, false), 1.0e-6f);
+        assertEquals(0.9f, HakaiSweepRenderPolicy.reanchorProgress(0.02f, 0.9f, 0.1f, false), 1.0e-6f);
     }
 }

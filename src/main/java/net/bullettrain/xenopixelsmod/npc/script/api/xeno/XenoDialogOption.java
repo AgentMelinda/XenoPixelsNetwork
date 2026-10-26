@@ -56,12 +56,39 @@ final class XenoDialogOption implements IDialogOption {
     @Override public String getText() { return getName(); }
     @Override public IDialogOption setText(String text) { return setName(text); }
 
-    /** QUIT 0, TEXT and QUEST 1 (they lead on), ROLE and TRANSPORT 3, COMMAND 4. */
+    @Override public String getDmzQuestNpc() {
+        return option().type() == XenoDialogue.OptionType.DMZ_QUEST ? option().quest() : "";
+    }
+
+    @Override public IDialogOption setDmzQuestNpc(String npcId) {
+        if (!net.bullettrain.xenopixelsmod.npc.dialog.DmzNpcQuestPolicy.validNpcId(npcId)) {
+            throw new IllegalArgumentException("setDmzQuestNpc requires a native DMZ NPC id");
+        }
+        return quest(XenoDialogue.OptionType.DMZ_QUEST, npcId);
+    }
+
+    @Override public String getXenoQuest() {
+        return option().type() == XenoDialogue.OptionType.QUEST ? option().quest() : "";
+    }
+
+    @Override public IDialogOption setXenoQuest(String questId) {
+        String id = XenoApiAdapters.boundedText("setXenoQuest", questId, XenoDialogueNbt.MAX_QUEST_ID);
+        if (id.isBlank()) throw new IllegalArgumentException("setXenoQuest requires a Xeno quest id");
+        return quest(XenoDialogue.OptionType.QUEST, id);
+    }
+
+    private IDialogOption quest(XenoDialogue.OptionType type, String id) {
+        XenoDialogue.Option o = option();
+        set(new XenoDialogue.Option(o.text(), type, "", id, "", o.sourceIndex(), o.palette()));
+        return this;
+    }
+
+    /** QUIT 0, dialogue/quest 1, ROLE and TRANSPORT 3, COMMAND 4. */
     @Override
     public int getType() {
         return switch (option().type()) {
             case QUIT -> OptionType.QUIT_OPTION;
-            case TEXT, QUEST -> OptionType.DIALOG_OPTION;
+            case TEXT, QUEST, DMZ_QUEST -> OptionType.DIALOG_OPTION;
             case ROLE, TRANSPORT -> OptionType.ROLE_OPTION;
             case COMMAND -> COMMAND_OPTION;
         };

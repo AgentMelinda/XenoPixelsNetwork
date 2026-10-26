@@ -2,7 +2,7 @@ package net.bullettrain.xenopixelsmod.client.npc;
 
 import java.util.Map;
 
-/** Pinned DragonMineZ 2.1.3 Saga texture aliases; verified by tools/verify_dmz_saga_model_assets.py. */
+/** Pinned DragonMineZ 2.2 Saga texture aliases; verified by tools/verify_dmz_saga_model_assets.py. */
 final class DmzSagaModelAssets {
     private DmzSagaModelAssets() {}
     private static final Map<String, String> RIGS = Map.ofEntries(

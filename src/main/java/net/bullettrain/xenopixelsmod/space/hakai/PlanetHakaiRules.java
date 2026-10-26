@@ -26,7 +26,79 @@ public final class PlanetHakaiRules {
     }
 
     /** Why a body may or may not be erased. */
-    public enum Verdict { ALLOWED, MODE_OFF, NOT_ERASABLE, PROTECTED, NO_PERMISSION, ALREADY_ERASED }
+    public enum Verdict { ALLOWED, MODE_OFF, NOT_ERASABLE, PROTECTED, NO_PERMISSION, POLICY_PATH_DENIED, ALREADY_ERASED }
+
+    /** The source of a planet-destruction request; generic projectile impacts are not sanctioned Hakai. */
+    public enum DestructionPath { ORDINARY_IMPACT, SANCTIONED_HAKAI, WISH, ADMIN, SCRIPTED_EVENT }
+
+    /** Binary planet-Hakai switch; free-mode structural damage is controlled by the destructibility policy instead. */
+    public enum Destructibility {
+        NONE, GATED, FREE, ADMIN_ONLY;
+
+        public String key() { return name().toLowerCase(Locale.ROOT); }
+
+        public static Destructibility parse(String value) {
+            if (value == null) return GATED;
+            return switch (value.trim().toLowerCase(Locale.ROOT)) {
+                case "none" -> NONE;
+                case "free" -> FREE;
+                case "admin_only" -> ADMIN_ONLY;
+                case "gated" -> GATED;
+                // Fail closed if an invalid value reaches runtime despite YAML validation.
+                default -> NONE;
+            };
+        }
+    }
+
+    /** A policy refusal, or {@code null} when the existing global Hakai rules should decide. */
+    public static Verdict sidecarVerdict(String policy, int casterPermission, DestructionPath path) {
+        return switch (Destructibility.parse(policy)) {
+            case NONE -> Verdict.PROTECTED;
+            case ADMIN_ONLY -> path == DestructionPath.SCRIPTED_EVENT || casterPermission >= 2
+                    ? null : Verdict.NO_PERMISSION;
+            case GATED -> switch (path) {
+                case SANCTIONED_HAKAI, WISH, ADMIN, SCRIPTED_EVENT -> null;
+                case ORDINARY_IMPACT -> Verdict.POLICY_PATH_DENIED;
+            };
+            case FREE -> null;
+        };
+    }
+
+    /**
+     * Applies the server-wide destructibility ceiling to a per-body override. More restrictive values have lower
+     * ceilings: none < admin_only < gated < free. A missing body override inherits the server setting.
+     */
+    public static Destructibility effectiveDestructibility(String globalCeiling, String bodyOverride) {
+        Destructibility ceiling = Destructibility.parse(globalCeiling);
+        if (bodyOverride == null || bodyOverride.isBlank()) return ceiling;
+        Destructibility requested = Destructibility.parse(bodyOverride);
+        return rank(requested) <= rank(ceiling) ? requested : ceiling;
+    }
+
+    /** Existing global story protection and in-progress Hakai burns also fence the free-mode integrity sink. */
+    public static boolean acceptsFreeImpact(String effectivePolicy, String bodyId, Collection<String> protectedIds,
+                                            boolean alreadyErased, boolean alreadyBurning) {
+        return Destructibility.parse(effectivePolicy) == Destructibility.FREE
+                && bodyId != null && (protectedIds == null || !protectedIds.contains(bodyId))
+                && !alreadyErased && !alreadyBurning;
+    }
+
+    private static int rank(Destructibility value) {
+        return switch (value) {
+            case NONE -> 0;
+            case ADMIN_ONLY -> 1;
+            case GATED -> 2;
+            case FREE -> 3;
+        };
+    }
+
+    /** Canonical command spelling for registry IDs; Minecraft resource locations are lowercase. */
+    public static String normalizeBodyId(String input) {
+        String trimmed = input == null ? "" : input.trim();
+        if (trimmed.isEmpty()) return "";
+        String namespaced = trimmed.contains(":") ? trimmed : "xenopixelsmod:" + trimmed;
+        return namespaced.toLowerCase(Locale.ROOT);
+    }
 
     public static Verdict verdict(Mode mode, String bodyId, boolean bodyErasableFlag, Collection<String> protectedIds,
                                   int casterPermission, int requiredPermission, boolean alreadyErased) {

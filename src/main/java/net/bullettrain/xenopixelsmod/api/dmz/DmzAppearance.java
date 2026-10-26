@@ -93,13 +93,10 @@ public final class DmzAppearance {
         }
         try {
             target.load(snapshot);
-            // Character.load hands the stored strands to whatever hair object is already there, so
-            // a snapshot with no visible strands leaves the borrowed look behind. Replace all four
-            // slots with objects built only from the snapshot instead.
-            target.setHairBase(hairSlot(snapshot, "HairBase"));
-            target.setHairSSJ(hairSlot(snapshot, "HairSSJ"));
-            target.setHairSSJ2(hairSlot(snapshot, "HairSSJ2"));
-            target.setHairSSJ3(hairSlot(snapshot, "HairSSJ3"));
+            // Include every 2.2 slot. Older saved snapshots have no SSJ4 and restore it as empty.
+            for (var slot : com.dragonminez.common.hair.HairStyleSlot.values()) {
+                target.setHairStyle(slot, hairSlot(snapshot, slot.getNbtKey()));
+            }
             target.updateOozaruCache();
             return true;
         } catch (RuntimeException failure) {

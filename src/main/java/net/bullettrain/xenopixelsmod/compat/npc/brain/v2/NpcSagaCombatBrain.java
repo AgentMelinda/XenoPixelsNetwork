@@ -91,6 +91,10 @@ public final class NpcSagaCombatBrain {
 
     private NpcSagaCombatBrain() {}
 
+    public static boolean hasActiveCombo(LivingEntity npc) {
+        return npc != null && NpcSagaCombos.active(npc.getUUID());
+    }
+
     public static void forget(UUID npcId) {
         if (npcId == null) {
             return;
@@ -106,6 +110,7 @@ public final class NpcSagaCombatBrain {
         if (npc == null) {
             return;
         }
+        net.bullettrain.xenopixelsmod.compat.npc.NpcNativePursuit.reset(npc);
         NpcChargeMoves.cancel(npc);
         NpcCombatMoves.guard(npc, false);
         NpcSagaCombos.forget(npc.getUUID());
@@ -187,6 +192,16 @@ public final class NpcSagaCombatBrain {
     public static void steer(LivingEntity npc, NpcCombatProfile profile, LivingEntity victim) {
         if (npc == null || profile == null) {
             return;
+        }
+        // Reset transient ground intent before any flight, freeze, or interrupted-action return.
+        if (net.bullettrain.xenopixelsmod.compat.npc.NpcNativePursuit.owns(npc, profile)) {
+            if (victim != null && !NpcFlightPolicy.targetGrounded(victim)) {
+                net.bullettrain.xenopixelsmod.compat.npc.NpcNativePursuit.reset(npc);
+            } else {
+                net.bullettrain.xenopixelsmod.compat.npc.NpcNativePursuit.tick(npc, profile, victim);
+            }
+        } else {
+            net.bullettrain.xenopixelsmod.compat.npc.NpcNativePursuit.reset(npc);
         }
         // Just knocked back: let the push play out before steering again (net.bullettrain.xenopixelsmod.compat.npc.NpcKnockbackGrace).
         if (net.bullettrain.xenopixelsmod.compat.npc.NpcKnockbackGrace.active(npc)) return;
@@ -352,6 +367,10 @@ public final class NpcSagaCombatBrain {
             return;
         }
         if (mode == Locomotion.DASH) {
+            if (net.bullettrain.xenopixelsmod.compat.npc.NpcNativePursuit.owns(npc, profile)) {
+                net.bullettrain.xenopixelsmod.compat.npc.NpcNativePursuit.dash(npc, profile, victim);
+                return;
+            }
             if (NpcCombatMoves.chase(npc, victim)) {
                 return;
             }
@@ -422,6 +441,7 @@ public final class NpcSagaCombatBrain {
         if (npc == null) {
             return;
         }
+        net.bullettrain.xenopixelsmod.compat.npc.NpcNativePursuit.reset(npc);
         NpcSagaCombos.forget(npc.getUUID());
         net.bullettrain.xenopixelsmod.compat.npc.NpcCombatBrain.disengage(npc);
     }

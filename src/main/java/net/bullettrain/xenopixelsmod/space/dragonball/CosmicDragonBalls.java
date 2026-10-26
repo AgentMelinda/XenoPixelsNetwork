@@ -35,8 +35,8 @@ import java.util.SplittableRandom;
 import java.util.UUID;
 
 /**
- * Super Dragon Balls v1 (design-doc 16; owner chose items + radar first). Switch
- * {@link XenoSpaceConfig#cosmicDragonBallsEnabled()}, default off. Seven balls are scattered deterministically (world seed +
+ * Legacy collectible implementation for design-doc 16. It runs only when the exclusive SDB mode is "legacy" and the
+ * {@link XenoSpaceConfig#cosmicDragonBallsEnabled()} master toggle is on. Seven balls are scattered deterministically (world seed +
  * scatter cycle) around the spawn of the configured host dimensions; a ball becomes a block only when a player comes near
  * its spot. The Cosmic Ball Scanner reports bearing and signal strength (exact within 64 blocks) and also tracks a ball
  * another player is carrying. With all seven in the inventory, sneak-using a ball summons the dragon and offers the wish
@@ -51,10 +51,15 @@ public final class CosmicDragonBalls {
 
     private CosmicDragonBalls() {}
 
+    public static boolean legacyGameplayEnabled(MinecraftServer server) {
+        return XenoSpaceConfig.cosmicDragonBallsEnabled() && DragonBallModeGuard.legacyEnabled(server);
+    }
+
     @SubscribeEvent public static void tick(ServerTickEvent.Post event) {
         MinecraftServer server = event.getServer();
-        if (!XenoSpaceConfig.cosmicDragonBallsEnabled() || server.getTickCount() % 40 != 0) return;
+        if (!legacyGameplayEnabled(server) || server.getTickCount() % 40 != 0) return;
         var data = DragonBallSavedData.get(server);
+        if (!data.isGameplayStateValid()) return;
         if (data.cycle < 0) scatter(server, data, 0);
         for (int number = 1; number <= COUNT; number++) {
             var ball = data.ball(number);
@@ -81,6 +86,7 @@ public final class CosmicDragonBalls {
 
     /** Deterministic scatter for a cycle; balls already placed in loaded chunks are removed first. */
     static void scatter(MinecraftServer server, DragonBallSavedData data, long cycle) {
+        data.requireGameplayStateValid();
         var hosts = new ArrayList<String>();
         for (String host : XenoSpaceConfig.cosmicDragonBallHosts()) if (level(server, host) != null) hosts.add(host);
         if (hosts.isEmpty()) hosts.add("minecraft:overworld");
@@ -105,21 +111,28 @@ public final class CosmicDragonBalls {
 
     /** True when this block is the ball the saved data points at; false for a stale copy left in a chunk that was unloaded during a re-scatter. */
     public static boolean isCurrent(ServerLevel level, int number, BlockPos pos) {
-        var ball = DragonBallSavedData.get(level.getServer()).ball(number);
+        if (!legacyGameplayEnabled(level.getServer())) return false;
+        var data = DragonBallSavedData.get(level.getServer());
+        if (!data.isGameplayStateValid()) return false;
+        var ball = data.ball(number);
         return ball.status == DragonBallSavedData.Status.PLACED && ball.dimension.equals(level.dimension().location().toString())
                 && ball.x == pos.getX() && ball.y == pos.getY() && ball.z == pos.getZ();
     }
 
     /** Called by the ball block when a player picks a ball up. */
     public static void onCollected(MinecraftServer server, int number) {
+        if (!legacyGameplayEnabled(server)) return;
         var data = DragonBallSavedData.get(server);
+        if (!data.isGameplayStateValid()) return;
         data.ball(number).status = DragonBallSavedData.Status.HELD;
         data.setDirty();
     }
 
     /** Called by the ball block when a player places a ball back in the world, so the radar keeps tracking it. */
     public static void onPlaced(ServerLevel level, int number, BlockPos pos) {
+        if (!legacyGameplayEnabled(level.getServer())) return;
         var data = DragonBallSavedData.get(level.getServer());
+        if (!data.isGameplayStateValid()) return;
         var ball = data.ball(number);
         ball.status = DragonBallSavedData.Status.PLACED;
         ball.dimension = level.dimension().location().toString();
@@ -129,9 +142,12 @@ public final class CosmicDragonBalls {
 
     /** Cosmic Ball Scanner: bearing and signal to the nearest ball not in this player's inventory. */
     public static Component radar(ServerPlayer player) {
-        if (!XenoSpaceConfig.cosmicDragonBallsEnabled()) return Component.translatable("message.xenopixelsmod.radar_off");
         var server = player.getServer();
+        if (DragonBallModeGuard.planetaryEnabled(server)) return planetaryRadar(player);
+        if (!XenoSpaceConfig.cosmicDragonBallsEnabled()) return Component.translatable("message.xenopixelsmod.radar_off");
         var data = DragonBallSavedData.get(server);
+        if (!data.isGameplayStateValid())
+            return Component.translatable("message.xenopixelsmod.dragon_ball_data_unavailable", data.invalidReason());
         String here = player.level().dimension().location().toString();
         int best = -1;
         double bestDistance = Double.POSITIVE_INFINITY, bx = 0, bz = 0;
@@ -161,11 +177,72 @@ public final class CosmicDragonBalls {
                 Component.translatable("message.xenopixelsmod.radar_signal_" + signal));
     }
 
+    /** Planetary mode resolves only the live Sable body identity and never falls back to legacy scatter XYZ. */
+    private static Component planetaryRadar(ServerPlayer player) {
+        String here = player.level().dimension().location().toString();
+        int best = -1;
+        double bestDistance = Double.POSITIVE_INFINITY;
+        DragonBallRadarTargetResolver.Position bestPosition = null;
+        List<String> elsewhere = new ArrayList<>();
+        for (int slot = 1; slot <= COUNT; slot++) {
+            var resolved = DragonBallPlanetRadar.resolve(player.getServer(), slot,
+                    DragonBallRadarTargetResolver.Mode.PLANETARY_BODY, null);
+            if (resolved.source() != DragonBallRadarTargetResolver.Source.PLANETARY_BODY) continue;
+            var position = resolved.position();
+            if (!here.equals(position.dimension())) {
+                elsewhere.add("SDB planet " + slot + " at " + position.dimension() + " "
+                        + Math.round(position.x()) + "," + Math.round(position.y()) + "," + Math.round(position.z()));
+                continue;
+            }
+            double distance = Math.sqrt(player.distanceToSqr(position.x(), position.y(), position.z()));
+            if (distance < bestDistance) {
+                best = slot;
+                bestDistance = distance;
+                bestPosition = position;
+            }
+        }
+        if (bestPosition == null) {
+            return Component.literal(elsewhere.isEmpty()
+                    ? "No loaded planetary Super Dragon Ball bodies are available to the scanner. Check /xenospace dragonballs status."
+                    : String.join("; ", elsewhere));
+        }
+        String coordinates = Math.round(bestPosition.x()) + "," + Math.round(bestPosition.y()) + ","
+                + Math.round(bestPosition.z());
+        if (bestDistance <= EXACT_RANGE)
+            return Component.literal("SDB planet " + best + " is at " + coordinates + " (" + Math.round(bestDistance) + " blocks).");
+        double dx = bestPosition.x() - player.getX();
+        double dz = bestPosition.z() - player.getZ();
+        return Component.literal("Nearest SDB planet " + best + ": " + bearing(dx, dz) + ", vertical offset "
+                + Math.round(bestPosition.y() - player.getY()) + " blocks, distance " + Math.round(bestDistance) + ".");
+    }
+
+    /**
+     * Mode gate for the legacy item summon. Planetary mode disables the item/wish loop (the matching
+     * {@link #grant} requires legacy gameplay), so it is refused with the planetary-mode message; legacy mode with
+     * the feature switched off refuses silently, as before.
+     *
+     * @return the lang key to show, {@code ""} to refuse without a message, or {@code null} to continue
+     */
+    static String summonModeRefusal(boolean planetary, boolean legacyItemsEnabled) {
+        if (planetary) return "message.xenopixelsmod.sdb_planetary_mode";
+        return legacyItemsEnabled ? null : "";
+    }
+
     /** Sneak-use of a ball with all seven held: summon and offer the wish catalog. */
     public static void trySummon(ServerPlayer player) {
-        if (!XenoSpaceConfig.cosmicDragonBallsEnabled()) return;
         var server = player.getServer();
+        String refusal = summonModeRefusal(DragonBallModeGuard.planetaryEnabled(server),
+                XenoSpaceConfig.cosmicDragonBallsEnabled());
+        if (refusal != null) {
+            if (!refusal.isEmpty()) player.displayClientMessage(Component.translatable(refusal), true);
+            return;
+        }
         var data = DragonBallSavedData.get(server);
+        if (!data.isGameplayStateValid()) {
+            player.displayClientMessage(Component.translatable(
+                    "message.xenopixelsmod.dragon_ball_data_unavailable", data.invalidReason()), true);
+            return;
+        }
         long day = server.overworld().getDayTime() / 24_000L;
         if (day < data.dormantUntilDay) {
             player.displayClientMessage(Component.translatable("message.xenopixelsmod.dragon_dormant", data.dormantUntilDay - day), true);
@@ -195,13 +272,15 @@ public final class CosmicDragonBalls {
     public static void grant(ServerPlayer player, String wishId) {
         var server = player.getServer();
         Long expiry = OFFERS.remove(player.getUUID());
-        if (expiry == null || server.overworld().getGameTime() > expiry) return;
+        if (!legacyGameplayEnabled(server)
+                || expiry == null || server.overworld().getGameTime() > expiry) return;
+        var data = DragonBallSavedData.get(server);
+        if (!data.isGameplayStateValid()) return;
         for (int number = 1; number <= COUNT; number++) if (!holds(player, number)) return;
         var wish = WishCatalog.byId(wishId);
         if (wish == null) return;
         for (int number = 1; number <= COUNT; number++) consumeOne(player, number);
         for (var reward : wish.rewards()) applyReward(player, reward);
-        var data = DragonBallSavedData.get(server);
         for (int number = 1; number <= COUNT; number++) data.ball(number).status = DragonBallSavedData.Status.SCATTERED;
         scatter(server, data, data.cycle + 1);
         long day = server.overworld().getDayTime() / 24_000L;
@@ -214,7 +293,9 @@ public final class CosmicDragonBalls {
 
     /** Admin re-scatter. HELD items remain HELD unless an operator explicitly recovers one slot. */
     public static void adminScatter(MinecraftServer server) {
+        if (!legacyGameplayEnabled(server)) return;
         var data = DragonBallSavedData.get(server);
+        data.requireGameplayStateValid();
         scatter(server, data, data.cycle + 1);
         data.dormantUntilDay = 0;
         data.setDirty();
@@ -222,8 +303,11 @@ public final class CosmicDragonBalls {
 
     /** Explicit operator recovery. A held item may still exist in offline or unloaded storage. */
     public static String recoverHeld(MinecraftServer server, int number) {
+        if (!legacyGameplayEnabled(server))
+            return "Legacy Super Dragon Ball gameplay is disabled; active " + DragonBallModeGuard.status(server) + ".";
         if (number < 1 || number > COUNT) return "Super Dragon Ball slot must be in [1, " + COUNT + "].";
         var data = DragonBallSavedData.get(server);
+        if (!data.isGameplayStateValid()) return "Super Dragon Ball saved data is unavailable: " + data.invalidReason();
         var ball = data.ball(number);
         if (ball.status != DragonBallSavedData.Status.HELD)
             return "Super Dragon Ball " + number + " is " + ball.status.name().toLowerCase(Locale.ROOT) + "; only HELD balls can be recovered.";
@@ -265,8 +349,28 @@ public final class CosmicDragonBalls {
 
     public static String status(MinecraftServer server) {
         var data = DragonBallSavedData.get(server);
-        var out = new StringBuilder("super dragon balls: enabled=" + XenoSpaceConfig.cosmicDragonBallsEnabled() + " cycle=" + data.cycle
+        String mode = DragonBallModeGuard.status(server);
+        if (!data.isGameplayStateValid())
+            return "super dragon balls: enabled=" + XenoSpaceConfig.cosmicDragonBallsEnabled()
+                    + " " + mode + " data=unavailable; raw saved tag preserved; " + data.invalidReason();
+        var out = new StringBuilder("super dragon balls: enabled=" + XenoSpaceConfig.cosmicDragonBallsEnabled() + " " + mode + " cycle=" + data.cycle
                 + " dormantUntilDay=" + data.dormantUntilDay + " wishes=" + WishCatalog.wishes().size());
+        if (DragonBallModeGuard.decision(server).effective() == DragonBallModePolicy.Mode.PLANETARY) {
+            var host = server.getLevel(net.minecraft.resources.ResourceKey.create(
+                    net.minecraft.core.registries.Registries.DIMENSION, net.bullettrain.xenopixelsmod.space.physics.PhysicalEarth.HOST));
+            var container = host == null ? null : dev.ryanhcode.sable.api.sublevel.SubLevelContainer.getContainer(host);
+            for (int n = 1; n <= COUNT; n++) {
+                var id = data.planetBodyUuid(n);
+                var body = id == null || container == null ? null : container.getSubLevel(id);
+                var p = body instanceof dev.ryanhcode.sable.sublevel.ServerSubLevel sable && !sable.isRemoved()
+                        ? sable.logicalPose().position() : null;
+                var identity = DragonBallIdentity.forSlot(n);
+                out.append("\n ").append(n).append(": planet=").append(identity.planetKey())
+                        .append(" body=").append(id == null ? "not-bound" : id)
+                        .append(" xyz=").append(p == null ? "not-loaded" : p.x() + "," + p.y() + "," + p.z());
+            }
+            return out.toString();
+        }
         for (int n = 1; n <= COUNT; n++) {
             var b = data.ball(n);
             out.append("\n ").append(n).append(": ").append(b.status.name().toLowerCase(Locale.ROOT)).append(' ').append(b.dimension)

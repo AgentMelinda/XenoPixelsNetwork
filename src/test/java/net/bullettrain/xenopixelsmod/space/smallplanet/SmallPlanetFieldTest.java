@@ -16,6 +16,16 @@ class SmallPlanetFieldTest {
             new UniverseField.Cell(0, 0));
     private static final UniverseField.StarSystem SYSTEM = findSystemWithPlanets();
 
+    @Test void proceduralSlotsReportOnlySlotsSupportedBySurfaceAddressSchema() {
+        assertEquals(0, SmallPlanetField.proceduralSlotCount(systemWithSlots(0)));
+        assertEquals(1, SmallPlanetField.proceduralSlotCount(systemWithSlots(1)));
+        assertEquals(4, SmallPlanetField.proceduralSlotCount(systemWithSlots(4)));
+        assertEquals(8, SmallPlanetField.proceduralSlotCount(systemWithSlots(8)));
+        assertEquals(4, SmallPlanetField.proceduralSlotCount(SOL));
+        assertEquals(new SmallPlanetField.SlotSummary(8, 8, 0), SmallPlanetField.summarizeSlots(systemWithSlots(8)));
+        assertEquals(new SmallPlanetField.SlotSummary(0, 4, 0), SmallPlanetField.summarizeSlots(SOL));
+    }
+
     @Test void generatedPlanetsInOuterSafeSystemStayInsideTheVanillaWorldBorder() {
         UniverseField.StarSystem edge = null;
         long seed = WORLD_SEED;
@@ -45,9 +55,27 @@ class SmallPlanetFieldTest {
         assertTrue(SmallPlanetField.generateSystem(WORLD_SEED, SYSTEM, 0, List.of(), List.of()).isEmpty());
     }
 
+    @Test void nearbyQueryUsesTheBoundedHostedSystemResolver() {
+        var expected = SmallPlanetField.generateSystem(WORLD_SEED, SYSTEM,
+                SmallPlanetField.MAX_PLANETS_PER_SYSTEM, List.of(), List.of()).getFirst();
+        var resolved = new java.util.concurrent.atomic.AtomicBoolean();
+
+        var nearby = SmallPlanetField.nearby(WORLD_SEED, expected.x(), expected.y(), expected.z(), 0,
+                SmallPlanetField.MAX_PLANETS_PER_SYSTEM, List.of(), List.of(), cell -> {
+                    if (cell.equals(SYSTEM.cell())) {
+                        resolved.set(true);
+                        return SYSTEM;
+                    }
+                    return null;
+                });
+
+        assertTrue(resolved.get(), "nearby physicalization must consult the server's mapped-system resolver");
+        assertTrue(nearby.stream().anyMatch(candidate -> candidate.id().equals(expected.id())));
+    }
+
     @Test void SolGetsProceduralPlanetsButChartAndPlanetSlotLimitsStillApply() {
         var solBodies = SmallPlanetField.generateSystem(WORLD_SEED, SOL, Integer.MAX_VALUE, List.of(), List.of());
-        assertEquals(SmallPlanetField.MAX_PLANETS_PER_SYSTEM, solBodies.size());
+        assertEquals(4, solBodies.size());
         assertEquals(solBodies, SmallPlanetField.generateSystem(WORLD_SEED, SOL,
                 Integer.MAX_VALUE, List.of(), List.of()));
         assertTrue(SmallPlanetField.generateSystem(WORLD_SEED, SOL, 2, List.of(), List.of()).size() <= 2);
@@ -69,6 +97,15 @@ class SmallPlanetFieldTest {
         var four = SmallPlanetField.generateSystem(WORLD_SEED, SYSTEM, 4, List.of(), List.of());
         assertTrue(two.size() <= four.size());
         assertEquals(two, four.subList(0, two.size()));
+    }
+
+    @Test void allEightCatalogSlotsGenerateWithStableDistinctIdentities() {
+        var eightSlotSystem = systemWithSlots(8);
+        var bodies = SmallPlanetField.generateSystem(WORLD_SEED, eightSlotSystem, Integer.MAX_VALUE,
+                List.of(), List.of());
+        assertEquals(8, bodies.size());
+        assertEquals(java.util.stream.IntStream.range(0, 8).boxed().toList(),
+                bodies.stream().map(body -> body.id().slot()).toList());
     }
 
     @Test void generatedBodiesHaveBoundedRadiusSeededPaletteAndDeadDefault() {
@@ -164,6 +201,59 @@ class SmallPlanetFieldTest {
         }
     }
 
+    @Test void orbitingQuerySelectsCurrentPositionsButPreservesSeededAnchorIdentity() {
+        var anchor = SmallPlanetField.generateSystem(WORLD_SEED, SYSTEM, SmallPlanetField.MAX_PLANETS_PER_SYSTEM,
+                List.of(), List.of()).get(0);
+        var orbit = SmallPlanetOrbit.fromCandidate(anchor, SYSTEM.x(), SYSTEM.y(), SYSTEM.z());
+        double time = orbit.periodSeconds() * 0.25;
+        double[] current = new double[3];
+        orbit.positionAt(time, current);
+        var nearby = SmallPlanetField.orbitingNearby(WORLD_SEED, current[0], current[1], current[2], 0,
+                SmallPlanetField.MAX_PLANETS_PER_SYSTEM, List.of(), List.of(),
+                cell -> UniverseField.systemAt(WORLD_SEED, cell), 0, 0, 0, time);
+
+        var found = nearby.stream().filter(value -> value.anchor().id().equals(anchor.id())).findFirst().orElseThrow();
+        assertEquals(anchor.x(), found.anchor().x(), 0.0, "phase-zero anchor remains available for persistence");
+        assertEquals(anchor.y(), found.anchor().y(), 0.0);
+        assertEquals(anchor.z(), found.anchor().z(), 0.0);
+        var evaluated = found.at(time);
+        assertEquals(current[0], evaluated.x(), 1.0e-8);
+        assertEquals(current[1], evaluated.y(), 1.0e-8);
+        assertEquals(current[2], evaluated.z(), 1.0e-8);
+        assertTrue(nearby.size() <= 9 * SmallPlanetField.MAX_PLANETS_PER_SYSTEM);
+    }
+
+    @Test void farLodSweepQueryKeepsAnOrbitThatWillEnterRangeAfterTheCacheIsBuilt() {
+        var anchor = SmallPlanetField.generateSystem(WORLD_SEED, SYSTEM, SmallPlanetField.MAX_PLANETS_PER_SYSTEM,
+                List.of(), List.of()).get(0);
+        var orbit = SmallPlanetOrbit.fromCandidate(anchor, SYSTEM.x(), SYSTEM.y(), SYSTEM.z());
+        double[] opposite = new double[3];
+        orbit.positionAt(orbit.periodSeconds() * 0.5, opposite);
+        var resolver = (java.util.function.Function<UniverseField.Cell, UniverseField.StarSystem>) cell ->
+                UniverseField.systemAt(WORLD_SEED, cell);
+
+        var currentOnly = SmallPlanetField.orbitingNearby(WORLD_SEED, opposite[0], opposite[1], opposite[2], 0,
+                SmallPlanetField.MAX_PLANETS_PER_SYSTEM, List.of(), List.of(), resolver, 0, 0, 0, 0);
+        var swept = SmallPlanetField.orbitingPotentiallyNearby(WORLD_SEED, opposite[0], opposite[1], opposite[2], 0,
+                SmallPlanetField.MAX_PLANETS_PER_SYSTEM, List.of(), List.of(), resolver, 0, 0, 0, 0);
+
+        assertTrue(currentOnly.stream().noneMatch(value -> value.anchor().id().equals(anchor.id())),
+                "the anchor is on the far side of its orbit at the phase-zero query time");
+        assertTrue(swept.stream().anyMatch(value -> value.anchor().id().equals(anchor.id())),
+                "far LOD cache must retain an orbit whose swept sphere intersects the range");
+    }
+
+    @Test void homeSmallPlanetOrbitUsesChartSolFocusInsteadOfProceduralDisplayMarker() {
+        var anchor = new SmallPlanetField.Candidate(new SmallPlanetField.ObjectId(SOL.cell(), 0, 0, 0),
+                7, 2_000, 700, 0, 16, SmallPlanetField.Profile.ROCK, 0.3, false);
+        var moved = SmallPlanetField.atOrbitTime(anchor, SOL, 0, 0, 0,
+                SmallPlanetOrbit.scaledPeriodSeconds(2_000) * 0.25);
+        assertTrue(Math.abs(moved.y() - SOL.y()) > 100,
+                "the test uses charted Sol at y=0, not the procedural home marker at y=512");
+        double distanceFromChartSol = Math.sqrt(moved.x() * moved.x() + moved.y() * moved.y() + moved.z() * moved.z());
+        assertEquals(Math.sqrt(2_000 * 2_000 + 700 * 700), distanceFromChartSol, 1.0e-7);
+    }
+
     @Test void nearbyQueryRejectsInvalidRangesAndNonFinitePositions() {
         assertThrows(IllegalArgumentException.class, () -> SmallPlanetField.nearby(WORLD_SEED,
                 0, 512, 0, SmallPlanetField.MAX_NEARBY_RANGE + 1, 4, List.of(), List.of()));
@@ -176,6 +266,11 @@ class SmallPlanetFieldTest {
             var system = UniverseField.systemAt(WORLD_SEED, new UniverseField.Cell(x, z));
             if (system != null && system.planetSlots() >= SmallPlanetField.MAX_PLANETS_PER_SYSTEM) return system;
         }
-        throw new AssertionError("test seed must contain a non-home system with four planet slots");
+        throw new AssertionError("test seed must contain a non-home system with at least four planet slots");
+    }
+
+    private static UniverseField.StarSystem systemWithSlots(int slots) {
+        return new UniverseField.StarSystem(SYSTEM.cell(), SYSTEM.seed(), SYSTEM.name(), SYSTEM.starClass(),
+                SYSTEM.x(), SYSTEM.y(), SYSTEM.z(), slots);
     }
 }

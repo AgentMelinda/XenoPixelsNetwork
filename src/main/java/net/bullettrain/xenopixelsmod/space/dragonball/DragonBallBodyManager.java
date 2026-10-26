@@ -76,9 +76,12 @@ public final class DragonBallBodyManager {
 
     private DragonBallBodyManager() {}
 
+    static boolean hasInFlightBuild() { return buildJob != null; }
+
     @SubscribeEvent
     public static void tick(ServerTickEvent.Post event) {
         MinecraftServer server = event.getServer();
+        if (!DragonBallModeGuard.planetaryEnabled(server)) return;
         long gameTime = server.getTickCount();
         if (scheduler == null) {
             scheduler = new DragonBallPlanetScheduler(CosmicDragonBalls.COUNT, SCAN_INTERVAL_TICKS);
@@ -116,18 +119,22 @@ public final class DragonBallBodyManager {
         scanUnavailableReported = false;
         LAST_SLOT_CONFLICTS.clear();
         if (buildJob != null) {
-            try {
-                ServerSubLevel body = buildJob.body();
-                ServerLevel host = event.getServer().getLevel(net.minecraft.resources.ResourceKey.create(
-                        net.minecraft.core.registries.Registries.DIMENSION, PhysicalEarth.HOST));
-                if (body != null && host != null) SubLevelContainer.getContainer(host).removeForceLoadTicket(
-                        body, DragonBallPlanets.TICKET, body.getUniqueId().toString());
-                buildJob.cancel();
-            } catch (RuntimeException failure) {
-                XenoPixelsMod.LOGGER.warn("Could not cancel half-built SDB slot {} during shutdown", buildingSlot, failure);
-            }
+            PlotBodyBuilder.Job stoppingJob = buildJob;
+            int stoppingSlot = buildingSlot;
             buildJob = null;
             buildingSlot = 0;
+            try {
+                ServerSubLevel body = stoppingJob.body();
+                ServerLevel host = event.getServer().getLevel(net.minecraft.resources.ResourceKey.create(
+                        net.minecraft.core.registries.Registries.DIMENSION, PhysicalEarth.HOST));
+                DragonBallBuildCleanup.releaseThenCancel(() -> {
+                    if (body != null && host != null && !body.isRemoved())
+                        SubLevelContainer.getContainer(host).removeForceLoadTicket(
+                                body, DragonBallPlanets.TICKET, body.getUniqueId().toString());
+                }, stoppingJob::cancel);
+            } catch (RuntimeException failure) {
+                XenoPixelsMod.LOGGER.warn("Could not fully clean up half-built SDB slot {} during shutdown", stoppingSlot, failure);
+            }
         }
         DragonBallBodyScan.forget(event.getServer());
     }
@@ -137,7 +144,9 @@ public final class DragonBallBodyManager {
      * unavailable, which blocks the cycle instead of reading "nothing is loaded" from an empty world.
      */
     static void reconcile(MinecraftServer server, long gameTime) {
+        if (!DragonBallModeGuard.planetaryEnabled(server)) return;
         DragonBallSavedData saved = DragonBallSavedData.get(server);
+        if (!saved.isGameplayStateValid()) return;
         ServerLevel level = server.getLevel(ResourceKey.create(Registries.DIMENSION, PhysicalEarth.HOST));
         int slots = CosmicDragonBalls.COUNT;
         Map<Integer, List<UUID>> loaded = DragonBallBodyScan.tagged(level, slots);
@@ -174,9 +183,10 @@ public final class DragonBallBodyManager {
             lastBlockedReport = null;
             XenoPixelsMod.LOGGER.info("SDB reconcile is authorized again at tick {}", gameTime);
         }
+        boolean bindingsChanged = false;
         Set<Integer> conflictedSlots = new HashSet<>();
         for (DragonBallBodyPlan.Entry entry : plan.entries()) {
-            if (entry.action() == Action.ADOPT) bind(saved, entry, gameTime);
+            if (entry.action() == Action.ADOPT) bindingsChanged |= bind(saved, entry, gameTime);
             else if (entry.action() == Action.CONFLICT) {
                 conflictedSlots.add(entry.slot());
                 String signature = entry.reason();
@@ -196,12 +206,16 @@ public final class DragonBallBodyManager {
             }
             DragonBallPlanetOrbitPass.sync(server, boundBodies,
                     net.bullettrain.xenopixelsmod.space.SpaceChartService.state(server).dragonBallPlanets);
+            if (bindingsChanged && level != null && !level.players().isEmpty())
+                net.bullettrain.xenopixelsmod.space.SpaceVisualSync.resendPlanetBindings(level);
         }
     }
 
     /** Advances one exact-voxel, bounded SDB build or starts the next fair, budgeted slot. */
     private static void advanceBuild(MinecraftServer server, long gameTime) {
         if (scheduler == null || (!XenoSpaceConfig.enabled() && buildJob == null)) return;
+        if (!DragonBallModeGuard.planetaryEnabled(server)) return;
+        if (!DragonBallSavedData.get(server).isGameplayStateValid()) return;
         if (buildJob == null) {
             if (!SpaceBuildWorkBudget.mayPrepare(server, gameTime,
                     SpaceBuildWorkBudget.Owner.SUPER_DRAGON_BALL, BUILD_VOXELS_PER_TICK)) return;
@@ -221,27 +235,25 @@ public final class DragonBallBodyManager {
             failBuild(server, gameTime, "Voidsea level unavailable", null);
             return;
         }
-        long started = System.nanoTime();
         boolean complete;
         try {
-            if (!buildJob.prepare()) return;
+            if (buildJob.body() == null && !SpaceBuildWorkBudget.mayPrepare(server, gameTime,
+                    SpaceBuildWorkBudget.Owner.SUPER_DRAGON_BALL, BUILD_VOXELS_PER_TICK)) return;
+            if (!SpaceBuildWorkBudget.prepare(server, gameTime,
+                    SpaceBuildWorkBudget.Owner.SUPER_DRAGON_BALL, buildJob)) return;
             int voxelAllowance = SpaceBuildWorkBudget.allowance(server, gameTime,
                     SpaceBuildWorkBudget.Owner.SUPER_DRAGON_BALL, buildJob, BUILD_VOXELS_PER_TICK);
             if (voxelAllowance <= 0) return;
-            int before = buildJob.installed();
             double millis = XenoSpaceConfig.generatedBodyBuildMillisPerTick() > 0.0
                     ? SpaceBuildWorkBudget.remainingMillis(server, gameTime,
                         SpaceBuildWorkBudget.Owner.SUPER_DRAGON_BALL) : 0.0;
-            if (XenoSpaceConfig.generatedBodyBuildMillisPerTick() > 0.0 && millis <= 0.0) return;
-            complete = millis > 0.0
-                    ? buildJob.step(voxelAllowance, Math.min(millis, 2.0))
-                    : buildJob.step(voxelAllowance);
-            int installed = Math.max(0, buildJob.installed() - before);
-            SpaceBuildWorkBudget.record(server, gameTime,
-                    SpaceBuildWorkBudget.Owner.SUPER_DRAGON_BALL, installed);
-            SpaceBuildWorkBudget.recordMillis(server, gameTime,
-                    SpaceBuildWorkBudget.Owner.SUPER_DRAGON_BALL, (System.nanoTime() - started) / 1.0e6);
-            previousInstalled = installed;
+            if (XenoSpaceConfig.generatedBodyBuildMillisPerTick() > 0.0
+                    && millis <= 0.0 && buildJob.installed() > 0) return;
+            int before = buildJob.installed();
+            complete = SpaceBuildWorkBudget.step(server, gameTime,
+                    SpaceBuildWorkBudget.Owner.SUPER_DRAGON_BALL, buildJob, voxelAllowance,
+                    millis > 0.0 ? Math.min(millis, 2.0) : 0.0);
+            previousInstalled = Math.max(0, buildJob.installed() - before);
         } catch (RuntimeException failure) {
             failBuild(server, gameTime, "builder threw", failure);
             return;
@@ -279,6 +291,10 @@ public final class DragonBallBodyManager {
             XenoPixelsMod.LOGGER.error("SDB slot {} built body {} but could not bind its saved identity; next census will adopt it",
                     buildingSlot, body.getUniqueId(), bindFailure);
         }
+        // A player can already be in the Voidsea while this budgeted build finishes. Send the new identity
+        // immediately so the client binds the replicated Sable body without waiting for a dimension change.
+        if (!level.players().isEmpty())
+            net.bullettrain.xenopixelsmod.space.SpaceVisualSync.resendPlanetBindings(level);
         if (scheduler.inFlightSlot() != null) scheduler.onBuildSucceeded(gameTime);
         XenoPixelsMod.LOGGER.info("SDB physical body complete slot={} uuid={} radius={} voxels={} fillMs={} installMs={} maxSliceMs={} ticks={} installedLastTick={}",
                 buildingSlot, body.getUniqueId(), PROTOTYPE_RADIUS, completed.result().blocks(),
@@ -328,7 +344,7 @@ public final class DragonBallBodyManager {
         }
         double[] position = new double[3], velocity = new double[3], acceleration = new double[3];
         double[] hostPosition = new double[3], hostVelocity = new double[3];
-        double time = level.getGameTime() / 20.0 + XenoSpaceConfig.orbitEpochOffsetSeconds();
+        double time = net.bullettrain.xenopixelsmod.space.SpaceOrbitClock.seconds(level.getServer());
         if (!DragonBallPlanetOrbitPass.targetPosition(chart, definition, orbit, time,
                 hostPosition, hostVelocity, position, velocity, acceleration)) {
             scheduler.onBuildFailed(gameTime);
@@ -355,20 +371,23 @@ public final class DragonBallBodyManager {
 
     private static void failBuild(MinecraftServer server, long gameTime, String reason, Throwable cause) {
         int slot = buildingSlot;
-        if (buildJob != null) {
+        PlotBodyBuilder.Job failedJob = buildJob;
+        buildJob = null;
+        buildingSlot = 0;
+        if (failedJob != null) {
             try {
-                ServerSubLevel body = buildJob.body();
+                ServerSubLevel body = failedJob.body();
                 ServerLevel host = server.getLevel(net.minecraft.resources.ResourceKey.create(
                         net.minecraft.core.registries.Registries.DIMENSION, PhysicalEarth.HOST));
-                if (body != null && host != null) SubLevelContainer.getContainer(host).removeForceLoadTicket(
-                        body, DragonBallPlanets.TICKET, body.getUniqueId().toString());
-                buildJob.cancel();
+                DragonBallBuildCleanup.releaseThenCancel(() -> {
+                    if (body != null && host != null && !body.isRemoved())
+                        SubLevelContainer.getContainer(host).removeForceLoadTicket(
+                                body, DragonBallPlanets.TICKET, body.getUniqueId().toString());
+                }, failedJob::cancel);
             } catch (RuntimeException cleanupFailure) {
                 XenoPixelsMod.LOGGER.error("SDB slot {} failed and cleanup also failed", slot, cleanupFailure);
             }
         }
-        buildJob = null;
-        buildingSlot = 0;
         if (scheduler != null && scheduler.inFlightSlot() != null) scheduler.onBuildFailed(gameTime);
         if (cause == null) XenoPixelsMod.LOGGER.warn("SDB physical build failed slot={} tick={} reason={}", slot, gameTime, reason);
         else XenoPixelsMod.LOGGER.error("SDB physical build failed slot={} tick={} reason={}", slot, gameTime, reason, cause);
@@ -392,20 +411,23 @@ public final class DragonBallBodyManager {
     }
 
     /** Binds a restored body the ledger had not claimed. The ledger's own guard makes a double claim fail. */
-    private static void bind(DragonBallSavedData saved, DragonBallBodyPlan.Entry entry, long gameTime) {
+    private static boolean bind(DragonBallSavedData saved, DragonBallBodyPlan.Entry entry, long gameTime) {
         UUID bodyId = entry.bodyId();
         if (bodyId == null) {
             XenoPixelsMod.LOGGER.warn("SDB slot {} adopted a body with no identity at tick {}; leaving it unbound",
                     entry.slot(), gameTime);
-            return;
+            return false;
         }
         try {
-            if (saved.bindPlanetBody(entry.slot(), bodyId))
+            boolean changed = saved.bindPlanetBody(entry.slot(), bodyId);
+            if (changed)
                 XenoPixelsMod.LOGGER.info("SDB slot {} adopted Sable body {} at tick {}", entry.slot(), bodyId,
                         gameTime);
+            return changed;
         } catch (IllegalStateException alreadyClaimed) {
             XenoPixelsMod.LOGGER.warn("SDB slot {} could not adopt {}: {}", entry.slot(), bodyId,
                     alreadyClaimed.getMessage());
+            return false;
         }
     }
 }

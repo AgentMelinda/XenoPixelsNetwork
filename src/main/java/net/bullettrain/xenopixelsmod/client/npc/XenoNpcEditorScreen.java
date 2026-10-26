@@ -93,8 +93,8 @@ public final class XenoNpcEditorScreen extends ScaledScreen implements ClientNpc
 
     /** Drawn at the vanilla GUI Scale; see {@link NpcGuiScale}. */
     @Override
-    protected float computeDynamicScale(float available) {
-        return NpcGuiScale.dynamicScale(super.computeDynamicScale(available));
+    protected float computeDynamicScale(int width, int height) {
+        return NpcGuiScale.dynamicScale(super.computeDynamicScale(width, height));
     }
     /** Inline colour picker shared by every colour row on this screen; opens over it. */
     private final net.bullettrain.xenopixelsmod.client.ui.atlas.InlineColorPicker colorPicker = new net.bullettrain.xenopixelsmod.client.ui.atlas.InlineColorPicker();
@@ -1954,6 +1954,7 @@ public final class XenoNpcEditorScreen extends ScaledScreen implements ClientNpc
                 rows.add(new EditorRow.Text("", "client, so it costs nothing.", MUTED));
             }
             case QUEST -> {
+                rows.add(new EditorRow.Text("Backend", "Xeno quests", MUTED));
                 List<QuestCatalogChoices.Choice> quests = QuestCatalogChoices.fromIndex(
                         ClientNpcStoreIndex.of(XenoNpcStoreCategory.QUESTS), option.quest);
                 if (quests.isEmpty()) {
@@ -1970,6 +1971,15 @@ public final class XenoNpcEditorScreen extends ScaledScreen implements ClientNpc
                         MUTED));
                 rows.add(new EditorRow.Text("", "already complete. Choose from global quests.",
                         MUTED));
+            }
+            case DMZ_QUEST -> {
+                rows.add(new EditorRow.Text("Backend", "DragonMineZ quests", MUTED));
+                rows.add(fullField("DMZ NPC id", option.quest, 128, v -> {
+                    option.quest = v;
+                    commitDialogue();
+                }, "Dialogue"));
+                rows.add(new EditorRow.Text("", "Opens DMZ's quest menu for this native giver.", MUTED));
+                rows.add(new EditorRow.Text("", "Use a DMZ NPC id, not a quest id.", MUTED));
             }
             case COMMAND -> {
                 rows.add(fullField("Command", option.command, XenoDialogueNbt.MAX_COMMAND, v -> {
@@ -4794,8 +4804,28 @@ public final class XenoNpcEditorScreen extends ScaledScreen implements ClientNpc
                 v -> profile.auraLightning = v, "AuraLightning"));
         r.add(toggle("Ground ring", profile.auraGroundRing,
                 v -> profile.auraGroundRing = v, "AuraGroundRing"));
+        auraStyleRows(r, "Base aura", profile.baseAuraStyle, "BaseAuraStyle");
+        auraStyleRows(r, "Selected form aura", profile.auraStyle(false, profile.selectedFormGroup,
+                profile.selectedFormId, true), "FormAuraStyles");
+        auraStyleRows(r, "Selected stack aura", profile.auraStyle(true, profile.selectedStackGroup,
+                profile.selectedStackId, true), "StackAuraStyles");
         r.add(spacer());
         return r;
+    }
+
+    private void auraStyleRows(List<EditorRow> rows, String title,
+            net.bullettrain.xenopixelsmod.compat.npc.NpcAuraStyle style, String key) {
+        if (style == null) return;
+        rows.add(new EditorRow.Heading(title));
+        rows.add(toggle("Override type/color", style.enabled, value -> style.enabled = value, key));
+        List<String> types = List.of("Inherit", "kakarot", "god", "smooth", "sparking");
+        rows.add(cycle("DMZ type", types, style.primaryType.isBlank() ? 0 : Math.max(0, types.indexOf(style.primaryType)),
+                value -> style.primaryType = value == 0 ? "" : types.get(value), key));
+        List<String> states = List.of("Inherit", "On", "Off");
+        rows.add(cycle("Smooth", states, style.smooth.ordinal(), value -> style.smooth =
+                net.bullettrain.xenopixelsmod.compat.npc.NpcAuraStyle.Toggle.values()[value], key));
+        rows.add(cycle("3D", states, style.threeD.ordinal(), value -> style.threeD =
+                net.bullettrain.xenopixelsmod.compat.npc.NpcAuraStyle.Toggle.values()[value], key));
     }
 
     private List<EditorRow> dmzSkillRows() {

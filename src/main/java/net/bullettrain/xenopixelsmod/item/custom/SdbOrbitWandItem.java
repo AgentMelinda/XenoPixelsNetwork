@@ -11,6 +11,7 @@ import net.bullettrain.xenopixelsmod.space.dragonball.DragonBallOrbitWandMath;
 import net.bullettrain.xenopixelsmod.space.dragonball.DragonBallPlanetAssignments;
 import net.bullettrain.xenopixelsmod.space.dragonball.DragonBallPlanetDefinition;
 import net.bullettrain.xenopixelsmod.space.dragonball.DragonBallPlanetOrbitPass;
+import net.bullettrain.xenopixelsmod.space.dragonball.DragonBallModeGuard;
 import net.bullettrain.xenopixelsmod.space.dragonball.DragonBallSavedData;
 import net.bullettrain.xenopixelsmod.space.physics.PhysicalEarth;
 import net.minecraft.network.chat.Component;
@@ -69,6 +70,10 @@ public final class SdbOrbitWandItem extends Item {
             player.sendSystemMessage(Component.literal("Use the SDB orbit wand in the Voidsea."));
             return;
         }
+        if (!DragonBallModeGuard.planetaryEnabled(serverLevel.getServer())) {
+            player.sendSystemMessage(Component.literal("The SDB orbit wand is available only in planetary mode."));
+            return;
+        }
         Selection selected = SELECTED.get(player.getUUID());
         if (player.isShiftKeyDown() && selected != null && selected.server() == level.getServer()) {
             place(serverLevel, player, selected);
@@ -79,6 +84,10 @@ public final class SdbOrbitWandItem extends Item {
 
     private static void select(ServerLevel level, Player player) {
         DragonBallSavedData saved = DragonBallSavedData.get(level.getServer());
+        if (!saved.isGameplayStateValid()) {
+            player.sendSystemMessage(Component.literal("Super Dragon Ball data is unavailable: " + saved.invalidReason()));
+            return;
+        }
         Vec3 eye = player.getEyePosition();
         Vec3 look = player.getLookAngle().normalize();
         var container = SubLevelContainer.getContainer(level);
@@ -112,6 +121,10 @@ public final class SdbOrbitWandItem extends Item {
 
     private static void place(ServerLevel level, Player player, Selection selected) {
         DragonBallSavedData saved = DragonBallSavedData.get(level.getServer());
+        if (!saved.isGameplayStateValid()) {
+            player.sendSystemMessage(Component.literal("Super Dragon Ball data is unavailable: " + saved.invalidReason()));
+            return;
+        }
         if (!selected.bodyId().equals(saved.planetBodyUuid(selected.slot()))) {
             SELECTED.remove(player.getUUID());
             player.sendSystemMessage(Component.literal("That SDB incarnation changed; select the physical ball again."));
@@ -147,7 +160,7 @@ public final class SdbOrbitWandItem extends Item {
         try {
             double assignedPeriod = chart.body(hostSlot).mu() > 0.0 ? 0.0 : authored.orbitPeriodSeconds();
             var placement = DragonBallOrbitWandMath.fromOffset(offsetX, offsetZ,
-                    level.getGameTime() / 20.0 + XenoSpaceConfig.orbitEpochOffsetSeconds(),
+                    net.bullettrain.xenopixelsmod.space.SpaceOrbitClock.seconds(level.getServer()),
                     chart.body(hostSlot).mu(), assignedPeriod);
             DragonBallPlanetDefinition effective = DragonBallPlanetAssignments.effective(authored,
                     new DragonBallSavedData.ManualOrbit(placement.radiusBlocks(), placement.phaseRadians(),

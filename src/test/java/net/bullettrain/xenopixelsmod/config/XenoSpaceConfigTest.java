@@ -1,5 +1,6 @@
 package net.bullettrain.xenopixelsmod.config;
 
+import com.google.gson.JsonParser;
 import net.bullettrain.xenopixelsmod.config.XenoSpaceConfig.Data;
 import net.minecraft.resources.ResourceLocation;
 import org.junit.jupiter.api.Test;
@@ -19,6 +20,212 @@ import static org.junit.jupiter.api.Assertions.*;
  * bound the server runs on without booting one.
  */
 class XenoSpaceConfigTest {
+    @Test void podBoostKiCostDefaultsToOxygenRateAndCanBeDisabledOrClamped() {
+        Data defaults = new Data();
+        assertEquals(5.0, defaults.podBoostKiPerSecond, 1.0e-9);
+        XenoSpaceConfig.apply(defaults);
+        assertEquals(5.0, XenoSpaceConfig.podBoostKiPerSecond(), 1.0e-9);
+
+        Data free = new Data();
+        free.podBoostKiPerSecond = 0.0;
+        XenoSpaceConfig.apply(free);
+        assertEquals(0.0, XenoSpaceConfig.podBoostKiPerSecond(), 1.0e-9);
+        assertEquals(0.0, XenoSpaceConfig.snapshot().podBoostKiPerSecond, 1.0e-9);
+
+        Data invalid = new Data();
+        invalid.podBoostKiPerSecond = Double.NaN;
+        XenoSpaceConfig.apply(invalid);
+        assertEquals(5.0, XenoSpaceConfig.podBoostKiPerSecond(), 1.0e-9);
+        XenoSpaceConfig.apply(new Data());
+    }
+
+    @Test void spacePodMasterSwitchDefaultsOnAndCanBeDisabled() {
+        Data fresh = new Data();
+        assertTrue(fresh.spacePodsEnabled);
+        XenoSpaceConfig.apply(fresh);
+        assertTrue(XenoSpaceConfig.spacePodsEnabled());
+
+        Data oldConfig = new com.google.gson.Gson().fromJson("{\"version\":27}", Data.class);
+        XenoSpaceConfig.apply(oldConfig);
+        assertTrue(XenoSpaceConfig.spacePodsEnabled(), "older configs inherit the §25 enabled default");
+
+        fresh.spacePodsEnabled = false;
+        XenoSpaceConfig.apply(fresh);
+        assertFalse(XenoSpaceConfig.spacePodsEnabled());
+        assertFalse(XenoSpaceConfig.snapshot().spacePodsEnabled);
+        XenoSpaceConfig.apply(new Data());
+    }
+
+    @Test void freeDestructibilityHasDocumentedTuningDefaultsAndClampsInvalidValues() {
+        Data fresh = new Data();
+        assertEquals("gated", fresh.destructibleDefault);
+        assertEquals(5.0, fresh.planetIntegrityImpactDamage, 1.0e-9);
+        assertEquals(0.2, fresh.planetIntegrityDiminishingFloor, 1.0e-9);
+        assertEquals(20, fresh.planetIntegrityBodyCooldownTicks);
+        XenoSpaceConfig.apply(fresh);
+        assertEquals("gated", XenoSpaceConfig.destructibleDefault());
+        assertEquals(5.0, XenoSpaceConfig.planetIntegrityImpactDamage(), 1.0e-9);
+        assertEquals(0.2, XenoSpaceConfig.planetIntegrityDiminishingFloor(), 1.0e-9);
+
+        Data tuned = new Data();
+        tuned.destructibleDefault = "free";
+        tuned.planetIntegrityImpactDamage = Double.NaN;
+        tuned.planetIntegrityDiminishingFloor = 4.0;
+        tuned.planetIntegrityImpactCooldownTicks = 5_000;
+        tuned.planetIntegrityBodyCooldownTicks = Integer.MIN_VALUE;
+        tuned.planetIntegrityScarredAt = 10.0;
+        tuned.planetIntegrityCriticalAt = 50.0;
+        XenoSpaceConfig.apply(tuned);
+        assertEquals("free", XenoSpaceConfig.destructibleDefault());
+        assertEquals(5.0, XenoSpaceConfig.planetIntegrityImpactDamage(), 1.0e-9);
+        assertEquals(1.0, XenoSpaceConfig.planetIntegrityDiminishingFloor(), 1.0e-9);
+        assertEquals(1_200, XenoSpaceConfig.planetIntegrityImpactCooldownTicks());
+        assertEquals(20, XenoSpaceConfig.planetIntegrityBodyCooldownTicks());
+        assertEquals(10.0, XenoSpaceConfig.planetIntegrityScarredAt(), 1.0e-9);
+        assertEquals(10.0, XenoSpaceConfig.planetIntegrityCriticalAt(), 1.0e-9);
+        assertEquals(XenoSpaceConfig.planetIntegrityScarredAt(), XenoSpaceConfig.planetIntegrityCriticalAt(), 1.0e-9,
+                "equal configured thresholds are legal; the integrity rules give CRITICAL precedence");
+
+        Data roundTrip = XenoSpaceConfig.snapshot();
+        XenoSpaceConfig.apply(roundTrip);
+        assertEquals("free", XenoSpaceConfig.destructibleDefault());
+        assertEquals(10.0, XenoSpaceConfig.planetIntegrityCriticalAt(), 1.0e-9);
+        XenoSpaceConfig.apply(new Data());
+    }
+
+    @Test void chartStarLifecycleDefaultsOnAndClampsRampDuration() {
+        Data fresh = new Data();
+        assertTrue(fresh.supernovaEnabled);
+        assertEquals(3, fresh.stellarStageRampDays);
+        XenoSpaceConfig.apply(fresh);
+        assertTrue(XenoSpaceConfig.supernovaEnabled());
+        assertEquals(3, XenoSpaceConfig.stellarStageRampDays());
+
+        fresh.supernovaEnabled = false;
+        fresh.stellarStageRampDays = 999;
+        XenoSpaceConfig.apply(fresh);
+        assertFalse(XenoSpaceConfig.supernovaEnabled());
+        assertEquals(365, XenoSpaceConfig.stellarStageRampDays());
+        assertEquals(365L * 24_000L, XenoSpaceConfig.stellarStageRampTicks());
+        XenoSpaceConfig.apply(new Data());
+    }
+
+    @Test void stellarBlastWaveSettingsHaveBoundedDefaultsAndRoundTrip() {
+        Data fresh = new Data();
+        assertEquals(124_000, fresh.stellarWaveDurationTicks,
+                "new configs keep the wave alive long enough to cross the authored solar chart");
+        assertEquals(0.25, fresh.stellarWaveSpeedBlocksPerTick, 1.0e-12);
+        assertEquals(100, fresh.stellarWaveExposureTicks);
+        assertTrue(fresh.stellarHullDamageEnabled);
+        assertEquals(20, fresh.stellarHullDamageIntervalTicks);
+        XenoSpaceConfig.apply(fresh);
+        assertEquals(124_000, XenoSpaceConfig.stellarWaveDurationTicks());
+        assertEquals(0.25, XenoSpaceConfig.stellarWaveSpeedBlocksPerTick(), 1.0e-12);
+        assertEquals(100, XenoSpaceConfig.stellarWaveExposureTicks());
+        assertTrue(XenoSpaceConfig.stellarHullDamageEnabled());
+        assertEquals(20, XenoSpaceConfig.stellarHullDamageIntervalTicks());
+
+        fresh.stellarWaveSpeedBlocksPerTick = Double.NaN;
+        fresh.stellarWaveExposureTicks = 9_999;
+        fresh.stellarWaveDurationTicks = Integer.MAX_VALUE;
+        fresh.stellarHullDamageIntervalTicks = Integer.MAX_VALUE;
+        XenoSpaceConfig.apply(fresh);
+        assertEquals(net.bullettrain.xenopixelsmod.space.event.StellarStageSnapshot.MAX_RAMP_TICKS,
+                XenoSpaceConfig.stellarWaveDurationTicks());
+        assertEquals(0.25, XenoSpaceConfig.stellarWaveSpeedBlocksPerTick(), 1.0e-12);
+        assertEquals(1_200, XenoSpaceConfig.stellarWaveExposureTicks());
+        assertEquals(1_200, XenoSpaceConfig.stellarHullDamageIntervalTicks());
+        assertEquals(XenoSpaceConfig.stellarWaveDurationTicks(), XenoSpaceConfig.snapshot().stellarWaveDurationTicks);
+        assertEquals(1_200, XenoSpaceConfig.snapshot().stellarHullDamageIntervalTicks);
+        fresh.stellarWaveDurationTicks = Integer.MIN_VALUE;
+        XenoSpaceConfig.apply(fresh);
+        assertEquals(1, XenoSpaceConfig.stellarWaveDurationTicks());
+        Data gsonDefault = new com.google.gson.Gson().fromJson("{}", Data.class);
+        assertTrue(gsonDefault.stellarHullDamageEnabled, "older configs inherit the enabled design default");
+        assertEquals(20, gsonDefault.stellarHullDamageIntervalTicks);
+        XenoSpaceConfig.apply(new Data());
+    }
+
+    @Test void preWaveLifetimeConfigPreservesItsFormerRampDerivedDuration() {
+        var legacyJson = JsonParser.parseString("{\"version\":26,\"stellarStageRampDays\":5}").getAsJsonObject();
+        assertFalse(XenoSpaceConfig.hasStellarWaveDurationSetting(legacyJson));
+        Data legacy = XenoSpaceConfig.decode(legacyJson);
+        assertFalse(legacy.stellarWaveDurationSettingPresent);
+        XenoSpaceConfig.apply(legacy);
+        assertEquals(120_000, XenoSpaceConfig.stellarWaveDurationTicks());
+
+        var explicitJson = JsonParser.parseString(
+                "{\"version\":26,\"stellarStageRampDays\":5,\"stellarWaveDurationTicks\":50000}")
+                .getAsJsonObject();
+        Data explicit = XenoSpaceConfig.decode(explicitJson);
+        assertTrue(explicit.stellarWaveDurationSettingPresent);
+        XenoSpaceConfig.apply(explicit);
+        assertEquals(50_000, XenoSpaceConfig.stellarWaveDurationTicks());
+        XenoSpaceConfig.apply(new Data());
+    }
+
+    @Test void fallenStarsMasterToggleDefaultsOnMigratesMissingKeyAndPersistsOff() {
+        var gson = new com.google.gson.Gson();
+        Data fresh = gson.fromJson("{}", Data.class);
+        XenoSpaceConfig.apply(fresh);
+        assertTrue(XenoSpaceConfig.fallenStarsEnabled());
+
+        Data migrated = gson.fromJson("{\"version\":22}", Data.class);
+        XenoSpaceConfig.apply(migrated);
+        assertTrue(XenoSpaceConfig.fallenStarsEnabled(), "pre-toggle configs inherit the design's enabled default");
+
+        XenoSpaceConfig.setFallenStarsEnabled(false);
+        assertFalse(XenoSpaceConfig.fallenStarsEnabled());
+        assertFalse(XenoSpaceConfig.snapshot().fallenStarsEnabled);
+        XenoSpaceConfig.apply(new Data());
+    }
+
+    @Test void sableUnloadTicketPointerFixDefaultsOnButCanBeDisabled() {
+        Data fresh = new Data();
+        assertTrue(fresh.sableTicketUnloadKeyFix);
+        XenoSpaceConfig.apply(fresh);
+        assertTrue(XenoSpaceConfig.sableTicketUnloadKeyFix());
+
+        Data optedOut = new Data();
+        optedOut.sableTicketUnloadKeyFix = false;
+        XenoSpaceConfig.apply(optedOut);
+        assertFalse(XenoSpaceConfig.sableTicketUnloadKeyFix(), "an explicit operator opt-out must be preserved");
+
+        XenoSpaceConfig.apply(new Data());
+    }
+
+    @Test void superDragonBallsDefaultToPlanetaryAndLegacyModeIsConfigurable() {
+        Data fresh = new Data();
+        assertEquals("planetary", fresh.cosmicDragonBallMode);
+        XenoSpaceConfig.apply(fresh);
+        assertEquals("planetary", XenoSpaceConfig.cosmicDragonBallMode());
+
+        fresh.cosmicDragonBallMode = "legacy";
+        XenoSpaceConfig.apply(fresh);
+        assertEquals("legacy", XenoSpaceConfig.snapshot().cosmicDragonBallMode);
+        XenoSpaceConfig.apply(new Data());
+    }
+
+    @Test void realOrbitsAreOnForNewConfigsButExplicitlyOffRemainsOff() {
+        Data fresh = new Data();
+        assertTrue(fresh.realOrbits);
+        XenoSpaceConfig.apply(fresh);
+        assertTrue(XenoSpaceConfig.realOrbits());
+
+        fresh.realOrbits = false;
+        XenoSpaceConfig.apply(fresh);
+        assertFalse(XenoSpaceConfig.realOrbits(), "an operator's explicit off setting must be preserved");
+        XenoSpaceConfig.apply(new Data());
+    }
+
+    @Test void detectsAnExplicitZeroBuildTimeSettingInLegacyJson() {
+        var explicitZero = JsonParser.parseString("{\"version\":19,\"generatedBodyBuildMillisPerTick\":0.0}").getAsJsonObject();
+        var missing = JsonParser.parseString("{\"version\":19}").getAsJsonObject();
+
+        assertTrue(XenoSpaceConfig.hasGeneratedBodyBuildMillisSetting(explicitZero));
+        assertFalse(XenoSpaceConfig.hasGeneratedBodyBuildMillisSetting(missing));
+    }
+
     @Test void fullWidthLogicalUniverseToggleDefaultsOffAndPersists() {
         XenoSpaceConfig.apply(defaults());
         assertFalse(XenoSpaceConfig.logicalUniverseEnabled());
@@ -42,6 +249,7 @@ class XenoSpaceConfigTest {
         assertEquals(650.0, XenoSpaceConfig.smallPlanetReleaseRange(), 1e-9);
         assertEquals(2, XenoSpaceConfig.smallPlanetMaxPerPlayer());
         assertEquals(8, XenoSpaceConfig.smallPlanetMaxGlobal());
+        assertEquals(4, XenoSpaceConfig.smallPlanetMaxEditedGlobal());
         assertFalse(XenoSpaceConfig.smallPlanetBuildIncrementalSections());
 
         Data d = defaults();
@@ -52,6 +260,7 @@ class XenoSpaceConfigTest {
         d.smallPlanetReleaseRange = 1_500;
         d.smallPlanetMaxPerPlayer = 4;
         d.smallPlanetMaxGlobal = 12;
+        d.smallPlanetMaxEditedGlobal = 6;
         d.smallPlanetSpawnIntervalTicks = 60;
         d.smallPlanetBuildVoxelsPerTick = 1_000;
         d.smallPlanetBuildIncrementalSections = true;
@@ -65,6 +274,7 @@ class XenoSpaceConfigTest {
         assertEquals(1_500, XenoSpaceConfig.smallPlanetReleaseRange(), 1e-9);
         assertEquals(4, XenoSpaceConfig.smallPlanetMaxPerPlayer());
         assertEquals(12, XenoSpaceConfig.smallPlanetMaxGlobal());
+        assertEquals(6, XenoSpaceConfig.smallPlanetMaxEditedGlobal());
         assertEquals(60, XenoSpaceConfig.smallPlanetSpawnIntervalTicks());
         assertEquals(1_000, XenoSpaceConfig.smallPlanetBuildVoxelsPerTick());
         assertTrue(XenoSpaceConfig.smallPlanetBuildIncrementalSections());
@@ -81,6 +291,7 @@ class XenoSpaceConfigTest {
         d.smallPlanetReleaseRange = Double.NEGATIVE_INFINITY;
         d.smallPlanetMaxPerPlayer = Integer.MAX_VALUE;
         d.smallPlanetMaxGlobal = Integer.MAX_VALUE;
+        d.smallPlanetMaxEditedGlobal = Integer.MAX_VALUE;
         d.smallPlanetSpawnIntervalTicks = Integer.MIN_VALUE;
         d.smallPlanetBuildVoxelsPerTick = Integer.MAX_VALUE;
         d.smallPlanetBuildIncrementalSections = true;
@@ -89,6 +300,7 @@ class XenoSpaceConfigTest {
         assertEquals(650.0, XenoSpaceConfig.smallPlanetReleaseRange(), 1e-9);
         assertEquals(16, XenoSpaceConfig.smallPlanetMaxPerPlayer());
         assertEquals(32, XenoSpaceConfig.smallPlanetMaxGlobal());
+        assertEquals(32, XenoSpaceConfig.smallPlanetMaxEditedGlobal());
         assertEquals(1, XenoSpaceConfig.smallPlanetSpawnIntervalTicks());
         assertEquals(2_000, XenoSpaceConfig.smallPlanetBuildVoxelsPerTick());
         assertTrue(XenoSpaceConfig.smallPlanetBuildIncrementalSections());
@@ -102,6 +314,20 @@ class XenoSpaceConfigTest {
         assertEquals(4_128.0, XenoSpaceConfig.smallPlanetReleaseRange(), 1e-9);
         assertEquals(1_200, XenoSpaceConfig.smallPlanetSpawnIntervalTicks());
         assertEquals(1, XenoSpaceConfig.smallPlanetBuildVoxelsPerTick());
+    }
+
+    @Test void sparseAirCollisionEncodingIsOptInAndPersists() {
+        XenoSpaceConfig.apply(defaults());
+        assertFalse(XenoSpaceConfig.planetBuildSparseAirCollisionEncoding());
+
+        Data enabled = defaults();
+        enabled.planetBuildSparseAirCollisionEncoding = true;
+        XenoSpaceConfig.apply(enabled);
+        assertTrue(XenoSpaceConfig.planetBuildSparseAirCollisionEncoding());
+        assertTrue(XenoSpaceConfig.snapshot().planetBuildSparseAirCollisionEncoding);
+
+        XenoSpaceConfig.apply(defaults());
+        assertFalse(XenoSpaceConfig.planetBuildSparseAirCollisionEncoding());
     }
 
     @Test void bareHandoffExitKeysMeanThisModsNamespace() {
@@ -148,6 +374,41 @@ class XenoSpaceConfigTest {
         Data snapshot = XenoSpaceConfig.snapshot();
         XenoSpaceConfig.apply(snapshot);
         assertEquals(2_000, XenoSpaceConfig.generatedBodyBuildVoxelsPerTick());
+    }
+
+    @Test void chartPlanetBuildConcurrencyDefaultsToOneIsBoundedAndPersists() {
+        XenoSpaceConfig.apply(defaults());
+        assertEquals(1, XenoSpaceConfig.planetBuildMaxConcurrent());
+
+        Data d = defaults();
+        d.version = 20;
+        d.planetBuildMaxConcurrent = 4;
+        d.planetReleaseMaxPerPass = 3;
+        XenoSpaceConfig.apply(d);
+        assertEquals(4, XenoSpaceConfig.planetBuildMaxConcurrent());
+        assertEquals(3, XenoSpaceConfig.planetReleaseMaxPerPass());
+        XenoSpaceConfig.apply(XenoSpaceConfig.snapshot());
+        assertEquals(4, XenoSpaceConfig.planetBuildMaxConcurrent());
+        assertEquals(3, XenoSpaceConfig.planetReleaseMaxPerPass());
+
+        d.planetBuildMaxConcurrent = Integer.MAX_VALUE;
+        XenoSpaceConfig.apply(d);
+        assertEquals(8, XenoSpaceConfig.planetBuildMaxConcurrent());
+        d.planetBuildMaxConcurrent = 0;
+        d.planetReleaseMaxPerPass = Integer.MAX_VALUE;
+        XenoSpaceConfig.apply(d);
+        assertEquals(1, XenoSpaceConfig.planetBuildMaxConcurrent());
+        assertEquals(8, XenoSpaceConfig.planetReleaseMaxPerPass());
+        d.planetReleaseMaxPerPass = 0;
+        XenoSpaceConfig.apply(d);
+        assertEquals(1, XenoSpaceConfig.planetReleaseMaxPerPass());
+
+        Data legacy = defaults();
+        legacy.version = 20;
+        XenoSpaceConfig.apply(legacy);
+        assertEquals(1, XenoSpaceConfig.planetBuildMaxConcurrent(),
+                "version 20 config files without the new key use the conservative default");
+        XenoSpaceConfig.apply(defaults());
     }
 
     @Test void incrementalAsteroidSectionWriterIsOptInAndSurvivesSnapshot() {
@@ -337,5 +598,39 @@ class XenoSpaceConfigTest {
         assertTrue(line.contains("handoff="), line);
         assertTrue(line.contains("band=128"), line);
         assertTrue(line.contains("flightGrant="), line);
+    }
+
+    @Test void auraOxygenSubstituteHasAConfigurableMigratingDefault() {
+        var gson = new com.google.gson.Gson();
+        Data oldConfig = gson.fromJson("{}", Data.class);
+        assertTrue(oldConfig.oxygenAuraSubstitute);
+        oldConfig.oxygenAuraSubstitute = false;
+        Data saved = gson.fromJson(gson.toJson(oldConfig), Data.class);
+        assertFalse(saved.oxygenAuraSubstitute);
+    }
+
+    @Test void podFlightTuningHasSafeConfigurableDefaultsAndClamps() {
+        XenoSpaceConfig.apply(defaults());
+        assertEquals(16.0, XenoSpaceConfig.podCruiseSpeed());
+        assertEquals(4.0, XenoSpaceConfig.podCruiseAcceleration());
+        assertEquals(48.0, XenoSpaceConfig.podBoostSpeed());
+        assertEquals(12.0, XenoSpaceConfig.podBoostAcceleration());
+        assertEquals(2.0, XenoSpaceConfig.podFlightResponsePerSecond());
+
+        Data configured = defaults();
+        configured.podCruiseSpeed = 60_000;
+        configured.podCruiseAcceleration = Double.NaN;
+        configured.podBoostSpeed = 1;
+        configured.podBoostAcceleration = -1;
+        configured.podFlightResponsePerSecond = Double.POSITIVE_INFINITY;
+        XenoSpaceConfig.apply(configured);
+        assertEquals(10_000.0, XenoSpaceConfig.podCruiseSpeed());
+        assertEquals(4.0, XenoSpaceConfig.podCruiseAcceleration());
+        assertEquals(10_000.0, XenoSpaceConfig.podBoostSpeed());
+        assertEquals(0.0, XenoSpaceConfig.podBoostAcceleration());
+        assertEquals(2.0, XenoSpaceConfig.podFlightResponsePerSecond());
+        XenoSpaceConfig.apply(XenoSpaceConfig.snapshot());
+        assertEquals(10_000.0, XenoSpaceConfig.podCruiseSpeed());
+        assertEquals(10_000.0, XenoSpaceConfig.podBoostSpeed());
     }
 }

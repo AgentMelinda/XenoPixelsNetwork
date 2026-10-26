@@ -3,6 +3,7 @@ package net.bullettrain.xenopixelsmod.hair;
 import com.dragonminez.common.hair.CustomHair;
 import com.dragonminez.common.hair.HairManager;
 import com.dragonminez.common.hair.HairStrand;
+import com.dragonminez.common.hair.HairStyleSlot;
 
 import java.util.List;
 import java.util.Locale;
@@ -10,7 +11,7 @@ import java.util.Objects;
 
 /**
  * Load a DMZ built-in hair preset into {@link HairMakerDocument} so the studio can use
- * presets as an editable base. Uses only public {@link HairManager} getters (2.1.3).
+ * presets as an editable base. Uses only public {@link HairManager} getters (2.2).
  */
 public final class HairPresetImport {
     private HairPresetImport() {
@@ -41,18 +42,11 @@ public final class HairPresetImport {
         if (presetId < 0) {
             return null;
         }
-        String color = "";
         String slot = style == null ? "Base" : style.trim();
-        CustomHair hair = switch (slot) {
-            case "SSJ" -> HairManager.getPresetHairSSJ(presetId, color);
-            case "SSJ2" -> HairManager.getPresetHairSSJ2(presetId, color);
-            case "SSJ3" -> HairManager.getPresetHairSSJ3(presetId, color);
-            default -> HairManager.getPresetHair(presetId, color);
-        };
-        // Non-full-set presets share one code for every style slot; SSJ getters can still
-        // return an empty CustomHair when the id is missing — fall back to Base geometry.
-        if ((hair == null || hair.isEmpty()) && !"Base".equalsIgnoreCase(slot)) {
-            hair = HairManager.getPresetHair(presetId, color);
+        HairStyleSlot styleSlot = HairStyleSlot.byIndex(Math.max(0, HairMakerDocument.STYLE_NAMES.indexOf(slot)));
+        CustomHair hair = HairManager.getPresetStyle(presetId, styleSlot);
+        if ((hair == null || hair.isEmpty()) && styleSlot != HairStyleSlot.BASE) {
+            hair = HairManager.getPresetStyle(presetId, HairStyleSlot.BASE);
         }
         if (hair == null || hair.isEmpty()) {
             return null;
@@ -87,21 +81,7 @@ public final class HairPresetImport {
         if (src == null || dst == null) {
             return;
         }
-        dst.length(src.getLength());
-        dst.lengthScale(src.getLengthScale());
-        dst.rotationX(src.getRotationX());
-        dst.rotationY(src.getRotationY());
-        dst.rotationZ(src.getRotationZ());
-        dst.scaleX(src.getScaleX());
-        dst.scaleY(src.getScaleY());
-        dst.scaleZ(src.getScaleZ());
-        dst.cubeWidth(src.getCubeWidth());
-        dst.cubeHeight(src.getCubeHeight());
-        dst.cubeDepth(src.getCubeDepth());
-        dst.curveX(src.getCurveX());
-        dst.curveY(src.getCurveY());
-        dst.curveZ(src.getCurveZ());
-        dst.color(src.hasCustomColor() ? src.getColor() : null);
+        HairStrandCompatibility.importNative(src, dst);
     }
 
     static void copyFace(CustomHair hair, CustomHair.HairFace face, List<HairStrandModel> dest) {

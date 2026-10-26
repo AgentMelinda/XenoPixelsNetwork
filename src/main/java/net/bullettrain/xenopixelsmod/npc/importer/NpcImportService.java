@@ -49,7 +49,14 @@ public final class NpcImportService {
         }
 
         for (ForeignNpcRoots.Root root : roots) {
-            if (root.mod().endsWith("-clones")) continue;
+            if (root.mod().endsWith("-clones")) {
+                // Clones are per-NPC saved instances, not library content, so nothing here reads
+                // them. Saying so is the point: the source folders exist and an operator who is
+                // told nothing concludes the import looked at them.
+                report.noteGrouped("clone root left alone (cloned instances are not shared content)",
+                        root.path().toString());
+                continue;
+            }
             Path factions = root.path().resolve("factions.dat");
             if (Files.isRegularFile(factions)) {
                 try {
@@ -60,6 +67,9 @@ public final class NpcImportService {
                 }
             }
             if (libraries) {
+                inspectRecipes(root, report);
+                ScriptFileImport.importRoot(root, store, dryRun, report);
+                indexLibraries(root, report);
                 importGrouped(root, "quests", store, dryRun, report);
                 importGrouped(root, "dialogs", store, dryRun, report);
             }
@@ -69,6 +79,44 @@ public final class NpcImportService {
             report.note("no supported factions, quests, or dialogs were found in the source folders");
         }
         return report;
+    }
+
+    /** Empty supplied recipe libraries are distinct from authored recipes lacking a converter. */
+    private static void inspectRecipes(ForeignNpcRoots.Root root, NpcImportReport report) {
+        Path path = root.path().resolve("recipes.dat");
+        if (!Files.isRegularFile(path)) return;
+        try {
+            if (Files.size(path) > MAX_BLOB_BYTES) throw new IOException("file exceeds 8 MiB limit");
+            CompoundTag raw = NbtIo.readCompressed(path, NbtAccounter.create(MAX_BLOB_BYTES));
+            var data = raw.getList("Data", Tag.TAG_COMPOUND);
+            if (!data.isEmpty()) report.note(root.mod() + "/recipes.dat contains " + data.size()
+                    + " authored source recipes; native recipe migration is not implemented; source left unchanged");
+        } catch (IOException | RuntimeException e) { report.failed("recipes", root.mod(), message(e)); }
+    }
+
+    /** Resolve forward and cross-category references before converting definitions. */
+    private static void indexLibraries(ForeignNpcRoots.Root root, NpcImportReport report) {
+        for (String category : List.of("quests", "dialogs")) {
+            Path directory = root.path().resolve(category);
+            if (!Files.isDirectory(directory)) continue;
+            try (var walk = Files.walk(directory, 2)) {
+                for (Path file : walk.filter(Files::isRegularFile)
+                        .filter(p -> p.getFileName().toString().endsWith(".json")).sorted().toList()) {
+                    try {
+                        if (Files.size(file) > MAX_TEXT_BYTES) continue;
+                        String name = file.getFileName().toString();
+                        int slot = Integer.parseInt(name.substring(0, name.length() - 5));
+                        CompoundTag raw = ForeignSnbt.parse(Files.readString(file, StandardCharsets.UTF_8));
+                        if (category.equals("dialogs") && raw.contains("DialogId") && raw.getInt("DialogId") != slot) continue;
+                        Path relative = directory.relativize(file);
+                        String sourceGroup = relative.getParent() == null ? "ungrouped" : relative.getParent().toString().replace('\\', '/');
+                        String group = safeId(root.mod() + "_" + sourceGroup);
+                        if (category.equals("quests")) report.mapQuest(root.mod(), slot, safeId(group + "_q" + slot));
+                        else report.mapDialog(root.mod(), slot, new DialogTreeImport.Ref(group, "dialog_" + slot));
+                    } catch (IOException | RuntimeException ignored) { /* Conversion reports exact parse errors. */ }
+                }
+            } catch (IOException e) { report.failed(category, directory.toString(), e.toString()); }
+        }
     }
 
     private static void importFactionBlob(ForeignNpcRoots.Root root, Path blob,
@@ -84,7 +132,12 @@ public final class NpcImportService {
         }
         for (XenoFaction faction : FactionsBlobImport.fanOut(tag, report)) {
             if (store.get(XenoNpcStoreCategory.FACTIONS, "", faction.id()) != null) {
-                report.failed("factions", faction.id(), "Xeno entry already exists; left unchanged");
+                // Naming the losing root is the whole point: the supplied archives both define
+                // Aggressive/Friendly/Grindables/Neutral/Npc, and their Aggressive differs (mynpcs
+                // attacks Neutral, customnpcs attacks nobody), so "already exists" alone leaves the
+                // operator unable to tell whose tuning the server now runs.
+                report.failed("factions", root.mod() + "/" + faction.id(),
+                        "Xeno entry already exists; left unchanged");
                 continue;
             }
             if (dryRun) {
@@ -149,10 +202,16 @@ public final class NpcImportService {
             }
         }
 
+        Map<Integer, CompoundTag> allDialogs = new LinkedHashMap<>();
+        if (category.equals("dialogs")) {
+            for (var values : groups.values()) for (var entry : values.entrySet()) {
+                if (report.dialog(root.mod(), entry.getKey()) != null) allDialogs.put(entry.getKey(), entry.getValue());
+            }
+        }
         for (Map.Entry<String, Map<Integer, CompoundTag>> group : groups.entrySet()) {
             if (category.equals("dialogs")) {
                 DialogTreeImport.Conversion conversion = DialogTreeImport.convert(
-                        group.getValue(), report, group.getKey(), root.mod());
+                        group.getValue(), allDialogs, report, group.getKey(), root.mod());
                 for (Map.Entry<Integer, DialogTreeImport.Ref> mapping : conversion.sourceSlots().entrySet()) {
                     report.mapDialog(root.mod(), mapping.getKey(), mapping.getValue());
                 }
@@ -177,7 +236,7 @@ public final class NpcImportService {
                 int slot = questEntry.getKey();
                 String id = safeId(group.getKey() + "_q" + slot);
                 QuestImport.Imported quest = QuestImport.convert(slot, id, group.getKey(),
-                        questEntry.getValue(), report);
+                        questEntry.getValue(), report, root.mod());
                 if (quest == null) continue;
                 report.mapQuest(root.mod(), slot, id);
                 CompoundTag tag = new CompoundTag();

@@ -10,6 +10,7 @@ import java.util.List;
 import java.util.Objects;
 import java.util.SplittableRandom;
 import java.util.Set;
+import java.util.function.Function;
 
 /**
  * Pure, bounded small-planet placement for S11 C1. It creates no chunks or physics bodies; callers only query the
@@ -17,7 +18,9 @@ import java.util.Set;
  */
 public final class SmallPlanetField {
     public static final int SECTOR_SIZE = 4_096;
-    public static final int MAX_PLANETS_PER_SYSTEM = 4;
+    public static final int MAX_PLANETS_PER_SYSTEM = 8;
+    /** Sol has four extra procedural bodies alongside its charted solar-system planets. */
+    private static final int HOME_PROCEDURAL_SLOTS = 4;
     public static final int MIN_RADIUS = 10;
     public static final int MAX_RADIUS = 48;
     public static final int WALKABLE_RADIUS_LIMIT = 24;
@@ -27,6 +30,14 @@ public final class SmallPlanetField {
     public static final double VOIDSEA_HEIGHT = 1_024.0;
     /** Nearby physicalization only needs short ranges; this keeps the fixed 3x3 system query complete and bounded. */
     public static final double MAX_NEARBY_RANGE = 8_192.0;
+    /**
+     * Display-only reach for the client far layer. Planets sit up to 4 sectors (16,384) plus jitter from their star,
+     * so the physicalization range above hides most of a system from a player near its star (a warp arrives 3,000
+     * blocks out). Candidates stay within 57,188 blocks of their cell centre, so the nearest candidate of a cell two
+     * indices away is at least 2 x 131,072 - 65,536 - 57,188 = 139,420 blocks from any point of the centre cell: the
+     * fixed 3x3 query remains complete far beyond this value, and the result is still at most 9 x 8 candidates.
+     */
+    public static final double MAX_VISUAL_RANGE = 32_768.0;
 
     private static final long SECTOR_SALT = 0x6A09E667F3BCC909L;
     private static final long PLANET_SALT = 0xBB67AE8584CAA73BL;
@@ -114,10 +125,139 @@ public final class SmallPlanetField {
         public SurfaceMode surfaceMode() {
             return radius <= WALKABLE_RADIUS_LIMIT ? SurfaceMode.WALKABLE : SurfaceMode.ENTERABLE;
         }
+
+        /** Same deterministic body identity and seed, positioned at one analytical ephemeris sample. */
+        public Candidate atPosition(double x, double y, double z) {
+            return new Candidate(id, seed, x, y, z, radius, profile, oreRichness, nativeLife);
+        }
+    }
+
+    /** Seeded body plus the reusable analytical orbit derived from its immutable phase-zero candidate. */
+    public record OrbitingCandidate(Candidate anchor, SmallPlanetOrbit orbit) {
+        public OrbitingCandidate {
+            Objects.requireNonNull(anchor, "anchor");
+            Objects.requireNonNull(orbit, "orbit");
+        }
+        public Candidate at(double seconds) {
+            double[] position = new double[3];
+            orbit.positionAt(seconds, position);
+            return anchor.atPosition(position[0], position[1], position[2]);
+        }
     }
 
     /**
-     * Returns at most four deterministic bodies for a generated system. Non-home systems use their existing
+     * Evaluates an immutable seeded candidate around its owning star. Candidate coordinates remain the phase-zero
+     * anchor; the home system uses the exact charted Sol position supplied by the server snapshot, while frontier
+     * systems use their resolved physical host-star coordinates.
+     */
+    public static Candidate atOrbitTime(Candidate candidate, UniverseField.StarSystem system,
+                                        double homeStarX, double homeStarY, double homeStarZ,
+                                        double timeSeconds) {
+        Objects.requireNonNull(candidate, "candidate");
+        Objects.requireNonNull(system, "system");
+        double starX = system.cell().home() ? homeStarX : system.x();
+        double starY = system.cell().home() ? homeStarY : system.y();
+        double starZ = system.cell().home() ? homeStarZ : system.z();
+        var orbit = SmallPlanetOrbit.fromCandidate(candidate, starX, starY, starZ);
+        double[] position = new double[3];
+        orbit.positionAt(timeSeconds, position);
+        return candidate.atPosition(position[0], position[1], position[2]);
+    }
+
+    /**
+     * Bounded 3x3-system ephemeris query. Selection uses the current orbital position, while returned anchors retain
+     * seeded phase-zero coordinates for stable identity, texture, persistence, and physical-body reconstruction.
+     */
+    public static List<OrbitingCandidate> orbitingNearby(long worldSeed, double x, double y, double z,
+                                                         double range, int requested,
+                                                         List<Sphere> chartedBodies,
+                                                         List<AsteroidField.Belt> asteroidBelts,
+                                                         Function<UniverseField.Cell, UniverseField.StarSystem> systemResolver,
+                                                         double homeStarX, double homeStarY, double homeStarZ,
+                                                         double timeSeconds) {
+        return orbitingQuery(worldSeed, x, y, z, range, requested, chartedBodies, asteroidBelts,
+                systemResolver, homeStarX, homeStarY, homeStarZ, timeSeconds, false);
+    }
+
+    /**
+     * Bounded 3x3 query for far LOD caching. It includes candidates whose complete orbit can intersect the
+     * requested range, even if the body is currently outside; callers must still filter by current position.
+     */
+    public static List<OrbitingCandidate> orbitingPotentiallyNearby(long worldSeed, double x, double y, double z,
+                                                                    double range, int requested,
+                                                                    List<Sphere> chartedBodies,
+                                                                    List<AsteroidField.Belt> asteroidBelts,
+                                                                    Function<UniverseField.Cell, UniverseField.StarSystem> systemResolver,
+                                                                    double homeStarX, double homeStarY, double homeStarZ,
+                                                                    double timeSeconds) {
+        return orbitingQuery(worldSeed, x, y, z, range, requested, chartedBodies, asteroidBelts,
+                systemResolver, homeStarX, homeStarY, homeStarZ, timeSeconds, true);
+    }
+
+    private static List<OrbitingCandidate> orbitingQuery(long worldSeed, double x, double y, double z,
+                                                          double range, int requested,
+                                                          List<Sphere> chartedBodies,
+                                                          List<AsteroidField.Belt> asteroidBelts,
+                                                          Function<UniverseField.Cell, UniverseField.StarSystem> systemResolver,
+                                                          double homeStarX, double homeStarY, double homeStarZ,
+                                                          double timeSeconds, boolean sweptRange) {
+        if (!Double.isFinite(x) || !Double.isFinite(y) || !Double.isFinite(z)
+                || !Double.isFinite(range) || range < 0 || range > MAX_VISUAL_RANGE
+                || !Double.isFinite(homeStarX) || !Double.isFinite(homeStarY) || !Double.isFinite(homeStarZ)
+                || !Double.isFinite(timeSeconds))
+            throw new IllegalArgumentException("small-planet orbital query is outside its finite range");
+        Objects.requireNonNull(systemResolver, "systemResolver");
+        Objects.requireNonNull(chartedBodies, "chartedBodies");
+        Objects.requireNonNull(asteroidBelts, "asteroidBelts");
+        UniverseField.Cell centre = UniverseField.cellAt(x, z);
+        if (centre == null) return List.of();
+        var result = new ArrayList<OrbitingCandidate>(9 * MAX_PLANETS_PER_SYSTEM);
+        for (int dx = -1; dx <= 1; dx++) for (int dz = -1; dz <= 1; dz++) {
+            long cellX = (long) centre.x() + dx, cellZ = (long) centre.z() + dz;
+            if (!UniverseField.Cell.inRange(cellX) || !UniverseField.Cell.inRange(cellZ)) continue;
+            UniverseField.StarSystem system = systemResolver.apply(new UniverseField.Cell((int) cellX, (int) cellZ));
+            if (system == null) continue;
+            for (Candidate anchor : generateSystem(worldSeed, system, requested, chartedBodies, asteroidBelts)) {
+                double starX = system.cell().home() ? homeStarX : system.x();
+                double starY = system.cell().home() ? homeStarY : system.y();
+                double starZ = system.cell().home() ? homeStarZ : system.z();
+                SmallPlanetOrbit orbit;
+                try { orbit = SmallPlanetOrbit.fromCandidate(anchor, starX, starY, starZ); }
+                catch (IllegalArgumentException invalidOrbit) { continue; }
+                var candidate = new OrbitingCandidate(anchor, orbit);
+                double reach = range + anchor.radius();
+                if (sweptRange) {
+                    if (orbit.mayEnterRange(x, y, z, reach)) result.add(candidate);
+                } else {
+                    Candidate current = candidate.at(timeSeconds);
+                    double ox = current.x() - x, oy = current.y() - y, oz = current.z() - z;
+                    if (ox * ox + oy * oy + oz * oz <= reach * reach) result.add(candidate);
+                }
+            }
+        }
+        result.sort(Comparator.comparing(value -> value.anchor().id()));
+        return List.copyOf(result);
+    }
+
+    /** Distinguishes cataloged planets from procedural bodies that have a stable surface address. */
+    public record SlotSummary(int systemPlanetSlots, int smallWorldSlots, int unmappedSystemSlots) {}
+
+    /** Number of catalog planet slots addressable by this field's eight-slot surface-cell schema. */
+    public static int proceduralSlotCount(UniverseField.StarSystem system) {
+        Objects.requireNonNull(system, "system");
+        int systemSlots = system.cell().home() ? HOME_PROCEDURAL_SLOTS : Math.max(0, system.planetSlots());
+        return Math.min(systemSlots, MAX_PLANETS_PER_SYSTEM);
+    }
+
+    public static SlotSummary summarizeSlots(UniverseField.StarSystem system) {
+        Objects.requireNonNull(system, "system");
+        int smallWorldSlots = proceduralSlotCount(system);
+        int unmapped = system.cell().home() ? 0 : Math.max(0, system.planetSlots() - smallWorldSlots);
+        return new SlotSummary(system.planetSlots(), smallWorldSlots, unmapped);
+    }
+
+    /**
+     * Returns at most eight deterministic bodies for a generated system. Non-home systems use their existing
      * {@code planetSlots} value; Sol has a procedural slot budget too, with charted-body and belt exclusions keeping
      * generated bodies clear of its authored planets. The caller's requested cap applies to both cases. Exclusions and
      * local overlap arbitration can reduce the result, never increase it.
@@ -128,8 +268,7 @@ public final class SmallPlanetField {
         Objects.requireNonNull(system, "system");
         Objects.requireNonNull(chartedBodies, "chartedBodies");
         Objects.requireNonNull(asteroidBelts, "asteroidBelts");
-        int systemSlots = system.cell().home() ? MAX_PLANETS_PER_SYSTEM : Math.max(0, system.planetSlots());
-        int count = Math.min(systemSlots, Math.max(0, Math.min(requested, MAX_PLANETS_PER_SYSTEM)));
+        int count = Math.min(proceduralSlotCount(system), Math.max(0, Math.min(requested, MAX_PLANETS_PER_SYSTEM)));
         if (count == 0) return List.of();
 
         List<SlotSector> sectors = chooseSectors(worldSeed, system, count);
@@ -152,24 +291,51 @@ public final class SmallPlanetField {
 
     /**
      * Returns candidates close enough to one Voidsea position for proximity physicalization. It examines only the
-     * containing system cell and its eight neighbours (at most 9 systems × 4 slots), independent of universe size.
+     * containing system cell and its eight neighbours (at most 9 systems × 8 slots), independent of universe size.
      * The candidate placement bounds are within 57,188 blocks of a cell centre including body radius; with the
      * 8,192-block maximum query range, a cell two indices away cannot intersect this query.
      */
     public static List<Candidate> nearby(long worldSeed, double x, double y, double z, double range, int requested,
                                          List<Sphere> chartedBodies,
                                          List<AsteroidField.Belt> asteroidBelts) {
+        return nearby(worldSeed, x, y, z, range, requested, chartedBodies, asteroidBelts,
+                cell -> UniverseField.systemAt(worldSeed, cell));
+    }
+
+    /** Nearby query with a server-owned resolver for append-only logical-system frontier bindings. */
+    public static List<Candidate> nearby(long worldSeed, double x, double y, double z, double range, int requested,
+                                         List<Sphere> chartedBodies,
+                                         List<AsteroidField.Belt> asteroidBelts,
+                                         Function<UniverseField.Cell, UniverseField.StarSystem> systemResolver) {
+        return query(worldSeed, x, y, z, range, MAX_NEARBY_RANGE, requested, chartedBodies, asteroidBelts, systemResolver);
+    }
+
+    /**
+     * The same bounded 3x3 query for display only, up to {@link #MAX_VISUAL_RANGE}. Physicalization keeps using
+     * {@link #nearby} and its shorter range, so activation caps and budgets are unchanged.
+     */
+    public static List<Candidate> visibleNearby(long worldSeed, double x, double y, double z, double range, int requested,
+                                                List<Sphere> chartedBodies,
+                                                List<AsteroidField.Belt> asteroidBelts,
+                                                Function<UniverseField.Cell, UniverseField.StarSystem> systemResolver) {
+        return query(worldSeed, x, y, z, range, MAX_VISUAL_RANGE, requested, chartedBodies, asteroidBelts, systemResolver);
+    }
+
+    private static List<Candidate> query(long worldSeed, double x, double y, double z, double range, double maxRange,
+                                         int requested, List<Sphere> chartedBodies,
+                                         List<AsteroidField.Belt> asteroidBelts,
+                                         Function<UniverseField.Cell, UniverseField.StarSystem> systemResolver) {
         if (!Double.isFinite(x) || !Double.isFinite(y) || !Double.isFinite(z)
-                || !Double.isFinite(range) || range < 0 || range > MAX_NEARBY_RANGE)
+                || !Double.isFinite(range) || range < 0 || range > maxRange)
             throw new IllegalArgumentException("small-planet nearby query is outside its finite range");
+        Objects.requireNonNull(systemResolver, "systemResolver");
         UniverseField.Cell centre = UniverseField.cellAt(x, z);
         if (centre == null) return List.of();
         var nearby = new ArrayList<Candidate>(9 * MAX_PLANETS_PER_SYSTEM);
         for (int dx = -1; dx <= 1; dx++) for (int dz = -1; dz <= 1; dz++) {
             long cellX = (long) centre.x() + dx, cellZ = (long) centre.z() + dz;
             if (!UniverseField.Cell.inRange(cellX) || !UniverseField.Cell.inRange(cellZ)) continue;
-            UniverseField.StarSystem system = UniverseField.systemAt(worldSeed,
-                    new UniverseField.Cell((int) cellX, (int) cellZ));
+            UniverseField.StarSystem system = systemResolver.apply(new UniverseField.Cell((int) cellX, (int) cellZ));
             if (system == null) continue;
             for (Candidate candidate : generateSystem(worldSeed, system, requested, chartedBodies, asteroidBelts)) {
                 double reach = range + candidate.radius();

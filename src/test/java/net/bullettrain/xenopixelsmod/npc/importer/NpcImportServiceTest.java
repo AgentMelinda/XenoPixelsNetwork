@@ -102,4 +102,27 @@ class NpcImportServiceTest {
         assertEquals(0, report.imported());
         assertTrue(report.failures().stream().anyMatch(failure -> failure.reason().contains("does not match filename slot")));
     }
+
+    /**
+     * Clones are skipped on purpose, but a skip nobody reports is indistinguishable from a skip that
+     * never happened - and the clone root is exactly the second location an operator would check.
+     */
+    @Test
+    void cloneRootsAreNamedAsSkipped() throws Exception {
+        Path world = temp.resolve("world");
+        Files.createDirectories(world.resolve("mynpcs/dialogs/town"));
+        Files.writeString(world.resolve("mynpcs/dialogs/town/1.json"), "{DialogText:\"Hi\",Options:[]}");
+        Path clones = temp.resolve("mynpcs/clones/1");
+        Files.createDirectories(clones);
+        Files.writeString(clones.resolve("11.json"), "{Name:\"Goku\",Role:0}");
+
+        XenoNpcWorldStore store = new XenoNpcWorldStore(world.resolve("XenoNpcs"));
+        store.loadAll();
+        NpcImportReport report = NpcImportService.importAll(world, temp, store, false);
+
+        assertEquals(1, report.imported());
+        assertTrue(report.notes().stream().anyMatch(note -> note.contains("clone root left alone")
+                        && note.contains(temp.resolve("mynpcs/clones").toString())),
+                report.notes().toString());
+    }
 }

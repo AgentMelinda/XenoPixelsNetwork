@@ -7,6 +7,7 @@ import net.minecraft.nbt.Tag;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.saveddata.SavedData;
+import net.bullettrain.xenopixelsmod.XenoPixelsMod;
 
 import java.util.UUID;
 
@@ -54,6 +55,8 @@ public final class DragonBallSavedData extends SavedData {
     final Ball[] balls = new Ball[CosmicDragonBalls.COUNT];
     long cycle = -1;
     long dormantUntilDay;
+    private CompoundTag preservedInvalidTag;
+    private String invalidReason;
 
     public DragonBallSavedData() {
         for (int i = 0; i < balls.length; i++) balls[i] = new Ball(i + 1);
@@ -66,17 +69,38 @@ public final class DragonBallSavedData extends SavedData {
 
     public static DragonBallSavedData load(CompoundTag tag, HolderLookup.Provider registries) {
         DragonBallSavedData data = new DragonBallSavedData();
-        boolean normalizeIdentityData = tag.getInt("DataVersion") != DATA_VERSION;
-        data.cycle = tag.contains("Cycle") ? tag.getLong("Cycle") : -1;
-        data.dormantUntilDay = tag.getLong("DormantUntilDay");
+        int version = tag.getInt("DataVersion");
+        if (tag.contains("DataVersion") && !tag.contains("DataVersion", Tag.TAG_INT))
+            return invalid(data, tag, "DataVersion is not an integer");
+        if (version < 0 || version > DATA_VERSION)
+            return invalid(data, tag, "unsupported data version " + version);
+        if (tag.contains("Cycle") && !tag.contains("Cycle", Tag.TAG_LONG))
+            return invalid(data, tag, "Cycle is not a long");
+        if (tag.contains("DormantUntilDay") && !tag.contains("DormantUntilDay", Tag.TAG_LONG))
+            return invalid(data, tag, "DormantUntilDay is not a long");
+        if (!tag.contains("Balls", Tag.TAG_LIST)) return invalid(data, tag, "missing Balls list");
         ListTag list = tag.getList("Balls", Tag.TAG_COMPOUND);
-        for (int i = 0; i < Math.min(list.size(), data.balls.length); i++) {
+        if (list.size() != data.balls.length)
+            return invalid(data, tag, "Balls count " + list.size() + " does not match expected " + data.balls.length);
+        boolean normalizeIdentityData = tag.getInt("DataVersion") != DATA_VERSION;
+        // The pre-identity loader treated these two fields as optional. Keep its documented defaults
+        // for older saves while still rejecting a present field with the wrong NBT type.
+        if (tag.contains("Cycle", Tag.TAG_LONG)) data.cycle = tag.getLong("Cycle");
+        if (tag.contains("DormantUntilDay", Tag.TAG_LONG)) data.dormantUntilDay = tag.getLong("DormantUntilDay");
+        for (int i = 0; i < data.balls.length; i++) {
             CompoundTag b = list.getCompound(i);
             Ball ball = data.balls[i];
-            try { ball.status = Status.valueOf(b.getString("Status")); } catch (IllegalArgumentException bad) { ball.status = Status.SCATTERED; }
-            ball.dimension = b.getString("Dimension").isEmpty() ? "minecraft:overworld" : b.getString("Dimension");
+            if (!b.contains("Status", Tag.TAG_STRING) || !b.contains("Dimension", Tag.TAG_STRING)
+                    || b.getString("Dimension").isBlank()
+                    || !b.contains("X", Tag.TAG_INT) || !b.contains("Y", Tag.TAG_INT) || !b.contains("Z", Tag.TAG_INT))
+                return invalid(data, tag, "Balls[" + i + "] is missing required status, dimension, or coordinates");
+            try { ball.status = Status.valueOf(b.getString("Status")); }
+            catch (IllegalArgumentException bad) { return invalid(data, tag, "Balls[" + i + "] has unknown status"); }
+            ball.dimension = b.getString("Dimension");
             ball.x = b.getInt("X"); ball.y = b.getInt("Y"); ball.z = b.getInt("Z");
             ball.hostChartId = b.getString("HostChartId");
+            if (b.contains("PlanetBodyUUID") && !b.hasUUID("PlanetBodyUUID"))
+                return invalid(data, tag, "Balls[" + i + "] has malformed PlanetBodyUUID");
             ball.planetBodyUUID = b.hasUUID("PlanetBodyUUID") ? b.getUUID("PlanetBodyUUID") : null;
             ball.hasPlanetOrbit = b.getBoolean("HasPlanetOrbit");
             if (ball.hasPlanetOrbit) {
@@ -86,11 +110,7 @@ public final class DragonBallSavedData extends SavedData {
                 if (!(ball.planetOrbitRadiusBlocks > 0.0) || !Double.isFinite(ball.planetOrbitRadiusBlocks)
                         || !Double.isFinite(ball.planetOrbitPhaseRadians)
                         || ball.planetOrbitPeriodSeconds < 0.0 || !Double.isFinite(ball.planetOrbitPeriodSeconds)) {
-                    ball.hasPlanetOrbit = false;
-                    ball.planetOrbitRadiusBlocks = 0.0;
-                    ball.planetOrbitPhaseRadians = 0.0;
-                    ball.planetOrbitPeriodSeconds = 0.0;
-                    normalizeIdentityData = true;
+                    return invalid(data, tag, "Balls[" + i + "] has malformed planet orbit values");
                 }
             }
             ball.hasManualOrbit = b.getBoolean("HasManualOrbit");
@@ -102,14 +122,25 @@ public final class DragonBallSavedData extends SavedData {
                     new ManualOrbit(ball.manualOrbitRadiusBlocks, ball.manualOrbitPhaseRadians,
                             ball.manualOrbitPeriodSeconds);
                 } catch (IllegalArgumentException malformed) {
-                    clearManualOrbit(ball);
-                    normalizeIdentityData = true;
+                    return invalid(data, tag, "Balls[" + i + "] has malformed manual orbit values");
                 }
             }
-            if (b.getInt("IdentityVersion") != DragonBallIdentity.VERSION
-                    || !b.hasUUID("PlanetId") || !ball.identity.planetId().equals(b.getUUID("PlanetId"))
-                    || !ball.identity.planetKey().equals(b.getString("PlanetKey"))
-                    || !ball.identity.surfaceCellKey().equals(b.getString("SurfaceCellKey")))
+            if (b.contains("IdentityVersion") && !b.contains("IdentityVersion", Tag.TAG_INT))
+                return invalid(data, tag, "Balls[" + i + "] has malformed IdentityVersion");
+            int identityVersion = b.getInt("IdentityVersion");
+            if (identityVersion > DragonBallIdentity.VERSION)
+                return invalid(data, tag, "Balls[" + i + "] uses unsupported identity version " + identityVersion);
+            if (b.contains("PlanetId") && !b.hasUUID("PlanetId"))
+                return invalid(data, tag, "Balls[" + i + "] has malformed PlanetId");
+            boolean identityMatches = b.hasUUID("PlanetId") && ball.identity.planetId().equals(b.getUUID("PlanetId"))
+                    && ball.identity.planetKey().equals(b.getString("PlanetKey"))
+                    && ball.identity.surfaceCellKey().equals(b.getString("SurfaceCellKey"));
+            if (identityVersion == DragonBallIdentity.VERSION && !identityMatches)
+                return invalid(data, tag, "Balls[" + i + "] has inconsistent current slot identity metadata");
+            boolean hasAnyIdentity = b.contains("PlanetId") || b.contains("PlanetKey") || b.contains("SurfaceCellKey");
+            if (identityVersion != DragonBallIdentity.VERSION && hasAnyIdentity)
+                return invalid(data, tag, "Balls[" + i + "] has partial or unsupported slot identity metadata");
+            if (identityVersion != DragonBallIdentity.VERSION)
                 normalizeIdentityData = true;
         }
         // Old and unknown identity schemas are normalized to the deterministic slot identities. Position,
@@ -118,7 +149,15 @@ public final class DragonBallSavedData extends SavedData {
         return data;
     }
 
+    private static DragonBallSavedData invalid(DragonBallSavedData data, CompoundTag source, String reason) {
+        data.preservedInvalidTag = source.copy();
+        data.invalidReason = reason;
+        XenoPixelsMod.LOGGER.error("Super Dragon Ball saved data is malformed: {}. Preserving the raw tag and disabling SDB gameplay until repaired.", reason);
+        return data;
+    }
+
     @Override public CompoundTag save(CompoundTag tag, HolderLookup.Provider registries) {
+        if (preservedInvalidTag != null) return preservedInvalidTag.copy();
         tag.putInt("DataVersion", DATA_VERSION);
         tag.putLong("Cycle", cycle);
         tag.putLong("DormantUntilDay", dormantUntilDay);
@@ -155,8 +194,25 @@ public final class DragonBallSavedData extends SavedData {
 
     public Ball ball(int number) { return balls[number - 1]; }
 
+    /** Whether all seven saved slots were read without inventing or dropping gameplay data. */
+    public boolean isGameplayStateValid() { return invalidReason == null; }
+
+    /** Operator-facing diagnostic; empty when the saved data is valid. */
+    public String invalidReason() { return invalidReason == null ? "" : invalidReason; }
+
+    public void requireGameplayStateValid() {
+        if (!isGameplayStateValid()) throw new IllegalStateException("Super Dragon Ball saved data is unavailable: " + invalidReason);
+    }
+
     /** The Sable incarnation currently owned by this stable slot, or {@code null} before reconciliation. */
     public UUID planetBodyUuid(int number) { return ball(number).planetBodyUUID; }
+
+    /** True when the valid saved ledger still owns any Sable incarnation; used to refuse unsafe mode switches. */
+    public boolean hasAnyPlanetBodyBinding() {
+        if (!isGameplayStateValid()) return false;
+        for (Ball ball : balls) if (ball.planetBodyUUID != null) return true;
+        return false;
+    }
 
     /** Manual orbit for a slot, or {@code null} when the data-pack assignment remains in force. */
     public ManualOrbit manualOrbit(int number) {
@@ -167,6 +223,7 @@ public final class DragonBallSavedData extends SavedData {
 
     /** Store a validated persistent override without changing the data-pack's base assignment. */
     public boolean setManualOrbit(int number, double radiusBlocks, double phaseRadians, double periodSeconds) {
+        requireGameplayStateValid();
         ManualOrbit value = new ManualOrbit(radiusBlocks, phaseRadians, periodSeconds);
         Ball ball = ball(number);
         if (ball.hasManualOrbit && Double.compare(ball.manualOrbitRadiusBlocks, value.radiusBlocks()) == 0
@@ -182,6 +239,7 @@ public final class DragonBallSavedData extends SavedData {
 
     /** Remove a manual override so the latest validated data-pack assignment is used again. */
     public boolean clearManualOrbit(int number) {
+        requireGameplayStateValid();
         Ball ball = ball(number);
         if (!ball.hasManualOrbit) return false;
         clearManualOrbit(ball);
@@ -201,6 +259,7 @@ public final class DragonBallSavedData extends SavedData {
      * different SDB slots is rejected so a caller cannot make startup reconciliation claim duplicate planets.
      */
     public boolean bindPlanetBody(int number, UUID bodyId) {
+        requireGameplayStateValid();
         if (bodyId == null) throw new IllegalArgumentException("SDB Sable body UUID must not be null");
         Ball target = ball(number);
         for (Ball other : balls) {
@@ -215,6 +274,7 @@ public final class DragonBallSavedData extends SavedData {
 
     /** Clear a slot only if it still owns the expected incarnation; delayed cleanup cannot erase a replacement bind. */
     public boolean clearPlanetBody(int number, UUID expectedBodyId) {
+        requireGameplayStateValid();
         if (expectedBodyId == null) return false;
         Ball target = ball(number);
         if (!expectedBodyId.equals(target.planetBodyUUID)) return false;

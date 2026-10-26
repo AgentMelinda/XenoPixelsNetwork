@@ -55,6 +55,10 @@ public final class CombatBodyFade {
             // 1.21.1 LevelRenderer puts the camera rotation in the model-view stack and renders entities with only a
             // camera-relative translation, so model vertices are NOT rotated: world Y = camera Y + vertex Y.
             CameraFrame frame = cameraFrame();
+            if (HakaiSweepFx.impactMode() && !Float.isNaN(frame.y))
+                return new HakaiClipMultiBufferSource(buffers, frame.x, frame.y, frame.z,
+                        HakaiSweepFx.measure(entity, partialTick), HakaiSweepFx.impactPoint(entity, partialTick),
+                        HakaiSweepFx.impactRadius(entity, sweep, partialTick));
             if (net.bullettrain.xenopixelsmod.client.config.XenoClientConfig.hakaiSweepDebug)
                 net.bullettrain.xenopixelsmod.XenoPixelsMod.LOGGER.info("HAKAI_SWEEP clip id={} class={} sweep={} cutY={} partial={} buffers={}",
                         entity.getId(), entity.getClass().getSimpleName(), sweep, HakaiSweepFx.cutY(entity, sweep, partialTick), partialTick,

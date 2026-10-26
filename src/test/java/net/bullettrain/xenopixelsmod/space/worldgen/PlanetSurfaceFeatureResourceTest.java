@@ -21,6 +21,16 @@ class PlanetSurfaceFeatureResourceTest {
         return JsonParser.parseString(Files.readString(ROOT.resolve(path))).getAsJsonObject();
     }
 
+    @Test void modPackMetadataSupportsBothMinecraft1211ResourceAndDataFormats() throws Exception {
+        var pack = JsonParser.parseString(Files.readString(Path.of(System.getProperty("xenopixels.projectDir", "."))
+                .resolve("src/main/resources/pack.mcmeta"))).getAsJsonObject().getAsJsonObject("pack");
+        assertEquals(34, pack.get("pack_format").getAsInt());
+        var supported = pack.getAsJsonObject("supported_formats");
+        assertNotNull(supported, "mod resource pack must declare the separate 1.21.1 data-pack format too");
+        assertEquals(34, supported.get("min_inclusive").getAsInt());
+        assertEquals(48, supported.get("max_inclusive").getAsInt());
+    }
+
     @Test void onlyTheRareJungleProfileAddsSparseVegetation() throws Exception {
         var jungle = read("biome/planet_jungle.json").getAsJsonArray("features");
         assertEquals(11, jungle.size());

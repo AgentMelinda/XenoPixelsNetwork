@@ -15,7 +15,47 @@ public final class SpaceVisualNetwork {
     static ResourceLocation infiniteUniverseCellRevealPacketId() {
         return ResourceLocation.fromNamespaceAndPath("xenopixelsmod", "infinite_universe_cell_reveal_v1");
     }
+
+    static ResourceLocation oxygenStatusPacketId() {
+        return ResourceLocation.fromNamespaceAndPath("xenopixelsmod", "oxygen_status_v2");
+    }
     public static void register() {
+        AddonNetwork.register(ResourceLocation.fromNamespaceAndPath("xenopixelsmod", "planet_hakai_sync_v3"),
+                net.bullettrain.xenopixelsmod.space.hakai.PlanetHakaiSync.class, AddonPacketDirection.CLIENTBOUND,
+                net.bullettrain.xenopixelsmod.space.hakai.PlanetHakaiSync::encode,
+                net.bullettrain.xenopixelsmod.space.hakai.PlanetHakaiSync::decode,
+                (packet, context) -> context.enqueueWork(() -> {
+                    if (FMLEnvironment.dist == Dist.CLIENT)
+                        net.bullettrain.xenopixelsmod.client.space.PlanetHakaiClient.apply(packet);
+                }));
+        net.bullettrain.xenopixelsmod.combat.HakaiSweepSync.register();
+        AddonNetwork.register(ResourceLocation.fromNamespaceAndPath("xenopixelsmod", "fallen_stars_settings_v1"),
+                FallenStarsSettingsPacket.class, AddonPacketDirection.CLIENTBOUND,
+                FallenStarsSettingsPacket::encode, FallenStarsSettingsPacket::decode,
+                (packet, context) -> context.enqueueWork(() -> {
+                    if (FMLEnvironment.dist == Dist.CLIENT)
+                        net.bullettrain.xenopixelsmod.client.space.FallenStarServerSettings.apply(packet.enabled());
+                }));
+        AddonNetwork.register(ResourceLocation.fromNamespaceAndPath("xenopixelsmod",
+                        net.bullettrain.xenopixelsmod.space.event.StellarStageSnapshot.PACKET_ID),
+                net.bullettrain.xenopixelsmod.space.event.StellarStageSnapshot.class,
+                AddonPacketDirection.CLIENTBOUND,
+                net.bullettrain.xenopixelsmod.space.event.StellarStageSnapshot::encode,
+                net.bullettrain.xenopixelsmod.space.event.StellarStageSnapshot::decode,
+                (packet, context) -> context.enqueueWork(() -> {
+                    if (FMLEnvironment.dist == Dist.CLIENT)
+                        net.bullettrain.xenopixelsmod.client.space.StellarStageClient.apply(packet);
+                }));
+        AddonNetwork.register(ResourceLocation.fromNamespaceAndPath("xenopixelsmod",
+                        net.bullettrain.xenopixelsmod.space.event.StellarBlastWaveSnapshot.PACKET_ID),
+                net.bullettrain.xenopixelsmod.space.event.StellarBlastWaveSnapshot.class,
+                AddonPacketDirection.CLIENTBOUND,
+                net.bullettrain.xenopixelsmod.space.event.StellarBlastWaveSnapshot::encode,
+                net.bullettrain.xenopixelsmod.space.event.StellarBlastWaveSnapshot::decode,
+                (packet, context) -> context.enqueueWork(() -> {
+                    if (FMLEnvironment.dist == Dist.CLIENT)
+                        net.bullettrain.xenopixelsmod.client.space.StellarBlastWaveClient.apply(packet);
+                }));
         AddonNetwork.register(ResourceLocation.fromNamespaceAndPath("xenopixelsmod","physical_planet_binding_v1"),
                 PhysicalPlanetBinding.class,AddonPacketDirection.CLIENTBOUND,PhysicalPlanetBinding::encode,PhysicalPlanetBinding::decode,
                 (packet,context)->context.enqueueWork(()-> {
@@ -41,7 +81,7 @@ public final class SpaceVisualNetwork {
                     if(FMLEnvironment.dist==Dist.CLIENT)
                         net.bullettrain.xenopixelsmod.client.space.AsteroidFieldClient.apply(packet);
                 }));
-        AddonNetwork.register(ResourceLocation.fromNamespaceAndPath("xenopixelsmod","small_planet_field_v1"),
+        AddonNetwork.register(ResourceLocation.fromNamespaceAndPath("xenopixelsmod","small_planet_field_v2"),
                 net.bullettrain.xenopixelsmod.space.smallplanet.SmallPlanetFieldSnapshot.class,AddonPacketDirection.CLIENTBOUND,
                 net.bullettrain.xenopixelsmod.space.smallplanet.SmallPlanetFieldSnapshot::encode,
                 net.bullettrain.xenopixelsmod.space.smallplanet.SmallPlanetFieldSnapshot::decode,
@@ -55,6 +95,24 @@ public final class SpaceVisualNetwork {
                 (packet,context)->context.enqueueWork(()-> {
                     if(FMLEnvironment.dist==Dist.CLIENT)
                         net.bullettrain.xenopixelsmod.client.space.UniverseClient.apply(packet);
+                }));
+        AddonNetwork.register(ResourceLocation.fromNamespaceAndPath("xenopixelsmod", "universe_frontier_snapshot_v1"),
+                net.bullettrain.xenopixelsmod.space.universe.UniverseFrontierSnapshot.class,
+                AddonPacketDirection.CLIENTBOUND,
+                net.bullettrain.xenopixelsmod.space.universe.UniverseFrontierSnapshot::encode,
+                net.bullettrain.xenopixelsmod.space.universe.UniverseFrontierSnapshot::decode,
+                (packet, context) -> context.enqueueWork(() -> {
+                    if (FMLEnvironment.dist == Dist.CLIENT)
+                        net.bullettrain.xenopixelsmod.client.space.UniverseClient.apply(packet);
+                }));
+        AddonNetwork.register(ResourceLocation.fromNamespaceAndPath("xenopixelsmod", "eclipse_events_v1"),
+                net.bullettrain.xenopixelsmod.space.event.EclipseEventSnapshot.class,
+                AddonPacketDirection.CLIENTBOUND,
+                net.bullettrain.xenopixelsmod.space.event.EclipseEventSnapshot::encode,
+                net.bullettrain.xenopixelsmod.space.event.EclipseEventSnapshot::decode,
+                (packet, context) -> context.enqueueWork(() -> {
+                    if (FMLEnvironment.dist == Dist.CLIENT)
+                        net.bullettrain.xenopixelsmod.client.space.EclipseEventsClient.apply(packet);
                 }));
         AddonNetwork.register(ResourceLocation.fromNamespaceAndPath("xenopixelsmod","universe_cell_reveal_v1"),
                 net.bullettrain.xenopixelsmod.space.universe.UniverseCellReveal.class,AddonPacketDirection.CLIENTBOUND,
@@ -120,14 +178,44 @@ public final class SpaceVisualNetwork {
                     if(FMLEnvironment.dist==Dist.CLIENT)
                         net.bullettrain.xenopixelsmod.client.space.DragonBallPlanetClient.apply(packet);
                 }));
-        AddonNetwork.register(ResourceLocation.fromNamespaceAndPath("xenopixelsmod","planet_hakai_burn_v1"),
+        AddonNetwork.register(ResourceLocation.fromNamespaceAndPath("xenopixelsmod","planet_hakai_burn_v2"),
                 net.bullettrain.xenopixelsmod.space.hakai.PlanetHakaiBurn.class,AddonPacketDirection.CLIENTBOUND,
                 net.bullettrain.xenopixelsmod.space.hakai.PlanetHakaiBurn::encode,net.bullettrain.xenopixelsmod.space.hakai.PlanetHakaiBurn::decode,
                 (packet,context)->context.enqueueWork(()-> {
                     if(FMLEnvironment.dist==Dist.CLIENT)
                         net.bullettrain.xenopixelsmod.client.space.PlanetHakaiClient.apply(packet);
                 }));
-        AddonNetwork.register(ResourceLocation.fromNamespaceAndPath("xenopixelsmod","hakai_sweep_timing_v1"),
+        AddonNetwork.register(ResourceLocation.fromNamespaceAndPath("xenopixelsmod", "planet_integrity_snapshot_v1"),
+                net.bullettrain.xenopixelsmod.space.hakai.PlanetIntegritySnapshot.class, AddonPacketDirection.CLIENTBOUND,
+                net.bullettrain.xenopixelsmod.space.hakai.PlanetIntegritySnapshot::encode,
+                net.bullettrain.xenopixelsmod.space.hakai.PlanetIntegritySnapshot::decode,
+                (packet, context) -> context.enqueueWork(() -> {
+                    if (FMLEnvironment.dist == Dist.CLIENT)
+                        net.bullettrain.xenopixelsmod.client.space.PlanetIntegrityClient.apply(packet);
+                }));
+        AddonNetwork.register(ResourceLocation.fromNamespaceAndPath("xenopixelsmod", "planet_integrity_update_v1"),
+                net.bullettrain.xenopixelsmod.space.hakai.PlanetIntegrityUpdate.class, AddonPacketDirection.CLIENTBOUND,
+                net.bullettrain.xenopixelsmod.space.hakai.PlanetIntegrityUpdate::encode,
+                net.bullettrain.xenopixelsmod.space.hakai.PlanetIntegrityUpdate::decode,
+                (packet, context) -> context.enqueueWork(() -> {
+                    if (FMLEnvironment.dist == Dist.CLIENT)
+                        net.bullettrain.xenopixelsmod.client.space.PlanetIntegrityClient.apply(packet);
+                }));
+        AddonNetwork.register(ResourceLocation.fromNamespaceAndPath("xenopixelsmod", "planet_integrity_atlas_request_v1"),
+                net.bullettrain.xenopixelsmod.space.hakai.PlanetIntegrityAtlasRequest.class, AddonPacketDirection.SERVERBOUND,
+                net.bullettrain.xenopixelsmod.space.hakai.PlanetIntegrityAtlasRequest::encode,
+                net.bullettrain.xenopixelsmod.space.hakai.PlanetIntegrityAtlasRequest::decode,
+                (packet, context) -> context.enqueueWork(() -> context.sender().ifPresent(player ->
+                        net.bullettrain.xenopixelsmod.space.hakai.PlanetIntegrityAtlasService.request(player, packet))));
+        AddonNetwork.register(ResourceLocation.fromNamespaceAndPath("xenopixelsmod", "planet_integrity_atlas_snapshot_v1"),
+                net.bullettrain.xenopixelsmod.space.hakai.PlanetIntegrityAtlasSnapshot.class, AddonPacketDirection.CLIENTBOUND,
+                net.bullettrain.xenopixelsmod.space.hakai.PlanetIntegrityAtlasSnapshot::encode,
+                net.bullettrain.xenopixelsmod.space.hakai.PlanetIntegrityAtlasSnapshot::decode,
+                (packet, context) -> context.enqueueWork(() -> {
+                    if (FMLEnvironment.dist == Dist.CLIENT)
+                        net.bullettrain.xenopixelsmod.client.space.PlanetIntegrityAtlasClient.apply(packet);
+                }));
+        AddonNetwork.register(ResourceLocation.fromNamespaceAndPath("xenopixelsmod","hakai_sweep_timing_v2"),
                 net.bullettrain.xenopixelsmod.combat.HakaiSweepTiming.class,AddonPacketDirection.CLIENTBOUND,
                 net.bullettrain.xenopixelsmod.combat.HakaiSweepTiming::encode,net.bullettrain.xenopixelsmod.combat.HakaiSweepTiming::decode,
                 (packet,context)->context.enqueueWork(()-> {
@@ -153,7 +241,7 @@ public final class SpaceVisualNetwork {
                 net.bullettrain.xenopixelsmod.space.dragonball.WishChoice::encode,net.bullettrain.xenopixelsmod.space.dragonball.WishChoice::decode,
                 (packet,context)->context.enqueueWork(()->context.sender().ifPresent(player ->
                         net.bullettrain.xenopixelsmod.space.dragonball.CosmicDragonBalls.grant(player, packet.wishId()))));
-        AddonNetwork.register(ResourceLocation.fromNamespaceAndPath("xenopixelsmod","oxygen_status_v1"),
+        AddonNetwork.register(oxygenStatusPacketId(),
                 net.bullettrain.xenopixelsmod.space.oxygen.OxygenStatus.class,AddonPacketDirection.CLIENTBOUND,
                 net.bullettrain.xenopixelsmod.space.oxygen.OxygenStatus::encode,net.bullettrain.xenopixelsmod.space.oxygen.OxygenStatus::decode,
                 (packet,context)->context.enqueueWork(()-> {
@@ -174,5 +262,50 @@ public final class SpaceVisualNetwork {
                     if (FMLEnvironment.dist == Dist.CLIENT)
                         net.bullettrain.xenopixelsmod.client.space.SpaceHandoffOverlay.arm();
                 }));
+        AddonNetwork.register(ResourceLocation.fromNamespaceAndPath("xenopixelsmod","space_handoff_notice_v2"),
+                HandoffTransitionNoticeV2.class, AddonPacketDirection.CLIENTBOUND,
+                HandoffTransitionNoticeV2::encode, HandoffTransitionNoticeV2::decode,
+                (packet, context) -> context.enqueueWork(() -> {
+                    if (FMLEnvironment.dist == Dist.CLIENT)
+                        net.bullettrain.xenopixelsmod.client.space.SpaceHandoffOverlay.arm(packet.overlayMillis());
+                }));
+        AddonNetwork.register(ResourceLocation.fromNamespaceAndPath("xenopixelsmod","space_handoff_notice_v3"),
+                HandoffTransitionNoticeV3.class, AddonPacketDirection.CLIENTBOUND,
+                HandoffTransitionNoticeV3::encode, HandoffTransitionNoticeV3::decode,
+                (packet, context) -> context.enqueueWork(() -> {
+                    if (FMLEnvironment.dist == Dist.CLIENT)
+                        net.bullettrain.xenopixelsmod.client.space.SpaceHandoffOverlay.arm(
+                                packet.overlayMillis(), packet.plasmaShell());
+                }));
+        AddonNetwork.register(ResourceLocation.fromNamespaceAndPath("xenopixelsmod", "space_handoff_notice_v4"),
+                HandoffTransitionNoticeV4.class, AddonPacketDirection.CLIENTBOUND,
+                HandoffTransitionNoticeV4::encode, HandoffTransitionNoticeV4::decode,
+                (packet, context) -> context.enqueueWork(() -> {
+                    if (FMLEnvironment.dist == Dist.CLIENT)
+                        net.bullettrain.xenopixelsmod.client.space.SpaceHandoffOverlay.armOutboundCoast(packet);
+                }));
+        AddonNetwork.register(ResourceLocation.fromNamespaceAndPath("xenopixelsmod", "space_atmosphere_settings_v1"),
+                SpaceAtmosphereSettingsPacket.class, AddonPacketDirection.CLIENTBOUND,
+                SpaceAtmosphereSettingsPacket::encode, SpaceAtmosphereSettingsPacket::decode,
+                (packet, context) -> context.enqueueWork(() -> {
+                    if (FMLEnvironment.dist == Dist.CLIENT)
+                        net.bullettrain.xenopixelsmod.client.space.SpaceAtmosphereClient.apply(packet);
+                }));
+        AddonNetwork.register(ResourceLocation.fromNamespaceAndPath("xenopixelsmod", SpaceOrbitClockSnapshot.PACKET_ID),
+                SpaceOrbitClockSnapshot.class, AddonPacketDirection.CLIENTBOUND,
+                SpaceOrbitClockSnapshot::encode, SpaceOrbitClockSnapshot::decode,
+                (packet, context) -> context.enqueueWork(() -> {
+                    if (FMLEnvironment.dist == Dist.CLIENT)
+                        net.bullettrain.xenopixelsmod.client.space.SpaceOrbitClockClient.apply(packet);
+                }));
+    }
+
+    public static void sendFallenStarsSettings(net.minecraft.server.level.ServerPlayer player) {
+        AddonNetwork.sendToPlayer(player, new FallenStarsSettingsPacket(
+                net.bullettrain.xenopixelsmod.config.XenoSpaceConfig.fallenStarsEnabled()));
+    }
+
+    public static void syncFallenStarsSettings(net.minecraft.server.MinecraftServer server) {
+        for (var player : server.getPlayerList().getPlayers()) sendFallenStarsSettings(player);
     }
 }

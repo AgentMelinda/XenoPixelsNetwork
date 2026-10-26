@@ -48,18 +48,17 @@ class HairApplyServiceTest {
         assertEquals("One Strand", hair.getName());
         HairStrand top0 = hair.getStrand(CustomHair.HairFace.TOP, 0);
         assertNotNull(top0);
-        assertEquals(4, top0.getLength());
-        assertEquals(1.25f, top0.getLengthScale(), 1e-5f);
+        assertEquals(4, top0.getSegments());
+        float decaySum = 1f + 0.85f + 0.85f * 0.85f + 0.85f * 0.85f * 0.85f;
+        assertEquals(2f * 1.25f * decaySum, top0.getLength(), 1e-5f);
         assertEquals(10f, top0.getRotationX(), 1e-5f);
         assertEquals(-5f, top0.getRotationY(), 1e-5f);
         assertEquals(15f, top0.getRotationZ(), 1e-5f);
-        assertEquals(1.1f, top0.getScaleX(), 1e-5f);
-        assertEquals(0.9f, top0.getScaleZ(), 1e-5f);
-        assertEquals(2f, top0.getCurveX(), 1e-5f);
-        assertEquals(2.5f, top0.getCubeWidth(), 1e-5f);
-        assertEquals(2f, top0.getCubeHeight(), 1e-5f);
-        assertEquals(1.5f, top0.getCubeDepth(), 1e-5f);
-        assertEquals("#ffaa00", top0.getColor());
+        assertEquals(2.5f * 1.1f, top0.getWidth(), 1e-5f);
+        assertEquals(1.5f * 0.9f, top0.getDepth(), 1e-5f);
+        assertEquals(6f, top0.getBendX(), 1e-5f);
+        assertEquals((float) Math.pow(0.85f, 3), top0.getLengthRatio(), 1e-5f);
+        assertEquals("#FFAA00", top0.getColor().toUpperCase(java.util.Locale.ROOT));
     }
 
     @Test
@@ -81,7 +80,7 @@ class HairApplyServiceTest {
 
         assertEquals(1, index.get());
         assertNotNull(sent.get());
-        assertEquals(4, sent.get().getStrand(CustomHair.HairFace.TOP, 0).getLength());
+        assertEquals(4, sent.get().getStrand(CustomHair.HairFace.TOP, 0).getSegments());
         assertTrue(forbidden.isEmpty(), "must not send CustomizationManager hair_style_* names");
         assertTrue(HairApplyService.WRITE_PATH.contains("UpdateCustomHairC2S"));
     }

@@ -38,6 +38,11 @@ public class CosmicDragonBallBlock extends Block {
     @Override
     protected InteractionResult useWithoutItem(BlockState state, Level level, BlockPos pos, Player player, BlockHitResult hit) {
         if (level.isClientSide) return InteractionResult.SUCCESS;
+        if (!net.bullettrain.xenopixelsmod.space.dragonball.CosmicDragonBalls.legacyGameplayEnabled(level.getServer())) {
+            player.displayClientMessage(net.minecraft.network.chat.Component.translatable(
+                    "message.xenopixelsmod.sdb_legacy_disabled"), true);
+            return InteractionResult.CONSUME;
+        }
         level.removeBlock(pos, false);
         if (!CosmicDragonBalls.isCurrent((ServerLevel) level, number, pos)) {
             // Stale copy from before a re-scatter: it fades instead of duplicating the real ball.
@@ -54,6 +59,7 @@ public class CosmicDragonBallBlock extends Block {
     @Override
     public void setPlacedBy(Level level, BlockPos pos, BlockState state, LivingEntity placer, ItemStack stack) {
         super.setPlacedBy(level, pos, state, placer, stack);
-        if (level instanceof ServerLevel server) CosmicDragonBalls.onPlaced(server, number, pos);
+        if (level instanceof ServerLevel server && CosmicDragonBalls.legacyGameplayEnabled(server.getServer()))
+            CosmicDragonBalls.onPlaced(server, number, pos);
     }
 }

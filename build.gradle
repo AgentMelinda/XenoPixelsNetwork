@@ -9,6 +9,15 @@ plugins {
 version = mod_version
 group = mod_group_id
 
+// Opt-in (-PgameTestWithoutMyNpcs): GameTest server without My NPCs, whose 1.5.0 PlayerDataController
+// throws during server start on a GameTest server (null playerdata dir from getLevelSaveDirectory).
+// Only that invocation drops the runtimeOnly entry and uses its own game directory, so run/mods, the
+// jar and profile data are untouched and normal client/server runs are unchanged.
+def gameTestWithoutMyNpcs = providers.gradleProperty('gameTestWithoutMyNpcs').isPresent()
+def gameTestWithoutMyNpcsDir = layout.buildDirectory.dir('gametest-without-mynpcs')
+def gameTestNamespaces = providers.gradleProperty('gameTestNamespaces').getOrElse(mod_id)
+def spaceProbeClientDir = file("${System.getProperty('java.io.tmpdir')}/xeno-space-probe-client-2026-10-21")
+
 base {
     archivesName = mod_id
 }
@@ -47,6 +56,13 @@ neoForge {
             systemProperty 'neoforge.enabledGameTestNamespaces', mod_id
             if (lwjglLibraryPath) systemProperty 'org.lwjgl.librarypath', lwjglLibraryPath
         }
+        spaceProbeClient {
+            client()
+            gameDirectory = spaceProbeClientDir
+            programArguments.addAll '--quickPlayMultiplayer', '127.0.0.1:25568'
+            systemProperty 'neoforge.enabledGameTestNamespaces', mod_id
+            if (lwjglLibraryPath) systemProperty 'org.lwjgl.librarypath', lwjglLibraryPath
+        }
         apiTestClient {
             client()
             gameDirectory = file('run')
@@ -60,10 +76,28 @@ neoForge {
             programArgument '--nogui'
             systemProperty 'neoforge.enabledGameTestNamespaces', mod_id
         }
+        phase2Capture {
+            server()
+            gameDirectory = file("${System.getProperty('java.io.tmpdir')}/xeno-space-s11-phase2-capture-2026-10-19")
+            programArgument '--nogui'
+            systemProperty 'neoforge.enabledGameTestNamespaces', mod_id
+        }
+        editAuditCapture {
+            server()
+            gameDirectory = file("${System.getProperty('java.io.tmpdir')}/xeno-edit-audit-capture-2026-10-21-clean")
+            programArgument '--nogui'
+            systemProperty 'neoforge.enabledGameTestNamespaces', mod_id
+            jvmArgument '-Dmixin.debug.verbose=true'
+        }
+        editAuditGameTest {
+            type = 'gameTestServer'
+            gameDirectory = file("${System.getProperty('java.io.tmpdir')}/xeno-edit-audit-gametest-2026-10-21")
+            systemProperty 'neoforge.enabledGameTestNamespaces', mod_id
+        }
         gameTestServer {
             type = 'gameTestServer'
-            gameDirectory = file('run')
-            systemProperty 'neoforge.enabledGameTestNamespaces', mod_id
+            gameDirectory = gameTestWithoutMyNpcs ? gameTestWithoutMyNpcsDir.get().asFile : file('run')
+            systemProperty 'neoforge.enabledGameTestNamespaces', gameTestNamespaces
         }
         data {
             data()
@@ -249,26 +283,30 @@ repositories {
     }
 }
 
-// The special DMZ 1.21.1 build XenoPixels compiles against. It is not on any Maven repo, so
-// resolve it from, in order: an explicit -PdmzJar / $DMZ_JAR path, the sibling DragonMineZ
-// checkout's build output (the normal local dev layout), or this project's libs/ folder. CI uses
-// the checked-in custom jar because the public DragonMineZ release does not expose the same API.
+// Use the pinned dependency unless explicitly overridden. Every path must match the same hash;
+// sibling build outputs and wildcard versions must never silently change the compile/runtime API.
 def dragonMineZJar = {
     def explicit = findProperty('dmzJar') ?: System.getenv('DMZ_JAR')
-    def candidates = []
-    if (explicit) {
-        candidates << file(explicit)
+    def found = explicit ? file(explicit) : file("libs/dragonminez-${dragonminez_version}.jar")
+    if (!found.isFile()) {
+        throw new GradleException("DragonMineZ ${dragonminez_version} jar not found at ${found}. "
+                + "Put the pinned jar in libs/ or pass -PdmzJar=<path>.")
     }
-    candidates << file("${projectDir}/../build/libs/dragonminez-${dragonminez_version}.jar")
-    candidates.addAll(fileTree(dir: "${projectDir}/libs",
-            includes: ["dragonminez-${dragonminez_version}.jar", 'dragonminez-*.jar'],
-            excludes: ['*-sources.jar']).files.sort { it.name }.reverse())
-
-    def found = candidates.find { it.isFile() }
-    if (found == null) {
-        throw new GradleException("DragonMineZ jar not found. Build it in the sibling DragonMineZ checkout, "
-                + "drop dragonminez-${dragonminez_version}.jar into ${projectDir}/libs, or pass -PdmzJar=<path>. "
-                + "Looked in: " + candidates.collect { it.path }.join(', '))
+    def expected = dragonminez_sha256.trim().toLowerCase(java.util.Locale.ROOT)
+    if (!(expected ==~ /[0-9a-f]{64}/)) {
+        throw new GradleException('dragonminez_sha256 must be a 64-character SHA-256 hash.')
+    }
+    def digest = java.security.MessageDigest.getInstance('SHA-256')
+    found.withInputStream { input ->
+        byte[] buffer = new byte[65536]
+        int count
+        while ((count = input.read(buffer)) != -1) {
+            digest.update(buffer, 0, count)
+        }
+    }
+    def actual = digest.digest().encodeHex().toString()
+    if (actual != expected) {
+        throw new GradleException("DragonMineZ SHA-256 mismatch at ${found}: expected ${expected}, got ${actual}.")
     }
     logger.lifecycle("Using DragonMineZ jar: ${found}")
     return found
@@ -338,7 +376,7 @@ dependencies {
     // My NPCs is the NPC mod the integration now runs against, so it is also on the dev runtime.
     // Only one of the two may be installed at a time: they are the same mod under different package
     // names, and loading both would apply both sets of compat mixins to two copies of everything.
-    runtimeOnly "curse.maven:my-npcs-1569534:8686540"
+    if (!gameTestWithoutMyNpcs) runtimeOnly "curse.maven:my-npcs-1569534:8686540"
     // CustomNPCs-Unofficial (curse.maven, package noppes.npcs) - same API shape as My NPCs.
     // Kept on the compile classpath, deliberately, with no runtime entry: the CustomNPCs side of the
     // integration is parked rather than deleted, and staying compiled is what stops it rotting while
@@ -630,6 +668,30 @@ neoForge.runs.getByName('server').taskBefore(uninstallDevShaderMods)
 neoForge.runs.getByName('server').taskBefore(uninstallDevPadMods)
 neoForge.runs.getByName('gameTestServer').taskBefore(uninstallDevShaderMods)
 neoForge.runs.getByName('gameTestServer').taskBefore(uninstallDevPadMods)
+// The isolated GameTest directory gets every server mod from run/mods except My NPCs and the
+// client-only dev jars; run/mods itself is only read.
+def prepareGameTestWithoutMyNpcsMods = tasks.register('prepareGameTestWithoutMyNpcsMods', Sync) {
+    group = 'neoforge runs'
+    description = 'Copies run/mods minus My NPCs and client dev jars into the isolated GameTest directory.'
+    from(layout.projectDirectory.dir('run/mods')) {
+        include '*.jar'
+        exclude 'mynpcs-*.jar', 'iris-dev.jar', 'controlify-dev.jar', 'yacl-dev.jar'
+    }
+    into gameTestWithoutMyNpcsDir.map { it.dir('mods') }
+}
+if (gameTestWithoutMyNpcs) neoForge.runs.getByName('gameTestServer').taskBefore(prepareGameTestWithoutMyNpcsMods)
+
+// The client-space probe profile is isolated from run/ and receives a read-only copy of its mod jars.
+def prepareSpaceProbeClientMods = tasks.register('prepareSpaceProbeClientMods', Sync) {
+    group = 'neoforge runs'
+    description = 'Copies runtime mod jars, excluding optional client dev jars, into the isolated space-probe profile.'
+    from(layout.projectDirectory.dir('run/mods')) {
+        include '*.jar'
+        exclude 'iris-dev.jar', 'controlify-dev.jar', 'yacl-dev.jar'
+    }
+    into new File(spaceProbeClientDir, 'mods')
+}
+neoForge.runs.getByName('spaceProbeClient').taskBefore(prepareSpaceProbeClientMods)
 
 publishing {
     publications {
@@ -664,6 +726,9 @@ tasks.register('buildApiExampleAddon', Exec) {
                 'build',
                 "-PxenoPixelsJar=${packagedClientJar.get().asFile.absolutePath}",
                 "-PdmzJar=${dragonMineZJar.absolutePath}"
+        if (providers.gradleProperty('offlineMcMeta').isPresent()) {
+            args '-PofflineMcMeta'
+        }
     }
 }
 

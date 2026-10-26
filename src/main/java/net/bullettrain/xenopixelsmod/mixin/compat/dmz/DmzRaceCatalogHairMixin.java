@@ -36,7 +36,7 @@ public abstract class DmzRaceCatalogHairMixin extends ScaledScreen {
             var style = styles.get(Math.floorMod(xenopixels$catalogIndex, styles.size()));
             try {
                 var document = catalog.readHair(RacePackService.dmzRoot(), style);
-                character.setHairBase(HairApplyService.toCustomHair(HairApplyService.plan(document)));
+                character.setHairStyle(com.dragonminez.common.hair.HairStyleSlot.BASE, HairApplyService.toCustomHair(HairApplyService.plan(document)));
                 character.setHairId(0);
                 character.setHairColor(document.globalColor());
                 b.setTooltip(Tooltip.create(Component.literal(style.label() + " (click for next)")));

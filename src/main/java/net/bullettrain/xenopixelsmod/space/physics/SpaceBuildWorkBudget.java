@@ -6,10 +6,13 @@ import net.minecraft.server.MinecraftServer;
 
 import java.util.Map;
 import java.util.WeakHashMap;
+import java.util.function.IntSupplier;
+import java.util.function.Supplier;
 
 /** Shared per-server voxel and best-effort wall-time budgets, divided among generated physical-body owners. */
 public final class SpaceBuildWorkBudget {
-    public enum Owner { CHART_PLANET, ASTEROID, SMALL_PLANET, SUPER_DRAGON_BALL }
+    public enum Owner { CHART_PLANET, ASTEROID, SMALL_PLANET, SUPER_DRAGON_BALL, SPACE_POD }
+    private static final double FIRST_VOXEL_SLICE_MILLIS = 0.001;
 
     private static final Map<MinecraftServer, TickBudget> BUDGETS = new WeakHashMap<>();
 
@@ -18,6 +21,8 @@ public final class SpaceBuildWorkBudget {
     /** Avoid allocating an empty Sable plot when this owner cannot install any voxels this tick. */
     public static synchronized boolean mayPrepare(MinecraftServer server, long tick, Owner owner, int localLimit) {
         if (localLimit <= 0) return false;
+        double millisCap = XenoSpaceConfig.generatedBodyBuildMillisPerTick();
+        if (!mayPrepareWithinMillis(millisCap, remainingMillis(server, tick, owner))) return false;
         int cap = XenoSpaceConfig.generatedBodyBuildVoxelsPerTick();
         if (cap <= 0) return true;
         TickBudget budget = budget(server, tick);
@@ -31,7 +36,13 @@ public final class SpaceBuildWorkBudget {
         TickBudget budget = budget(server, tick);
         int ownerShare = ownerShareFor(cap, tick, owner);
         int remaining = Math.max(0, ownerShare - budget.used(owner));
-        if (localLimit <= 0 || remaining <= 0) return 0;
+        if (localLimit <= 0) return 0;
+        if (remaining <= 0) {
+            // Pairs with the current prepare() contract: prepare measures time but installs no voxels.
+            // This keeps a newly allocated plot seedable if its time allowance expires during preparation.
+            if (job.installed() != 0) return 0;
+            remaining = 1;
+        }
 
         int maxAtomicBatch = job.maxColumnVoxels();
         if (maxAtomicBatch <= 0) return 0; // caller must prepare the job before asking for work
@@ -41,7 +52,7 @@ public final class SpaceBuildWorkBudget {
             // switch this not-yet-started body to the verified exact voxel writer instead of overshooting or stalling.
             job.withIncrementalSections();
             exactWriter = true;
-            XenoPixelsMod.LOGGER.info(
+            XenoPixelsMod.LOGGER.debug(
                     "Generated-body build {} selected exact incremental batches: atomic plot.load group {} exceeds available tick budget {}",
                     job.body() == null ? "<unallocated>" : job.body().getUniqueId(), maxAtomicBatch, Math.min(localLimit, remaining));
         }
@@ -70,25 +81,58 @@ public final class SpaceBuildWorkBudget {
         budget.usedMillisByOwner[owner.ordinal()] += elapsedMillis;
     }
 
-    /** Elapsed build-step work this tick, recorded even when the optional limiter is disabled. */
+    /** Prepare one generated-body job and charge its synchronous server-thread work to this tick's measured budget. */
+    public static boolean prepare(MinecraftServer server, long tick, Owner owner, PlotBodyBuilder.Job job) {
+        long started = System.nanoTime();
+        try {
+            return job.prepare();
+        } finally {
+            recordMillis(server, tick, owner, (System.nanoTime() - started) / 1.0e6);
+        }
+    }
+
+    /** Run a generated-body slice and charge its elapsed time and installed-voxel delta even if it throws. */
+    static <T> T measureStep(MinecraftServer server, long tick, Owner owner, IntSupplier installed,
+                             Supplier<T> operation) {
+        int before = installed.getAsInt();
+        long started = System.nanoTime();
+        try {
+            return operation.get();
+        } finally {
+            record(server, tick, owner, Math.max(0, installed.getAsInt() - before));
+            recordMillis(server, tick, owner, (System.nanoTime() - started) / 1.0e6);
+        }
+    }
+
+    /** Common instrumented builder call so every owner counts failed as well as successful slices. */
+    public static boolean step(MinecraftServer server, long tick, Owner owner, PlotBodyBuilder.Job job,
+                               int voxelBudget, double millisBudget) {
+        double cap = XenoSpaceConfig.generatedBodyBuildMillisPerTick();
+        int installed = job.installed();
+        double boundedMillis = stepMillisBudget(cap, millisBudget, installed);
+        int boundedVoxels = stepVoxelBudget(voxelBudget, cap, millisBudget, installed);
+        return measureStep(server, tick, owner, job::installed, () -> job.step(boundedVoxels, boundedMillis));
+    }
+
+    /** Elapsed preparation and build-step work this tick, recorded even when the optional limiter is disabled. */
     public static synchronized double usedMillis(MinecraftServer server, long tick) {
         return budget(server, tick).usedMillis;
     }
 
-    /** Per-owner build-step time this tick, recorded even when the optional limiter is disabled. */
+    /** Per-owner preparation and build-step time this tick, recorded even when the optional limiter is disabled. */
     public static synchronized double usedMillis(MinecraftServer server, long tick, Owner owner) {
         if (owner == null) throw new IllegalArgumentException("build-work owner is required");
         return budget(server, tick).usedMillis(owner);
     }
 
-    /** Formats the measured build-step work for the admin perf report, including owners when the cap is off. */
+    /** Formats measured build work for the admin perf report, including owners when the cap is off. */
     public static String formatTimeReport(double totalMillis, double capMillis,
                                           double chartMillis, double asteroidMillis,
                                           double smallPlanetMillis, double dragonBallMillis) {
         String cap = Double.isFinite(capMillis) && capMillis > 0.0
                 ? String.format(java.util.Locale.ROOT, "%.3f ms best-effort", capMillis) : "off";
         return String.format(java.util.Locale.ROOT,
-                "generated-body build-step ms this tick=%.3f cap=%s; by owner chart=%.3f asteroid=%.3f small-planet=%.3f super-dragon-ball=%.3f",
+                "generated-body prepare+step ms this tick=%.3f cap=%s; by owner chart=%.3f asteroid=%.3f small-planet=%.3f super-dragon-ball=%.3f",
                 finiteNonNegative(totalMillis), cap, finiteNonNegative(chartMillis), finiteNonNegative(asteroidMillis),
                 finiteNonNegative(smallPlanetMillis), finiteNonNegative(dragonBallMillis));
     }
@@ -141,6 +185,32 @@ public final class SpaceBuildWorkBudget {
     static double remainingMillisFor(double cap, double usedMillis) {
         if (!Double.isFinite(cap) || !Double.isFinite(usedMillis) || cap <= 0.0) return 0.0;
         return Math.max(0.0, cap - Math.max(0.0, usedMillis));
+    }
+
+    /** A positive cap must have time remaining before starting synchronous allocation/preparation work. */
+    static boolean mayPrepareWithinMillis(double cap, double remainingMillis) {
+        if (!Double.isFinite(cap)) return false;
+        return cap <= 0.0 || (Double.isFinite(remainingMillis) && remainingMillis > 0.0);
+    }
+
+    /**
+     * If preparation consumed the remaining allowance, still install one voxel into a newly
+     * allocated plot. Sable removes empty plots at tick boundaries for extreme Y bounds. A tiny
+     * positive allowance lets the incremental writer complete its mandatory first callback and
+     * stop before the second; that callback is indivisible and may still overrun the time cap.
+     */
+    static double stepMillisBudget(double cap, double remainingMillis, int installedVoxels) {
+        if (!Double.isFinite(cap) || cap <= 0.0) return 0.0;
+        double remaining = Double.isFinite(remainingMillis) ? Math.max(0.0, remainingMillis) : 0.0;
+        return installedVoxels <= 0 ? Math.max(FIRST_VOXEL_SLICE_MILLIS, remaining) : remaining;
+    }
+
+    /** A first voxel always seeds the allocated plot, but never uses a full local batch after the time slice expired. */
+    static int stepVoxelBudget(int requested, double cap, double remainingMillis, int installedVoxels) {
+        if (requested <= 0) return 0;
+        if (!Double.isFinite(cap) || cap <= 0.0 || installedVoxels > 0) return requested;
+        return !Double.isFinite(remainingMillis) || remainingMillis < FIRST_VOXEL_SLICE_MILLIS
+                ? 1 : requested;
     }
 
     static double remainingMillisForOwner(double cap, double totalUsedMillis, double ownerUsedMillis, int ownerCount) {

@@ -71,7 +71,7 @@ public final class MakerPreviewAppearance {
             return;
         }
         var strand = hair.getStrand(face, strandIndex);
-        if (strand == null || strand.getLength() <= 0) {
+        if (strand == null || !strand.isVisible()) {
             return;
         }
         strand.setColor(SEGMENT_HIGHLIGHT_COLOR);
@@ -204,10 +204,10 @@ public final class MakerPreviewAppearance {
         return new Snapshot(
                 c.getRace(),
                 c.getHairId(),
-                copyHair(c.getHairBase()),
-                copyHair(c.getHairSSJ()),
-                copyHair(c.getHairSSJ2()),
-                copyHair(c.getHairSSJ3()),
+                copyHair(c.getOwnHairStyle(com.dragonminez.common.hair.HairStyleSlot.BASE)),
+                copyHair(c.getOwnHairStyle(com.dragonminez.common.hair.HairStyleSlot.SSJ)),
+                copyHair(c.getOwnHairStyle(com.dragonminez.common.hair.HairStyleSlot.SSJ2)),
+                copyHair(c.getOwnHairStyle(com.dragonminez.common.hair.HairStyleSlot.SSJ3)),
                 c.getHairColor(),
                 c.getBodyColor(),
                 c.getBodyColor2(),
@@ -244,7 +244,7 @@ public final class MakerPreviewAppearance {
             CustomHair copy = hair.copy();
             // HairEditorScreen preview always writes the working style into hairBase so the
             // model shows it even when the player is not transformed. Apply still uses hairIndex.
-            c.setHairBase(copy);
+            c.setHairStyle(com.dragonminez.common.hair.HairStyleSlot.BASE, copy);
             // Custom hair only draws when hairId is 0 (HairManager.getEffectiveHair).
             c.setHairId(0);
         }
@@ -305,10 +305,10 @@ public final class MakerPreviewAppearance {
         }
         c.setRace(snapshot.race);
         c.setHairId(snapshot.hairId);
-        c.setHairBase(copyHair(snapshot.hairBase));
-        c.setHairSSJ(copyHair(snapshot.hairSsj));
-        c.setHairSSJ2(copyHair(snapshot.hairSsj2));
-        c.setHairSSJ3(copyHair(snapshot.hairSsj3));
+        c.setHairStyle(com.dragonminez.common.hair.HairStyleSlot.BASE, copyHair(snapshot.hairBase));
+        c.setHairStyle(com.dragonminez.common.hair.HairStyleSlot.SSJ, copyHair(snapshot.hairSsj));
+        c.setHairStyle(com.dragonminez.common.hair.HairStyleSlot.SSJ2, copyHair(snapshot.hairSsj2));
+        c.setHairStyle(com.dragonminez.common.hair.HairStyleSlot.SSJ3, copyHair(snapshot.hairSsj3));
         c.setRenderHairBase(snapshot.renderHairBase);
         if (snapshot.hairColor != null) {
             c.setHairColor(snapshot.hairColor);

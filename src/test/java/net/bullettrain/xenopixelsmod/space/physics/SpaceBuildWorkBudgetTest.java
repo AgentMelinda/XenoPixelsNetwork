@@ -49,13 +49,15 @@ class SpaceBuildWorkBudgetTest {
             int asteroids = SpaceBuildWorkBudget.ownerShareFor(2_000, tick, SpaceBuildWorkBudget.Owner.ASTEROID);
             int small = SpaceBuildWorkBudget.ownerShareFor(2_000, tick, SpaceBuildWorkBudget.Owner.SMALL_PLANET);
             int dragonBalls = SpaceBuildWorkBudget.ownerShareFor(2_000, tick, SpaceBuildWorkBudget.Owner.SUPER_DRAGON_BALL);
-            assertEquals(2_000, chart + asteroids + small + dragonBalls);
-            assertEquals(500, chart);
-            assertEquals(500, asteroids);
-            assertEquals(500, small);
-            assertEquals(500, dragonBalls);
+            int pods = SpaceBuildWorkBudget.ownerShareFor(2_000, tick, SpaceBuildWorkBudget.Owner.SPACE_POD);
+            assertEquals(2_000, chart + asteroids + small + dragonBalls + pods);
+            assertEquals(400, chart);
+            assertEquals(400, asteroids);
+            assertEquals(400, small);
+            assertEquals(400, dragonBalls);
+            assertEquals(400, pods);
         }
-        for (int tick = 0; tick < 4; tick++) {
+        for (int tick = 0; tick < SpaceBuildWorkBudget.Owner.values().length; tick++) {
             int total = 0;
             for (var owner : SpaceBuildWorkBudget.Owner.values()) {
                 int share = SpaceBuildWorkBudget.ownerShareFor(1, tick, owner);
@@ -84,12 +86,33 @@ class SpaceBuildWorkBudgetTest {
     }
 
     @Test void ownerTimeSharesAreBoundedByBothOwnerAndGlobalRemainders() {
-        assertEquals(0.5, SpaceBuildWorkBudget.remainingMillisForOwner(2.0, 0.0, 0.0, 4), 0.0);
-        assertEquals(0.25, SpaceBuildWorkBudget.remainingMillisForOwner(2.0, 1.75, 0.0, 4), 0.0);
-        assertEquals(0.125, SpaceBuildWorkBudget.remainingMillisForOwner(2.0, 0.0, 0.375, 4), 0.0);
-        assertEquals(0.0, SpaceBuildWorkBudget.remainingMillisForOwner(2.0, 0.25, 0.5, 4), 0.0);
-        assertEquals(0.0, SpaceBuildWorkBudget.remainingMillisForOwner(Double.NaN, 0.0, 0.0, 4), 0.0);
+        int ownerCount = SpaceBuildWorkBudget.Owner.values().length;
+        assertEquals(0.4, SpaceBuildWorkBudget.remainingMillisForOwner(2.0, 0.0, 0.0, ownerCount), 0.0);
+        assertEquals(0.25, SpaceBuildWorkBudget.remainingMillisForOwner(2.0, 1.75, 0.0, ownerCount), 0.0);
+        assertEquals(0.125, SpaceBuildWorkBudget.remainingMillisForOwner(2.0, 0.0, 0.275, ownerCount), 0.0);
+        assertEquals(0.0, SpaceBuildWorkBudget.remainingMillisForOwner(2.0, 0.25, 0.5, ownerCount), 0.0);
+        assertEquals(0.0, SpaceBuildWorkBudget.remainingMillisForOwner(Double.NaN, 0.0, 0.0, ownerCount), 0.0);
         assertEquals(0.0, SpaceBuildWorkBudget.remainingMillisForOwner(2.0, 0.0, 0.0, 0), 0.0);
+    }
+
+    @Test void anExhaustedEnabledTimeBudgetBlocksStartingAnotherPlotButDisabledCapDoesNot() {
+        assertTrue(SpaceBuildWorkBudget.mayPrepareWithinMillis(8.0, 2.0));
+        assertFalse(SpaceBuildWorkBudget.mayPrepareWithinMillis(8.0, 0.0));
+        assertFalse(SpaceBuildWorkBudget.mayPrepareWithinMillis(8.0, Double.NaN));
+        assertTrue(SpaceBuildWorkBudget.mayPrepareWithinMillis(0.0, 0.0));
+        assertFalse(SpaceBuildWorkBudget.mayPrepareWithinMillis(Double.NaN, 1.0));
+    }
+
+    @Test void anAllocatedEmptyPlotGetsExactlyOneTinyTimeSlicedSeedVoxelAfterPrepareOverruns() {
+        assertEquals(0.001, SpaceBuildWorkBudget.stepMillisBudget(8.0, 0.0, 0), 0.0);
+        assertEquals(0.001, SpaceBuildWorkBudget.stepMillisBudget(8.0, 0.0001, 0), 0.0);
+        assertEquals(0.25, SpaceBuildWorkBudget.stepMillisBudget(8.0, 0.25, 0), 0.0);
+        assertEquals(0.0, SpaceBuildWorkBudget.stepMillisBudget(8.0, 0.0, 1), 0.0);
+        assertEquals(0.0, SpaceBuildWorkBudget.stepMillisBudget(0.0, 0.0, 0), 0.0);
+        assertEquals(1, SpaceBuildWorkBudget.stepVoxelBudget(500, 8.0, 0.0, 0));
+        assertEquals(1, SpaceBuildWorkBudget.stepVoxelBudget(500, 8.0, 0.0005, 0));
+        assertEquals(500, SpaceBuildWorkBudget.stepVoxelBudget(500, 8.0, 0.25, 0));
+        assertEquals(500, SpaceBuildWorkBudget.stepVoxelBudget(500, 0.0, 0.0, 0));
     }
 
     @Test void buildStepTimeRemainsObservableWhenTheOptionalLimiterIsOff() {
@@ -106,9 +129,38 @@ class SpaceBuildWorkBudgetTest {
         SpaceBuildWorkBudget.forget(null);
     }
 
+    @Test void preparationWorkConsumesTheSameBestEffortTimeAllowanceAsInstallWork() {
+        long tick = Long.MIN_VALUE + 38;
+        SpaceBuildWorkBudget.forget(null);
+        // Production records synchronous Job.prepare() duration before asking for a step allowance.
+        SpaceBuildWorkBudget.recordMillis(null, tick, SpaceBuildWorkBudget.Owner.ASTEROID, 1.25);
+
+        assertEquals(1.25, SpaceBuildWorkBudget.usedMillis(null, tick), 0.0);
+        assertEquals(0.75, SpaceBuildWorkBudget.remainingMillisFor(2.0,
+                SpaceBuildWorkBudget.usedMillis(null, tick)), 0.0);
+        SpaceBuildWorkBudget.forget(null);
+    }
+
+    @Test void failedBuildStepsStillChargeElapsedTimeAndCompletedVoxelDelta() {
+        long tick = Long.MIN_VALUE + 39;
+        SpaceBuildWorkBudget.forget(null);
+        int[] installed = {10};
+
+        assertThrows(IllegalStateException.class, () -> SpaceBuildWorkBudget.measureStep(
+                null, tick, SpaceBuildWorkBudget.Owner.CHART_PLANET, () -> installed[0], () -> {
+                    installed[0] = 13;
+                    throw new IllegalStateException("simulated plot callback failure");
+                }));
+
+        assertEquals(3, SpaceBuildWorkBudget.used(null, tick,
+                SpaceBuildWorkBudget.Owner.CHART_PLANET));
+        assertTrue(SpaceBuildWorkBudget.usedMillis(null, tick) > 0.0);
+        SpaceBuildWorkBudget.forget(null);
+    }
+
     @Test void timeReportShowsEveryOwnerWhenTheOptionalLimiterIsOff() {
         String report = SpaceBuildWorkBudget.formatTimeReport(2.5, 0.0, 0.25, 0.5, 0.75, 1.0);
-        assertTrue(report.contains("build-step ms this tick=2.500 cap=off"));
+        assertTrue(report.contains("prepare+step ms this tick=2.500 cap=off"));
         assertTrue(report.contains("chart=0.250 asteroid=0.500 small-planet=0.750 super-dragon-ball=1.000"));
 
         String capped = SpaceBuildWorkBudget.formatTimeReport(0.5, 2.0, 0.1, 0.2, 0.1, 0.1);

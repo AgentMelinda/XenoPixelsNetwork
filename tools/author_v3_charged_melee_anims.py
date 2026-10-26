@@ -37,12 +37,14 @@ def channel(frames: dict[float, list[float]]):
 def clip(length: float, bones: dict, *, loop: bool = False) -> dict:
     out = {"animation_length": length, "bones": {}}
     if loop:
-        out["loop"] = True
+        out["loop"] = "hold_on_last_frame"
     for bone, channels in bones.items():
         entry = {}
         for name, frames in channels.items():
             if name == "scale":
                 continue
+            if bone == "root" and name == "position":
+                frames = {time: [0, 0, 0] for time in frames}
             if bone in ("right_arm", "left_arm"):
                 # Keep both fists in front of the shoulder in charge and release.
                 frames = {time: [min(x, 0) if name == "rotation" else x,
@@ -53,7 +55,7 @@ def clip(length: float, bones: dict, *, loop: bool = False) -> dict:
     return out
 
 
-def charge_punch_hold() -> dict:
+def right_punch_hold() -> dict:
     """Coil: hips load back, rear foot plants, fist chambers behind the shoulder."""
     return clip(0.55, {
         "root": {
@@ -124,7 +126,7 @@ def charge_punch_hold() -> dict:
     }, loop=True)
 
 
-def charge_punch_fire() -> dict:
+def right_punch_fire() -> dict:
     """Explosive hip snap → fist overshoots out of the body → recovery."""
     return clip(0.95, {
         "root": {
@@ -231,7 +233,7 @@ def charge_kick_hold() -> dict:
             "rotation": {
                 0.0: [0, 0, 0],
                 0.18: [14, -12, -10],
-                0.55: [18, -16, -12],
+                0.55: [18, 0, -12],
             },
             "position": {
                 0.0: [0, 0, 0],
@@ -300,12 +302,12 @@ def charge_kick_fire() -> dict:
     return clip(1.05, {
         "root": {
             "rotation": {
-                0.0: [18, -16, -12],
-                0.10: [18, -16, -12],
-                0.26: [-22, 24, 14],
-                0.42: [-18, 28, 16],
-                0.62: [-8, 14, 8],
-                1.05: [0, 0, 0],
+                0.0: [18, 0, -12],
+                0.10: [18, 40, -12],
+                0.26: [-22, 140, 14],
+                0.42: [-18, 260, 16],
+                0.62: [-8, 360, 8],
+                1.05: [0, 360, 0],
             },
             "position": {
                 0.0: [0.12, 0.22, 0.25],
@@ -394,6 +396,28 @@ def charge_kick_fire() -> dict:
             },
         },
     })
+
+
+def mirror_punch(animation):
+    """Mirror the entire coil/release across X, including hips, feet and head."""
+    mirrored = json.loads(json.dumps(animation))
+    bones = mirrored["bones"]
+    for first, second in (("right_arm", "left_arm"), ("right_leg", "left_leg")):
+        bones[first], bones[second] = bones[second], bones[first]
+    for channels in bones.values():
+        for name, frames in channels.items():
+            for value in frames.values():
+                x, y, z = value["vector"]
+                value["vector"] = [-x, y, z] if name == "position" else [x, -y, -z]
+    return mirrored
+
+
+def charge_punch_hold():
+    return mirror_punch(right_punch_hold())
+
+
+def charge_punch_fire():
+    return mirror_punch(right_punch_fire())
 
 
 def main():

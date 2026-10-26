@@ -4,6 +4,7 @@ import net.bullettrain.xenopixelsmod.space.math.OrbitalElements;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class PlanetOrbitHoldTest {
@@ -123,5 +124,33 @@ class PlanetOrbitHoldTest {
         PlanetOrbitHold.orbitTrack(orbit, PlanetShell.orbitMu(1000, 3600), now + shift, p, v, a);
         assertEquals(0, p[0], 1e-6);
         assertEquals(1000, p[2], 1e-6);
+    }
+
+    @Test void phaseShiftPreservesAnInclinedOrbitInThreeDimensions() {
+        var orbit = new OrbitalElements(840, .27, .61, .42, 1.17, -.31, 5280, 0);
+        double now = 321.75, knownShift = 913.25;
+        double[] reference = new double[3];
+        net.bullettrain.xenopixelsmod.space.math.KeplerSolver.position(orbit, now + knownShift, reference);
+        // Kepler reference [x,y,z] maps into Minecraft world [x,z,y].
+        double worldX = reference[0], worldY = reference[2], worldZ = reference[1];
+        double shift = PhysicalEarth.phaseShift(orbit, now, worldX, worldY, worldZ);
+        double[] actual = new double[3], velocity = new double[3], acceleration = new double[3];
+        PlanetOrbitHold.orbitTrack(orbit, PlanetShell.orbitMu(840, 5280), now + shift,
+                actual, velocity, acceleration);
+        assertEquals(worldX, actual[0], 1.0e-5);
+        assertEquals(worldY, actual[1], 1.0e-5);
+        assertEquals(worldZ, actual[2], 1.0e-5);
+    }
+
+    @Test void persistedOrbitSignatureTracksEveryElementAndPeriod() {
+        var orbit = new OrbitalElements(1000, .1, .2, .3, .4, .5, 3600, 0);
+        String signature = PhysicalEarth.orbitSignature(orbit);
+        assertEquals(signature, PhysicalEarth.orbitSignature(orbit));
+        assertTrue(!PhysicalEarth.orbitNeedsReanchor(signature, orbit), "same saved orbit must keep its phase offset");
+        assertTrue(PhysicalEarth.orbitNeedsReanchor("", orbit), "legacy offsets without a signature must re-anchor");
+        assertNotEquals(signature, PhysicalEarth.orbitSignature(new OrbitalElements(1000, .1, .2, .3, .4, .5, 269.288, 0)), "period edits must re-anchor saved bodies");
+        assertNotEquals(signature, PhysicalEarth.orbitSignature(new OrbitalElements(1000, .1, .2, .3, .4, .6, 3600, 0)), "epoch phase edits must re-anchor saved bodies");
+        assertNotEquals(signature, PhysicalEarth.orbitSignature(new OrbitalElements(1000, .1, .21, .3, .4, .5, 3600, 0)), "plane edits must re-anchor saved bodies");
+        assertNotEquals(signature, PhysicalEarth.orbitSignature(new OrbitalElements(1000, .1, .2, .3, .4, .5, 3600, 1)), "epoch edits must re-anchor saved bodies");
     }
 }

@@ -119,6 +119,7 @@ public final class DragonBallPlanetAssignments {
     /** Persist only validated host/orbit assignments; missing/invalid entries do not erase saved data. */
     public static boolean persistResolvedAssignments(DragonBallSavedData saved,
                                                      Map<Integer, DragonBallPlanetDefinition> resolved) {
+        saved.requireGameplayStateValid();
         boolean changed = false;
         for (var entry : resolved.entrySet()) {
             int slot = entry.getKey();

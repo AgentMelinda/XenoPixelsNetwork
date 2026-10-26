@@ -25,11 +25,13 @@ public final class NpcImportReport {
 
     private final List<String> entries = new ArrayList<>();
     private final List<String> notes = new ArrayList<>();
+    private final List<String> blocked = new ArrayList<>();
     private final java.util.Map<String, List<String>> grouped = new java.util.LinkedHashMap<>();
     private final List<Failure> failures = new ArrayList<>();
     private final java.util.Map<String, DialogTreeImport.Ref> dialogRefs = new java.util.LinkedHashMap<>();
     private final java.util.Map<String, String> factionRefs = new java.util.LinkedHashMap<>();
     private final java.util.Map<String, String> questRefs = new java.util.LinkedHashMap<>();
+    private final java.util.Set<String> ambiguous = new java.util.HashSet<>();
 
     /** Records one entry written. */
     public void imported(String category, String id) {
@@ -48,9 +50,40 @@ public final class NpcImportReport {
         failures.add(new Failure(category, entry, reason));
     }
 
+    /**
+     * Records one entry that was written but cannot be used as the author meant it.
+     *
+     * <p>Different from {@link #failed}: the entry exists in the store, so counting it as imported
+     * is true, while a player still never sees it. A quest whose availability references content
+     * that did not import is stored gated shut rather than gated open, and an import that called
+     * that simply "imported" told the operator the migration worked.
+     *
+     * <p>A repeated line is dropped. One source dialog node is converted once per tree that can
+     * reach it, so the same problem on the same node arrives as many times as there are entry
+     * points - and a count of thirty where there are fifteen problems is a report that reads worse
+     * than the import actually did.
+     */
+    public void blocked(String entry, String reason) {
+        if (entry == null || entry.isBlank()) {
+            return;
+        }
+        String line = entry + ": " + reason;
+        if (!blocked.contains(line)) {
+            blocked.add(line);
+        }
+    }
+
     /** Source dialog slot to the imported shared tree containing it. */
     public void mapDialog(String mod, int sourceSlot, DialogTreeImport.Ref target) {
-        if (mod != null && target != null) dialogRefs.put(mod + ":" + sourceSlot, target);
+        if (mod == null || target == null) return;
+        String key = mod + ":" + sourceSlot;
+        if (ambiguous.contains("dialog:" + key)) return;
+        var previous = dialogRefs.putIfAbsent(key, target);
+        if (previous != null && !previous.equals(target)) {
+            dialogRefs.remove(key);
+            ambiguous.add("dialog:" + key);
+            note("ambiguous dialog slot " + key + " in multiple categories; references left unresolved");
+        }
     }
 
     public DialogTreeImport.Ref dialog(String mod, int sourceSlot) {
@@ -66,7 +99,15 @@ public final class NpcImportReport {
     }
 
     public void mapQuest(String mod, int sourceSlot, String targetId) {
-        if (mod != null && targetId != null) questRefs.put(mod + ":" + sourceSlot, targetId);
+        if (mod == null || targetId == null) return;
+        String key = mod + ":" + sourceSlot;
+        if (ambiguous.contains("quest:" + key)) return;
+        var previous = questRefs.putIfAbsent(key, targetId);
+        if (previous != null && !previous.equals(targetId)) {
+            questRefs.remove(key);
+            ambiguous.add("quest:" + key);
+            note("ambiguous quest slot " + key + " in multiple categories; references left unresolved");
+        }
     }
 
     public String quest(String mod, int sourceSlot) {
@@ -88,8 +129,14 @@ public final class NpcImportReport {
         if (what == null || what.isBlank()) {
             return;
         }
-        grouped.computeIfAbsent(what, key -> new ArrayList<>())
-                .add(subject == null ? "?" : subject);
+        List<String> subjects = grouped.computeIfAbsent(what, key -> new ArrayList<>());
+        String named = subject == null ? "?" : subject;
+        // One source dialog node is converted once per tree that reaches it, so the same fact about
+        // the same entry arrives more than once; a folded line reading "×4" over two entries would
+        // be a count the operator cannot check.
+        if (!subjects.contains(named)) {
+            subjects.add(named);
+        }
     }
 
     public int imported() {
@@ -130,9 +177,14 @@ public final class NpcImportReport {
         return List.copyOf(failures);
     }
 
+    /** Entries that arrived gated shut, in the order they were recorded. */
+    public List<String> blocked() {
+        return List.copyOf(blocked);
+    }
+
     /** One line an operator can read in chat, with the detail available underneath. */
     public String summary() {
         return entries.size() + " imported, " + notes().size() + " note(s), "
-                + failures.size() + " failed";
+                + blocked.size() + " blocked, " + failures.size() + " failed";
     }
 }

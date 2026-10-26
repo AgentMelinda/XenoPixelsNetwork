@@ -78,15 +78,17 @@ public final class HakaiChannelSystem {
         /** Force-use: skip resist and complete in {@link #FORCE_CHANNEL_TICKS}. */
         final boolean forceErase;
         final GlowLease glow;
+        final Vec3 impactPoint;
 
         Channel(int targetId, int totalTicks, Vec3 startPos, boolean skipEnvironment, boolean forceErase,
-                GlowLease glow) {
+                GlowLease glow, Vec3 impactPoint) {
             this.targetId = targetId;
             this.totalTicks = totalTicks;
             this.startPos = startPos;
             this.skipEnvironment = skipEnvironment;
             this.forceErase = forceErase;
             this.glow = glow;
+            this.impactPoint = impactPoint;
         }
     }
 
@@ -133,8 +135,11 @@ public final class HakaiChannelSystem {
         if (restoring != null && restoring.targetId == target.getId()) RESTORES.remove(caster.getUUID());
         GlowLease glow = new GlowLease(target::hasGlowingTag, target::setGlowingTag,
                 XenoServerConfig.hakaiTargetGlow);
+        Vec3 channelImpact = impactPoint(caster, target);
         ACTIVE.put(caster.getUUID(), new Channel(target.getId(), totalTicks, caster.position(),
-                skipEnvironment, forceQuick, glow));
+                skipEnvironment, forceQuick, glow, channelImpact));
+        net.bullettrain.xenopixelsmod.compat.npc.NpcDissolve.setImpactOrigin(target, channelImpact,
+                caster.getUUID(), net.bullettrain.xenopixelsmod.compat.npc.NpcDissolve.SweepKind.CHANNEL);
 
         caster.level().playSound(null, caster.getX(), caster.getY(), caster.getZ(),
                 ModSounds.HAKAI_CHARGE.get(), SoundSource.PLAYERS, 1.0f, 1.0f);
@@ -201,7 +206,7 @@ public final class HakaiChannelSystem {
 
         channel.ticksElapsed++;
         float progress = channel.ticksElapsed / (float) channel.totalTicks;
-        net.bullettrain.xenopixelsmod.compat.npc.NpcDissolve.apply(target, progress);
+        net.bullettrain.xenopixelsmod.compat.npc.NpcDissolve.apply(target, progress, channel.impactPoint);
         if (channel.ticksElapsed % 2 == 0) {
             HakaiFx.tick(level, caster, target, progress);
             caster.displayClientMessage(progressBar(progress), true);
@@ -452,6 +457,13 @@ public final class HakaiChannelSystem {
             }
         }
         return best;
+    }
+
+    /** Server-authoritative point where the caster's current aim ray enters the target. */
+    public static Vec3 impactPoint(LivingEntity caster, LivingEntity target) {
+        return net.bullettrain.xenopixelsmod.combat.HakaiImpactGeometry.impactPoint(
+                caster.getEyePosition(), caster.getLookAngle(), target.getBoundingBox(), target.getPickRadius(),
+                XenoServerConfig.hakaiMaxRange);
     }
 
     /** Same clip-based line-of-sight check {@code LockOnValidator} uses, minus its seat gate. */

@@ -41,7 +41,8 @@ CNPC-Gecko. שינוי דרך Model Editor או דרך `setHairCode`, `setHairCo
 
 הקבצים המלאים נמצאים ב־`examples/customnpcs/` (`xenopixels_full_saiyan.js` is the complete fighter).
 מדריך באנגלית ל־co-owners: [CustomNPCs-XenoPixels-Scripting-CoOwner](CustomNPCs-XenoPixels-Scripting-CoOwner).
-`XenoPixels.getVersion()` צריך להיות `"23"` ל־charged punch/kick ול־`broadcast`.
+`XenoPixels.getVersion()` צריך להיות `"29"` ל־charged punch/kick, ל־`broadcast` ול־הלוואת המראה
+(`stealAppearance`, `restoreAppearance`).
 
 Charged melee (NPC Scripts tab, needs `setProfile`):
 

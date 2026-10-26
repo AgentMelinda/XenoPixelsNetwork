@@ -12,8 +12,18 @@ public final class HandoffOverlayTiming {
     }
 
     public static float alpha(long fadeElapsedMillis) {
+        return alpha(fadeElapsedMillis, FADE_MILLIS);
+    }
+
+    public static float alpha(long fadeElapsedMillis, long fadeMillis) {
+        if (fadeMillis <= 0) return 0.0f;
         if (fadeElapsedMillis <= 0) return 1.0f;
-        if (fadeElapsedMillis >= FADE_MILLIS) return 0.0f;
-        return 1.0f - (float) fadeElapsedMillis / FADE_MILLIS;
+        if (fadeElapsedMillis >= fadeMillis) return 0.0f;
+        return 1.0f - (float) fadeElapsedMillis / fadeMillis;
+    }
+
+    public static boolean shouldDrawCapturedFrame(boolean captured, boolean fading,
+                                                   long fadeElapsedMillis, long fadeMillis) {
+        return captured && (!fading || alpha(fadeElapsedMillis, fadeMillis) > 0.0f);
     }
 }

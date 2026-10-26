@@ -7,6 +7,8 @@ package net.bullettrain.xenopixelsmod.hair;
  * <p><b>No</b> {@code connected} or {@code movable} boolean — parenting is geometry-only.
  */
 public final class HairStrandModel {
+    // Native 2.2 geometry survives controls that only expose the legacy field set.
+    private net.minecraft.nbt.CompoundTag nativeData;
     private final int id;
     private int length;
     private float lengthScale = 1f;
@@ -175,6 +177,15 @@ public final class HairStrandModel {
         copy.curveY = curveY;
         copy.curveZ = curveZ;
         copy.color = color;
+        copy.nativeData = nativeData == null ? null : nativeData.copy();
         return copy;
+    }
+
+    net.minecraft.nbt.CompoundTag nativeData() {
+        return nativeData == null ? null : nativeData.copy();
+    }
+
+    void nativeData(net.minecraft.nbt.CompoundTag data) {
+        nativeData = data == null ? null : data.copy();
     }
 }

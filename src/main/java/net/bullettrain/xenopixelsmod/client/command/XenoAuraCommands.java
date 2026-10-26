@@ -25,6 +25,12 @@ public final class XenoAuraCommands {
     public static void onRegister(RegisterClientCommandsEvent event) {
         CommandDispatcher<CommandSourceStack> dispatcher = event.getDispatcher();
         var root = Commands.literal("xenoaura").executes(ctx -> status(ctx.getSource()));
+        root = root.then(Commands.literal("scaling")
+                .executes(ctx -> scalingStatus(ctx.getSource()))
+                .then(Commands.literal("dmz").executes(ctx -> scaling(ctx.getSource(), false)))
+                .then(Commands.literal("xeno").executes(ctx -> scaling(ctx.getSource(), true)))
+                .then(Commands.literal("toggle").executes(ctx -> scaling(ctx.getSource(),
+                        !net.bullettrain.xenopixelsmod.client.config.XenoAuraConfig.enabled))));
         for (AuraStyle style : AuraStyle.values()) {
             root = root.then(Commands.literal(style.id()).executes(ctx -> set(ctx.getSource(), style)));
         }
@@ -80,12 +86,26 @@ public final class XenoAuraCommands {
 
     private static int status(CommandSourceStack source) {
         source.sendSuccess(() -> Component.literal("Aura: " + AuraStyle.parse(XenoClientConfig.auraStyle).id()
+                + ", sizing " + (net.bullettrain.xenopixelsmod.client.config.XenoAuraConfig.enabled ? "xeno" : "dmz")
                 + ", size " + XenoClientConfig.auraSize + ", brightness " + XenoClientConfig.auraBrightness
                 + ", " + XenoClientConfig.auraVariant
                 + ", layers " + (XenoClientConfig.auraLayers ? "on" : "off")
                 + ", follow " + (XenoClientConfig.auraFollowDmz ? "on" : "off")
                 + "  (/xenoaura dmz | hd | both | size <0.2-5> | brightness <0-130> | layers on|off"
-                + " | follow on|off | inner <0.4-1> | v1 | v2 | v3 | v4 | live on|off | maxheight <1-10> | box on|off | overlay on|off | firstperson on|off; your own second aura: /secondaura)"), false);
+                + " | scaling dmz|xeno|toggle | follow on|off | inner <0.4-1> | v1 | v2 | v3 | v4 | live on|off | maxheight <1-10> | box on|off | overlay on|off | firstperson on|off; your own second aura: /secondaura)"), false);
+        return 1;
+    }
+
+    private static int scaling(CommandSourceStack source, boolean custom) {
+        net.bullettrain.xenopixelsmod.client.combat.aura.XenoAuraScaling.setCustomSizing(custom);
+        return scalingStatus(source);
+    }
+
+    private static int scalingStatus(CommandSourceStack source) {
+        boolean custom = net.bullettrain.xenopixelsmod.client.config.XenoAuraConfig.enabled;
+        source.sendSuccess(() -> Component.literal(custom
+                ? "Aura sizing: Xeno (custom height and width)"
+                : "Aura sizing: DMZ (native height and width; custom settings retained)"), false);
         return 1;
     }
 
@@ -136,7 +156,7 @@ public final class XenoAuraCommands {
         XenoClientConfig.hdKi = on;
         XenoClientConfig.save();
         source.sendSuccess(() -> Component.literal(on
-                ? "HD ki: DragonMineZ ki attacks are drawn with the HD effects"
+                ? "HD ki: HD charge effects; fired waves use DragonMineZ's beam renderer"
                 : "HD ki: off, DragonMineZ draws its own ki attacks"), false);
         return 1;
     }

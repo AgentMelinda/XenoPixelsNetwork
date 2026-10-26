@@ -33,9 +33,10 @@ import java.util.concurrent.ConcurrentHashMap;
 public final class NpcHakai {
     private static final float RESIST_STAT_RATIO = 3.0f;
 
-    private record Channel(int targetId, int totalTicks, boolean hadGlow, int ticksElapsed) {
+    private record Channel(int targetId, int totalTicks, boolean hadGlow, int ticksElapsed,
+                           Vec3 impactPoint) {
         Channel next() {
-            return new Channel(targetId, totalTicks, hadGlow, ticksElapsed + 1);
+            return new Channel(targetId, totalTicks, hadGlow, ticksElapsed + 1, impactPoint);
         }
     }
 
@@ -57,7 +58,9 @@ public final class NpcHakai {
         if (XenoServerConfig.hakaiTargetGlow) {
             target.setGlowingTag(true);
         }
-        CHANNELS.put(npc.getUUID(), new Channel(target.getId(), total, hadGlow, 0));
+        Vec3 impactPoint = net.bullettrain.xenopixelsmod.combat.HakaiChannelSystem.impactPoint(npc, target);
+        NpcDissolve.setImpactOrigin(target, impactPoint, npc.getUUID(), NpcDissolve.SweepKind.NPC);
+        CHANNELS.put(npc.getUUID(), new Channel(target.getId(), total, hadGlow, 0, impactPoint));
         NpcEntityLookup.remember(npc);
         CombatStateAnim.play(npc, TechniqueAnimSlot.HAKAI_HOLD);
         npc.level().playSound(null, npc.getX(), npc.getY(), npc.getZ(),
@@ -120,7 +123,7 @@ public final class NpcHakai {
             }
             Channel next = channel.next();
             float progress = next.ticksElapsed() / (float) next.totalTicks();
-            NpcDissolve.apply(target, progress);
+            NpcDissolve.apply(target, progress, channel.impactPoint());
             if (next.ticksElapsed() % 2 == 0) {
                 HakaiFx.tick(level, npc, target, progress);
             }

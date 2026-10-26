@@ -75,10 +75,10 @@ public abstract class StatsDataNpcHostMixin implements NpcStatsDataAccess {
         cir.setReturnValue(toughness != null ? toughness.getValue() : 0.0);
     }
 
-    @Redirect(method = {"getMaxDefense", "getDefense"},
+    @Redirect(method = {"getMaxDefense", "getDefense", "getFlatDefense", "getMaxFlatDefense"},
             at = @At(value = "INVOKE",
-                    target = "Lnet/minecraft/world/entity/player/Player;getArmorValue()I"),
-            remap = false, require = 0)
+                    target = "Lnet/minecraft/world/entity/player/Player;getArmorValue()I", remap = true),
+            remap = false, require = 1)
     private int xenopixels$hostArmor(Player player) {
         LivingEntity host = this.xenopixels$npcHost != null ? this.xenopixels$npcHost : player;
         return host == null ? 0 : host.getArmorValue();

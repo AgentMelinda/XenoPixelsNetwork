@@ -48,6 +48,8 @@ class SpaceHandoffPackTest {
         var body = ChartDefinition.parse("xenospace_spike:surface", json(DATA + "xenospace/chart_entry/surface.json"));
         assertEquals("xenospace_spike:surface", body.dimensionId());
         assertTrue(body.enterable());
+        assertNotNull(body.orbit(), "chart_entry resources require a parent-relative or root orbit");
+        assertEquals("xenopixelsmod:sol", body.parentId());
         assertFalse(body.orbitalMotion());
         assertFalse(body.erasable());
         assertFalse(Files.exists(ROOT.resolve(DATA + "xenospace/chart_entry/orbit.json")));

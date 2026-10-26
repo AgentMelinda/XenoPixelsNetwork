@@ -203,6 +203,8 @@ public final class NpcCombatProfile {
     private static final String TAG_AI_MUST_SEE_TARGET = "AiMustSeeTarget";
     private static final String TAG_AI_ATTACK_INVISIBLE = "AiAttackInvisible";
     private static final String TAG_AI_MOUNT_CONTROL = "AiMountControl";
+    private static final String TAG_IMPORTED_MOVE_SPEED = "ImportedMoveSpeed";
+    private static final String TAG_AI_CAN_SPRINT = "AiCanSprint";
     /** Canonical action keys for chance/modifier maps (not the master combatBrain switch). */
     public static final String[] BRAIN_ACTION_KEYS = {
             "strike", "charge", "flyingFist", "heavyHit", "boneCrusher", "kiai", "randomKi",
@@ -766,6 +768,12 @@ public final class NpcCombatProfile {
 
     /** Whether a player riding this NPC may steer it. */
     public boolean aiMountControl;
+
+    /** Source walking speed (0..100, divided by 20 for the base attribute); -1 keeps native behavior. */
+    public int importedMoveSpeed = -1;
+
+    /** Source permission to sprint; absent on older profiles means the existing sprint behavior. */
+    public boolean aiCanSprint = true;
 
     /**
      * The route this NPC walks, or an empty path.
@@ -3057,6 +3065,8 @@ public final class NpcCombatProfile {
         tag.putBoolean(TAG_AI_MUST_SEE_TARGET, aiMustSeeTarget);
         tag.putBoolean(TAG_AI_ATTACK_INVISIBLE, aiAttackInvisible);
         tag.putBoolean(TAG_AI_MOUNT_CONTROL, aiMountControl);
+        if (importedMoveSpeed >= 0) tag.putInt(TAG_IMPORTED_MOVE_SPEED, Math.min(100, importedMoveSpeed));
+        if (!aiCanSprint) tag.putBoolean(TAG_AI_CAN_SPRINT, false);
         tag.put(TAG_BRAIN_CHANCES, chances);
         tag.put(TAG_BRAIN_MODIFIERS, modifiers);
     }
@@ -3115,6 +3125,9 @@ public final class NpcCombatProfile {
         aiMustSeeTarget = flagOrDefault(tag, TAG_AI_MUST_SEE_TARGET, true);
         aiAttackInvisible = tag.getBoolean(TAG_AI_ATTACK_INVISIBLE);
         aiMountControl = tag.getBoolean(TAG_AI_MOUNT_CONTROL);
+        importedMoveSpeed = tag.contains(TAG_IMPORTED_MOVE_SPEED, Tag.TAG_ANY_NUMERIC)
+                ? Math.max(-1, Math.min(100, tag.getInt(TAG_IMPORTED_MOVE_SPEED))) : -1;
+        aiCanSprint = flagOrDefault(tag, TAG_AI_CAN_SPRINT, true);
         brainVersion = migrateLegacyV7(brainVersion, tag);
         brainStrike = flagOrDefault(tag, TAG_BRAIN_STRIKE, true);
         brainCharge = flagOrDefault(tag, TAG_BRAIN_CHARGE, true);

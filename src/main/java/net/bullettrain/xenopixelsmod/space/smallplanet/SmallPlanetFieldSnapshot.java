@@ -9,12 +9,14 @@ import java.util.List;
 /** Bounded per-player description needed by the client to reproduce server small-planet exclusions. */
 public record SmallPlanetFieldSnapshot(int revision, long fieldSeed, boolean enabled,
                                        List<SmallPlanetField.Sphere> chartedBodies,
-                                       List<AsteroidField.Belt> asteroidBelts) {
+                                       List<AsteroidField.Belt> asteroidBelts,
+                                       double homeStarX, double homeStarY, double homeStarZ) {
     public static final int MAX_CHARTED_BODIES = 256;
     public static final int MAX_BELTS = 16;
 
     public SmallPlanetFieldSnapshot {
-        if (revision < 0 || chartedBodies == null || chartedBodies.size() > MAX_CHARTED_BODIES
+        if (revision < 0 || !Double.isFinite(homeStarX) || !Double.isFinite(homeStarY) || !Double.isFinite(homeStarZ)
+                || chartedBodies == null || chartedBodies.size() > MAX_CHARTED_BODIES
                 || asteroidBelts == null || asteroidBelts.size() > MAX_BELTS)
             throw new IllegalArgumentException("invalid small-planet snapshot bounds");
         chartedBodies = List.copyOf(chartedBodies);
@@ -23,8 +25,15 @@ public record SmallPlanetFieldSnapshot(int revision, long fieldSeed, boolean ena
             if (belt.id().length() > 256) throw new IllegalArgumentException("asteroid belt id is too long");
     }
 
+    /** Compatibility constructor for test fixtures and callers whose home star is the authored chart origin. */
+    public SmallPlanetFieldSnapshot(int revision, long fieldSeed, boolean enabled,
+                                    List<SmallPlanetField.Sphere> chartedBodies,
+                                    List<AsteroidField.Belt> asteroidBelts) {
+        this(revision, fieldSeed, enabled, chartedBodies, asteroidBelts, 0.0, 0.0, 0.0);
+    }
+
     public static SmallPlanetFieldSnapshot disabled(int revision) {
-        return new SmallPlanetFieldSnapshot(revision, 0L, false, List.of(), List.of());
+        return new SmallPlanetFieldSnapshot(revision, 0L, false, List.of(), List.of(), 0.0, 0.0, 0.0);
     }
 
     /** Conservative triangle-inequality bound: query reach + candidate reach + exclusion clearance + sphere radius. */
@@ -40,6 +49,7 @@ public record SmallPlanetFieldSnapshot(int revision, long fieldSeed, boolean ena
         buf.writeVarInt(packet.revision);
         buf.writeLong(packet.fieldSeed);
         buf.writeBoolean(packet.enabled);
+        buf.writeDouble(packet.homeStarX); buf.writeDouble(packet.homeStarY); buf.writeDouble(packet.homeStarZ);
         buf.writeVarInt(packet.chartedBodies.size());
         for (var sphere : packet.chartedBodies) {
             buf.writeDouble(sphere.x()); buf.writeDouble(sphere.y()); buf.writeDouble(sphere.z());
@@ -58,6 +68,7 @@ public record SmallPlanetFieldSnapshot(int revision, long fieldSeed, boolean ena
         int revision = buf.readVarInt();
         long seed = buf.readLong();
         boolean enabled = buf.readBoolean();
+        double homeStarX = buf.readDouble(), homeStarY = buf.readDouble(), homeStarZ = buf.readDouble();
         int sphereCount = buf.readVarInt();
         if (sphereCount < 0 || sphereCount > MAX_CHARTED_BODIES)
             throw new IllegalArgumentException("too many chart exclusion spheres: " + sphereCount);
@@ -71,6 +82,6 @@ public record SmallPlanetFieldSnapshot(int revision, long fieldSeed, boolean ena
         for (int i = 0; i < beltCount; i++)
             belts.add(new AsteroidField.Belt(buf.readUtf(256), buf.readDouble(), buf.readDouble(), buf.readDouble(),
                     buf.readDouble(), buf.readDouble(), buf.readDouble(), buf.readBoolean()));
-        return new SmallPlanetFieldSnapshot(revision, seed, enabled, spheres, belts);
+        return new SmallPlanetFieldSnapshot(revision, seed, enabled, spheres, belts, homeStarX, homeStarY, homeStarZ);
     }
 }

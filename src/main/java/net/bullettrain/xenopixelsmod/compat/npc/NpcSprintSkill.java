@@ -32,7 +32,8 @@ public final class NpcSprintSkill {
         if (mob == null || mob.level().isClientSide()) {
             return;
         }
-        boolean has = profile != null && profile.skills.isActive(SKILL) && profile.skills.level(SKILL) > 0;
+        boolean has = profile != null && profile.aiCanSprint
+                && profile.skills.isActive(SKILL) && profile.skills.level(SKILL) > 0;
         boolean on = has && chasing;
         mob.setSprinting(on);
         AttributeInstance speed = mob.getAttribute(Attributes.MOVEMENT_SPEED);

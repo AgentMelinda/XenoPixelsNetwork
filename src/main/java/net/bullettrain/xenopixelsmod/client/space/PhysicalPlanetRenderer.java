@@ -20,6 +20,7 @@ import org.joml.Matrix4f;
 import org.joml.Quaternionf;
 import org.joml.Quaternionfc;
 import org.lwjgl.opengl.GL11;
+import org.lwjgl.opengl.GL14;
 import org.lwjgl.opengl.GL32;
 
 import java.util.LinkedHashMap;
@@ -39,18 +40,13 @@ import java.util.UUID;
  */
 @EventBusSubscriber(modid=XenoPixelsMod.MOD_ID,value=Dist.CLIENT)
 public final class PhysicalPlanetRenderer {
-    private static final String LEGACY="legacy";
+    private static final String ORBIT_EARTH_ID=PlanetRenderBindings.ORBIT_EARTH_ID;
     private static final ResourceLocation VOIDSEA=net.bullettrain.xenopixelsmod.space.physics.PhysicalEarth.HOST;
 
     /**
      * The drawn sphere's radius, measured off the body's own plot box instead of a constant: plot-local
      * inclusive bounds enclose the outer voxel corners without rotation-dependent growth.
      */
-    private static float hullRadius(dev.ryanhcode.sable.companion.math.BoundingBox3ic box) {
-        if (box == null) return 0;
-        double centres=Math.max(box.maxX()-box.minX(),Math.max(box.maxY()-box.minY(),box.maxZ()-box.minZ()))/2.0;
-        return (float)(centres+Math.sqrt(3)/2.0);
-    }
     private static final org.joml.Vector3d CENTER=new org.joml.Vector3d();
     private static final Matrix4f MODEL=new Matrix4f();
     private static final Quaternionf ROTATION=new Quaternionf();
@@ -58,25 +54,52 @@ public final class PhysicalPlanetRenderer {
     private static final Map<String,UUID> BINDINGS=new LinkedHashMap<>();
     private static final java.util.Set<String> REPORTED=new java.util.HashSet<>();
     private static final Set<ResourceLocation> REGISTERED=new HashSet<>();
+    /** Texture each bound body last drew with, for the on-demand identity check; written only on change. */
+    private static final Map<String,ResourceLocation> NEAR_BOUND=new java.util.HashMap<>();
     private static final double MAX_DRAW=1_000_000.0;
     private static VertexBuffer surface;
     private PhysicalPlanetRenderer() {}
 
     /** Orbit-spike / legacy binding: one body drawn with Earth's map. */
     public static void bind(UUID id) {
-        BINDINGS.remove(LEGACY);
-        if(id!=null) BINDINGS.put(LEGACY,id);
-        REPORTED.remove(LEGACY);
+        // A single-body packet describes the entire current non-host binding set. Retaining the
+        // previous Voidsea set here leaves stale planets in the renderer after a dimension change.
+        PlanetRenderBindings.bindOrbitEarth(BINDINGS,id);
+        REPORTED.remove(ORBIT_EARTH_ID);
+        NEAR_BOUND.keySet().retainAll(BINDINGS.keySet());
         XenoPixelsMod.LOGGER.info("Physical planet surface binding: {}",id);
     }
     public static void bindAll(PhysicalPlanetBindings packet) {
-        BINDINGS.clear();REPORTED.clear();
-        for(var entry:packet.entries()) BINDINGS.put(entry.bodyId(),entry.uuid());
+        PlanetRenderBindings.bindAll(BINDINGS,packet);
+        REPORTED.clear();
+        NEAR_BOUND.keySet().retainAll(BINDINGS.keySet());
         net.bullettrain.xenopixelsmod.space.smallplanet.SmallPlanetGravity.bindClient(packet);
         XenoPixelsMod.LOGGER.info("Physical planet surface bindings: {}",BINDINGS);
     }
-    @SubscribeEvent public static void login(ClientPlayerNetworkEvent.LoggingIn event) {BINDINGS.clear();REPORTED.clear();net.bullettrain.xenopixelsmod.space.smallplanet.SmallPlanetGravity.clearClient();}
-    @SubscribeEvent public static void logout(ClientPlayerNetworkEvent.LoggingOut event) {BINDINGS.clear();REPORTED.clear();net.bullettrain.xenopixelsmod.space.smallplanet.SmallPlanetGravity.clearClient();}
+    /** Whether this exact body id has a non-removed replicated Sable incarnation in the client's current level. */
+    static boolean hasLiveBodyBinding(String bodyId,SubLevelContainer container) {
+        if(container==null) return false;
+        return PlanetRenderBindings.hasLiveBody(BINDINGS,bodyId,uuid -> {
+            var body=container.getSubLevel(uuid);
+            return body instanceof ClientSubLevel live && !live.isRemoved();
+        });
+    }
+    /** Resolve the exact bound body's render-space centre for both the HD surface and its far projection. */
+    static boolean liveBodyCenter(String bodyId,SubLevelContainer container,float partialTick,
+                                  org.joml.Vector3d destination) {
+        if(container==null) return false;
+        UUID uuid=BINDINGS.get(bodyId);
+        if(uuid==null) return false;
+        var candidate=container.getSubLevel(uuid);
+        if(!(candidate instanceof ClientSubLevel body)||body.isRemoved()) return false;
+        var pose=body.renderPose(partialTick);
+        var box=body.getPlot().getBoundingBox();
+        pose.transformPosition(destination.set((box.minX()+box.maxX()+1)/2.0,
+                (box.minY()+box.maxY()+1)/2.0,(box.minZ()+box.maxZ()+1)/2.0));
+        return true;
+    }
+    @SubscribeEvent public static void login(ClientPlayerNetworkEvent.LoggingIn event) {BINDINGS.clear();REPORTED.clear();NEAR_BOUND.clear();net.bullettrain.xenopixelsmod.space.smallplanet.SmallPlanetGravity.clearClient();}
+    @SubscribeEvent public static void logout(ClientPlayerNetworkEvent.LoggingOut event) {BINDINGS.clear();REPORTED.clear();NEAR_BOUND.clear();net.bullettrain.xenopixelsmod.space.smallplanet.SmallPlanetGravity.clearClient();}
     static void closeBuffers() {if(surface!=null){surface.close();surface=null;}REGISTERED.clear();REPORTED.clear();}
 
     @SubscribeEvent public static void render(RenderLevelStageEvent event) {
@@ -92,13 +115,17 @@ public final class PhysicalPlanetRenderer {
         if(BINDINGS.isEmpty() && !voidsea) return;
         if(pack) {
             mc.getMainRenderTarget().bindWrite(false);
-            // The pack drew its overworld sky here; put space back behind everything first.
-            if(voidsea) SpaceSkyEffects.drawOverShaderPackSky(event.getModelViewMatrix(),event.getProjectionMatrix());
         }
         boolean depth=GL11.glIsEnabled(GL11.GL_DEPTH_TEST),cull=GL11.glIsEnabled(GL11.GL_CULL_FACE);
         boolean blend=GL11.glIsEnabled(GL11.GL_BLEND),write=GL11.glGetBoolean(GL11.GL_DEPTH_WRITEMASK);
         boolean depthClamp=GL11.glIsEnabled(GL32.GL_DEPTH_CLAMP);
         int depthFunction=GL11.glGetInteger(GL11.GL_DEPTH_FUNC);
+        boolean hasDamagedSurface = drawBodies && BINDINGS.keySet().stream()
+                .anyMatch(id -> PlanetIntegritySurfaceTint.hasCrackOverlay(PlanetIntegrityClient.stage(id)));
+        int blendSrc = hasDamagedSurface ? GL11.glGetInteger(GL14.GL_BLEND_SRC_RGB) : 0;
+        int blendDst = hasDamagedSurface ? GL11.glGetInteger(GL14.GL_BLEND_DST_RGB) : 0;
+        int blendSrcAlpha = hasDamagedSurface ? GL11.glGetInteger(GL14.GL_BLEND_SRC_ALPHA) : 0;
+        int blendDstAlpha = hasDamagedSurface ? GL11.glGetInteger(GL14.GL_BLEND_DST_ALPHA) : 0;
         int texture=RenderSystem.getShaderTexture(0);
         float fogStart=RenderSystem.getShaderFogStart(),fogEnd=RenderSystem.getShaderFogEnd();
         var shader=RenderSystem.getShader();var color=RenderSystem.getShaderColor();
@@ -123,12 +150,18 @@ public final class PhysicalPlanetRenderer {
                 var box=body.getPlot().getBoundingBox();
                 pose.transformPosition(CENTER.set((box.minX()+box.maxX()+1)/2.0,
                         (box.minY()+box.maxY()+1)/2.0,(box.minZ()+box.maxZ()+1)/2.0));
-                var location=LEGACY.equals(entry.getKey())?PlanetSurfaceTexture.EARTH:PlanetSurfaceTexture.forBody(entry.getKey());
-                draw(event,entry.getKey(),location,CENTER.x,CENTER.y,CENTER.z,pose.orientation(),hullRadius(box),pack);
+                int sdbSlot=net.bullettrain.xenopixelsmod.space.dragonball.DragonBallIdentity
+                        .slotFromPlanetKey(entry.getKey());
+                var location=sdbSlot>0
+                        ?null
+                        :ORBIT_EARTH_ID.equals(entry.getKey())?PlanetSurfaceTexture.EARTH:PlanetSurfaceTexture.forBody(entry.getKey());
+                draw(event,entry.getKey(),location,sdbSlot,CENTER.x,CENTER.y,CENTER.z,pose.orientation(),
+                        (float) net.bullettrain.xenopixelsmod.space.physics.PlanetBodyGeometry.hullRadius(box),pack);
             }
         } finally {
             VertexBuffer.unbind();RenderSystem.depthMask(write);
             RenderSystem.depthFunc(depthFunction);
+            if (hasDamagedSurface) RenderSystem.blendFuncSeparate(blendSrc, blendDst, blendSrcAlpha, blendDstAlpha);
             if(depthClamp)GL11.glEnable(GL32.GL_DEPTH_CLAMP);else GL11.glDisable(GL32.GL_DEPTH_CLAMP);
             if(depth)RenderSystem.enableDepthTest();else RenderSystem.disableDepthTest();
             if(cull)RenderSystem.enableCull();else RenderSystem.disableCull();
@@ -139,32 +172,77 @@ public final class PhysicalPlanetRenderer {
         }
     }
 
-    private static void draw(RenderLevelStageEvent event,String id,ResourceLocation location,double x,double y,double z,
-                             Quaternionfc orientation,float radius,boolean pack) {
+    private static void draw(RenderLevelStageEvent event,String id,ResourceLocation location,int sdbSlot,
+                             double x,double y,double z,Quaternionfc orientation,float radius,boolean pack) {
         var camera=event.getCamera().getPosition();
         // The bail guards float precision in the camera-relative translation.
         if(!(radius>0)||camera.distanceToSqr(x,y,z)>MAX_DRAW*MAX_DRAW) return;
-        // Hand far chart bodies to the cached lightweight disc renderer. Their Sable bodies keep simulating;
-        // this only avoids drawing a full HD sphere when it is a tiny distant point anyway.
-        if(!LEGACY.equals(id) && camera.distanceToSqr(x,y,z)>OrbitPlanetProxies.PHYSICAL_HANDOFF_DISTANCE_SQR) return;
+        // Hand off only when the enabled projection pass actually contains this body's live position.
+        // If it is disabled or its chart LOD omitted a moved body, keep the real replicated sphere visible.
+        double burn=PlanetHakaiClient.progress(id,event.getPartialTick().getGameTimeDeltaPartialTick(false));
+        var integrityStage = PlanetIntegrityClient.stage(id);
+        if (integrityStage == net.bullettrain.xenopixelsmod.space.hakai.PlanetIntegrityRules.Stage.DESTROYED) return;
+        boolean projectionVisible=OrbitPlanetProxies.wouldDraw(id,camera,
+                event.getPartialTick().getGameTimeDeltaPartialTick(false));
+        if(!PlanetHakaiRenderPolicy.drawPhysical(projectionVisible,burn>=0,true)) return;
+        if(sdbSlot>0) location=DragonBallPlanetClient.textureForSlot(sdbSlot);
         ensureTexture(location);
         RenderSystem.setShaderTexture(0,location);
+        if(!location.equals(NEAR_BOUND.get(id))) NEAR_BOUND.put(id,location);
         MODEL.set(event.getModelViewMatrix()).translate((float)(x-camera.x),(float)(y-camera.y),(float)(z-camera.z))
                 .rotate(ROTATION.set(orientation)).scale(radius);
         // Planet Hakai: a burning body is cut away from the top down instead of drawn whole.
-        double burn=PlanetHakaiClient.progress(LEGACY.equals(id)?"xenopixelsmod:earth":id,event.getPartialTick().getGameTimeDeltaPartialTick(false));
-        if(burn>=0){VertexBuffer.unbind();PlanetHakaiClient.drawBurning(event,MODEL,orientation,burn);return;}
+        RenderSystem.setShaderColor(1,1,1,1);
+        if(burn>=0){VertexBuffer.unbind();PlanetHakaiClient.drawBurning(event,id,MODEL,orientation,burn);return;}
+        var stellar = StellarStageClient.appearance(id, Minecraft.getInstance().level.getGameTime());
+        var integrityTint = PlanetIntegritySurfaceTint.forStage(integrityStage);
+        RenderSystem.setShaderColor((float)stellar.red() * integrityTint.red(),
+                (float)stellar.green() * integrityTint.green(),
+                (float)stellar.blue() * integrityTint.blue(), 1.0f);
         surface.bind();surface.drawWithShader(MODEL,event.getProjectionMatrix(),GameRenderer.getPositionTexColorShader());
+        if (PlanetIntegritySurfaceTint.hasCrackOverlay(integrityStage)) {
+            RenderSystem.enableBlend();
+            RenderSystem.defaultBlendFunc();
+            PlanetIntegrityCrackOverlay.draw(event, id, integrityStage, MODEL, surface);
+            RenderSystem.disableBlend();
+        }
         if(REPORTED.add(id))
             XenoPixelsMod.LOGGER.info("Physical HD planet rendered: body={}, centre=({}, {}, {}), drawn radius={}, map={}, shaderPack={}",
                     id,x,y,z,radius,location,pack);
     }
-    private static void draw(RenderLevelStageEvent event,String id,ResourceLocation location,double x,double y,double z,
-                             org.joml.Quaterniondc orientation,float radius,boolean pack) {
-        draw(event,id,location,x,y,z,ROTATION.set(orientation),radius,pack);
+    private static void draw(RenderLevelStageEvent event,String id,ResourceLocation location,int sdbSlot,
+                             double x,double y,double z,org.joml.Quaterniondc orientation,float radius,boolean pack) {
+        draw(event,id,location,sdbSlot,x,y,z,ROTATION.set(orientation),radius,pack);
     }
 
-    private static void ensureTexture(ResourceLocation location) {
+    /** Every bound body with the texture it last drew with (null if not drawn since binding). */
+    static java.util.List<PlanetTextureChecks.Observed> nearObserved() {
+        var list=new java.util.ArrayList<PlanetTextureChecks.Observed>(BINDINGS.size());
+        for(String id:BINDINGS.keySet()) list.add(new PlanetTextureChecks.Observed(id,NEAR_BOUND.get(id)));
+        return list;
+    }
+    /**
+     * The texture that belongs to a bound body, matching render(): its HD map, or for an SDB its slot texture.
+     * An SDB that has not drawn yet answers null rather than generating its texture just for the report.
+     */
+    static ResourceLocation expectedNear(String id) {
+        int slot=net.bullettrain.xenopixelsmod.space.dragonball.DragonBallIdentity.slotFromPlanetKey(id);
+        if(slot>0) return NEAR_BOUND.containsKey(id)?DragonBallPlanetClient.textureForSlot(slot):null;
+        return ORBIT_EARTH_ID.equals(id)?PlanetSurfaceTexture.EARTH:PlanetSurfaceTexture.forBody(id);
+    }
+    /** Live render centre of a bound body, or false when it has no live incarnation in this level. */
+    static boolean nearCenter(String id,float partialTick,org.joml.Vector3d destination) {
+        var level=Minecraft.getInstance().level;
+        return level!=null && liveBodyCenter(id,SubLevelContainer.getContainer(level),partialTick,destination);
+    }
+    /** Whether a bound body currently has a live replicated Sable incarnation in this level. */
+    static boolean nearLive(String id) {
+        var level=Minecraft.getInstance().level;
+        return level!=null && hasLiveBodyBinding(id,SubLevelContainer.getContainer(level));
+    }
+
+    static void ensureTexture(ResourceLocation location) {
+        if(DragonBallPlanetClient.ownsTexture(location)) return;
         if(REGISTERED.add(location))
             Minecraft.getInstance().getTextureManager().register(location,
                     new PlanetSurfaceTexture(location,PlanetSurfaceTexture.fallbackFor(location)));

@@ -411,7 +411,7 @@ public final class NpcKiAttackDispatcher {
             }
             case "supernova_cooler" -> {
                 KiBlastEntity blast = new KiBlastEntity(level, caster);
-                blast.setupKiNovaCoolerPlayer(caster, damage, speed);
+                blast.setupKiNovaCoolerPlayer(caster, damage, speed, size);
                 yield releasePlayerAttack(blast, durationTicks);
             }
             default -> null;

@@ -28,7 +28,8 @@ public abstract class DmzHdAuraQueueMixin {
         // Hide DMZ only while HD-only is actually working. If HD failed this session, leave the
         // classic sheet so the body is never blank (owner 2026-10-03 created-world blank aura).
         // Do not gate on plays() — that re-opened the TP DMZ leak when second-aura was off.
-        if (HdAuraClient.replacesDmzAura()) {
+        if (HdAuraClient.replacesDmzAura()
+                || net.bullettrain.xenopixelsmod.client.aura.HakaiEnergyAura.active(player)) {
             ci.cancel();
         }
     }

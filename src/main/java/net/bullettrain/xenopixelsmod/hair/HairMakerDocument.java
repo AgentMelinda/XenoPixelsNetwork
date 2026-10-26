@@ -186,6 +186,7 @@ public final class HairMakerDocument {
         for (int i = 0; i < list.size(); i++) {
             HairStrandModel slot = list.get(i);
             if (!slot.visible()) {
+                slot.nativeData(null);
                 slot.length(4);
                 slot.lengthScale(1f);
                 slot.cubeWidth(2f);
@@ -265,6 +266,7 @@ public final class HairMakerDocument {
         slot.curveY(copy.curveY());
         slot.curveZ(copy.curveZ());
         slot.color(copy.color());
+        slot.nativeData(copy.nativeData());
         return dest;
     }
 
@@ -513,6 +515,13 @@ public final class HairMakerDocument {
         if (o.has("color") && !o.get("color").isJsonNull()) {
             strand.color(o.get("color").getAsString());
         }
+        if (o.has("dmz22Strand") && !o.get("dmz22Strand").isJsonNull()) {
+            try {
+                strand.nativeData(net.minecraft.nbt.TagParser.parseTag(o.get("dmz22Strand").getAsString()));
+            } catch (com.mojang.brigadier.exceptions.CommandSyntaxException e) {
+                throw new IllegalArgumentException("Invalid DMZ 2.2 strand data", e);
+            }
+        }
         return strand;
     }
 
@@ -548,6 +557,7 @@ public final class HairMakerDocument {
     private static JsonObject toStrandJson(HairStrandModel strand) {
         JsonObject o = new JsonObject();
         o.addProperty("id", strand.id());
+        if (strand.nativeData() != null) o.addProperty("dmz22Strand", strand.nativeData().toString());
         o.addProperty("visible", strand.visible());
         o.addProperty("length", strand.length());
         o.addProperty("lengthScale", strand.lengthScale());

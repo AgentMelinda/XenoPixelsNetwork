@@ -1,6 +1,7 @@
 package net.bullettrain.xenopixelsmod.space.worldgen;
 
 import net.bullettrain.xenopixelsmod.space.smallplanet.SmallPlanetField;
+import net.bullettrain.xenopixelsmod.space.smallplanet.PlanetSurfaceCells;
 
 /** Bounded deterministic terrain math for the shared small-planet surface dimension. */
 public final class PlanetSurfaceTerrain {
@@ -64,6 +65,29 @@ public final class PlanetSurfaceTerrain {
                 ^ mix((long) systemZ * 0xC2B2AE3D27D4EB4FL)
                 ^ mix((long) planetSlot * 0x165667B19E3779F9L);
         return mix(worldSeedSample ^ identity);
+    }
+
+    /** Stable seed for an authored chart-body cell, independent of procedural-system slot limits. */
+    public static long chartBodyCellSeed(String bodyId, long worldSeedSample) {
+        if (bodyId == null || bodyId.isBlank()) throw new IllegalArgumentException("chart body id is required");
+        long identity = 0xCBF29CE484222325L;
+        for (int i = 0; i < bodyId.length(); i++)
+            identity = (identity ^ bodyId.charAt(i)) * 0x100000001B3L;
+        return mix(worldSeedSample ^ mix(identity));
+    }
+
+    /** Selects the stable authored-body or procedural-planet seed for a resolved surface cell. */
+    public static long addressSeed(PlanetSurfaceCells.Address address, long worldSeedSample) {
+        if ("xenopixelsmod:moon".equals(address.chartBodyId()))
+            // The Moon shipped with the (0,0,0) procedural-cell seed. Preserve it so new chunks
+            // generated in existing saves remain continuous with terrain already on disk.
+            return cellSeed(0, 0, 0, worldSeedSample);
+        var dragonBallSlot = PlanetSurfaceCells.dragonBallSlotAt(address.surfaceCell());
+        if (dragonBallSlot.isPresent())
+            return chartBodyCellSeed("xenopixelsmod:super_dragon_ball_" + (dragonBallSlot.get() + 1), worldSeedSample);
+        if (address.chartBodyId() != null)
+            return chartBodyCellSeed(address.chartBodyId(), worldSeedSample);
+        return cellSeed(address.systemCell().x(), address.systemCell().z(), address.planetSlot(), worldSeedSample);
     }
 
     private static double craterRelief(long seed, int x, int z) {

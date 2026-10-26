@@ -25,6 +25,35 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * does: storing and reviewing text is safe, running it is a separate decision.
  */
 class XenoNpcScriptsTest {
+    @Test
+    void globalLoadedReferencesAreBoundedAndComposeFromCurrentLibraryText() {
+        CompoundTag tab = payload("Global", "ecmascript", true, "run();");
+        var loaded = new net.minecraft.nbt.ListTag();
+        loaded.add(net.minecraft.nbt.StringTag.valueOf("lib"));
+        tab.put("Loaded", loaded);
+        assertNull(XenoNpcScripts.rejectPayload(tab));
+        assertEquals("var n = 1;\nrun();", XenoNpcScripts.composeSource(tab, id -> "var n = 1;"));
+        assertNull(XenoNpcScripts.composeSource(tab, id -> null));
+        assertNull(XenoNpcScripts.composeSource(tab, id -> "x".repeat(XenoNpcScripts.MAX_SCRIPT_CHARS)));
+        loaded.add(net.minecraft.nbt.StringTag.valueOf("../escape"));
+        assertNotNull(XenoNpcScripts.rejectPayload(tab));
+    }
+
+    @Test
+    void editorWritesKeepImportOwnershipAndOriginalTab() {
+        CompoundTag imported = payload("Imported", "ecmascript", true, "old");
+        imported.putString("SourceMod", "mynpcs");
+        imported.putString("SourcePath", "ecmascript/lib.js");
+        CompoundTag originalTab = new CompoundTag();
+        originalTab.putString("Script", "old");
+        imported.put("SourceTab", originalTab);
+        CompoundTag edited = payload("Edited", "ecmascript", true, "new");
+        XenoNpcScripts.carryImportMetadata(imported, edited);
+        assertEquals("new", edited.getString("Script"));
+        assertEquals("mynpcs", edited.getString("SourceMod"));
+        assertEquals("ecmascript/lib.js", edited.getString("SourcePath"));
+        assertEquals(originalTab, edited.getCompound("SourceTab"));
+    }
 
     private static CompoundTag payload(String name, String language, boolean enabled, String script) {
         CompoundTag tag = new CompoundTag();

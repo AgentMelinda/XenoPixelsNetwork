@@ -180,7 +180,7 @@ public class ModNetwork {
     // 105 appends server-timed v2 charge inputs and the CHARGE state; packet ids stay stable.
     // 106 appends the Dragon Dash continuation window and target to the existing state packet.
     // 110 appends the 2026-10-08 V3 tuning tail to CombatV3ConfigPacket; packet ids are unchanged.
-    private static final String PROTOCOL = "112";
+    private static final String PROTOCOL = "113";
 
     public static final SimpleChannel CHANNEL = NetworkRegistry.ChannelBuilder
             .named(ResourceLocation.fromNamespaceAndPath(XenoPixelsMod.MOD_ID, "main"))
@@ -784,6 +784,13 @@ public class ModNetwork {
                 .decoder(net.bullettrain.xenopixelsmod.network.packet.CombatV3KiVisualPacket::new)
                 .encoder(net.bullettrain.xenopixelsmod.network.packet.CombatV3KiVisualPacket::encode)
                 .consumerMainThread(net.bullettrain.xenopixelsmod.network.packet.CombatV3KiVisualPacket::handle)
+                .add();
+
+        // Protocol 113: appended P15 space-pod boost intent; every existing sequential packet id is preserved.
+        CHANNEL.messageBuilder(net.bullettrain.xenopixelsmod.network.packet.SpacePodBoostInputPacket.class, id++, NetworkDirection.PLAY_TO_SERVER)
+                .decoder(net.bullettrain.xenopixelsmod.network.packet.SpacePodBoostInputPacket::new)
+                .encoder(net.bullettrain.xenopixelsmod.network.packet.SpacePodBoostInputPacket::encode)
+                .consumerMainThread(net.bullettrain.xenopixelsmod.network.packet.SpacePodBoostInputPacket::handle)
                 .add();
 
         XenoPixelsMod.LOGGER.info("ModNetwork: registered {} packet types (protocol {})", id, PROTOCOL);

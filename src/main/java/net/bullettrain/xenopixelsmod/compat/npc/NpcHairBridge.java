@@ -1,5 +1,6 @@
 package net.bullettrain.xenopixelsmod.compat.npc;
 
+import com.dragonminez.common.hair.HairCodec;
 import com.dragonminez.common.hair.HairManager;
 import net.minecraft.world.entity.Entity;
 import net.neoforged.fml.ModList;
@@ -27,9 +28,9 @@ public final class NpcHairBridge {
         }
         String value = code == null ? "" : code.trim();
         try {
-            boolean valid = !value.isEmpty() && (HairManager.isFullSetCode(value)
-                    ? HairManager.fromFullSetCode(value) != null
-                    : HairManager.fromCode(value) != null);
+            boolean valid = !value.isEmpty() && (HairCodec.isFullSetCode(value)
+                    ? HairCodec.fromFullSetCode(value) != null
+                    : HairCodec.fromCode(value) != null);
             if (!valid) {
                 return Result.INVALID_CODE;
             }

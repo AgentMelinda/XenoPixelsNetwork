@@ -41,6 +41,7 @@ public final class SpaceSkyEffects extends DimensionSpecialEffects {
     private static final int SHELL = 64;
     private VertexBuffer cube;
     private VertexBuffer stars;
+    private VertexBuffer atmosphereTransition;
     /** Which mode the live buffers were built for, so a switch is detected once rather than per frame. */
     private SpaceSkyMode built = null;
     private final Matrix4f view = new Matrix4f();
@@ -51,7 +52,8 @@ public final class SpaceSkyEffects extends DimensionSpecialEffects {
     }
     @SubscribeEvent public static void reload(RegisterClientReloadListenersEvent event) {
         event.registerReloadListener((ResourceManagerReloadListener) manager -> {
-            Runnable clear = () -> { INSTANCE.closeBuffers(); OrbitPlanetProxies.closeBuffers(); PhysicalPlanetRenderer.closeBuffers(); };
+            Runnable clear = () -> { INSTANCE.closeBuffers(); OrbitPlanetProxies.closeBuffers(); PhysicalPlanetRenderer.closeBuffers();
+                StellarBlastWaveRenderer.closeBuffer(); };
             if (RenderSystem.isOnRenderThread()) clear.run();
             else RenderSystem.recordRenderCall(clear::run);
         });
@@ -59,6 +61,8 @@ public final class SpaceSkyEffects extends DimensionSpecialEffects {
     private void closeBuffers() {
         if (cube != null) { cube.close(); cube = null; }
         if (stars != null) { stars.close(); stars = null; }
+        if (atmosphereTransition != null) { atmosphereTransition.close(); atmosphereTransition = null; }
+        FallenStarSkyLayer.close();
         built = null;
         KnownSystemsSkyLayer.close();
     }
@@ -100,6 +104,9 @@ public final class SpaceSkyEffects extends DimensionSpecialEffects {
                 // Galaxy Atlas slice 2: known systems as coloured stars in their true directions.
                 KnownSystemsSkyLayer.draw(view, projection, camera.getPosition());
             }
+            FallenStarSkyLayer.draw(view, projection, level.getGameTime() + (double) partialTick,
+                    UniverseClient.fieldSeed(), mode == SpaceSkyMode.STARS && UniverseClient.hasSnapshot()
+                            ? XenoClientConfig.spaceFallenStarDensity : 0);
         } finally {
             VertexBuffer.unbind();
             RenderSystem.depthMask(write);
@@ -120,10 +127,88 @@ public final class SpaceSkyEffects extends DimensionSpecialEffects {
      * exactly 1.0 and {@code LEQUAL} replaces only pixels nothing was drawn at — the pack's sky — while terrain,
      * ships and players keep their pack shading.
      */
-    static void drawOverShaderPackSky(Matrix4f modelView, Matrix4f projection) {
-        INSTANCE.overPack(modelView, projection);
+    static void drawOverShaderPackSky(Matrix4f modelView, Matrix4f projection, ClientLevel level, float partialTick) {
+        INSTANCE.overPack(modelView, projection, level, partialTick);
     }
-    private void overPack(Matrix4f modelView, Matrix4f projection) {
+
+    /** Draws a space-tinted sky and the existing stars over a planet at its dimension-local altitude fade. */
+    static void drawAtmosphereTransition(Matrix4f modelView, Matrix4f projection, float alpha, boolean shaderPack) {
+        SpaceSkyMode mode = SpaceSkyMode.byName(XenoClientConfig.spaceSkyMode);
+        if (!(alpha > 0.0f) || mode == SpaceSkyMode.OFF) return;
+        if (INSTANCE.built != mode) {
+            INSTANCE.closeBuffers();
+            INSTANCE.built = mode;
+        }
+        INSTANCE.ensureBuffers(mode);
+        if (INSTANCE.atmosphereTransition == null) INSTANCE.atmosphereTransition = INSTANCE.buildAtmosphereTransitionBuffer();
+
+        boolean cull = GL11.glIsEnabled(GL11.GL_CULL_FACE);
+        boolean blend = GL11.glIsEnabled(GL11.GL_BLEND);
+        boolean depth = GL11.glIsEnabled(GL11.GL_DEPTH_TEST);
+        boolean write = GL11.glGetBoolean(GL11.GL_DEPTH_WRITEMASK);
+        boolean clamp = GL11.glIsEnabled(org.lwjgl.opengl.GL32.GL_DEPTH_CLAMP);
+        int depthFunction = GL11.glGetInteger(GL11.GL_DEPTH_FUNC);
+        int blendSrcRgb = GL11.glGetInteger(org.lwjgl.opengl.GL14.GL_BLEND_SRC_RGB);
+        int blendDstRgb = GL11.glGetInteger(org.lwjgl.opengl.GL14.GL_BLEND_DST_RGB);
+        int blendSrcAlpha = GL11.glGetInteger(org.lwjgl.opengl.GL14.GL_BLEND_SRC_ALPHA);
+        int blendDstAlpha = GL11.glGetInteger(org.lwjgl.opengl.GL14.GL_BLEND_DST_ALPHA);
+        float fogStart = RenderSystem.getShaderFogStart();
+        float fogEnd = RenderSystem.getShaderFogEnd();
+        float[] color = RenderSystem.getShaderColor();
+        float red = color[0], green = color[1], blue = color[2], oldAlpha = color[3];
+        var shader = RenderSystem.getShader();
+        try {
+            FogRenderer.setupNoFog();
+            RenderSystem.depthMask(false);
+            if (shaderPack) {
+                RenderSystem.enableDepthTest();
+                RenderSystem.depthFunc(GL11.GL_LEQUAL);
+                GL11.glEnable(org.lwjgl.opengl.GL32.GL_DEPTH_CLAMP);
+                INSTANCE.view.set(modelView).setTranslation(0, 0, 0).scale(4096f);
+            } else {
+                RenderSystem.disableDepthTest();
+                INSTANCE.view.set(modelView).setTranslation(0, 0, 0);
+            }
+            RenderSystem.disableCull();
+            RenderSystem.enableBlend();
+            RenderSystem.defaultBlendFunc();
+            RenderSystem.setShaderColor(1, 1, 1, Math.min(1.0f, alpha));
+            RenderSystem.setShader(GameRenderer::getPositionColorShader);
+            INSTANCE.atmosphereTransition.bind();
+            INSTANCE.atmosphereTransition.drawWithShader(INSTANCE.view, projection, GameRenderer.getPositionColorShader());
+            if (mode == SpaceSkyMode.STARS && INSTANCE.stars != null) {
+                INSTANCE.stars.bind();
+                INSTANCE.stars.drawWithShader(INSTANCE.view, projection, GameRenderer.getPositionColorShader());
+            }
+        } finally {
+            VertexBuffer.unbind();
+            RenderSystem.depthMask(write);
+            RenderSystem.depthFunc(depthFunction);
+            if (clamp) GL11.glEnable(org.lwjgl.opengl.GL32.GL_DEPTH_CLAMP);
+            else GL11.glDisable(org.lwjgl.opengl.GL32.GL_DEPTH_CLAMP);
+            RenderSystem.blendFuncSeparate(blendSrcRgb, blendDstRgb, blendSrcAlpha, blendDstAlpha);
+            if (depth) RenderSystem.enableDepthTest(); else RenderSystem.disableDepthTest();
+            if (cull) RenderSystem.enableCull(); else RenderSystem.disableCull();
+            if (blend) RenderSystem.enableBlend(); else RenderSystem.disableBlend();
+            RenderSystem.setShaderColor(red, green, blue, oldAlpha);
+            if (shader != null) RenderSystem.setShader(() -> shader);
+            RenderSystem.setShaderFogStart(fogStart);
+            RenderSystem.setShaderFogEnd(fogEnd);
+        }
+    }
+
+    private VertexBuffer buildAtmosphereTransitionBuffer() {
+        BufferBuilder builder = Tesselator.getInstance().begin(VertexFormat.Mode.QUADS, DefaultVertexFormat.POSITION_COLOR);
+        int[][] faces = {{0,1,3,2},{4,6,7,5},{0,4,5,1},{2,3,7,6},{0,2,6,4},{1,5,7,3}};
+        for (int[] face : faces) for (int corner : face) {
+            int y = (corner & 2) == 0 ? -SHELL : SHELL;
+            int color = y < 0 ? 0xff17143f : 0xff000000;
+            builder.addVertex((corner & 1) == 0 ? -SHELL : SHELL, y,
+                    (corner & 4) == 0 ? -SHELL : SHELL).setColor(color);
+        }
+        return upload(builder);
+    }
+    private void overPack(Matrix4f modelView, Matrix4f projection, ClientLevel level, float partialTick) {
         SpaceSkyMode mode = SpaceSkyMode.byName(XenoClientConfig.spaceSkyMode);
         if (mode != built) { closeBuffers(); built = mode; }
         if (mode == SpaceSkyMode.OFF) return;
@@ -146,6 +231,9 @@ public final class SpaceSkyEffects extends DimensionSpecialEffects {
             if (stars != null) {
                 stars.bind(); stars.drawWithShader(view, projection, GameRenderer.getPositionColorShader());
             }
+            FallenStarSkyLayer.draw(view, projection, level.getGameTime() + (double) partialTick, UniverseClient.fieldSeed(),
+                    mode == SpaceSkyMode.STARS && UniverseClient.hasSnapshot()
+                            ? XenoClientConfig.spaceFallenStarDensity : 0);
         } finally {
             VertexBuffer.unbind();
             RenderSystem.depthMask(write); RenderSystem.depthFunc(function);

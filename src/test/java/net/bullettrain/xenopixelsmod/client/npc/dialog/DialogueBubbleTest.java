@@ -84,7 +84,7 @@ class DialogueBubbleTest {
     }
 
     @Test
-    void navigationIsLocalButConsequencesGoToTheServer() throws IOException {
+    void navigationReportsProgressAndBothQuestBackendsSendOnlyAnIndex() throws IOException {
         // TEXT only changes which node is shown, so resolving it client-side is fine. QUEST and
         // COMMAND have consequences, so the server re-reads its own dialogue and is sent nothing
         // but the index - which is what stops a crafted packet starting any quest it likes.
@@ -93,11 +93,13 @@ class DialogueBubbleTest {
         // drift. The invariant is unchanged; only its address is.
         String screen = source("client/npc/dialog/DialogueBubbleChoice.java");
         int text = screen.indexOf("case TEXT ->");
-        int quest = screen.indexOf("case QUEST, COMMAND ->");
+        int quest = screen.indexOf("case QUEST, DMZ_QUEST, COMMAND ->");
         assertTrue(text >= 0 && quest >= 0, "both branches should exist");
 
         String textBody = screen.substring(text, quest);
-        assertFalse(textBody.contains("sendToServer"), "navigation needs no packet");
+        assertTrue(textBody.contains("session.goTo(option.target())"), "navigation changes the local page");
+        assertTrue(textBody.contains("reportSelection(session, index)"),
+                "the server must record viewed dialogue and dialog objective progress");
 
         String questBody = screen.substring(quest, Math.min(screen.length(), quest + 500));
         assertTrue(questBody.contains("sendToServer"), "a quest must go to the server");
@@ -120,7 +122,7 @@ class DialogueBubbleTest {
     @Test
     void questAndCommandBubblesSendTheStableServerIndex() throws IOException {
         String choices = source("client/npc/dialog/DialogueBubbleChoice.java");
-        int quest = choices.indexOf("case QUEST, COMMAND ->");
+        int quest = choices.indexOf("case QUEST, DMZ_QUEST, COMMAND ->");
         assertTrue(quest >= 0);
         String body = choices.substring(quest, Math.min(choices.length(), quest + 400));
         assertTrue(body.contains("serverOptionIndex(session, index)"),
@@ -130,7 +132,7 @@ class DialogueBubbleTest {
     @Test
     void theLegacyDialogueScreenAlsoSendsTheOriginalOptionIndex() throws IOException {
         String screen = source("client/npc/XenoNpcDialogueScreen.java");
-        int quest = screen.indexOf("case QUEST -> {");
+        int quest = screen.indexOf("case QUEST, DMZ_QUEST -> {");
         assertTrue(quest >= 0);
         String body = screen.substring(quest, Math.min(screen.length(), quest + 900));
         assertTrue(body.contains("serverOptionIndex(option)"),

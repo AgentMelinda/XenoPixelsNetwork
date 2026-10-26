@@ -32,6 +32,22 @@ public final class XenoAuraScaling {
     private XenoAuraScaling() {
     }
 
+    /** Local display preference; custom knobs remain saved while native sizing is selected. */
+    public static void setCustomSizing(boolean custom) {
+        XenoAuraConfig.enabled = custom;
+        XenoAuraConfig.save();
+        refreshSizing();
+    }
+
+    public static float sizeMultiplier(float configured) {
+        return XenoAuraConfig.enabled ? configured : 1.0f;
+    }
+
+    public static void refreshSizing() {
+        clear();
+        net.bullettrain.xenopixelsmod.client.aura.HdAuraClient.refreshSizing();
+    }
+
     /**
      * The aura size DragonMineZ computed, grown by power and by powering up.
      *

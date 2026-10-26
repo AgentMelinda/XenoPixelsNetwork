@@ -1,7 +1,7 @@
 # XenoPixels CustomNPC scripting guide for server co-owners
 
 This guide documents the server-side `XenoPixels` global implemented by
-`NpcXenoScriptApi` version 28 (updated 2026-09-28). It is intended for CustomNPCs JavaScript hooks such as
+`NpcXenoScriptApi` version 29 (updated 2026-10-14). It is intended for CustomNPCs JavaScript hooks such as
 `init(event)`, `timer(event)`, `damaged(event)` and `died(event)`.
 
 ## Quick safety rules
@@ -13,8 +13,8 @@ This guide documents the server-side `XenoPixels` global implemented by
   `listStackForms` instead of guessing.
 - Colors may use `#RRGGBB`. Examples below use that format.
 - Transform durations are ticks; 20 ticks are approximately one second.
-- Check the installed bridge with `XenoPixels.getVersion()`; this document expects `"28"`.
-  Charge moves need `23` or later, `XenoPixels.bubble` needs `28`.
+- Check the installed bridge with `XenoPixels.getVersion()`; this document expects `"29"`.
+  Charge moves need `23` or later, `XenoPixels.bubble` needs `28`, the appearance borrow needs `29`.
 - `XenoPixels.say(player, text)` is a private chat line. For a speech bubble over a player
   (or any entity) use `XenoPixels.bubble(player, text[, color[, shape]])`.
 - Native Xeno NPCs (no CustomNPCs or MyNPCs needed) have more: see [XenoAPI](XenoAPI).
@@ -56,6 +56,37 @@ Paste one file per tab. **Enabled = Yes**, then close the GUI so it saves.
 
 These examples are not in-world proof. If `getVersion()` is below `23`, charge
 and `broadcast` are missing on that JAR.
+
+## New in v29 (2026-10-14)
+
+**Borrowing a look.** Every appearance call until now took an NPC, so a body-swap script could
+change the NPC's face but not the player's. This moves DragonMineZ's own customisation — race,
+gender, class, body shape, the seven colours and the hair — onto a real player and gives it back:
+
+```js
+function interact(event) {
+    var answer = XenoPixels.stealAppearance(event.player, event.npc, 600);   // 30 seconds
+    XenoPixels.say(event.player, "[BodySteal] " + answer);                  // echo it: a refusal changes nothing
+}
+```
+
+| Call | Result |
+| --- | --- |
+| `stealAppearance(player, npc)` | wear that NPC's look for 600 ticks (30s) |
+| `stealAppearance(player, npc, ticks)` | the same, length in ticks (20 a second, capped at a day) |
+| `restoreAppearance(player)` | hand it back early; `false` when they are not wearing one |
+| `isAppearanceStolen(player)` | whether they are |
+| `getAppearanceStealTicksLeft(player)` | ticks left, `0` when none |
+| `getNpcAppearance(npc)` / `getPlayerAppearance(player)` | either look, as the same map keys |
+
+Stats, skills, forms, masteries and quest progress are never part of the borrow. The answer is
+`"ok"` or the reason it refused: `NO_DATA` (DragonMineZ has not loaded that player yet — ask again
+next tick), `NO_SOURCE` (that entity has no Xeno NPC profile), `INVALID_RACE`, `INVALID_CLASS`,
+`INVALID_COLOR`, `INVALID_HAIR`, `ALREADY_ACTIVE` (one borrow at a time). The example
+`xenopixels_body_steal.js` does the whole trade.
+
+Armour was already scriptable and is unchanged: `entity.getArmor(0..3)` and
+`entity.setArmor(slot, item)`.
 
 ## New in v28 (2026-09-28)
 
@@ -663,6 +694,13 @@ setBodyColor2(npc, hex)
 setBodyColor3(npc, hex)
 setEyeColor1(npc, hex)
 setEyeColor2(npc, hex)
+getNpcAppearance(npc)
+getPlayerAppearance(player)
+stealAppearance(player, npc)
+stealAppearance(player, npc, ticks)
+restoreAppearance(player)
+isAppearanceStolen(player)
+getAppearanceStealTicksLeft(player)
 teleport(npc, x, y, z)
 teleportToEntity(npc, target)
 teleportToPlayer(npc, player)
@@ -722,6 +760,11 @@ unrecognized name. Every color setter takes `#RRGGBB`, stores the canonical form
 `false` for a value it cannot parse. The sound methods return `false` for an unknown sound ID, a
 non-finite position, or an NPC that is not a live server-side entity. `teleport` keeps the NPC's
 current facing; use `vanishBehind` when the point is to arrive behind a target.
+
+`getAppearanceColors` reads the colours stored **on the NPC**. `getNpcAppearance` and
+`getPlayerAppearance` return the whole resolved look (race, gender, class, body indices, every
+colour, hair style and hair code) as one map, for either kind of entity, and are the pair the
+borrow uses — see "New in v29" for `stealAppearance`/`restoreAppearance`.
 
 ## In-game API inspection
 

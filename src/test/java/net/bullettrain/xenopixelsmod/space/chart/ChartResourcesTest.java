@@ -35,6 +35,19 @@ class ChartResourcesTest {
         assertEquals(7, result.errors().stream().filter(error -> error.contains("missing valid assignment")).count());
     }
 
+    @Test void chartEntryRequiresAnOrbitAsSpecifiedBySection241() {
+        var entries = Map.of(ResourceLocation.parse("demo:xenospace/chart_entry/static.json"),
+                resource("{\"dimension\":\"minecraft:the_end\",\"position\":{\"x\":10,\"y\":0,\"z\":0}}"));
+        ResourceManager manager = (ResourceManager) Proxy.newProxyInstance(getClass().getClassLoader(),
+                new Class[]{ResourceManager.class}, (proxy, method, args) -> args[0].equals("xenospace/chart_entry")
+                        ? entries : Map.of());
+
+        var result = ChartResources.scan(manager);
+
+        assertFalse(result.definitions().containsKey("demo:static"));
+        assertTrue(result.errors().stream().anyMatch(error -> error.contains("chart_entry requires orbit")));
+    }
+
     @Test void loadsSevenNamespacedPlanetAssignmentsAndRejectsUnresolvedSchema() {
         var resources = new java.util.HashMap<ResourceLocation, Resource>();
         for (int slot = 1; slot <= 7; slot++)

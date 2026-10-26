@@ -199,7 +199,11 @@ public final class NpcProfileLifecycle {
                 // resource maintenance above, and leave impulse/scripted-arc movement untouched.
                 if (NpcKnockbackGrace.active(npc)
                         || net.bullettrain.xenopixelsmod.combat.v3.technique.V3TechniqueRuntime
-                                .isControlledVictim(npc.getUUID())) return false;
+                                .isControlledVictim(npc.getUUID())) {
+                    NpcNativePursuit.reset(npc);
+                    if (npc instanceof Mob mob) mob.getNavigation().stop();
+                    return false;
+                }
                 boolean aiEvading = npc instanceof Mob mob
                         && net.bullettrain.xenopixelsmod.npc.NpcAiGoals.isEvading(mob);
                 if (profile.combatBrain && !aiEvading
@@ -236,6 +240,8 @@ public final class NpcProfileLifecycle {
                     // release the movement claim instead of leaving the NPC in permanent hover.
                     net.bullettrain.xenopixelsmod.compat.npc.brain.v2.NpcSagaCombatBrain
                             .disengage(npc);
+                } else {
+                    NpcNativePursuit.reset(npc);
                 }
                 // Target retention and autonomous combat are the two most expensive things
                 // here, so they run on their own staggered slot rather than every tick.

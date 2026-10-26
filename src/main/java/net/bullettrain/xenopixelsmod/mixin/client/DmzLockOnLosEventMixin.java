@@ -12,14 +12,14 @@ import org.spongepowered.asm.mixin.injection.Redirect;
 
 /**
  * Isolated from {@link DmzLockOnNpcMixin} so a missed LOS remap cannot take down NPC pick/range.
- * Persist ({@code lambda$onClientTick$3}) always keeps lock through walls.
+ * Persist ({@code isLockValid}, shared by tick and resume in DMZ 2.2) keeps lock through walls.
  * Acquire skips LOS when either client or server through-blocks is on.
  */
 @Mixin(value = LockOnEvent.class, remap = false)
 public abstract class DmzLockOnLosEventMixin {
 
     @Redirect(
-            method = "lambda$onClientTick$3",
+            method = "isLockValid",
             at = @At(
                     value = "INVOKE",
                     target = "Lnet/minecraft/world/entity/player/Player;hasLineOfSight(Lnet/minecraft/world/entity/Entity;)Z",
@@ -32,7 +32,7 @@ public abstract class DmzLockOnLosEventMixin {
     }
 
     @Redirect(
-            method = "lambda$onClientTick$3",
+            method = "isLockValid",
             at = @At(
                     value = "INVOKE",
                     target = "Lnet/minecraft/world/entity/LivingEntity;hasLineOfSight(Lnet/minecraft/world/entity/Entity;)Z",

@@ -154,6 +154,8 @@ public record XenoNpcStoreWritePacket(int category, String group, String id, boo
                     reject(player, NpcProfileSaveResultPacket.NOT_EDITABLE);
                     return;
                 }
+                net.bullettrain.xenopixelsmod.npc.store.XenoNpcScripts.carryImportMetadata(
+                        store.get(resolved, group, id), payload);
             }
 
             if (!delete && (resolved == XenoNpcStoreCategory.FACTIONS

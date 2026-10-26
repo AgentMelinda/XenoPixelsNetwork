@@ -100,6 +100,7 @@ body opaque longer and fades it late; `curve < 1` front-loads the fade. Exponent
 | Key | Default | Range | Alias | Effect |
 |---|---|---|---|---|
 | `hakaiFadeEnabled` | `true` | bool | `hakaifade` | Master off-switch; `false` renders every body at `1.0` |
+| `hakaiOriginArbitration` | `true` | bool | `hakaiorigin` | One captured origin per target while a sweep is erasing it; `false` restores the pre-0.5.23 always-rewrite |
 | `hakaiFadeMinAlpha` | `0.02` | `0.0`..`1.0` | `hakaifademin` | Floor. `0.0` lets the body reach fully invisible |
 | `hakaiFadeCurve` | `1.0` | `0.25`..`4.0` | `hakaifadecurve` | Ramp exponent; `1.0` is linear |
 | `hakaiFadeRestoreTicks` | `40` | `0`..`6000` | `hakaifaderestore` | Ticks to fade back to solid; `0` clears at once |
@@ -123,6 +124,25 @@ camera is looking down. Zanzoken stays a uniform multiplier. Client amplifiers l
 across the one-tick gap between packets. Particle `keepBelow` uses the same
 `charged(progress, speed, curve)` sweep. Runtime wipe/colour is **not verified** in a
 client run.
+
+## Crosshair-origin spread and legacy styles (repo source, 2026-10-18)
+
+The local client setting `hakaiEraseStyle` selects the entity dissolve presentation. Use
+`/xenoset hakai impact` for a radial spread beginning at the server-captured crosshair hit
+point, including when the hit target is a living mob or player. The server clips the caster's
+aim ray against the target bounds and sends that normalized point with the sweep timing; the
+client expands the erase radius from it to the farthest fitted body corner. In area Hakai,
+the sphere is centered at the crosshair hit and each affected body's spread begins at the
+closest point on that body to the sphere center.
+
+The old looks remain selectable per client: `/xenoset hakai sweep` restores the legacy
+top-to-bottom cut and `/xenoset hakai classic` uses the classic fade. `/xenoset hakai` reports
+the active style. This is a client-side saved presentation choice (in the Xeno client config),
+not a server-wide gameplay setting; the server still owns target selection, channel progress,
+and the hit point sent to tracking clients. Current source defaults the style to `impact`.
+
+This documents source behavior only. Mob/player crosshair-origin spread on a fresh dedicated
+server/client pair remains **runtime-unverified**.
 
 ## Verified — the amplifier is not truncated on the wire (`javap`, 2026-09-12)
 
@@ -343,3 +363,17 @@ one-target Hakai (`HakaiChannelSystem`), unchanged.
 **Not verified in game:** Sable's reaction to many removals mid-flight, the ship pose scale
 (assumed 1), whether crack overlays render on ship blocks, and how many overlays the client
 draws at once (up to about `hakaiBlocksPerTick x hakaiBlockFadeTicks`).
+
+## Crosshair-origin spread (2026-10-19 source/tests verified; gameplay render pending)
+
+Player Hakai captures the server player's aim-ray point against the selected living target when the channel starts. A forgiving cone/nearest fallback is projected to the closest point on that target's bounding box. The normalized point is sent in `HakaiSweepTiming`; in client style `impact`, the body clipping and violet rim expand from that point. Area Hakai uses its looked-at center and chooses a closest point for each caught target. NPC-started Hakai now captures the NPC caster's own aim ray at channel start and retains it for the dissolve updates, avoiding a target's default/stale center point.
+
+Client-local style selection is saved in `xenopixelsmod-client.json` and available through `/xenoset hakai impact`, `/xenoset hakai sweep`, and `/xenoset hakai classic`. `impact` is the default. Client config schema v10 upgrades older configs that still store the former default `sweep` to `impact`, while preserving `classic` and `impact`; after migration, `sweep` remains available for the top-down violet rim and `classic` preserves the fade. `HakaiImpactGeometryTest` covers exact ray intersection, near-miss projection, normalized bounds, and expanding radius. This verifies source/math only; a fresh client cast against a mob has not yet been observed.
+
+While a target is actively being erased, `NpcDissolve` keeps the origin that the first source captured: the point is
+re-anchored only by a fresh cast of the same caster and channel kind, or once nothing has raised that target for three
+server ticks. `hakaiOriginArbitration` (`/xenoset hakaiorigin`) turns that off, and with it off every cast rewrites the
+point as it did before 0.5.23. It is a server-side policy about who may replace a stored origin, not the visual
+style switch above — presentation stays entirely under the client's `hakaiEraseStyle`. `NpcDissolveTest` covers the
+arbitration law, the caster/kind identity, cross-kind handover, and the off switch. Source and unit tests only; the
+visual consequence on a live client is unobserved.

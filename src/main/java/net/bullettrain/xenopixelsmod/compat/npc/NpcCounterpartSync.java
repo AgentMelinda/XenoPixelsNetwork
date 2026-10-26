@@ -88,6 +88,9 @@ public final class NpcCounterpartSync {
                 || !NpcCombatProfile.hasProfile(entity) || !isManagedNpc(entity)) {
             return;
         }
+        // Authored source movement is NPC AI data, not a DMZ stat. Reapply after entity reloads
+        // even when a persisted stat fingerprint matches, or DMZ authority itself is disabled.
+        NpcImportedMovement.apply(entity, profile);
         if (!profile.authoritative) {
             restoreAfterAuthority(entity);
             return;

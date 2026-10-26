@@ -586,8 +586,11 @@ public final class NpcAuraClient {
                                    float partial, float crossFactor, float pitchSquash, float fade) {
         float billboardAlpha = fade;
         float anim = (entity.tickCount + partial) * 0.5f;
-        List<NpcAuraResolver.Layer> activeLayers = state.layers().isEmpty()
-                ? List.of(new NpcAuraResolver.Layer("kakarot", 0, state.rgb())) : state.layers();
+        // Profiles carry the authoritative per-layer rendering switches; the legacy aura packet
+        // remains wire-compatible and continues to carry activation and effects.
+        List<NpcAuraResolver.Layer> resolvedLayers = NpcAuraResolver.resolve(NpcAppearanceClient.renderProfile(entity)).layers();
+        List<NpcAuraResolver.Layer> activeLayers = resolvedLayers.isEmpty()
+                ? List.of(new NpcAuraResolver.Layer("kakarot", 0, state.rgb())) : resolvedLayers;
         for (NpcAuraResolver.Layer layer : activeLayers) {
             int rgb = layer.rgb();
             float r = ((rgb >> 16) & 0xFF) / 255f;
@@ -603,6 +606,27 @@ public final class NpcAuraClient {
             ResourceLocation texture = ResourceLocation.fromNamespaceAndPath("dragonminez",
                     "textures/entity/races/aura/" + auraType + "_aura.png");
             pose.pushPose();
+            if (layer.threeD() && com.dragonminez.client.render.effects.Aura3DRenderer.isAvailable()) {
+                var style = com.dragonminez.client.render.effects.AuraStyle.resolve(
+                        com.dragonminez.common.config.FormConfig.Aura3DStyle.DEFAULT, new float[]{r, g, b});
+                float body = DMZ_AURA_SCALE * scale * layerScale;
+                float time = (entity.tickCount + partial) / 20.0f;
+                if (com.dragonminez.client.render.effects.Aura3DRenderer.isGod(auraType)) {
+                    com.dragonminez.client.render.effects.Aura3DRenderer.drawGod(pose, projection,
+                            style, fade, fade, time, body, body, body, 0.45f);
+                } else if (com.dragonminez.client.render.effects.Aura3DRenderer.isSmooth(auraType)) {
+                    com.dragonminez.client.render.effects.Aura3DRenderer.drawSmooth(pose, projection,
+                            style, fade, fade, time, time * style.waveSpeed, body, body, body, 0.01f);
+                } else {
+                    float width = body * com.dragonminez.client.render.effects.Aura3DRenderer.widthFactor(auraType);
+                    com.dragonminez.client.render.effects.Aura3DRenderer.drawSparking(pose, projection,
+                            style, fade, fade, time, width,
+                            body * com.dragonminez.client.render.effects.Aura3DRenderer.heightFactor(auraType),
+                            width, com.dragonminez.client.render.effects.Aura3DRenderer.pivotFactor(auraType), 0.02f);
+                }
+                pose.popPose();
+                continue;
+            }
             pose.scale(base, base * pitchSquash, base);
             pose.translate(0.0, DMZ_AURA_LIFT, 0.0);
             VertexBuffer billboard = AuraMeshFactory.getBillboardQuad();

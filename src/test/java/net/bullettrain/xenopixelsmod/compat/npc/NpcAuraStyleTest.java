@@ -9,6 +9,33 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class NpcAuraStyleTest {
     @Test
+    void formModesInheritNpcModeAndExplicitOffWins() {
+        assertTrue(NpcAuraResolver.mode(NpcAuraStyle.Toggle.INHERIT, NpcAuraStyle.Toggle.ON, false));
+        assertFalse(NpcAuraResolver.mode(NpcAuraStyle.Toggle.OFF, NpcAuraStyle.Toggle.ON, true));
+        assertTrue(NpcAuraResolver.mode(NpcAuraStyle.Toggle.INHERIT, NpcAuraStyle.Toggle.INHERIT, true));
+    }
+
+    @Test
+    void legacyAndUnknownModesInheritWhileExplicitModesRoundTrip() {
+        NpcAuraStyle legacy = NpcAuraStyle.load(new CompoundTag());
+        assertEquals(NpcAuraStyle.Toggle.INHERIT, legacy.smooth);
+        assertEquals(NpcAuraStyle.Toggle.INHERIT, legacy.threeD);
+        legacy.smooth = NpcAuraStyle.Toggle.ON;
+        legacy.threeD = NpcAuraStyle.Toggle.OFF;
+        NpcAuraStyle restored = NpcAuraStyle.load(legacy.save());
+        assertEquals(NpcAuraStyle.Toggle.ON, restored.smooth);
+        assertEquals(NpcAuraStyle.Toggle.OFF, restored.threeD);
+        assertEquals(restored.smooth, restored.copy().smooth);
+        CompoundTag future = new CompoundTag();
+        future.putString("ThreeD", "unsupported");
+        assertEquals(NpcAuraStyle.Toggle.INHERIT, NpcAuraStyle.load(future).threeD);
+        assertTrue(NpcAuraStyle.Toggle.INHERIT.resolve(true));
+        assertFalse(NpcAuraStyle.Toggle.INHERIT.resolve(false));
+        assertTrue(NpcAuraStyle.Toggle.ON.resolve(false));
+        assertFalse(NpcAuraStyle.Toggle.OFF.resolve(true));
+    }
+
+    @Test
     void roundTripsEveryLayerOverride() {
         NpcAuraStyle source = new NpcAuraStyle();
         source.enabled = true;

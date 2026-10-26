@@ -28,15 +28,11 @@ import org.spongepowered.asm.mixin.injection.Redirect;
 public abstract class DmzHairLayerNpcMixin {
 
     @Redirect(
-            method = "renderHair(Lcom/mojang/blaze3d/vertex/PoseStack;"
-                    + "Lnet/minecraft/client/player/AbstractClientPlayer;"
-                    + "Lnet/minecraft/client/renderer/MultiBufferSource;FII)V",
+            method = "prepare",
             at = @At(value = "INVOKE",
-                    target = "Lcom/dragonminez/common/hair/HairManager;canUseHair("
-                            + "Lcom/dragonminez/common/stats/character/Character;)Z"),
-            require = 0)
+                    target = "Lcom/dragonminez/common/stats/character/Character;rendersHair()Z"))
     private boolean xenopixels$allowNpcHair(Character character) {
         if (NpcFullDmzRenderer.isRenderingCharacter(character)) return true;
-        return HairManager.canUseHair(character);
+        return character.rendersHair();
     }
 }

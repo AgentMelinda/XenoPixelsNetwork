@@ -195,6 +195,113 @@ class ChartRegistryTest {
         assertEquals(1000.0, radius, 1.0e-6, "and it must still be on its orbit");
     }
 
+    @Test void stateAtBridgesTheChartEvaluationIntervalUsingPositionAndVelocity() {
+        ChartRegistry chart = new ChartRegistry();
+        chart.setRealOrbits(true);
+        chart.rebuild(List.of(circular("space:planet", null, 1000.0, 600.0, 10.0, 0.0)));
+        chart.evaluate(75.0);
+        int slot = chart.slotOf("space:planet");
+        double[] position = new double[3], velocity = new double[3];
+        double[] samplePosition = {chart.x(slot), chart.y(slot), chart.z(slot)};
+        double[] sampleVelocity = {chart.velocityX(slot), chart.velocityY(slot), chart.velocityZ(slot)};
+
+        chart.stateAt(slot, 76.0, 1.0, position, velocity);
+
+        assertEquals(75.0, chart.evaluatedAtSeconds(), 0.0, "sampling between chart ticks must not rewrite its base timestamp");
+        assertArrayEquals(new double[]{samplePosition[0] + sampleVelocity[0],
+                samplePosition[1] + sampleVelocity[1], samplePosition[2] + sampleVelocity[2]}, position, 1.0e-9);
+        assertArrayEquals(sampleVelocity, velocity, 0.0);
+    }
+
+    @Test void observedSampleBridgesFromItsOwnTimestampAndRejectsAClockJump() {
+        ChartRegistry chart = new ChartRegistry();
+        chart.setRealOrbits(true);
+        chart.rebuild(List.of(circular("space:planet", null, 1000.0, 600.0, 10.0, 0.0)));
+        chart.evaluate(75.0);
+        int slot = chart.slotOf("space:planet");
+        chart.observeBody("space:planet", 2000.0, 50.0, -300.0, 3.0, 4.0, 5.0, 76.0);
+
+        double[] position = new double[3], velocity = new double[3];
+        chart.stateAt(slot, 76.5, 1.0, position, velocity);
+        assertArrayEquals(new double[]{2001.5, 52.0, -297.5}, position, 1.0e-9,
+                "a live body uses its newest pose sample and measured velocity");
+        assertArrayEquals(new double[]{3.0, 4.0, 5.0}, velocity, 0.0);
+        assertEquals(75.0, chart.evaluatedAtSeconds(), 0.0,
+                "publishing a live observation must not poison the chart solve timestamp");
+
+        chart.stateAt(slot, 10_000.0, 1.0, position, velocity);
+        assertArrayEquals(new double[]{2000.0, 50.0, -300.0}, position, 0.0,
+                "a clock jump outside the allowed bridge returns the latest base sample");
+        chart.stateAt(slot, 75.0, 1.0, position, velocity);
+        assertArrayEquals(new double[]{2000.0, 50.0, -300.0}, position, 0.0,
+                "a backwards clock step must not extrapolate the body backwards");
+    }
+
+    @Test void untimedObservedSampleDoesNotBridgeFromAnOlderChartSolve() {
+        ChartRegistry chart = new ChartRegistry();
+        chart.setRealOrbits(true);
+        chart.rebuild(List.of(circular("space:planet", null, 1000.0, 600.0, 10.0, 0.0)));
+        chart.evaluate(75.0);
+        int slot = chart.slotOf("space:planet");
+        chart.observeBody("space:planet", 2000.0, 50.0, -300.0, 3.0, 4.0, 5.0);
+
+        double[] position = new double[3], velocity = new double[3];
+        chart.stateAt(slot, 76.0, 1.0, position, velocity);
+
+        assertArrayEquals(new double[]{2000.0, 50.0, -300.0}, position, 0.0,
+                "without a timestamp, a live pose is authoritative but cannot be extrapolated from the older solve");
+        assertArrayEquals(new double[]{3.0, 4.0, 5.0}, velocity, 0.0);
+    }
+
+    @Test void clearingObservationsForcesSameTimestampEvaluationToRestoreAuthoredMotion() {
+        ChartRegistry chart = new ChartRegistry();
+        chart.setRealOrbits(true);
+        chart.rebuild(List.of(circular("space:planet", null, 1000.0, 600.0, 10.0, 0.0)));
+        chart.evaluate(75.0);
+        int slot = chart.slotOf("space:planet");
+        chart.observeBody("space:planet", 2000.0, 50.0, -300.0, 3.0, 4.0, 5.0, 75.0);
+        chart.evaluate(75.0);
+        assertEquals(2000.0, chart.x(slot), 0.0);
+
+        chart.clearObservedBodies();
+        chart.evaluate(75.0);
+
+        assertNotEquals(2000.0, chart.x(slot), 1.0e-9,
+                "a changed observation set must be consumed even when the orbital timestamp is unchanged");
+    }
+
+    @Test void observedPhysicalParentKeepsItsOrbitVelocityAndCarriesItsMoon() {
+        ChartRegistry chart = new ChartRegistry();
+        chart.setRealOrbits(true);
+        chart.rebuild(List.of(
+                pinned("space:sol", null, 0, 0, 0, 100, 0),
+                circular("space:earth", "space:sol", 1000, 600, 10, 0),
+                circular("space:moon", "space:earth", 100, 60, 2, 0)));
+        chart.evaluate(30.0);
+        int earth = chart.slotOf("space:earth"), moon = chart.slotOf("space:moon");
+        double[] moonOffset = {chart.x(moon) - chart.x(earth), chart.y(moon) - chart.y(earth),
+                chart.z(moon) - chart.z(earth)};
+        double[] moonRelativeVelocity = {chart.velocityX(moon) - chart.velocityX(earth),
+                chart.velocityY(moon) - chart.velocityY(earth), chart.velocityZ(moon) - chart.velocityZ(earth)};
+
+        chart.observeBody("space:earth", 2000, 50, -300, 3, 4, 5);
+        chart.evaluate(30.0);
+
+        assertFalse(chart.manuallyPositioned(earth), "a live physics observation is not a frozen manual override");
+        assertArrayEquals(new double[]{2000, 50, -300}, new double[]{chart.x(earth), chart.y(earth), chart.z(earth)});
+        assertArrayEquals(new double[]{3, 4, 5}, new double[]{chart.velocityX(earth), chart.velocityY(earth), chart.velocityZ(earth)});
+        assertArrayEquals(new double[]{2000 + moonOffset[0], 50 + moonOffset[1], -300 + moonOffset[2]},
+                new double[]{chart.x(moon), chart.y(moon), chart.z(moon)}, 1.0e-9,
+                "the moon's orbit center follows the observed physical Earth");
+        assertArrayEquals(new double[]{3 + moonRelativeVelocity[0], 4 + moonRelativeVelocity[1], 5 + moonRelativeVelocity[2]},
+                new double[]{chart.velocityX(moon), chart.velocityY(moon), chart.velocityZ(moon)}, 1.0e-9,
+                "the moon inherits Earth's measured motion as well as its own orbit velocity");
+
+        chart.clearObservedBodies();
+        chart.evaluate(30.0);
+        assertNotEquals(2000, chart.x(earth), 1.0e-9, "clearing the transient physics sample restores the authored orbit");
+    }
+
     @Test void movingChartPositionAndVelocityUseTheWorldAxesUsedByPlanetPhysics() {
         var orbit = new OrbitalElements(1000.0, 0.0, Math.PI / 4.0,
                 0.2, 0.1, 0.0, 600.0, 0.0);

@@ -13,7 +13,10 @@ import net.minecraft.world.item.CreativeModeTabs;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.neoforge.common.NeoForge;
 import net.neoforged.neoforge.event.BuildCreativeModeTabContentsEvent;
+import net.neoforged.neoforge.event.server.ServerStartedEvent;
 import net.neoforged.neoforge.event.server.ServerStartingEvent;
+import net.neoforged.neoforge.event.server.ServerStoppingEvent;
+import net.neoforged.neoforge.event.tick.ServerTickEvent;
 import net.neoforged.bus.api.IEventBus;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.Mod;
@@ -28,6 +31,10 @@ public class XenoPixelsMod {
     public static final Logger LOGGER = LogUtils.getLogger();
 
     public XenoPixelsMod(IEventBus modEventBus) {
+        // Register the saved-ticket codec before Sable loads any world ticket data.
+        net.bullettrain.xenopixelsmod.space.pod.ClassicEggPodHull.bootstrap();
+        net.bullettrain.xenopixelsmod.space.pod.transfer.PodTransferDestination.bootstrap();
+        net.bullettrain.xenopixelsmod.space.smallplanet.SmallPlanetPhysicalizer.bootstrap();
         net.bullettrain.xenopixelsmod.command.XenoCommandArguments.register(modEventBus);
         net.bullettrain.xenopixelsmod.space.worldgen.SpaceWorldgen.register(modEventBus);
 
@@ -55,6 +62,12 @@ public class XenoPixelsMod {
         net.bullettrain.xenopixelsmod.features.playerrole.PlayerRoleNetwork.register();
         net.bullettrain.xenopixelsmod.features.tournament.TournamentNetwork.register();
 
+        // DragonMineZ's SimpleChannel shim also subscribes to RegisterPayloadHandlersEvent, but
+        // its callback snapshots a global channel list. The Xeno main channel is constructed in
+        // this mod constructor; register the same idempotent callback on our mod bus so channel
+        // registration order across mod buses cannot leave the main payloads absent client-side.
+        modEventBus.addListener(com.dragonminez.compat.network.simple.SimpleChannel::onRegisterPayloads);
+
         ModCreativeModTabs.register(modEventBus); // -- creative tab register
 
         modEventBus.addListener(this::commonSetup);
@@ -78,6 +91,8 @@ public class XenoPixelsMod {
             net.bullettrain.xenopixelsmod.aero.GuidanceConfig.load();
             net.bullettrain.xenopixelsmod.combat.targeting.LockOnConfig.load();
             net.bullettrain.xenopixelsmod.features.FeatureManager.bootstrap();
+            // Data-only DMZ dragon; both sides, since clients build DMZ definitions locally.
+            net.bullettrain.xenopixelsmod.compat.dmz.SuperShenronDefinition.register();
             // CustomNPCs copies ScriptContainer.Data into every new script executor.
             // Install the bridge only when the optional mod is present so a dedicated
             // server without CustomNPCs keeps the same class-loading surface.
@@ -144,6 +159,23 @@ public class XenoPixelsMod {
     @SubscribeEvent
     public void onServerStarting(ServerStartingEvent event) {
 
+    }
+
+    @SubscribeEvent
+    public void onServerStarted(ServerStartedEvent event) {
+        net.bullettrain.xenopixelsmod.space.pod.ClassicEggPodHull.releaseUnownedHandoffTickets(
+                event.getServer(), "server startup");
+    }
+
+    @SubscribeEvent
+    public void onServerStopping(ServerStoppingEvent event) {
+        net.bullettrain.xenopixelsmod.space.pod.ClassicEggPodHull.releaseUnownedHandoffTickets(
+                event.getServer(), "server shutdown");
+    }
+
+    @SubscribeEvent
+    public void onServerTick(ServerTickEvent.Post event) {
+        net.bullettrain.xenopixelsmod.space.pod.ClassicEggPodHull.retryUnownedHandoffTickets(event.getServer());
     }
 
     // You can use EventBusSubscriber to automatically register all static methods in the class annotated with @SubscribeEvent

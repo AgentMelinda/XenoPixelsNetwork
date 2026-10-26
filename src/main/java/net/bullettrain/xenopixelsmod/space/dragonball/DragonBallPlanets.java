@@ -8,6 +8,7 @@ import dev.ryanhcode.sable.sublevel.storage.SubLevelRemovalReason;
 import net.bullettrain.xenopixelsmod.XenoPixelsMod;
 import net.bullettrain.xenopixelsmod.api.network.AddonNetwork;
 import net.bullettrain.xenopixelsmod.block.ModBlocks;
+import net.bullettrain.xenopixelsmod.config.XenoSpaceConfig;
 import net.bullettrain.xenopixelsmod.space.physics.PhysicalEarth;
 import net.bullettrain.xenopixelsmod.space.physics.PlotBodyBuilder;
 import net.minecraft.core.registries.Registries;
@@ -133,10 +134,40 @@ public final class DragonBallPlanets {
         long start = System.nanoTime();
         boolean complete;
         try {
-            complete = job.step(budget);
+            long tick = server.overworld().getGameTime();
+            var owner = net.bullettrain.xenopixelsmod.space.physics.SpaceBuildWorkBudget.Owner.SUPER_DRAGON_BALL;
+            if (job.body() == null && !net.bullettrain.xenopixelsmod.space.physics.SpaceBuildWorkBudget
+                    .mayPrepare(server, tick, owner, budget)) return;
+            if (!net.bullettrain.xenopixelsmod.space.physics.SpaceBuildWorkBudget.prepare(server, tick, owner, job)) {
+                if (job.failed()) {
+                    XenoPixelsMod.LOGGER.warn("SDB_BENCH ball {} failed (no free plot)", building.stars);
+                    job = null;
+                }
+                return;
+            }
+            int stepBudget = net.bullettrain.xenopixelsmod.space.physics.SpaceBuildWorkBudget.allowance(
+                    server, tick, owner, job, budget);
+            if (stepBudget <= 0) return;
+            double millisBudget = net.bullettrain.xenopixelsmod.space.physics.SpaceBuildWorkBudget.remainingMillis(
+                    server, tick, owner);
+            if (XenoSpaceConfig.generatedBodyBuildMillisPerTick() > 0.0
+                    && millisBudget <= 0.0 && job.installed() > 0) return;
+            complete = net.bullettrain.xenopixelsmod.space.physics.SpaceBuildWorkBudget.step(
+                    server, tick, owner, job, stepBudget, millisBudget);
         } catch (RuntimeException error) {
             XenoPixelsMod.LOGGER.error("SDB_BENCH ball {} build failed", building.stars, error);
-            job = null; return;
+            // The ticket is added at allocation (:131), so a throw after that point would otherwise keep an
+            // empty or half-built plot force-loaded forever: cancel() drops the body but not the ticket.
+            try {
+                ServerSubLevel orphan = job.body();
+                if (orphan != null && !orphan.isRemoved()) SubLevelContainer.getContainer(level)
+                        .removeForceLoadTicket(orphan, TICKET, orphan.getUniqueId().toString());
+            } catch (RuntimeException cleanupFailure) {
+                XenoPixelsMod.LOGGER.error("SDB_BENCH ball {} could not release its force-load ticket",
+                        building.stars, cleanupFailure);
+            }
+            job.cancel();
+            job = null; building = null; return;
         }
         buildTicks++;
         if (!complete) {

@@ -15,6 +15,9 @@ public final class XenoNpcBrainV5 {
     private XenoNpcBrainV5() {}
 
     public static void tick(XenoNpcEntity npc) {
+        // V9's per-tick owner issues the path; the role scheduler must not issue a second one.
+        if (net.bullettrain.xenopixelsmod.compat.npc.NpcNativePursuit.owns(npc,
+                net.bullettrain.xenopixelsmod.compat.npc.NpcCombatProfile.readCached(npc))) return;
         if (net.bullettrain.xenopixelsmod.compat.npc.NpcFlightOwnership.brainDirectsFlight(npc.getUUID())) {
             npc.getNavigation().stop();
             npc.setNoGravity(true);

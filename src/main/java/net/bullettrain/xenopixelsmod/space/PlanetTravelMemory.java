@@ -47,6 +47,24 @@ public final class PlanetTravelMemory {
         if (!supported(fallbackX) || !supported(fallbackZ)) return null;
         return new Vec3(fallbackX, y, fallbackZ);
     }
+    /**
+     * Arrival for an authored §24 surface anchor. Remembered horizontal coordinates keep the legacy
+     * exit-minus-25 altitude rule; a first arrival uses the exact dimension-local authored point.
+     */
+    public static Vec3 arrival(CompoundTag persisted, String body, double exit, int minY, int height,
+                               double fallbackX, double fallbackZ, Vec3 surfaceAnchor) {
+        double y = reentryY(exit, minY);
+        if (!Double.isFinite(y)) return null;
+        Vec3 remembered = lastLeaving(persisted, body);
+        if (remembered == null) remembered = lastEntrance(persisted, body);
+        if (remembered != null) return new Vec3(remembered.x, y, remembered.z);
+        if (surfaceAnchor != null) {
+            double maxY = minY + (double) height;
+            if (!valid(surfaceAnchor) || surfaceAnchor.y < minY || surfaceAnchor.y >= maxY) return null;
+            return surfaceAnchor;
+        }
+        return arrival(persisted, body, exit, minY, fallbackX, fallbackZ);
+    }
     public static CompoundTag persisted(Player player) {
         return player.getPersistentData().getCompound(Player.PERSISTED_NBT_TAG);
     }

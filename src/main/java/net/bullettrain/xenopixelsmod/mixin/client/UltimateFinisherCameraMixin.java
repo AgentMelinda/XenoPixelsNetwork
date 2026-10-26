@@ -29,6 +29,10 @@ public abstract class UltimateFinisherCameraMixin {
             if (v3 != null) {
                 setPosition(v3.position());
                 setRotation(v3.yaw(), v3.pitch(), 0);
+            } else {
+                Vec3 coast = net.bullettrain.xenopixelsmod.client.space.SpaceHandoffOverlay
+                        .coastCameraPosition(entity, partialTick);
+                if (coast != null) setPosition(coast);
             }
         }
     }

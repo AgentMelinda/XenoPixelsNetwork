@@ -10,9 +10,60 @@ import java.util.ArrayList;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class PlacedNpcProfileMigratorTest {
+    @Test
+    void carriesAuthoredInventoryGearDropChancesAndExperienceWithoutMutatingSource() {
+        CompoundTag source = new CompoundTag();
+        ListTag items = new ListTag();
+        CompoundTag item = new CompoundTag();
+        item.putByte("Slot", (byte) 4);
+        item.putString("id", "minecraft:diamond");
+        item.putInt("count", 3);
+        CompoundTag components = new CompoundTag();
+        components.putString("minecraft:custom_name", "\"Prize\"");
+        item.put("components", components);
+        items.add(item);
+        source.put("NpcInv", items);
+        ListTag chance = new ListTag();
+        CompoundTag row = new CompoundTag();
+        row.putInt("Slot", 4);
+        row.putFloat("Integer", 42.5f);
+        chance.add(row);
+        source.put("DropChance", chance);
+        source.putInt("MinExp", 7);
+        source.putInt("MaxExp", 25);
+        source.putInt("LootMode", 1);
+        ListTag armor = new ListTag();
+        CompoundTag helmet = item.copy();
+        helmet.putByte("Slot", (byte) 0);
+        helmet.putString("id", "minecraft:diamond_helmet");
+        armor.add(helmet);
+        source.put("Armor", armor);
+        ListTag weapons = new ListTag();
+        CompoundTag offhand = item.copy();
+        offhand.putByte("Slot", (byte) 2);
+        offhand.putString("id", "minecraft:shield");
+        weapons.add(offhand);
+        source.put("Weapons", weapons);
+        CompoundTag original = source.copy();
+        CompoundTag profile = PlacedNpcProfileMigrator.profileTag(source);
+        var drops = new net.bullettrain.xenopixelsmod.npc.inventory.NpcDropList();
+        drops.loadFrom(profile);
+        assertEquals(42.5f, drops.get(4).chance());
+        assertEquals("minecraft:diamond", drops.get(4).item().saved().getString("id"));
+        assertEquals(components, drops.get(4).item().saved().getCompound("components"));
+        assertFalse(drops.get(4).item().saved().contains("Slot"));
+        assertEquals(7, drops.minExp());
+        assertEquals(25, drops.maxExp());
+        assertEquals(net.bullettrain.xenopixelsmod.npc.inventory.NpcLootMode.AUTO_PICKUP, drops.lootMode());
+        assertEquals("minecraft:diamond_helmet", profile.getCompound("Gear").getCompound("Head").getString("id"));
+        assertEquals("minecraft:shield", profile.getCompound("Gear").getCompound("Off").getString("id"));
+        assertEquals(original, source);
+    }
+
     @Test
     void mapsDmzCharacterStatsFormsAppearanceAndEquipment() {
         CompoundTag source = new CompoundTag();
@@ -315,6 +366,30 @@ class PlacedNpcProfileMigratorTest {
         assertTrue(profile.npcRangedIndirect);
         assertEquals("no", profile.npcRangedAimMode);
         assertEquals("minecraft:entity.arrow.shoot", profile.npcRangedFireSound);
+    }
+
+    /**
+     * Three DataDisplay booleans whose source key and native control are the same switch. An absent
+     * key must leave the native default alone: {@code displayOuterLayers} is on, so reading a missing
+     * key as false would strip the skin layer off every NPC whose save predates the field.
+     */
+    @Test
+    void carriesTheDisplayBooleansThatNameTheNativeSwitch() {
+        CompoundTag source = new CompoundTag();
+        source.putBoolean("ShowLayers", false);
+        source.putBoolean("OverlayGlowing", false);
+        source.putBoolean("HideBodyWhenKilled", true);
+
+        NpcCombatProfile set = NpcCombatProfile.fromTag(PlacedNpcProfileMigrator.profileTag(source));
+        assertFalse(set.displayOuterLayers, "Showing Layers off arrives off");
+        assertFalse(set.displayOverlayGlow, "Overlay glows off arrives off");
+        assertTrue(set.hideDeadBody, "a corpse the author hides stays hidden");
+
+        NpcCombatProfile absent = NpcCombatProfile.fromTag(
+                PlacedNpcProfileMigrator.profileTag(new CompoundTag()));
+        assertTrue(absent.displayOuterLayers, "no key is not the same as an off key");
+        assertFalse(absent.displayOverlayGlow);
+        assertFalse(absent.hideDeadBody);
     }
 
     @Test

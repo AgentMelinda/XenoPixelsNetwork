@@ -2,7 +2,7 @@ package net.bullettrain.xenopixelsmod.space.oxygen;
 
 import net.minecraft.network.FriendlyByteBuf;
 
-/** Clientbound oxygen HUD state (channel {@code xenopixelsmod:oxygen_status_v1}); all values in ticks. */
+/** Clientbound oxygen HUD state (channel {@code xenopixelsmod:oxygen_status_v2}); all values in ticks. */
 public record OxygenStatus(int breath, int maxBreath, int reserve, int phase) {
     public OxygenStatus {
         if (breath < 0 || maxBreath <= 0 || reserve < 0 || phase < 0 || phase >= OxygenRules.Phase.values().length)

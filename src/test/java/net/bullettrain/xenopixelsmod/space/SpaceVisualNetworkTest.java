@@ -16,4 +16,8 @@ class SpaceVisualNetworkTest {
     @Test void logicalCellRevealUsesAStableDeltaPacketId() {
         assertEquals("infinite_universe_cell_reveal_v1", SpaceVisualNetwork.infiniteUniverseCellRevealPacketId().getPath());
     }
+
+    @Test void auraOxygenPhaseUsesAnExplicitWireVersion() {
+        assertEquals("oxygen_status_v2", SpaceVisualNetwork.oxygenStatusPacketId().getPath());
+    }
 }

@@ -73,11 +73,16 @@ public final class NpcScriptImport {
         SlotIndex ids = new SlotIndex();
 
         for (int i = 0; i < scripts.size(); i++) {
+            if (i >= net.bullettrain.xenopixelsmod.npc.script.NpcScriptContainer.MAX_TABS) {
+                report.failed("script", npcKey + " #" + (i + 1), "native container tab limit exceeded; source preserved");
+                continue;
+            }
             String text = scripts.getCompound(i).getString("Script");
-            if (text.isBlank()) {
+            if (text.isBlank() && ScriptFileImport.references(scripts.getCompound(i)).isEmpty()) {
                 report.noteGrouped("script entry is empty, so there is nothing to import", npcKey);
                 continue;
             }
+            if (text.isBlank()) text = "// Source tab loads library scripts only.\n";
             if (text.length() > XenoNpcScripts.MAX_SCRIPT_CHARS) {
                 report.failed("script", npcKey + " #" + (i + 1), "script is " + text.length()
                         + " characters, over the " + XenoNpcScripts.MAX_SCRIPT_CHARS
@@ -91,6 +96,10 @@ public final class NpcScriptImport {
             payload.putString("Language", language);
             payload.putByte("Enabled", (byte) (enabled ? 1 : 0));
             payload.putString("Script", text);
+            payload.putString("SourceMod", sourceMod);
+            payload.putString("SourceNpc", npcKey);
+            payload.putInt("SourceTabIndex", i);
+            payload.put("SourceTab", scripts.getCompound(i).copy());
             out.add(new Draft(id, payload, enabled));
         }
         return out;
@@ -109,9 +118,8 @@ public final class NpcScriptImport {
 
     /**
      * Writes every draft into {@code store} and returns the NPC's script tabs: one tab per source
-     * script, in source order, with the source NPC's language and enabled switch. CustomNPCs' own
-     * {@code ScriptList} names files in its scripts folder, which this import cannot see; those
-     * names are reported so the operator can load the matching library scripts by hand.
+     * script, in source order, with the source NPC's language and enabled switch. Libraries already
+     * imported from the same source mod and language are bound in their original evaluation order.
      */
     public static net.bullettrain.xenopixelsmod.npc.script.NpcScriptContainer importContainer(@Nullable CompoundTag source, String sourceMod, String npcKey,
                                      @Nullable XenoNpcWorldStore store, NpcImportReport report) {
@@ -126,21 +134,25 @@ public final class NpcScriptImport {
         }
         container.setLanguage(drafts.get(0).payload().getString("Language"));
         container.setEnabled(drafts.get(0).enabled());
-        reportExternalFiles(source, npcKey, report);
         List<net.bullettrain.xenopixelsmod.npc.script.NpcScriptContainer.Tab> tabs = new ArrayList<>();
         for (Draft draft : drafts) {
-            if (store.get(XenoNpcStoreCategory.SCRIPTS, XenoNpcScripts.NO_GROUP, draft.id()) != null) {
+            CompoundTag existing = store.get(XenoNpcStoreCategory.SCRIPTS, XenoNpcScripts.NO_GROUP, draft.id());
+            List<String> loaded = loadedScripts(draft.payload().getCompound("SourceTab"), sourceMod,
+                    container.language(), store, report, npcKey, container);
+            if (existing != null && !(existing.getString("SourceMod").equals(sourceMod)
+                    && existing.getString("SourceNpc").equals(npcKey)
+                    && existing.getInt("SourceTabIndex") == draft.payload().getInt("SourceTabIndex"))) {
                 report.failed("script", draft.id(), "Xeno entry already exists; left unchanged");
                 continue;
             }
-            String refusal = store.put(XenoNpcStoreCategory.SCRIPTS, XenoNpcScripts.NO_GROUP,
-                    draft.id(), draft.payload());
+            String refusal = existing == null ? store.put(XenoNpcStoreCategory.SCRIPTS, XenoNpcScripts.NO_GROUP,
+                    draft.id(), draft.payload()) : null;
             if (refusal != null) {
                 report.failed("script", draft.id(), refusal);
                 continue;
             }
-            report.imported("script", draft.id());
-            tabs.add(new net.bullettrain.xenopixelsmod.npc.script.NpcScriptContainer.Tab(draft.id(), List.of()));
+            if (existing == null) report.imported("script", draft.id());
+            tabs.add(new net.bullettrain.xenopixelsmod.npc.script.NpcScriptContainer.Tab(draft.id(), loaded));
         }
         container.setTabs(tabs);
         if (!tabs.isEmpty()) {
@@ -149,20 +161,23 @@ public final class NpcScriptImport {
         return container;
     }
 
-    private static void reportExternalFiles(@Nullable CompoundTag source, String npcKey,
-                                            NpcImportReport report) {
-        if (source == null) {
-            return;
+    private static List<String> loadedScripts(CompoundTag tab, String sourceMod, String language,
+                                             XenoNpcWorldStore store, NpcImportReport report, String npcKey,
+                                             net.bullettrain.xenopixelsmod.npc.script.NpcScriptContainer container) {
+        List<String> loaded = new ArrayList<>();
+        for (String reference : ScriptFileImport.references(tab)) {
+            String path = ScriptFileImport.libraryPath(language, reference);
+            String id = path == null ? "" : ScriptFileImport.id(sourceMod, path);
+            CompoundTag library = path == null ? null : store.get(XenoNpcStoreCategory.SCRIPTS, "", id);
+            if (library == null || !library.getString("SourceMod").equals(sourceMod)
+                    || !library.getString("SourcePath").toLowerCase(Locale.ROOT).equals(path)
+                    || loaded.size() >= net.bullettrain.xenopixelsmod.npc.script.NpcScriptContainer.MAX_LOADED) {
+                report.blocked("NPC " + npcKey, "missing, refused or excessive script library " + reference
+                        + "; script container disabled; source preserved");
+                container.setEnabled(false);
+            } else loaded.add(id);
         }
-        ListTag scripts = source.getList(PlacedNpcProfileMigrator.KEY_SCRIPTS, Tag.TAG_COMPOUND);
-        for (int i = 0; i < scripts.size(); i++) {
-            ListTag files = scripts.getCompound(i).getList("ScriptList", Tag.TAG_STRING);
-            for (int j = 0; j < files.size(); j++) {
-                report.noteGrouped("script tab " + (i + 1) + " loaded file " + files.getString(j)
-                        + " from the CustomNPCs scripts folder; add it to the Xeno script library and"
-                        + " load it into that tab", npcKey);
-            }
-        }
+        return loaded;
     }
 
     /**

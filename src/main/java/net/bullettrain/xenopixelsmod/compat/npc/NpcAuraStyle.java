@@ -4,6 +4,16 @@ import net.minecraft.nbt.CompoundTag;
 
 /** Per-NPC override for one of DMZ's base, normal-form, or stack-form aura layers. */
 public final class NpcAuraStyle {
+    public enum Toggle {
+        INHERIT, ON, OFF;
+        public Toggle next() { return values()[(ordinal() + 1) % values().length]; }
+        public boolean resolve(boolean inherited) { return this == INHERIT ? inherited : this == ON; }
+        public static Toggle read(String value) {
+            try { return valueOf(value); } catch (IllegalArgumentException ignored) { return INHERIT; }
+        }
+    }
+    public Toggle smooth = Toggle.INHERIT;
+    public Toggle threeD = Toggle.INHERIT;
     public boolean enabled;
     public String primaryColor = "";
     public String primaryType = "";
@@ -21,6 +31,8 @@ public final class NpcAuraStyle {
 
     public NpcAuraStyle copy() {
         NpcAuraStyle out = new NpcAuraStyle();
+        out.smooth = smooth;
+        out.threeD = threeD;
         out.enabled = enabled;
         out.primaryColor = primaryColor;
         out.primaryType = primaryType;
@@ -38,6 +50,8 @@ public final class NpcAuraStyle {
 
     public CompoundTag save() {
         CompoundTag tag = new CompoundTag();
+        tag.putString("Smooth", smooth.name());
+        tag.putString("ThreeD", threeD.name());
         tag.putBoolean("Enabled", enabled);
         tag.putString("PrimaryColor", canonical(primaryColor));
         tag.putString("PrimaryType", safe(primaryType));
@@ -56,6 +70,8 @@ public final class NpcAuraStyle {
     public static NpcAuraStyle load(CompoundTag tag) {
         NpcAuraStyle out = new NpcAuraStyle();
         if (tag == null || tag.isEmpty()) return out;
+        out.smooth = Toggle.read(tag.getString("Smooth"));
+        out.threeD = Toggle.read(tag.getString("ThreeD"));
         out.enabled = tag.getBoolean("Enabled");
         out.primaryColor = canonical(tag.getString("PrimaryColor"));
         out.primaryType = safe(tag.getString("PrimaryType"));

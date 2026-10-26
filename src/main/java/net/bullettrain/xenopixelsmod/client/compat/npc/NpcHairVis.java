@@ -1,6 +1,10 @@
 package net.bullettrain.xenopixelsmod.client.compat.npc;
 
-import com.dragonminez.client.render.hair.HairRenderer;
+import com.dragonminez.client.render.hair.HairMeshBuilder;
+import com.dragonminez.client.render.layer.DMZHairLayer;
+import com.dragonminez.common.hair.HairStyleSlot;
+import net.minecraft.resources.ResourceLocation;
+import net.minecraft.client.renderer.RenderType;
 import com.dragonminez.common.config.FormConfig;
 import com.dragonminez.common.hair.CustomHair;
 import com.mojang.blaze3d.vertex.PoseStack;
@@ -14,6 +18,8 @@ import java.util.Locale;
 
 /** Client hair spec + render choice. The set itself comes from {@link NpcHairSet}. */
 public final class NpcHairVis {
+    private static final HairMeshBuilder MESH = new HairMeshBuilder();
+    private static final ResourceLocation TEXTURE = ResourceLocation.fromNamespaceAndPath("dragonminez", "textures/entity/races/hair.png");
     private static final float[] WHITE = {1.0f, 1.0f, 1.0f};
 
     public record Spec(boolean enabled, String code, String color, int styleId) {}
@@ -63,14 +69,12 @@ public final class NpcHairVis {
                 && (to.hair() == null || to.hair().isEmpty())) {
             return;
         }
-        NpcHairAnimator.Input physics = NpcHairAnimator.input(owner);
-        if (physics == null) return;
-        HairRenderer.render(pose, buffers,
-                from.hair(), to.hair(), progress,
-                null, physics.stats(), physics.player(),
-                from.rgb(), to.rgb(), from.forceColor(), to.forceColor(),
-                partialTick, packedLight, packedOverlay,
-                1.0f, physics.physicsLod(), physics.chargeProgress());
+        NpcHairAnimator.Input physics = NpcHairAnimator.input(owner, pose, partialTick,
+                from.hair(), to.hair(), progress, from.slot(), to.slot());
+        MESH.emit(buffers.getBuffer(RenderType.entityCutoutNoCull(TEXTURE)),
+                pose.last().pose(), pose.last().normal(), physics.state(), physics.simulated(),
+                rgbInt(from.rgb()), rgbInt(to.rgb()), from.forceColor(), to.forceColor(),
+                packedLight, packedOverlay, 1.0f, DMZHairLayer.wantsPixelDetail(owner), null, null, null);
     }
 
     /**
@@ -115,12 +119,16 @@ public final class NpcHairVis {
     private static HairChoice choose(CustomHair[] set, String configuredColor,
                                      String race, String group, String formId) {
         CustomHair selected = set[0];
+        HairStyleSlot selectedSlot = HairStyleSlot.BASE;
         float[] rgb = parseRgb(configuredColor);
         boolean force = rgb != null;
 
         if (group != null && !group.isBlank() && formId != null && !formId.isBlank()) {
             FormConfig.FormData form = NpcFormLookup.form(race, group, formId);
             if (form != null) {
+                HairStyleSlot typedSlot = Boolean.TRUE.equals(form.hasDefinedHairType())
+                        ? HairStyleSlot.byHairType(form.getHairType()) : null;
+                if (typedSlot != null) selectedSlot = typedSlot;
                 if (Boolean.TRUE.equals(form.hasHairCodeOverride())) {
                     CustomHair[] override = parseSet(form.getForcedHairCode());
                     if (override != null && override.length > 0 && override[0] != null) {
@@ -140,7 +148,7 @@ public final class NpcHairVis {
                 }
             }
         }
-        return new HairChoice(selected, rgb == null ? WHITE : rgb, force);
+        return new HairChoice(selected, rgb == null ? WHITE : rgb, force, selectedSlot);
     }
 
     private static CustomHair variant(CustomHair[] set, String type) {
@@ -148,6 +156,7 @@ public final class NpcHairVis {
             case "ssj" -> 1;
             case "ssj2" -> 2;
             case "ssj3" -> 3;
+            case "ssj4" -> 4;
             default -> 0;
         };
         return index < set.length && set[index] != null ? set[index] : set[0];
@@ -166,5 +175,9 @@ public final class NpcHairVis {
         };
     }
 
-    private record HairChoice(CustomHair hair, float[] rgb, boolean forceColor) {}
+    private static int rgbInt(float[] rgb) {
+        return Math.round(rgb[0] * 255.0f) << 16 | Math.round(rgb[1] * 255.0f) << 8 | Math.round(rgb[2] * 255.0f);
+    }
+
+    private record HairChoice(CustomHair hair, float[] rgb, boolean forceColor, HairStyleSlot slot) {}
 }

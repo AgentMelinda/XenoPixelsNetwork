@@ -44,8 +44,7 @@ public final class AuraBoxOverlay {
         if (stats == null || stats.getCharacter() == null) return;
         float[] box;
         try {
-            float[] scale = DmzAuraLayersInvoker.xenopixels$auraScale(stats,
-                    DmzAuraLayersInvoker.xenopixels$modelScale(stats));
+            float[] scale = DmzAuraLayersInvoker.xenopixels$auraScale(player, stats);
             box = HdAuraPlan.dmzFlameBox(scale[0], scale[1]);
         } catch (RuntimeException | LinkageError e) {
             enabled = false;

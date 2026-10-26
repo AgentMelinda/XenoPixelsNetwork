@@ -5,6 +5,8 @@ import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
 import net.minecraft.nbt.LongArrayTag;
 import net.minecraft.nbt.Tag;
+import net.minecraft.world.level.ChunkPos;
+import dev.ryanhcode.sable.sublevel.storage.holding.GlobalSavedSubLevelPointer;
 
 import java.util.UUID;
 import java.util.Set;
@@ -23,6 +25,61 @@ class AsteroidSavedDataTest {
         assertTrue(restored.isDetached(id));
         assertTrue(restored.isDetachedBody(body));
         assertEquals(1, restored.size());
+    }
+
+    @Test void detachedStoragePointerAndReturnPositionSurviveSavedDataRoundTrip() {
+        var id = new AsteroidField.ObjectId(-44, 12, 103, 0);
+        var body = UUID.fromString("cd14b003-24e8-4c19-b151-5d399eedf37f");
+        var pointer = new GlobalSavedSubLevelPointer(new ChunkPos(-19, 27), (short) 3, (short) 9);
+        var source = new AsteroidSavedData();
+        assertTrue(source.detach(id, body));
+        assertTrue(source.storeBody(id, body, pointer, -7_101.25, 289.5, 39_661.0,
+                0x7623a98fL, 11, true));
+
+        var restored = AsteroidSavedData.load(source.save(new CompoundTag(), null), null);
+        var stored = restored.storedBody(id);
+
+        assertNotNull(stored);
+        assertEquals(body, stored.bodyId());
+        assertEquals(pointer, stored.pointer());
+        assertEquals(-7_101.25, stored.x());
+        assertEquals(289.5, stored.y());
+        assertEquals(39_661.0, stored.z());
+        assertEquals(0x7623a98fL, stored.seed());
+        assertEquals(11, stored.radius());
+        assertTrue(stored.icy());
+    }
+
+    @Test void detachedStoragePointerCannotBeBoundToAnotherBodyIdentity() {
+        var data = new AsteroidSavedData();
+        var id = new AsteroidField.ObjectId(1, -2, 3, 0);
+        var body = UUID.fromString("2dd858fd-d251-4ae6-a39a-9b1c0702df07");
+        var other = UUID.fromString("41909a84-a4fe-4b9a-a653-2c0cf52f69cc");
+        var pointer = new GlobalSavedSubLevelPointer(new ChunkPos(2, 4), (short) 0, (short) 1);
+        assertTrue(data.detach(id, body));
+
+        assertFalse(data.storeBody(id, other, pointer, 1, 2, 3, 4, AsteroidField.MIN_RADIUS, false));
+        assertNull(data.storedBody(id));
+    }
+
+    @Test void nearbyStoredRestoreQueryIsNearestFirstAndCapped() {
+        var data = new AsteroidSavedData();
+        for (int i = 0; i < 4; i++) {
+            var id = new AsteroidField.ObjectId(i, 0, 0, 0);
+            var body = UUID.nameUUIDFromBytes(("asteroid-restore-" + i).getBytes(java.nio.charset.StandardCharsets.UTF_8));
+            assertTrue(data.detach(id, body));
+            assertTrue(data.storeBody(id, body,
+                    new GlobalSavedSubLevelPointer(new ChunkPos(i, 0), (short) 0, (short) 0),
+                    i * 30.0, 0, 0, i + 19, AsteroidField.MIN_RADIUS, false));
+        }
+
+        var nearby = data.nearbyStored(0, 0, 0, 200, 2);
+
+        assertEquals(2, nearby.size());
+        assertEquals(0.0, nearby.get(0).x());
+        assertEquals(30.0, nearby.get(1).x());
+        assertTrue(data.nearbyStored(100_000, 0, 0, 100_000, 2).isEmpty(),
+                "a huge operator range must fail closed when its cell query exceeds the work bound");
     }
 
     @Test void legacyDetachedIdWithoutBodyIdentityStillLoads() {

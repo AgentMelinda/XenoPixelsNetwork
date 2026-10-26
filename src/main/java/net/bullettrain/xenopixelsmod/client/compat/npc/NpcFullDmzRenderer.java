@@ -290,7 +290,7 @@ public final class NpcFullDmzRenderer {
             if (showAura) {
                 stats.getStatus().setAuraActive(true);
                 stats.getStatus().setPermanentAura(true);
-                AuraRenderer.renderGuiAura(proxy, graphics.pose(), projection, x, y, scale, partialTick, true);
+                AuraRenderer.renderGuiAura(proxy, graphics.pose(), projection, x, y, scale, partialTick);
             }
         } finally {
             stats.getStatus().setAuraActive(false);

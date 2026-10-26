@@ -80,7 +80,8 @@ class XenoDialogueQuestOptionTest {
         assertTrue(usable >= 0, "the enabled/disabled split should still exist");
         String body = screen.substring(usable, Math.min(screen.length(), usable + 900));
 
-        assertTrue(body.contains("case QUEST ->"), "QUEST needs its own branch now");
+        assertTrue(body.contains("case QUEST, DMZ_QUEST ->"),
+                "both quest backends require a nonblank authored binding");
         assertTrue(body.contains("case ROLE -> false"),
                 "ROLE has no economy-role system and must stay disabled");
     }
@@ -102,8 +103,8 @@ class XenoDialogueQuestOptionTest {
         // COMMAND path already followed. Sending a quest id would let a crafted packet start any
         // quest it liked.
         String screen = source("client/npc/XenoNpcDialogueScreen.java");
-        int quest = screen.indexOf("case QUEST -> {");
-        assertTrue(quest >= 0, "the screen should have a QUEST branch");
+        int quest = screen.indexOf("case QUEST, DMZ_QUEST -> {");
+        assertTrue(quest >= 0, "both quest backends must use the server selection branch");
         String body = screen.substring(quest, Math.min(screen.length(), quest + 700));
         assertTrue(body.contains("serverOptionIndex(option)"),
                 "send the original server index even when earlier offers are hidden");

@@ -8,8 +8,12 @@ import net.bullettrain.xenopixelsmod.api.network.AddonNetwork;
 import net.bullettrain.xenopixelsmod.combat.v3.V3Resources;
 import net.bullettrain.xenopixelsmod.config.XenoSpaceConfig;
 import net.bullettrain.xenopixelsmod.space.SpaceChartService;
+import net.bullettrain.xenopixelsmod.space.ChartSurfaceBodyResolver;
 import net.bullettrain.xenopixelsmod.space.asteroid.AsteroidPhysicalizer;
+import net.bullettrain.xenopixelsmod.space.dragonball.DragonBallSurfaceTravel;
 import net.bullettrain.xenopixelsmod.space.physics.PhysicalEarth;
+import net.bullettrain.xenopixelsmod.space.smallplanet.PlanetSurfaceCells;
+import net.bullettrain.xenopixelsmod.space.smallplanet.SmallPlanetSurfaceTravel;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.MinecraftServer;
@@ -58,9 +62,27 @@ public final class OxygenSystem {
             Tracked tracked = TRACKED.computeIfAbsent(player.getUUID(), ignored -> fresh(player, maxBreath));
             boolean exempt = player.isCreative() || player.isSpectator() || !player.isAlive();
             boolean vacuum = !exempt && inVacuum(server, player);
+            boolean auraBreathing = vacuum && XenoSpaceConfig.oxygenAuraSubstitute() && auraActive(player);
+            if (auraBreathing) {
+                // Bill the sampled active interval before granting its oxygen. Proportional billing means
+                // intermittent samples cannot erase accrued time. Zero cost is explicitly free; a positive
+                // price that the float resource API cannot represent is denied rather than rounded to free.
+                double cost = OxygenRules.auraKiCost(XenoSpaceConfig.oxygenKiPerSecond(), PERIOD);
+                boolean paymentSucceeded = cost == 0.0 || (OxygenRules.auraCostRepresentable(cost)
+                        && V3Resources.spend(player, (float) cost, 0f));
+                auraBreathing = OxygenRules.auraPaymentAllowsSubstitute(cost, paymentSucceeded);
+            }
+            if (auraBreathing) {
+                tracked.state = OxygenRules.auraSubstitute(tracked.state, maxBreath);
+                tracked.secondTicks = 0;
+                sync(player, tracked, maxBreath);
+                continue;
+            }
             var before = tracked.state;
             // Design-doc 15: a black hole tidal band makes oxygen run out faster (factor 1 elsewhere or with holes off).
-            int drain = vacuum ? PERIOD * net.bullettrain.xenopixelsmod.space.blackhole.BlackHoleSystem.oxygenFactor(player) : PERIOD;
+            int baseDrain = PERIOD * net.bullettrain.xenopixelsmod.space.blackhole.BlackHoleSystem.oxygenFactor(player)
+                    * net.bullettrain.xenopixelsmod.space.event.StellarBlastWaveService.oxygenFactor(player);
+            int drain = vacuum ? oxygenDrainTicks(server, player, baseDrain) : PERIOD;
             tracked.state = OxygenRules.step(before, vacuum, drain, maxBreath, refillPerTick);
             if (tracked.state.reserve() != before.reserve()) writeReserve(player, tracked.state.reserve());
             if (tracked.state.phase() == OxygenRules.Phase.SUFFOCATING) {
@@ -81,15 +103,48 @@ public final class OxygenSystem {
         if (PhysicalEarth.HOST.equals(dimension)) vacuum = true;
         else {
             var state = SpaceChartService.state(server);
-            int slot = state.runtime.chart.slotFor(dimension);
+            boolean sharedSurface = ChartSurfaceBodyResolver.SHARED_SURFACE_DIMENSION
+                    .equals(dimension.toString());
+            int slot = sharedSurface
+                    ? ChartSurfaceBodyResolver.slotAt(state.runtime.chart, dimension.toString(),
+                    player.blockPosition().getX(), player.blockPosition().getZ())
+                    : state.runtime.chart.slotFor(dimension);
             if (slot >= 0) {
                 var body = state.runtime.chart.body(slot);
+                var settings = state.sidecarSettings.get(dimension.toString());
+                if (settings != null && !settings.enabledOrDefault(true)) return false;
+                boolean requiredAboveExit = settings == null || settings.oxygenRequiredAboveExit() == null
+                        || settings.oxygenRequiredAboveExit();
                 // The effective exit (config/command overrides included), the same value SpaceHandoffPass crosses at.
                 vacuum = OxygenRules.inVacuum(breathable(state.definitions.get(body.id())), player.getY(),
-                        state.runtime.chart.exitAltitude(slot));
+                        state.runtime.chart.exitAltitude(slot), requiredAboveExit);
+            } else if (sharedSurface) {
+                var address = PlanetSurfaceCells.addressAtBlock(player.blockPosition().getX(),
+                        player.blockPosition().getZ()).orElse(null);
+                if (address == null || address.chartBodyId() != null) vacuum = true;
+                else {
+                    var settings = state.sidecarSettings.get(dimension.toString());
+                    if (settings != null && !settings.enabledOrDefault(true)) return false;
+                    double tripExit = PlanetSurfaceCells.dragonBallSlotAt(address.surfaceCell()).isPresent()
+                            ? DragonBallSurfaceTravel.atmosphereExitAltitude(player)
+                            : SmallPlanetSurfaceTravel.atmosphereExitAltitude(player);
+                    double exit = OxygenRules.sharedSurfaceExitAltitude(player.level().getMaxBuildHeight(), tripExit);
+                    boolean requiredAboveExit = settings == null || settings.oxygenRequiredAboveExit() == null
+                            || settings.oxygenRequiredAboveExit();
+                    // SDB/generated surface cells have no chart JSON breathable flag; match the chart default (breathable).
+                    vacuum = OxygenRules.inVacuum(true, player.getY(), exit, requiredAboveExit);
+                }
             } else vacuum = XenoSpaceConfig.spaceDimensions().contains(dimension);
         }
         return vacuum && !pressurized(player);
+    }
+
+    private static int oxygenDrainTicks(MinecraftServer server, ServerPlayer player, int baseTicks) {
+        if (player.level() instanceof ServerLevel level) {
+            var settings = SpaceChartService.state(server).sidecarSettings.get(level.dimension().location().toString());
+            if (settings != null) return OxygenRules.drainTicks(baseTicks, settings.oxygenDrainRate());
+        }
+        return baseTicks;
     }
 
     /** {@code "breathable": false} in a body's chart JSON makes its dimension vacuum; absent means breathable. */
@@ -97,10 +152,7 @@ public final class OxygenSystem {
         return definition == null || !definition.has("breathable") || definition.get("breathable").getAsBoolean();
     }
 
-    /**
-     * Inside the world bounds of a ship sub-level (not a managed planet or asteroid) counts as a pressurized cabin.
-     * An approximation: hull integrity and open cockpits are not modelled yet (§6 hull tie-in).
-     */
+    /** Ship bounds provide legacy cabin behavior; pod pressure is resolved from the server cockpit catalog. */
     static boolean pressurized(ServerPlayer player) {
         if (!XenoSpaceConfig.oxygenShipsPressurized() || !(player.level() instanceof ServerLevel level)) return false;
         double x = player.getX(), y = player.getY() + player.getEyeHeight(), z = player.getZ();
@@ -111,7 +163,9 @@ public final class OxygenSystem {
         for (var sub : container.getAllSubLevels()) {
             if (!(sub instanceof ServerSubLevel body) || body.isRemoved() || PhysicalEarth.isManaged(body) || AsteroidPhysicalizer.isAsteroid(body)) continue;
             var box = body.boundingBox();
-            if (x >= box.minX() && x <= box.maxX() && y >= box.minY() && y <= box.maxY() && z >= box.minZ() && z <= box.maxZ()) return true;
+            if (x >= box.minX() && x <= box.maxX() && y >= box.minY() && y <= box.maxY() && z >= box.minZ() && z <= box.maxZ()
+                    && net.bullettrain.xenopixelsmod.space.pod.PodCockpitPressurePolicy.pressurizedCabin(
+                    body.getUserDataTag(), net.bullettrain.xenopixelsmod.space.pod.PodCockpitCatalog.snapshot())) return true;
         }
         return false;
     }
@@ -121,6 +175,11 @@ public final class OxygenSystem {
         if (ki > 0f && V3Resources.spend(player, ki, 0f)) return;
         float damage = (float) XenoSpaceConfig.oxygenDamagePerSecond();
         if (damage > 0f) player.hurt(player.damageSources().drown(), damage);
+    }
+
+    /** Reads the server-authoritative DMZ aura flags; missing character capability means no aura. */
+    private static boolean auraActive(ServerPlayer player) {
+        return net.bullettrain.xenopixelsmod.api.dmz.DmzAccess.auraActive(player);
     }
 
     /** Adds Breathing Capsule supply to an online player; returns false when it is already at the cap. */

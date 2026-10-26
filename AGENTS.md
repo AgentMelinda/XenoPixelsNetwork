@@ -30,7 +30,7 @@ skill playbook before changing code, resources, build logic, binaries, or releas
 ## Repository contract
 
 - Target Java 21, Minecraft 1.21.1, NeoForge 21.1.248, and mod id `xenopixelsmod`.
-- `libs/dragonminez-2.1.3.jar` is a tracked compile/runtime dependency. Its SHA-256 must exactly
+- `libs/dragonminez-2.2.jar` is the pinned compile/runtime dependency. Its SHA-256 must exactly
   match `dragonminez_sha256` in `gradle.properties` and both must change together.
 - Treat `src/main/java/net/bullettrain/xenopixelsmod/api/**` as published compatibility surface.
   Everything outside it is internal unless another documented integration says otherwise.

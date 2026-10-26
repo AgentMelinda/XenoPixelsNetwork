@@ -192,10 +192,23 @@ public final class PlacedNpcProfileMigrator {
 
         profile.skinPlayer = firstString(dmzProfile, dmzCharacter, source, "SkinPlayer", "");
         profile.skinUrl = firstString(dmzProfile, dmzCharacter, source, "SkinUrl", "");
-        profile.modelTexture = firstString(source, dmzProfile, "Texture", "");
+        CompoundTag model = source.getCompound("NpcModelData");
+        profile.modelTexture = firstString(dmzProfile, source, "ModelTexture", "");
+        if (profile.modelTexture.isBlank()) profile.modelTexture = firstString(source, "Texture", "");
         profile.modelId = firstString(source, dmzProfile, "ModelId", "");
+        String entityModel = model.getString("EntityName");
+        if (profile.modelId.isBlank() && !entityModel.isBlank()) profile.modelId = entityModel;
         profile.modelAnimation = firstString(source, dmzProfile, "ModelAnimation", "");
         profile.modelKind = modelKind(firstInt(source, dmzProfile, new CompoundTag(), "ModelType", 0), profile.modelId);
+        if (!dmzProfile.getString("ModelId").isBlank() && dmzProfile.contains("ModelKind"))
+            profile.modelKind = NpcCombatProfile.normalizeModelKind(dmzProfile.getString("ModelKind"));
+        else if (!entityModel.isBlank()) profile.modelKind = NpcCombatProfile.MODEL_ENTITY;
+        if (entityModel.equals("mynpcs:customnpc") || entityModel.equals("customnpcs:customnpc")
+                || entityModel.equals("mynpcs:customnpcalex") || entityModel.equals("customnpcs:customnpcalex")) {
+            profile.modelKind = NpcCombatProfile.MODEL_VANILLA;
+            profile.modelId = "";
+        }
+        if (profile.skinUrl.isBlank()) profile.skinUrl = model.getString("CustomSkinUrl");
         profile.modelTint = firstInt(source, dmzProfile, new CompoundTag(), "ModelTint", profile.modelTint);
         profile.modelGlowing = firstBoolean(source, dmzProfile, "ModelGlowing", false);
         profile.baseSize = Math.max(0, firstInt(source, dmzProfile, new CompoundTag(), "Size", "BaseSize", 0));
@@ -212,6 +225,7 @@ public final class PlacedNpcProfileMigrator {
         applyRanged(profile, source);
         applySounds(profile, source);
         applyLines(profile, source);
+        applyInventory(profile, source);
         if (scripts != null && !scripts.isEmpty()) {
             profile.scripts = scripts;
             profile.scriptId = scripts.firstScriptId();
@@ -335,6 +349,9 @@ public final class PlacedNpcProfileMigrator {
      * ({@code aiCanSwim}, {@code aiReturnToStart} and {@code aiMustSeeTarget} all default to true).
      */
     private static void applyAi(NpcCombatProfile profile, CompoundTag source) {
+        if (source.contains("MoveSpeed", Tag.TAG_ANY_NUMERIC))
+            profile.importedMoveSpeed = Math.max(0, Math.min(100, source.getInt("MoveSpeed")));
+        if (source.contains("CanSprint")) profile.aiCanSprint = source.getBoolean("CanSprint");
         if (source.contains("CanSwim")) {
             profile.aiCanSwim = source.getBoolean("CanSwim");
         }
@@ -416,6 +433,22 @@ public final class PlacedNpcProfileMigrator {
         }
         if (source.contains("NpcVisible")) {
             profile.visible = source.getInt("NpcVisible") != 1;
+        }
+        // Both are plain booleans whose source key and native control are the same switch: the
+        // editor row is literally labelled "Showing Layers" and "Overlay glows", and the tracked
+        // fixtures carry 1b for both. Absent means untouched, because these native fields default to
+        // on and reading a missing key as false would switch the skin layer off for every NPC whose
+        // save predates the field.
+        if (source.contains("ShowLayers")) {
+            profile.displayOuterLayers = source.getBoolean("ShowLayers");
+        }
+        if (source.contains("OverlayGlowing")) {
+            profile.displayOverlayGlow = source.getBoolean("OverlayGlowing");
+        }
+        // Same name, same boolean, and the fixtures disagree on it (one of the three tracked saves
+        // hides its corpse), so leaving it out would change how a killed NPC looks.
+        if (source.contains("HideBodyWhenKilled")) {
+            profile.hideDeadBody = source.getBoolean("HideBodyWhenKilled");
         }
     }
 
@@ -564,9 +597,51 @@ public final class PlacedNpcProfileMigrator {
         ListTag hands = source.getList("HandItems", Tag.TAG_COMPOUND);
         putStack(gear, "Main", hands, 0);
         putStack(gear, "Off", hands, 1);
+        // CNPC's authored maps use Slot plus ItemStack.save's own fields in the same compound.
+        // Verified with NBTTags.nbtIItemStackMap in the supplied 1.21.1 CNPC jar.
+        String[] armorSlots = {"Head", "Chest", "Legs", "Feet"};
+        for (Tag raw : source.getList("Armor", Tag.TAG_COMPOUND)) {
+            CompoundTag item = (CompoundTag) raw;
+            int slot = item.getByte("Slot");
+            if (slot >= 0 && slot < armorSlots.length && item.contains("id"))
+                gear.put(armorSlots[slot], stackWithoutSlot(item));
+        }
+        for (Tag raw : source.getList("Weapons", Tag.TAG_COMPOUND)) {
+            CompoundTag item = (CompoundTag) raw;
+            int slot = item.getByte("Slot");
+            if ((slot == 0 || slot == 2) && item.contains("id"))
+                gear.put(slot == 0 ? "Main" : "Off", stackWithoutSlot(item));
+        }
         if (!gear.isEmpty()) {
             profile.put("Gear", gear);
         }
+    }
+
+    private static CompoundTag stackWithoutSlot(CompoundTag source) {
+        CompoundTag stack = source.copy();
+        stack.remove("Slot");
+        return stack;
+    }
+
+    private static void applyInventory(NpcCombatProfile profile, CompoundTag source) {
+        var chances = new java.util.HashMap<Integer, Float>();
+        for (Tag raw : source.getList("DropChance", Tag.TAG_COMPOUND)) {
+            CompoundTag row = (CompoundTag) raw;
+            chances.put(row.getInt("Slot"), row.getFloat("Integer"));
+        }
+        for (Tag raw : source.getList("NpcInv", Tag.TAG_COMPOUND)) {
+            CompoundTag item = (CompoundTag) raw;
+            int slot = item.getByte("Slot");
+            if (slot < 0 || slot >= net.bullettrain.xenopixelsmod.npc.inventory.NpcDropList.MAX_DROPS
+                    || !item.contains("id")) continue;
+            profile.drops.set(slot, new net.bullettrain.xenopixelsmod.npc.inventory.NpcDrop(
+                    net.bullettrain.xenopixelsmod.npc.inventory.NpcSlotStack.load(stackWithoutSlot(item)),
+                    chances.getOrDefault(slot, 100.0f)));
+        }
+        if (source.contains("MinExp")) profile.drops.setMinExp(source.getInt("MinExp"));
+        if (source.contains("MaxExp")) profile.drops.setMaxExp(source.getInt("MaxExp"));
+        if (source.contains("LootMode")) profile.drops.setLootMode(
+                net.bullettrain.xenopixelsmod.npc.inventory.NpcLootMode.byIndex(source.getInt("LootMode")));
     }
 
     private static void putStack(CompoundTag gear, String key, ListTag list, int index) {

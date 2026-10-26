@@ -1,6 +1,7 @@
 package net.bullettrain.xenopixelsmod.space.chart;
 
 import net.bullettrain.xenopixelsmod.space.math.BodyLod;
+import net.bullettrain.xenopixelsmod.space.SpaceHomeOrbitalFrame;
 import net.bullettrain.xenopixelsmod.space.math.GravityField;
 import net.bullettrain.xenopixelsmod.space.math.KeplerSolver;
 import net.bullettrain.xenopixelsmod.space.math.OrbitalElements;
@@ -61,8 +62,16 @@ public final class ChartRegistry {
     private double[] px = new double[0], py = new double[0], pz = new double[0];
     private double[] vx = new double[0], vy = new double[0], vz = new double[0];
     private boolean[] manual = new boolean[0];
+    /** Live Sable pose overlays the authored orbit without changing manual/frozen chart semantics. */
+    private boolean[] observed = new boolean[0], observedVelocityValid = new boolean[0];
+    /** Shared-clock sample time for the latest transient live pose observation. */
+    private double[] observedAtSeconds = new double[0];
+    /** A same-time solve must still consume a newly published or cleared live observation. */
+    private boolean observationsDirty;
     private double[] exitAltitude = new double[0];
     private double[] manualX = new double[0], manualY = new double[0], manualZ = new double[0];
+    private double[] observedX = new double[0], observedY = new double[0], observedZ = new double[0];
+    private double[] observedVx = new double[0], observedVy = new double[0], observedVz = new double[0];
     private double[] angularSize = new double[0];
     private BodyLod[] lod = new BodyLod[0];
 
@@ -160,13 +169,21 @@ public final class ChartRegistry {
             vy = new double[count];
             vz = new double[count];
             manual = new boolean[count];
+            observed = new boolean[count]; observedVelocityValid = new boolean[count];
+            observedAtSeconds = new double[count];
             exitAltitude = new double[count];
             manualX = new double[count]; manualY = new double[count]; manualZ = new double[count];
+            observedX = new double[count]; observedY = new double[count]; observedZ = new double[count];
+            observedVx = new double[count]; observedVy = new double[count]; observedVz = new double[count];
             angularSize = new double[count];
             lod = new BodyLod[count];
         }
         for (int i = 0; i < count; i++) lod[i] = BodyLod.ABSENT;
         java.util.Arrays.fill(manual, false);
+        java.util.Arrays.fill(observed, false);
+        java.util.Arrays.fill(observedVelocityValid, false);
+        java.util.Arrays.fill(observedAtSeconds, Double.NaN);
+        observationsDirty = false;
         for (int i = 0; i < count; i++) exitAltitude[i] = bodies[i].exitAltitude();
         evaluatedAt = Double.NaN;
         version++;
@@ -238,7 +255,7 @@ public final class ChartRegistry {
      * @return the number of bodies whose position actually came from live Kepler math
      */
     public int evaluate(double timeSeconds) {
-        if (evaluatedAt == timeSeconds) return 0;
+        if (evaluatedAt == timeSeconds && !observationsDirty) return 0;
         evaluatedAt = timeSeconds;
         int solved = 0;
         for (int i = 0; i < bodies.length; i++) {
@@ -282,6 +299,15 @@ public final class ChartRegistry {
                 dvy += vy[parent];
                 dvz += vz[parent];
             }
+            // A live physical pose is an absolute observation of this body's current location. Its
+            // descendants then inherit that location in this same topological pass, while its orbital
+            // velocity remains analytic unless the physics controller supplied a measured velocity.
+            if (observed[i]) {
+                ox = observedX[i]; oy = observedY[i]; oz = observedZ[i];
+                if (observedVelocityValid[i]) {
+                    dvx = observedVx[i]; dvy = observedVy[i]; dvz = observedVz[i];
+                }
+            }
             px[i] = ox;
             py[i] = oy;
             pz[i] = oz;
@@ -289,6 +315,7 @@ public final class ChartRegistry {
             vy[i] = dvy;
             vz[i] = dvz;
         }
+        observationsDirty = false;
         return solved;
     }
 
@@ -338,11 +365,19 @@ public final class ChartRegistry {
      */
     public int resolveLodsForObservers(double[] observerX, double[] observerY, double[] observerZ,
                                        int count, boolean inViewTest) {
+        return resolveLodsForObservers(observerX, observerY, observerZ, count, inViewTest, Double.NaN);
+    }
+
+    /** Resolves LOD distances in the persisted home-system plane while retaining observed/manual poses. */
+    public int resolveLodsForObservers(double[] observerX, double[] observerY, double[] observerZ,
+                                       int count, boolean inViewTest, double homeFrameY) {
         for (int i = 0; i < bodies.length; i++) {
             double nearest2 = Double.POSITIVE_INFINITY;
+            double bodyY = observed[i] || manual[i] ? py[i]
+                    : SpaceHomeOrbitalFrame.chartY(this, i, homeFrameY);
             for (int o = 0; o < count; o++) {
                 double dx = px[i] - observerX[o];
-                double dy = py[i] - observerY[o];
+                double dy = bodyY - observerY[o];
                 double dz = pz[i] - observerZ[o];
                 double d2 = dx * dx + dy * dy + dz * dz;
                 if (d2 < nearest2) nearest2 = d2;
@@ -573,10 +608,48 @@ public final class ChartRegistry {
         if (!validCoordinate(x) || !validCoordinate(y) || !validCoordinate(z))
             throw new IllegalArgumentException("body coordinates must be finite and within +/-30000000");
         manualX[slot]=x; manualY[slot]=y; manualZ[slot]=z; manual[slot]=true;
+        observationsDirty = true;
         evaluatedAt=Double.NaN;
+    }
+
+    /**
+     * Publishes a live physical body's absolute position while retaining its authored orbit state.
+     * Unlike {@link #moveBody}, this does not freeze the body or set its orbital velocity to zero.
+     */
+    public void observeBody(String id, double x, double y, double z) {
+        observeBody(id, x, y, z, Double.NaN, Double.NaN, Double.NaN);
+    }
+
+    /** Publishes a physical position and, when finite, its measured absolute velocity. */
+    public void observeBody(String id, double x, double y, double z, double velocityX, double velocityY, double velocityZ) {
+        observeBody(id, x, y, z, velocityX, velocityY, velocityZ, Double.NaN);
+    }
+
+    /** Publishes a physical pose, measured velocity when available, and its shared-orbit-clock sample time. */
+    public void observeBody(String id, double x, double y, double z, double velocityX, double velocityY, double velocityZ,
+                            double sampleTimeSeconds) {
+        int slot = requireBody(id);
+        if (!validCoordinate(x) || !validCoordinate(y) || !validCoordinate(z))
+            throw new IllegalArgumentException("body coordinates must be finite and within +/-30000000");
+        observed[slot] = true;
+        observedX[slot] = x; observedY[slot] = y; observedZ[slot] = z;
+        observedAtSeconds[slot] = Double.isFinite(sampleTimeSeconds) ? sampleTimeSeconds : Double.NaN;
+        observedVelocityValid[slot] = Double.isFinite(velocityX) && Double.isFinite(velocityY) && Double.isFinite(velocityZ);
+        if (observedVelocityValid[slot]) {
+            observedVx[slot] = velocityX; observedVy[slot] = velocityY; observedVz[slot] = velocityZ;
+        }
+        observationsDirty = true;
+    }
+
+    /** Clears transient Sable pose overlays before the current loaded-body snapshot is published. */
+    public void clearObservedBodies() {
+        java.util.Arrays.fill(observed, false);
+        java.util.Arrays.fill(observedVelocityValid, false);
+        observationsDirty = true;
     }
     public void resumeBody(String id) {
         manual[requireBody(id)]=false;
+        observationsDirty = true;
         evaluatedAt=Double.NaN;
     }
     /** Called on publication, not on a tick; identities missing in the candidate are skipped. */
@@ -590,6 +663,39 @@ public final class ChartRegistry {
     public double velocityX(int slot) { return vx[slot]; }
     public double velocityY(int slot) { return vy[slot]; }
     public double velocityZ(int slot) { return vz[slot]; }
+    /** Last shared-clock sample used by {@link #evaluate(double)}. */
+    public double evaluatedAtSeconds() { return evaluatedAt; }
+
+    /**
+     * Samples the latest live physical observation when one is available, otherwise the last chart solve.
+     * First-order extrapolation is accepted only inside {@code maxExtrapolationSeconds}; a clock warp or
+     * stale sample outside that window returns its base position instead of turning a timestamp jump into
+     * a large spatial jump.
+     */
+    public void stateAt(int slot, double timeSeconds, double maxExtrapolationSeconds,
+                        double[] position, double[] velocity) {
+        if (slot < 0 || slot >= bodies.length) throw new IndexOutOfBoundsException("chart slot " + slot);
+        if (position == null || position.length < 3 || velocity == null || velocity.length < 3)
+            throw new IllegalArgumentException("position and velocity buffers must each hold 3 values");
+        double baseX = px[slot], baseY = py[slot], baseZ = pz[slot];
+        double baseTime = evaluatedAt;
+        velocity[0] = vx[slot]; velocity[1] = vy[slot]; velocity[2] = vz[slot];
+        if (!manual[slot] && observed[slot]) {
+            baseX = observedX[slot]; baseY = observedY[slot]; baseZ = observedZ[slot];
+            if (Double.isFinite(observedAtSeconds[slot])) baseTime = observedAtSeconds[slot];
+            else baseTime = Double.NaN; // An untimed live pose must not bridge from an older chart solve.
+            if (observedVelocityValid[slot]) {
+                velocity[0] = observedVx[slot]; velocity[1] = observedVy[slot]; velocity[2] = observedVz[slot];
+            }
+        }
+        double elapsed = Double.isFinite(timeSeconds) && Double.isFinite(baseTime)
+                ? timeSeconds - baseTime : 0.0;
+        double maxBridge = Double.isFinite(maxExtrapolationSeconds) ? Math.max(0.0, maxExtrapolationSeconds) : 0.0;
+        if (elapsed < 0.0 || elapsed > maxBridge) elapsed = 0.0;
+        position[0] = baseX + velocity[0] * elapsed;
+        position[1] = baseY + velocity[1] * elapsed;
+        position[2] = baseZ + velocity[2] * elapsed;
+    }
     private int requireBody(String id) {
         int slot=slotOf(id);
         if(slot<0) throw new IllegalArgumentException("unknown space body: "+id);

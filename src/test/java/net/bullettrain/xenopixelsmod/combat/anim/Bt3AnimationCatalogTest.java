@@ -51,7 +51,7 @@ class Bt3AnimationCatalogTest {
         String projectDir = System.getProperty("xenopixels.projectDir");
         assertNotNull(projectDir, "Gradle must provide xenopixels.projectDir");
         Path root = Path.of(projectDir);
-        try (ZipFile jar = new ZipFile(root.resolve("libs/dragonminez-2.1.3.jar").toFile())) {
+        try (ZipFile jar = new ZipFile(root.resolve("libs/dragonminez-2.2.jar").toFile())) {
             var entry = jar.getEntry("assets/dragonminez/animations/entity/races/combat.animation.json");
             assertNotNull(entry);
             try (InputStream in = jar.getInputStream(entry)) {

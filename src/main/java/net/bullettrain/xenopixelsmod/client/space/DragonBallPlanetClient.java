@@ -23,22 +23,33 @@ import org.joml.Matrix4f;
 import org.lwjgl.opengl.GL11;
 
 /**
- * Poly form of the planet-sized Super Dragon Balls: one shared UV sphere mesh (shading baked into vertex colour) and one
- * generated equirectangular texture per star count, both built from {@link DragonBallPlanetShape} so they match the
- * voxel form. Opaque and depth-tested, drawn after entities in the Voidsea; not drawn under shader packs in this bench.
+ * Poly preview of planet-sized Super Dragon Balls. The generated equirectangular texture for each star count is shared
+ * with the production {@link PhysicalPlanetRenderer}; only this class's preview sphere mesh consumes the temporary
+ * {@link DragonBallPlanetSnapshot}. The production renderer gets position and orientation from the replicated Sable body.
  */
 @EventBusSubscriber(modid = "xenopixelsmod", value = Dist.CLIENT)
 public final class DragonBallPlanetClient {
     private static final ResourceLocation VOIDSEA = ResourceLocation.fromNamespaceAndPath("xenopixelsmod", "voidsea");
     private static final int LON = 96, LAT = 48, TEX_W = 1024, TEX_H = 512;
+    private static final int PROXY_TEX_W = 128, PROXY_TEX_H = 64;
     private static final Matrix4f MODEL = new Matrix4f();
     private static final ResourceLocation[] TEXTURES = new ResourceLocation[7];
+    private static final ResourceLocation[] PROXY_TEXTURES = new ResourceLocation[7];
     private static volatile DragonBallPlanetSnapshot snapshot;
     private static VertexBuffer sphere;
 
     private DragonBallPlanetClient() {}
 
     public static void apply(DragonBallPlanetSnapshot packet) { snapshot = packet; }
+
+    /** Star counts of the benchmark spheres this client draws (bench poly only); empty when none. */
+    static java.util.List<Integer> benchmarkStars() {
+        DragonBallPlanetSnapshot snap = snapshot;
+        if (snap == null) return java.util.List.of();
+        var stars = new java.util.ArrayList<Integer>(snap.balls().size());
+        for (var ball : snap.balls()) stars.add(ball.stars());
+        return stars;
+    }
 
     @SubscribeEvent public static void render(RenderLevelStageEvent event) {
         if (event.getStage() != RenderLevelStageEvent.Stage.AFTER_ENTITIES || IrisShaderState.packInUse()) return;
@@ -72,22 +83,63 @@ public final class DragonBallPlanetClient {
         }
     }
 
-    private static void ensureResources() {
-        if (sphere != null) return;
+    /** Gets the procedural star-count texture used by a production SDB body. Called on the render thread. */
+    public static ResourceLocation textureForSlot(int slot) {
+        if (slot < 1 || slot > TEXTURES.length) throw new IllegalArgumentException("SDB slot out of range: " + slot);
+        return ensureTexture(slot, TEX_W, TEX_H, "dynamic/dragon_ball_planet_", TEXTURES);
+    }
+
+    /** Low-resolution texture for sub-pixel far proxies; generated before rendering when the snapshot arrives. */
+    public static ResourceLocation projectionTextureForSlot(int slot) {
+        if (slot < 1 || slot > PROXY_TEXTURES.length) throw new IllegalArgumentException("SDB slot out of range: " + slot);
+        return ensureTexture(slot, PROXY_TEX_W, PROXY_TEX_H, "dynamic/dragon_ball_planet_proxy_", PROXY_TEXTURES);
+    }
+
+    /** Prepare the far texture while applying the packet, before a draw loop can request it. */
+    public static void prewarmProjectionTextures(int[] slots) {
+        for (int slot : slots) projectionTextureForSlot(slot);
+    }
+
+    /** These texture ids are registered as DynamicTextures here and must not be replaced by the generic surface loader. */
+    public static boolean ownsTexture(ResourceLocation location) {
+        return location != null && "xenopixelsmod".equals(location.getNamespace())
+                && location.getPath().startsWith("dynamic/dragon_ball_planet_");
+    }
+
+    private static void ensureTextures() {
+        for (int stars = 1; stars <= TEXTURES.length; stars++) textureForSlot(stars);
+    }
+
+    /** Generates one map and publishes its id only after TextureManager accepts the DynamicTexture. */
+    private static ResourceLocation ensureTexture(int stars, int width, int height, String pathPrefix,
+                                                  ResourceLocation[] cache) {
+        if (cache[stars - 1] != null) return cache[stars - 1];
         var textures = Minecraft.getInstance().getTextureManager();
-        for (int stars = 1; stars <= 7; stars++) {
-            var image = new NativeImage(TEX_W, TEX_H, false);
-            for (int j = 0; j < TEX_H; j++) {
-                double lat = Math.PI / 2 - (j + 0.5) / TEX_H * Math.PI;
-                for (int i = 0; i < TEX_W; i++) {
-                    double lon = (i + 0.5) / TEX_W * Math.PI * 2 - Math.PI;
-                    double x = Math.cos(lat) * Math.sin(lon), y = Math.sin(lat), z = Math.cos(lat) * Math.cos(lon);
-                    image.setPixelRGBA(i, j, DragonBallPlanetShape.inStar(stars, x, y, z) ? abgr(200, 20, 40) : abgr(245, 145, 32));
-                }
+        var image = new NativeImage(width, height, false);
+        for (int j = 0; j < height; j++) {
+            double lat = Math.PI / 2 - (j + 0.5) / height * Math.PI;
+            for (int i = 0; i < width; i++) {
+                double lon = (i + 0.5) / width * Math.PI * 2 - Math.PI;
+                double x = Math.cos(lat) * Math.sin(lon), y = Math.sin(lat), z = Math.cos(lat) * Math.cos(lon);
+                image.setPixelRGBA(i, j, DragonBallPlanetShape.inStar(stars, x, y, z)
+                        ? abgr(200, 20, 40) : abgr(245, 145, 32));
             }
-            TEXTURES[stars - 1] = ResourceLocation.fromNamespaceAndPath("xenopixelsmod", "dynamic/dragon_ball_planet_" + stars);
-            textures.register(TEXTURES[stars - 1], new DynamicTexture(image));
         }
+        var location = ResourceLocation.fromNamespaceAndPath("xenopixelsmod", pathPrefix + stars);
+        var texture = new DynamicTexture(image);
+        try {
+            textures.register(location, texture);
+            cache[stars - 1] = location;
+            return location;
+        } catch (RuntimeException | Error failure) {
+            texture.close();
+            throw failure;
+        }
+    }
+
+    private static void ensureResources() {
+        ensureTextures();
+        if (sphere != null) return;
         // Light from upper front-left in ball space; ambient keeps the night side readable.
         double lx = -0.45, ly = 0.6, lz = 0.66, ln = Math.sqrt(lx * lx + ly * ly + lz * lz);
         BufferBuilder builder = Tesselator.getInstance().begin(VertexFormat.Mode.QUADS, DefaultVertexFormat.POSITION_TEX_COLOR);

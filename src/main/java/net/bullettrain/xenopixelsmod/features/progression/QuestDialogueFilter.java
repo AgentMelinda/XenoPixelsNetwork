@@ -19,18 +19,29 @@ public final class QuestDialogueFilter {
         if (player == null || dialogue == null) return dialogue;
         XenoPlayerData data = XenoCapabilities.get(player).orElse(null);
         return filterUnavailable(dialogue,
-                option -> canOffer(player, data, option.quest()));
+                option -> canOffer(player, data, option.quest()),
+                node -> QuestRuntime.available(player, data, node.availability()));
     }
 
     static XenoDialogue filterUnavailable(XenoDialogue dialogue,
                                           java.util.function.Predicate<XenoDialogue.Option> canOffer) {
+        return filterUnavailable(dialogue, canOffer, node -> true);
+    }
+
+    static XenoDialogue filterUnavailable(XenoDialogue dialogue,
+                                          java.util.function.Predicate<XenoDialogue.Option> canOffer,
+                                          java.util.function.Predicate<XenoDialogue.Node> canView) {
         if (dialogue == null) return null;
         Map<String, XenoDialogue.Node> nodes = new LinkedHashMap<>();
         for (Map.Entry<String, XenoDialogue.Node> entry : dialogue.nodes().entrySet()) {
+            if (!canView.test(entry.getValue())) continue;
             List<XenoDialogue.Option> kept = new ArrayList<>();
             List<XenoDialogue.Option> original = entry.getValue().options();
             for (int index = 0; index < original.size(); index++) {
                 XenoDialogue.Option option = original.get(index);
+                if (option.type() == XenoDialogue.OptionType.TEXT
+                        && (!dialogue.nodes().containsKey(option.target())
+                        || !canView.test(dialogue.nodes().get(option.target())))) continue;
                 if (option.type() == XenoDialogue.OptionType.QUEST && !canOffer.test(option)) {
                     continue;
                 }
@@ -39,7 +50,8 @@ public final class QuestDialogueFilter {
                         option.quest(), option.command(), sourceIndex, option.palette()));
             }
             nodes.put(entry.getKey(), new XenoDialogue.Node(
-                    entry.getValue().text(), List.copyOf(kept), entry.getValue().palette()));
+                    entry.getValue().text(), List.copyOf(kept), entry.getValue().palette(),
+                    entry.getValue().availability(), entry.getValue().sourceRef()));
         }
         if (!nodes.containsKey(dialogue.start())) return null;
         return new XenoDialogue(dialogue.start(), nodes);

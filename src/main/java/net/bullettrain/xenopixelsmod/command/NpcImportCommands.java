@@ -51,6 +51,12 @@ public final class NpcImportCommands {
     static void register(CommandDispatcher<CommandSourceStack> dispatcher) {
         dispatcher.register(Commands.literal("xenonpcimport")
                 .requires(source -> source.hasPermission(2))
+                .then(Commands.literal("playerdata")
+                        .then(Commands.argument("uuid", com.mojang.brigadier.arguments.StringArgumentType.word())
+                                .executes(context -> runPlayerData(context.getSource(),
+                                        com.mojang.brigadier.arguments.StringArgumentType.getString(context, "uuid"), true))
+                                .then(Commands.literal("confirm").executes(context -> runPlayerData(context.getSource(),
+                                        com.mojang.brigadier.arguments.StringArgumentType.getString(context, "uuid"), false)))))
                 .then(Commands.literal("factions")
                         .executes(context -> run(context.getSource(), true, false))
                         .then(Commands.literal("confirm")
@@ -59,6 +65,31 @@ public final class NpcImportCommands {
                         .executes(context -> run(context.getSource(), true, true))
                         .then(Commands.literal("confirm")
                                 .executes(context -> run(context.getSource(), false, true)))));
+    }
+
+    private static int runPlayerData(CommandSourceStack source, String rawUuid, boolean dryRun) {
+        java.util.UUID uuid;
+        try {
+            uuid = java.util.UUID.fromString(rawUuid);
+            if (!uuid.toString().equalsIgnoreCase(rawUuid)) throw new IllegalArgumentException();
+        } catch (IllegalArgumentException e) {
+            source.sendFailure(Component.literal("Use a full player UUID, not a name."));
+            return 0;
+        }
+        var store = XenoNpcStores.get();
+        if (store == null) { source.sendFailure(Component.literal("The NPC store is not open.")); return 0; }
+        var server = source.getServer();
+        var report = net.bullettrain.xenopixelsmod.npc.importer.PlayerProgressFiles.migrate(server,
+                server.getWorldPath(new LevelResource(".")), server.getServerDirectory(), store, uuid, dryRun);
+        source.sendSuccess(() -> Component.literal((dryRun ? "Dry run: " : "Player migration: ") + report.summary()), true);
+        for (String note : report.notes()) XenoPixelsMod.LOGGER.info("NPC player import: {}", note);
+        for (var failure : report.failures()) {
+            XenoPixelsMod.LOGGER.warn("NPC player import: {}", failure);
+            source.sendFailure(Component.literal(failure.toString()));
+        }
+        source.sendSuccess(() -> Component.literal("Existing Xeno state wins conflicts. Full field/conflict/backup report is in the server log."
+                + (dryRun ? " Add confirm to migrate this UUID after importing shared content." : "")), false);
+        return report.imported();
     }
 
     private static int run(CommandSourceStack source, boolean dryRun, boolean all) {
@@ -77,7 +108,11 @@ public final class NpcImportCommands {
         NpcImportReport report = all
                 ? NpcImportService.importAll(worldPath, gameDir, store, dryRun)
                 : NpcImportService.importFactions(worldPath, gameDir, store, dryRun);
-        if (all) PlacedNpcImport.convertLoaded(server, worldPath, dryRun, report);
+        if (all) {
+            net.bullettrain.xenopixelsmod.npc.script.api.xeno.XenoWorldData.importSource(
+                    server, worldPath, gameDir, dryRun, report);
+            PlacedNpcImport.convertLoaded(server, worldPath, dryRun, report);
+        }
 
         if (!dryRun && report.imported() > 0) {
             ModNetwork.sendToAll(SyncFactionsPacket.current());
@@ -94,13 +129,19 @@ public final class NpcImportCommands {
             }
             source.sendSuccess(() -> Component.literal("§7  " + note), false);
         }
+        for (String line : report.blocked()) {
+            if (shown++ >= MAX_CHAT_LINES) {
+                break;
+            }
+            source.sendSuccess(() -> Component.literal("§6  blocked: " + line), false);
+        }
         for (NpcImportReport.Failure failure : report.failures()) {
             if (shown++ >= MAX_CHAT_LINES) {
                 break;
             }
             source.sendSuccess(() -> Component.literal("§c  " + failure), false);
         }
-        int remaining = report.notes().size() + report.failures().size() - shown;
+        int remaining = report.notes().size() + report.blocked().size() + report.failures().size() - shown;
         if (remaining > 0) {
             source.sendSuccess(() -> Component.literal(
                     "§7  ... and " + remaining + " more; see the server log"), false);
@@ -109,6 +150,9 @@ public final class NpcImportCommands {
         // The whole report goes to the log whatever chat showed, so nothing is lost to a scroll.
         for (String note : report.notes()) {
             XenoPixelsMod.LOGGER.info("NPC import note: {}", note);
+        }
+        for (String line : report.blocked()) {
+            XenoPixelsMod.LOGGER.warn("NPC import blocked entry: {}", line);
         }
         for (NpcImportReport.Failure failure : report.failures()) {
             XenoPixelsMod.LOGGER.warn("NPC import failure: {}", failure);

@@ -1,6 +1,6 @@
 # XenoAPI — scripting and addons for native Xeno NPCs
 
-**Updated:** 2026-09-28 · XenoPixels `0.5.0` · script API version `28` · Minecraft 1.21.1 / NeoForge 21.1.248
+**Updated:** 2026-10-14 · XenoPixels `0.5.12` · script API version `29` · Minecraft 1.21.1 / NeoForge 21.1.248
 
 XenoAPI is the CustomNPCs-style scripting API (`xenoapi.npcs.api`, a 1.21.1 port of
 Noppes/CustomNPCsAPI) that **native Xeno NPCs** implement. It needs no CustomNPCs or MyNPCs.
@@ -131,9 +131,44 @@ Differences from CustomNPCs worth knowing:
 
 ---
 
-## XenoPixels additions (API v28)
+## XenoPixels additions (API v28–v29)
 
-`XenoPixels.getVersion()` returns `"28"` on native, MyNPCs and CustomNPCs.
+`XenoPixels.getVersion()` returns `"29"` on native, MyNPCs and CustomNPCs.
+
+### Borrowing a look (v29)
+
+A body swap only needs the look, and the look is DragonMineZ's own customisation: race, gender,
+class, body shape, the seven colours and the hair. Stats, skills, forms, masteries and quest
+progress are not part of the deal and stay exactly where they were.
+
+| Call | Result |
+| --- | --- |
+| `XenoPixels.stealAppearance(player, npc)` | wear that NPC's look for 600 ticks (30s) |
+| `XenoPixels.stealAppearance(player, npc, ticks)` | the same, with the length in ticks (20 a second, capped at a day) |
+| `XenoPixels.restoreAppearance(player)` | hand it back early; `false` when they are not wearing one |
+| `XenoPixels.isAppearanceStolen(player)` | whether they are |
+| `XenoPixels.getAppearanceStealTicksLeft(player)` | ticks left, `0` when none |
+| `XenoPixels.getNpcAppearance(npc)` | the look the NPC would lend, as a map |
+| `XenoPixels.getPlayerAppearance(player)` | the player's own look, same keys |
+
+`stealAppearance` answers `"ok"` or why it refused — `NO_DATA`, `NO_SOURCE`, `INVALID_RACE`,
+`INVALID_CLASS`, `INVALID_COLOR`, `INVALID_HAIR`, `ALREADY_ACTIVE`. **Echo the answer**: every
+refusal changes nothing, so a silent no-op otherwise looks like a success.
+
+```js
+var answer = XenoPixels.stealAppearance(event.player, event.npc, 600);
+XenoPixels.say(event.player, "[BodySteal] " + answer);
+```
+
+The borrow is stored on the player, not in memory, so a death, a relog or a server restart in the
+middle of it still ends with their own face. Only one borrow at a time. Armour is separate and was
+always scriptable: `entity.getArmor(0..3)` / `setArmor(slot, item)`.
+
+The worked example is `examples/customnpcs/xenopixels_body_steal.js`. Java addons get the borrow on
+the published API too — `DmzAppearance.stealFromNpc`, `restore`, `isStolen`, `stolenTicksLeft` — and
+the pair without the timer, `DmzAppearance.capture` / `DmzAppearance.restore`, which is what to use
+when the addon wants to own the timing. A `capture`/`restore` mutation needs
+`DmzSync.syncAppearance` like any other write; the timed borrow already syncs itself.
 
 ### Speech bubbles for anyone
 

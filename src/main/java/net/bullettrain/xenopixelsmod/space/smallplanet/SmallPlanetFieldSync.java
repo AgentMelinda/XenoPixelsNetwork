@@ -4,10 +4,12 @@ import net.bullettrain.xenopixelsmod.XenoPixelsMod;
 import net.bullettrain.xenopixelsmod.api.network.AddonNetwork;
 import net.bullettrain.xenopixelsmod.config.XenoSpaceConfig;
 import net.bullettrain.xenopixelsmod.space.SpaceChartService;
+import net.bullettrain.xenopixelsmod.space.SpaceHomeOrbitalFrame;
 import net.bullettrain.xenopixelsmod.space.asteroid.AsteroidField;
 import net.bullettrain.xenopixelsmod.space.asteroid.AsteroidFieldSync;
 import net.bullettrain.xenopixelsmod.space.physics.PhysicalEarth;
 import net.minecraft.server.MinecraftServer;
+import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
@@ -67,9 +69,18 @@ public final class SmallPlanetFieldSync {
             return SmallPlanetFieldSnapshot.disabled(revision);
 
         var chart = state.runtime.chart;
+        ServerLevel host = server.getLevel(net.minecraft.resources.ResourceKey.create(
+                net.minecraft.core.registries.Registries.DIMENSION, PhysicalEarth.HOST));
+        if (host == null) return SmallPlanetFieldSnapshot.disabled(revision);
+        SpaceHomeOrbitalFrame.Focus homeFocus = SpaceHomeOrbitalFrame.resolve(host, chart);
+        if (homeFocus == null) return SmallPlanetFieldSnapshot.disabled(revision);
+        double homeStarX = homeFocus.x(), homeStarY = homeFocus.y(), homeStarZ = homeFocus.z();
         var spheres = new ArrayList<SmallPlanetField.Sphere>();
         for (int slot = 0; slot < chart.size(); slot++) {
-            double cx = chart.x(slot), cy = chart.y(slot), cz = chart.z(slot);
+            var live = PhysicalEarth.liveCenter(host, chart.body(slot).id());
+            double cx = live == null ? chart.x(slot) : live.x();
+            double cy = live == null ? SpaceHomeOrbitalFrame.chartY(chart, slot, homeStarY) : live.y();
+            double cz = live == null ? chart.z(slot) : live.z();
             double radius = chart.body(slot).radiusBlocks();
             if (!Double.isFinite(cx) || !Double.isFinite(cy) || !Double.isFinite(cz)
                     || !Double.isFinite(radius) || radius <= 0) continue;
@@ -82,13 +93,17 @@ public final class SmallPlanetFieldSync {
         }
         List<AsteroidField.Belt> belts = AsteroidFieldSync.belts(state);
         return new SmallPlanetFieldSnapshot(revision,
-                net.bullettrain.xenopixelsmod.space.universe.UniverseService.fieldSeed(server), true, spheres, belts);
+                net.bullettrain.xenopixelsmod.space.universe.UniverseService.fieldSeed(server), true, spheres, belts,
+                homeStarX, homeStarY, homeStarZ);
     }
 
     private static double distanceSquared(double x, double y, double z) { return x * x + y * y + z * z; }
 
     private static long signature(SmallPlanetFieldSnapshot packet) {
         long hash = 0xCBF29CE484222325L ^ packet.fieldSeed() ^ (packet.enabled() ? 1L : 0L);
+        hash = mix(hash ^ Double.doubleToLongBits(packet.homeStarX()));
+        hash = mix(hash ^ Double.doubleToLongBits(packet.homeStarY()));
+        hash = mix(hash ^ Double.doubleToLongBits(packet.homeStarZ()));
         for (var sphere : packet.chartedBodies()) {
             hash = mix(hash ^ Double.doubleToLongBits(sphere.x()));
             hash = mix(hash ^ Double.doubleToLongBits(sphere.y()));

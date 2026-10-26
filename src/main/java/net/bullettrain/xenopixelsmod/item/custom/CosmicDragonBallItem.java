@@ -19,6 +19,12 @@ public class CosmicDragonBallItem extends BlockItem {
     @Override
     public InteractionResult useOn(UseOnContext context) {
         Player player = context.getPlayer();
+        if (!context.getLevel().isClientSide && player != null
+                && !CosmicDragonBalls.legacyGameplayEnabled(context.getLevel().getServer())) {
+            player.displayClientMessage(net.minecraft.network.chat.Component.translatable(
+                    "message.xenopixelsmod.sdb_legacy_disabled"), true);
+            return InteractionResult.CONSUME;
+        }
         if (player != null && player.isShiftKeyDown()) {
             if (player instanceof ServerPlayer serverPlayer) CosmicDragonBalls.trySummon(serverPlayer);
             return InteractionResult.sidedSuccess(context.getLevel().isClientSide);

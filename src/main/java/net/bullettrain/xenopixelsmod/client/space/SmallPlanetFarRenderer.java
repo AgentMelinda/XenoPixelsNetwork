@@ -8,6 +8,7 @@ import com.mojang.blaze3d.vertex.Tesselator;
 import com.mojang.blaze3d.vertex.VertexBuffer;
 import com.mojang.blaze3d.vertex.VertexFormat;
 import dev.ryanhcode.sable.api.sublevel.SubLevelContainer;
+import net.bullettrain.xenopixelsmod.XenoPixelsMod;
 import net.bullettrain.xenopixelsmod.client.config.XenoClientConfig;
 import net.bullettrain.xenopixelsmod.space.smallplanet.SmallPlanetField;
 import net.minecraft.client.Minecraft;
@@ -42,15 +43,24 @@ import java.util.SplittableRandom;
 @EventBusSubscriber(modid = "xenopixelsmod", value = Dist.CLIENT)
 public final class SmallPlanetFarRenderer {
     private static final ResourceLocation VOIDSEA = ResourceLocation.fromNamespaceAndPath("xenopixelsmod", "voidsea");
-    private static final double RANGE = SmallPlanetField.MAX_NEARBY_RANGE;
+    /** Display reach, not the physicalization range: a whole system must be visible from near its star. */
+    private static final double RANGE = SmallPlanetField.MAX_VISUAL_RANGE;
     // Distant candidates are point-scale; 24x12 geometry keeps far-field GPU work low while textures carry profile detail.
-    private static final int LON = 24, LAT = 12, TEX_W = 256, TEX_H = 128, MAX_TEXTURES = 48;
+    private static final int LON = 24, LAT = 12, TEX_W = 256, TEX_H = 128;
+    private static final int MAX_TEXTURES = 9 * SmallPlanetField.MAX_PLANETS_PER_SYSTEM;
     private static final Matrix4f MODEL = new Matrix4f();
     private static final Map<SmallPlanetField.ObjectId, ResourceLocation> TEXTURES = new LinkedHashMap<>(16, 0.75f, true);
+    private static final Map<SmallPlanetField.ObjectId, SmallPlanetField.OrbitingCandidate> ORBITS = new java.util.HashMap<>();
+    private static final double[] FRAME_POSITION = new double[3];
+    /** Texture each visible planet last drew with, for the on-demand identity check; written only on change. */
+    private static final Map<SmallPlanetField.ObjectId, ResourceLocation> BOUND = new java.util.HashMap<>();
     private static List<SmallPlanetField.Candidate> visible = List.of();
     private static double lastX = Double.NaN, lastZ = Double.NaN, lastY;
     private static long lastSeed;
+    private static long lastUniverseRevision = -1;
     private static int lastRevision = -1;
+    private static boolean lastOrbitEnabled;
+    private static boolean orbitWarningLogged;
     private static VertexBuffer sphere;
     private static int nextTextureId;
 
@@ -58,27 +68,90 @@ public final class SmallPlanetFarRenderer {
 
     public static List<SmallPlanetField.Candidate> visible() { return visible; }
 
-    /** Recompute the nearby field when the player moved 256 blocks or the seed changed (cheap: at most 9 systems x 4). */
+    /** Recompute the nearby field when the player moved 256 blocks or the seed changed (at most 9 systems x 8 slots). */
     @SubscribeEvent public static void tick(ClientTickEvent.Post event) {
         var mc = Minecraft.getInstance();
         var snapshot = SmallPlanetFieldClient.current();
         if (mc.player == null || mc.level == null || snapshot == null || !snapshot.enabled() || !XenoClientConfig.smallPlanetLod
                 || !VOIDSEA.equals(mc.level.dimension().location())) {
             visible = List.of();
+            ORBITS.clear();
             lastX = Double.NaN;
             lastRevision = -1;
+            lastUniverseRevision = -1;
             return;
         }
         double x = mc.player.getX(), y = mc.player.getY(), z = mc.player.getZ();
-        if (!Double.isNaN(lastX) && lastSeed == snapshot.fieldSeed() && lastRevision == snapshot.revision()
-                && (x - lastX) * (x - lastX) + (y - lastY) * (y - lastY) + (z - lastZ) * (z - lastZ) < 256 * 256) return;
+        long universeRevision = UniverseClient.revision();
+        if (SpaceOrbitClockClient.enabled()) {
+            double seconds = SpaceOrbitClockClient.seconds(0.0f);
+            if (!Double.isFinite(seconds)) {
+                visible = List.of(); ORBITS.clear(); lastX = Double.NaN; lastOrbitEnabled = false; return;
+            }
+            try {
+                boolean refresh = !lastOrbitEnabled || needsRescan(lastX, lastY, lastZ, lastSeed,
+                        lastRevision, lastUniverseRevision, x, y, z, snapshot.fieldSeed(),
+                        snapshot.revision(), universeRevision);
+                if (refresh) {
+                    var orbiting = SmallPlanetField.orbitingPotentiallyNearby(snapshot.fieldSeed(), x, y, z, RANGE,
+                            SmallPlanetField.MAX_PLANETS_PER_SYSTEM, snapshot.chartedBodies(), snapshot.asteroidBelts(),
+                            cell -> UniverseClient.systemAt(snapshot.fieldSeed(), cell),
+                            snapshot.homeStarX(), snapshot.homeStarY(), snapshot.homeStarZ(), seconds);
+                    ORBITS.clear();
+                    for (var value : orbiting) ORBITS.put(value.anchor().id(), value);
+                    lastX = x; lastY = y; lastZ = z; lastSeed = snapshot.fieldSeed();
+                    lastRevision = snapshot.revision(); lastUniverseRevision = universeRevision;
+                }
+                var current = new java.util.ArrayList<SmallPlanetField.Candidate>(ORBITS.size());
+                var ids = new java.util.HashSet<SmallPlanetField.ObjectId>();
+                for (var value : ORBITS.values()) {
+                    value.orbit().positionAt(seconds, FRAME_POSITION);
+                    double dx = FRAME_POSITION[0] - x, dy = FRAME_POSITION[1] - y, dz = FRAME_POSITION[2] - z;
+                    double reach = RANGE + value.anchor().radius();
+                    if (dx * dx + dy * dy + dz * dz > reach * reach) continue;
+                    current.add(value.anchor().atPosition(FRAME_POSITION[0], FRAME_POSITION[1], FRAME_POSITION[2]));
+                    ids.add(value.anchor().id());
+                }
+                visible = List.copyOf(current);
+                BOUND.keySet().retainAll(ids);
+                lastOrbitEnabled = true;
+                orbitWarningLogged = false;
+            } catch (RuntimeException invalidOrbit) {
+                visible = List.of(); ORBITS.clear(); lastX = Double.NaN; lastOrbitEnabled = false;
+                if (!orbitWarningLogged) {
+                    orbitWarningLogged = true;
+                    XenoPixelsMod.LOGGER.warn("Could not evaluate generated small-planet orbit positions; far LOD hidden", invalidOrbit);
+                }
+            }
+            return;
+        }
+        // A server toggle from analytical motion to stationary display invalidates the last sampled positions.
+        if (!lastOrbitEnabled && !needsRescan(lastX, lastY, lastZ, lastSeed, lastRevision, lastUniverseRevision,
+                x, y, z, snapshot.fieldSeed(), snapshot.revision(), universeRevision)) return;
+        lastOrbitEnabled = false;
+        orbitWarningLogged = false;
         lastX = x; lastY = y; lastZ = z; lastSeed = snapshot.fieldSeed(); lastRevision = snapshot.revision();
+        lastUniverseRevision = universeRevision;
         try {
-            visible = SmallPlanetField.nearby(snapshot.fieldSeed(), x, y, z, RANGE, SmallPlanetField.MAX_PLANETS_PER_SYSTEM,
-                    snapshot.chartedBodies(), snapshot.asteroidBelts());
+            visible = SmallPlanetField.visibleNearby(snapshot.fieldSeed(), x, y, z, RANGE, SmallPlanetField.MAX_PLANETS_PER_SYSTEM,
+                    snapshot.chartedBodies(), snapshot.asteroidBelts(),
+                    cell -> UniverseClient.systemAt(snapshot.fieldSeed(), cell));
+            var ids = new java.util.HashSet<SmallPlanetField.ObjectId>();
+            ORBITS.clear();
+            for (var planet : visible) ids.add(planet.id());
+            BOUND.keySet().retainAll(ids);
         } catch (RuntimeException outside) {
             visible = List.of();
         }
+    }
+
+    static boolean needsRescan(double lastX, double lastY, double lastZ, long lastSeed, int lastFieldRevision,
+                               long lastUniverseRevision, double x, double y, double z, long seed,
+                               int fieldRevision, long universeRevision) {
+        if (Double.isNaN(lastX) || lastSeed != seed || lastFieldRevision != fieldRevision
+                || lastUniverseRevision != universeRevision) return true;
+        double dx = x - lastX, dy = y - lastY, dz = z - lastZ;
+        return dx * dx + dy * dy + dz * dz >= 256 * 256;
     }
 
     @SubscribeEvent public static void render(RenderLevelStageEvent event) {
@@ -87,6 +160,9 @@ public final class SmallPlanetFarRenderer {
         List<SmallPlanetField.Candidate> list = visible;
         if (mc.level == null || list.isEmpty() || !VOIDSEA.equals(mc.level.dimension().location())) return;
         var camera = event.getCamera().getPosition();
+        boolean orbitMode = SpaceOrbitClockClient.enabled();
+        double orbitSeconds = orbitMode ? SpaceOrbitClockClient.seconds(event.getPartialTick().getGameTimeDeltaPartialTick(false)) : Double.NaN;
+        if (orbitMode && !Double.isFinite(orbitSeconds)) return;
         boolean cull = GL11.glIsEnabled(GL11.GL_CULL_FACE), depth = GL11.glIsEnabled(GL11.GL_DEPTH_TEST);
         boolean clamp = GL11.glIsEnabled(GL32.GL_DEPTH_CLAMP);
         var shader = RenderSystem.getShader();
@@ -102,12 +178,17 @@ public final class SmallPlanetFarRenderer {
             RenderSystem.setShaderColor(1, 1, 1, 1);
             sphere.bind();
             for (var planet : list) {
-                if (container != null && physicalPresent(container, planet)) continue;
-                double dx = planet.x() - camera.x, dy = planet.y() - camera.y, dz = planet.z() - camera.z;
+                var orbiting = ORBITS.get(planet.id());
+                if (orbiting != null && Double.isFinite(orbitSeconds)) orbiting.orbit().positionAt(orbitSeconds, FRAME_POSITION);
+                else { FRAME_POSITION[0] = planet.x(); FRAME_POSITION[1] = planet.y(); FRAME_POSITION[2] = planet.z(); }
+                if (container != null && physicalPresent(container, planet.id().bodyId(), FRAME_POSITION[0], FRAME_POSITION[1], FRAME_POSITION[2])) continue;
+                double dx = FRAME_POSITION[0] - camera.x, dy = FRAME_POSITION[1] - camera.y, dz = FRAME_POSITION[2] - camera.z;
                 double distance = Math.sqrt(dx * dx + dy * dy + dz * dz);
                 // Never smaller than a few pixels: far planets read as coloured dots, near ones at true size.
                 float radius = (float) Math.max(planet.radius(), distance * 0.004);
-                RenderSystem.setShaderTexture(0, texture(planet));
+                var texture = texture(planet);
+                RenderSystem.setShaderTexture(0, texture);
+                if (!texture.equals(BOUND.get(planet.id()))) BOUND.put(planet.id(), texture);
                 MODEL.set(event.getModelViewMatrix()).translate((float) dx, (float) dy, (float) dz).scale(radius);
                 sphere.drawWithShader(MODEL, event.getProjectionMatrix(), GameRenderer.getPositionTexColorShader());
             }
@@ -121,13 +202,64 @@ public final class SmallPlanetFarRenderer {
         }
     }
 
+    /** Seeded centre of a candidate in the last scan, or null. */
+    static double[] position(String bodyId) {
+        for (var planet : visible) if (planet.id().bodyId().equals(bodyId)) return new double[]{planet.x(), planet.y(), planet.z()};
+        return null;
+    }
+
+    /** Visible candidates by body id with their last bound texture (null if not drawn), for the identity check. */
+    static List<PlanetTextureChecks.Observed> observed() {
+        var list = new java.util.ArrayList<PlanetTextureChecks.Observed>(visible.size());
+        for (var planet : visible) list.add(new PlanetTextureChecks.Observed(planet.id().bodyId(), BOUND.get(planet.id())));
+        return list;
+    }
+
+    /**
+     * Each visible candidate's own generated texture by body id, or absent if none was generated. Copies the
+     * cache rather than calling get(), which would reorder the access-ordered LRU.
+     */
+    static Map<String, ResourceLocation> generated() {
+        var copy = new java.util.HashMap<>(TEXTURES);
+        var byBody = new java.util.HashMap<String, ResourceLocation>();
+        for (var planet : visible) {
+            var texture = copy.get(planet.id());
+            if (texture != null) byBody.put(planet.id().bodyId(), texture);
+        }
+        return byBody;
+    }
+
+    /**
+     * Whether render() would draw this planet's far globe on the next frame, or why not, from the same gates
+     * render() applies. The candidate list itself only refreshes on the client tick, so a planet missing from
+     * the last scan is reported as such rather than as drawn or hidden.
+     */
+    static String drawState(String bodyId) {
+        var mc = Minecraft.getInstance();
+        if (!XenoClientConfig.smallPlanetLod) return "suppressed: small-planet LOD off";
+        if (mc.level == null || !VOIDSEA.equals(mc.level.dimension().location())) return "suppressed: not in the Voidsea";
+        if (IrisShaderState.packInUse()) return "suppressed: shader pack in use";
+        var container = SubLevelContainer.getContainer(mc.level);
+        for (var planet : visible) {
+            if (!planet.id().bodyId().equals(bodyId)) continue;
+            if (container != null && physicalPresent(container, planet.id().bodyId(), planet.x(), planet.y(), planet.z()))
+                return "suppressed: physical body drawn instead";
+            return "far globe drawable next frame";
+        }
+        return "not in the last candidate scan";
+    }
+
     /** True when some client Sable body's bounds contain the planet centre (the voxel body is drawn instead). */
-    private static boolean physicalPresent(SubLevelContainer container, SmallPlanetField.Candidate planet) {
+    private static boolean physicalPresent(SubLevelContainer container, String bodyId, double x, double y, double z) {
+        // A physical small planet can move off its seeded position after it is spawned. Its exact body-id/UUID
+        // binding remains authoritative, while the proximity check below remains a fallback before that binding
+        // has arrived (or for an untagged body), so the stale seeded globe is not drawn beside its moved incarnation.
+        if (PhysicalPlanetRenderer.hasLiveBodyBinding(bodyId, container)) return true;
         for (var body : container.getAllSubLevels()) {
             var box = body.boundingBox();
             if (box == null || body.isRemoved()) continue;
-            if (planet.x() >= box.minX() && planet.x() <= box.maxX() && planet.y() >= box.minY() && planet.y() <= box.maxY()
-                    && planet.z() >= box.minZ() && planet.z() <= box.maxZ()) return true;
+            if (x >= box.minX() && x <= box.maxX() && y >= box.minY() && y <= box.maxY()
+                    && z >= box.minZ() && z <= box.maxZ()) return true;
         }
         return false;
     }
@@ -158,6 +290,7 @@ public final class SmallPlanetFarRenderer {
             var eldest = TEXTURES.entrySet().iterator().next();
             Minecraft.getInstance().getTextureManager().release(eldest.getValue());
             TEXTURES.remove(eldest.getKey());
+            BOUND.remove(eldest.getKey());
         }
         return location;
     }
@@ -208,9 +341,14 @@ public final class SmallPlanetFarRenderer {
 
     @SubscribeEvent public static void logout(ClientPlayerNetworkEvent.LoggingOut event) {
         visible = List.of();
+        ORBITS.clear();
         lastX = Double.NaN;
+        lastOrbitEnabled = false;
+        orbitWarningLogged = false;
+        lastUniverseRevision = -1;
         var textures = Minecraft.getInstance().getTextureManager();
         TEXTURES.values().forEach(textures::release);
         TEXTURES.clear();
+        BOUND.clear();
     }
 }

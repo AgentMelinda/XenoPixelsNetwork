@@ -31,6 +31,7 @@ Run: ``python tools/gen_vs2_block_textures.py``
 """
 from __future__ import annotations
 
+import argparse
 import random
 import struct
 import zlib
@@ -344,7 +345,11 @@ def chunk_top():
     return px
 
 
-def main():
+def main(argv: list[str] | None = None):
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--out", default=str(OUT), help="texture output directory; defaults to the existing resource path")
+    out = Path(parser.parse_args(argv).out)
+    out.mkdir(parents=True, exist_ok=True)
     faces = {
         "ship_vls_guidance_front": guidance_front(),
         "ship_vls_guidance_side": guidance_side(),
@@ -361,7 +366,7 @@ def main():
         "missile_chunk_loader_top": chunk_top(),
     }
     for name, px in faces.items():
-        write_png(OUT / f"{name}.png", px)
+        write_png(out / f"{name}.png", px)
 
     # Single-texture fallbacks. These filenames are still referenced by older models and by
     # the item forms, so they have to stay in step with the face set above.
@@ -370,7 +375,7 @@ def main():
                          ("ship_thruster_on", "ship_thruster_front_on"),
                          ("missile_tube", "missile_tube_top"),
                          ("missile_chunk_loader", "missile_chunk_loader_front")):
-        write_png(OUT / f"{base}.png", faces[source])
+        write_png(out / f"{base}.png", faces[source])
 
     print(f"{len(faces) + 5} textures on the shared palette")
 

@@ -8,6 +8,41 @@ import net.bullettrain.xenopixelsmod.client.combat.v3.MouseCombatGesture.Action;
 import org.junit.jupiter.api.Test;
 
 class MouseCombatGestureTest {
+    @Test void rapidPressReleaseBetweenTicksProducesExactlyOneTapPerClick() {
+        var pair = new MouseCombatGesture.Pair();
+        for (int i = 0; i < 5; i++) {
+            assertEquals(Action.NONE, pair.edge(true, false, true).left());
+            assertEquals(Action.TAP, pair.edge(false, false, true).left());
+        }
+        assertEquals(Action.NONE, pair.update(false, false, true).left());
+    }
+
+    @Test void eventTransitionsDoNotAccelerateChargeOrDuplicateTickRelease() {
+        var pair = new MouseCombatGesture.Pair();
+        pair.edge(true, false, true);
+        for (int i = 0; i < 7; i++) assertEquals(Action.NONE, pair.update(true, false, true).left());
+        assertEquals(Action.START, pair.update(true, false, true).left());
+        assertEquals(Action.RELEASE, pair.edge(false, false, true).left());
+        assertEquals(Action.NONE, pair.update(false, false, true).left());
+    }
+
+    @Test void interruptedFastPressCannotTurnIntoATapAfterTheLockReturns() {
+        var pair = new MouseCombatGesture.Pair();
+        pair.edge(true, false, true);
+        pair.edge(true, false, false);
+        assertEquals(Action.NONE, pair.edge(false, false, true).left());
+    }
+
+    @Test void screenInterruptionBetweenTicksCannotSynthesizeATap() {
+        var pair = new MouseCombatGesture.Pair();
+        pair.edge(true, false, true);
+        // The release over a screen uses the same pause path as V3InputLayer.
+        pair.update(true, true, false);
+        assertEquals(Action.NONE, pair.update(false, false, true).left());
+        pair.edge(true, false, true);
+        assertEquals(Action.TAP, pair.edge(false, false, true).left());
+    }
+
     private static List<Action> hold(MouseCombatGesture gesture, int ticks) {
         List<Action> seen = new ArrayList<>();
         for (int i = 0; i < ticks; i++) seen.add(gesture.update(true, true));

@@ -28,6 +28,7 @@ import net.minecraft.world.entity.Entity;
  * proxy identity the way {@code NpcFullDmzRenderer} gives one to every NPC.
  */
 public class XenoCloneRenderer extends LivingEntityRenderer<XenoCloneEntity, PlayerModel<XenoCloneEntity>> {
+    private static final java.util.Map<XenoCloneEntity, Boolean> TRAILS = new java.util.WeakHashMap<>();
 
     private static final ResourceLocation FALLBACK =
             ResourceLocation.withDefaultNamespace("textures/entity/player/wide/steve.png");
@@ -40,10 +41,18 @@ public class XenoCloneRenderer extends LivingEntityRenderer<XenoCloneEntity, Pla
     public void render(XenoCloneEntity clone, float entityYaw, float partialTick,
                        com.mojang.blaze3d.vertex.PoseStack pose,
                        net.minecraft.client.renderer.MultiBufferSource buffers, int packedLight) {
+        if (clone.isTrailImage() && !com.dragonminez.client.render.effects.AfterimageEffect.isRendering()) {
+            if (TRAILS.putIfAbsent(clone, Boolean.TRUE) == null) {
+                com.dragonminez.client.render.effects.AfterimageEffect.start(clone.getId(),
+                        Math.max(1, clone.lifetimeTicks() - clone.tickCount),
+                        new net.minecraft.world.phys.Vec3[]{clone.position()}, new float[]{clone.yBodyRot}, false);
+            }
+            return;
+        }
         // The fighter's real DragonMineZ body, drawn through their own renderer against a proxy
         // identity of this copy's own. Falls straight back to the vanilla model below if the
         // bridge declines, so a copy is never invisible and the frame is never at risk.
-        float alpha = clone.slot() == XenoCloneEntity.SLOT_TRAINING
+        float alpha = clone.isTrailImage() ? 1.0f : clone.slot() == XenoCloneEntity.SLOT_TRAINING
                 ? net.bullettrain.xenopixelsmod.features.progression.TrainingDummySpawner.GHOST_ALPHA
                 : clone.slot() == XenoCloneEntity.SLOT_SHADOW_FIGHT
                 ? 0.72f

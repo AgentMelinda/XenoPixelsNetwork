@@ -187,6 +187,26 @@ ENGLISH = {
 PUNCH = 'combat.one_handed_punch_right'
 KICK = 'combat.gutkick_right'
 
+# Local video review, 2026-10-12: Gogeta's 527-second rush ends in an orb throw.
+# Correct this occurrence's motion/projectile class without retuning saved costs.
+VIDEO_TYPE_CORRECTIONS = {
+    'xenopixelsmod:bt3_literal_partially_readable_full_frantumatore_polveriz_527': 'melee_energy',
+    'xenopixelsmod:bt3_616_617_artiglio_del_drago_631': 'melee_energy',
+    'xenopixelsmod:bt3_super_stubborn_spirit_774_bakuretsu_ranma_778': 'melee_energy',
+    'xenopixelsmod:bt3_purple_gi_scarf_child_vs_tall_ho_bakuretsu_ranma_783': 'melee_energy',
+}
+
+# The GT SSJ3 occurrence follows Dragon Fist with a two-handed beam. Keep the
+# other Dragon Claw occurrences' native mappings independent of this ending.
+VIDEO_KI_CORRECTIONS = {
+    'xenopixelsmod:bt3_616_617_artiglio_del_drago_631': 'kamehameha',
+    'xenopixelsmod:bt3_big_bang_kamehameha_kamehameha_big_bang_505': 'kamehameha',
+    'xenopixelsmod:bt3_687_i_ll_beat_you_in_5_seconds_6_kamehameha_big_bang_728': 'kamehameha',
+    'xenopixelsmod:bt3_literal_abbreviation_maximum_lim_kamehameha_big_bang_x100_751': 'kamehameha',
+    'xenopixelsmod:bt3_super_stubborn_spirit_774_bakuretsu_ranma_778': 'masenko',
+    'xenopixelsmod:bt3_purple_gi_scarf_child_vs_tall_ho_bakuretsu_ranma_783': 'masenko',
+}
+
 
 def plain(text):
     text = unicodedata.normalize('NFKD', text)
@@ -209,18 +229,22 @@ def archetype(label, kinds):
         return 'disc'
     if has('raggio letale', 'dodonpa', 'raggio al cioccolato', 'freccia luminosa'):
         return 'laser'
-    if has('raff', 'raggio impazzito', 'raggio let. di sbarram', 'pioggia', 'missile', 'madan', 'gekiretsu ranbu',
+    if has('raff', 'raggio impazzito', 'raggio let. di sbarram', 'pioggia', 'missile', 'madan',
            'distruttore massimo', 'attacco luminoso', 's. raffica'):
         return 'volley'
+    # "Cannone Garlic Finale" demos as a rush (melee exchange + point-blank finisher),
+    # not a beam; scoped before the generic 'cannone' beam word. Verified 2026-10-10.
+    if has('garlic finale'):
+        return 'melee'
     if has('genkidama', 'supernova', 'sfera letale', 'distruggi il pianeta', 'bomba di luce', 'colpo nova',
            'palla vol'):
         return 'giant_ball'
     if has('onda esplosiva', 'onda super esplosiva', 'super onda esplosiva', 'urlo', 'ruggito', 'tempesta',
            'barriera', 'esplosione finale', 'esplosione vulcanica', "onda d'urto", 'bomba di saibaiman',
-           'onda energetica a espansione', 'onda demoniaca esplosiva', 'fuochi del male'):
+           'onda energetica a espansione', 'onda demoniaca esplosiva'):
         return 'radial'
     if has('kamehameha', 'cannone', 'onda ener', 'lampo', 'masenko', 'distruzione', 'esplosione elegante',
-           'makou', 'mahoko', 'shin', 'nuovo triraggio', 'distruttore letale', 'fendente', 'chou maretsugeki'):
+           'makou', 'mahoko', 'shin', 'nuovo triraggio', 'distruttore letale'):
         return 'beam'
     if has('sfera', 'attacco big bang', 'attacco bruciante', 'soukidan', 'bomba', 'granata', 'freccia cadente',
            'acido', 'questa volta muoio', 'morirai per mano mia'):
@@ -273,10 +297,7 @@ def ki_technique(label, kind):
         ('garlic', 'galick_gun'),
         ('super masenko', 'masenko'),
         ('masenko', 'masenko'),
-        ('chou maretsugeki', 'makkanko'),
-        ('maretsugeki', 'makkanko'),
         ('violent strike', 'makkanko'),
-        ('fendente', 'masenko'),  # yellow justice slash
         ('slash', 'masenko'),
         ('giustizia', 'masenko'),
         ('justice', 'masenko'),
@@ -289,6 +310,7 @@ def ki_technique(label, kind):
         ('anima speciale', 'soul_punisher'),
         ('special soul', 'soul_punisher'),
         ('soul cannon', 'soul_punisher'),
+        ('frantumatore polveriz', 'soul_punisher'),
         ('soul punisher', 'soul_punisher'),
         ('frant. dello sp', 'makkanko'),
         ('spirit breaking', 'makkanko'),
@@ -405,6 +427,14 @@ def apply_choreography(techniques, authored):
 
 
 def main():
+    source_corrections_path = Path('docs/combat-v3/video-pipeline-302/offline-batch100/shape-corrections.json')
+    source_corrections = json.loads(source_corrections_path.read_text()) if source_corrections_path.exists() else {}
+    third_batch = Path('docs/combat-v3/video-pipeline-302/offline-batch-third100/shape-corrections.json')
+    if third_batch.exists():
+        source_corrections.update(json.loads(third_batch.read_text(encoding='utf-8')))
+    next40 = Path('docs/combat-v3/video-pipeline-302/offline-batch-next40/shape-corrections.json')
+    if next40.exists():
+        source_corrections.update(json.loads(next40.read_text(encoding='utf-8')))
     catalog = json.load(open(CATALOG, encoding='utf-8'))
     occurrences = []
     label_groups = collections.OrderedDict()
@@ -426,8 +456,11 @@ def main():
     techniques = []
     for occurrence in sorted(occurrences, key=lambda item: (item['start'], item['id'])):
         kind = archetype(occurrence['name'], [occurrence['kind']])
-        cost, cooldown, beats = TIMELINES[kind]
-        beats = beats()
+        cost, cooldown, _ = TIMELINES[kind]
+        kind = VIDEO_TYPE_CORRECTIONS.get(occurrence['id'], kind)
+        source_correction = source_corrections.get(str(occurrence['start']//1000), {})
+        kind = source_correction.get('type', kind)
+        beats = TIMELINES[kind][2]()
         techniques.append({
             'id': occurrence['id'],
             'name': ENGLISH.get(occurrence['name'], occurrence['name']),
@@ -436,7 +469,7 @@ def main():
             'durationTicks': max(b['tick'] + b['duration'] for b in beats),
             'kiCost': cost,
             'cooldownTicks': cooldown,
-            'kiTechnique': ki_technique(occurrence['name'], kind),
+            'kiTechnique': source_correction.get('kiTechnique', VIDEO_KI_CORRECTIONS.get(occurrence['id'], ki_technique(occurrence['name'], kind))),
             'animationStatus': 'archetype_placeholder',
             'sourceStartsMs': [occurrence['start']],
             'beats': beats,

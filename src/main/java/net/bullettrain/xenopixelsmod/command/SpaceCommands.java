@@ -51,6 +51,7 @@ public final class SpaceCommands {
                                         + net.bullettrain.xenopixelsmod.space.physics.PhysicalEarth.status(ctx.getSource().getServer())))
                         .then(Commands.literal("physical")
                                 .then(physicalMode("all")).then(physicalMode("planets")).then(physicalMode("earth_moon")))
+                        .then(Commands.literal("bindings").executes(ctx -> planetBindingAudit(ctx.getSource())))
                         .then(Commands.literal("push")
                                 .then(Commands.argument("body", net.minecraft.commands.arguments.ResourceLocationArgument.id())
                                         .then(Commands.argument("vx", DoubleArgumentType.doubleArg(-100, 100))
@@ -79,9 +80,42 @@ public final class SpaceCommands {
                                 .then(Commands.literal("off").executes(ctx -> setSmallPlanetIncremental(ctx.getSource(), false))))
                         .then(Commands.literal("gravity")
                                 .then(Commands.literal("on").executes(ctx -> setSmallPlanetGravity(ctx.getSource(), true)))
-                                .then(Commands.literal("off").executes(ctx -> setSmallPlanetGravity(ctx.getSource(), false)))))
+                                .then(Commands.literal("off").executes(ctx -> setSmallPlanetGravity(ctx.getSource(), false))))
+                        .then(Commands.literal("quarantine")
+                                .then(Commands.literal("list").executes(ctx -> message(ctx.getSource(),
+                                        net.bullettrain.xenopixelsmod.space.smallplanet.SmallPlanetPhysicalizer
+                                                .quarantineList(ctx.getSource().getServer()))))
+                                .then(Commands.literal("release")
+                                        .then(Commands.argument("uuid", com.mojang.brigadier.arguments.StringArgumentType.word())
+                                                .executes(ctx -> {
+                                                    java.util.UUID id;
+                                                    try {
+                                                        id = java.util.UUID.fromString(com.mojang.brigadier.arguments.StringArgumentType.getString(ctx, "uuid"));
+                                                    } catch (IllegalArgumentException invalid) {
+                                                        return failure(ctx.getSource(), "Invalid body UUID.");
+                                                    }
+                                                    return message(ctx.getSource(),
+                                                            net.bullettrain.xenopixelsmod.space.smallplanet.SmallPlanetPhysicalizer
+                                                                    .releaseQuarantine(ctx.getSource().getServer(), id));
+                                                })))))
                 .executes(ctx -> message(ctx.getSource(), SpaceChartService.status(ctx.getSource().getServer())))
                 .then(Commands.literal("status").executes(ctx -> message(ctx.getSource(), SpaceChartService.status(ctx.getSource().getServer()))))
+                .then(Commands.literal("stellar")
+                        .then(Commands.literal("stage")
+                                .then(Commands.argument("star", net.minecraft.commands.arguments.ResourceLocationArgument.id())
+                                        .then(Commands.argument("stage", com.mojang.brigadier.arguments.StringArgumentType.word())
+                                                .suggests((ctx, builder) -> net.minecraft.commands.SharedSuggestionProvider.suggest(
+                                                        java.util.Arrays.stream(net.bullettrain.xenopixelsmod.space.event.StellarStage.values())
+                                                                .map(Enum::name), builder))
+                                                .executes(ctx -> setStellarStage(ctx.getSource(),
+                                                        net.minecraft.commands.arguments.ResourceLocationArgument.getId(ctx, "star").toString(),
+                                                        com.mojang.brigadier.arguments.StringArgumentType.getString(ctx, "stage")))))))
+                .then(Commands.literal("fallen-stars")
+                        .executes(ctx -> message(ctx.getSource(), "Server fallen stars="
+                                + (XenoSpaceConfig.fallenStarsEnabled() ? "on" : "off")
+                                + "; client density remains locally configurable"))
+                        .then(Commands.literal("on").executes(ctx -> setFallenStars(ctx.getSource(), true)))
+                        .then(Commands.literal("off").executes(ctx -> setFallenStars(ctx.getSource(), false))))
                 .then(Commands.literal("physics-spike")
                         .executes(ctx -> message(ctx.getSource(), net.bullettrain.xenopixelsmod.space.physics.PhysicalPlanetSpike.status(ctx.getSource().getLevel())))
                         .then(Commands.literal("create").executes(ctx -> createSpike(ctx.getSource(), null))
@@ -112,7 +146,7 @@ public final class SpaceCommands {
                         .then(Commands.literal("bodies").executes(ctx -> bodies(ctx.getSource())))
                         .then(Commands.literal("dimensions").executes(ctx -> dimensions(ctx.getSource())))
                         .then(Commands.literal("visuals").executes(ctx -> message(ctx.getSource(), SpaceVisualSync
-                                .preview(SpaceChartService.state(ctx.getSource().getServer()).runtime.chart)))))
+                                .preview(ctx.getSource().getServer())))))
                 .then(Commands.literal("universe")
                         .then(Commands.literal("status").executes(ctx -> message(ctx.getSource(), universeStatus(ctx.getSource()))))
                         .then(Commands.literal("list").executes(ctx -> message(ctx.getSource(), universeList(ctx.getSource()))))
@@ -135,15 +169,29 @@ public final class SpaceCommands {
                                     XenoSpaceConfig.setLogicalUniverseEnabled(false);
                                     return message(ctx.getSource(), "Full-width logical star-system generation disabled.");
                                 }))
+                                .then(Commands.literal("travel")
+                                        .then(Commands.argument("x", com.mojang.brigadier.arguments.LongArgumentType.longArg())
+                                                .then(Commands.argument("z", com.mojang.brigadier.arguments.LongArgumentType.longArg())
+                                                        .executes(ctx -> message(ctx.getSource(),
+                                                                net.bullettrain.xenopixelsmod.space.universe.UniverseService.travelDiscoveredLogical(
+                                                                        ctx.getSource().getPlayerOrException(),
+                                                                        com.mojang.brigadier.arguments.LongArgumentType.getLong(ctx, "x"),
+                                                                        com.mojang.brigadier.arguments.LongArgumentType.getLong(ctx, "z")))))))
+                                .then(Commands.literal("warp")
+                                        .then(Commands.argument("x", com.mojang.brigadier.arguments.LongArgumentType.longArg())
+                                                .then(Commands.argument("z", com.mojang.brigadier.arguments.LongArgumentType.longArg())
+                                                        .executes(ctx -> message(ctx.getSource(),
+                                                                net.bullettrain.xenopixelsmod.space.universe.UniverseService.warpLogical(
+                                                                        ctx.getSource().getPlayerOrException(),
+                                                                        com.mojang.brigadier.arguments.LongArgumentType.getLong(ctx, "x"),
+                                                                        com.mojang.brigadier.arguments.LongArgumentType.getLong(ctx, "z")))))))
                                 .then(Commands.literal("reveal")
                                         .then(Commands.argument("x", com.mojang.brigadier.arguments.LongArgumentType.longArg())
                                                 .then(Commands.argument("z", com.mojang.brigadier.arguments.LongArgumentType.longArg())
                                                         .requires(source -> source.hasPermission(2))
-                                                        .executes(ctx -> message(ctx.getSource(),
-                                                                net.bullettrain.xenopixelsmod.space.universe.UniverseService.revealLogical(
-                                                                        ctx.getSource().getServer(),
-                                                                        com.mojang.brigadier.arguments.LongArgumentType.getLong(ctx, "x"),
-                                                                        com.mojang.brigadier.arguments.LongArgumentType.getLong(ctx, "z"))))))))
+                                                        .executes(ctx -> logicalReveal(ctx.getSource(),
+                                                                com.mojang.brigadier.arguments.LongArgumentType.getLong(ctx, "x"),
+                                                                com.mojang.brigadier.arguments.LongArgumentType.getLong(ctx, "z")))))))
                         .then(Commands.literal("reveal").then(Commands.argument("x", com.mojang.brigadier.arguments.IntegerArgumentType.integer(-228, 228))
                                 .then(Commands.argument("z", com.mojang.brigadier.arguments.IntegerArgumentType.integer(-228, 228))
                                         .executes(ctx -> message(ctx.getSource(), net.bullettrain.xenopixelsmod.space.universe.UniverseService.reveal(
@@ -172,15 +220,28 @@ public final class SpaceCommands {
                                         net.bullettrain.xenopixelsmod.space.hakai.PlanetHakai.key(com.mojang.brigadier.arguments.StringArgumentType.getString(ctx, "body")))))))
                         .then(Commands.literal("protect").then(Commands.argument("body", com.mojang.brigadier.arguments.StringArgumentType.greedyString())
                                 .executes(ctx -> {
-                                    String id = net.bullettrain.xenopixelsmod.space.hakai.PlanetHakai.key(com.mojang.brigadier.arguments.StringArgumentType.getString(ctx, "body"));
-                                    return message(ctx.getSource(), (XenoSpaceConfig.setHakaiPlanetProtected(id, true) ? "protected " : "already protected: ") + id);
+                                    String rawId = com.mojang.brigadier.arguments.StringArgumentType.getString(ctx, "body");
+                                    String id = net.bullettrain.xenopixelsmod.space.hakai.PlanetHakai.key(rawId);
+                                    return switch (XenoSpaceConfig.setHakaiPlanetProtected(rawId, true)) {
+                                        case UPDATED -> message(ctx.getSource(), "protected " + id);
+                                        case UNCHANGED -> message(ctx.getSource(), "already protected: " + id);
+                                        case CAP_REACHED -> message(ctx.getSource(), "protection list is full ("
+                                                + net.bullettrain.xenopixelsmod.space.hakai.PlanetProtectionList.MAX_ENTRIES + " entries): " + id);
+                                        case INVALID_ID -> message(ctx.getSource(), "invalid body id: " + rawId);
+                                    };
                                 })))
                         .then(Commands.literal("unprotect").then(Commands.argument("body", com.mojang.brigadier.arguments.StringArgumentType.greedyString())
                                 .executes(ctx -> {
-                                    String id = net.bullettrain.xenopixelsmod.space.hakai.PlanetHakai.key(com.mojang.brigadier.arguments.StringArgumentType.getString(ctx, "body"));
-                                    return message(ctx.getSource(), (XenoSpaceConfig.setHakaiPlanetProtected(id, false) ? "unprotected " : "was not protected: ") + id);
+                                    String rawId = com.mojang.brigadier.arguments.StringArgumentType.getString(ctx, "body");
+                                    String id = net.bullettrain.xenopixelsmod.space.hakai.PlanetHakai.key(rawId);
+                                    return switch (XenoSpaceConfig.setHakaiPlanetProtected(rawId, false)) {
+                                        case UPDATED -> message(ctx.getSource(), "unprotected " + id);
+                                        case CAP_REACHED, UNCHANGED -> message(ctx.getSource(), "was not protected: " + id);
+                                        case INVALID_ID -> message(ctx.getSource(), "invalid body id: " + rawId);
+                                    };
                                 })))
-                        .then(Commands.literal("restoreall").executes(ctx -> message(ctx.getSource(), net.bullettrain.xenopixelsmod.space.hakai.PlanetHakai.restoreAll(ctx.getSource().getServer())))))
+                        .then(Commands.literal("restoreall").executes(ctx -> message(ctx.getSource(), net.bullettrain.xenopixelsmod.space.hakai.PlanetHakai.restoreAll(ctx.getSource().getServer()))))
+                        .then(Commands.literal("regenerate").executes(ctx -> message(ctx.getSource(), net.bullettrain.xenopixelsmod.space.hakai.PlanetHakai.regenerateAll(ctx.getSource().getServer())))))
                 .then(Commands.literal("dragonballs")
                         .then(Commands.literal("bench")
                             .then(Commands.literal("voxel").then(Commands.argument("radius", com.mojang.brigadier.arguments.IntegerArgumentType.integer(4, 500))
@@ -223,11 +284,11 @@ public final class SpaceCommands {
                                         com.mojang.brigadier.arguments.DoubleArgumentType.getDouble(ctx, "seconds")))))
                         .then(Commands.literal("resetwarp").executes(ctx -> {
                             XenoSpaceConfig.resetOrbitEpochOffset();
+                            net.bullettrain.xenopixelsmod.space.SpaceVisualSync.syncOrbitSettings(ctx.getSource().getServer());
                             return message(ctx.getSource(), "Orbit epoch shift reset to 0. " + orbitStatus());
                         })))
                 .then(Commands.literal("voiddamage")
-                        .executes(ctx -> message(ctx.getSource(), SpaceVoidSafety.status(ctx.getSource().getServer(),
-                                ctx.getSource().getLevel().dimension().location())))
+                        .executes(ctx -> message(ctx.getSource(), voidDamageStatus(ctx.getSource())))
                         .then(Commands.literal("on").executes(ctx -> setVoidDamage(ctx.getSource(), true)))
                         .then(Commands.literal("off").executes(ctx -> setVoidDamage(ctx.getSource(), false))))
                 .then(Commands.literal("handoff")
@@ -255,7 +316,12 @@ public final class SpaceCommands {
                                                 .executes(ctx -> {
                                                     int slot = IntegerArgumentType.getInteger(ctx, "slot");
                                                     var server = ctx.getSource().getServer();
+                                                    if (!net.bullettrain.xenopixelsmod.space.dragonball.DragonBallModeGuard.planetaryEnabled(server))
+                                                        return message(ctx.getSource(), "SDB orbit editing is available only in planetary mode; "
+                                                                + net.bullettrain.xenopixelsmod.space.dragonball.DragonBallModeGuard.status(server));
                                                     var saved = net.bullettrain.xenopixelsmod.space.dragonball.DragonBallSavedData.get(server);
+                                                    if (!saved.isGameplayStateValid())
+                                                        return message(ctx.getSource(), "Super Dragon Ball data is unavailable: " + saved.invalidReason());
                                                     if (!saved.clearManualOrbit(slot))
                                                         return message(ctx.getSource(), "SDB " + slot + " has no saved orbit override.");
                                                     net.bullettrain.xenopixelsmod.space.dragonball.DragonBallPlanetOrbitPass.refreshFromSaved(server);
@@ -380,11 +446,22 @@ public final class SpaceCommands {
 
     private static int bodies(CommandSourceStack source) {
         var chart = SpaceChartService.state(source.getServer()).runtime.chart;
+        var host = source.getServer().getLevel(net.minecraft.resources.ResourceKey.create(
+                net.minecraft.core.registries.Registries.DIMENSION,
+                net.bullettrain.xenopixelsmod.space.physics.PhysicalEarth.HOST));
+        var physical = host == null ? java.util.Map.<String,dev.ryanhcode.sable.sublevel.ServerSubLevel>of()
+                : net.bullettrain.xenopixelsmod.space.physics.PhysicalEarth.bodies(host);
         message(source, "Space chart bodies=" + chart.size());
         for (int i = 0; i < chart.size(); i++) {
             var body = chart.body(i);
-            message(source, body.id() + " kind=" + body.kind() + " dimension=" + body.dimensionId()
-                    + " xyz=" + chart.x(i) + "," + chart.y(i) + "," + chart.z(i)
+            var sableBody = physical.get(body.id());
+            var live = sableBody == null ? null : sableBody.logicalPose().position();
+            String chartXYZ=chart.x(i)+","+chart.y(i)+","+chart.z(i);
+            String liveXYZ=live == null ? "not-loaded" : live.x()+","+live.y()+","+live.z();
+            message(source, body.id() + " kind=" + body.kind() + " surfaceDimension=" + body.dimensionId()
+                    + " chartDimension=" + net.bullettrain.xenopixelsmod.space.physics.PhysicalEarth.HOST
+                    + " xyz=" + (live == null ? chartXYZ : liveXYZ)
+                    + " chartXYZ=" + chartXYZ + " physicalXYZ=" + liveXYZ
                     + " radius=" + body.radiusBlocks() + " exit=" + body.exitAltitude()
                     + " enterable=" + body.enterable() + " lod=" + chart.lodOf(i));
         }
@@ -397,7 +474,7 @@ public final class SpaceCommands {
         var runtime=SpaceChartService.state(source.getServer()).runtime;
         try {
             if(resume) runtime.chart.resumeBody(id);else runtime.chart.moveBody(id,x,y,z);
-            runtime.solved=runtime.chart.evaluate(source.getServer().overworld().getGameTime()/20.0+XenoSpaceConfig.orbitEpochOffsetSeconds());
+            runtime.solved=runtime.chart.evaluate(net.bullettrain.xenopixelsmod.space.SpaceOrbitClock.seconds(source.getServer()));
             runtime.revision++;
             message(source,"Chart metadata changed. Physical Sable bodies are independent; moves are session-only.");
             return bodyState(source,id);
@@ -453,9 +530,12 @@ public final class SpaceCommands {
             if (++shown > 40) { out.append("\n ..."); break; }
             var system = net.bullettrain.xenopixelsmod.space.universe.UniverseField.systemAt(seed, entry.getKey());
             if (system == null) continue;
+            var slots = net.bullettrain.xenopixelsmod.space.smallplanet.SmallPlanetField.summarizeSlots(system);
             out.append("\n ").append(entry.getKey().id()).append(' ').append(system.name()).append(" (")
-                    .append(system.starClass().name().toLowerCase(java.util.Locale.ROOT)).append(", ").append(system.planetSlots())
-                    .append(" planet slots) at ").append(Math.round(system.x())).append(", ").append(Math.round(system.z()))
+                    .append(system.starClass().name().toLowerCase(java.util.Locale.ROOT)).append(", system planet slots=")
+                    .append(slots.systemPlanetSlots()).append(", small-world slots mapped up to ").append(slots.smallWorldSlots())
+                    .append(", unmapped slots=").append(slots.unmappedSystemSlots()).append(") at ")
+                    .append(Math.round(system.x())).append(", ").append(Math.round(system.z()))
                     .append(" [").append(entry.getValue().source().name().toLowerCase(java.util.Locale.ROOT)).append(" day ")
                     .append(entry.getValue().day()).append(']');
         }
@@ -472,6 +552,7 @@ public final class SpaceCommands {
     private static int setOrbits(CommandSourceStack source, boolean on) {
         XenoSpaceConfig.setRealOrbits(on);
         SpaceChartService.state(source.getServer()).runtime.chart.setRealOrbits(on);
+        net.bullettrain.xenopixelsmod.space.SpaceVisualSync.syncOrbitSettings(source.getServer());
         return message(source, (on ? "Real orbits on: bodies follow their Kepler orbits. "
                 : "Real orbits off: bodies stay at their pinned chart positions. ") + orbitStatus());
     }
@@ -481,6 +562,7 @@ public final class SpaceCommands {
         if (!XenoSpaceConfig.orbitWarpAllowed())
             return message(source, "Orbit warp is disabled; set \"orbitWarpAllowed\": true in xenopixelsmod-space.json first.");
         double total = XenoSpaceConfig.addOrbitEpochOffset(seconds);
+        net.bullettrain.xenopixelsmod.space.SpaceVisualSync.syncOrbitSettings(source.getServer());
         return message(source, "Orbits warped by " + seconds + " s (total shift " + total + " s). " + orbitStatus());
     }
 
@@ -494,8 +576,16 @@ public final class SpaceCommands {
         message(source, "Space void damage " + (damageApplies
                 ? "on: falling out of a space dimension kills, as vanilla"
                 : "off: falling out of a space dimension returns you to its handoff anchor"));
-        return message(source, SpaceVoidSafety.status(source.getServer(),
-                source.getLevel().dimension().location()));
+        return message(source, voidDamageStatus(source));
+    }
+
+    private static String voidDamageStatus(CommandSourceStack source) {
+        if (source.getEntity() instanceof net.minecraft.server.level.ServerPlayer player) {
+            var position = player.blockPosition();
+            return SpaceVoidSafety.status(source.getServer(), player.level().dimension().location(),
+                    position.getX(), position.getZ());
+        }
+        return SpaceVoidSafety.status(source.getServer(), source.getLevel().dimension().location());
     }
     private static int setHandoff(CommandSourceStack source, boolean active) {
         XenoSpaceConfig.setHandoffEnabled(active);
@@ -520,6 +610,37 @@ public final class SpaceCommands {
         return message(source, "defer-per-batch-finalize=" + active
                 + "; applies to builds started after changing it. This reduces repeated Sable finalization work, "
                 + "but does not prove a sub-8 ms build or remove the final batch cost.");
+    }
+
+    private static int setFallenStars(CommandSourceStack source, boolean active) {
+        XenoSpaceConfig.setFallenStarsEnabled(active);
+        net.bullettrain.xenopixelsmod.space.SpaceVisualNetwork.syncFallenStarsSettings(source.getServer());
+        return message(source, "Server fallen stars " + (active ? "enabled" : "disabled")
+                + "; client density remains locally configurable.");
+    }
+
+    private static int setStellarStage(CommandSourceStack source, String id, String stageName) {
+        final net.bullettrain.xenopixelsmod.space.event.StellarStage stage;
+        try {
+            stage = net.bullettrain.xenopixelsmod.space.event.StellarStage.valueOf(
+                    stageName.toUpperCase(java.util.Locale.ROOT));
+        } catch (IllegalArgumentException invalid) {
+            return failure(source, "Unknown stellar stage '" + stageName + "'. Use /xenospace stellar stage <star> <stage>.");
+        }
+        var result = net.bullettrain.xenopixelsmod.space.event.StellarLifecycleService.setStage(
+                source.getServer(), id, stage);
+        if (result == net.bullettrain.xenopixelsmod.space.event.StellarLifecycleService.StageUpdateResult.UPDATED) {
+            source.sendSuccess(() -> Component.literal("Stellar stage for " + id + " set to " + stage.name())
+                    .withStyle(net.minecraft.ChatFormatting.GREEN), false);
+            return 1;
+        }
+        return failure(source, switch (result) {
+            case UNKNOWN_STAR -> "Unknown chart star: " + id;
+            case PRESERVED_DATA_LOCKED -> "Stellar lifecycle data is from an unsupported format; no changes were made.";
+            case ENTRY_CAP_REACHED -> "Stellar lifecycle entry limit reached; no changes were made.";
+            case INVALID_REQUEST -> "The stellar stage could not be applied; check its current chart position and saved data.";
+            case UPDATED -> "Stellar stage updated.";
+        });
     }
 
     private static int setBuildBudget(CommandSourceStack source, boolean active) {
@@ -648,19 +769,80 @@ public final class SpaceCommands {
         server.reloadResources(server.getPackRepository().getSelectedIds()).whenComplete((unused, error) -> server.execute(() -> {
             if (error != null) { failure(source, "Resource reload failed; previous chart retained: " + error.getMessage()); return; }
             XenoSpaceConfig.load();
+            net.bullettrain.xenopixelsmod.space.SpaceVisualSync.syncOrbitSettings(server);
+            net.bullettrain.xenopixelsmod.space.SpaceVisualNetwork.syncFallenStarsSettings(server);
             // Cadence only: the live budget keeps its counters, so a reload mid-session never makes a
             // healthy pass look dead. The status line below echoes the new intervals.
             SpaceTickScheduler.applyIntervals();
+            // The LOD and field-gravity passes are absent while disabled to avoid idle callback cost;
+            // re-evaluate their registration now so a config false->true toggle takes effect live.
+            net.bullettrain.xenopixelsmod.space.SpaceLodDriver.syncRegistrationToConfig();
+            net.bullettrain.xenopixelsmod.space.SpaceGravityConsumer.syncRegistrationToConfig();
+            var chartState = SpaceChartService.state(server);
             SpaceChartService.refresh(server);
             // A server tick may already have adopted the new resource set before this callback.
             // Rebuild from those definitions with the just-loaded config in either ordering.
-            SpaceChartService.reloadDimensions(server);
+            int chartRevisionBeforeDimensionsReload = chartState.runtime.revision;
+            boolean dimensionsReloaded = SpaceChartService.reloadDimensions(server);
+            boolean dimensionsChartWasPublished = chartState.runtime.revision != chartRevisionBeforeDimensionsReload;
+            if (!dimensionsReloaded && !dimensionsChartWasPublished) {
+                failure(source, "Dimension chart reload failed before publishing; keeping the currently published chart and skipping planet reconciliation");
+                net.bullettrain.xenopixelsmod.space.event.StellarLifecycleService.syncAll(server);
+                message(source, SpaceChartService.status(server));
+                return;
+            }
+            if (!dimensionsReloaded) {
+                message(source, "Warning: dimension reload reported a persistence failure after its chart publication; reconciling against that published chart");
+            }
+            // The chart above is only half of enabling space: the physical planet pass runs once at
+            // ServerStarted, so replay it against the config that has just been re-read.
+            message(source, net.bullettrain.xenopixelsmod.space.physics.PhysicalEarth.reconcile(server));
+            net.bullettrain.xenopixelsmod.space.event.StellarLifecycleService.syncAll(server);
             message(source, SpaceChartService.status(server));
         }));
         return 1;
     }
+    /**
+     * Read-only: compares each physical planet binding clients are sent for the Voidsea with the identity tag of
+     * the body it points at. Reports only; never rebinds, retags or removes anything.
+     */
+    private static int planetBindingAudit(CommandSourceStack source) {
+        var server = source.getServer();
+        var level = server.getLevel(net.minecraft.resources.ResourceKey.create(net.minecraft.core.registries.Registries.DIMENSION,
+                net.bullettrain.xenopixelsmod.space.physics.PhysicalEarth.HOST));
+        if (level == null) return message(source, "Planet binding audit: the Voidsea is not loaded.");
+        var container = dev.ryanhcode.sable.api.sublevel.SubLevelContainer.getContainer(level);
+        var findings = net.bullettrain.xenopixelsmod.space.PlanetBindingAudit.audit(
+                net.bullettrain.xenopixelsmod.space.SpaceVisualSync.currentBindings(level).entries(), (kind, uuid) -> {
+                    if (container == null || !(container.getSubLevel(uuid) instanceof dev.ryanhcode.sable.sublevel.ServerSubLevel body)
+                            || body.isRemoved())
+                        return new net.bullettrain.xenopixelsmod.space.PlanetBindingAudit.Observed(false, null);
+                    String tagged = switch (kind) {
+                        case CHART -> net.bullettrain.xenopixelsmod.space.physics.PhysicalEarth.taggedBodyId(body);
+                        case SMALL_PLANET -> net.bullettrain.xenopixelsmod.space.smallplanet.SmallPlanetPhysicalizer.taggedBodyId(body);
+                        case SUPER_DRAGON_BALL -> net.bullettrain.xenopixelsmod.space.dragonball.DragonBallBodyScan.taggedPlanetKey(
+                                body, net.bullettrain.xenopixelsmod.space.dragonball.CosmicDragonBalls.COUNT);
+                    };
+                    return new net.bullettrain.xenopixelsmod.space.PlanetBindingAudit.Observed(true, tagged);
+                });
+        long wrong = findings.stream().filter(finding -> !finding.ok()).count();
+        StringBuilder out = new StringBuilder("Planet binding audit (Voidsea, read-only): " + findings.size()
+                + " bindings, " + wrong + " not matching their body's own identity tag");
+        for (var finding : findings) out.append('\n').append(net.bullettrain.xenopixelsmod.space.PlanetBindingAudit.describe(finding));
+        return message(source, out.toString());
+    }
+
     private static int message(CommandSourceStack source, String text) {
         source.sendSuccess(() -> Component.literal(text), false); return 1;
+    }
+    private static int logicalReveal(CommandSourceStack source, long x, long z) {
+        String result = net.bullettrain.xenopixelsmod.space.universe.UniverseService.revealLogical(
+                source.getServer(), x, z);
+        if (result.startsWith("Successful discovery:")) {
+            source.sendSuccess(() -> Component.literal(result).withStyle(net.minecraft.ChatFormatting.GREEN), false);
+            return 1;
+        }
+        return message(source, result);
     }
     private static int failure(CommandSourceStack source, String text) {
         source.sendFailure(Component.literal(text)); return 0;

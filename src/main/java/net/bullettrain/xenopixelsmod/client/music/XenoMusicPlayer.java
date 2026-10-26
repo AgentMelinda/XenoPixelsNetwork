@@ -3,6 +3,7 @@ package net.bullettrain.xenopixelsmod.client.music;
 import net.bullettrain.xenopixelsmod.XenoPixelsMod;
 import net.bullettrain.xenopixelsmod.client.config.XenoClientConfig;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.gui.screens.TitleScreen;
 import net.minecraft.client.resources.sounds.SimpleSoundInstance;
 import net.minecraft.client.resources.sounds.SoundInstance;
 import net.minecraft.resources.ResourceLocation;
@@ -22,6 +23,8 @@ import net.neoforged.api.distmarker.OnlyIn;
 public final class XenoMusicPlayer {
     private static FadingMusicSound current;
     private static FadingMusicSound cinematic;
+    /** The title-screen track is fixed by the owner's request and independent of the world playlist. */
+    private static FadingMusicSound menuTrack;
     private static java.util.UUID playingCast;
     private static final java.util.Set<java.util.UUID> startedCasts = new java.util.HashSet<>();
     private static String cinematicId;
@@ -50,9 +53,23 @@ public final class XenoMusicPlayer {
         return XenoMusicTracks.displayName(cinematic != null ? cinematicId : currentTrackId());
     }
 
-    /** Called every client tick; nothing happens without a world or with music disabled. */
+    /** Called every client tick; the fixed title-screen track is handled before world playlist settings. */
     public static void tick() {
         Minecraft mc = Minecraft.getInstance();
+        if (mc.screen instanceof TitleScreen) {
+            stop();
+            stopCinematic();
+            mc.getMusicManager().stopPlaying();
+            if (menuTrack != null && mc.getSoundManager().isActive(menuTrack)) return;
+            menuTrack = null;
+            ResourceLocation menuId = ResourceLocation.tryParse(XenoMusicTracks.MAIN_MENU_TRACK);
+            if (menuId != null && mc.getSoundManager().getSoundEvent(menuId) != null) {
+                menuTrack = new FadingMusicSound(menuId, false, true);
+                mc.getSoundManager().play(menuTrack);
+            }
+            return;
+        }
+        stopMenuTrack();
         if (!XenoClientConfig.musicEnabled || mc.level == null || XenoClientConfig.musicTracks.isEmpty()) {
             stop();
             stopCinematic();
@@ -119,6 +136,11 @@ public final class XenoMusicPlayer {
             current = null;
             currentId = null;
         }
+    }
+
+    private static void stopMenuTrack() {
+        if (menuTrack != null) Minecraft.getInstance().getSoundManager().stop(menuTrack);
+        menuTrack = null;
     }
     private static void updateCinematic() {
         Minecraft mc = Minecraft.getInstance();

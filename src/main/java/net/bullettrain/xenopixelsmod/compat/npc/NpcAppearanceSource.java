@@ -97,8 +97,9 @@ public record NpcAppearanceSource(String race, String gender, String characterCl
                 character.getBodyColor3(), character.getEye1Color(), character.getEye2Color(),
                 character.getHairColor(), character.getAuraColor(), character.getActiveHeadBone(),
                 character.isHasSaiyanTail(), character.isRenderHairBase(), character.getHairId(), "",
-                new CustomHair[]{character.getHairBase(), character.getHairSSJ(),
-                        character.getHairSSJ2(), character.getHairSSJ3()});
+                new CustomHair[]{character.getHairBase(), character.getHairStyle(com.dragonminez.common.hair.HairStyleSlot.SSJ),
+                        character.getHairStyle(com.dragonminez.common.hair.HairStyleSlot.SSJ2), character.getHairStyle(com.dragonminez.common.hair.HairStyleSlot.SSJ3),
+                        character.getHairStyle(com.dragonminez.common.hair.HairStyleSlot.SSJ4)});
     }
 
     /** Slot {@code index} of the resolved hair, always present; an empty slot clears the target's. */

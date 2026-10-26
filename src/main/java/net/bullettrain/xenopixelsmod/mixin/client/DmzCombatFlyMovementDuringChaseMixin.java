@@ -13,7 +13,8 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 /** Prevents DMZ Combat Fly from replacing Xeno chase velocity. */
 @Mixin(value = CombatFlightHandler.class, remap = false)
 public abstract class DmzCombatFlyMovementDuringChaseMixin {
-    @Inject(method = "handle", at = @At("HEAD"), cancellable = true, require = 0)
+    @Inject(method = "handle(Lnet/minecraft/client/player/LocalPlayer;Lcom/dragonminez/common/stats/StatsData;Z)V",
+            at = @At("HEAD"), cancellable = true, require = 1)
     private static void xenopixels$pauseCombatFlightDuringChase(LocalPlayer player, StatsData data,
                                                                 boolean canSprint, CallbackInfo ci) {
         if (ClientChaseFlightState.isActive() || UltimateFinisherCamera.active()

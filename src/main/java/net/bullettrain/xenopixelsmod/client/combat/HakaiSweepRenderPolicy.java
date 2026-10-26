@@ -21,15 +21,10 @@ final class HakaiSweepRenderPolicy {
         return exists && Double.isFinite(now) && Double.isFinite(expiresAt) && now < expiresAt;
     }
 
-    /** How far ahead of the server, in ticks of the line's own slope, the client's projection may run before a
-     * correction is obeyed instead of re-anchored. Covers packet latency plus the one-tick lead on screen. */
-    private static final float REANCHOR_LEAD_TICKS = 4.0f;
-
     /**
      * Re-anchor a correction line at the value already on screen instead of at the packet's value. The packet's value is
-     * used when nothing is on screen, when the server has run past the projection, or when the body is being restored
-     * (negative rate). Otherwise the projection is kept for at most one packet interval plus latency of lead, so a
-     * monotonic erase can never have its cut snapped back upwards by a correction - the multiplayer staircase.
+     * used only when nothing is on screen. Corrections in either direction, including restoration, are reconciled
+     * by the timeline over subsequent frames instead of teleporting the cut at packet arrival.
      *
      * @param sentRate    slope of the line currently on screen
      * @param projected   that line's value at this frame
@@ -37,8 +32,7 @@ final class HakaiSweepRenderPolicy {
      * @param fresh       true when no line is on screen for this entity yet
      */
     static float reanchorProgress(float sentRate, float projected, float packetValue, boolean fresh) {
-        if (fresh || sentRate < 0.0f || packetValue >= projected) return packetValue;
-        return projected - packetValue <= Math.max(0.02f, sentRate * REANCHOR_LEAD_TICKS) ? projected : packetValue;
+        return fresh || !Float.isFinite(projected) ? packetValue : projected;
     }
 
     /**
@@ -59,6 +53,29 @@ final class HakaiSweepRenderPolicy {
     static float[] visibleRingBand(float radius) {
         float base = Float.isFinite(radius) && radius > 0.0f ? Math.max(0.15f, radius) : 0.15f;
         return new float[]{base * 1.05f, base * 1.65f};
+    }
+
+    /** Keep the impact rim tightly bound to the expanding dissolve edge instead of the old body-width ring. */
+    static float[] impactRingBand(float radius) {
+        float edge = Float.isFinite(radius) ? Math.max(0.12f, radius) : 0.12f;
+        float halfWidth = Math.max(0.035f, edge * 0.045f);
+        return new float[]{Math.max(0.02f, edge - halfWidth), edge + halfWidth};
+    }
+
+    /** Horizontal right axis for an upright ring whose plane faces the camera and is centred on the impact. */
+    static Vec3 verticalImpactRingRight(Vec3 center, Vec3 camera) {
+        double x = center.x - camera.x;
+        double z = center.z - camera.z;
+        double length = Math.hypot(x, z);
+        if (!(length > 1.0e-8) || !Double.isFinite(length)) return new Vec3(1, 0, 0);
+        return new Vec3(z / length, 0, -x / length);
+    }
+
+    /** Point on the camera-facing vertical impact ring. The radius follows the same expanding impact sphere as the cut. */
+    static Vec3 verticalImpactRingPoint(Vec3 center, Vec3 right, double radius, double angle) {
+        double safeRadius = Double.isFinite(radius) ? Math.max(0, radius) : 0;
+        return center.add(right.scale(Math.cos(angle) * safeRadius))
+                .add(0, Math.sin(angle) * safeRadius, 0);
     }
 
     /**

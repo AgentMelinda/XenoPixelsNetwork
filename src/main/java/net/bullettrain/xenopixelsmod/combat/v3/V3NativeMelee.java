@@ -129,7 +129,8 @@ final class V3NativeMelee {
             }
             tag.putBoolean(FIRST_HIT, true);
             TargetHelper.onSuccessfulAttack(player, target, relation);
-            player.attack(target);
+            // DMZ 2.2 rejects unapproved AttackEntityEvent hits, including this server-owned tap.
+            TargetHelper.attackApproved(player, target);
             attacked = true;
             return true;
         } finally {

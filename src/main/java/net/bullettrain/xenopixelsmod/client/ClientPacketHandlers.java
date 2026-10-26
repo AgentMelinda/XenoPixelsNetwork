@@ -78,6 +78,11 @@ public final class ClientPacketHandlers {
                     entityId, dialogue, npcName);
             return;
         }
+        if (net.bullettrain.xenopixelsmod.client.npc.dialog.DmzNpcDialoguePresentation.available()) {
+            net.bullettrain.xenopixelsmod.client.npc.dialog.DmzNpcDialoguePresentation.open(
+                    entityId, dialogue, npcName);
+            return;
+        }
         net.bullettrain.xenopixelsmod.client.npc.XenoNpcDialogueScreen.open(
                 entityId, dialogue, npcName);
     }
@@ -126,6 +131,11 @@ public final class ClientPacketHandlers {
 
     public static void handleQuestCompletionPopup(String title, String description, String reward,
                                                   String palette, String frame) {
+        if (net.bullettrain.xenopixelsmod.client.npc.dialog.DmzNpcDialoguePresentation.available()) {
+            net.bullettrain.xenopixelsmod.client.npc.dialog.DmzNpcDialoguePresentation.completion(
+                    title, description, reward);
+            return;
+        }
         net.minecraft.client.Minecraft.getInstance().setScreen(
                 new net.bullettrain.xenopixelsmod.client.npc.quest.QuestCompletionScreen(
                         title, description, reward, palette, frame));

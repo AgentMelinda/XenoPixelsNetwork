@@ -33,6 +33,17 @@ public final class XenoWorldData extends SavedData {
                 new SavedData.Factory<>(XenoWorldData::new, XenoWorldData::load), NAME);
     }
 
+    /** Explicit operator import, with source and native-state backups before live mutation. */
+    public static void importSource(MinecraftServer server, java.nio.file.Path world, java.nio.file.Path game,
+                                    boolean dryRun, net.bullettrain.xenopixelsmod.npc.importer.NpcImportReport report) {
+        XenoWorldData data = get(server);
+        net.bullettrain.xenopixelsmod.npc.importer.WorldScriptDataImport.importRoots(world, game, data.stored,
+                merged -> {
+                    data.storedChanged(merged);
+                    server.overworld().getDataStorage().save();
+                }, dryRun, report);
+    }
+
     private static XenoWorldData load(CompoundTag tag, HolderLookup.Provider registries) {
         XenoWorldData data = new XenoWorldData();
         data.stored = tag.getCompound("Stored").copy();

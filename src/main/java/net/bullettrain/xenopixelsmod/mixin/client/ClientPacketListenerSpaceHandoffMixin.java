@@ -3,6 +3,7 @@ package net.bullettrain.xenopixelsmod.mixin.client;
 import net.bullettrain.xenopixelsmod.client.space.SpaceHandoffOverlay;
 import net.minecraft.client.multiplayer.ClientPacketListener;
 import net.minecraft.network.protocol.game.ClientboundRespawnPacket;
+import net.minecraft.network.protocol.game.ClientboundPlayerPositionPacket;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
@@ -16,5 +17,10 @@ public abstract class ClientPacketListenerSpaceHandoffMixin {
             shift = At.Shift.AFTER))
     private void xenopixels$captureSpaceHandoffFrame(ClientboundRespawnPacket packet, CallbackInfo ci) {
         SpaceHandoffOverlay.captureBeforeRespawn();
+    }
+
+    @Inject(method = "handleMovePlayer", at = @At("TAIL"))
+    private void xenopixels$observeSpaceHandoffPlayerPosition(ClientboundPlayerPositionPacket packet, CallbackInfo ci) {
+        SpaceHandoffOverlay.playerPositionReceived();
     }
 }

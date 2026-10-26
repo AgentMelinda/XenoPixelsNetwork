@@ -19,8 +19,8 @@ public final class ChartDefinition {
         id(resourceId);
         keys(data, "schema_version", "kind", "display_name", "parent", "position", "orbit",
                 "radius_blocks", "gravity", "dimension", "handoff_anchor_y", "exit_altitude",
-                "warm_up_altitude", "spatial_anchor",
-                "orbital_motion", "erasable", "danger_rating", "void_damage", "sky_style",
+                "warm_up_altitude", "spatial_anchor", "surface_anchor",
+                "orbital_motion", "rotation_period_seconds", "erasable", "danger_rating", "void_damage", "sky_style",
                 // §6 oxygen flag (read by OxygenSystem from the raw definition) and §15 black-hole block
                 // (read by BlackHoleRegistry); validated here so a malformed value is a diagnostic, not a silent default.
                 "breathable", "black_hole");
@@ -76,6 +76,7 @@ public final class ChartDefinition {
                 CelestialBody.defaultWarmUpAltitude(exitAltitude));
         JsonObject spatialAnchor = object(data, "spatial_anchor");
         keys(spatialAnchor, "x", "z");
+        CelestialBody.SurfaceAnchor surfaceAnchor = parseSurfaceAnchor(data);
         double danger = number(data, "danger_rating", 0);
         if (danger < 0 || danger > 10 || danger != Math.rint(danger))
             throw new IllegalArgumentException("danger_rating must be an integer in [0, 10]");
@@ -88,7 +89,26 @@ public final class ChartDefinition {
                 number(data, "handoff_anchor_y", 64), exitAltitude, warmUpAltitude,
                 bool(data, "orbital_motion", true), bool(data, "erasable", false), (int) danger,
                 nullableBool(data, "void_damage"), (int) style,
-                number(spatialAnchor, "x", 0.0), number(spatialAnchor, "z", 0.0));
+                number(spatialAnchor, "x", 0.0), number(spatialAnchor, "z", 0.0), surfaceAnchor,
+                data.has("rotation_period_seconds") ? number(data, "rotation_period_seconds", 0.0) : null);
+    }
+
+    private static CelestialBody.SurfaceAnchor parseSurfaceAnchor(JsonObject data) {
+        if (!data.has("surface_anchor")) return null;
+        JsonObject anchor = object(data, "surface_anchor");
+        keys(anchor, "pos", "facing");
+        JsonElement position = anchor.get("pos");
+        if (position == null || !position.isJsonArray() || position.getAsJsonArray().size() != 3)
+            throw new IllegalArgumentException("surface_anchor.pos must contain exactly three numbers");
+        var coordinates = position.getAsJsonArray();
+        double[] xyz = new double[3];
+        for (int i = 0; i < xyz.length; i++) {
+            JsonElement coordinate = coordinates.get(i);
+            if (!coordinate.isJsonPrimitive() || !coordinate.getAsJsonPrimitive().isNumber())
+                throw new IllegalArgumentException("surface_anchor.pos must contain exactly three numbers");
+            xyz[i] = coordinate.getAsDouble();
+        }
+        return new CelestialBody.SurfaceAnchor(xyz[0], xyz[1], xyz[2], string(anchor, "facing", "up"));
     }
     public static JsonObject merge(JsonObject base, JsonObject override) {
         JsonObject result = base.deepCopy();

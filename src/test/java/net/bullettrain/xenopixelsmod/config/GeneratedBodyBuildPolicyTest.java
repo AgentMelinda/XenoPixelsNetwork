@@ -27,8 +27,35 @@ class GeneratedBodyBuildPolicyTest {
     }
 
     @Test void clampsNewConfigurationToAUsefulPositiveCeiling() {
-        assertEquals(1, GeneratedBodyBuildPolicy.resolve(19, 0, true).activeVoxelsPerTick());
-        assertEquals(2_000, GeneratedBodyBuildPolicy.resolve(19, Integer.MAX_VALUE, true).activeVoxelsPerTick());
-        assertEquals(1, GeneratedBodyBuildPolicy.resolve(19, Integer.MIN_VALUE, true).activeVoxelsPerTick());
+        assertEquals(1, GeneratedBodyBuildPolicy.resolve(20, 0, true).activeVoxelsPerTick());
+        assertEquals(2_000, GeneratedBodyBuildPolicy.resolve(20, Integer.MAX_VALUE, true).activeVoxelsPerTick());
+        assertEquals(1, GeneratedBodyBuildPolicy.resolve(20, Integer.MIN_VALUE, true).activeVoxelsPerTick());
+    }
+
+    @Test void migratesMissingLegacyBuildTimeToTheBoundedDefault() {
+        assertEquals(8.0, GeneratedBodyBuildPolicy.resolve(19, 2_000, true, 0.0, false).millisPerTick(), 0.0);
+        assertEquals(8.0, GeneratedBodyBuildPolicy.resolve(null, 2_000, true, 0.0, false).millisPerTick(), 0.0);
+    }
+
+    @Test void preservesAnExplicitLegacyZeroBuildTimeOptOut() {
+        assertEquals(0.0, GeneratedBodyBuildPolicy.resolve(19, 2_000, true, 0.0, true).millisPerTick(), 0.0);
+        assertEquals(0.0, GeneratedBodyBuildPolicy.resolve(null, 2_000, true, 0.0, true).millisPerTick(), 0.0);
+    }
+
+    @Test void preservesExplicitPositiveLegacyBuildTimeWhenMigrating() {
+        assertEquals(3.5, GeneratedBodyBuildPolicy.resolve(19, 2_000, true, 3.5).millisPerTick(), 0.0);
+        assertEquals(20.0, GeneratedBodyBuildPolicy.resolve(19, 2_000, true, 25.0).millisPerTick(), 0.0);
+    }
+
+    @Test void preservesAnExplicitNewBuildTimeBudgetAndAllowsExplicitOptOut() {
+        assertEquals(3.5, GeneratedBodyBuildPolicy.resolve(20, 2_000, true, 3.5).millisPerTick(), 0.0);
+        assertEquals(0.0, GeneratedBodyBuildPolicy.resolve(20, 2_000, true, 0.0).millisPerTick(), 0.0);
+    }
+
+    @Test void clampsInvalidOrOutOfRangeBuildTimeBudgets() {
+        assertEquals(0.0, GeneratedBodyBuildPolicy.resolve(20, 2_000, true, Double.NaN).millisPerTick(), 0.0);
+        assertEquals(0.0, GeneratedBodyBuildPolicy.resolve(20, 2_000, true, Double.POSITIVE_INFINITY).millisPerTick(), 0.0);
+        assertEquals(20.0, GeneratedBodyBuildPolicy.resolve(20, 2_000, true, 21.0).millisPerTick(), 0.0);
+        assertEquals(0.0, GeneratedBodyBuildPolicy.resolve(20, 2_000, true, -1.0).millisPerTick(), 0.0);
     }
 }

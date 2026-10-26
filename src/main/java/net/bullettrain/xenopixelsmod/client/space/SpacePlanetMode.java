@@ -29,6 +29,15 @@ public enum SpacePlanetMode {
         return this == BODIES;
     }
 
+    /**
+     * Chart projections belong to the canonical Voidsea chart view. The disposable ORBIT physics
+     * fixture has its own legacy Earth Sable binding and must not layer chart Earth/Namek proxies on
+     * top of it.
+     */
+    public boolean drawsProxiesIn(String dimensionId) {
+        return drawsProxies() && "xenopixelsmod:voidsea".equals(dimensionId);
+    }
+
     /** True only when the corresponding Sable body is replicated on this client. */
     public boolean drawsBodies() {
         return this == BODIES;

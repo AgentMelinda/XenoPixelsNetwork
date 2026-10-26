@@ -90,6 +90,8 @@ public final class HdKiClient {
     }
 
     private static boolean allowsHd(AbstractKiProjectile ki) {
+        // Keep HD charging, then let DMZ draw a complete shaft/head as soon as the wave fires.
+        if (!allowsHdPhase(ki instanceof KiWaveEntity, ki.isFiring())) return false;
         // An owned finisher is drawn from the target ray every render frame. Persistent
         // HD segments capture a tick's origin/angle and cannot follow that correction.
         if (ki instanceof KiWaveEntity wave
@@ -98,6 +100,8 @@ public final class HdKiClient {
     }
 
     static boolean allowsHd(boolean ownedHdEnabled, boolean owned) { return ownedHdEnabled || !owned; }
+
+    static boolean allowsHdPhase(boolean wave, boolean firing) { return !wave || !firing; }
 
     static KiLook.Kind kind(Entity entity) {
         if (entity instanceof KiWaveEntity) return KiLook.Kind.WAVE;

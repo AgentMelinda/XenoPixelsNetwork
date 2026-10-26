@@ -5,6 +5,8 @@ import net.bullettrain.xenopixelsmod.config.XenoServerConfig;
 import net.bullettrain.xenopixelsmod.missile.BallisticTrajectory;
 import net.bullettrain.xenopixelsmod.missile.BallisticFlightPlan;
 import net.bullettrain.xenopixelsmod.missile.MissilePhase;
+import net.bullettrain.xenopixelsmod.space.event.StellarBlastWaveService;
+import net.bullettrain.xenopixelsmod.space.physics.PhysicalEarth;
 
 import net.minecraft.core.BlockPos;
 import net.minecraft.world.phys.Vec3;
@@ -117,6 +119,7 @@ public final class ShipBallisticController {
     private volatile int maxFlightTicks = MIN_FLIGHT_TIMEOUT_TICKS;
     private volatile boolean impactRequested;
     private volatile String status = "idle";
+    private volatile boolean supernovaLookupWarned;
 
     /**
      * How long after a {@link #getStatus()} call we keep formatting the detailed status text.
@@ -160,8 +163,7 @@ public final class ShipBallisticController {
     private boolean hasPreviousPosition;
     private double closestTargetDistance = Double.POSITIVE_INFINITY;
     /** Physics-thread sweep state; independent of the potentially stalled game thread. */
-    private double physPreviousX, physPreviousY, physPreviousZ;
-    private boolean hasPhysPreviousPosition;
+    private final BallisticPhysicsSweep physicsSweep = new BallisticPhysicsSweep();
     private double physClosestTargetDistance = Double.POSITIVE_INFINITY;
     /** Monotonic heartbeat written by gameTick and read by physTick. */
     private volatile long lastGuidanceNanos;
@@ -224,11 +226,29 @@ public final class ShipBallisticController {
     public static void ensureRegistered() {
         if (!REGISTERED.compareAndSet(false, true)) return;
         SableEventPlatform.INSTANCE.onPhysicsTick((system, deltaSeconds) -> {
+            var level = system.getLevel();
             SubLevelContainer container = SubLevelContainer.getContainer(system.getLevel());
             for (var candidate : container.getAllSubLevels()) {
                 if (!(candidate instanceof ServerSubLevel subLevel)) continue;
                 ShipBallisticController controller = get(subLevel);
                 if (controller == null || !controller.isFlying()) continue;
+                // Ballistic ships apply their own guidance/braking impulses rather than the
+                // ordinary Xeno thruster map, so share the supernova gate here as well.
+                if (level != null && PhysicalEarth.HOST.equals(level.dimension().location())) {
+                    try {
+                        if (StellarBlastWaveService.suppressShipThrust(level, subLevel)) {
+                            controller.physicsSweep.sample(subLevel.logicalPose().position());
+                            continue;
+                        }
+                    } catch (RuntimeException waveFailure) {
+                        if (!controller.supernovaLookupWarned) {
+                            controller.supernovaLookupWarned = true;
+                            XenoPixelsMod.LOGGER.warn(
+                                    "[ballistic ship {}] supernova thrust-suppression lookup failed; retaining normal guidance",
+                                    subLevel.getUniqueId(), waveFailure);
+                        }
+                    }
+                }
                 RigidBodyHandle handle = system.getPhysicsHandle(subLevel);
                 if (handle != null && handle.isValid()) {
                     controller.physTick(subLevel, handle, deltaSeconds);
@@ -537,10 +557,7 @@ public final class ShipBallisticController {
         this.previousZ = launch.z;
         this.hasPreviousPosition = true;
         this.closestTargetDistance = launch.distanceTo(targetWorld);
-        this.physPreviousX = launch.x;
-        this.physPreviousY = launch.y;
-        this.physPreviousZ = launch.z;
-        this.hasPhysPreviousPosition = true;
+        this.physicsSweep.reset(launch.x, launch.y, launch.z);
         this.physClosestTargetDistance = this.closestTargetDistance;
         this.lastGuidanceNanos = System.nanoTime();
         this.lastPhysicsNanos = this.lastGuidanceNanos;
@@ -1496,20 +1513,13 @@ public final class ShipBallisticController {
         double dzTarget = targetZ - pos.z();
         double physDistance = Math.sqrt(dxTarget * dxTarget + dyTarget * dyTarget + dzTarget * dzTarget);
         double arrivalRadius = Math.max(Math.max(HIT_RANGE, hullArrivalRadius), guidanceStopDistance);
-        boolean sweptArrival = hasPhysPreviousPosition
-                && segmentDistanceSquared(physPreviousX, physPreviousY, physPreviousZ,
-                pos.x(), pos.y(), pos.z(), targetX, targetY, targetZ)
-                <= arrivalRadius * arrivalRadius;
+        boolean sweptArrival = physicsSweep.crossed(pos, targetX, targetY, targetZ, arrivalRadius);
         physClosestTargetDistance = Math.min(physClosestTargetDistance, physDistance);
         double closingSpeed = vel != null && physDistance > 1.0e-6
                 ? (vel.x() * dxTarget + vel.y() * dyTarget + vel.z() * dzTarget) / physDistance
                 : 0.0;
         boolean crossedAtClosestApproach = groundTrackFraction(pos.x(), pos.z()) >= 1.0
                 && closingSpeed < 0.0 && physClosestTargetDistance <= arrivalRadius * 1.5;
-        physPreviousX = pos.x();
-        physPreviousY = pos.y();
-        physPreviousZ = pos.z();
-        hasPhysPreviousPosition = true;
         if (physDistance <= arrivalRadius || sweptArrival || crossedAtClosestApproach) {
             impactRequested = true;
             status = sweptArrival ? "arrived (physics sweep)" : "arrived (physics intercept)";

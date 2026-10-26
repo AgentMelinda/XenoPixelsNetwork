@@ -38,6 +38,7 @@ public final class OxygenHud {
             case SUFFOCATING -> 0xFFE04848;
             case SUPPLIED -> 0xFF7CD6FF;
             case RECOVERING -> 0xFF9FE6B0;
+            case AURA -> 0xFFE18BFF;
             default -> 0xFF4FC3F7;
         };
         for (int i = 0; i < SEGMENTS; i++) {
@@ -45,7 +46,9 @@ public final class OxygenHud {
             int x = cx + (int) Math.round(Math.cos(angle) * RADIUS), y = cy + (int) Math.round(Math.sin(angle) * RADIUS);
             g.fill(x - 1, y - 1, x + 1, y + 1, i < filled ? on : 0x80202630);
         }
-        if (s.reserve() > 0) {
+        if (phase == OxygenRules.Phase.AURA) {
+            g.drawCenteredString(mc.font, Component.translatable("hud.xenopixelsmod.oxygen_aura"), cx, cy + RADIUS + 6, 0xFFE18BFF);
+        } else if (s.reserve() > 0) {
             int seconds = s.reserve() / 20;
             String text = Component.translatable("hud.xenopixelsmod.oxygen").getString() + " " + (seconds / 60) + ":" + String.format("%02d", seconds % 60);
             g.drawCenteredString(mc.font, text, cx, cy + RADIUS + 6, 0xFFBFEAFF);

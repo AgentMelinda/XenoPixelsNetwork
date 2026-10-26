@@ -61,7 +61,10 @@ public record XenoDialogue(String start, Map<String, Node> nodes) {
          * cannot name one, because the destination has to exist on that NPC's own list and a
          * datapack has no way to guarantee that.
          */
-        TRANSPORT
+        TRANSPORT,
+        /** Open native DragonMineZ quests for the DMZ NPC id in {@code quest}.
+         * Existing QUEST options always remain owned by Xeno. Appended to preserve ordinals. */
+        DMZ_QUEST
     }
 
     public record Option(String text, OptionType type, String target, String quest,
@@ -87,9 +90,17 @@ public record XenoDialogue(String start, Map<String, Node> nodes) {
      * {@code bubblePalette}". Every dialogue written before the field existed therefore renders
      * unchanged, and a conversation can shift colour between nodes when an author wants it to.
      */
-    public record Node(String text, List<Option> options, String palette) {
+    public record Node(String text, List<Option> options, String palette,
+                       net.bullettrain.xenopixelsmod.features.progression.QuestAvailability availability,
+                       String sourceRef) {
         public Node {
             palette = palette == null ? "" : palette.trim();
+            availability = availability == null ? net.bullettrain.xenopixelsmod.features.progression.QuestAvailability.NONE : availability;
+            sourceRef = sourceRef == null ? "" : sourceRef;
+        }
+
+        public Node(String text, List<Option> options, String palette) {
+            this(text, options, palette, null, "");
         }
 
         /** A node with no palette of its own, which is what every older dialogue is. */
@@ -142,7 +153,9 @@ public record XenoDialogue(String start, Map<String, Node> nodes) {
             }
         }
         String palette = obj.has("palette") ? obj.get("palette").getAsString() : "";
-        return new Node(text, List.copyOf(options), palette);
+        return new Node(text, List.copyOf(options), palette,
+                net.bullettrain.xenopixelsmod.features.progression.QuestAvailability.fromJson(obj.get("availability")),
+                obj.has("source_ref") ? obj.get("source_ref").getAsString() : "");
     }
 
     private static Option optionFromJson(JsonElement element) {

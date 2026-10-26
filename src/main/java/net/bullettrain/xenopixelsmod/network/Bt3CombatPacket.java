@@ -882,47 +882,39 @@ net.bullettrain.xenopixelsmod.combat.VanishShadeFx.spawn(player, from);
         net.bullettrain.xenopixelsmod.combat.Bt3SparkingSystem.grantIFrames(
                 player, XenoServerConfig.zanzokenIFramesTicks);
 
-        // The read is not "he stepped aside" — it is that he is suddenly everywhere you could
-        // turn. A closed ring of bodies around the attacker, each looking inward at them.
-        //
-        // The dodger stands in that ring. Teleporting them somewhere else, as this used to, left
-        // the one body that had moved plainly identifiable and made the images decoration.
-        Vec3 dest;
+        Vec3 dest = vanishLanding(player, attacker, 0);
         if (XenoServerConfig.zanzokenGhostAfterimage) {
-            int slots = Math.max(2, XenoServerConfig.zanzokenRingClones + 1);
-            int mine = player.getRandom().nextInt(slots);
-            double radius = XenoServerConfig.zanzokenRingRadius;
-
             java.util.List<net.bullettrain.xenopixelsmod.combat.clone.XenoCloneEntity> images =
-                    net.bullettrain.xenopixelsmod.combat.clone.XenoCloneSystem.encircle(
-                            player, attacker, slots, radius,
-                            Math.max(20, XenoServerConfig.zanzokenRingTicks), mine);
-
-            dest = openRingLanding(player, attacker, mine, slots, radius);
-            // The images stand for as long as the ring does, and everything that reads "are this
-            // fighter's images up?" has to agree with what is actually on screen.
-            //
-            // It did not. The press marked them for zanzokenAfterimageTicks and nothing re-marked
-            // them here, so by the time the ring existed — the whole point of the technique — the
-            // mark had usually expired and AI went on tracking the real body through it.
-            net.bullettrain.xenopixelsmod.combat.Bt3CombatEvents.markAfterimages(player,
-                    net.bullettrain.xenopixelsmod.combat.ZanzokenWindow.afterimageTicks(
-                            XenoServerConfig.zanzokenAfterimageTicks,
-                            XenoServerConfig.zanzokenRingTicks));
-            redirectLockToImage(player, attacker, images);
-            net.bullettrain.xenopixelsmod.combat.ZanzokenConfusion.scatter(player, images);
+                    net.bullettrain.xenopixelsmod.combat.clone.XenoCloneSystem.trail(
+                            player, from, dest, XenoServerConfig.zanzokenRingClones,
+                            Math.max(20, XenoServerConfig.zanzokenRingTicks));
+            // The mark means "decoys are standing in for this fighter", and the trail can legitimately
+            // come back empty - every sample in solid geometry or an unloaded chunk, or the ring count
+            // configured to zero. Marking anyway made the fighter unacquireable for the full lifetime
+            // with nothing on screen to be fooled by, which is the exact failure clearing an early
+            // strike is there to prevent, reached from the other direction. One shade is then the
+            // honest reading of what actually happened.
+            if (images.isEmpty()) {
+                net.bullettrain.xenopixelsmod.combat.VanishShadeFx.spawn(player, from);
+            } else {
+                net.bullettrain.xenopixelsmod.combat.Bt3CombatEvents.markAfterimages(player,
+                        net.bullettrain.xenopixelsmod.combat.ZanzokenWindow.afterimageTicks(
+                                XenoServerConfig.zanzokenAfterimageTicks,
+                                XenoServerConfig.zanzokenRingTicks));
+                redirectLockToImage(player, attacker, images);
+                net.bullettrain.xenopixelsmod.combat.ZanzokenConfusion.scatter(player, images);
+            }
         } else {
             net.bullettrain.xenopixelsmod.combat.VanishShadeFx.spawn(player, from);
-            dest = vanishLanding(player, attacker, 0);
         }
 
         teleportFacing(player, dest, attacker);
         playZanzoken(player, dest);
         player.displayClientMessage(
                 net.minecraft.network.chat.Component.literal("§b§lZANZOKEN!"), true);
-        try {
-            net.bullettrain.xenopixelsmod.combat.AfterimageFx.spawnTrailServer(player, from, dest, 6);
-        } catch (Throwable ignored) {
+        if (!XenoServerConfig.zanzokenGhostAfterimage) {
+            net.bullettrain.xenopixelsmod.combat.AfterimageFx.spawnTrailServer(
+                    player, from, dest, XenoServerConfig.zanzokenRingClones);
         }
         if (player.level() instanceof net.minecraft.server.level.ServerLevel level) {
             net.bullettrain.xenopixelsmod.combat.fx.CombatFx.cue(level, from,

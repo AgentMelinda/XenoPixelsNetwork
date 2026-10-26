@@ -7,7 +7,14 @@ import net.bullettrain.xenopixelsmod.space.HandoffAnchorMath;
 import net.bullettrain.xenopixelsmod.space.HandoffTransitionNotice;
 import net.bullettrain.xenopixelsmod.space.PlanetTravelMemory;
 import net.bullettrain.xenopixelsmod.api.network.AddonNetwork;
+import net.bullettrain.xenopixelsmod.space.SpaceChartService;
+import net.bullettrain.xenopixelsmod.space.SpaceHomeOrbitalFrame;
+import net.bullettrain.xenopixelsmod.space.SpaceOrbitClock;
 import net.bullettrain.xenopixelsmod.space.physics.PhysicalEarth;
+import net.bullettrain.xenopixelsmod.space.physics.SableRemovalBand;
+import net.bullettrain.xenopixelsmod.space.universe.FrontierBindings;
+import net.bullettrain.xenopixelsmod.space.universe.UniverseField;
+import net.bullettrain.xenopixelsmod.space.universe.UniverseService;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.resources.ResourceKey;
@@ -54,6 +61,7 @@ public final class SmallPlanetSurfaceTravel {
             "xenopixelsmod_small_planet_surface", Comparator.comparing(UUID::toString));
 
     private static final Map<UUID, Pending> PENDING = new HashMap<>();
+    private static final Map<UUID, Long> EXIT_Y_NOTICE_UNTIL = new HashMap<>();
     private static final Map<UUID, TicketLease> TICKETS = new HashMap<>();
     private static final Map<UUID, Long> COOLDOWN_UNTIL = new HashMap<>();
 
@@ -90,10 +98,14 @@ public final class SmallPlanetSurfaceTravel {
             } else if (player.serverLevel() == surfaces && player.getY() >= exitThreshold(surfaces)) {
                 SmallPlanetField.Candidate candidate = readTrip(player);
                 if (candidate == null || !insideAssignedCell(player, candidate)) continue;
-                Vec3 destination = new Vec3(candidate.x(), SmallPlanetSurfaceTravelMath.voidseaExitY(
-                        candidate.y(), candidate.radius()), candidate.z());
-                if (host.getWorldBorder().isWithinBounds(BlockPos.containing(destination)))
+                SmallPlanetField.Candidate current = currentOrbitPosition(host, candidate);
+                if (current == null) continue;
+                Vec3 destination = exitPosition(current);
+                if (host.getWorldBorder().isWithinBounds(BlockPos.containing(destination))
+                        && safeSpaceArrivalY(player, host, destination))
                     PENDING.put(playerId, new Pending(candidate, SURFACE_ID, host, destination, false, now));
+                else if (host.getWorldBorder().isWithinBounds(BlockPos.containing(destination)))
+                    notifyUnsafeExitY(player, now);
             }
         }
     }
@@ -106,6 +118,18 @@ public final class SmallPlanetSurfaceTravel {
 
     private static double exitThreshold(ServerLevel level) {
         return level.getMaxBuildHeight() - 16.0;
+    }
+
+    /** The current entered body's altitude endpoint for the shared surface dimension, if this trip is valid. */
+    public static SmallPlanetField.Candidate atmosphereCandidate(ServerPlayer player) {
+        if (!player.serverLevel().dimension().location().equals(SURFACE_ID)) return null;
+        SmallPlanetField.Candidate candidate = readTrip(player);
+        return candidate != null && candidate.surfaceMode() == SmallPlanetField.SurfaceMode.ENTERABLE
+                && insideAssignedCell(player, candidate) ? candidate : null;
+    }
+
+    public static double atmosphereExitAltitude(ServerPlayer player) {
+        return exitThreshold(player.serverLevel());
     }
 
     private static SmallPlanetField.Candidate touchingEnterablePlanet(ServerLevel host, ServerPlayer player) {
@@ -121,12 +145,62 @@ public final class SmallPlanetSurfaceTravel {
             double gap = Math.sqrt(square(player.getX() - cx) + square(player.getY() - cy)
                     + square(player.getZ() - cz)) - candidate.radius();
             if (gap <= TOUCH_MARGIN && gap < bestGap) {
-                best = new SmallPlanetField.Candidate(candidate.id(), candidate.seed(), cx, cy, cz,
-                        candidate.radius(), candidate.profile(), candidate.oreRichness(), false);
+                best = candidate;
                 bestGap = gap;
             }
         }
         return best;
+    }
+
+    private static boolean touchingCandidate(ServerLevel host, ServerPlayer player,
+                                             SmallPlanetField.Candidate expected) {
+        for (ServerSubLevel body : SmallPlanetPhysicalizer.bodies(host).values()) {
+            if (body.isRemoved() || body.getUserDataTag() == null
+                    || !body.getUserDataTag().contains(SmallPlanetPhysicalizer.TAG, Tag.TAG_COMPOUND)) continue;
+            SmallPlanetField.Candidate candidate = readCandidate(
+                    body.getUserDataTag().getCompound(SmallPlanetPhysicalizer.TAG));
+            if (candidate == null || !candidate.id().equals(expected.id())
+                    || candidate.surfaceMode() != SmallPlanetField.SurfaceMode.ENTERABLE) continue;
+            var center = body.logicalPose().position();
+            double gap = Math.sqrt(square(player.getX() - center.x()) + square(player.getY() - center.y())
+                    + square(player.getZ() - center.z())) - candidate.radius();
+            return gap <= TOUCH_MARGIN + 8.0;
+        }
+        return false;
+    }
+
+    private static Vec3 exitPosition(SmallPlanetField.Candidate candidate) {
+        return new Vec3(candidate.x(), SmallPlanetSurfaceTravelMath.voidseaExitY(
+                candidate.y(), candidate.radius()), candidate.z());
+    }
+
+    /** Trip NBT keeps stable identity coordinates; prefer a live Sable pose and use the shared ephemeris as fallback. */
+    private static SmallPlanetField.Candidate currentOrbitPosition(ServerLevel host,
+                                                                   SmallPlanetField.Candidate anchor) {
+        ServerSubLevel physical = SmallPlanetPhysicalizer.bodies(host).get(anchor.id().bodyId());
+        if (physical != null) {
+            var center = physical.logicalPose().position();
+            if (Double.isFinite(center.x()) && Double.isFinite(center.y()) && Double.isFinite(center.z()))
+                return anchor.atPosition(center.x(), center.y(), center.z());
+        }
+        if (!XenoSpaceConfig.realOrbits()) return anchor;
+        MinecraftServer server = host.getServer();
+        long seed = UniverseService.fieldSeed(server);
+        UniverseField.StarSystem system = FrontierBindings.get(host).systemAt(seed, anchor.id().systemCell());
+        if (system == null) return null;
+        var chart = SpaceChartService.state(server).runtime.chart;
+        SpaceHomeOrbitalFrame.Focus homeFocus = SpaceHomeOrbitalFrame.resolve(host, chart);
+        if (system.cell().home() && homeFocus == null) return null;
+        double homeX = homeFocus == null ? 0.0 : homeFocus.x();
+        double homeY = homeFocus == null ? 0.0 : homeFocus.y();
+        double homeZ = homeFocus == null ? 0.0 : homeFocus.z();
+        double seconds = SpaceOrbitClock.seconds(server);
+        if (!Double.isFinite(seconds)) return null;
+        try {
+            return SmallPlanetField.atOrbitTime(anchor, system, homeX, homeY, homeZ, seconds);
+        } catch (IllegalArgumentException invalidOrbit) {
+            return null;
+        }
     }
 
     private static double square(double value) { return value * value; }
@@ -167,10 +241,11 @@ public final class SmallPlanetSurfaceTravel {
             return;
         }
         if (pending.entering()) {
-            double gap = Math.sqrt(square(player.getX() - pending.candidate().x())
-                    + square(player.getY() - pending.candidate().y())
-                    + square(player.getZ() - pending.candidate().z())) - pending.candidate().radius();
-            if (gap > TOUCH_MARGIN + 8.0) { cancel(playerId); return; }
+            ServerLevel host = player.getServer().getLevel(HOST_KEY);
+            if (host == null || !touchingCandidate(host, player, pending.candidate())) {
+                cancel(playerId);
+                return;
+            }
         } else if (player.getY() < exitThreshold(player.serverLevel()) - 4.0) {
             cancel(playerId);
             return;
@@ -186,6 +261,19 @@ public final class SmallPlanetSurfaceTravel {
             int surfaceY = pending.destination().getHeight(Heightmap.Types.MOTION_BLOCKING_NO_LEAVES, x, z);
             destination = new Vec3(x + 0.5, surfaceY + 0.05, z + 0.5);
         } else {
+            SmallPlanetField.Candidate current = currentOrbitPosition(pending.destination(), pending.candidate());
+            if (current == null) {
+                cancel(playerId);
+                player.displayClientMessage(net.minecraft.network.chat.Component.literal(
+                        "Planet surface transfer cancelled: current orbit position is unavailable"), true);
+                return;
+            }
+            destination = exitPosition(current);
+            if (!safeSpaceArrivalY(player, pending.destination(), destination)) {
+                cancel(playerId);
+                notifyUnsafeExitY(player, now);
+                return;
+            }
             ChunkPos chunk = new ChunkPos(BlockPos.containing(destination));
             var fullChunk = pending.destination().getChunkSource().getChunkFuture(
                     chunk.x, chunk.z, ChunkStatus.FULL, false);
@@ -209,9 +297,11 @@ public final class SmallPlanetSurfaceTravel {
         if (pending.entering()) {
             PlanetTravelMemory.commit(arrived, null, null, bodyId);
             writeTrip(arrived, pending.candidate());
+            net.bullettrain.xenopixelsmod.space.SpaceAtmosphereSync.send(arrived);
         } else {
             PlanetTravelMemory.commit(arrived, bodyId, departure, null);
             clearTrip(arrived);
+            net.bullettrain.xenopixelsmod.space.SpaceAtmosphereSync.send(arrived);
         }
         COOLDOWN_UNTIL.put(playerId, now + TRANSFER_COOLDOWN_TICKS);
     }
@@ -228,7 +318,23 @@ public final class SmallPlanetSurfaceTravel {
 
     private static boolean safeArrival(ServerPlayer player, ServerLevel target, Vec3 position) {
         if (!target.getWorldBorder().isWithinBounds(BlockPos.containing(position))) return false;
+        if (!safeSpaceArrivalY(player, target, position)) return false;
         return target.noCollision(player, player.getBoundingBox().move(position.subtract(player.position())));
+    }
+
+    private static boolean safeSpaceArrivalY(ServerPlayer player, ServerLevel target, Vec3 position) {
+        if (!PhysicalEarth.HOST.equals(target.dimension().location())) return true;
+        var band = SableRemovalBand.forDimension(target.dimension().location());
+        return SmallPlanetSurfaceTravelMath.arrivalFitsRemovalBand(position.y, player.getBbHeight(),
+                band.minY(), band.maxY(), target.getMinBuildHeight(), band.voidseaExtended());
+    }
+
+    private static void notifyUnsafeExitY(ServerPlayer player, long now) {
+        long next = EXIT_Y_NOTICE_UNTIL.getOrDefault(player.getUUID(), Long.MIN_VALUE);
+        if (now < next) return;
+        EXIT_Y_NOTICE_UNTIL.put(player.getUUID(), now + 100);
+        player.displayClientMessage(net.minecraft.network.chat.Component.literal(
+                "Planet orbit is outside the safe Voidsea height band; wait for a safe altitude to exit"), true);
     }
 
     private static boolean insideAssignedCell(ServerPlayer player, SmallPlanetField.Candidate candidate) {
@@ -287,6 +393,10 @@ public final class SmallPlanetSurfaceTravel {
                 || key[3] < -SmallPlanetField.MAX_SECTOR_OFFSET || key[3] > SmallPlanetField.MAX_SECTOR_OFFSET
                 || key[4] < -SmallPlanetField.MAX_SECTOR_OFFSET || key[4] > SmallPlanetField.MAX_SECTOR_OFFSET
                 || profile < 0 || profile >= SmallPlanetField.Profile.values().length) return null;
+        // Absent numeric tags read as zero, which would silently aim the trip at the origin with a seed of zero.
+        if (!tag.contains("seed", Tag.TAG_LONG) || !tag.contains("radius", Tag.TAG_INT)
+                || !tag.contains("x", Tag.TAG_DOUBLE) || !tag.contains("y", Tag.TAG_DOUBLE)
+                || !tag.contains("z", Tag.TAG_DOUBLE) || !tag.contains("oreRichness", Tag.TAG_DOUBLE)) return null;
         try {
             return new SmallPlanetField.Candidate(new SmallPlanetField.ObjectId(
                     new net.bullettrain.xenopixelsmod.space.universe.UniverseField.Cell((int) key[0], (int) key[1]),
@@ -322,6 +432,7 @@ public final class SmallPlanetSurfaceTravel {
     public static void loggedOut(PlayerEvent.PlayerLoggedOutEvent event) {
         cancel(event.getEntity().getUUID());
         COOLDOWN_UNTIL.remove(event.getEntity().getUUID());
+        EXIT_Y_NOTICE_UNTIL.remove(event.getEntity().getUUID());
     }
 
     @SubscribeEvent
@@ -331,5 +442,6 @@ public final class SmallPlanetSurfaceTravel {
     public static void stopped(ServerStoppedEvent event) {
         cancelAllPending();
         COOLDOWN_UNTIL.clear();
+        EXIT_Y_NOTICE_UNTIL.clear();
     }
 }

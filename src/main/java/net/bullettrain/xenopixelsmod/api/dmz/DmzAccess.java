@@ -55,6 +55,12 @@ public final class DmzAccess {
 		return stats(entity).isPresent();
 	}
 
+	/** True when a loaded player's DMZ aura is active or permanently enabled; false when data is unavailable. */
+	public static boolean auraActive(Entity entity) {
+		return stats(entity).map(data -> data.getStatus() != null
+				&& (data.getStatus().isAuraActive() || data.getStatus().isPermanentAura())).orElse(false);
+	}
+
 	/** The player's race id, or an empty string when unavailable. */
 	public static String race(Entity entity) {
 		return character(entity).map(Character::getRace).orElse("");

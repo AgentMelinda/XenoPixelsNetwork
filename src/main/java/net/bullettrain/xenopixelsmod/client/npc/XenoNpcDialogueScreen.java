@@ -35,8 +35,8 @@ public final class XenoNpcDialogueScreen extends ScaledScreen {
 
     /** Drawn at the vanilla GUI Scale; see {@link NpcGuiScale}. */
     @Override
-    protected float computeDynamicScale(float available) {
-        return NpcGuiScale.dynamicScale(super.computeDynamicScale(available));
+    protected float computeDynamicScale(int width, int height) {
+        return NpcGuiScale.dynamicScale(super.computeDynamicScale(width, height));
     }
     private static final String FRAME = "xeno_editor_panel";
     private static final String OPTION = "mynpcs_side_button";
@@ -138,7 +138,7 @@ public final class XenoNpcDialogueScreen extends ScaledScreen {
             // QUEST is live: the option hands its id to ParallelQuests, the same path
             // /xenoquest start takes. It needs an id to offer, though - an option naming no quest
             // could only report that it names no quest, which is not worth a click.
-            case QUEST -> option.quest() != null && !option.quest().isBlank();
+            case QUEST, DMZ_QUEST -> option.quest() != null && !option.quest().isBlank();
             // ROLE still needs a system that does not exist: there are no economy roles yet.
             // Disabled rather than silently inert, so the screen never pretends it works.
             case ROLE -> false;
@@ -167,7 +167,7 @@ public final class XenoNpcDialogueScreen extends ScaledScreen {
                     onClose();
                 }
             }
-            case QUEST -> {
+            case QUEST, DMZ_QUEST -> {
                 // Reported, not resolved here. The server re-reads the dialogue, checks the option
                 // really exists at that index, and applies its own rules about already being on a
                 // quest - the client is not trusted with any of that.

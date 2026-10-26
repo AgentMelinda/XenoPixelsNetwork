@@ -3,6 +3,7 @@ package net.bullettrain.xenopixelsmod.space;
 import dev.ryanhcode.sable.sublevel.system.SubLevelPhysicsSystem;
 import net.bullettrain.xenopixelsmod.XenoPixelsMod;
 import net.bullettrain.xenopixelsmod.config.XenoSpaceConfig;
+import net.minecraft.resources.ResourceLocation;
 import net.bullettrain.xenopixelsmod.space.chart.ChartRegistry;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
@@ -14,6 +15,7 @@ import net.neoforged.neoforge.event.server.ServerStoppedEvent;
 
 import java.util.Arrays;
 import java.util.List;
+import java.util.Set;
 
 /**
  * The live driver for §21's lazy-activation ladder: it walks the chart once per interval and moves each
@@ -49,20 +51,56 @@ public final class SpaceLodDriver implements SpaceTickScheduler.Pass {
 
     private SpaceLodDriver() {}
 
-    /**
-     * Registration is gated on {@link XenoSpaceConfig#enabled()} so that switching space off means the
-     * pass is never invoked, not that it is invoked and returns — the difference is the whole cost of
-     * the ladder, and the config's own javadoc has promised this since §21 was written. Flipping the
-     * switch back on needs a restart; {@code run()} keeps its early return so off is immediate.
-     */
-    @SubscribeEvent public static void starting(ServerStartingEvent event) {
+    /** Keep the pass absent from the physics callback while disabled, including live config reloads. */
+    public static void syncRegistrationToConfig() {
         if (XenoSpaceConfig.enabled()) SpaceTickScheduler.register(PASS);
+        else SpaceTickScheduler.unregister(PASS);
+    }
+
+    @SubscribeEvent public static void starting(ServerStartingEvent event) {
+        syncRegistrationToConfig();
     }
     @SubscribeEvent public static void stopped(ServerStoppedEvent event) { SpaceTickScheduler.unregister(PASS); }
 
     @Override public String name() { return "lod-ladder"; }
 
     @Override public int intervalTicks() { return XenoSpaceConfig.lodIntervalTicks(); }
+
+    /** Resolve the ladder before an immediate snapshot so a space entrant does not receive an all-ABSENT chart. */
+    public static int resolveForSnapshot(MinecraftServer server, ChartRegistry chart, ServerPlayer entrant) {
+        if (!XenoSpaceConfig.enabled() || chart.size() == 0 || entrant == null) return 0;
+        ResourceLocation dimension = entrant.level().dimension().location();
+        Set<ResourceLocation> listed = XenoSpaceConfig.spaceDimensions();
+        if (!SpaceDimensions.isSpace(chart, dimension, listed)) return 0;
+        double homeFrameY = homeFrameY(server, chart);
+        int observers = PASS.collectObservers(server, chart, homeFrameY);
+        // Login events may fire before the new player is visible in the player-list collection.
+        // Duplicating an already-collected observer does not alter the nearest-distance result.
+        PASS.ensureObserverCapacity(observers + 1);
+        observers = appendSnapshotObserver(chart, dimension, listed, entrant.getX(), entrant.getY(), entrant.getZ(),
+                PASS.obsX, PASS.obsY, PASS.obsZ, observers, homeFrameY);
+        return chart.resolveLodsForObservers(PASS.obsX, PASS.obsY, PASS.obsZ, observers, true, homeFrameY);
+    }
+
+    /** Mirrors the scheduled observer pass's tri-state: chart-bound, explicitly listed, or excluded. */
+    static int appendSnapshotObserver(ChartRegistry chart, ResourceLocation dimension, Set<ResourceLocation> listed,
+                                      double x, double y, double z, double[] xs, double[] ys, double[] zs, int count) {
+        return appendSnapshotObserver(chart, dimension, listed, x, y, z, xs, ys, zs, count, Double.NaN);
+    }
+
+    static int appendSnapshotObserver(ChartRegistry chart, ResourceLocation dimension, Set<ResourceLocation> listed,
+                                      double x, double y, double z, double[] xs, double[] ys, double[] zs, int count,
+                                      double homeFrameY) {
+        if (!SpaceDimensions.isSpace(chart, dimension, listed)) return count;
+        int slot = ChartSurfaceBodyResolver.slotAt(chart, dimension.toString(),
+                (int) Math.floor(x), (int) Math.floor(z));
+        if (ChartSurfaceBodyResolver.SHARED_SURFACE_DIMENSION.equals(dimension.toString()) && slot < 0)
+            return count;
+        xs[count] = slot >= 0 ? chart.x(slot) : x;
+        ys[count] = slot >= 0 ? SpaceHomeOrbitalFrame.chartY(chart, slot, homeFrameY) : y;
+        zs[count] = slot >= 0 ? chart.z(slot) : z;
+        return count + 1;
+    }
 
     /**
      * The chart is a single server-wide ladder, so exactly one physics system should drive it per sweep.
@@ -82,11 +120,12 @@ public final class SpaceLodDriver implements SpaceTickScheduler.Pass {
         MinecraftServer server = system.getLevel().getServer();
         ChartRegistry chart = SpaceChartService.state(server).runtime.chart;
         if (chart.size() == 0) return 0;
-        int observers = collectObservers(server, chart);
+        double homeFrameY = homeFrameY(server, chart);
+        int observers = collectObservers(server, chart, homeFrameY);
         // inView is true server-side: the frustum is a per-viewpoint render concern, and the purely
         // visual stages narrow it on the client. On the server, a body the player can reach is relevant
         // whether or not it happens to be on screen this tick.
-        return chart.resolveLodsForObservers(obsX, obsY, obsZ, observers, true);
+        return chart.resolveLodsForObservers(obsX, obsY, obsZ, observers, true, homeFrameY);
     }
 
     /**
@@ -107,31 +146,47 @@ public final class SpaceLodDriver implements SpaceTickScheduler.Pass {
      *
      * @return how many observers were written into the scratch arrays
      */
-    private int collectObservers(MinecraftServer server, ChartRegistry chart) {
+    private int collectObservers(MinecraftServer server, ChartRegistry chart, double homeFrameY) {
         int count = 0;
         List<ServerPlayer> players = server.getPlayerList().getPlayers();
         var listed = XenoSpaceConfig.spaceDimensions();
         for (int i = 0; i < players.size(); i++) {
             ServerPlayer player = players.get(i);
             var dimension = player.level().dimension().location();
-            int slot = chart.slotFor(dimension);
+            int slot = ChartSurfaceBodyResolver.slotAt(chart, dimension.toString(),
+                    (int) Math.floor(player.getX()), (int) Math.floor(player.getZ()));
+            if (ChartSurfaceBodyResolver.SHARED_SURFACE_DIMENSION.equals(dimension.toString()) && slot < 0)
+                continue;
             double x, y, z;
             if (slot >= 0) {
-                x = chart.x(slot); y = chart.y(slot); z = chart.z(slot);
+                x = chart.x(slot); y = SpaceHomeOrbitalFrame.chartY(chart, slot, homeFrameY); z = chart.z(slot);
             } else if (listed.contains(dimension)) {
                 x = player.getX(); y = player.getY(); z = player.getZ();
             } else continue;
-            if (count == obsX.length) {
-                int next = obsX.length * 2;
-                obsX = Arrays.copyOf(obsX, next);
-                obsY = Arrays.copyOf(obsY, next);
-                obsZ = Arrays.copyOf(obsZ, next);
-            }
+            ensureObserverCapacity(count + 1);
             obsX[count] = x;
             obsY[count] = y;
             obsZ[count] = z;
             count++;
         }
         return count;
+    }
+
+    private static double homeFrameY(MinecraftServer server, ChartRegistry chart) {
+        var host = server.getLevel(net.minecraft.resources.ResourceKey.create(
+                net.minecraft.core.registries.Registries.DIMENSION,
+                net.bullettrain.xenopixelsmod.space.physics.PhysicalEarth.HOST));
+        if (host == null) return Double.NaN;
+        var focus = SpaceHomeOrbitalFrame.resolve(host, chart);
+        return focus == null ? Double.NaN : focus.y();
+    }
+
+    private void ensureObserverCapacity(int required) {
+        if (required <= obsX.length) return;
+        int next = obsX.length;
+        while (next < required) next *= 2;
+        obsX = Arrays.copyOf(obsX, next);
+        obsY = Arrays.copyOf(obsY, next);
+        obsZ = Arrays.copyOf(obsZ, next);
     }
 }

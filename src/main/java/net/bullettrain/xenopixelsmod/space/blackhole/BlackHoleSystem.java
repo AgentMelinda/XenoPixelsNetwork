@@ -5,6 +5,7 @@ import net.bullettrain.xenopixelsmod.XenoPixelsMod;
 import net.bullettrain.xenopixelsmod.api.network.AddonNetwork;
 import net.bullettrain.xenopixelsmod.config.XenoSpaceConfig;
 import net.bullettrain.xenopixelsmod.space.SpaceChartService;
+import net.bullettrain.xenopixelsmod.space.SpaceHomeOrbitalFrame;
 import net.bullettrain.xenopixelsmod.space.SpaceFlightGuard;
 import net.bullettrain.xenopixelsmod.space.chart.CelestialBody;
 import net.bullettrain.xenopixelsmod.space.physics.PhysicalEarth;
@@ -120,6 +121,9 @@ public final class BlackHoleSystem {
     private static void refresh(MinecraftServer server) {
         var state = SpaceChartService.state(server);
         var chart = state.runtime.chart;
+        var host = server.getLevel(ResourceKey.create(Registries.DIMENSION, PhysicalEarth.HOST));
+        var homeFocus = host == null ? null : SpaceHomeOrbitalFrame.resolve(host, chart);
+        double homeFrameY = homeFocus == null ? Double.NaN : homeFocus.y();
         var next = new ArrayList<BlackHoleRules.Hole>();
         var nextExits = new HashMap<String, Exit>();
         for (int slot = 0; slot < chart.size(); slot++) {
@@ -130,7 +134,8 @@ public final class BlackHoleSystem {
             try {
                 JsonObject block = definition.getAsJsonObject("black_hole");
                 double pull = block.has("pull") ? block.get("pull").getAsDouble() : 0.04;
-                next.add(new BlackHoleRules.Hole(body.id(), chart.x(slot), chart.y(slot) + 128, chart.z(slot),
+                next.add(new BlackHoleRules.Hole(body.id(), chart.x(slot),
+                        SpaceHomeOrbitalFrame.chartY(chart, slot, homeFrameY), chart.z(slot),
                         block.get("horizon_radius").getAsDouble(), block.get("tidal_radius").getAsDouble(),
                         block.get("lens_radius").getAsDouble(), pull));
                 if (block.has("exit")) {

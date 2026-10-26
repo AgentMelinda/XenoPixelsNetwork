@@ -4,17 +4,26 @@ import org.junit.jupiter.api.Test;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.Tag;
 
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.TreeMap;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class DragonBallPlanetAssignmentsTest {
+    /** The shipped datapack assignments, read through the project-dir property the Gradle test task sets. */
+    private static final Path PROJECT = Path.of(System.getProperty("xenopixels.projectDir", "."));
+    private static final Path BUNDLED_ASSIGNMENTS =
+            Path.of("src/main/resources/data/xenopixelsmod/xenospace/superdragonball");
+
     @Test
     void unavailableHostIsSkippedAndReportedWhileValidAssignmentsRemain() {
         var assignments = Map.of(
@@ -209,5 +218,72 @@ class DragonBallPlanetAssignmentsTest {
         assertTrue(saved.clearManualOrbit(1));
         assertFalse(saved.clearManualOrbit(1));
         assertEquals(authored, DragonBallPlanetAssignments.effective(authored, saved.manualOrbit(1), 200, 16));
+    }
+
+    /**
+     * The shipped slot-6 assignment must be deliverable: Maw-9 authors {@code gravity.surface_ms2: 0}, so its
+     * derived gravitational parameter is zero and the gravity-derived track can never be built. The explicit
+     * period is the only supported alternative, and 7200 s is a chosen gameplay period for this pack - not an
+     * astronomical value and not runtime-verified motion.
+     */
+    @Test
+    void bundledSlotSixAuthorsTheExplicitPeriodItsZeroGravityHostRequires() throws Exception {
+        var bundled = bundledAssignments();
+
+        assertEquals(Set.of(1, 2, 3, 4, 5, 6, 7), bundled.keySet(), "seven shipped assignments");
+        assertEquals(List.of(6), bundled.entrySet().stream()
+                .filter(entry -> entry.getValue().orbitPeriodSeconds() > 0.0)
+                .map(Map.Entry::getKey).toList(),
+                "only slot 6 authors a period; every other ball still derives its track from host gravity");
+
+        var sixth = bundled.get(6);
+        assertEquals("xenopixelsmod:maw_9", sixth.hostChartId());
+        assertEquals(900.0, sixth.orbitRadiusBlocks(), 1.0e-9);
+        assertEquals(7200.0, sixth.orbitPeriodSeconds(), 1.0e-9);
+
+        // Host geometry as shipped: maw_9.json radius_blocks 40, surface_ms2 0 -> mu 0.
+        var errors = new java.util.ArrayList<String>();
+        var admitted = DragonBallPlanetAssignments.physicallySupported(Map.of(6, sixth),
+                ignored -> new DragonBallPlanetAssignments.HostOrbitInfo(40, 0),
+                DragonBallPlanetAssignments.PROTOTYPE_BODY_RADIUS_BLOCKS, errors);
+        assertEquals(Map.of(6, sixth), admitted, "the production admission resolver must keep slot 6");
+        assertTrue(errors.isEmpty(), () -> "unexpected admission errors: " + errors);
+
+        var orbit = DragonBallPlanetOrbit.createWithPeriod(sixth.orbitRadiusBlocks(),
+                sixth.orbitPhaseRadians(), sixth.orbitPeriodSeconds());
+        assertEquals(7200.0, orbit.elements().periodSeconds(), 1.0e-9);
+        assertEquals(900.0, orbit.elements().semiMajorAxis(), 1.0e-9);
+        assertEquals(0.0, orbit.elements().eccentricity(), 1.0e-9);
+    }
+
+    /** Falsifier: without the authored period the same shipped host/radius is refused, so the key is load-bearing. */
+    @Test
+    void droppingTheAuthoredPeriodWouldLeaveSlotSixUndeliverableAgainstItsZeroGravityHost() {
+        var legacyShape = new DragonBallPlanetDefinition(6, "xenopixelsmod:maw_9", 900, 4.4879895051);
+        var errors = new java.util.ArrayList<String>();
+
+        assertTrue(DragonBallPlanetAssignments.physicallySupported(Map.of(6, legacyShape),
+                ignored -> new DragonBallPlanetAssignments.HostOrbitInfo(40, 0), 16, errors).isEmpty());
+        assertEquals(1, errors.size());
+        assertTrue(errors.getFirst().contains("no authored orbit_period_seconds"), () -> errors.toString());
+    }
+
+    private static Map<Integer, DragonBallPlanetDefinition> bundledAssignments() throws Exception {
+        Path directory = PROJECT.resolve(BUNDLED_ASSIGNMENTS);
+        assertTrue(Files.isDirectory(directory), () -> "missing shipped assignment folder " + directory);
+        Map<Integer, DragonBallPlanetDefinition> out = new TreeMap<>();
+        try (var stream = Files.list(directory)) {
+            for (Path file : stream.filter(path -> path.getFileName().toString().endsWith(".json"))
+                    .sorted().toArray(Path[]::new)) {
+                String name = file.getFileName().toString();
+                String stem = name.substring(0, name.length() - ".json".length());
+                var definition = DragonBallPlanetDefinition.parse("xenopixelsmod:" + stem,
+                        com.google.gson.JsonParser.parseString(Files.readString(file)).getAsJsonObject());
+                assertEquals(stem, Integer.toString(definition.slot()),
+                        name + " must declare the slot its file name states");
+                assertNull(out.put(definition.slot(), definition), "duplicate shipped slot " + definition.slot());
+            }
+        }
+        return out;
     }
 }

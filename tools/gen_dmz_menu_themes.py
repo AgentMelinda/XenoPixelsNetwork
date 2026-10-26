@@ -32,7 +32,7 @@ BUNDLE = ROOT / "dragonmine_complete_ui_elements_master_bundle"
 OTHER_MENUS = ("03_dragonmine_other_menus_clean_and_example/"
                "dragonmine_other_menus_single_elements/")
 HD_KIT = "05_dragonmine_hd_ui_v4/dragonmine_hd_ui_single_elements_v4/"
-DMZ_JAR = ROOT / "libs/dragonminez-2.1.3.jar"
+DMZ_JAR = ROOT / "libs/dragonminez-2.2.jar"
 OUTPUT = ROOT / "src/main/resources/assets/xenopixelsmod/textures/gui/dmz_menus"
 MANIFEST = ROOT / "tools/generated/dmz_menu_theme_manifest.json"
 CONTACT = ROOT / "tools/generated/dmz_menu_buttons_contact.png"
@@ -881,7 +881,7 @@ def proof_sheet(page: str, sheets: dict[str, Image.Image],
 def build() -> tuple[dict[str, bytes], dict[str, object],
                      dict[str, tuple[Image.Image, Image.Image]], dict[str, object]]:
     if not BUNDLE.exists() or not DMZ_JAR.exists() or not OUR_STYLE.exists():
-        raise BuildError("menu bundle, our-style sources, or libs/dragonminez-2.1.3.jar is missing")
+        raise BuildError("menu bundle, our-style sources, or libs/dragonminez-2.2.jar is missing")
 
     outputs: dict[str, bytes] = {}
     sources: dict[str, object] = {}
@@ -1030,10 +1030,16 @@ def button_contact_sheet(cells: dict[str, tuple[Image.Image, Image.Image]]) -> I
     return sheet.resize((sheet.width * zoom, sheet.height * zoom), Image.Resampling.NEAREST)
 
 
-def main() -> int:
+def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--check", action="store_true")
-    args = parser.parse_args()
+    parser.add_argument("--out", help="output directory; defaults to the current active resource path")
+    args = parser.parse_args(argv)
+    if args.out is not None:
+        global OUTPUT, MANIFEST, CONTACT
+        OUTPUT = pathlib.Path(args.out).resolve()
+        MANIFEST = OUTPUT / "manifest.json"
+        CONTACT = OUTPUT / "proofs" / "buttons.png"
     try:
         outputs, manifest, nav_cells, neon_proofs = build()
     except BuildError as exc:

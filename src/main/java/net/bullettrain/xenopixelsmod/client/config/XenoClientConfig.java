@@ -25,8 +25,9 @@ public final class XenoClientConfig {
     private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
     private static final Path PATH = FMLPaths.CONFIGDIR.get().resolve("xenopixelsmod-client.json");
     /** Version 3 restores Guard while its dedicated key keeps right-click placement vanilla.
-     * Version 8 adds the space sky mode; an older file simply gets the {@code void} default. */
-    private static final int CURRENT_CONFIG_VERSION = 8;
+     * Version 8 adds the space sky mode; version 12 adds ambient fallen-star density; version 13
+     * adds the opt-in outbound space camera coast. */
+    private static final int CURRENT_CONFIG_VERSION = 13;
 
     // --- UI ---
     public static boolean xenoHudEnabled = true;
@@ -446,17 +447,22 @@ public final class XenoClientConfig {
      * comfortably, and a player on a weak GPU should be able to trade the star field for frames
      * without asking anyone else to restart anything.
      */
-    public static String spaceSkyMode = "void";
+    public static String spaceSkyMode = "stars";
+    /** Chance (0..100) per 30-second Voidsea sky window to show one deterministic shooting star; 0 disables it. */
+    public static int spaceFallenStarDensity = 25;
 
     /** Draw low-cost chart planet projections when no replicated Sable body is available. */
     public static String spacePlanetMode = "bodies";
     public static boolean spacePlanetProjections = true;
-
     /**
-     * How a Hakai'd body disappears on this client: {@code classic} (the proven height fade, default) or {@code sweep}
-     * (owner 2026-10-16: the planet erasure's clean top-to-bottom cut with a glowing rim). {@code /xenoset hakai}.
+     * Far projections sample each body's own HD map instead of the shared three-globe style strip.
+     * Off keeps the legacy strip until the per-body path has been seen working in game.
      */
-    public static String hakaiEraseStyle = "classic";
+    /** Per-body reduced maps keep far planets identifiable; the shared Earth/Moon/Namek atlas remains selectable. */
+    public static boolean spacePlanetProjectionMaps = true;
+
+    /** Client-side Hakai presentation: classic fade, legacy top-down sweep, or crosshair-origin impact spread. */
+    public static String hakaiEraseStyle = "impact";
 
     /** Draw bounded, deterministic small planets from afar (SmallPlanetFarRenderer). */
     public static boolean smallPlanetLod = true;
@@ -471,6 +477,9 @@ public final class XenoClientConfig {
      * it applies on the next crossing without a restart.
      */
     public static boolean spaceHidePlanetLoadScreen = true;
+
+    /** Experimental outbound Voidsea camera coast; off keeps the proven captured-frame curtain. */
+    public static boolean spaceCameraCoast = false;
 
     private XenoClientConfig() {}
 
@@ -498,7 +507,16 @@ public final class XenoClientConfig {
             // Version 5 saved Sable cull on. That hid plot meshes at deep Y and
             // looked like a black world; force it off once so the new default sticks.
             boolean migrateSableCullOff = data.configVersion < 6;
+            // Version 9 introduced impact mode, but configs already written as v9 can still carry
+            // the previous default (sweep). Version 10 migrates that old default once; users can
+            // still explicitly select it afterward with /xenoset hakai sweep.
+            boolean migrateHakaiImpactDefault = HakaiEraseStylePolicy.shouldUpgradeDefaultToImpact(
+                    data.configVersion, HakaiEraseStylePolicy.IMPACT_DEFAULT_VERSION, data.hakaiEraseStyle);
+            boolean migratePlanetProjectionMapDefault = PlanetProjectionMapPolicy
+                    .shouldUpgradeToPerBodyDefault(data.configVersion, CURRENT_CONFIG_VERSION);
             apply(data);
+            if (migrateHakaiImpactDefault) hakaiEraseStyle = "impact";
+            if (migratePlanetProjectionMapDefault) spacePlanetProjectionMaps = true;
             if (migrateDirectBinds) {
                 bt3DirectHakai = true;
                 bt3DirectZanzoken = true;
@@ -667,11 +685,14 @@ public final class XenoClientConfig {
         d.flightThrottleScrollStep = flightThrottleScrollStep;
         d.flightThrottleKeyRatePerSec = flightThrottleKeyRatePerSec;
         d.spaceSkyMode = spaceSkyMode;
+        d.spaceFallenStarDensity = spaceFallenStarDensity;
         d.spacePlanetMode = spacePlanetMode;
         d.spacePlanetProjections = spacePlanetProjections;
+        d.spacePlanetProjectionMaps = spacePlanetProjectionMaps;
         d.hakaiEraseStyle = hakaiEraseStyle;
         d.smallPlanetLod = smallPlanetLod;
         d.spaceHidePlanetLoadScreen = spaceHidePlanetLoadScreen;
+        d.spaceCameraCoast = spaceCameraCoast;
         return d;
     }
 
@@ -845,11 +866,19 @@ public final class XenoClientConfig {
         // Resolved through the enum rather than trusted: this file is hand-editable, and the sky has
         // to pick one of three modes whether the stored value is "stars", "STARS ", or nonsense.
         spaceSkyMode = net.bullettrain.xenopixelsmod.client.space.SpaceSkyMode.byName(d.spaceSkyMode).id;
+        spaceFallenStarDensity = d.spaceFallenStarDensity == null ? 25 : Math.max(0, Math.min(100, d.spaceFallenStarDensity));
         spacePlanetMode = net.bullettrain.xenopixelsmod.client.space.SpacePlanetMode.byName(d.spacePlanetMode).id;
         spacePlanetProjections = d.spacePlanetProjections == null || d.spacePlanetProjections;
-        hakaiEraseStyle = "sweep".equals(d.hakaiEraseStyle) ? "sweep" : "classic";
+        // Missing setting means the new identity-correct mode. Preserve an explicit atlas opt-out in saved files.
+        spacePlanetProjectionMaps = d.spacePlanetProjectionMaps == null || d.spacePlanetProjectionMaps;
+        hakaiEraseStyle = switch (d.hakaiEraseStyle == null ? "" : d.hakaiEraseStyle.toLowerCase(java.util.Locale.ROOT)) {
+            case "classic" -> "classic";
+            case "impact" -> "impact";
+            default -> "sweep";
+        };
         smallPlanetLod = d.smallPlanetLod == null || d.smallPlanetLod;
         spaceHidePlanetLoadScreen = d.spaceHidePlanetLoadScreen == null || d.spaceHidePlanetLoadScreen;
+        spaceCameraCoast = Boolean.TRUE.equals(d.spaceCameraCoast);
     }
 
     public static class Data {
@@ -985,10 +1014,13 @@ public final class XenoClientConfig {
         public Float flightThrottleScrollStep;
         public Float flightThrottleKeyRatePerSec;
         public String spaceSkyMode;
+        public Integer spaceFallenStarDensity;
         public String spacePlanetMode;
         public Boolean spacePlanetProjections;
+        public Boolean spacePlanetProjectionMaps;
         public String hakaiEraseStyle;
         public Boolean smallPlanetLod;
         public Boolean spaceHidePlanetLoadScreen;
+        public Boolean spaceCameraCoast;
     }
 }

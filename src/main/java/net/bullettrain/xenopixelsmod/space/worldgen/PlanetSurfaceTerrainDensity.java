@@ -46,8 +46,7 @@ public final class PlanetSurfaceTerrainDensity implements DensityFunction.Simple
             }
             double worldSeed = seedNoise.getValue(address.surfaceCell().centerBlockX(), 0.0,
                     address.surfaceCell().centerBlockZ());
-            long seed = PlanetSurfaceTerrain.cellSeed(address.systemCell().x(), address.systemCell().z(),
-                    address.planetSlot(), Double.doubleToLongBits(worldSeed));
+            long seed = PlanetSurfaceTerrain.addressSeed(address, Double.doubleToLongBits(worldSeed));
             cache.store(x, z, address, seed);
         }
         var cell = cache.address();

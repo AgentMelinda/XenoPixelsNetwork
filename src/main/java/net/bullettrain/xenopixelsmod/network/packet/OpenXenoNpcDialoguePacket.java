@@ -46,6 +46,8 @@ public record OpenXenoNpcDialoguePacket(int entityId, String dialogueId, String 
     private static final int MAX_OPTION_TEXT = 256;
     private static final int MAX_COMMAND = 256;
     private static final int MAX_PALETTE = 16;
+    /** A converted availability gate, serialized. Sized by the importer's own caps. */
+    private static final int MAX_AVAILABILITY = 4096;
 
     public OpenXenoNpcDialoguePacket(FriendlyByteBuf buf) {
         this(buf.readVarInt(), buf.readUtf(MAX_ID), buf.readUtf(MAX_NAME), readDialogue(buf));
@@ -76,6 +78,11 @@ public record OpenXenoNpcDialoguePacket(int entityId, String dialogueId, String 
             XenoDialogue.Node node = entry.getValue();
             buf.writeUtf(clamp(node.text(), MAX_TEXT), MAX_TEXT);
             buf.writeUtf(clamp(node.palette(), MAX_PALETTE), MAX_PALETTE);
+            // The gate rides along so the client can hide an option the server would refuse. It is
+            // presentation only: XenoNpcDialoguePacket re-checks availability before acting.
+            buf.writeUtf(clamp(node.availability().toJson().toString(), MAX_AVAILABILITY),
+                    MAX_AVAILABILITY);
+            buf.writeUtf(clamp(node.sourceRef(), MAX_NODE_ID), MAX_NODE_ID);
 
             int options = Math.min(MAX_OPTIONS, node.options().size());
             buf.writeVarInt(options);
@@ -101,6 +108,17 @@ public record OpenXenoNpcDialoguePacket(int entityId, String dialogueId, String 
             String id = buf.readUtf(MAX_NODE_ID);
             String text = buf.readUtf(MAX_TEXT);
             String palette = buf.readUtf(MAX_PALETTE);
+            net.bullettrain.xenopixelsmod.features.progression.QuestAvailability availability =
+                    net.bullettrain.xenopixelsmod.features.progression.QuestAvailability.NONE;
+            try {
+                availability = net.bullettrain.xenopixelsmod.features.progression
+                        .QuestAvailability.fromJson(com.google.gson.JsonParser
+                                .parseString(buf.readUtf(MAX_AVAILABILITY)));
+            } catch (RuntimeException malformed) {
+                // A truncated or future-shaped gate resolves to "no gate"; the server still
+                // enforces its own copy before it acts on a choice.
+            }
+            String sourceRef = buf.readUtf(MAX_NODE_ID);
 
             int optionCount = Math.min(MAX_OPTIONS, buf.readVarInt());
             List<XenoDialogue.Option> options = new ArrayList<>(optionCount);
@@ -114,7 +132,8 @@ public record OpenXenoNpcDialoguePacket(int entityId, String dialogueId, String 
                         buf.readVarInt(),
                         buf.readUtf(MAX_PALETTE)));
             }
-            nodes.put(id, new XenoDialogue.Node(text, List.copyOf(options), palette));
+            nodes.put(id, new XenoDialogue.Node(text, List.copyOf(options), palette,
+                    availability, sourceRef));
         }
         if (nodes.isEmpty() || !nodes.containsKey(start)) {
             // Nothing to show. The handler treats null as "do not open", which is better than an

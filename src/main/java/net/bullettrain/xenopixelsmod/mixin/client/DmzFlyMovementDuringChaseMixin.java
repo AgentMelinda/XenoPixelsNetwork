@@ -3,7 +3,6 @@ package net.bullettrain.xenopixelsmod.mixin.client;
 import com.dragonminez.client.events.FlySkillEvent;
 import net.bullettrain.xenopixelsmod.client.combat.ClientChaseFlightState;
 import net.bullettrain.xenopixelsmod.client.camera.UltimateFinisherCamera;
-import net.minecraft.client.player.LocalPlayer;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.injection.At;
@@ -13,6 +12,8 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 /** Prevents DMZ's client flight tick from overwriting server-authored Xeno chase velocity. */
 @Mixin(value = FlySkillEvent.class, remap = false)
 public abstract class DmzFlyMovementDuringChaseMixin {
+    // DMZ 2.2 owns speed settings, sprint input and fast-flight eligibility. Only pause
+    // its movement while an active Xeno action supplies the player's velocity.
     @Shadow private static boolean pendingGroundActivation;
     @Shadow private static boolean pendingFlightActivation;
 
@@ -27,9 +28,10 @@ public abstract class DmzFlyMovementDuringChaseMixin {
             pendingFlightActivation = false;
         }
     }
-    @Inject(method = "handleFlightMovement", at = @At("HEAD"), cancellable = true, require = 0)
-    private static void xenopixels$pauseSearchFlightDuringChase(LocalPlayer player, int level,
-                                                                boolean canSprint, CallbackInfo ci) {
+    // DMZ 2.2 adds a second skill-level argument. This gate only needs cancellation state.
+    @Inject(method = "handleFlightMovement(Lnet/minecraft/client/player/LocalPlayer;IIZ)V",
+            at = @At("HEAD"), cancellable = true, require = 1)
+    private static void xenopixels$pauseSearchFlightDuringChase(CallbackInfo ci) {
         // Chase ends on arrival; the finisher still owns movement through its remaining phases.
         if (ClientChaseFlightState.isActive() || UltimateFinisherCamera.active()
                 || net.bullettrain.xenopixelsmod.client.combat.v3.V3ClientState.recovery() != null) ci.cancel();
