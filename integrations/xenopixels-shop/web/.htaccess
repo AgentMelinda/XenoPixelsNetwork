@@ -1,0 +1,15 @@
+Options -Indexes
+DirectoryIndex index.php
+
+<FilesMatch "^(\.env|config\.php|.*\.(sql|log|bak|orig))$">
+  Require all denied
+</FilesMatch>
+
+<IfModule mod_rewrite.c>
+  RewriteEngine On
+  RewriteRule ^(?:config|src|sql)(?:/|$) - [F,L,NC]
+  RewriteCond %{REQUEST_FILENAME} -f [OR]
+  RewriteCond %{REQUEST_FILENAME} -d
+  RewriteRule ^ - [L]
+  RewriteRule ^ index.php [QSA,L]
+</IfModule>

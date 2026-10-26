@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<product productid="xenopixels_shop" active="1">
+	<title>XenoPixels Shop Login Bridge</title>
+	<description>Provides a signed, single-use login bridge from vBulletin 5.7.5 to the XenoPixels shop.</description>
+	<version>1.0.0</version>
+	<url>https://shop.xenopixelsnetwork.com/</url>
+	<versioncheckurl />
+	<dependencies>
+		<dependency dependencytype="vbulletin" minversion="5.3.5" maxversion="5.7.6" />
+	</dependencies>
+	<codes>
+		<code version="*">
+			<installcode><![CDATA[]]></installcode>
+			<uninstallcode><![CDATA[]]></uninstallcode>
+		</code>
+	</codes>
+	<templates />
+	<stylevardfns />
+	<stylevars />
+	<hooks />
+	<phrases />
+	<options />
+	<helptopics />
+	<cronentries />
+	<faqentries />
+	<widgets />
+	<pagetemplates />
+	<pages />
+	<channels />
+	<routes />
+</product>

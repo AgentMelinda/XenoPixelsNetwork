@@ -1,0 +1,38 @@
+modLoader="javafml"
+loaderVersion="[4,)"
+license="All Rights Reserved"
+
+[[mods]]
+modId="xenopixels_shop"
+version="0.1.1"
+displayName="XenoPixels Shop"
+authors="XenoPixels Network"
+description='''In-game catalog and account-link interface for the XenoPixels Network shop.'''
+
+[[dependencies.xenopixels_shop]]
+modId="neoforge"
+type="required"
+versionRange="[21.1.248,)"
+ordering="NONE"
+side="BOTH"
+
+[[dependencies.xenopixels_shop]]
+modId="minecraft"
+type="required"
+versionRange="[1.21.1,1.22)"
+ordering="NONE"
+side="BOTH"
+
+[[dependencies.xenopixels_shop]]
+modId="xenopixelsmod"
+type="required"
+versionRange="[0.5.25-1.21.1,)"
+ordering="AFTER"
+side="BOTH"
+
+[[dependencies.xenopixels_shop]]
+modId="dragonminez"
+type="required"
+versionRange="[2.2,)"
+ordering="AFTER"
+side="BOTH"

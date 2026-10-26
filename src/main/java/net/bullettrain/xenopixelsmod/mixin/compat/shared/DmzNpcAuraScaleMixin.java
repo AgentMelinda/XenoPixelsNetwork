@@ -88,7 +88,7 @@ public abstract class DmzNpcAuraScaleMixin {
                     (rgb & 0xFF) / 255.0f
             });
             if (layer.threeD()) nativeLayer.style = com.dragonminez.client.render.effects.AuraStyle.resolve(
-                    com.dragonminez.common.config.FormConfig.Aura3DStyle.DEFAULT, nativeLayer.color);
+                    layer.threeDStyle(), nativeLayer.color);
             layers.add(nativeLayer);
         }
         return layers;

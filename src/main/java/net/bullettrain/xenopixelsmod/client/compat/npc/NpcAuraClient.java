@@ -608,7 +608,7 @@ public final class NpcAuraClient {
             pose.pushPose();
             if (layer.threeD() && com.dragonminez.client.render.effects.Aura3DRenderer.isAvailable()) {
                 var style = com.dragonminez.client.render.effects.AuraStyle.resolve(
-                        com.dragonminez.common.config.FormConfig.Aura3DStyle.DEFAULT, new float[]{r, g, b});
+                        layer.threeDStyle(), new float[]{r, g, b});
                 float body = DMZ_AURA_SCALE * scale * layerScale;
                 float time = (entity.tickCount + partial) / 20.0f;
                 if (com.dragonminez.client.render.effects.Aura3DRenderer.isGod(auraType)) {

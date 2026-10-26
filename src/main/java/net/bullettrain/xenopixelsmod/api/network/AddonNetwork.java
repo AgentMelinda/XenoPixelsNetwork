@@ -28,9 +28,10 @@ import java.util.function.Supplier;
  * Collision-safe packet registration for XenoPixels addons.
  *
  * <p>Register packets from the addon mod constructor. Registrations close when NeoForge fires its
- * payload-registration event. Packet ids are namespaced resource locations rather than numeric
- * slots; XenoPixels sorts them and assigns the DMZ shim's private numeric ids deterministically.
- * The sorted registry is hashed into the channel protocol, so different addon packet sets reject
+ * payload-registration event. Packet ids are namespaced resource locations; the DMZ shim requires
+ * an integer id, so we derive that id from the packet name rather than assigning order-dependent
+ * slots. Adding another addon packet therefore cannot renumber existing XenoPixels payloads. The
+ * registered packet set is still hashed into the channel protocol so mismatched addon sets reject
  * the connection instead of decoding one another's payloads.
  *
  * <p>The public types in this package are XenoPixels-owned, but the current implementation rides
@@ -38,7 +39,7 @@ import java.util.function.Supplier;
  * replaced.
  */
 public final class AddonNetwork {
-    private static final String PROTOCOL_GENERATION = "1";
+    private static final String PROTOCOL_GENERATION = "2";
     private static final ResourceLocation CHANNEL_NAME =
             ResourceLocation.fromNamespaceAndPath(XenoPixelsMod.MOD_ID, "addons");
     private static final Map<ResourceLocation, Registration<?>> BY_ID = new HashMap<>();
@@ -127,9 +128,15 @@ public final class AddonNetwork {
                 .serverAcceptedVersions(protocolVersion::equals)
                 .simpleChannel();
 
-        int numericId = 0;
+        Map<Integer, ResourceLocation> ids = new HashMap<>();
         for (Registration<?> registration : registrations) {
-            registration.bind(channel, numericId++);
+            int numericId = stableNumericId(registration.packetId());
+            ResourceLocation previous = ids.putIfAbsent(numericId, registration.packetId());
+            if (previous != null) {
+                throw new IllegalStateException("Addon packet id collision: " + previous + " and "
+                        + registration.packetId() + " share wire id " + numericId);
+            }
+            registration.bind(channel, numericId);
         }
         XenoPixelsMod.LOGGER.info("AddonNetwork: registered {} packet types (protocol {})",
                 registrations.size(), protocolVersion);
@@ -169,6 +176,19 @@ public final class AddonNetwork {
                 digest.update(descriptor.getBytes(StandardCharsets.UTF_8));
             }
             return PROTOCOL_GENERATION + "-" + HexFormat.of().formatHex(digest.digest());
+        } catch (NoSuchAlgorithmException impossible) {
+            throw new IllegalStateException("SHA-256 is unavailable", impossible);
+        }
+    }
+
+    private static int stableNumericId(ResourceLocation packetId) {
+        try {
+            byte[] digest = MessageDigest.getInstance("SHA-256")
+                    .digest(packetId.toString().getBytes(StandardCharsets.UTF_8));
+            return ((digest[0] & 0x7f) << 24)
+                    | ((digest[1] & 0xff) << 16)
+                    | ((digest[2] & 0xff) << 8)
+                    | (digest[3] & 0xff);
         } catch (NoSuchAlgorithmException impossible) {
             throw new IllegalStateException("SHA-256 is unavailable", impossible);
         }

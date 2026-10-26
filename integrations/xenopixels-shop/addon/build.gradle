@@ -1,0 +1,35 @@
+plugins {
+    id 'java'
+    id 'net.neoforged.moddev' version '2.0.143'
+}
+
+group = 'net.bullettrain.xenopixels.shop'
+version = '0.1.1'
+
+base { archivesName = 'xenopixels-shop-addon' }
+
+java { toolchain.languageVersion = JavaLanguageVersion.of(21) }
+
+neoForge {
+    version = '21.1.248'
+    parchment { minecraftVersion = '1.21.1'; mappingsVersion = '2024.11.17' }
+    mods { xenopixels_shop { sourceSet sourceSets.main } }
+}
+
+def xenoPixelsJar = providers.gradleProperty('xenoPixelsJar').map { file(it) }
+def dmzJar = providers.gradleProperty('dmzJar').map { file(it) }
+def xenoApiJar = providers.gradleProperty('xenoApiJar').map { file(it) }
+
+dependencies {
+    compileOnly files(xenoPixelsJar)
+    compileOnly files(dmzJar)
+    compileOnly files(xenoApiJar)
+}
+
+tasks.named('compileJava').configure {
+    doFirst {
+        if (!xenoPixelsJar.get().isFile()) throw new GradleException("Packaged XenoPixels jar not found: " + xenoPixelsJar.get())
+        if (!dmzJar.get().isFile()) throw new GradleException("DragonMineZ jar not found: " + dmzJar.get())
+        if (!xenoApiJar.get().isFile()) throw new GradleException("XenoNPCs XenoAPI jar not found: " + xenoApiJar.get())
+    }
+}
