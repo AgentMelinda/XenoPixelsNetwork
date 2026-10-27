@@ -309,7 +309,7 @@ public final class HdAuraClient {
 
     private static void emit(ClientLevel level, Entity entity, List<HdAuraPlan.Layer> plan, Set<Integer> extras,
                              float[] stretch) {
-        if (HakaiEnergyAura.active(entity)) return;
+        if (HakaiEnergyAura.suppressAura(entity)) return;
         // The stretch already carries the body: DMZ's model scale for a player, body height for an
         // NPC.
         float size = XenoAuraScaling.sizeMultiplier(XenoClientConfig.auraSize);
@@ -624,7 +624,7 @@ public final class HdAuraClient {
         if (live.stopped[0]) return false;
         Entity target = live.entity.get();
         mod.chloeprime.aaaparticles.api.client.effekseer.ParticleEmitter playing = live.emitter;
-        if (target == null || target.isRemoved() || HakaiEnergyAura.active(target)
+        if (target == null || target.isRemoved() || HakaiEnergyAura.suppressAura(target)
                 || playing == null || !playing.exists()) {
             if (!live.stopped[0]) {
                 live.stopped[0] = true;
