@@ -23,8 +23,13 @@ public final class HakaiEnergyAura {
         StatsData stats = DmzAccess.stats(player).orElse(null);
         if (!active(player, stats)) return false;
         boolean chargingKi = stats != null && stats.getStatus() != null && stats.getStatus().isChargingKi();
-        return HakaiEnergyAuraPolicy.suppressAura(chargingKi);
+        long now = player.level().getGameTime();
+        if (chargingKi) LAST_CHARGE.put(player.getId(), now);
+        Long last = LAST_CHARGE.get(player.getId());
+        return HakaiEnergyAuraPolicy.suppressAura(chargingKi, last == null ? -1 : now - last);
     }
+
+    private static final java.util.Map<Integer, Long> LAST_CHARGE = new java.util.concurrent.ConcurrentHashMap<>();
 
     static boolean active(Entity player, StatsData stats) {
         var character = stats == null ? null : stats.getCharacter();

@@ -13,4 +13,12 @@ public final class HakaiEnergyAuraPolicy {
     public static boolean suppressAura(boolean chargingKi) {
         return !chargingKi;
     }
+
+    /** Ticks the charge aura is kept after the status flag last read true, so a flickering flag cannot tear down the emitter. */
+    public static final int CHARGE_GRACE_TICKS = 6;
+
+    /** Same as {@link #suppressAura(boolean)} but tolerates brief drops of the charging flag. */
+    public static boolean suppressAura(boolean chargingKi, long ticksSinceCharging) {
+        return !chargingKi && (ticksSinceCharging < 0 || ticksSinceCharging > CHARGE_GRACE_TICKS);
+    }
 }
