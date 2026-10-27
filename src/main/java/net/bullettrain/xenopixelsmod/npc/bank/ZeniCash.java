@@ -31,6 +31,64 @@ public final class ZeniCash {
                 ? cash.zeni() : 0L;
     }
 
+    /** Total carried physical Zeni, bounded to the transfer limit used by bank operations. */
+    public static long carriedValue(ServerPlayer player) {
+        if (player == null) return 0L;
+        long total = 0L;
+        Inventory inventory = player.getInventory();
+        for (int i = 0; i < PLAYER_SLOTS; i++) {
+            ItemStack stack = inventory.getItem(i);
+            long value = value(stack);
+            if (value > 0L) {
+                long addition = value * stack.getCount();
+                if (total > NpcBankMoney.MAX_TRANSFER - addition) return NpcBankMoney.MAX_TRANSFER;
+                total += addition;
+            }
+        }
+        return total;
+    }
+
+    /** Atomically spends exact physical Zeni and returns denomination change to the inventory. */
+    public static boolean spend(ServerPlayer player, long amount) {
+        if (player == null || amount <= 0L || amount > NpcBankMoney.MAX_TRANSFER) return false;
+        Inventory inventory = player.getInventory();
+        ItemStack[] current = new ItemStack[PLAYER_SLOTS];
+        long total = 0L;
+        for (int i = 0; i < PLAYER_SLOTS; i++) {
+            current[i] = inventory.getItem(i).copy();
+            long denomination = value(current[i]);
+            long addition = denomination * current[i].getCount();
+            if (denomination > 0L && total > NpcBankMoney.MAX_TRANSFER - addition) return false;
+            total += addition;
+        }
+        if (total < amount) return false;
+        for (int i = 0; i < PLAYER_SLOTS; i++) {
+            if (value(current[i]) > 0L) current[i] = ItemStack.EMPTY;
+        }
+        ItemStack[] planned = planInsert(current, change(total - amount));
+        if (planned == null) return false;
+        for (int i = 0; i < PLAYER_SLOTS; i++) {
+            if (!ItemStack.matches(inventory.getItem(i), planned[i])) inventory.setItem(i, planned[i]);
+        }
+        inventory.setChanged();
+        return true;
+    }
+
+    /** Atomically grants physical Zeni if inventory capacity can hold exact change. */
+    public static boolean give(ServerPlayer player, long amount) {
+        if (player == null || amount <= 0L || amount > NpcBankMoney.MAX_TRANSFER) return false;
+        Inventory inventory = player.getInventory();
+        ItemStack[] current = new ItemStack[PLAYER_SLOTS];
+        for (int i = 0; i < PLAYER_SLOTS; i++) current[i] = inventory.getItem(i).copy();
+        ItemStack[] planned = planInsert(current, change(amount));
+        if (planned == null) return false;
+        for (int i = 0; i < PLAYER_SLOTS; i++) {
+            if (!ItemStack.matches(inventory.getItem(i), planned[i])) inventory.setItem(i, planned[i]);
+        }
+        inventory.setChanged();
+        return true;
+    }
+
     /** All carried cash is deposited together, or nothing changes. Returns its value. */
     public static long depositAll(ServerPlayer player, BankAccount account) {
         if (player == null || account == null) return 0L;
